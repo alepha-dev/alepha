@@ -17,15 +17,15 @@ import { FolioLinkService } from "../services/FolioLinkService.ts";
 /**
  * CRUD, the status lifecycle, and attach/detach for quests and folios.
  *
- * Same `$secure` permission strings as `MilestoneController`
+ * Same `$secure` permission strings as `ReleaseController`
  * (`quest:read` to read, `quest:create` to mutate, `quest:delete` on
- * `deleteEpic` — matching `MilestoneController.deleteMilestone` and
+ * `deleteEpic` — matching `ReleaseController.deleteRelease` and
  * `QuestController.deleteQuest`, both of which gate delete on its own
  * permission rather than `quest:create`), and `$transactional()` on create.
  *
  * **Every endpoint here is member-gated, read and write alike** - the
  * `QuestController` / `FolioController` rule, not the
- * `MilestoneController` one it was originally modelled on. An epic groups
+ * `ReleaseController` one it was originally modelled on. An epic groups
  * quests and folios, both of which any member may already create, rename
  * and delete; gating the grouping on ownership meant the header's "Create
  * epic" entry (shown to every member, `ProjectActionsCreateButton`) answered
@@ -34,7 +34,7 @@ import { FolioLinkService } from "../services/FolioLinkService.ts";
  * is member-gated for the same reason.
  *
  * Project *configuration* stays owner-only — that split lives in
- * `ProjectController` and `MilestoneController`, not here.
+ * `ProjectController` and `ReleaseController`, not here.
  *
  * **This class is now the sole `$repository(epics)` holder.** It replaces
  * `EpicTableRegistration`, the temporary scaffolding Task 1 left behind
@@ -78,7 +78,7 @@ export class EpicController {
    * on the PROPERTY NAME — renaming this property restarts every
    * project's counter at 1. A rename needs an `UPDATE alepha_sequences
    * SET name` in the migration, exactly as `chapterNumber` →
-   * `milestoneNumber` did.
+   * `releaseNumber` did.
    */
   protected epicNumber = $sequence();
 

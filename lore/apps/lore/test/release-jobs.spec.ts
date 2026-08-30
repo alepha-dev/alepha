@@ -8,10 +8,10 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { MilestoneController } from "../src/api/controllers/MilestoneController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { MilestoneJobs } from "../src/api/jobs/MilestoneJobs.ts";
+import { ReleaseJobs } from "../src/api/jobs/ReleaseJobs.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -24,8 +24,8 @@ interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
   projectController: ProjectController;
-  milestoneController: MilestoneController;
-  milestoneJobs: MilestoneJobs;
+  releaseController: ReleaseController;
+  releaseJobs: ReleaseJobs;
   dt: DateTimeProvider;
   fakeProvider: FakeProvider;
 }
@@ -53,8 +53,8 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
-    milestoneController: alepha.inject(MilestoneController),
-    milestoneJobs: alepha.inject(MilestoneJobs),
+    releaseController: alepha.inject(ReleaseController),
+    releaseJobs: alepha.inject(ReleaseJobs),
     dt: alepha.inject(DateTimeProvider),
     fakeProvider: alepha.inject(FakeProvider),
   };
@@ -100,7 +100,7 @@ const createTestProject = async (
   return { id: created.data.id };
 };
 
-describe("MilestoneJobs.autoCloseExpiredMilestones", () => {
+describe("ReleaseJobs.autoCloseExpiredReleases", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -112,13 +112,11 @@ describe("MilestoneJobs.autoCloseExpiredMilestones", () => {
     await ctx.alepha.stop();
   });
 
-  it("auto-closes a milestone whose deadline has passed", async ({
-    expect,
-  }) => {
+  it("auto-closes a release whose deadline has passed", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user, "PT1H");
 
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
@@ -126,64 +124,56 @@ describe("MilestoneJobs.autoCloseExpiredMilestones", () => {
     expect(started.data.closedAt).toBeUndefined();
 
     await ctx.dt.travel([2, "hours"]);
-    await ctx.milestoneJobs.autoCloseExpiredMilestones.trigger();
+    await ctx.releaseJobs.autoCloseExpiredReleases.trigger();
 
-    const after = await ctx.milestoneController.milestones.getById(
-      started.data.id,
-    );
+    const after = await ctx.releaseController.releases.getById(started.data.id);
     expect(after.closedAt).toBeDefined();
     expect(after.changelog).toBeDefined();
   });
 
-  it("leaves milestones with a future deadline untouched", async ({
-    expect,
-  }) => {
+  it("leaves releases with a future deadline untouched", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user, "P7D");
 
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
 
     await ctx.dt.travel([1, "hour"]);
-    await ctx.milestoneJobs.autoCloseExpiredMilestones.trigger();
+    await ctx.releaseJobs.autoCloseExpiredReleases.trigger();
 
-    const after = await ctx.milestoneController.milestones.getById(
-      started.data.id,
-    );
+    const after = await ctx.releaseController.releases.getById(started.data.id);
     expect(after.closedAt).toBeUndefined();
     expect(after.changelog).toBeUndefined();
   });
 
-  it("leaves milestones with no deadline untouched", async ({ expect }) => {
+  it("leaves releases with no deadline untouched", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
     expect(started.data.closesAt).toBeUndefined();
 
     await ctx.dt.travel([30, "days"]);
-    await ctx.milestoneJobs.autoCloseExpiredMilestones.trigger();
+    await ctx.releaseJobs.autoCloseExpiredReleases.trigger();
 
-    const after = await ctx.milestoneController.milestones.getById(
-      started.data.id,
-    );
+    const after = await ctx.releaseController.releases.getById(started.data.id);
     expect(after.closedAt).toBeUndefined();
   });
 
-  it("does not re-finalize an already-closed milestone", async ({ expect }) => {
+  it("does not re-finalize an already-closed release", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user, "PT1H");
 
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
-    const closed = await ctx.milestoneController.closeMilestone.fetch(
+    const closed = await ctx.releaseController.closeRelease.fetch(
       { params: { id: started.data.id }, body: {} },
       { user },
     );
@@ -191,35 +181,33 @@ describe("MilestoneJobs.autoCloseExpiredMilestones", () => {
     expect(originalClosedAt).toBeDefined();
 
     await ctx.dt.travel([2, "hours"]);
-    await ctx.milestoneJobs.autoCloseExpiredMilestones.trigger();
+    await ctx.releaseJobs.autoCloseExpiredReleases.trigger();
 
-    const after = await ctx.milestoneController.milestones.getById(
-      started.data.id,
-    );
+    const after = await ctx.releaseController.releases.getById(started.data.id);
     expect(after.closedAt).toBe(originalClosedAt);
   });
 
-  it("auto-closes milestones across multiple projects in one tick", async ({
+  it("auto-closes releases across multiple projects in one tick", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
     const projectA = await createTestProject(ctx, user, "PT1H");
     const projectB = await createTestProject(ctx, user, "PT1H");
 
-    const a = await ctx.milestoneController.startMilestone.fetch(
+    const a = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: projectA.id }, body: {} },
       { user },
     );
-    const b = await ctx.milestoneController.startMilestone.fetch(
+    const b = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: projectB.id }, body: {} },
       { user },
     );
 
     await ctx.dt.travel([2, "hours"]);
-    await ctx.milestoneJobs.autoCloseExpiredMilestones.trigger();
+    await ctx.releaseJobs.autoCloseExpiredReleases.trigger();
 
-    const afterA = await ctx.milestoneController.milestones.getById(a.data.id);
-    const afterB = await ctx.milestoneController.milestones.getById(b.data.id);
+    const afterA = await ctx.releaseController.releases.getById(a.data.id);
+    const afterB = await ctx.releaseController.releases.getById(b.data.id);
     expect(afterA.closedAt).toBeDefined();
     expect(afterB.closedAt).toBeDefined();
   });

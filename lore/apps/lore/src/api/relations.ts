@@ -10,10 +10,10 @@ import { folioLinks } from "./entities/folioLinks.ts";
 import { folioRevisions } from "./entities/folioRevisions.ts";
 import { folios } from "./entities/folios.ts";
 import { members } from "./entities/members.ts";
-import { milestones } from "./entities/milestones.ts";
 import { projects } from "./entities/projects.ts";
 import { questComments } from "./entities/questComments.ts";
 import { quests } from "./entities/quests.ts";
+import { releases } from "./entities/releases.ts";
 import { sigils } from "./entities/sigils.ts";
 
 /**
@@ -35,7 +35,7 @@ export const schema = {
   users,
   projects,
   members,
-  milestones,
+  releases,
   epics,
   quests,
   questComments,
@@ -89,9 +89,9 @@ export const relations = $relations(schema, (r) => ({
       to: r.users.id.through(r.members.userId),
     }),
     quests: r.many.quests({ from: r.projects.id, to: r.quests.projectId }),
-    milestones: r.many.milestones({
+    releases: r.many.releases({
       from: r.projects.id,
-      to: r.milestones.projectId,
+      to: r.releases.projectId,
     }),
     feedback: r.many.feedback({
       from: r.projects.id,
@@ -121,12 +121,12 @@ export const relations = $relations(schema, (r) => ({
     }),
   },
 
-  milestones: {
+  releases: {
     project: r.one.projects({
-      from: r.milestones.projectId,
+      from: r.releases.projectId,
       to: r.projects.id,
     }),
-    quests: r.many.quests({ from: r.milestones.id, to: r.quests.milestoneId }),
+    quests: r.many.quests({ from: r.releases.id, to: r.quests.releaseId }),
   },
 
   epics: {
@@ -140,9 +140,9 @@ export const relations = $relations(schema, (r) => ({
       from: r.quests.projectId,
       to: r.projects.id,
     }),
-    milestone: r.one.milestones({
-      from: r.quests.milestoneId,
-      to: r.milestones.id,
+    release: r.one.releases({
+      from: r.quests.releaseId,
+      to: r.releases.id,
     }),
     epic: r.one.epics({ from: r.quests.epicId, to: r.epics.id }),
     feedback: r.one.feedback({

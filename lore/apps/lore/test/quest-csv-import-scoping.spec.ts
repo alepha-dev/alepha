@@ -21,7 +21,7 @@ const userDataSchema = z.object({
 });
 
 const HEADER =
-  "shortId,title,status,priority,size,area,kanbanColumn,milestone,createdBy,acceptedBy,completedBy,createdAt,acceptedAt,completedAt,objectives,description";
+  "shortId,title,status,priority,size,area,kanbanColumn,release,createdBy,acceptedBy,completedBy,createdAt,acceptedAt,completedAt,objectives,description";
 
 interface TestContext {
   alepha: Alepha;

@@ -6,25 +6,23 @@ import { useState } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { MilestoneWithCount } from "./ProjectMilestones.tsx";
+import type { ReleaseWithCount } from "./ProjectReleases.tsx";
 
-export interface ProjectMilestonesCloseModalProps {
-  milestone: MilestoneWithCount;
+export interface ProjectReleasesCloseModalProps {
+  release: ReleaseWithCount;
   onConfirm: (title: string) => void;
   onCancel: () => void;
 }
 
-const ProjectMilestonesCloseModal = (
-  props: ProjectMilestonesCloseModalProps,
-) => {
+const ProjectReleasesCloseModal = (props: ProjectReleasesCloseModalProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const [title, setTitle] = useState(props.milestone.title);
+  const [title, setTitle] = useState(props.release.title);
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm">{tr("milestone.close.modal.description")}</p>
+      <p className="text-sm">{tr("release.close.modal.description")}</p>
       <div className="flex flex-col gap-1.5">
-        <Label>{tr("milestone.close.modal.label")}</Label>
+        <Label>{tr("release.close.modal.label")}</Label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.currentTarget.value)}
@@ -36,7 +34,7 @@ const ProjectMilestonesCloseModal = (
       </div>
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={props.onCancel}>
-          {tr("milestone.start.cancel")}
+          {tr("release.start.cancel")}
         </Button>
         <Button
           variant="outline"
@@ -44,11 +42,11 @@ const ProjectMilestonesCloseModal = (
           onClick={() => props.onConfirm(title.trim())}
           className="bg-orange-600 text-white hover:bg-orange-700"
         >
-          {tr("milestone.close")}
+          {tr("release.close")}
         </Button>
       </div>
     </div>
   );
 };
 
-export default ProjectMilestonesCloseModal;
+export default ProjectReleasesCloseModal;

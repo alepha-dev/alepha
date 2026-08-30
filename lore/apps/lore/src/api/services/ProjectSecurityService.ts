@@ -160,7 +160,7 @@ export class ProjectSecurityService {
    * Owner-only gate. Requires the caller to be the project creator (or a
    * privileged identity with `user.ownership === false`). Use for
    * destructive or project-configuration endpoints: delete project,
-   * change features, manage kanban columns, manage milestones, import quests,
+   * change features, manage kanban columns, manage releases, import quests,
    * send invitations.
    */
   async assertOwner(

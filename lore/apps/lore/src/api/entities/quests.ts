@@ -6,8 +6,8 @@ import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questSourceSchema } from "../schemas/questSourceSchema.ts";
 import { epics } from "./epics.ts";
 import { feedback } from "./feedback.ts";
-import { milestones } from "./milestones.ts";
 import { projects } from "./projects.ts";
+import { releases } from "./releases.ts";
 
 export const quests = $entity({
   name: "quests",
@@ -159,7 +159,7 @@ export const quests = $entity({
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
-    milestoneId: db.ref(z.integer().optional(), () => milestones.cols.id, {
+    releaseId: db.ref(z.integer().optional(), () => releases.cols.id, {
       onDelete: "set null",
     }),
     /**
@@ -343,7 +343,7 @@ export const quests = $entity({
       columns: ["completedBy"],
     },
     {
-      columns: ["milestoneId"],
+      columns: ["releaseId"],
     },
   ],
 });

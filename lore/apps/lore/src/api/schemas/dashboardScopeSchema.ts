@@ -4,7 +4,7 @@ import { type Infer, z } from "alepha";
  * What a dashboard card is pointed at.
  *
  * Conceptually a tagged union — `all | projects[] | apps[] | epic |
- * milestone` — because the tiles need genuinely different shapes: unique
+ * release` — because the tiles need genuinely different shapes: unique
  * visitors takes one app, open blights takes a list of apps that may span
  * projects, active quests takes one project. Each metric declares the kinds
  * it accepts (`DashboardMetricCatalog`), so a card whose scope kind its
@@ -18,13 +18,13 @@ import { type Infer, z } from "alepha";
  * is enforced by `DashboardScopeService.assertWellFormed`, in one place,
  * with a spec.
  *
- * `epic` and `milestone` exist for the deferred epic-progress / milestone-burn
+ * `epic` and `release` exist for the deferred epic-progress / release-burn
  * tiles. No v1 metric accepts them yet; they are here so the stored shape does
  * not have to change when one does.
  */
 export const dashboardScopeSchema = z.object({
   kind: z
-    .enum(["all", "projects", "apps", "epic", "milestone"])
+    .enum(["all", "projects", "apps", "epic", "release"])
     .meta({ mode: "text" }),
   /**
    * `kind: "projects"` — one or more project ids the caller is a member of.
@@ -41,9 +41,9 @@ export const dashboardScopeSchema = z.object({
    */
   epicId: z.integer().optional(),
   /**
-   * `kind: "milestone"` — reserved for the deferred milestone-burn tile.
+   * `kind: "release"` — reserved for the deferred release-burn tile.
    */
-  milestoneId: z.integer().optional(),
+  releaseId: z.integer().optional(),
 });
 
 export type DashboardScope = Infer<typeof dashboardScopeSchema>;

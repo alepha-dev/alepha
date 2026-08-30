@@ -22,7 +22,7 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * ```typescript
  * $ownsProject({ param: "projectId" })                          // the param names the project
  * $ownsProject({ repository: () => this.epics, param: "id" })   // the param names a row that has one
- * $ownsProject({ repository: () => this.milestones, param: "id", owner: true })
+ * $ownsProject({ repository: () => this.releases, param: "id", owner: true })
  * $ownsProject({ param: "projectId", from: "query" })
  * ```
  *
@@ -174,7 +174,7 @@ export interface OwnsProjectOptions extends Pick<
   /**
    * Restrict to the project's creator rather than any member.
    *
-   * For project *configuration* - milestones, areas, sigils, invitations,
+   * For project *configuration* - releases, areas, sigils, invitations,
    * settings. The work itself (quests, folios, epics and their satellites) is
    * member-gated. Which side an endpoint belongs on is the rule written up in
    * `apps/lore/CLAUDE.md`, not a matter of copying whichever neighbouring

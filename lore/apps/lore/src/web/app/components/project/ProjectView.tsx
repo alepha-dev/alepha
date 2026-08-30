@@ -83,7 +83,7 @@ const ROUTES_FULL_WIDTH = new Set([
   "projectKanban",
   "projectEpics",
   "projectEpic",
-  "projectMilestones",
+  "projectReleases",
   "projectFolios",
   "projectFoliosNew",
   "projectFoliosFolio",
@@ -135,7 +135,7 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   projectKanban: "project.menu.kanban",
   projectEpics: "project.menu.epics",
   projectEpic: "project.menu.epics",
-  projectMilestones: "project.menu.milestones",
+  projectReleases: "project.menu.releases",
   projectReports: "project.menu.reports",
   reportsOverview: "project.menu.reports",
   reportsQuests: "project.menu.reports",
@@ -157,7 +157,7 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   projectSettingsAreas: "project.menu.settings",
   projectSettingsKanban: "project.menu.settings",
   projectSettingsFolios: "project.menu.settings",
-  projectSettingsMilestones: "project.menu.settings",
+  projectSettingsReleases: "project.menu.settings",
   projectSettingsMembers: "project.menu.settings",
   projectSettingsFeedback: "project.menu.settings",
   projectSettingsSigils: "project.menu.settings",
@@ -229,7 +229,7 @@ const ProjectView = () => {
   // rename Task 9), split by whether you ACT on a surface or READ it:
   //
   //   Work      Quests, Epics, Feedback, Blights
-  //   Record    Folios, Milestones, Reports
+  //   Record    Folios, Releases, Reports
   //   Ops       Apps
   //   Settings
   //
@@ -238,10 +238,10 @@ const ProjectView = () => {
   // one group rather than two, so the separator falls only where the mode
   // changes from acting to reading.
   //
-  // Milestones sits in Record, not beside Quests, because it plans nothing:
+  // Releases sits in Record, not beside Quests, because it plans nothing:
   // the entity carries no objective or target, membership is a time window
   // (`completedAt > last.closedAt`) rather than an assignment, no quest
-  // surface can even set `milestoneId`, and it auto-closes on a cron into a
+  // surface can even set `releaseId`, and it auto-closes on a cron into a
   // rich-markdown `changelog`. It is a folio the app fills in for you.
   //
   // Groups with no items are dropped by the `.filter` below, so an
@@ -341,10 +341,10 @@ const ProjectView = () => {
   }
   if (features.milestones) {
     recordItems.push({
-      label: tr("project.menu.milestones"),
+      label: tr("project.menu.releases"),
       icon: Flag,
-      href: router.path("projectMilestones", { params: { projectSlug } }),
-      active: name === "projectMilestones",
+      href: router.path("projectReleases", { params: { projectSlug } }),
+      active: name === "projectReleases",
     });
   }
   recordItems.push({

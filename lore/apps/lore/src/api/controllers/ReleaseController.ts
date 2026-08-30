@@ -11,18 +11,18 @@ import {
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
-import { type Milestone, milestones } from "../entities/milestones.ts";
 import type { Project } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
+import { type Release, releases } from "../entities/releases.ts";
 import {
-  type MilestoneChangelogArea,
-  milestoneChangelogAreaSchema,
-} from "../schemas/milestoneChangelogAreaSchema.ts";
+  type ReleaseChangelogArea,
+  releaseChangelogAreaSchema,
+} from "../schemas/releaseChangelogAreaSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 
-export class MilestoneController {
-  milestones = $repository(milestones);
+export class ReleaseController {
+  releases = $repository(releases);
   quests = $repository(quests);
   dt = $inject(DateTimeProvider);
   limits = $inject(ProjectLimits);
@@ -33,13 +33,13 @@ export class MilestoneController {
    * The four gates this controller needs, and the first place in the app
    * where both variants sit on one class.
    *
-   * Member for reading a milestone or the backlog; owner for starting,
-   * closing, editing and deleting one - a milestone is part of a project's
+   * Member for reading a release or the backlog; owner for starting,
+   * closing, editing and deleting one - a release is part of a project's
    * configuration, not of the work. `owner: true` drops the `via` join
    * rather than adding a second check, which is how `$owns` has always
    * expressed owner-only.
    *
-   * Declared above the actions: `use: [this.ownsMilestone()]` is a field
+   * Declared above the actions: `use: [this.ownsRelease()]` is a field
    * initializer reading another field.
    */
   protected ownsProject = () => $ownsProject({ param: "projectId" });
@@ -47,18 +47,18 @@ export class MilestoneController {
   protected ownsProjectAsOwner = () =>
     $ownsProject({ param: "projectId", owner: true });
 
-  protected ownsMilestone = () =>
-    $ownsProject({ repository: () => this.milestones, param: "id" });
+  protected ownsRelease = () =>
+    $ownsProject({ repository: () => this.releases, param: "id" });
 
-  protected ownsMilestoneAsOwner = () =>
+  protected ownsReleaseAsOwner = () =>
     $ownsProject({
-      repository: () => this.milestones,
+      repository: () => this.releases,
       param: "id",
       owner: true,
     });
 
   /**
-   * Name parts for the milestone-name generator. Two lists rather than one
+   * Name parts for the release-name generator. Two lists rather than one
    * table of finished names: 20 x 20 gives 400 combinations from 40 lines.
    */
   protected readonly NAME_PREFIXES = [
@@ -110,7 +110,7 @@ export class MilestoneController {
   /**
    * Parse a minimal subset of ISO 8601 duration strings (PnY, PnM, PnW, PnD,
    * PT...) into milliseconds. Returns `null` for unparseable input. Months and
-   * years use approximate calendar lengths (30/365 days) - milestones don't
+   * years use approximate calendar lengths (30/365 days) - releases don't
    * need calendar accuracy, only "roughly a month".
    */
   protected parseIsoDurationMs(iso: string): number | null {
@@ -138,13 +138,13 @@ export class MilestoneController {
   }
 
   /**
-   * A random flavour name for a milestone the author did not name.
+   * A random flavour name for a release the author did not name.
    *
    * Drawn through `CryptoProvider.randomInt` rather than `Math.random()`, so
    * a test can substitute the provider and pin the name instead of asserting
    * "it looks like two words".
    */
-  protected randomMilestoneName(): string {
+  protected randomReleaseName(): string {
     const prefix =
       this.NAME_PREFIXES[this.crypto.randomInt(this.NAME_PREFIXES.length)];
     const subject =
@@ -153,26 +153,30 @@ export class MilestoneController {
   }
 
   /**
-   * Per-project sequence for `milestones.number`. Replaces the old MAX+1
+   * Per-project sequence for `releases.number`. Replaces the old MAX+1
    * lookup with an atomic counter — race-safe even under concurrent starts.
    *
-   * Renamed from `chapterNumber` in the 2026-08 great rename. `$sequence`
-   * keys its counter on the property name, so the migration carries an
-   * `UPDATE alepha_sequences SET name = 'milestoneNumber' WHERE name =
-   * 'chapterNumber'` — without it every existing project restarts at 1 and
-   * collides with its own history. Renaming this property again needs the
-   * same treatment.
+   * `$sequence` keys its counter on the property name, not the table, so a
+   * rename orphans the old counter row and restarts at 1. `chapterNumber`
+   * became `milestoneNumber` in the 2026-08 great rename and needed an
+   * `UPDATE alepha_sequences` to carry the history across.
+   *
+   * This rename needed no such UPDATE: the Lore Release migration deletes
+   * every milestone row, so there is no history to collide with and
+   * `releaseNumber` starting at 1 is the correct answer. The migration
+   * `DELETE`s the orphan `milestoneNumber` row rather than repointing it.
+   * A future rename of this property is back under the old rule.
    */
-  protected milestoneNumber = $sequence();
+  protected releaseNumber = $sequence();
 
-  getMilestones = $action({
+  getReleases = $action({
     use: [
       $secure({ permissions: ["quest:read"] }),
       this.ownsProject(),
       // `noCache` rather than a `maxAge` window: this list changes the
-      // instant someone starts, closes or deletes a milestone, and a
+      // instant someone starts, closes or deletes a release, and a
       // freshness window made those mutations invisible to the browser for
-      // its whole duration — start a milestone and the page kept showing
+      // its whole duration — start a release and the page kept showing
       // "nothing is recording" until the entry expired. `no-cache` still
       // lets the ETag answer 304, so revalidation stays cheap; it only
       // forbids serving the body without asking.
@@ -183,13 +187,13 @@ export class MilestoneController {
         projectId: z.integer(),
       }),
       response: z.array(
-        milestones.schema.extend({
+        releases.schema.extend({
           questCount: z.integer(),
         }),
       ),
     },
     handler: async ({ params }) => {
-      const allMilestones = await this.milestones.findMany({
+      const allReleases = await this.releases.findMany({
         where: {
           projectId: { eq: params.projectId },
         },
@@ -197,17 +201,17 @@ export class MilestoneController {
       });
 
       const counts = await Promise.all(
-        allMilestones.map((ch) => this.countCompletedInWindow(ch)),
+        allReleases.map((ch) => this.countCompletedInWindow(ch)),
       );
 
-      return allMilestones.map((ch, i) => ({
+      return allReleases.map((ch, i) => ({
         ...ch,
         questCount: counts[i],
       }));
     },
   });
 
-  startMilestone = $action({
+  startRelease = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
       $secure({ permissions: ["quest:create"] }),
@@ -223,10 +227,10 @@ export class MilestoneController {
         description: z.string().meta({ size: "rich" }).optional(),
         tags: z.array(z.string()).optional(),
       }),
-      response: milestones.schema,
+      response: releases.schema,
     },
     handler: async ({ params, body }) => {
-      const active = await this.milestones.findMany({
+      const active = await this.releases.findMany({
         where: {
           projectId: { eq: params.projectId },
           closedAt: { isNull: true },
@@ -235,35 +239,34 @@ export class MilestoneController {
 
       if (active.length > 0) {
         throw new BadRequestError(
-          "An active milestone already exists. Close it before starting a new one.",
+          "An active release already exists. Close it before starting a new one.",
         );
       }
 
-      // Closed milestones count too: the cap bounds the table, and the
+      // Closed releases count too: the cap bounds the table, and the
       // one-active rule above already bounds what is open.
-      const maxMilestonesPerProject =
-        await this.limits.maxMilestonesPerProject();
-      const milestoneCount = await this.milestones.count({
+      const maxReleasesPerProject = await this.limits.maxReleasesPerProject();
+      const releaseCount = await this.releases.count({
         projectId: { eq: params.projectId },
       });
-      if (milestoneCount >= maxMilestonesPerProject) {
+      if (releaseCount >= maxReleasesPerProject) {
         throw new ForbiddenError(
-          `This project has reached the maximum number of milestones allowed (${maxMilestonesPerProject}).`,
+          `This project has reached the maximum number of releases allowed (${maxReleasesPerProject}).`,
         );
       }
 
       // After the caps, so a refused start does not burn a number.
-      const number = await this.milestoneNumber.next(String(params.projectId));
+      const number = await this.releaseNumber.next(String(params.projectId));
 
       // The gate already read this row; `authority()` hands it back rather
       // than issuing the same query a second time.
       const project = this.owned.authority<Project>();
       const closesAt = this.computeClosesAt(project.milestoneDuration);
 
-      return await this.milestones.create({
+      return await this.releases.create({
         projectId: params.projectId,
         number,
-        title: body.title || this.randomMilestoneName(),
+        title: body.title || this.randomReleaseName(),
         description: body.description ?? "",
         tags: body.tags ?? [],
         closesAt,
@@ -271,10 +274,10 @@ export class MilestoneController {
     },
   });
 
-  closeMilestone = $action({
+  closeRelease = $action({
     use: [
       $secure({ permissions: ["quest:create"] }),
-      this.ownsMilestoneAsOwner(),
+      this.ownsReleaseAsOwner(),
     ],
     schema: {
       params: z.object({
@@ -284,26 +287,26 @@ export class MilestoneController {
         title: z.string().min(1).max(100).optional(),
         tags: z.array(z.string()).optional(),
       }),
-      response: milestones.schema,
+      response: releases.schema,
     },
     handler: async ({ body }) => {
-      const milestone = this.owned.get<Milestone>();
+      const release = this.owned.get<Release>();
 
-      if (milestone.closedAt) {
-        throw new BadRequestError("Milestone is already closed.");
+      if (release.closedAt) {
+        throw new BadRequestError("Release is already closed.");
       }
 
-      return await this.finalizeMilestone(milestone, {
+      return await this.finalizeRelease(release, {
         title: body.title,
         tags: body.tags,
       });
     },
   });
 
-  updateMilestone = $action({
+  updateRelease = $action({
     use: [
       $secure({ permissions: ["quest:create"] }),
-      this.ownsMilestoneAsOwner(),
+      this.ownsReleaseAsOwner(),
     ],
     schema: {
       params: z.object({
@@ -314,10 +317,10 @@ export class MilestoneController {
         description: z.string().meta({ size: "rich" }).optional(),
         tags: z.array(z.string()).optional(),
       }),
-      response: milestones.schema,
+      response: releases.schema,
     },
     handler: async ({ params, body }) => {
-      return await this.milestones.updateById(params.id, {
+      return await this.releases.updateById(params.id, {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined
           ? { description: body.description }
@@ -327,10 +330,10 @@ export class MilestoneController {
     },
   });
 
-  deleteMilestone = $action({
+  deleteRelease = $action({
     use: [
       $secure({ permissions: ["quest:delete"] }),
-      this.ownsMilestoneAsOwner(),
+      this.ownsReleaseAsOwner(),
     ],
     schema: {
       params: z.object({
@@ -339,25 +342,25 @@ export class MilestoneController {
       response: okSchema,
     },
     handler: async ({ params }) => {
-      const milestone = this.owned.get<Milestone>();
+      const release = this.owned.get<Release>();
 
-      const count = await this.countCompletedInWindow(milestone);
+      const count = await this.countCompletedInWindow(release);
       if (count > 0) {
         throw new BadRequestError(
-          "Cannot delete a milestone that recorded completed quests.",
+          "Cannot delete a release that recorded completed quests.",
         );
       }
 
-      await this.milestones.deleteById(params.id);
+      await this.releases.deleteById(params.id);
       return { ok: true };
     },
   });
 
-  getMilestoneChangelog = $action({
+  getReleaseChangelog = $action({
     use: [
       $secure({ permissions: ["quest:read"] }),
-      this.ownsMilestone(),
-      // Same reasoning as `getMilestones`: an open milestone's changelog is
+      this.ownsRelease(),
+      // Same reasoning as `getReleases`: an open release's changelog is
       // recomputed from completed quests, so a freshness window hides work
       // that just landed. ETag-only revalidation keeps it cheap.
       $etag({ control: { private: true, noCache: true } }),
@@ -368,13 +371,13 @@ export class MilestoneController {
       }),
       response: z.object({
         markdown: z.string(),
-        milestone: milestones.schema,
+        release: releases.schema,
         /**
          * The same entries the markdown lists, in structured form, so the
          * page can render `#ref · title · priority` rows. See
-         * `milestoneChangelogAreaSchema` for why both projections ship.
+         * `releaseChangelogAreaSchema` for why both projections ship.
          */
-        areas: z.array(milestoneChangelogAreaSchema),
+        areas: z.array(releaseChangelogAreaSchema),
         stats: z.object({
           questCount: z.integer(),
           areaCount: z.integer(),
@@ -383,33 +386,33 @@ export class MilestoneController {
       }),
     },
     handler: async () => {
-      const milestone = this.owned.get<Milestone>();
+      const release = this.owned.get<Release>();
 
-      const completed = await this.queryCompletedInWindow(milestone);
+      const completed = await this.queryCompletedInWindow(release);
       const { areas, stats } = this.summarize(completed);
 
-      // Closed milestones return the frozen markdown snapshot when there is
+      // Closed releases return the frozen markdown snapshot when there is
       // one; `areas` is recomputed either way, so a post-close quest edit
       // shows up in the rows but not in the downloadable `.md`.
-      if (milestone.closedAt && milestone.changelog) {
-        return { markdown: milestone.changelog, milestone, areas, stats };
+      if (release.closedAt && release.changelog) {
+        return { markdown: release.changelog, release, areas, stats };
       }
 
-      const { markdown } = this.renderChangelog(milestone, completed);
-      return { markdown, milestone, areas, stats };
+      const { markdown } = this.renderChangelog(release, completed);
+      return { markdown, release, areas, stats };
     },
   });
 
   /**
-   * How many quests have been completed since the last milestone closed —
+   * How many quests have been completed since the last release closed —
    * work that is landing in no changelog at all because nothing is
    * recording. Drives the "nothing is recording" banner, which needs to say
    * what that costs rather than just that it is true.
    *
-   * Counts from the whole project when no milestone has ever closed, and
-   * returns 0 while a milestone is open (that work is being recorded).
+   * Counts from the whole project when no release has ever closed, and
+   * returns 0 while a release is open (that work is being recorded).
    */
-  getMilestoneBacklog = $action({
+  getReleaseBacklog = $action({
     use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     schema: {
       params: z.object({
@@ -418,7 +421,7 @@ export class MilestoneController {
       response: z.object({
         count: z.integer(),
         /**
-         * `closedAt` of the last closed milestone, when there is one.
+         * `closedAt` of the last closed release, when there is one.
          */
         since: z.datetime().optional(),
         lastNumber: z.integer().optional(),
@@ -426,7 +429,7 @@ export class MilestoneController {
       }),
     },
     handler: async ({ params }) => {
-      const open = await this.milestones.findMany({
+      const open = await this.releases.findMany({
         where: {
           projectId: { eq: params.projectId },
           closedAt: { isNull: true },
@@ -434,7 +437,7 @@ export class MilestoneController {
         limit: 1,
       });
 
-      const [last] = await this.milestones.findMany({
+      const [last] = await this.releases.findMany({
         where: {
           projectId: { eq: params.projectId },
           closedAt: { isNotNull: true },
@@ -443,7 +446,7 @@ export class MilestoneController {
         limit: 1,
       });
 
-      // A milestone is recording — nothing is falling through the cracks.
+      // A release is recording — nothing is falling through the cracks.
       if (open.length > 0) {
         return {
           count: 0,
@@ -471,37 +474,37 @@ export class MilestoneController {
    * Deliberately ungated beyond the permission: it reads no project data and
    * touches no row, so there is no resource for `$ownsProject` to name.
    */
-  getRandomMilestoneName = $action({
+  getRandomReleaseName = $action({
     use: [$secure({ permissions: ["quest:create"] })],
     schema: {
       response: z.object({ title: z.string() }),
     },
-    handler: async () => ({ title: this.randomMilestoneName() }),
+    handler: async () => ({ title: this.randomReleaseName() }),
   });
 
   /**
-   * Render the changelog markdown and persist it on the milestone row,
+   * Render the changelog markdown and persist it on the release row,
    * along with `closedAt` and any caller-supplied metadata. Shared by
-   * the manual `closeMilestone` action and the auto-close cron job.
+   * the manual `closeRelease` action and the auto-close cron job.
    */
-  async finalizeMilestone(
-    milestone: Milestone,
+  async finalizeRelease(
+    release: Release,
     overrides: { title?: string; tags?: string[] } = {},
-  ): Promise<Milestone> {
+  ): Promise<Release> {
     const completed = await this.queryCompletedInWindow({
-      ...milestone,
-      closedAt: milestone.closedAt ?? this.dt.nowISOString(),
+      ...release,
+      closedAt: release.closedAt ?? this.dt.nowISOString(),
     });
     const { markdown } = this.renderChangelog(
       {
-        ...milestone,
-        title: overrides.title ?? milestone.title,
-        tags: overrides.tags ?? milestone.tags,
+        ...release,
+        title: overrides.title ?? release.title,
+        tags: overrides.tags ?? release.tags,
       },
       completed,
     );
 
-    return await this.milestones.updateById(milestone.id, {
+    return await this.releases.updateById(release.id, {
       closedAt: this.dt.nowISOString(),
       changelog: markdown,
       ...(overrides.title ? { title: overrides.title } : {}),
@@ -510,11 +513,11 @@ export class MilestoneController {
   }
 
   /**
-   * Find all open milestones whose `closesAt` is in the past — used by the
+   * Find all open releases whose `closesAt` is in the past — used by the
    * auto-close cron.
    */
-  async findExpiredMilestones(now: string): Promise<Milestone[]> {
-    return await this.milestones.findMany({
+  async findExpiredReleases(now: string): Promise<Release[]> {
+    return await this.releases.findMany({
       where: {
         closedAt: { isNull: true },
         closesAt: { isNotNull: true, lte: now },
@@ -529,26 +532,22 @@ export class MilestoneController {
     return new Date(this.dt.nowMillis() + ms).toISOString();
   }
 
-  protected async queryCompletedInWindow(
-    milestone: Milestone,
-  ): Promise<Quest[]> {
-    const upper = milestone.closedAt ?? this.dt.nowISOString();
+  protected async queryCompletedInWindow(release: Release): Promise<Quest[]> {
+    const upper = release.closedAt ?? this.dt.nowISOString();
     return await this.quests.findMany({
       where: {
-        projectId: { eq: milestone.projectId },
+        projectId: { eq: release.projectId },
         completedAt: {
           isNotNull: true,
-          gte: milestone.createdAt,
+          gte: release.createdAt,
           lte: upper,
         },
       },
     });
   }
 
-  protected async countCompletedInWindow(
-    milestone: Milestone,
-  ): Promise<number> {
-    const completed = await this.queryCompletedInWindow(milestone);
+  protected async countCompletedInWindow(release: Release): Promise<number> {
+    const completed = await this.queryCompletedInWindow(release);
     return completed.length;
   }
 
@@ -572,7 +571,7 @@ export class MilestoneController {
    * page draws and the markdown it can download never disagree on grouping.
    */
   protected summarize(completed: Quest[]): {
-    areas: MilestoneChangelogArea[];
+    areas: ReleaseChangelogArea[];
     stats: { questCount: number; areaCount: number; contributorCount: number };
   } {
     const byArea = this.groupByArea(completed);
@@ -582,7 +581,7 @@ export class MilestoneController {
       if (quest.completedBy) contributors.add(quest.completedBy);
     }
 
-    const areas: MilestoneChangelogArea[] = [...byArea].map(
+    const areas: ReleaseChangelogArea[] = [...byArea].map(
       ([name, areaQuests]) => ({
         name,
         questCount: areaQuests.length,
@@ -605,7 +604,7 @@ export class MilestoneController {
   }
 
   protected renderChangelog(
-    milestone: Milestone,
+    release: Release,
     completed: Quest[],
   ): {
     markdown: string;
@@ -619,16 +618,16 @@ export class MilestoneController {
     }
 
     const lines: string[] = [];
-    lines.push(`# Milestone ${milestone.number}: ${milestone.title}`);
+    lines.push(`# Release ${release.number}: ${release.title}`);
     lines.push("");
 
-    if (milestone.tags?.length) {
-      lines.push(`_Tags:_ ${milestone.tags.map((t) => `\`${t}\``).join(" ")}`);
+    if (release.tags?.length) {
+      lines.push(`_Tags:_ ${release.tags.map((t) => `\`${t}\``).join(" ")}`);
       lines.push("");
     }
 
-    if (milestone.description) {
-      lines.push(milestone.description);
+    if (release.description) {
+      lines.push(release.description);
       lines.push("");
     }
 

@@ -8,9 +8,9 @@ import { feedback } from "@/api/entities/feedback.ts";
 import { folioDirectories } from "@/api/entities/folioDirectories.ts";
 import { type Folio, folios } from "@/api/entities/folios.ts";
 import { type Member, members } from "@/api/entities/members.ts";
-import { milestones } from "@/api/entities/milestones.ts";
 import { type Project, projects } from "@/api/entities/projects.ts";
 import { type Quest, type QuestInsert, quests } from "@/api/entities/quests.ts";
+import { releases } from "@/api/entities/releases.ts";
 
 type ProjectInsert = Infer<typeof projects.insertSchema>;
 type EpicInsert = Infer<typeof epics.insertSchema>;
@@ -24,7 +24,7 @@ type FolioInsert = Infer<typeof folios.insertSchema>;
  * synchronized at boot — and only against tables whose `Repository` has
  * already been constructed by then (each `Repository` registers its own
  * table with the provider from its constructor). `quests` alone reaches
- * `projects`, `milestones`, `feedback` and `users` via FK columns, so a spec
+ * `projects`, `releases`, `feedback` and `users` via FK columns, so a spec
  * that only wires up `epics` + `quests` before `start()` and creates a
  * `quests` row afterwards through `createTestQuest` fails at boot with
  * "Referenced table X not found" — not at the call site that actually
@@ -37,7 +37,7 @@ type FolioInsert = Infer<typeof folios.insertSchema>;
 export class TestEntityRepositories {
   projects = $repository(projects);
   members = $repository(members);
-  milestones = $repository(milestones);
+  releases = $repository(releases);
   feedback = $repository(feedback);
   users = $repository(users);
   areas = $repository(areas);

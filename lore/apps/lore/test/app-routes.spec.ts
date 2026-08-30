@@ -45,7 +45,7 @@ const NAV_ROUTE_NAMES = [
   "projectEpic",
   "projectBlights",
   "projectFeedback",
-  "projectMilestones",
+  "projectReleases",
   "projectFolios",
   "projectReports",
   "projectSettingsBanner",
@@ -65,7 +65,7 @@ const NAV_ROUTE_NAMES = [
   "projectSettingsKanban",
   "projectSettingsFolios",
   "projectSettingsFeedback",
-  "projectSettingsMilestones",
+  "projectSettingsReleases",
   "projectSettingsQuests",
   // Reports tab bar — ReportsLayout.tsx
   "reportsOverview",

@@ -21,9 +21,9 @@ import {
 /**
  * MCP tools for epic operations.
  *
- * Modelled closely on `MilestoneTools`, including its `resolveProjectId`
+ * Modelled closely on `ReleaseTools`, including its `resolveProjectId`
  * helper. One difference: an epic has no id-only lookup on
- * `EpicController`, so — unlike milestones (`id` / `number`) and quests
+ * `EpicController`, so — unlike releases (`id` / `number`) and quests
  * (`id` / `shortId`) — every epic reference here is `number` + project.
  */
 export class EpicTools {

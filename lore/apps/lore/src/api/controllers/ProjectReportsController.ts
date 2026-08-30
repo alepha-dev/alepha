@@ -38,7 +38,7 @@ export class ProjectReportsController {
    * The "this quest is in scope" predicate every stats aggregate filters
    * on. Soft-deleted quests are gone; shelved quests were deliberately
    * set aside as out of scope, so they leave both the numerator and the
-   * denominator of every chart — a milestone can hit 100% with shelved
+   * denominator of every chart — a release can hit 100% with shelved
    * quests left over.
    *
    * Completed-based metrics are unaffected by construction: only a "new"

@@ -23,7 +23,7 @@ const SIZE_DESCRIPTION =
   "Defaults to 3 (M) when omitted, which reads as 'nobody sized this'.";
 
 const DUE_DESCRIPTION =
-  "Deadline for this quest, as an ISO 8601 datetime. A DATE, not a duration: `estimateMinutes` answers 'how long might this take', this answers 'by when must it be done'. Independent of any milestone deadline, so a quest can be overdue inside an on-track milestone.";
+  "Deadline for this quest, as an ISO 8601 datetime. A DATE, not a duration: `estimateMinutes` answers 'how long might this take', this answers 'by when must it be done'. Independent of any release deadline, so a quest can be overdue inside an on-track release.";
 const AREA_DESCRIPTION =
   "The part of the system this quest touches — a module, a package, a surface (e.g. 'alepha/orm', '@alepha/ui', 'lore/folios'). Required; every quest has exactly one. " +
   "NOT the same axis as `epic` (a bounded initiative that spans areas and ends) or `tags` (the nature of the work: bug, feat, chore) — a quest carries all three independently. " +
@@ -313,7 +313,7 @@ export const questGetResultSchema = z.object({
   status: questStatusSchema,
   objectives: z.array(objectiveSchema),
   projectId: z.integer(),
-  milestoneId: z.integer().optional(),
+  releaseId: z.integer().optional(),
   createdAt: z.datetime(),
   updatedAt: z.datetime(),
   acceptedAt: z.datetime().optional(),

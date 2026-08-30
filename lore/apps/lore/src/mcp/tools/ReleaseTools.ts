@@ -2,24 +2,24 @@ import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import { MilestoneController } from "../../api/controllers/MilestoneController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import {
-  milestoneChangelogParamsSchema,
-  milestoneChangelogResultSchema,
-  milestoneCloseParamsSchema,
-  milestoneCloseResultSchema,
-  milestoneListParamsSchema,
-  milestoneListResultSchema,
-  milestoneStartParamsSchema,
-  milestoneStartResultSchema,
+  releaseChangelogParamsSchema,
+  releaseChangelogResultSchema,
+  releaseCloseParamsSchema,
+  releaseCloseResultSchema,
+  releaseListParamsSchema,
+  releaseListResultSchema,
+  releaseStartParamsSchema,
+  releaseStartResultSchema,
 } from "../schemas/index.ts";
 
 /**
- * MCP tools for milestone operations.
+ * MCP tools for release operations.
  */
-export class MilestoneTools {
-  protected readonly milestoneController = $inject(MilestoneController);
+export class ReleaseTools {
+  protected readonly releaseController = $inject(ReleaseController);
   protected readonly projectController = $inject(ProjectController);
 
   /**
@@ -55,10 +55,10 @@ export class MilestoneTools {
   }
 
   /**
-   * Resolve a milestone reference (`id` or `number` + project) to the global
-   * milestone id.
+   * Resolve a release reference (`id` or `number` + project) to the global
+   * release id.
    */
-  protected async resolveMilestoneId(params: {
+  protected async resolveReleaseId(params: {
     id?: number;
     number?: number;
     project?: number;
@@ -70,33 +70,33 @@ export class MilestoneTools {
         params.project,
         params.project_name,
       );
-      const result = await this.milestoneController.getMilestones({
+      const result = await this.releaseController.getReleases({
         params: { projectId },
       });
       const found = result.find((ch) => ch.number === params.number);
       if (!found) {
         throw new NotFoundError(
-          `Milestone ${params.number} not found in project`,
+          `Release ${params.number} not found in project`,
         );
       }
       return found.id;
     }
     throw new BadRequestError(
-      "Milestone reference required: pass `id` (global) or `number` (per-project — also requires `project` or `project_name`).",
+      "Release reference required: pass `id` (global) or `number` (per-project — also requires `project` or `project_name`).",
     );
   }
 
   /**
-   * List all milestones for a project.
+   * List all releases for a project.
    */
   milestone_list = $tool({
     description:
-      "List all milestones for a project, both active (open) and closed. Milestones are time-boxed cycles that capture completed quests. Sorted by milestone number, newest first. Each entry includes id, number, title, description, questCount, createdAt, and closedAt (undefined for the active milestone).",
-    title: "List milestones",
+      "List all releases for a project, both active (open) and closed. Releases are time-boxed cycles that capture completed quests. Sorted by release number, newest first. Each entry includes id, number, title, description, questCount, createdAt, and closedAt (undefined for the active release).",
+    title: "List releases",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
-      params: milestoneListParamsSchema,
-      result: milestoneListResultSchema,
+      params: releaseListParamsSchema,
+      result: releaseListResultSchema,
     },
     handler: async ({ params }) => {
       const projectId = await this.resolveProjectId(
@@ -104,12 +104,12 @@ export class MilestoneTools {
         params.project_name,
       );
 
-      const result = await this.milestoneController.getMilestones({
+      const result = await this.releaseController.getReleases({
         params: { projectId },
       });
 
       return {
-        milestones: result.map((ch) => ({
+        releases: result.map((ch) => ({
           id: ch.id,
           number: ch.number,
           title: ch.title,
@@ -123,16 +123,16 @@ export class MilestoneTools {
   });
 
   /**
-   * Start a new milestone.
+   * Start a new release.
    */
   milestone_start = $tool({
     description:
-      "Start a new milestone for a project. Only one milestone can be active at a time. Quests completed while a milestone is active are automatically attached to it.",
-    title: "Start milestone",
+      "Start a new release for a project. Only one release can be active at a time. Quests completed while a release is active are automatically attached to it.",
+    title: "Start release",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
-      params: milestoneStartParamsSchema,
-      result: milestoneStartResultSchema,
+      params: releaseStartParamsSchema,
+      result: releaseStartResultSchema,
     },
     handler: async ({ params }) => {
       const projectId = await this.resolveProjectId(
@@ -140,7 +140,7 @@ export class MilestoneTools {
         params.project_name,
       );
 
-      const milestone = await this.milestoneController.startMilestone({
+      const release = await this.releaseController.startRelease({
         params: { projectId },
         body: {
           title: params.title,
@@ -149,57 +149,57 @@ export class MilestoneTools {
       });
 
       return {
-        id: milestone.id,
-        number: milestone.number,
-        title: milestone.title,
-        createdAt: milestone.createdAt,
+        id: release.id,
+        number: release.number,
+        title: release.title,
+        createdAt: release.createdAt,
       };
     },
   });
 
   /**
-   * Close an active milestone.
+   * Close an active release.
    */
   milestone_close = $tool({
     description:
-      "Close an active milestone. No more quests will be attached to it after closing.",
-    title: "Close milestone",
+      "Close an active release. No more quests will be attached to it after closing.",
+    title: "Close release",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
-      params: milestoneCloseParamsSchema,
-      result: milestoneCloseResultSchema,
+      params: releaseCloseParamsSchema,
+      result: releaseCloseResultSchema,
     },
     handler: async ({ params }) => {
-      const id = await this.resolveMilestoneId(params);
-      const milestone = await this.milestoneController.closeMilestone({
+      const id = await this.resolveReleaseId(params);
+      const release = await this.releaseController.closeRelease({
         params: { id },
         body: { title: params.title },
       });
 
       return {
-        id: milestone.id,
-        number: milestone.number,
-        title: milestone.title,
-        closedAt: milestone.closedAt!,
+        id: release.id,
+        number: release.number,
+        title: release.title,
+        closedAt: release.closedAt!,
       };
     },
   });
 
   /**
-   * Get changelog for a milestone.
+   * Get changelog for a release.
    */
   milestone_changelog = $tool({
     description:
-      "Generate a Markdown changelog for a milestone, listing all completed quests grouped by area.",
-    title: "Milestone changelog",
+      "Generate a Markdown changelog for a release, listing all completed quests grouped by area.",
+    title: "Release changelog",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
-      params: milestoneChangelogParamsSchema,
-      result: milestoneChangelogResultSchema,
+      params: releaseChangelogParamsSchema,
+      result: releaseChangelogResultSchema,
     },
     handler: async ({ params }) => {
-      const id = await this.resolveMilestoneId(params);
-      const result = await this.milestoneController.getMilestoneChangelog({
+      const id = await this.resolveReleaseId(params);
+      const result = await this.releaseController.getReleaseChangelog({
         params: { id },
       });
 

@@ -8,9 +8,9 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { MilestoneController } from "../src/api/controllers/MilestoneController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
+import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -24,7 +24,7 @@ interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
   projectController: ProjectController;
-  milestoneController: MilestoneController;
+  releaseController: ReleaseController;
   questController: QuestController;
   dt: DateTimeProvider;
   fakeProvider: FakeProvider;
@@ -53,7 +53,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
-    milestoneController: alepha.inject(MilestoneController),
+    releaseController: alepha.inject(ReleaseController),
     questController: alepha.inject(QuestController),
     dt: alepha.inject(DateTimeProvider),
     fakeProvider: alepha.inject(FakeProvider),
@@ -117,7 +117,7 @@ const completeQuest = async (
   );
 };
 
-describe("MilestoneController.getMilestoneBacklog", () => {
+describe("ReleaseController.getReleaseBacklog", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -129,20 +129,20 @@ describe("MilestoneController.getMilestoneBacklog", () => {
     await ctx.alepha.stop();
   });
 
-  it("counts quests completed since the last milestone closed", async ({
+  it("counts quests completed since the last release closed", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: { title: "July release" } },
       { user },
     );
     await ctx.dt.travel([1, "minute"]);
     await completeQuest(ctx, user, project.id, "Recorded inside the window");
 
-    const closed = await ctx.milestoneController.closeMilestone.fetch(
+    const closed = await ctx.releaseController.closeRelease.fetch(
       { params: { id: started.data.id }, body: {} },
       { user },
     );
@@ -151,7 +151,7 @@ describe("MilestoneController.getMilestoneBacklog", () => {
     await completeQuest(ctx, user, project.id, "Orphan one");
     await completeQuest(ctx, user, project.id, "Orphan two");
 
-    const result = await ctx.milestoneController.getMilestoneBacklog.fetch(
+    const result = await ctx.releaseController.getReleaseBacklog.fetch(
       { params: { projectId: project.id } },
       { user },
     );
@@ -162,21 +162,21 @@ describe("MilestoneController.getMilestoneBacklog", () => {
     expect(result.data.lastTitle).toBe("July release");
   });
 
-  it("reports zero while a milestone is recording", async ({ expect }) => {
+  it("reports zero while a release is recording", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const first = await ctx.milestoneController.startMilestone.fetch(
+    const first = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
-    await ctx.milestoneController.closeMilestone.fetch(
+    await ctx.releaseController.closeRelease.fetch(
       { params: { id: first.data.id }, body: {} },
       { user },
     );
 
     await ctx.dt.travel([1, "hour"]);
-    await ctx.milestoneController.startMilestone.fetch(
+    await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
@@ -184,7 +184,7 @@ describe("MilestoneController.getMilestoneBacklog", () => {
     await ctx.dt.travel([1, "minute"]);
     await completeQuest(ctx, user, project.id, "Being recorded right now");
 
-    const result = await ctx.milestoneController.getMilestoneBacklog.fetch(
+    const result = await ctx.releaseController.getReleaseBacklog.fetch(
       { params: { projectId: project.id } },
       { user },
     );
@@ -192,7 +192,7 @@ describe("MilestoneController.getMilestoneBacklog", () => {
     expect(result.data.count).toBe(0);
   });
 
-  it("counts the whole project when no milestone has ever closed", async ({
+  it("counts the whole project when no release has ever closed", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
@@ -202,7 +202,7 @@ describe("MilestoneController.getMilestoneBacklog", () => {
     await completeQuest(ctx, user, project.id, "Two");
     await completeQuest(ctx, user, project.id, "Three");
 
-    const result = await ctx.milestoneController.getMilestoneBacklog.fetch(
+    const result = await ctx.releaseController.getReleaseBacklog.fetch(
       { params: { projectId: project.id } },
       { user },
     );
@@ -221,7 +221,7 @@ describe("MilestoneController.getMilestoneBacklog", () => {
     await completeQuest(ctx, user, other.id, "Theirs");
     await completeQuest(ctx, user, other.id, "Theirs too");
 
-    const result = await ctx.milestoneController.getMilestoneBacklog.fetch(
+    const result = await ctx.releaseController.getReleaseBacklog.fetch(
       { params: { projectId: mine.id } },
       { user },
     );

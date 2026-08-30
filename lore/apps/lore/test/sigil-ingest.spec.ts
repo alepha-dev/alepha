@@ -127,6 +127,7 @@ const allOn = {
   kanban: true,
   folios: true,
   feedback: true,
+  // The Releases module. Persisted key kept pre-rename - see projects.ts.
   milestones: true,
   sigils: true,
   blights: true,

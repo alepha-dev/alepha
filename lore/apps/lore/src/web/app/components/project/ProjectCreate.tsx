@@ -14,13 +14,14 @@ import {
   ArrowRight,
   BookOpen,
   Hammer,
+  Flag,
   LayoutGrid,
-  Milestone,
   Tag,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
+import type { ProjectFeatures } from "@/api/entities/projects.ts";
 import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
@@ -31,15 +32,20 @@ import PageHeader from "../shared/header/PageHeader.tsx";
 const TOTAL_STEPS = 3;
 const MIN_BUILD_DURATION_MS = 1500;
 
-type FeaturesDraft = {
-  kanban: boolean;
-  folios: boolean;
-  feedback: boolean;
-  milestones: boolean;
-};
+/**
+ * ⚠️ `milestones` is the Releases module. This draft is sent verbatim as the
+ * project's `features` JSON, so its keys ARE the persisted keys — and
+ * `createProject`'s body schema is `.partial()`, so a mistyped key is
+ * accepted silently rather than rejected. The persisted name stays
+ * pre-rename; see `projectFeaturesSchema`.
+ */
+type FeaturesDraft = Pick<
+  ProjectFeatures,
+  "kanban" | "folios" | "feedback" | "milestones"
+>;
 
 const DEFAULT_FEATURES: FeaturesDraft = {
-  // Folios + Kanban + Milestones opt-in by default. Feedback is no longer a
+  // Folios + Kanban + Releases opt-in by default. Feedback is no longer a
   // wizard-surfaced module — it's the project's own module switch now,
   // enabled from Settings → Feedback (its own page, split out of the Sigils
   // page). It is not a Sigils sub-capability: an app's own `feedback` kind
@@ -203,9 +209,9 @@ const ProjectCreate = () => {
                       kanbanHelper: String(
                         tr("project.create.module.kanban.helper"),
                       ),
-                      milestones: tr("project.create.module.milestones"),
-                      milestonesHelper: String(
-                        tr("project.create.module.milestones.helper"),
+                      releases: tr("project.create.module.releases"),
+                      releasesHelper: String(
+                        tr("project.create.module.releases.helper"),
                       ),
                     }}
                   />
@@ -360,8 +366,8 @@ interface StepModulesProps {
     foliosHelper: string;
     kanban: string;
     kanbanHelper: string;
-    milestones: string;
-    milestonesHelper: string;
+    releases: string;
+    releasesHelper: string;
   };
 }
 
@@ -391,9 +397,9 @@ const StepModules = (props: StepModulesProps) => {
           onChange={() => toggle("kanban")}
         />
         <ModuleToggle
-          icon={Milestone}
-          label={props.labels.milestones}
-          helper={props.labels.milestonesHelper}
+          icon={Flag}
+          label={props.labels.releases}
+          helper={props.labels.releasesHelper}
           checked={props.value.milestones}
           onChange={() => toggle("milestones")}
         />

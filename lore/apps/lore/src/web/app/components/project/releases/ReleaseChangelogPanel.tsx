@@ -2,17 +2,17 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { BookMarked, Copy, Download, ScrollText } from "lucide-react";
 
-import type { MilestoneChangelogArea } from "@/api/schemas/milestoneChangelogAreaSchema.ts";
+import type { ReleaseChangelogArea } from "@/api/schemas/releaseChangelogAreaSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import MilestoneChangelogRow from "./MilestoneChangelogRow.tsx";
+import ReleaseChangelogRow from "./ReleaseChangelogRow.tsx";
 
-export interface MilestoneChangelogPanelProps {
-  areas: MilestoneChangelogArea[];
+export interface ReleaseChangelogPanelProps {
+  areas: ReleaseChangelogArea[];
   /**
-   * `LIVE · N quests` when the milestone is still recording, `#N · FROZEN
+   * `LIVE · N quests` when the release is still recording, `#N · FROZEN
    * <date>` once it has closed. The distinction is the whole point of a
-   * milestone, so it lives in the panel header rather than being implied.
+   * release, so it lives in the panel header rather than being implied.
    */
   statusLabel: string;
   live: boolean;
@@ -28,7 +28,7 @@ export interface MilestoneChangelogPanelProps {
  * the endpoint's structured `areas` rather than its markdown, so each entry
  * keeps its quest ref and priority.
  */
-const MilestoneChangelogPanel = (props: MilestoneChangelogPanelProps) => {
+const ReleaseChangelogPanel = (props: ReleaseChangelogPanelProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
@@ -36,7 +36,7 @@ const MilestoneChangelogPanel = (props: MilestoneChangelogPanelProps) => {
       <div className="border-border flex h-12 shrink-0 items-center gap-2.5 border-b px-5 lg:px-7">
         <ScrollText className="text-muted-foreground size-4" />
         <span className="text-[13.5px] font-semibold">
-          {tr("milestone.changelog")}
+          {tr("release.changelog")}
         </span>
         <span
           className={
@@ -50,30 +50,30 @@ const MilestoneChangelogPanel = (props: MilestoneChangelogPanelProps) => {
         <div className="flex-1" />
         <Button variant="outline" size="sm" onClick={props.onCopy}>
           <Copy className="size-3.5" />
-          {tr("milestone.changelog.copy")}
+          {tr("release.changelog.copy")}
         </Button>
         <Button variant="outline" size="sm" onClick={props.onDownload}>
           <Download className="size-3.5" />
-          {tr("milestone.changelog.md")}
+          {tr("release.changelog.md")}
         </Button>
         <Button variant="outline" size="sm" onClick={props.onSaveToFolio}>
           <BookMarked className="size-3.5" />
-          {tr("milestone.changelog.saveToFolio")}
+          {tr("release.changelog.saveToFolio")}
         </Button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-8 lg:px-7">
         {props.error ? (
           <p className="text-destructive py-10 text-center text-sm">
-            {tr("milestone.changelog.error")}
+            {tr("release.changelog.error")}
           </p>
         ) : props.loading ? (
           <p className="text-muted-foreground py-10 text-center text-sm">
-            {tr("milestone.changelog.loading")}
+            {tr("release.changelog.loading")}
           </p>
         ) : props.areas.length === 0 ? (
           <p className="text-muted-foreground py-10 text-center text-sm text-pretty">
-            {tr("milestone.changelog.empty")}
+            {tr("release.changelog.empty")}
           </p>
         ) : (
           props.areas.map((area) => (
@@ -88,7 +88,7 @@ const MilestoneChangelogPanel = (props: MilestoneChangelogPanelProps) => {
                 <div className="bg-border h-px flex-1" />
               </div>
               {area.quests.map((quest) => (
-                <MilestoneChangelogRow
+                <ReleaseChangelogRow
                   key={quest.shortId}
                   shortId={quest.shortId}
                   title={quest.title}
@@ -103,4 +103,4 @@ const MilestoneChangelogPanel = (props: MilestoneChangelogPanelProps) => {
   );
 };
 
-export default MilestoneChangelogPanel;
+export default ReleaseChangelogPanel;

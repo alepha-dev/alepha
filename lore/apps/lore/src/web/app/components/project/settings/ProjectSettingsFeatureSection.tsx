@@ -10,6 +10,8 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 // sub-page. Per-quest toggles (questReminder / questChrono) live on the
 // Quests settings page and render via a dedicated row component, not this
 // section.
+// `milestones` is the Releases module. The persisted feature key is
+// deliberately still the pre-rename name — see `projectFeaturesSchema`.
 type ModuleFeatureKey =
   | "kanban"
   | "folios"
@@ -35,14 +37,14 @@ const DESCRIPTION_KEYS: Record<
   ModuleFeatureKey,
   | "project.settings.feature.kanban.description"
   | "project.settings.feature.folios.description"
-  | "project.settings.feature.milestones.description"
+  | "project.settings.feature.releases.description"
   | "project.settings.feature.sigils.description"
   | "project.settings.feature.feedback.description"
   | "project.settings.feature.epics.description"
 > = {
   kanban: "project.settings.feature.kanban.description",
   folios: "project.settings.feature.folios.description",
-  milestones: "project.settings.feature.milestones.description",
+  milestones: "project.settings.feature.releases.description",
   sigils: "project.settings.feature.sigils.description",
   feedback: "project.settings.feature.feedback.description",
   epics: "project.settings.feature.epics.description",
@@ -52,14 +54,14 @@ const NAV_KEYS: Record<
   ModuleFeatureKey,
   | "project.settings.nav.kanban"
   | "project.settings.nav.folios"
-  | "project.settings.nav.milestones"
+  | "project.settings.nav.releases"
   | "project.settings.nav.sigils"
   | "project.settings.nav.feedback"
   | "project.menu.epics"
 > = {
   kanban: "project.settings.nav.kanban",
   folios: "project.settings.nav.folios",
-  milestones: "project.settings.nav.milestones",
+  milestones: "project.settings.nav.releases",
   sigils: "project.settings.nav.sigils",
   feedback: "project.settings.nav.feedback",
   epics: "project.menu.epics",

@@ -4,7 +4,7 @@ import { type Infer, z } from "alepha";
  * Per-column board settings, keyed by the column's name.
  *
  * **The lifecycle triple stays the truth.** `status` is what a column
- * COLLAPSES TO, not a status of its own: quests, milestones, reports, MCP,
+ * COLLAPSES TO, not a status of its own: quests, releases, reports, MCP,
  * the Discussion feed and the questline map (`QuestlineLayout.stateOf`) all
  * derive from `acceptedAt` / `completedAt` / `shelvedAt`, and a column that
  * invented a fourth state would put two lifecycle models in one app. What

@@ -22,31 +22,31 @@ import { Dices, Play } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
-import type { MilestoneController } from "@/api/controllers/MilestoneController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { Milestone } from "@/api/entities/milestones.ts";
-import type { MilestoneChangelogArea } from "@/api/schemas/milestoneChangelogAreaSchema.ts";
+import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
+import type { Release } from "@/api/entities/releases.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import type { ReleaseChangelogArea } from "@/api/schemas/releaseChangelogAreaSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
-import { currentMilestonesAtom } from "@/web/app/atoms/currentMilestonesAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import MilestoneChangelogPanel from "./MilestoneChangelogPanel.tsx";
-import MilestoneEmptyBanner from "./MilestoneEmptyBanner.tsx";
-import MilestoneLedgerHero from "./MilestoneLedgerHero.tsx";
-import MilestoneOpenQuestsRail from "./MilestoneOpenQuestsRail.tsx";
-import MilestoneReleasedRail from "./MilestoneReleasedRail.tsx";
-import MilestoneSaveToFolioDialog from "./MilestoneSaveToFolioDialog.tsx";
-import MilestoneTagInput from "./MilestoneTagInput.tsx";
-import ProjectMilestonesCloseModal from "./ProjectMilestonesCloseModal.tsx";
-import ProjectMilestonesDetail from "./ProjectMilestonesDetail.tsx";
+import ProjectReleasesCloseModal from "./ProjectReleasesCloseModal.tsx";
+import ProjectReleasesDetail from "./ProjectReleasesDetail.tsx";
+import ReleaseChangelogPanel from "./ReleaseChangelogPanel.tsx";
+import ReleaseClosedRail from "./ReleaseClosedRail.tsx";
+import ReleaseEmptyBanner from "./ReleaseEmptyBanner.tsx";
+import ReleaseLedgerHero from "./ReleaseLedgerHero.tsx";
+import ReleaseOpenQuestsRail from "./ReleaseOpenQuestsRail.tsx";
+import ReleaseSaveToFolioDialog from "./ReleaseSaveToFolioDialog.tsx";
+import ReleaseTagInput from "./ReleaseTagInput.tsx";
 
-export type MilestoneWithCount = Milestone & { questCount: number };
+export type ReleaseWithCount = Release & { questCount: number };
 
 interface ChangelogState {
   markdown: string;
-  areas: MilestoneChangelogArea[];
+  areas: ReleaseChangelogArea[];
   stats: { questCount: number; areaCount: number; contributorCount: number };
 }
 
@@ -58,23 +58,23 @@ interface BacklogState {
 }
 
 /**
- * The Milestones page — a ledger. The active milestone gets a hero band, its
+ * The Releases page — a ledger. The active release gets a hero band, its
  * changelog fills the page, and a right rail carries what is still open and
  * what has already shipped.
  *
- * The changelog is always shown for *something*: the recording milestone
+ * The changelog is always shown for *something*: the recording release
  * when there is one, otherwise the most recently closed. A page whose main
  * column is blank until you press a button teaches nothing about what
- * milestones are for.
+ * releases are for.
  */
-const ProjectMilestones = () => {
+const ProjectReleases = () => {
   const { tr } = useI18n<I18n, "en">();
   const i18n = useI18n();
   const toaster = useToast();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
-  const [milestones, setMilestones] = useStore(currentMilestonesAtom);
-  const milestoneApi = useClient<MilestoneController>();
+  const [releases, setReleases] = useStore(currentReleasesAtom);
+  const releaseApi = useClient<ReleaseController>();
   const questApi = useClient<QuestController>();
   const folioApi = useClient<FolioController>();
 
@@ -82,9 +82,10 @@ const ProjectMilestones = () => {
   const [startTitle, setStartTitle] = useState("");
   const [startDescription, setStartDescription] = useState("");
   const [startTags, setStartTags] = useState<string[]>([]);
-  const [closeModal, setCloseModal] = useState<MilestoneWithCount | null>(null);
-  const [detailMilestone, setDetailMilestone] =
-    useState<MilestoneWithCount | null>(null);
+  const [closeModal, setCloseModal] = useState<ReleaseWithCount | null>(null);
+  const [detailRelease, setDetailRelease] = useState<ReleaseWithCount | null>(
+    null,
+  );
   const [folioOpen, setFolioOpen] = useState(false);
   const [folioSaving, setFolioSaving] = useState(false);
 
@@ -94,34 +95,33 @@ const ProjectMilestones = () => {
   const [backlog, setBacklog] = useState<BacklogState | null>(null);
   const [openQuests, setOpenQuests] = useState<QuestResource[]>([]);
 
-  const activeMilestone = milestones?.find((c) => !c.closedAt) as
-    | MilestoneWithCount
+  const activeRelease = releases?.find((c) => !c.closedAt) as
+    | ReleaseWithCount
     | undefined;
 
-  const closedMilestones = useMemo(
-    () =>
-      ((milestones ?? []) as MilestoneWithCount[]).filter((c) => c.closedAt),
-    [milestones],
+  const closedReleases = useMemo(
+    () => ((releases ?? []) as ReleaseWithCount[]).filter((c) => c.closedAt),
+    [releases],
   );
 
   /**
-   * Whichever milestone the changelog panel is showing: the recording one,
+   * Whichever release the changelog panel is showing: the recording one,
    * or the last closed one as a fallback so the panel is never empty for a
    * project that has shipped before.
    */
-  const shownMilestone = activeMilestone ?? closedMilestones[0];
+  const shownRelease = activeRelease ?? closedReleases[0];
 
   const reload = useCallback(async () => {
     if (!project) return;
-    const updated = await milestoneApi.getMilestones({
+    const updated = await releaseApi.getReleases({
       params: { projectId: project.id },
     });
-    setMilestones(updated as MilestoneWithCount[]);
+    setReleases(updated as ReleaseWithCount[]);
   }, [project?.id]);
 
-  // Changelog for whichever milestone is on screen.
+  // Changelog for whichever release is on screen.
   useEffect(() => {
-    if (!shownMilestone) {
+    if (!shownRelease) {
       // Early return of the loader below — nothing to fetch, so nothing to show.
       // oxlint-disable-next-line react/set-state-in-effect
       setChangelog(null);
@@ -131,8 +131,8 @@ const ProjectMilestones = () => {
     let cancelled = false;
     setChangelogLoading(true);
     setChangelogError(false);
-    milestoneApi
-      .getMilestoneChangelog({ params: { id: shownMilestone.id } })
+    releaseApi
+      .getReleaseChangelog({ params: { id: shownRelease.id } })
       .then((res) => {
         if (cancelled) return;
         setChangelog({
@@ -150,19 +150,19 @@ const ProjectMilestones = () => {
     return () => {
       cancelled = true;
     };
-  }, [shownMilestone?.id, shownMilestone?.closedAt]);
+  }, [shownRelease?.id, shownRelease?.closedAt]);
 
   // Backlog only matters while nothing is recording.
   useEffect(() => {
-    if (!project || activeMilestone) {
+    if (!project || activeRelease) {
       // Early return of the loader below — nothing to fetch, so nothing to show.
       // oxlint-disable-next-line react/set-state-in-effect
       setBacklog(null);
       return;
     }
     let cancelled = false;
-    milestoneApi
-      .getMilestoneBacklog({ params: { projectId: project.id } })
+    releaseApi
+      .getReleaseBacklog({ params: { projectId: project.id } })
       .then((res) => {
         // A failed backlog fetch hides the sentence rather than breaking
         // the empty state, so there is no error branch here.
@@ -172,7 +172,7 @@ const ProjectMilestones = () => {
     return () => {
       cancelled = true;
     };
-  }, [project?.id, activeMilestone?.id]);
+  }, [project?.id, activeRelease?.id]);
 
   // "Still open" rail: accepted but not yet completed.
   useEffect(() => {
@@ -186,13 +186,13 @@ const ProjectMilestones = () => {
       .then((page) => {
         if (!cancelled) setOpenQuests(page.content);
       })
-      // A rail beside the milestone list, like the backlog sentence above:
+      // A rail beside the release list, like the backlog sentence above:
       // a failed fetch hides it rather than breaking the page around it.
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [project?.id, milestones]);
+  }, [project?.id, releases]);
 
   /**
    * Roll the suggested name *before* the dialog opens. Opening first and
@@ -208,14 +208,14 @@ const ProjectMilestones = () => {
   };
 
   const reroll = async () => {
-    const { title } = await milestoneApi.getRandomMilestoneName();
+    const { title } = await releaseApi.getRandomReleaseName();
     setStartTitle(title);
   };
 
   const handleStart = async () => {
     if (!project) return;
     try {
-      await milestoneApi.startMilestone({
+      await releaseApi.startRelease({
         params: { projectId: project.id },
         body: {
           title: startTitle.trim() || undefined,
@@ -228,38 +228,38 @@ const ProjectMilestones = () => {
     } catch {
       // Dialog stays open so the typed title and notes are not lost — same
       // reasoning as `handleSaveToFolio` below.
-      toaster.error(tr("milestone.start.error"));
+      toaster.error(tr("release.start.error"));
     }
   };
 
   const handleClose = async (id: number, title: string) => {
     try {
-      await milestoneApi.closeMilestone({ params: { id }, body: { title } });
+      await releaseApi.closeRelease({ params: { id }, body: { title } });
       setCloseModal(null);
       await reload();
     } catch {
-      // Modal stays open: closing a milestone is not undoable, so a failure
+      // Modal stays open: closing a release is not undoable, so a failure
       // has to read as "it did not happen" rather than as a dismissal.
-      toaster.error(tr("milestone.close.error"));
+      toaster.error(tr("release.close.error"));
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
-      await milestoneApi.deleteMilestone({ params: { id } });
+      await releaseApi.deleteRelease({ params: { id } });
       await reload();
     } catch {
-      toaster.error(tr("milestone.delete.error"));
+      toaster.error(tr("release.delete.error"));
     }
   };
 
-  const handleDetailUpdated = (updated: Milestone) => {
-    setMilestones(
-      ((milestones ?? []) as MilestoneWithCount[]).map((c) =>
-        c.id === updated.id ? ({ ...c, ...updated } as MilestoneWithCount) : c,
+  const handleDetailUpdated = (updated: Release) => {
+    setReleases(
+      ((releases ?? []) as ReleaseWithCount[]).map((c) =>
+        c.id === updated.id ? ({ ...c, ...updated } as ReleaseWithCount) : c,
       ),
     );
-    setDetailMilestone((prev) =>
+    setDetailRelease((prev) =>
       prev && prev.id === updated.id ? { ...prev, ...updated } : prev,
     );
   };
@@ -268,27 +268,27 @@ const ProjectMilestones = () => {
     if (!changelog) return;
     try {
       await navigator.clipboard.writeText(changelog.markdown);
-      toaster.success(tr("milestone.changelog.copied"));
+      toaster.success(tr("release.changelog.copied"));
     } catch {
-      toaster.error(tr("milestone.changelog.copyError"));
+      toaster.error(tr("release.changelog.copyError"));
     }
   };
 
   const handleDownload = () => {
-    if (!changelog || !shownMilestone) return;
+    if (!changelog || !shownRelease) return;
     const blob = new Blob([changelog.markdown], {
       type: "text/markdown;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `milestone-${shownMilestone.number}.md`;
+    link.download = `release-${shownRelease.number}.md`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   const handleSaveToFolio = async (title: string) => {
-    if (!project || !changelog || !shownMilestone) return;
+    if (!project || !changelog || !shownRelease) return;
     setFolioSaving(true);
     try {
       await folioApi.create({
@@ -296,19 +296,19 @@ const ProjectMilestones = () => {
           projectId: project.id,
           title,
           content: changelog.markdown,
-          summary: tr("milestone.folio.summary", {
+          summary: tr("release.folio.summary", {
             args: [
-              String(shownMilestone.number),
+              String(shownRelease.number),
               String(changelog.stats.questCount),
             ],
           }) as string,
         },
       });
       setFolioOpen(false);
-      toaster.success(tr("milestone.folio.saved"));
+      toaster.success(tr("release.folio.saved"));
     } catch {
       // Dialog stays open so the typed title is not lost.
-      toaster.error(tr("milestone.folio.error"));
+      toaster.error(tr("release.folio.error"));
     } finally {
       setFolioSaving(false);
     }
@@ -317,7 +317,7 @@ const ProjectMilestones = () => {
   if (!project) return null;
 
   const projectSlug = project.slug;
-  const settingsHref = router.path("projectSettingsMilestones", {
+  const settingsHref = router.path("projectSettingsReleases", {
     params: { projectSlug },
   });
   const questsHref = router.path("projectQuests", { params: { projectSlug } });
@@ -326,48 +326,48 @@ const ProjectMilestones = () => {
   // never disagree on what "auto-close" is currently set to.
   const autoCloseLabel = String(
     project.milestoneDuration === "P7D"
-      ? tr("project.settings.milestones.duration.1w")
+      ? tr("project.settings.releases.duration.1w")
       : project.milestoneDuration === "P14D"
-        ? tr("project.settings.milestones.duration.2w")
+        ? tr("project.settings.releases.duration.2w")
         : project.milestoneDuration === "P1M"
-          ? tr("project.settings.milestones.duration.1mo")
+          ? tr("project.settings.releases.duration.1mo")
           : project.milestoneDuration === "P3M"
-            ? tr("project.settings.milestones.duration.3mo")
-            : tr("project.settings.milestones.duration.manual"),
+            ? tr("project.settings.releases.duration.3mo")
+            : tr("project.settings.releases.duration.manual"),
   );
 
-  const statusLabel = !shownMilestone
-    ? tr("milestone.changelog.none")
-    : shownMilestone.closedAt
-      ? tr("milestone.changelog.frozen", {
+  const statusLabel = !shownRelease
+    ? tr("release.changelog.none")
+    : shownRelease.closedAt
+      ? tr("release.changelog.frozen", {
           args: [
-            String(shownMilestone.number),
-            String(i18n.l(shownMilestone.closedAt, { date: "ll" })),
+            String(shownRelease.number),
+            String(i18n.l(shownRelease.closedAt, { date: "ll" })),
           ],
         })
-      : tr("milestone.changelog.live", {
+      : tr("release.changelog.live", {
           args: [String(changelog?.stats.questCount ?? 0)],
         });
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* No page header. The breadcrumb already reads "… › Milestones", and
+      {/* No page header. The breadcrumb already reads "… › Releases", and
           the two controls that lived here were both redundant: Auto-close
           settings pointed at the same route as the banner's own `change`
-          link, and Close Milestone now sits on the hero, opposite where
-          Start Milestone sits on the empty banner. Both banner states are
+          link, and Close Release now sits on the hero, opposite where
+          Start Release sits on the empty banner. Both banner states are
           full-bleed so they occupy the same band under the breadcrumb. */}
-      {activeMilestone ? (
-        <MilestoneLedgerHero
-          milestone={activeMilestone}
-          questCount={changelog?.stats.questCount ?? activeMilestone.questCount}
+      {activeRelease ? (
+        <ReleaseLedgerHero
+          release={activeRelease}
+          questCount={changelog?.stats.questCount ?? activeRelease.questCount}
           areaCount={changelog?.stats.areaCount ?? 0}
           contributorCount={changelog?.stats.contributorCount ?? 0}
-          onOpenDetail={() => setDetailMilestone(activeMilestone)}
-          onClose={() => setCloseModal(activeMilestone)}
+          onOpenDetail={() => setDetailRelease(activeRelease)}
+          onClose={() => setCloseModal(activeRelease)}
         />
       ) : (
-        <MilestoneEmptyBanner
+        <ReleaseEmptyBanner
           backlogCount={backlog?.count ?? 0}
           lastLabel={
             backlog?.lastNumber
@@ -386,10 +386,10 @@ const ProjectMilestones = () => {
       )}
 
       <div className="border-border flex min-h-0 flex-1 flex-col border-t xl:flex-row">
-        <MilestoneChangelogPanel
+        <ReleaseChangelogPanel
           areas={changelog?.areas ?? []}
           statusLabel={String(statusLabel)}
-          live={!!activeMilestone}
+          live={!!activeRelease}
           loading={changelogLoading}
           error={changelogError}
           onCopy={handleCopy}
@@ -398,13 +398,10 @@ const ProjectMilestones = () => {
         />
 
         <aside className="border-border flex shrink-0 flex-col overflow-hidden border-t xl:w-[346px] xl:border-t-0 xl:border-l">
-          <MilestoneOpenQuestsRail
-            quests={openQuests}
-            questsHref={questsHref}
-          />
-          <MilestoneReleasedRail
-            milestones={closedMilestones}
-            onOpenDetail={setDetailMilestone}
+          <ReleaseOpenQuestsRail quests={openQuests} questsHref={questsHref} />
+          <ReleaseClosedRail
+            releases={closedReleases}
+            onOpenDetail={setDetailRelease}
             onDelete={handleDelete}
           />
         </aside>
@@ -413,16 +410,16 @@ const ProjectMilestones = () => {
       <Dialog open={startOpen} onOpenChange={setStartOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{tr("milestone.start")}</DialogTitle>
+            <DialogTitle>{tr("release.start")}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label>{tr("milestone.start.title")}</Label>
+              <Label>{tr("release.start.title")}</Label>
               <div className="flex gap-2">
                 <Input
                   value={startTitle}
                   onChange={(e) => setStartTitle(e.currentTarget.value)}
-                  placeholder={tr("milestone.start.placeholder")}
+                  placeholder={tr("release.start.placeholder")}
                   // Autofocus on the field the dialog exists to fill, on open only.
                   // oxlint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
@@ -431,14 +428,14 @@ const ProjectMilestones = () => {
                   type="button"
                   variant="outline"
                   onClick={() => void reroll()}
-                  aria-label={tr("milestone.start.reroll")}
+                  aria-label={tr("release.start.reroll")}
                 >
                   <Dices className="size-4" />
                 </Button>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>{tr("milestone.start.description")}</Label>
+              <Label>{tr("release.start.description")}</Label>
               <Textarea
                 rows={3}
                 value={startDescription}
@@ -446,19 +443,19 @@ const ProjectMilestones = () => {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>{tr("milestone.tags")}</Label>
-              <MilestoneTagInput value={startTags} onChange={setStartTags} />
+              <Label>{tr("release.tags")}</Label>
+              <ReleaseTagInput value={startTags} onChange={setStartTags} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStartOpen(false)}>
-                {tr("milestone.start.cancel")}
+                {tr("release.start.cancel")}
               </Button>
               <Button
                 onClick={handleStart}
                 className="bg-green-600 text-white hover:bg-green-700"
               >
                 <Play className="size-4" />
-                {tr("milestone.start")}
+                {tr("release.start")}
               </Button>
             </div>
           </div>
@@ -471,11 +468,11 @@ const ProjectMilestones = () => {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{tr("milestone.close.modal.title")}</DialogTitle>
+            <DialogTitle>{tr("release.close.modal.title")}</DialogTitle>
           </DialogHeader>
           {closeModal && (
-            <ProjectMilestonesCloseModal
-              milestone={closeModal}
+            <ProjectReleasesCloseModal
+              release={closeModal}
               onConfirm={(title) => handleClose(closeModal.id, title)}
               onCancel={() => setCloseModal(null)}
             />
@@ -486,12 +483,12 @@ const ProjectMilestones = () => {
       <Dialog open={folioOpen} onOpenChange={(o) => !o && setFolioOpen(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{tr("milestone.folio.dialogTitle")}</DialogTitle>
+            <DialogTitle>{tr("release.folio.dialogTitle")}</DialogTitle>
           </DialogHeader>
-          {shownMilestone && (
-            <MilestoneSaveToFolioDialog
-              defaultTitle={tr("milestone.folio.defaultTitle", {
-                args: [String(shownMilestone.number), shownMilestone.title],
+          {shownRelease && (
+            <ReleaseSaveToFolioDialog
+              defaultTitle={tr("release.folio.defaultTitle", {
+                args: [String(shownRelease.number), shownRelease.title],
               })}
               saving={folioSaving}
               onConfirm={handleSaveToFolio}
@@ -502,8 +499,8 @@ const ProjectMilestones = () => {
       </Dialog>
 
       <Sheet
-        open={!!detailMilestone}
-        onOpenChange={(o) => !o && setDetailMilestone(null)}
+        open={!!detailRelease}
+        onOpenChange={(o) => !o && setDetailRelease(null)}
       >
         <SheetContent
           side="right"
@@ -511,20 +508,17 @@ const ProjectMilestones = () => {
         >
           <SheetHeader>
             <SheetTitle>
-              {detailMilestone
-                ? tr("milestone.detail.title", {
-                    args: [
-                      String(detailMilestone.number),
-                      detailMilestone.title,
-                    ],
+              {detailRelease
+                ? tr("release.detail.title", {
+                    args: [String(detailRelease.number), detailRelease.title],
                   })
                 : ""}
             </SheetTitle>
           </SheetHeader>
-          {detailMilestone && (
+          {detailRelease && (
             <div className="p-4">
-              <ProjectMilestonesDetail
-                milestone={detailMilestone}
+              <ProjectReleasesDetail
+                release={detailRelease}
                 onUpdated={handleDetailUpdated}
               />
             </div>
@@ -535,4 +529,4 @@ const ProjectMilestones = () => {
   );
 };
 
-export default ProjectMilestones;
+export default ProjectReleases;

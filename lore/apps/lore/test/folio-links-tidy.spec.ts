@@ -184,7 +184,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
           projectId: cid,
           title: "intro",
           content:
-            "Top [[specs/strategy/roadmap]] and again [[specs/strategy/roadmap#milestones]].",
+            "Top [[specs/strategy/roadmap]] and again [[specs/strategy/roadmap#releases]].",
         },
       },
       { user: owner },
@@ -212,8 +212,8 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
           count: 1,
         },
         {
-          before: "specs/strategy/roadmap#milestones",
-          after: "planning/roadmap#milestones",
+          before: "specs/strategy/roadmap#releases",
+          after: "planning/roadmap#releases",
           count: 1,
         },
       ]),
@@ -224,7 +224,7 @@ describe("FolioLinkService.tidyStalePaths (#108)", () => {
       { user: owner },
     );
     expect(fresh.data.content).toBe(
-      "Top [[planning/roadmap]] and again [[planning/roadmap#milestones]].",
+      "Top [[planning/roadmap]] and again [[planning/roadmap#releases]].",
     );
   });
 

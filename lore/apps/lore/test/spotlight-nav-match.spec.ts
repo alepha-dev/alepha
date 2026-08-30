@@ -17,7 +17,7 @@ const app = (label: string): ProjectNavEntry => ({
 const SIDEBAR: ProjectNavEntry[] = [
   page("Quests"),
   page("Feedback"),
-  page("Milestones"),
+  page("Releases"),
   page("Folios"),
   page("Reports"),
   app("portfolio"),
@@ -51,7 +51,7 @@ describe("matchProjectNav — pages and apps in the palette (#190)", () => {
   });
 
   it("matches case-insensitively and mid-label", () => {
-    expect(labels(matchProjectNav(SIDEBAR, "STONE"))).toEqual(["Milestones"]);
+    expect(labels(matchProjectNav(SIDEBAR, "LEAS"))).toEqual(["Releases"]);
   });
 
   it("returns nothing when the query is really content, not a page", () => {

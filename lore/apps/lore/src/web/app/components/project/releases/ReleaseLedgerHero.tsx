@@ -13,44 +13,44 @@ import { Pencil, Square } from "lucide-react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { MilestoneWithCount } from "./ProjectMilestones.tsx";
+import type { ReleaseWithCount } from "./ProjectReleases.tsx";
 
-export interface MilestoneLedgerHeroProps {
-  milestone: MilestoneWithCount;
+export interface ReleaseLedgerHeroProps {
+  release: ReleaseWithCount;
   questCount: number;
   areaCount: number;
   contributorCount: number;
   onOpenDetail: () => void;
   /**
-   * Opens the close-milestone modal. This lives here rather than in a page
+   * Opens the close-release modal. This lives here rather than in a page
    * header because the banner is the page's statement of current state, and
-   * closing is the one action that changes it — the mirror of Start Milestone
-   * on {@link MilestoneEmptyBanner}. It is also the only close affordance on
-   * the page, so it cannot be dropped without stranding `closeMilestone`.
+   * closing is the one action that changes it — the mirror of Start Release
+   * on {@link ReleaseEmptyBanner}. It is also the only close affordance on
+   * the page, so it cannot be dropped without stranding `closeRelease`.
    */
   onClose: () => void;
 }
 
 /**
- * The band that sits above the changelog while a milestone is recording:
+ * The band that sits above the changelog while a release is recording:
  * number medallion with a live pulse, what it is, how much of its window is
  * spent, and the three counters the changelog rolls up to.
  *
- * The progress bar is time spent, not work done — a milestone has no
+ * The progress bar is time spent, not work done — a release has no
  * denominator of planned quests, only a window that closes.
  */
-const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
-  const { milestone } = props;
+const ReleaseLedgerHero = (props: ReleaseLedgerHeroProps) => {
+  const { release } = props;
   const { tr } = useI18n<I18n, "en">();
   const i18n = useI18n();
   const dt = useInject(DateTimeProvider);
-  const tags = milestone.tags ?? [];
+  const tags = release.tags ?? [];
 
-  const startedAt = new Date(milestone.createdAt).getTime();
+  const startedAt = new Date(release.createdAt).getTime();
   const ageMs = Math.max(0, dt.nowMillis() - startedAt);
   const totalMs =
-    milestone.closesAt != null
-      ? Math.max(1, new Date(milestone.closesAt).getTime() - startedAt)
+    release.closesAt != null
+      ? Math.max(1, new Date(release.closesAt).getTime() - startedAt)
       : null;
   const progress =
     totalMs != null ? Math.min(100, Math.round((ageMs / totalMs) * 100)) : null;
@@ -58,16 +58,16 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
   return (
     <div className="bg-card border-border flex flex-col gap-6 border-b px-5 py-5 transition-colors lg:flex-row lg:items-center lg:gap-7 lg:px-7">
       <div className="relative flex size-13 shrink-0 items-center justify-center rounded-full bg-green-600 text-xl font-bold text-white">
-        {milestone.number}
+        {release.number}
         <span className="ring-card absolute -right-px -bottom-px size-3 animate-pulse rounded-full bg-green-400 ring-2" />
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2.5 text-[10.5px] font-semibold tracking-[0.16em] text-green-600 uppercase dark:text-green-400">
-          {tr("milestone.ledger.recording")}
+          {tr("release.ledger.recording")}
           <span className="text-muted-foreground truncate font-medium tracking-[0.12em]">
-            {tr("milestone.ledger.started", {
-              args: [dt.of(milestone.createdAt).fromNow()],
+            {tr("release.ledger.started", {
+              args: [dt.of(release.createdAt).fromNow()],
             })}
           </span>
           {/* The banner used to be one big click target opening this sheet.
@@ -84,18 +84,18 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
                   variant="ghost"
                   size="icon"
                   className="text-muted-foreground hover:text-foreground -my-1 size-6 shrink-0"
-                  aria-label={String(tr("milestone.ledger.edit"))}
+                  aria-label={String(tr("release.ledger.edit"))}
                   onClick={props.onOpenDetail}
                 />
               }
             >
               <Pencil className="size-3.5" />
             </TooltipTrigger>
-            <TooltipContent>{tr("milestone.ledger.edit")}</TooltipContent>
+            <TooltipContent>{tr("release.ledger.edit")}</TooltipContent>
           </Tooltip>
         </div>
         <h2 className="mt-1.5 truncate text-[22px] font-semibold tracking-[-0.015em]">
-          {milestone.title}
+          {release.title}
         </h2>
         {tags.length > 0 && (
           <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -113,14 +113,14 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
       </div>
 
       {/* The bar measures the window, so it is only drawn when there is one.
-          A manual-close milestone has no deadline and therefore no
+          A manual-close release has no deadline and therefore no
           denominator — rendering an empty track and a dash reads as broken
           rather than as "no deadline". */}
       <div className="shrink-0 lg:w-52">
         {progress != null ? (
           <>
             <div className="text-muted-foreground flex justify-between text-[10.5px] tracking-[0.1em] uppercase">
-              <span>{tr("milestone.hero.progress")}</span>
+              <span>{tr("release.hero.progress")}</span>
               <span className="font-mono">{progress}%</span>
             </div>
             <div className="bg-muted mt-1.5 h-1.5 overflow-hidden rounded-full">
@@ -139,18 +139,18 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
           </>
         ) : (
           <div className="text-muted-foreground text-[10.5px] tracking-[0.1em] uppercase">
-            {tr("milestone.ledger.window")}
+            {tr("release.ledger.window")}
           </div>
         )}
         <div className="text-muted-foreground mt-1.5 text-[11.5px]">
-          {milestone.closesAt
-            ? tr("milestone.ledger.autoCloses", {
+          {release.closesAt
+            ? tr("release.ledger.autoCloses", {
                 args: [
-                  String(i18n.l(milestone.closesAt, { date: "ll" })),
-                  dt.of(milestone.closesAt).fromNow(),
+                  String(i18n.l(release.closesAt, { date: "ll" })),
+                  dt.of(release.closesAt).fromNow(),
                 ],
               })
-            : tr("milestone.ledger.manualOnly")}
+            : tr("release.ledger.manualOnly")}
         </div>
       </div>
 
@@ -159,18 +159,15 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
           band carries everything, and a fifth column squeezed the title. */}
       <div className="border-border flex shrink-0 items-center gap-6 lg:border-l lg:pl-6">
         <Stat
-          label={tr("milestone.ledger.stat.quests")}
+          label={tr("release.ledger.stat.quests")}
           value={props.questCount}
         />
+        <Stat label={tr("release.ledger.stat.areas")} value={props.areaCount} />
         <Stat
-          label={tr("milestone.ledger.stat.areas")}
-          value={props.areaCount}
-        />
-        <Stat
-          label={tr("milestone.ledger.stat.members")}
+          label={tr("release.ledger.stat.members")}
           value={props.contributorCount}
         />
-        {/* Mirrors where Start Milestone sits on the empty banner: the one
+        {/* Mirrors where Start Release sits on the empty banner: the one
             action that changes the state the banner reports. */}
         <Button
           variant="outline"
@@ -178,7 +175,7 @@ const MilestoneLedgerHero = (props: MilestoneLedgerHeroProps) => {
           onClick={props.onClose}
         >
           <Square className="size-4" />
-          {tr("milestone.close")}
+          {tr("release.close")}
         </Button>
       </div>
     </div>
@@ -199,4 +196,4 @@ const Stat = (props: StatProps) => (
   </div>
 );
 
-export default MilestoneLedgerHero;
+export default ReleaseLedgerHero;

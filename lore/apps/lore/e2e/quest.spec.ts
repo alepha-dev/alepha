@@ -1033,9 +1033,9 @@ test.describe("Quest", () => {
       await expect(rail.getByText("New")).toBeVisible({ timeout: 10_000 });
       await expect(rail.getByText("high")).toBeVisible();
       await expect(rail.getByText("lore/quests")).toBeVisible();
-      // No milestone, no epic module, no estimate module, no questline: the
+      // No release, no epic module, no estimate module, no questline: the
       // rail shows no label waiting for data that is not coming.
-      await expect(rail.getByText(/^milestone$/i)).toHaveCount(0);
+      await expect(rail.getByText(/^release$/i)).toHaveCount(0);
       await expect(rail.getByText(/^epic$/i)).toHaveCount(0);
       await expect(rail.getByText(/^questline$/i)).toHaveCount(0);
     });

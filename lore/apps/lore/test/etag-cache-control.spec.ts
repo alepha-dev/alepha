@@ -8,9 +8,9 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { MilestoneController } from "../src/api/controllers/MilestoneController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ProjectReportsController } from "../src/api/controllers/ProjectReportsController.ts";
+import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 /**
@@ -22,7 +22,7 @@ import { LoreApi } from "../src/api/index.ts";
  * changed. `max-age` is *expiration* — the client does not ask at all until
  * the window lapses. Setting both means expiration wins for the duration and
  * the ETag is inert, so a user's own write stayed invisible to them: starting
- * a milestone returned 200 and the very next list read came back stale from
+ * a release returned 200 and the very next list read came back stale from
  * the browser's own cache.
  *
  * The rule these tests pin: **if the viewer can mutate it from the page that
@@ -40,7 +40,7 @@ interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
   projectController: ProjectController;
-  milestoneController: MilestoneController;
+  releaseController: ReleaseController;
   reportsController: ProjectReportsController;
   dt: DateTimeProvider;
   fakeProvider: FakeProvider;
@@ -69,7 +69,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
-    milestoneController: alepha.inject(MilestoneController),
+    releaseController: alepha.inject(ReleaseController),
     reportsController: alepha.inject(ProjectReportsController),
     dt: alepha.inject(DateTimeProvider),
     fakeProvider: alepha.inject(FakeProvider),
@@ -144,13 +144,11 @@ describe("$etag cache-control on viewer-mutable lists", () => {
     expect(control).not.toContain("max-age");
   });
 
-  it("getMilestones forbids serving a stale body unasked", async ({
-    expect,
-  }) => {
+  it("getReleases forbids serving a stale body unasked", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
-    const res = await ctx.milestoneController.getMilestones.fetch(
+    const res = await ctx.releaseController.getReleases.fetch(
       { params: { projectId: project.id } },
       { user },
     );
@@ -160,17 +158,17 @@ describe("$etag cache-control on viewer-mutable lists", () => {
     expect(control).not.toContain("max-age");
   });
 
-  it("getMilestoneChangelog forbids serving a stale body unasked", async ({
+  it("getReleaseChangelog forbids serving a stale body unasked", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
-    const started = await ctx.milestoneController.startMilestone.fetch(
+    const started = await ctx.releaseController.startRelease.fetch(
       { params: { projectId: project.id }, body: {} },
       { user },
     );
 
-    const res = await ctx.milestoneController.getMilestoneChangelog.fetch(
+    const res = await ctx.releaseController.getReleaseChangelog.fetch(
       { params: { id: started.data.id } },
       { user },
     );

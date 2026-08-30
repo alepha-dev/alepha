@@ -56,7 +56,7 @@ describe("projects.slug migration", () => {
   });
 
   it("never drops a table", ({ expect }) => {
-    // `projects` cascades into members/quests/milestones/folios/feedback.
+    // `projects` cascades into members/quests/releases/folios/feedback.
     // A rebuild here is the 2026-05-13 production wipe.
     expect(statementsOf(slugMigration!)).not.toMatch(/DROP TABLE/i);
   });

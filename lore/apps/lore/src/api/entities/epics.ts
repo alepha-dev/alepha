@@ -35,7 +35,7 @@ export const epics = $entity({
      * `epicNumber` property on EpicController restarts every project's
      * counter at 1 and collides with its own history. A rename needs an
      * `UPDATE alepha_sequences SET name = ...` migration, exactly as the
-     * `chapterNumber` → `milestoneNumber` rename did.
+     * `chapterNumber` → `releaseNumber` rename did.
      */
     number: z.integer().min(1),
     title: z.string().min(3).max(80),
