@@ -226,29 +226,39 @@ const ProjectView = () => {
   };
 
   // Four unlabelled groups (`NavGroup.label` omitted on purpose, see the great
-  // rename Task 9), split by whether you ACT on a surface or READ it:
+  // rename Task 9):
   //
-  //   Work      Quests, Epics, Releases, Feedback, Blights
-  //   Record    Folios, Reports
+  //   Work      Quests, Kanban, Epics, Feedback, Blights
+  //   Record    Folios, Releases, Reports
   //   Ops       Apps
   //   Settings
   //
   // Work is ordered chosen-then-arrived: Quests and Epics are what you put in,
   // Feedback and Blights turn up on their own and need a verdict. They share
   // one group rather than two, so the separator falls only where the mode
-  // changes from acting to reading.
+  // changes.
   //
-  // Releases sits in Work now, beside Quests and Epics. It used to sit in
-  // Record, and the comment here said why: the entity carried no objective or
-  // target, membership was a TIME WINDOW rather than an assignment, no quest
-  // surface could set `releaseId`, and it auto-closed on a cron into a
+  // ⚠️ The split is NOT "act versus read", whatever earlier comments here
+  // said. It is **the work, versus the record of it**. The old wording never
+  // survived contact with Folios, which sits in Record and is the most
+  // written-to surface in the app: always-editable and auto-saved. A group
+  // containing that cannot be the read-only one.
+  //
+  // Releases moved back to Record on 2026-08-30, at the owner's request, and
+  // this is the SECOND time this entry has moved, so both trips are written
+  // down rather than left for a third.
+  //
+  // It sat in Record originally because the entity was thin: no objective or
+  // target, membership a TIME WINDOW rather than an assignment, no quest
+  // surface able to set `releaseId`, and a cron that auto-closed it into a
   // rich-markdown changelog. It was a folio the app filled in for you.
   //
-  // Every clause of that is now false (epic #14). A release carries a tag and
-  // a target date, membership is an assignment made from the quest, the epic
-  // and the release itself, nothing closes on a timer, and it reports
-  // completed-against-attached. It is where you say what ships next, which is
-  // planning, so it belongs with the surfaces you act on.
+  // Epic #14 falsified every clause of that, which is why it moved to Work.
+  // What that argument got wrong was the axis, not the facts: it showed a
+  // release is something you ACT on, and then treated Record as the place for
+  // things you do not. Under the real split a release is a record - the named
+  // thing you publish, freeze and keep - and attaching an epic to one is a
+  // write to a record, exactly as editing a folio is.
   //
   // Groups with no items are dropped by the `.filter` below, so an
   // all-gates-off project still renders a clean sidebar.
@@ -298,16 +308,6 @@ const ProjectView = () => {
       badge: epicCount?.count ? epicCount.count : undefined,
     });
   }
-  // What ships next. After Epics because it is a lens on them: an epic is
-  // what is being built, a release is when it goes out.
-  if (features.milestones) {
-    workItems.push({
-      label: tr("project.menu.releases"),
-      icon: Flag,
-      href: router.path("projectReleases", { params: { projectSlug } }),
-      active: name === "projectReleases" || name === "projectRelease",
-    });
-  }
   // Arrived rather than chosen. Feedback leads because a human wrote it; a
   // blight is filed by a machine.
   if (features.feedback) {
@@ -344,8 +344,9 @@ const ProjectView = () => {
     });
   }
 
-  // Record: surfaces you consult. Hand-written first, then the two the app
-  // writes for you.
+  // Record: what the project keeps. Ordered by how much of it you write
+  // yourself - a folio entirely, a release by deciding what goes in it, a
+  // report not at all.
   const recordItems: NavGroup["items"] = [];
   if (features.folios) {
     recordItems.push({
@@ -355,6 +356,18 @@ const ProjectView = () => {
       active: name.startsWith("projectFolios"),
     });
   }
+  // Between Folios and Reports. `active` covers the list and one release,
+  // unchanged by the move.
+  if (features.milestones) {
+    recordItems.push({
+      label: tr("project.menu.releases"),
+      icon: Flag,
+      href: router.path("projectReleases", { params: { projectSlug } }),
+      active: name === "projectReleases" || name === "projectRelease",
+    });
+  }
+  // No feature gate, deliberately, which is also why Record can never be
+  // empty and the `.filter` below never drops it.
   recordItems.push({
     label: tr("project.menu.reports"),
     icon: BarChart3,
