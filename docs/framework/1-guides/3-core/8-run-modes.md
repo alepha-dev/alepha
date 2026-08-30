@@ -249,6 +249,29 @@ also how two different commands come to share one.
 
 It is one machine, not a cluster. `ALEPHA_NO_EXCLUSIVE=1` bypasses it.
 
+#### One step instead of the whole command
+
+`run` takes the same queue: `run("vitest", { exclusive: "myapp:postgres" })`
+holds the slot for that step alone and releases it before the next one.
+
+Reach for it when a pipeline contends for something in two of its steps rather
+than throughout. A slot on the command is the blunt version of the same
+guarantee: correct, and it makes the second process wait out every step that
+shared nothing. Name the resource, not the command, and namespace the key,
+because the queue is machine-wide and shared with every other project on the
+machine.
+
+Unlike the command option this takes a string only, never `true`: there is no
+command name to derive a key from here, and a key that differed per call site
+would queue every caller behind itself and protect nothing.
+
+An array of tasks takes one slot for the whole group, so
+`run(["a", "b"], { exclusive: key })` still runs `a` and `b` together.
+
+The two do not nest. A command holding `k` that calls `run(..., { exclusive: k })`
+deadlocks against itself: the inner claim joins the same queue, behind a ticket
+the outer one will not release until the inner one returns. Pick one level.
+
 ### `mode`
 
 `mode: true` adds a `--mode, -m` flag that loads environment files the way Vite

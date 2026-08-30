@@ -7,6 +7,7 @@ import { $logger } from "alepha/logger";
 import { ShellProvider } from "alepha/system";
 
 import { CommandError } from "../errors/CommandError.ts";
+import { ExclusiveProvider } from "../providers/ExclusiveProvider.ts";
 
 export type Task = {
   name: string;
@@ -28,6 +29,25 @@ export interface RunOptions {
    * Root directory to execute the command in.
    */
   root?: string;
+
+  /**
+   * Hold a machine-wide slot, named by this key, for the duration of the task.
+   *
+   * The same queue `$command`'s `exclusive` option uses, one level down: a
+   * pipeline that contends for something in two of its twelve steps queues for
+   * those two rather than for all twelve. A second process running a task
+   * under the same key waits its turn instead of failing.
+   *
+   * A string only, and never derived: at this level there is no command name
+   * to build a key from, and a key that differed per call site would queue
+   * every caller behind itself and protect nothing. Name the resource, and
+   * namespace it (`myapp:postgres`), because the queue is machine-wide and
+   * shared with every other project on the machine.
+   *
+   * An array of tasks takes ONE slot for the whole group, so tasks meant to
+   * run together still do.
+   */
+  exclusive?: string;
 }
 
 export interface RunnerMethod {
@@ -63,6 +83,7 @@ export class Runner {
   protected readonly startTime: number = this.dateTime.nowMillis();
   protected readonly alepha = $inject(Alepha);
   protected readonly shell = $inject(ShellProvider);
+  protected readonly exclusive = $inject(ExclusiveProvider);
   public readonly run: RunnerMethod;
 
   constructor() {
@@ -85,29 +106,48 @@ export class Runner {
       const root =
         typeof options === "object" && options.root ? options.root : undefined;
 
+      let tasks: Task | Task[];
+
       if (Array.isArray(cmd)) {
-        return await this.execute(
-          cmd.map((it) =>
-            typeof it === "string"
-              ? { name: it, handler: () => this.exec(it, { root }) }
-              : it,
-          ),
+        tasks = cmd.map((it) =>
+          typeof it === "string"
+            ? { name: it, handler: () => this.exec(it, { root }) }
+            : it,
         );
+      } else {
+        const alias = typeof options === "object" ? options.alias : undefined;
+        const name = alias ?? (typeof cmd === "string" ? cmd : cmd.name);
+        const handler =
+          typeof options === "function"
+            ? options
+            : typeof cmd === "string"
+              ? () => this.exec(cmd, { root })
+              : cmd.handler;
+
+        tasks = { name, handler };
       }
 
-      const alias = typeof options === "object" ? options.alias : undefined;
-      const name = alias ?? (typeof cmd === "string" ? cmd : cmd.name);
-      const handler =
-        typeof options === "function"
-          ? options
-          : typeof cmd === "string"
-            ? () => this.exec(cmd, { root })
-            : cmd.handler;
+      const key = typeof options === "object" ? options.exclusive : undefined;
 
-      return await this.execute({
-        name,
-        handler,
+      if (!key) {
+        return await this.execute(tasks);
+      }
+
+      // One slot around the whole group, not one per task: an array is tasks
+      // that were asked to run together, and a ticket each would make the
+      // group wait for itself.
+      const slot = await this.exclusive.acquire(key, {
+        command: Array.isArray(tasks)
+          ? tasks.map((it) => it.name).join(" + ")
+          : tasks.name,
+        cwd: root ?? process.cwd(),
       });
+
+      try {
+        return await this.execute(tasks);
+      } finally {
+        await slot.release();
+      }
     };
 
     runFn.rm = async (
@@ -116,30 +156,39 @@ export class Runner {
     ): Promise<string> => {
       const root = options.root;
 
+      // `options` is forwarded so `exclusive` is honoured here too. `rm` and
+      // `cp` build their own Task, and `rm` used to drop the caller's options
+      // on the floor: the same class of silent no-op that `root` was fixed for.
       if (Array.isArray(files) || files.includes("*")) {
-        return runFn({
-          name:
-            options.alias ??
-            `rm -rf ${Array.isArray(files) ? files.join(" ") : files}`,
-          handler: async () => {
-            // `glob` yields paths relative to its cwd, so re-anchor each match
-            // before deleting — otherwise a matched entry would be resolved
-            // against process.cwd() and silently miss (or hit the wrong tree).
-            for await (const file of glob(files, root ? { cwd: root } : {})) {
-              const target = this.resolveIn(root, file);
-              this.log.trace(`Removing ${target}`);
-              await rm(target, { recursive: true, force: true });
-            }
+        return runFn(
+          {
+            name:
+              options.alias ??
+              `rm -rf ${Array.isArray(files) ? files.join(" ") : files}`,
+            handler: async () => {
+              // `glob` yields paths relative to its cwd, so re-anchor each match
+              // before deleting — otherwise a matched entry would be resolved
+              // against process.cwd() and silently miss (or hit the wrong tree).
+              for await (const file of glob(files, root ? { cwd: root } : {})) {
+                const target = this.resolveIn(root, file);
+                this.log.trace(`Removing ${target}`);
+                await rm(target, { recursive: true, force: true });
+              }
+            },
           },
-        });
+          options,
+        );
       }
 
       const target = this.resolveIn(root, files);
       this.log.trace(`Removing ${target}`);
-      return runFn({
-        name: options.alias ?? `rm -rf ${files}`,
-        handler: () => rm(target, { recursive: true, force: true }),
-      });
+      return runFn(
+        {
+          name: options.alias ?? `rm -rf ${files}`,
+          handler: () => rm(target, { recursive: true, force: true }),
+        },
+        options,
+      );
     };
 
     runFn.cp = async (
