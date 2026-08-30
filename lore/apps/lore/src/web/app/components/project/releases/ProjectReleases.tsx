@@ -26,7 +26,7 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { Release } from "@/api/entities/releases.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
-import type { ReleaseChangelogArea } from "@/api/schemas/releaseChangelogAreaSchema.ts";
+import type { ReleaseChangelogGroup } from "@/api/schemas/releaseChangelogGroupSchema.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -43,7 +43,7 @@ import ReleaseSaveToFolioDialog from "./ReleaseSaveToFolioDialog.tsx";
 
 interface ChangelogState {
   markdown: string;
-  areas: ReleaseChangelogArea[];
+  groups: ReleaseChangelogGroup[];
   stats: { questCount: number; areaCount: number; contributorCount: number };
 }
 
@@ -129,7 +129,7 @@ const ProjectReleases = () => {
         if (cancelled) return;
         setChangelog({
           markdown: res.markdown,
-          areas: res.areas,
+          groups: res.groups,
           stats: res.stats,
         });
       })
@@ -350,7 +350,7 @@ const ProjectReleases = () => {
 
       <div className="border-border flex min-h-0 flex-1 flex-col border-t xl:flex-row">
         <ReleaseChangelogPanel
-          areas={changelog?.areas ?? []}
+          groups={changelog?.groups ?? []}
           statusLabel={String(statusLabel)}
           live={!!openRelease}
           loading={changelogLoading}
