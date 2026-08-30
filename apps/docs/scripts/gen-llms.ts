@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path, { join } from "node:path";
 
+import { AlephaError } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
@@ -39,7 +40,7 @@ export class LlmsCommand {
           this.log.trace("Docs directory exists");
         } catch {
           this.log.error(`Docs directory not found: ${docsDir}`);
-          throw new Error(`Docs directory not found: ${docsDir}`);
+          throw new AlephaError(`Docs directory not found: ${docsDir}`);
         }
       });
 

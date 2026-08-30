@@ -4,20 +4,65 @@ description: Setup Node.js with Yarn
 runs:
   using: composite
   steps:
-    - name: Enable Corepack
-      run: corepack enable
-      shell: bash
-
+    # Node first, then corepack, and that order is the fix.
+    #
+    # `corepack enable` used to run BEFORE this step, against whatever Node the
+    # runner image happened to boot with. Node 26 — the version installed right
+    # here — ships no corepack at all, so the only reason `yarn` resolved
+    # afterwards was that the image's older Node had left a shim on PATH.
+    # Nothing declared that, nothing tested it, and the day the image stopped
+    # bundling corepack every job would have failed at `yarn` with no clue why.
+    #
+    # `cache: "yarn"` is deliberately NOT set. setup-node's caching runs the
+    # package manager to find its cache directory, which would put a `yarn` call
+    # back in front of the corepack install and reintroduce exactly the
+    # dependency being removed. The cache is done by hand below instead.
     - name: Prepare Node.js
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version: "26.x"
-        cache: "yarn"
+
+    # Pinned, like every action in this repository. `corepack@latest` would let
+    # the toolchain that installs our dependencies change without a commit,
+    # which is the same fragility this step exists to remove, one level up.
+    #
+    # `--force` because Node versions that DO bundle corepack own
+    # `/usr/local/bin/corepack`, and npm refuses to overwrite a binary it did
+    # not place there. Harmless on Node 26, which bundles none.
+    - name: Install Corepack
+      run: |
+        npm install -g --force corepack@0.36.0
+        corepack enable
+      shell: bash
 
     - name: Setup Bun
       uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       with:
         bun-version: "1.3.14"
+
+    # Asked of yarn rather than hardcoded to `~/.yarn/berry/cache`: the folder
+    # is a yarn setting, and a path that silently stops matching turns into a
+    # cache that never hits — slower every run, and green, so nobody looks.
+    #
+    # This is also the first `yarn` invocation, so it is where corepack
+    # downloads the version `packageManager` names. A failure here is a loud
+    # one, which is the point.
+    - name: Resolve the Yarn cache folder
+      id: yarn-cache
+      run: |
+        folder="$(yarn config get cacheFolder)"
+        [ -n "$folder" ] || { echo "could not resolve the Yarn cache folder"; exit 1; }
+        echo "folder=$folder" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    # Keyed on the lockfile, with a prefix fallback so a dependency bump warms
+    # from the previous install rather than downloading the whole tree again.
+    - name: Cache Yarn downloads
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.yarn-cache.outputs.folder }}
+        key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+        restore-keys: ${{ runner.os }}-yarn-
 
     - name: Install Dependencies
       run: yarn

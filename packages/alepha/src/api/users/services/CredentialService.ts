@@ -254,7 +254,20 @@ export class CredentialService {
         purpose: this.passwordResetPurpose,
       });
 
-      // Send password reset notification with the code
+      // Send password reset notification with the code.
+      //
+      // `inline` here buys the half of the flag that survives the catch
+      // below. It has two effects: the caller hears about a failure, and a
+      // failed send is written TERMINAL instead of `scheduled`. Only the
+      // second one reaches this path, and it is the one that matters: the
+      // code lives 300 seconds and the sweep runs every 900, so without it a
+      // retry is guaranteed to deliver an expired code some minutes later.
+      //
+      // The first effect is given up on purpose. This endpoint answers an
+      // unauthenticated caller who typed an arbitrary address, and the whole
+      // function is built to answer identically whether or not that address
+      // is on file. Letting a send failure escape would make an error mean
+      // "that account exists".
       await this.userNotifications(userRealmName)?.passwordReset.push({
         contact: email,
         variables: {
@@ -262,6 +275,7 @@ export class CredentialService {
           code: verification.token,
           expiresInMinutes: Math.floor(verification.codeExpiration / 60),
         },
+        inline: true,
       });
 
       // Store intent in cache

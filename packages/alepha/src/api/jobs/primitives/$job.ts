@@ -116,6 +116,54 @@ export interface JobPrimitiveOptions<
   priority?: JobPriority;
 
   /**
+   * Run the handler inline and make the caller wait for it.
+   *
+   * ```ts
+   * await myJob.push(item, { inline: true });
+   * // resolves -> the handler ran to completion, outbox row terminal
+   * // rejects  -> the handler failed, row terminal `error`, nothing retries it
+   * ```
+   *
+   * No dispatcher, no `defer()`, no `waitUntil`, no queue. On failure the row
+   * is written **terminal `error`, never `scheduled`** - otherwise the sweep
+   * would pick it up later and deliver the stale payload anyway, and the flag
+   * would buy nothing but a synchronous error stapled to the same broken
+   * behaviour.
+   *
+   * **Use it when the payload is time-limited and a retry in n minutes is not
+   * an acceptable outcome.** `verificationSettings.codeExpiration` defaults to
+   * 300 s and `jobConfig.sweepCron` to 900 s, so a retried verification code
+   * is guaranteed to arrive after it expired: all three attempts produce
+   * garbage while the user sees nothing. Failing in front of the user lets
+   * them retry the flow themselves.
+   *
+   * **"Ran to completion" means the handler resolved.** For an email that is
+   * the provider accepting the message, not delivery to an inbox. Do not read
+   * it as more than that.
+   *
+   * **Call it after the commit, not inside a transaction.** An email cannot be
+   * rolled back, so sending inside a transaction that later fails means
+   * mailing a code for a row that no longer exists. `inline` buys ordering
+   * (the caller learns before it commits), not transactionality.
+   *
+   * Declared here it is the job's default; {@link PushOptions.inline} overrides
+   * it per call, which is the form most callers want - see there for why.
+   *
+   * Rejected at registration alongside `cron` (a tick has no caller to block)
+   * or alongside `retry` (declaring "retry three times" and "tell the caller
+   * now" as one default is a contradiction; a *per-push* `inline` on a job
+   * that declares `retry` is coherent and means "not this execution").
+   *
+   * Not to be confused with `$notification`'s `critical`, which is a different
+   * property one layer up: that one means the recipient cannot opt out (no
+   * unsubscribe link, passes the suppression gate). `inline` names the
+   * mechanism, which is what `JobProvider.executeInline()` already calls it.
+   *
+   * @default false
+   */
+  inline?: boolean;
+
+  /**
    * Whether to record successful executions.
    *
    * - `"error"` (default for queue): only error/cancelled rows kept

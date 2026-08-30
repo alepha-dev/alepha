@@ -3,6 +3,7 @@ import { basename } from "node:path";
 import { $inject, AlephaError } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
 import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
+import { $logger } from "alepha/logger";
 import { QUEUE_DEFAULT_BINDING, QUEUE_DEFAULT_MAX_RETRIES } from "alepha/queue";
 import type { CronProvider, WorkerdCronProvider } from "alepha/scheduler";
 import { FileSystemProvider } from "alepha/system";
@@ -47,6 +48,31 @@ export class BuildCloudflareTask extends BuildTask {
   }
 
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly log = $logger();
+
+  /**
+   * How long `executionCtx.waitUntil` keeps a Worker isolate alive after the
+   * response has been sent.
+   *
+   * This is the whole budget a job pushed from a request gets in direct mode,
+   * and nothing in the `$job` API hints at it: `DirectJobDispatcher` runs the
+   * handler through `BackgroundTaskProvider.defer`, which on Workers is
+   * `waitUntil`. A queue consumer gets 15 minutes of wall clock AND 15
+   * minutes of CPU instead, which is why the warning points at
+   * `AlephaApiJobsQueue` rather than at lowering the timeout.
+   */
+  protected readonly waitUntilBudgetMs = 30_000;
+
+  /**
+   * Cron Triggers allowed per ACCOUNT on the free plan (250 on paid).
+   *
+   * Per account, not per Worker: a free-tier user with two Alepha apps can be
+   * over the cap before writing a `$job` of their own. `InvitationJobs`
+   * already carries a hand-written comment about two jobs sharing one slot to
+   * keep this count down; that knowledge belongs in a build warning, not in a
+   * comment somebody has to stumble on.
+   */
+  protected readonly freeCronTriggers = 5;
 
   protected readonly warningComment =
     "// This file was automatically generated. DO NOT MODIFY.\n" +
@@ -192,6 +218,7 @@ export class BuildCloudflareTask extends BuildTask {
     this.enhanceDomain(wrangler);
     this.enhanceServices(wrangler);
     this.enhanceCron(ctx, wrangler);
+    this.warnUnreachableTimeouts(ctx);
     this.enhanceDatabase(wrangler);
     this.enhanceR2(wrangler);
     this.enhanceKV(wrangler);
@@ -285,6 +312,14 @@ export class BuildCloudflareTask extends BuildTask {
     ];
   }
 
+  /**
+   * Every build-time warning goes through here, so a test can collect them
+   * without reaching into the logger.
+   */
+  protected warn(message: string): void {
+    this.log.warn(message);
+  }
+
   protected enhanceCron(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
     const cronExpressions = ctx.manifest
       ? ctx.manifest.crons
@@ -292,8 +327,85 @@ export class BuildCloudflareTask extends BuildTask {
     if (cronExpressions.length === 0) {
       return;
     }
+    if (cronExpressions.length > this.freeCronTriggers) {
+      this.warn(
+        `This app emits ${cronExpressions.length} Cron Triggers, over the free plan's limit of ${this.freeCronTriggers} per ACCOUNT (250 on paid). The cap is shared with every other Worker on the account, so two Alepha apps can exceed it between them. Give jobs that do not need their own cadence a shared expression: ${cronExpressions.join(", ")}`,
+      );
+    }
     wrangler.triggers ??= {};
     wrangler.triggers.crons = cronExpressions;
+  }
+
+  /**
+   * Warn about a `timeout` direct mode on Cloudflare cannot honour.
+   *
+   * Only in direct mode: with a queue binding the consumer gets 15 minutes
+   * of wall clock and 15 minutes of CPU, the most generous surface
+   * Cloudflare offers, and the declared timeout is reachable.
+   *
+   * The consequence is worse than the truncation itself, which is why it is
+   * worth a build-time line. `crashThresholdMs` is derived as twice the
+   * declared timeout, so a step killed at 30 seconds under a
+   * `timeout: [10, "minute"]` sits `running` for **twenty minutes** before
+   * the sweep will even consider it crashed.
+   */
+  protected warnUnreachableTimeouts(ctx: BuildTaskContext): void {
+    // A queue binding changes the budget entirely, so there is nothing to
+    // warn about. Same variable `enhanceQueue` gates the producer on.
+    if (process.env.CLOUDFLARE_QUEUE_NAME) {
+      return;
+    }
+    const jobs = ctx.manifest
+      ? (ctx.manifest.jobs ?? [])
+      : this.discoverJobs(ctx);
+    const unreachable = jobs.filter(
+      (job) =>
+        typeof job.timeoutMs === "number" &&
+        job.timeoutMs > this.waitUntilBudgetMs,
+    );
+    if (unreachable.length === 0) {
+      return;
+    }
+    this.warn(
+      `Direct mode on Cloudflare gives a job about ${this.waitUntilBudgetMs / 1000}s of wall clock after the response (executionCtx.waitUntil), so these declared timeouts cannot be honoured: ${unreachable
+        .map(
+          (job) => `${job.name} (${Math.round((job.timeoutMs ?? 0) / 1000)}s)`,
+        )
+        .join(
+          ", ",
+        )}. Worse, crash recovery is derived from the declared timeout, so a job killed at the budget sits 'running' for twice its timeout before the sweep touches it. Register AlephaApiJobsQueue and set CLOUDFLARE_QUEUE_NAME: a queue consumer gets 15 minutes of wall clock AND 15 minutes of CPU.`,
+    );
+  }
+
+  /**
+   * Registered jobs and their declared timeouts, from the live container.
+   *
+   * Mirrors {@link discoverCrons}: looked up by class-name string because
+   * the CLI and the workspace are two module graphs, so the imported
+   * `JobProvider` here is a different class object from the one the
+   * workspace registered.
+   */
+  protected discoverJobs(
+    ctx: BuildTaskContext,
+  ): Array<{ name: string; timeoutMs?: number }> {
+    try {
+      const provider = ctx.alepha.inject("JobProvider") as {
+        getRegisteredJobs?: () => Map<string, { options: { timeout?: any } }>;
+      };
+      const registry = provider.getRegisteredJobs?.();
+      if (!registry) return [];
+      const dt = ctx.alepha.inject("DateTimeProvider") as {
+        duration: (value: any) => { as: (unit: string) => number };
+      };
+      return [...registry.entries()].map(([name, registration]) => ({
+        name,
+        timeoutMs: registration.options.timeout
+          ? dt.duration(registration.options.timeout).as("milliseconds")
+          : undefined,
+      }));
+    } catch {
+      return [];
+    }
   }
 
   protected discoverCrons(ctx: BuildTaskContext): string[] {

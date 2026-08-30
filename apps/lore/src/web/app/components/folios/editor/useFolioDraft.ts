@@ -41,10 +41,35 @@ export interface FolioDraft {
   statusKey: "draft" | "saved" | "unsaved";
   savedAt?: string;
   /**
+   * Like `savedAt`, but it only moves when the write actually changed the
+   * folio's REVISION LIST — which is what `FolioHistoryTab` needs and
+   * `savedAt` is too eager to be.
+   *
+   * They used to be one value. Autosave fires 1.5s after typing stops and
+   * the server folds saves inside an HOUR into one revision, so a writing
+   * session moved `savedAt` every few seconds while the revision list sat
+   * still — and the History tab, keyed on it, refetched up to ten FULL
+   * content snapshots each time.
+   *
+   * `savedAt` keeps its own job: it is what the status line renders as
+   * "Saved 2 minutes ago", where every save is worth showing.
+   */
+  revisionsAt?: string;
+  /**
    * Called by the save action with the persisted row's `updatedAt`, which
    * re-baselines `dirty`.
+   *
+   * `revisionsChanged` is the server's answer for this write (see
+   * `folioSavedSchema`) and gates `revisionsAt` alone. It defaults to
+   * `true` so a caller that has no such answer — or is reporting something
+   * other than a plain save — keeps the old always-refetch behaviour;
+   * only the autosave path, which has the flag, opts into the cheap one.
    */
-  markSaved: (at: string, values: FolioDraftValues) => void;
+  markSaved: (
+    at: string,
+    values: FolioDraftValues,
+    revisionsChanged?: boolean,
+  ) => void;
   /**
    * Move `savedAt` alone, WITHOUT touching the `dirty`-comparison
    * `baseline`. Exists for events that changed the folio SERVER-SIDE
@@ -122,6 +147,9 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
   });
 
   const [savedAt, setSavedAt] = useState<string | undefined>(folio?.updatedAt);
+  const [revisionsAt, setRevisionsAt] = useState<string | undefined>(
+    folio?.updatedAt,
+  );
 
   // Two refs, deliberately not one. `formInitial` is what gets handed to
   // `useForm` as `initialValues` — the ONLY thing that should ever cause
@@ -172,9 +200,20 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     // ref writes it must stay in step with.
     // oxlint-disable-next-line react/set-state-in-effect
     setSavedAt(folio?.updatedAt);
+    // The folio underneath changed, so the revision list belongs to a
+    // different document (or a different state of this one) than whatever
+    // the History tab last fetched. Reset together with `savedAt` — the
+    // two only diverge WITHIN one document's editing session. (No second
+    // disable directive: the rule fires once per effect, and oxlint fails
+    // the build on a directive that suppressed nothing.)
+    setRevisionsAt(folio?.updatedAt);
   }, [folio?.id, folio?.updatedAt, folio?.protected]);
 
-  const markSaved = (at: string, saved: FolioDraftValues) => {
+  const markSaved = (
+    at: string,
+    saved: FolioDraftValues,
+    revisionsChanged = true,
+  ) => {
     // Only `baseline` moves — see the comment above `formInitial`. If the
     // user kept typing while this save was in flight, `values` (the LIVE
     // buffer, untouched by this call) will differ from `saved` (the
@@ -183,10 +222,17 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     // falsely "Saved".
     baseline.current = saved;
     setSavedAt(at);
+    if (revisionsChanged) setRevisionsAt(at);
   };
 
   const touchSavedAt = (at: string): void => {
     setSavedAt(at);
+    // Unconditional. Every caller is reporting a server-side change this
+    // client did not write through `save()` — today, a history revert,
+    // which ALWAYS opens its own revision (`appendRevision` refuses to
+    // fold a `revert`). Nothing here has a `revisionsChanged` answer to
+    // consult, so the safe reading is that the list moved.
+    setRevisionsAt(at);
   };
 
   const dirty = !sameValues(values, baseline.current);
@@ -207,6 +253,7 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     saving,
     statusKey: !folio ? "draft" : dirty ? "unsaved" : "saved",
     savedAt,
+    revisionsAt,
     markSaved,
     touchSavedAt,
     getLiveValues,

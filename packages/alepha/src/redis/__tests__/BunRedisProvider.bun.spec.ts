@@ -122,6 +122,35 @@ describe("BunRedisProvider", () => {
     expect(await redis.rpop(key)).toBeUndefined();
   });
 
+  it("should support sorted-set operations (zadd/zrangebyscore/zrem)", async () => {
+    const key = `test:bun:zset:${randomUUID()}`;
+
+    await redis.zadd(key, 100, "later");
+    await redis.zadd(key, 10, "sooner");
+    await redis.zadd(key, 50, "middle");
+
+    // Lowest score first, and the range is inclusive at both ends.
+    expect(await redis.zrangebyscore(key, 0, 50, 10)).toEqual([
+      "sooner",
+      "middle",
+    ]);
+    // The limit bounds the read.
+    expect(await redis.zrangebyscore(key, 0, 1000, 1)).toEqual(["sooner"]);
+    // An empty range is empty, not an error.
+    expect(await redis.zrangebyscore(key, 0, 1, 10)).toEqual([]);
+
+    // ZREM reports whether THIS call removed it, which is what makes it
+    // usable as a claim between two racing pollers.
+    expect(await redis.zrem(key, "sooner")).toBe(1);
+    expect(await redis.zrem(key, "sooner")).toBe(0);
+    expect(await redis.zrangebyscore(key, 0, 1000, 10)).toEqual([
+      "middle",
+      "later",
+    ]);
+
+    await redis.del([key]);
+  });
+
   it("should support set with EX option", async () => {
     const key = `test:bun:ex:${randomUUID()}`;
 

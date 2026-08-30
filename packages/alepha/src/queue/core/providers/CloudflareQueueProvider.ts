@@ -1,7 +1,7 @@
 import { $hook, $inject, Alepha, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 
-import { QueueProvider } from "./QueueProvider.ts";
+import { QueueProvider, type QueuePushOptions } from "./QueueProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -9,8 +9,11 @@ import { QueueProvider } from "./QueueProvider.ts";
  * Cloudflare Queue interface matching the CF Workers Queue API.
  */
 export interface CloudflareQueue {
-  send(message: unknown): Promise<void>;
-  sendBatch(messages: Array<{ body: unknown }>): Promise<void>;
+  send(message: unknown, options?: { delaySeconds?: number }): Promise<void>;
+  sendBatch(
+    messages: Array<{ body: unknown; delaySeconds?: number }>,
+    options?: { delaySeconds?: number },
+  ): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -30,6 +33,12 @@ export const QUEUE_DEFAULT_MAX_RETRIES = 3;
  * Maximum number of messages Cloudflare accepts in a single `sendBatch` call.
  */
 export const QUEUE_MAX_BATCH_SIZE = 100;
+
+/**
+ * Longest delay Cloudflare Queues accepts on a send, in seconds (12 hours).
+ * Anything longer is clamped and the outbox sweep carries the remainder.
+ */
+export const QUEUE_MAX_DELAY_SECONDS = 43_200;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -82,8 +91,12 @@ export class CloudflareQueueProvider extends QueueProvider {
     },
   });
 
-  public async push(queue: string, message: string): Promise<void> {
-    await this.getQueue().send({ queue, message });
+  public async push(
+    queue: string,
+    message: string,
+    options?: QueuePushOptions,
+  ): Promise<void> {
+    await this.getQueue().send({ queue, message }, this.sendOptions(options));
   }
 
   /**
@@ -93,16 +106,39 @@ export class CloudflareQueueProvider extends QueueProvider {
   public override async pushMany(
     queue: string,
     messages: string[],
+    options?: QueuePushOptions,
   ): Promise<void> {
     if (messages.length === 0) return;
 
     const binding = this.getQueue();
+    const sendOptions = this.sendOptions(options);
     for (let i = 0; i < messages.length; i += QUEUE_MAX_BATCH_SIZE) {
       const chunk = messages.slice(i, i + QUEUE_MAX_BATCH_SIZE);
       await binding.sendBatch(
         chunk.map((message) => ({ body: { queue, message } })),
+        sendOptions,
       );
     }
+  }
+
+  /**
+   * Native delayed delivery, clamped rather than declined.
+   *
+   * Clamping is safe here in a way that ignoring a delay never is: a message
+   * delivered at the 12-hour ceiling instead of at hour 20 arrives EARLY,
+   * finds its outbox row still `scheduled` and not yet due, fails the
+   * `scheduledAt <= now` guard on the claim, and changes nothing. The sweep
+   * then delivers it at the right time. Ignoring the delay entirely would
+   * instead deliver now, which for a retry means no backoff at all.
+   */
+  protected sendOptions(
+    options?: QueuePushOptions,
+  ): { delaySeconds: number } | undefined {
+    const delaySeconds = options?.delaySeconds;
+    if (!delaySeconds || delaySeconds <= 0) return undefined;
+    return {
+      delaySeconds: Math.min(Math.round(delaySeconds), QUEUE_MAX_DELAY_SECONDS),
+    };
   }
 
   /**

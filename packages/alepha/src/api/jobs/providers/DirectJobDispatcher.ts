@@ -3,7 +3,7 @@ import { BackgroundTaskProvider } from "alepha/background";
 import { $logger } from "alepha/logger";
 
 import { jobConfig } from "../schemas/jobConfigAtom.ts";
-import { JobDispatcher } from "./JobDispatcher.ts";
+import { JobDispatcher, type JobDispatchOptions } from "./JobDispatcher.ts";
 import { JobProvider } from "./JobProvider.ts";
 
 /**
@@ -63,8 +63,27 @@ export class DirectJobDispatcher extends JobDispatcher {
    * between, so a `pushMany` of a few thousand notifications started a few
    * thousand handlers at once and took the database pool down with it. Now the
    * work is queued and drained by a bounded pool.
+   *
+   * `delaySeconds` is honoured with a local timer that **promotes** the row
+   * and only then dispatches it, which is what makes it safe across replicas:
+   * the promotion is a guarded `scheduled -> pending` update, so exactly one
+   * replica wins, and a replica that dies holding a timer leaves the row
+   * untouched for the sweep. See {@link JobDispatchOptions.delaySeconds}.
    */
-  public async dispatch(jobName: string, executionId: string): Promise<void> {
+  public async dispatch(
+    jobName: string,
+    executionId: string,
+    options?: JobDispatchOptions,
+  ): Promise<void> {
+    const delayMs = Math.max(0, (options?.delaySeconds ?? 0) * 1000);
+    if (delayMs > 0) {
+      this.getJobProvider().scheduleLocalPromotion(
+        jobName,
+        executionId,
+        delayMs,
+      );
+      return;
+    }
     this.pending.push([jobName, executionId]);
     this.ensureWorkers();
   }

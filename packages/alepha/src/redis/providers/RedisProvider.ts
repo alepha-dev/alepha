@@ -98,6 +98,53 @@ export abstract class RedisProvider {
   public abstract rpop(key: string): Promise<string | undefined>;
 
   // ---------------------------------------------------------
+  // Sorted set operations (for alepha/queue-redis's delay tier)
+  // ---------------------------------------------------------
+
+  /**
+   * Add a member to a sorted set, scored by `score`.
+   *
+   * Re-adding an existing member updates its score rather than storing it
+   * twice, so callers that may hold duplicate values must make the member
+   * unique themselves.
+   *
+   * @param key The sorted-set key.
+   * @param score The score to sort by. `alepha/queue/redis` uses a due-time
+   * in epoch milliseconds.
+   * @param member The member to add.
+   */
+  public abstract zadd(
+    key: string,
+    score: number,
+    member: string,
+  ): Promise<void>;
+
+  /**
+   * Members whose score falls within an inclusive range, lowest first.
+   *
+   * @param key The sorted-set key.
+   * @param min Lowest score, inclusive.
+   * @param max Highest score, inclusive.
+   * @param limit Maximum number of members to return. Bounds the read the
+   * way every other batch in the framework is bounded.
+   */
+  public abstract zrangebyscore(
+    key: string,
+    min: number,
+    max: number,
+    limit: number,
+  ): Promise<string[]>;
+
+  /**
+   * Remove a member from a sorted set.
+   *
+   * @returns 1 if this call removed it, 0 if it was already gone. That
+   * return value is a compare-and-set: a caller racing another for the same
+   * member can use it to decide which of them owns it.
+   */
+  public abstract zrem(key: string, member: string): Promise<number>;
+
+  // ---------------------------------------------------------
   // Pub/Sub operations (for alepha/topic-redis)
   // ---------------------------------------------------------
 

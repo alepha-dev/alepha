@@ -561,6 +561,12 @@ export class RegistrationService {
     realmName?: string,
   ): Promise<void> {
     try {
+      // Deliberately NOT `inline`, unlike every other notification on this
+      // path, and it is not an oversight. This mail goes to the OWNER of the
+      // address, who is somebody other than whoever is registering. Blocking
+      // the registration response on it turns response time into an
+      // account-enumeration oracle: a slow answer means the address was on
+      // file and the warning went out.
       await this.userNotifications(realmName).registrationAttempt.push({
         contact: email,
         variables: { email },
@@ -584,6 +590,11 @@ export class RegistrationService {
         target: email,
       });
 
+      // `inline` so a failed send goes terminal instead of `scheduled`: the
+      // code lives 300 seconds and the sweep runs every 900, so a retried
+      // registration code is guaranteed to arrive already expired. The
+      // caller-facing half of the flag is swallowed by the catch below, on
+      // purpose, for the reason written there.
       await this.userNotifications(realmName).emailVerification.push({
         contact: email,
         variables: {
@@ -591,6 +602,7 @@ export class RegistrationService {
           code: verification.token,
           expiresInMinutes: Math.floor(verification.codeExpiration / 60),
         },
+        inline: true,
       });
 
       this.log.debug("Email verification code sent", { email });
@@ -620,6 +632,8 @@ export class RegistrationService {
         target: phoneNumber,
       });
 
+      // Same reasoning as the email path: inline so a failed SMS is terminal
+      // rather than re-sent, expired, on the next sweep tick.
       await this.userNotifications(realmName).phoneVerification.push({
         contact: phoneNumber,
         variables: {
@@ -627,6 +641,7 @@ export class RegistrationService {
           code: verification.token,
           expiresInMinutes: Math.floor(verification.codeExpiration / 60),
         },
+        inline: true,
       });
       this.log.debug("Phone verification code sent", { phoneNumber });
     } catch (error) {

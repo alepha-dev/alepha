@@ -20,7 +20,25 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
+/**
+ * The trees rules 1 and 2 read.
+ *
+ * `packages/alepha/src` was the whole list, which left every app free to do
+ * what the framework forbids - and `apps/docs` had picked up a `Date.now()`
+ * and a bare `throw new Error`. The docs app is the one nobody thinks of as
+ * code: it renders the very guides that state these rules.
+ *
+ * Its `scripts/` is in scope too. `gen-docs`, `gen-tree`, `gen-llms` and
+ * `check-docs` are `$command`s in the container like any other, so `AlephaError`
+ * is in scope there and the exemption a build script might claim does not
+ * apply.
+ *
+ * Deliberately not every app: `apps/lore` and the examples are a much larger
+ * sweep and their own decision, not a side effect of this one.
+ */
 const SRC = "packages/alepha/src";
+
+const SRC_ROOTS = ["packages/alepha/src", "apps/docs/src", "apps/docs/scripts"];
 
 /**
  * A file is exempt from the `Date.now()` rule when the timestamp it produces is
@@ -29,15 +47,15 @@ const SRC = "packages/alepha/src";
  * code that has no container.
  */
 const DATE_NOW_EXEMPT = [
-  "server/core/services/HttpClient.ts",
+  "packages/alepha/src/server/core/services/HttpClient.ts",
   // The provider itself has to read the wall clock somewhere.
-  "datetime/providers/DateTimeProvider.ts",
+  "packages/alepha/src/datetime/providers/DateTimeProvider.ts",
   // `now: () => Date.now()` is already an injectable seam: the default is
   // overridden wherever the clock needs to be controlled.
-  "websocket/providers/WebSocketRoom.ts",
-  "websocket/providers/NodeWebSocketServerProvider.ts",
+  "packages/alepha/src/websocket/providers/WebSocketRoom.ts",
+  "packages/alepha/src/websocket/providers/NodeWebSocketServerProvider.ts",
   // Unique temp-directory suffix, never compared or asserted on.
-  "bucket/providers/LocalFileStorageProvider.ts",
+  "packages/alepha/src/bucket/providers/LocalFileStorageProvider.ts",
 ];
 
 /**
@@ -45,13 +63,13 @@ const DATE_NOW_EXEMPT = [
  * bundle** as a string. That code runs in the built app, where `AlephaError`
  * is not in scope — it is not this codebase throwing.
  */
-const THROW_EXEMPT = ["cli/core/tasks/BuildServerTask.ts"];
+const THROW_EXEMPT = ["packages/alepha/src/cli/core/tasks/BuildServerTask.ts"];
 
 const search = (pattern) => {
   try {
     return execFileSync(
       "grep",
-      ["-rn", "--include=*.ts", "--include=*.tsx", pattern, SRC],
+      ["-rn", "--include=*.ts", "--include=*.tsx", pattern, ...SRC_ROOTS],
       { encoding: "utf8" },
     )
       .split("\n")
@@ -62,24 +80,31 @@ const search = (pattern) => {
   }
 };
 
-/** Drop tests, and JSDoc lines — an example is documentation, not logic. */
+/**
+ * Drop tests, and comment lines — an example is documentation, not logic.
+ *
+ * Both comment styles, and the `//` half is not cosmetic: the honest way to
+ * write one of these fixes is to say in a comment which construct was avoided
+ * and why, and that sentence necessarily contains the banned string. Without
+ * this, explaining the rule trips the rule.
+ */
 const isRelevant = (line) => {
   const [file] = line.split(":");
   if (/__tests__|\.spec\.|fixtures/.test(file)) return false;
   const body = line.slice(line.indexOf(":", line.indexOf(":") + 1) + 1);
-  return !/^\s*\*/.test(body);
+  return !/^\s*(\*|\/\/)/.test(body);
 };
 
 const violations = [];
 
 for (const line of search("throw new Error(").filter(isRelevant)) {
-  const file = line.split(":")[0].slice(SRC.length + 1);
+  const file = line.split(":")[0];
   if (THROW_EXEMPT.some((e) => file.endsWith(e))) continue;
   violations.push(`  ${line.trim()}\n    → use AlephaError`);
 }
 
 for (const line of search("Date.now()").filter(isRelevant)) {
-  const file = line.split(":")[0].slice(SRC.length + 1);
+  const file = line.split(":")[0];
   if (DATE_NOW_EXEMPT.some((e) => file.endsWith(e))) continue;
   violations.push(
     `  ${line.trim()}\n    → inject DateTimeProvider, use nowMillis()`,
@@ -99,7 +124,7 @@ if (violations.length > 0) {
 // it will silently cover a future violation in the same file.
 const stale = [...DATE_NOW_EXEMPT, ...THROW_EXEMPT].filter((f) => {
   try {
-    const src = readFileSync(`${SRC}/${f}`, "utf8");
+    const src = readFileSync(f, "utf8");
     return !src.includes("Date.now()") && !src.includes("throw new Error(");
   } catch {
     return true; // file gone
@@ -448,6 +473,255 @@ if (portViolations.length > 0) {
       "CLAUDE.md lists every one of them. Both halves matter: the band keeps\n" +
       "e2e and the benchmark out, and the table is what a person reads before\n" +
       "picking the next number.\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * The CI workflow's `workflow_run` runs must not share a concurrency group
+ * with a push to main.
+ *
+ * `github.ref` for a `workflow_run` event is the default branch, so the naive
+ * `group: ci-${{ github.ref }}` put a Release follow-up in the same group as a
+ * push to main. With `cancel-in-progress`, the follow-up cancelled the push run
+ * mid-test - and that push run is the only one carrying
+ * `deploy-lore-production`. The symptom is a run marked `cancelled`,
+ * indistinguishable from the ordinary "a newer push superseded this one", and a
+ * deploy that simply never happened.
+ *
+ * Checked here because the alternative is not checkable: proving it needs a
+ * Release to complete while a main push is mid-flight, on the real repository.
+ * A rule that can only be verified in production is a rule that gets reverted
+ * by the next person who finds the expression ugly.
+ *
+ * The assertion is deliberately about the SHAPE, not the exact string: the
+ * group must branch on `github.event_name`, so any expression that keeps the
+ * two events apart passes and the one that does not, fails.
+ */
+const CI_WORKFLOW = ".github/workflows/ci.yml";
+const ciSource = readFileSync(CI_WORKFLOW, "utf8");
+const concurrencyViolations = [];
+
+const groupLine = /^concurrency:\n(?:\s*#.*\n)*\s*group:\s*(.+)$/m.exec(
+  ciSource,
+);
+
+if (!groupLine) {
+  concurrencyViolations.push(
+    `  ${CI_WORKFLOW}\n    → no top-level \`concurrency.group\` found`,
+  );
+} else {
+  const group = groupLine[1];
+  const cancels = /^\s*cancel-in-progress:\s*true\s*$/m.test(ciSource);
+  const triggersOnWorkflowRun = /^\s{2}workflow_run:\s*$/m.test(ciSource);
+  if (
+    cancels &&
+    triggersOnWorkflowRun &&
+    !group.includes("github.event_name")
+  ) {
+    concurrencyViolations.push(
+      `  ${CI_WORKFLOW}\n    → group ${group.trim()}\n` +
+        "      does not distinguish `workflow_run` from a push to main",
+    );
+  }
+}
+
+if (concurrencyViolations.length > 0) {
+  console.error(
+    `\n${concurrencyViolations.length} CI concurrency violation(s):\n\n` +
+      `${concurrencyViolations.join("\n")}\n\n` +
+      "A `workflow_run` run resolves `github.ref` to the default branch, so a\n" +
+      "group keyed on `github.ref` alone puts it in the same group as a push to\n" +
+      "main. With `cancel-in-progress`, the Release follow-up then cancels the\n" +
+      "push run that carries the Lore deploy, and nothing goes red.\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * Corepack is installed AFTER the Node the jobs actually run on.
+ *
+ * `corepack enable` used to be the setup action's first step, executed against
+ * whatever Node the runner image booted with. The repository pins Node 26,
+ * which ships no corepack at all, so `yarn` only resolved afterwards because
+ * the image's older Node had left a shim on PATH - an accident of PATH order
+ * that nothing declared and nothing tested. The day the image drops its
+ * bundled corepack, every job fails at `yarn` with no clue why.
+ *
+ * The same reasoning bans `cache: "yarn"` on `setup-node`: its caching runs the
+ * package manager to locate the cache directory, which puts a `yarn` call back
+ * in front of the corepack install and quietly restores the dependency. The
+ * cache is done with `actions/cache` afterwards instead.
+ *
+ * Checked here because it cannot be checked anywhere else: the failure needs a
+ * runner image that has moved on, and by then it is every job at once.
+ */
+const SETUP_ACTION = ".github/actions/setup/action.yml";
+// Comment lines dropped first. The file explains this very rule in prose, so a
+// search over the raw text matches the explanation and reports the thing it is
+// describing as present - which is exactly what the first version of this
+// check did.
+const setupSource = readFileSync(SETUP_ACTION, "utf8")
+  .split("\n")
+  .filter((line) => !/^\s*#/.test(line))
+  .join("\n");
+const setupViolations = [];
+
+const nodeAt = setupSource.indexOf("actions/setup-node@");
+const corepackAt = setupSource.search(/corepack\s+enable/);
+
+if (nodeAt === -1) {
+  setupViolations.push(
+    `  ${SETUP_ACTION}\n    → no \`actions/setup-node\` step`,
+  );
+} else if (corepackAt !== -1 && corepackAt < nodeAt) {
+  setupViolations.push(
+    `  ${SETUP_ACTION}\n    → \`corepack enable\` runs before \`actions/setup-node\`,` +
+      "\n      so it enables the runner image's corepack, not the pinned Node's",
+  );
+}
+
+if (/^\s*cache:\s*["']?yarn["']?\s*$/m.test(setupSource)) {
+  setupViolations.push(
+    `  ${SETUP_ACTION}\n    → \`cache: yarn\` on setup-node runs yarn before corepack is installed`,
+  );
+}
+
+if (corepackAt !== -1 && !/corepack@\d+\.\d+\.\d+/.test(setupSource)) {
+  setupViolations.push(
+    `  ${SETUP_ACTION}\n    → corepack is not pinned to an exact version`,
+  );
+}
+
+if (setupViolations.length > 0) {
+  console.error(
+    `\n${setupViolations.length} CI setup violation(s):\n\n` +
+      `${setupViolations.join("\n")}\n\n` +
+      "Node 26 bundles no corepack. It has to be installed explicitly, pinned,\n" +
+      "and AFTER `setup-node` — otherwise `yarn` resolves through a shim the\n" +
+      "runner image happened to leave on PATH, and the day that stops being\n" +
+      "true every job fails at once.\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * Every directory under `docs/` is published by the docs site.
+ *
+ * `gen-tree` walked one hardcoded root, `docs/framework`. `docs/bay` and
+ * `docs/lore` were written, maintained and validated - `check-docs` scans all
+ * of `docs/`, so they were never unchecked - and then published nowhere. Two
+ * introduction pages nobody could read, with nothing anywhere to say they were
+ * missing. That is the failure this guards: a doc tree can only ever be
+ * SILENTLY unpublished, never loudly.
+ *
+ * `superpowers` is excluded for the same reason `check-docs` excludes it: an
+ * archive of past plans, true when written and not a claim about today.
+ */
+const DOCS_EXCLUDED = new Set(["superpowers"]);
+const GEN_TREE = "apps/docs/scripts/gen-tree.ts";
+const genTreeSource = readFileSync(GEN_TREE, "utf8");
+const docRootViolations = [];
+
+const docDirs = execFileSync("git", ["ls-files", "docs/"], { encoding: "utf8" })
+  .trim()
+  .split("\n")
+  .filter(Boolean)
+  .map((file) => file.split("/")[1])
+  .filter((dir, i, all) => dir && all.indexOf(dir) === i)
+  .filter((dir) => !DOCS_EXCLUDED.has(dir));
+
+for (const dir of docDirs) {
+  // Matched against the `dir:` field of a DOC_ROOTS entry, so a directory
+  // merely NAMED in a comment does not count as published.
+  if (!genTreeSource.includes(`dir: "docs/${dir}"`)) {
+    docRootViolations.push(
+      `  docs/${dir}\n    → not in ${GEN_TREE}'s DOC_ROOTS, so nothing publishes it`,
+    );
+  }
+}
+
+if (docRootViolations.length > 0) {
+  console.error(
+    `\n${docRootViolations.length} unpublished doc tree(s):\n\n` +
+      `${docRootViolations.join("\n")}\n\n` +
+      "`check-docs` validates everything under `docs/`, so an orphaned tree is\n" +
+      "checked and correct and simply never rendered. Add it to DOC_ROOTS with\n" +
+      "an order-prefixed category, or delete the directory.\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * CHANGELOG.md is English, and stays English.
+ *
+ * The 0.25.0 section was written from French commit subjects and translated by
+ * hand afterwards. Those subjects are in git history forever, so any
+ * regeneration of that range brings them back - verified, not assumed:
+ * `alepha gen changelog --from=0.24.0 --to=0.25.0` still emits
+ * "AuthRouter — les quatre écrans d'auth" today.
+ *
+ * The release workflow itself cannot cause that. It prepends the new section
+ * and `cat CHANGELOG.md >>` the rest, so old sections are preserved
+ * byte-for-byte, and the generator writes `latestTag..HEAD` to stdout. What is
+ * unguarded is the OTHER direction, which the finding did not mention: a French
+ * commit subject written today flows into the next release's section
+ * automatically, with nobody reading it in between. This catches both.
+ *
+ * The word list is deliberately narrow. `le`, `la`, `des`, `est`, `que`, `sur`,
+ * `plus`, `tout`, `pour` and `dont` are all left out because each has an
+ * English reading that could plausibly appear in a changelog, and a guard with
+ * a false positive is a guard someone deletes. Calibrated against the real
+ * file: zero hits across its 1788 lines.
+ */
+const FRENCH_WORDS = [
+  "les",
+  "une",
+  "dans",
+  "avec",
+  "sont",
+  "qui",
+  "sans",
+  "vers",
+  "lors",
+  "afin",
+  "leur",
+  "leurs",
+  "cette",
+  "ainsi",
+  "mais",
+  "puis",
+  "nous",
+  "vous",
+  "elle",
+  "elles",
+  "peut",
+  "doit",
+  "faire",
+  "fait",
+];
+
+const changelogViolations = [];
+const changelogLines = readFileSync("CHANGELOG.md", "utf8").split("\n");
+
+for (const [index, line] of changelogLines.entries()) {
+  const found = FRENCH_WORDS.find((word) =>
+    new RegExp(`\\b${word}\\b`, "i").test(line),
+  );
+  if (found) {
+    changelogViolations.push(
+      `  CHANGELOG.md:${index + 1}\n    → French ("${found}"): ${line.trim().slice(0, 100)}`,
+    );
+  }
+}
+
+if (changelogViolations.length > 0) {
+  console.error(
+    `\n${changelogViolations.length} French changelog line(s):\n\n` +
+      `${changelogViolations.slice(0, 20).join("\n")}\n\n` +
+      "The changelog is the release notes, so it is the one document written\n" +
+      "from commit subjects without anyone reading it in between. Rewrite the\n" +
+      "entry in English - and the commit subject too, if it has not shipped.\n",
   );
   process.exit(1);
 }

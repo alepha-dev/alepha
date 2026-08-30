@@ -291,6 +291,57 @@ Records carry `to`, `subject`, `body`, `text`, `replyTo`, `headers`,
 > `travel()` fires **every** cron in the container, including the notification
 > purge. Assert end state (which rows exist), never call counts.
 
+## 11. SMS, without the notification layer
+
+`$notification` is a template with preferences, suppression, receipts and an
+outbox behind it. `$sms` is the layer below: a named channel that hands a
+pre-rendered string to whichever provider is configured.
+
+```typescript check
+import { $sms } from "alepha/sms";
+
+class Verification {
+  code = $sms({ name: "verification-code" });
+
+  async sendCode(to: string, code: string) {
+    await this.code.send({ to, message: `Your code: ${code}` });
+  }
+}
+```
+
+`send()` takes `to` (one number or a list) and `message`. There is no template
+rendering and no subject: build the string yourself.
+
+Declare a channel per purpose rather than one per app. The name is what appears
+in the `sms:sending` and `sms:sent` hooks and in the devtools outbox, so
+`verification-code` and `delivery-update` stay distinguishable where a single
+`sms` channel would not.
+
+| Provider | Selected by                           | Does                                              |
+| -------- | ------------------------------------- | ------------------------------------------------- |
+| Local    | development default                   | Writes files under `DATA_DIR` for the outbox view |
+| Memory   | `$sms({ provider: "memory" })`, tests | Keeps records in `records` / `last`               |
+| Your own | `provider: MyGatewayProvider`         | Extend `SmsProvider` and implement `send()`       |
+
+Both hooks fire around every send. `sms:sending` carries an `abort()` that
+throws, which is where a global opt-out or a test-environment guard belongs:
+
+```typescript
+alepha.events.on("sms:sending", ({ to, abort }) => {
+  if (!isOptedIn(to)) {
+    abort();
+  }
+});
+```
+
+Under test, `MemorySmsProvider` exposes `records` and `last`, the same shape as
+`MemoryEmailProvider`.
+
+Use `$sms` directly for a transactional string a person is waiting on right now
+(a login code). Use `$notification` when the message is something a user could
+reasonably want to turn off, because that is what the preference and suppression
+machinery exists for.
+
 ## See also
 
 - [Authentication](/docs/guides-server-authentication) explains why a

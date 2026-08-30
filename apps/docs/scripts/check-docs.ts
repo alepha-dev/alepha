@@ -6,6 +6,7 @@ import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 import { DocsChecker, type DocUnit } from "./DocsChecker.ts";
+import { snippets } from "./snippets.ts";
 
 /**
  * Verifies the documentation against the framework it documents.
@@ -116,9 +117,38 @@ export class CheckDocsCommand {
         this.log.info(`${violations.length} banned-symbol violations`);
       });
 
+      await run("internal links", async () => {
+        const dangling = await this.danglingLinks(files, root);
+        for (const it of dangling) {
+          this.log.error(it);
+        }
+        failures += dangling.length;
+        this.log.info(`${dangling.length} dangling internal link(s)`);
+      });
+
+      await run("primitive guide coverage", async () => {
+        const { regressions, healed, uncovered } =
+          await this.primitiveCoverage(root);
+        for (const it of regressions) {
+          this.log.error(it);
+        }
+        for (const it of healed) {
+          this.log.error(it);
+        }
+        failures += regressions.length + healed.length;
+        this.log.warn(
+          `${uncovered.length} primitive(s) still have a reference page and no guide`,
+        );
+      });
+
       await run("compile marked examples", async () => {
-        const units = await this.checker.collectCheckedFences(files);
-        this.log.info(`${units.length} fences opted in with \`check\``);
+        const units = [
+          ...(await this.checker.collectCheckedFences(files)),
+          ...this.snippetUnits(),
+        ];
+        this.log.info(
+          `${units.length} units to compile (fences opted in with \`check\`, plus the snippets not marked uncheckable)`,
+        );
         if (units.length === 0) {
           return;
         }
@@ -232,6 +262,180 @@ export class CheckDocsCommand {
     }
 
     return errors;
+  }
+
+  /**
+   * Every `/docs/reference-*` link in our own markdown resolves to a page the
+   * site actually generates.
+   *
+   * The generated `@alepha/ui` README advertised
+   * `/docs/reference-react-hooks-useismobile` while nothing produced that
+   * page, so the one link a reader would follow to learn about the hook 404'd.
+   * It is the failure a docs pipeline is worst at noticing: the README is
+   * GENERATED, so it looked correct and internally consistent, and only
+   * someone clicking the link would ever find out.
+   *
+   * Resolved against the file names `gen-docs` writes under
+   * `docs/framework/2-reference`, not against the site's routing table -
+   * `gen-tree` turns exactly those names into slugs, so this is one
+   * indirection closer to the thing being asserted and it works without
+   * building the site.
+   *
+   * Both spellings are matched: the site-relative `/docs/…` of the module
+   * pages and the absolute `https://alepha.dev/docs/…` of the package READMEs.
+   * Scoped to `reference-` slugs, which are the ones derivable from a
+   * directory listing; a link into `guides-` or `packages-` is left alone
+   * rather than guessed at.
+   */
+  /**
+   * The home page's snippets, as compile units.
+   *
+   * Opt-OUT, unlike the markdown fences, which compile only where a `check`
+   * marker asks them to. The default is inverted here because the failure was
+   * silence: an `infra` snippet sat in this registry importing a `$storage`
+   * that exists nowhere in the framework and passing `ttl: "5m"` where a
+   * `DurationLike` tuple is required - three type errors in twenty lines,
+   * unrendered and unnoticed, because being unused and being broken look
+   * identical from outside. A new snippet is therefore compiled unless
+   * somebody writes down why it cannot be.
+   *
+   * `uncheckable` is that reason, and it is a sentence rather than a boolean
+   * so the exemption has to argue for itself. The three that carry one are
+   * excerpts: they omit imports on purpose, so that what the visitor reads is
+   * the shape rather than the ceremony.
+   */
+  /**
+   * Primitives that have a generated reference page and appear in no guide.
+   *
+   * A reference page states a signature; a guide is where a reader meets the
+   * thing and sees why they would reach for it. This list is empty, and every
+   * entry it used to hold was removed by writing the guide rather than by
+   * deleting the line.
+   *
+   * It stays as a list because the mechanism is the point. Empty, it is a
+   * gate: a new primitive that ships with a reference page and no guide fails
+   * the build. Adding a name re-opens the ratchet for that one primitive,
+   * which is the right move when a guide is genuinely a separate piece of
+   * work, and the wrong move as a way past a failing check.
+   *
+   * ⚠️ Whatever you add here, remove it once its guide exists. A stale entry
+   * silently re-permits the gap if the guide is ever deleted, so `healed`
+   * below fails on exactly that.
+   *
+   * Guides cover families rather than primitives, which is why 30 names came
+   * off this list as five new pages plus a handful of sections folded into
+   * guides that already existed: the eight `$auth*` shorthands are one table
+   * in the authentication guide, and the resilience decorators
+   * (`$retry`, `$throttle`, `$debounce`, `$timeout`, `$circuit`, `$memoize`,
+   * `$batch`) are one page with `$pipeline`, the thing that hosts them.
+   */
+  protected readonly primitivesWithoutGuide: string[] = [];
+
+  /**
+   * Compares the primitives with no guide mention against the baseline above.
+   *
+   * Mentioned, not documented: a name appearing anywhere in `1-guides` counts.
+   * The check is deliberately weak because the strong version cannot be
+   * automated - "is this explained well" is not a grep - and a weak check that
+   * runs beats a strong one that does not exist.
+   */
+  protected async primitiveCoverage(root: string): Promise<{
+    regressions: string[];
+    healed: string[];
+    uncovered: string[];
+  }> {
+    const dir = join(root, "docs/framework/2-reference/1-primitives");
+    if (!(await this.fs.exists(dir))) {
+      return { regressions: [], healed: [], uncovered: [] };
+    }
+
+    const primitives = (await this.fs.ls(dir))
+      .filter((name) => name.endsWith(".md"))
+      .map((name) => name.replace(/\.md$/, ""));
+
+    const guides = await this.listMarkdown(
+      join(root, "docs/framework/1-guides"),
+    );
+    const corpus = (
+      await Promise.all(guides.map((file) => this.fs.readFile(file)))
+    )
+      .map(String)
+      .join("\n");
+
+    const uncovered = primitives.filter(
+      // `\b` after the name, so `$auth` is not considered covered by a guide
+      // that only ever mentions `$authGoogle`.
+      (name) => !new RegExp(`\\${name}\\b`).test(corpus),
+    );
+
+    const allowed = new Set(this.primitivesWithoutGuide);
+    const regressions = uncovered
+      .filter((name) => !allowed.has(name))
+      .map(
+        (name) =>
+          `${name} has a reference page and is named in no guide - write one, or add it to primitivesWithoutGuide in apps/docs/scripts/check-docs.ts`,
+      );
+
+    const stillUncovered = new Set(uncovered);
+    const healed = this.primitivesWithoutGuide
+      .filter((name) => !stillUncovered.has(name))
+      .map(
+        (name) =>
+          `${name} is documented now - remove it from primitivesWithoutGuide in apps/docs/scripts/check-docs.ts`,
+      );
+
+    return { regressions, healed, uncovered };
+  }
+
+  protected snippetUnits(): DocUnit[] {
+    return Object.entries(snippets)
+      .filter(([, snippet]) => !("uncheckable" in snippet))
+      .map(([name, snippet]) => ({
+        file: `apps/docs/scripts/snippets.ts#${name}`,
+        line: 1,
+        code: snippet.content,
+        lang: "tsx",
+      }));
+  }
+
+  protected async danglingLinks(
+    files: string[],
+    root: string,
+  ): Promise<string[]> {
+    const slugs = new Set<string>();
+    const sources: Array<[string, string]> = [
+      ["1-primitives", "reference-primitives-"],
+      ["2-react-hooks", "reference-react-hooks-"],
+      ["3-providers", "reference-providers-"],
+    ];
+
+    for (const [dir, prefix] of sources) {
+      const from = join(root, "docs/framework/2-reference", dir);
+      if (!(await this.fs.exists(from))) continue;
+      for (const name of await this.fs.ls(from)) {
+        if (name.endsWith(".md")) {
+          slugs.add(`${prefix}${name.replace(/\.md$/, "")}`.toLowerCase());
+        }
+      }
+    }
+
+    const problems: string[] = [];
+    const link =
+      /\]\((?:https:\/\/alepha\.dev)?\/docs\/(reference-[a-z0-9$@.-]+)\)/gi;
+
+    for (const file of files) {
+      const content = String(await this.fs.readFile(file));
+      for (const [index, line] of content.split("\n").entries()) {
+        for (const match of line.matchAll(link)) {
+          if (!slugs.has(match[1].toLowerCase())) {
+            problems.push(
+              `${file.replace(`${root}/`, "")}:${index + 1} - /docs/${match[1]} is linked but no reference page generates it`,
+            );
+          }
+        }
+      }
+    }
+    return problems;
   }
 
   protected async listMarkdown(dir: string): Promise<string[]> {

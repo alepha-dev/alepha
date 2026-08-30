@@ -15,6 +15,23 @@ import {
   jobExecutionEntity,
 } from "../index.ts";
 
+/**
+ * Backdate a `scheduled` row so the sweep considers it due.
+ *
+ * Retries carry an exponential, jittered backoff, so a test that drives the
+ * sweep by hand has to say WHEN it is pretending to be, or it is asserting
+ * on the jitter. `opts.now` is what keeps `updatedAt` from being stamped
+ * forward at the same time.
+ */
+const forceDue = async (repo: any, jobName: string) => {
+  const past = new Date(Date.now() - 60_000).toISOString();
+  await repo.updateMany(
+    { jobName: { eq: jobName }, status: { eq: "scheduled" } },
+    { scheduledAt: past },
+    { now: past },
+  );
+};
+
 const makeApp = () =>
   Alepha.create()
     .with(AlephaOrmPostgres)
@@ -380,7 +397,7 @@ describe("$job — queue mode (outbox)", () => {
     expect(seen.sort((a, b) => a - b)).toEqual([1, 2, 3]);
   });
 
-  it("retry: failed queue job is rescheduled for the next sweep tick", async ({
+  it("retry: failed queue job is rescheduled with a jittered backoff", async ({
     expect,
   }) => {
     const alepha = makeApp();
@@ -409,11 +426,14 @@ describe("$job — queue mode (outbox)", () => {
     expect(rows[0].status).toBe("scheduled");
     expect(rows[0].attempt).toBe(1);
     expect(attempts).toBe(1);
-    // scheduledAt is "now" (no backoff), proving we no longer wait for an
-    // exponential delay — the row is immediately eligible at the next sweep.
+    // `scheduledAt` is in the future, within the first attempt's backoff
+    // ceiling (`retryBackoffBase`, 5 s). It used to be exactly "now", which
+    // is what put every retry on the sweep grid: the code in a verification
+    // email lives 300 s and the sweep runs every 900.
     expect(rows[0].scheduledAt).toBeTruthy();
     const sched = new Date(rows[0].scheduledAt!).getTime();
-    expect(Math.abs(sched - Date.now())).toBeLessThan(2_000);
+    expect(sched).toBeGreaterThanOrEqual(Date.now() - 2_000);
+    expect(sched).toBeLessThanOrEqual(Date.now() + 5_000);
   });
 
   it("retry: terminal error after all retries exhausted", async ({
@@ -599,7 +619,7 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("direct mode failure schedules the row for the next sweep", async ({
+  it("direct mode failure schedules the row with a backoff", async ({
     expect,
   }) => {
     const alepha = makeAppDirect();
@@ -636,9 +656,12 @@ describe("$job — direct mode (no AlephaApiJobsQueue)", () => {
     expect(row.status).toBe("scheduled");
     expect(row.attempt).toBe(1);
     expect(row.error).toBe("nope");
-    // scheduledAt should be "now" (no backoff).
+    // `scheduledAt` is in the future, inside the first attempt's backoff
+    // ceiling (`retryBackoffBase`, 5 s). It used to be exactly "now", which
+    // is what put every retry on the 15-minute sweep grid.
     const sched = new Date(row.scheduledAt).getTime();
-    expect(Math.abs(sched - Date.now())).toBeLessThan(2_000);
+    expect(sched).toBeGreaterThanOrEqual(Date.now() - 2_000);
+    expect(sched).toBeLessThanOrEqual(Date.now() + 5_000);
   });
 });
 
@@ -831,7 +854,11 @@ describe("$job — retry semantics", () => {
     expect(attempts).toBe(1);
 
     const provider = alepha.inject(JobProvider);
-    // Trigger sweeps manually — each one should claim and run the next attempt.
+    // Each attempt is now scheduled with a real backoff, so the row is not
+    // due yet and the sweep would correctly skip it. Age it first: what this
+    // test is about is that the SWEEP claims and runs the next attempt, and
+    // keeps doing so exactly `retries` times.
+    await forceDue(app.executions, "App.work");
     await (provider as any).sweep();
     await waitFor(
       () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
@@ -840,6 +867,7 @@ describe("$job — retry semantics", () => {
     );
     expect(attempts).toBe(2);
 
+    await forceDue(app.executions, "App.work");
     await (provider as any).sweep();
     await waitFor(
       () => app.executions.findMany({ where: { jobName: { eq: "App.work" } } }),
@@ -953,7 +981,9 @@ describe("$job — cron + retry (outbox path)", () => {
     expect(rows1).toHaveLength(1);
     expect(rows1[0].status).toBe("scheduled");
 
-    // Sweep picks it up and runs attempt 2 → terminal.
+    // Sweep picks it up and runs attempt 2 → terminal. Aged first, because
+    // the retry now carries a real backoff and is not due yet.
+    await forceDue(app.executions, "App.tick");
     await (provider as any).sweep();
     await waitFor(
       () => attempts,

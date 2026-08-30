@@ -17,6 +17,7 @@ import {
   type FolioActionState,
   folioMenuItems,
 } from "./menubar/folioMenubarModel.ts";
+import { useFolioShortcuts } from "./menubar/useFolioShortcuts.ts";
 import FolioTree, { type FolioTreeActions } from "./tree/FolioTree.tsx";
 import FolioTreeResizer from "./tree/FolioTreeResizer.tsx";
 import type { FolioActionHandlers } from "./useFolioActions.ts";
@@ -157,7 +158,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   }, []);
 
   // The empty state has no `useFolioActions` — that hook needs a draft, and
-  // there is no document here. Only the five ids `availableWithoutFolio`
+  // there is no document here. Only the four ids `availableWithoutFolio`
   // marks can fire; the rest are rendered disabled, so their no-op is never
   // reachable and exists only to satisfy the exhaustive handler map.
   const emptyStateHandlers = useMemo<FolioActionHandlers>(() => {
@@ -176,10 +177,21 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
     };
     handlers["folio.newDirectory"] = () => treeActions?.createDirectory();
     handlers["view.tree"] = () => panes.toggleTree();
-    handlers["view.inspector"] = () => panes.toggleInspector();
     handlers["view.focus"] = () => panes.toggleFocus();
     return handlers;
-  }, [treeActions, panes, project?.id, router]);
+  }, [treeActions, panes, project?.slug, router]);
+
+  // The empty state's keyboard half. `FolioDocument` binds the shortcuts on
+  // every other state, and it is not mounted here — so the menubar rendered
+  // just below advertised ⌘\ and ⌘. as enabled while nothing listened for
+  // them. `enabled` keeps the two call sites from ever binding at once; see
+  // the hook's doc.
+  useFolioShortcuts(
+    emptyStateHandlers,
+    EMPTY_STATE_ACTION_STATE,
+    "view",
+    props.empty === true,
+  );
 
   // Three states, not two: hidden, a column (`contents` — the wrapper
   // disappears and `FolioTree`'s own root becomes the flex child), or an

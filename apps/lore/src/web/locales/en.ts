@@ -421,6 +421,15 @@ export default {
   "project.settings.members.invite.sent": "Invitation sent to $1.",
   "project.settings.members.invite.failed": "Could not send the invitation.",
 
+  "project.settings.members.revoke.action": "Revoke the invitation to $1",
+  "project.settings.members.revoke.title": "Revoke this invitation?",
+  "project.settings.members.revoke.description":
+    "$1 will no longer be able to use the link they were sent. You can invite them again, which sends a new link.",
+  "project.settings.members.revoke.confirm": "Revoke",
+  "project.settings.members.revoke.cancel": "Keep it",
+  "project.settings.members.revoke.done": "The invitation to $1 was revoked.",
+  "project.settings.members.revoke.failed": "Could not revoke the invitation.",
+
   "project.settings.danger.title": "Danger Zone",
   "project.settings.actions.delete": "Delete this project",
   "project.settings.actions.delete.helper":

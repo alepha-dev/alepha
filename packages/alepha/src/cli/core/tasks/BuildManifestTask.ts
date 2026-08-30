@@ -217,6 +217,29 @@ export class BuildManifestTask extends BuildTask {
       ];
     } catch {}
 
+    // Declared job timeouts, so the prebuilt deploy path can still warn
+    // about the ones direct mode on Workers cannot honour. Looked up by
+    // class-name string for the same reason `CronProvider` is: the CLI and
+    // the workspace are two module graphs.
+    let jobs: BuildManifest["jobs"];
+    try {
+      const jobProvider = ctx.alepha.inject("JobProvider") as {
+        getRegisteredJobs?: () => Map<string, { options: { timeout?: any } }>;
+      };
+      const dt = ctx.alepha.inject("DateTimeProvider") as {
+        duration: (value: any) => { as: (unit: string) => number };
+      };
+      const registry = jobProvider.getRegisteredJobs?.();
+      if (registry) {
+        jobs = [...registry.entries()].map(([name, registration]) => ({
+          name,
+          timeoutMs: registration.options.timeout
+            ? dt.duration(registration.options.timeout).as("milliseconds")
+            : undefined,
+        }));
+      }
+    } catch {}
+
     // platformOptions come from the CLI's Alepha instance (where
     // alepha.config.ts ran during the configure hook). BuildCommand
     // reads them up there and threads them via ctx — ctx.alepha here
@@ -318,6 +341,7 @@ export class BuildManifestTask extends BuildTask {
         hasWebSocket,
       },
       crons,
+      jobs,
       websocketPaths,
       email,
       env,

@@ -584,21 +584,25 @@ test.describe("Folio workspace", () => {
       await page.keyboard.press("Escape");
     });
 
-    await test.step("View: the pane toggles stay live", async () => {
+    await test.step("View: the tree toggle stays live, the document ones do not", async () => {
       await menubar.getByRole("menuitem", { name: "View" }).click();
       await expect(
         page.getByRole("menuitem", { name: /folio tree/i }),
-      ).toBeEnabled();
-      await expect(
-        page.getByRole("menuitem", { name: /^inspector/i }),
       ).toBeEnabled();
       // The mode toggle replaced Rich text / Markdown source. It acts on a
       // document, so with nothing open it is present-but-disabled — the
       // same "shape stays, enablement changes" contract this test exists
       // to pin.
-      await expect(
-        page.getByRole("menuitem", { name: /toggle preview/i }),
-      ).toBeDisabled();
+      //
+      // Inspector is disabled here for that same reason, and used to be
+      // asserted enabled beside the tree because both read as "pane
+      // toggles". They are not alike: the tree is mounted on this state and
+      // the inspector is not — it lives inside `FolioWorkspaceContent`,
+      // which the empty state skips. Enabled, the item flipped a persisted
+      // preference with nothing on screen to show for it.
+      for (const name of [/toggle preview/i, /^inspector/i]) {
+        await expect(page.getByRole("menuitem", { name })).toBeDisabled();
+      }
 
       await page.getByRole("menuitem", { name: /folio tree/i }).click();
       await expect(page.locator('[data-slot="folio-tree"]')).toBeHidden();
@@ -607,6 +611,19 @@ test.describe("Folio workspace", () => {
       // in serial mode — put it back so the next test still has a tree.
       await menubar.getByRole("menuitem", { name: "View" }).click();
       await page.getByRole("menuitem", { name: /folio tree/i }).click();
+      await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible();
+    });
+
+    await test.step("the shortcut glyph the menu advertises actually fires", async () => {
+      // `useFolioShortcuts` is mounted by `FolioDocument` everywhere else,
+      // and there is no document here — so ⌘\ was a glyph the menu printed
+      // and nothing listened for. Driven from the page rather than the menu
+      // on purpose: clicking the item exercises the handler map, pressing
+      // the key exercises the binding, and only the second one regressed.
+      await page.keyboard.press("ControlOrMeta+\\");
+      await expect(page.locator('[data-slot="folio-tree"]')).toBeHidden();
+
+      await page.keyboard.press("ControlOrMeta+\\");
       await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible();
     });
   });

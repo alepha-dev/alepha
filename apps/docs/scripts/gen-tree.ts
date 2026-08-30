@@ -15,6 +15,31 @@ import type {
 import { snippets } from "./snippets.ts";
 
 /**
+ * The `docs/` roots this command publishes, and where each lands in the tree.
+ *
+ * It used to be one hardcoded `docs/framework`, so `docs/bay` and `docs/lore`
+ * were written, maintained and validated - `check-docs` walks all of `docs/`,
+ * not just the framework - and then published nowhere. Two introduction pages
+ * nobody could read, with nothing anywhere to say they were missing.
+ *
+ * `framework` keeps the empty category so its slugs stay exactly what they
+ * are: it is the bulk of the site, and seeding it would rewrite every existing
+ * `/docs/...` URL. The other two carry an order prefix in their CATEGORY
+ * rather than in their directory name, which is what sorts them after `4-cli`
+ * at the root while leaving the paths people edit as `docs/bay` and
+ * `docs/lore`. `cleanName` strips the prefix again on the way to the slug, so
+ * they publish as `/docs/bay-...` and `/docs/lore-...`.
+ *
+ * `level` starts at the depth the seeded category already represents, so the
+ * recursion guard counts the same tree depth in all three.
+ */
+const DOC_ROOTS: Array<{ dir: string; category: string; level: number }> = [
+  { dir: "docs/framework", category: "", level: 0 },
+  { dir: "docs/bay", category: "5-bay", level: 1 },
+  { dir: "docs/lore", category: "6-lore", level: 1 },
+];
+
+/**
  * Command for generating documentation tree for the website
  */
 export class TreeCommand {
@@ -876,11 +901,9 @@ export class TreeCommand {
       this.log.debug("Starting website documentation generation");
       const rootDir = join(import.meta.dirname, "../../..");
       const outputDir = join(import.meta.dirname, "../.gen");
-      const docsDir = join(rootDir, "docs/framework");
 
       this.log.debug(`Root directory: ${rootDir}`);
       this.log.debug(`Output directory: ${outputDir}`);
-      this.log.debug(`Docs directory: ${docsDir}`);
 
       await run("clean output", async () => {
         await rm(outputDir, { force: true, recursive: true });
@@ -892,7 +915,11 @@ export class TreeCommand {
       const items: DocItem[] = [];
 
       await run("parse docs", async () => {
-        await this.scanDocsDir(docsDir, "", items, rootDir, 0);
+        for (const { dir, category, level } of DOC_ROOTS) {
+          const from = join(rootDir, dir);
+          this.log.debug(`Scanning doc root: ${from}`);
+          await this.scanDocsDir(from, category, items, rootDir, level);
+        }
         this.log.debug(`Parsed ${items.length} docs from /docs`);
       });
 

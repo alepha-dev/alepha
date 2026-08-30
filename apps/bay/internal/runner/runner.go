@@ -39,6 +39,14 @@ type Spec struct {
 type Runner interface {
 	Start(spec Spec) error
 	Stop(key string, grace time.Duration) error
+	// Remove uninstalls whatever the supervisor installed for the app, after
+	// Stop: for systemd that is the unit file and its enable symlink, without
+	// which an unregistered app comes back at the next reboot.
+	//
+	// `purge` says the app's data is being destroyed too, and gates only the
+	// parts that must not outlive it — for systemd, the unix user. See
+	// deleteUser.
+	Remove(key string, purge bool) error
 	Running(key string) bool
 	StopAll(grace time.Duration)
 	// Usage reports what the supervisor knows about the app right now, or
@@ -54,6 +62,16 @@ type Runner interface {
 	// tell them apart.
 	Logs(key string, n int) ([]LogLine, bool, error)
 }
+
+/*
+Remove has nothing to uninstall for a child process.
+
+Nothing was installed: no unit, no enable symlink, and no unix user — the child
+runner runs apps as Bay's own user, which is exactly why it is development-only.
+`Stop` has already killed the process, and the log file is deliberately kept for
+the same reason `logFiles` is (see its comment).
+*/
+func (c *Child) Remove(string, bool) error { return nil }
 
 /*
 Usage reports nothing for a plain child process.

@@ -21,7 +21,24 @@ on:
       - completed
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # `workflow_run` runs get a group of their own, and that separation is the
+  # whole point of this expression.
+  #
+  # `github.ref` for a `workflow_run` event is the DEFAULT BRANCH — so a
+  # Release completing resolved to `ci-refs/heads/main`, the same group a push
+  # to main uses. With `cancel-in-progress`, the Release follow-up then
+  # cancelled the push run that was still mid-test, and that push run is the
+  # only one carrying `deploy-lore-production`. Lore silently did not ship, and
+  # the evidence was a run marked `cancelled` that looks exactly like the
+  # ordinary "a newer push superseded this one".
+  #
+  # Keyed on `head_branch` rather than a constant so two Releases in a row
+  # still supersede each other, which is the behaviour worth keeping.
+  #
+  # One line, deliberately: a folded `>-` block keeps the newlines of any
+  # more-indented continuation, so a "tidier" multi-line version smuggles
+  # literal `\n` into the expression.
+  group: ci-${{ github.event_name == 'workflow_run' && format('followup-{0}', github.event.workflow_run.head_branch) || github.ref }}
   cancel-in-progress: true
 
 jobs:
