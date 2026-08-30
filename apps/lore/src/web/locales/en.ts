@@ -618,6 +618,9 @@ export default {
   "markdown.mode.preview": "Preview",
   "release.start": "New Release",
   "release.create.confirm": "Create",
+  "release.create.tag": "Tag",
+  "release.create.tag.help":
+    "The release's address and its name. It becomes the URL, so keep it short: 0.28.0, demo-1.",
   "release.group.open": "Open",
   "release.group.released": "Released",
   "release.list.column.state": "State",
