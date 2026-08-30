@@ -614,6 +614,119 @@ test.describe("Folio workspace", () => {
     await expect(content).not.toBeFocused();
   });
 
+  /**
+   * The ⌘F panel, and the reason it is CodeMirror's rather than the find bar.
+   *
+   * Both halves are asserted here because both are DOM: `.cm-panels` used to
+   * theme only the frame, so the strip was a Lore border around native
+   * `<input>`s and grey buttons, and the fix is a stylesheet — nothing a
+   * bare `EditorState` can see.
+   *
+   * The colours are compared against the SAME custom properties the rest of
+   * the app reads, resolved through a probe element, rather than against
+   * literal rgb strings. That is what makes one run stand for every Lore
+   * theme and both light and dark: the assertion is the var indirection, and
+   * a hardcoded colour anywhere in the panel breaks it.
+   */
+  test("08f — the ⌘F panel is Lore chrome and finds a match below the fold", async () => {
+    const needle = `needle-${stamp}`;
+    const longUrl = await createFolio(
+      `Long-${stamp}`.slice(0, 24),
+      [
+        ...Array.from({ length: 400 }, (_, n) => `Line ${n} of padding.`),
+        // Twice, adjacent, so one match ends up selected and the other
+        // plain — the two rules are separate and both can regress.
+        needle,
+        needle,
+      ].join("\n\n"),
+    );
+
+    await page.goto(longUrl);
+    const toggle = page.getByTestId("markdown-mode-toggle");
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+    // Polled rather than clicked once: a 400-paragraph folio is still
+    // settling when the toggle first paints, and the click landed on a node
+    // React had already replaced.
+    await expect
+      .poll(
+        async () => {
+          const mode = await toggle.getAttribute("data-mode");
+          if (mode === "edit") return mode;
+          await toggle.click({ timeout: 2_000 }).catch(() => {});
+          return toggle.getAttribute("data-mode");
+        },
+        { timeout: 30_000 },
+      )
+      .toBe("edit");
+
+    const content = page.locator(".cm-content");
+    await expect(content).toBeVisible({ timeout: 15_000 });
+
+    // The premise of the whole test: CodeMirror paints its viewport only, so
+    // the needle 400 paragraphs down is not in the DOM. `useFolioFind` walks
+    // exactly this DOM, which is why it cannot serve Edit mode and why the
+    // panel below is worth keeping rather than removing.
+    await expect(content).not.toContainText(needle);
+
+    await content.click();
+    await page.keyboard.press("ControlOrMeta+f");
+    const panel = page.locator(".cm-panel.cm-search");
+    await expect(panel).toBeVisible();
+
+    const colours = await page.evaluate(() => {
+      // Resolve a custom property the way any element in the app would, so
+      // the comparison is against the live theme rather than a copy of it.
+      const token = (value: string): string => {
+        const probe = document.createElement("div");
+        probe.style.color = value;
+        document.body.appendChild(probe);
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+        return resolved;
+      };
+      const field = document.querySelector<HTMLElement>(
+        ".cm-panel.cm-search .cm-textfield",
+      );
+      const button = document.querySelector<HTMLElement>(
+        ".cm-panel.cm-search .cm-button",
+      );
+      return {
+        fieldBackground: field && getComputedStyle(field).backgroundColor,
+        buttonBorder: button && getComputedStyle(button).borderTopColor,
+        background: token("var(--color-background)"),
+        border: token("var(--color-border)"),
+      };
+    });
+
+    expect(colours.fieldBackground).toBe(colours.background);
+    expect(colours.buttonBorder).toBe(colours.border);
+
+    // Typed, not `fill()`ed: CodeMirror's search field commits its query on
+    // `keyup`, and a `fill()` sets the value without ever firing one, so the
+    // panel showed the needle and searched for the empty string.
+    const field = panel.locator('.cm-textfield[name="search"]');
+    await field.click();
+    await field.pressSequentially(needle);
+    await page.keyboard.press("Enter");
+
+    // Found, painted, and scrolled to — the match is in the DOM now only
+    // because the search brought its line into the viewport.
+    await expect(page.locator(".cm-searchMatch")).toHaveCount(2);
+    await expect(content).toContainText(needle);
+
+    // And painted the same green `::highlight(folio-find)` uses in View
+    // mode, not the stock yellow. Worth asserting rather than assuming:
+    // the stock rule is `&light .cm-searchMatch`, which carries the same
+    // specificity as a plain override, so this is decided by a `.cm-content`
+    // qualifier that is easy to drop while the rule still looks right.
+    await expect(
+      page.locator(".cm-searchMatch.cm-searchMatch-selected"),
+    ).toHaveCSS("background-color", "oklch(0.696 0.17 162.48)");
+    await expect(
+      page.locator(".cm-searchMatch:not(.cm-searchMatch-selected)"),
+    ).toHaveCSS("background-color", "oklch(0.696 0.17 162.48 / 0.32)");
+  });
+
   test("09b — the empty-state menubar keeps its shape, only its enablement changes", async () => {
     await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-menubar"]')).toBeVisible({
