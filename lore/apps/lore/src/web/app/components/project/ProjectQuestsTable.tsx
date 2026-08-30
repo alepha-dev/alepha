@@ -46,6 +46,7 @@ import type { I18n } from "../../services/I18n.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
 import { QUEST_PRIORITY_TONE } from "./quest/questChips.ts";
+import { formatQuestSize } from "./quest/questSize.ts";
 
 /**
  * The priority glyph. An arrow idiom rather than four differently-coloured
@@ -442,6 +443,31 @@ const ProjectQuestsTable = () => {
                   {quest.priority}
                 </Badge>
               );
+            },
+          },
+          // ⚠️ Sorted on `size`, the INTEGER column, not on the label this
+          // cell renders. `sort` is passed straight through to `getQuests`
+          // and resolved against the entity, so SQL orders 1..5 and XS..XL
+          // come out in the right order for free. Sorting the label instead
+          // is exactly the mistake that put `optional` above `high` on the
+          // kanban board for its whole life: `priority` is a TEXT enum, which
+          // is why the questlog has to carry its own order map for it.
+          //
+          // Hidden by default. The table is already wide, and `size` has had
+          // no reader at all since it replaced `difficulty`, so it earns its
+          // place in the picker before it earns a permanent column.
+          size: {
+            label: tr("board.table.size"),
+            sortable: true,
+            defaultHidden: true,
+            className: "w-20",
+            cell: (quest: QuestResource) => {
+              const label = formatQuestSize(quest.size);
+              return label ? (
+                <Badge variant="outline" className="font-mono text-[11px]">
+                  {label}
+                </Badge>
+              ) : null;
             },
           },
           area: {

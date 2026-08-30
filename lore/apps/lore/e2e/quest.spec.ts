@@ -1634,3 +1634,84 @@ test.describe("Quest", () => {
     });
   });
 });
+
+/**
+ * The Size column, hidden by default and turned on from the picker.
+ *
+ * ⚠️ The sort assertion is the point. `size` is an INTEGER column, so SQL
+ * orders it correctly; sorting the rendered label instead would give
+ * L, M, S, XL, XS. That is not hypothetical - it is what `priority` does
+ * when sorted as text, and why `optional` sat above `high` on the kanban
+ * board for its whole life.
+ *
+ * Sizes are seeded 3, 1, 5 so the two orderings disagree: by integer the
+ * labels come out XS, M, XL, and as text they would be M, XL, XS.
+ */
+test.describe("Quest table — the Size column", () => {
+  test("toggles on from the picker and sorts on the integer", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `qsize${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Qs${t}`.slice(0, 20),
+    );
+
+    for (const size of [3, 1, 5]) {
+      await apiPost(page, "createQuest", {
+        projectId,
+        title: `Size${size}-${t}`,
+        description: "",
+        area: "lore/quests",
+        priority: "medium",
+        size,
+        objectives: [],
+        attachments: [],
+      });
+    }
+
+    await page.goto(`/${slug}/`);
+    await expect(page.locator("tbody tr").first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Hidden by default: the table is already wide, and this column has had
+    // no reader at all since `size` replaced `difficulty`.
+    await expect(
+      page.locator("thead").getByRole("button", { name: "Size" }),
+    ).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Toggle columns" }).click();
+    await page.getByRole("menuitemcheckbox", { name: "Size" }).click();
+    await page.keyboard.press("Escape");
+
+    const header = page.locator("thead").getByRole("button", { name: "Size" });
+    await expect(header).toBeVisible({ timeout: 10_000 });
+
+    const sizeColumn = async () =>
+      await page
+        .locator("tbody tr")
+        .evaluateAll((rows) =>
+          rows
+            .map((row) =>
+              [...row.querySelectorAll("td")]
+                .map((td) => td.textContent?.trim() ?? "")
+                .find((text) => ["XS", "S", "M", "L", "XL"].includes(text)),
+            )
+            .filter(Boolean),
+        );
+
+    await header.click();
+    await expect
+      .poll(sizeColumn, { timeout: 15_000 })
+      .toEqual(["XS", "M", "XL"]);
+
+    await header.click();
+    await expect
+      .poll(sizeColumn, { timeout: 15_000 })
+      .toEqual(["XL", "M", "XS"]);
+  });
+});

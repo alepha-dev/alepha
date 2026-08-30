@@ -266,6 +266,7 @@ export default {
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par la quête #$1",
   "board.table.priority": "Priorité",
+  "board.table.size": "Taille",
   "board.table.area": "Domaine",
   "board.table.created": "Créée",
   "board.table.updated": "Mise à jour",

@@ -234,6 +234,7 @@ export default {
   "board.table.linked": "Linked",
   "board.table.linked.tooltip": "Blocked by quest #$1",
   "board.table.priority": "Priority",
+  "board.table.size": "Size",
   "board.table.area": "Area",
   "board.table.created": "Created",
   "board.table.updated": "Updated",
