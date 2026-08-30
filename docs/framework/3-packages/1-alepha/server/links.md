@@ -35,7 +35,7 @@ API surface missing.
 
 ### Primitives
 
-- [`$client`](/docs/reference-primitives-$client) - Create a new client.
+- [`$client`](/docs/reference-primitives-$client) - Create a type-safe client for a controller, in this app or in another one.
 - [`$remote`](/docs/reference-primitives-$remote) - $remote is a primitive that allows you to define remote service access.
 
 ### Providers

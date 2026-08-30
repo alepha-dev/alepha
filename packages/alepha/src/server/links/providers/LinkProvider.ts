@@ -460,7 +460,14 @@ export class LinkProvider {
    * Create a virtual client that can be used to call actions.
    *
    * Use js Proxy under the hood.
+   *
+   * A scope naming a `hostname` yields a {@link RemoteVirtualClient}, which is
+   * the same surface minus `$sse` - see {@link VirtualClientFor}.
    */
+  public client<T extends object>(
+    scope: ClientScope & { hostname: string },
+  ): RemoteVirtualClient<T>;
+  public client<T extends object>(scope?: ClientScope): HttpVirtualClient<T>;
   public client<T extends object>(
     scope: ClientScope = {},
   ): HttpVirtualClient<T> {
@@ -472,6 +479,8 @@ export class LinkProvider {
 
         return this.createVirtualAction<RequestConfigSchema>(prop, scope);
       },
+      // The proxy answers every property the same way; which of the two
+      // surfaces a caller may reach is decided by the overloads above.
     });
   }
 
@@ -763,6 +772,20 @@ export class LinkProvider {
     const registry = await this.remoteRegistry(scope);
     const link = registry.links.get(name);
 
+    if (link?.kind === "sse") {
+      // Refused by name rather than attempted. A local `$sse` action works
+      // through the handler branch and returns a real `SseStream`; a remote
+      // one goes through `fetchAction`, which is a plain fetch and returns a
+      // response. Letting it through would hand back an object that answers
+      // to none of the stream's API, at the call site furthest from the cause.
+      //
+      // Deliberately scoped to the remote-registry path: `$remote` links carry
+      // no `kind`, so nothing existing can trip this.
+      throw new AlephaError(
+        `Action ${name} is a server-sent-events stream, and $client cannot open one on a remote host (${scope.hostname}). A remote call leaves as a plain fetch, which answers with a response and not a stream. Call it from a process that hosts the action, or reach the endpoint directly.`,
+      );
+    }
+
     if (!link) {
       // The same distinction the local path draws, drawn from the remote's own
       // answer: `restricted` is what that server said exists but is not yours
@@ -875,6 +898,36 @@ export type HttpVirtualClient<T> = {
     K in keyof T as T[K] extends SsePrimitive<SseConfigSchema> ? K : never
   ]: T[K] extends SsePrimitive<infer Schema> ? VirtualSse<Schema> : never;
 };
+
+/**
+ * What a client reaches on a REMOTE app: actions, and no `$sse`.
+ *
+ * Excluded rather than offered and broken. A local SSE action works through
+ * the handler branch and returns a real `SseStream`; a remote one leaves as a
+ * plain fetch, which answers with a response. A type that offers a stream and
+ * a runtime that cannot produce one is worse than the gap it papers over, so
+ * the type says the same thing `getRemoteLinkByName` says at call time.
+ */
+export type RemoteVirtualClient<T> = {
+  [
+    K in keyof T as T[K] extends ActionPrimitive<RequestConfigSchema>
+      ? K
+      : never
+  ]: T[K] extends ActionPrimitive<infer Schema> ? VirtualAction<Schema> : never;
+};
+
+/**
+ * ⚠️ Overloads rather than a conditional return type, and it has to be that
+ * way. Every caller writes `client<Controller>(scope)` with the controller
+ * given explicitly, and TypeScript has no partial type-argument inference: a
+ * second parameter would silently fall back to its default instead of being
+ * inferred from the argument, and the narrowing would never fire. Overload
+ * resolution reads the argument, so it works with an explicit `T`.
+ *
+ * A scope typed only as `ClientScope` says `hostname?: string`, which matches
+ * neither overload's remote form - it keeps the full surface, and the runtime
+ * refusal in `getRemoteLinkByName` is what catches an SSE call there.
+ */
 
 export interface VirtualAction<T extends RequestConfigSchema> extends Pick<
   ActionPrimitive<T>,
