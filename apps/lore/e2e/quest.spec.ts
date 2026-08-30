@@ -224,6 +224,117 @@ test.describe("Quest", () => {
     );
   });
 
+  /**
+   * Completing a quest with many unticked objectives.
+   *
+   * The dialog had no height cap and no scroll container, and it is
+   * `fixed top-1/2 -translate-y-1/2` — so a long waiver list grew past the
+   * viewport in both directions and took the summary editor and the confirm
+   * button with it. The quest could not be closed at all.
+   *
+   * Run at two viewport heights because the failure is a function of the
+   * viewport, not of the DOM: at 900px twenty objectives already overflow,
+   * and at 600px there is barely room for the editor, which is where a cap
+   * that merely moves the problem shows up.
+   */
+  for (const height of [900, 600]) {
+    test(`a quest with 20 unticked objectives can be completed at ${height}px`, async ({
+      page,
+    }) => {
+      test.setTimeout(90_000);
+
+      const t = Date.now();
+      await registerAndVerify(
+        page,
+        `waive${height}${t}@example.com`,
+        "Waive123!",
+      );
+      const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+        page,
+        `WV${height}${t}`.slice(0, 20),
+      );
+
+      const { id: questId, shortId } = await apiPost<{
+        id: number;
+        shortId: number;
+      }>(page, "createQuest", {
+        projectId,
+        title: `Waive${t}`,
+        description: "Twenty objectives, none of them done",
+        area: "Main",
+        priority: "medium",
+        objectives: Array.from({ length: 20 }, (_, n) => ({
+          title: `Objective number ${n + 1}`,
+          completed: false,
+        })),
+        attachments: [],
+      });
+
+      await page.evaluate(async (id) => {
+        const r = await fetch(`/api/acceptQuest/${id}`, {
+          method: "GET",
+          credentials: "include",
+        });
+        if (!r.ok) throw new Error(`accept: ${r.status} ${await r.text()}`);
+      }, questId);
+
+      await page.setViewportSize({ width: 1280, height });
+      await page.goto(`/${projectSlug}/quests/${shortId}`);
+
+      await page.getByRole("button", { name: /complete.*quest/i }).click();
+
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+      // The dialog fits. Both edges, because it is centred: an uncapped one
+      // overflows above and below at the same time, so checking only the
+      // bottom would pass on a dialog whose header had left the screen.
+      const box = await dialog.boundingBox();
+      if (!box) throw new Error("dialog did not lay out");
+      expect(box.y).toBeGreaterThanOrEqual(-1);
+      expect(box.y + box.height).toBeLessThanOrEqual(height + 1);
+
+      // The three parts that must survive whatever the objective count.
+      await expect(
+        dialog.getByText(/objective number 1$/i).first(),
+      ).toBeVisible();
+      // "Complete with summary", not "Complete without summary" — the two
+      // differ only by that suffix, so an unanchored match hits both.
+      const submit = dialog.getByRole("button", {
+        name: /complete with summary/i,
+      });
+      await expect(submit).toBeInViewport();
+
+      // And the list is what scrolls, rather than the page.
+      const scrolled = await dialog
+        .locator("div.overflow-y-auto")
+        .first()
+        .evaluate((el) => el.scrollHeight > el.clientHeight);
+      expect(scrolled).toBe(true);
+
+      // End to end: twenty reasons, then close the quest for real. The
+      // twentieth field is only reachable by scrolling the region above.
+      for (let n = 0; n < 20; n++) {
+        await dialog
+          .getByPlaceholder(/why|pourquoi/i)
+          .nth(n)
+          .fill(`Reason ${n + 1}`);
+      }
+      // The summary the button is named after. Reaching it at all is half
+      // the point: before the cap it was below the fold with the button.
+      await dialog.locator(".cm-content").click();
+      await page.keyboard.type("Closed with twenty waivers.");
+
+      await expect(submit).toBeEnabled({ timeout: 10_000 });
+      await submit.click();
+
+      await expect(page.getByText(/completed|terminé/i).first()).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(dialog).toBeHidden();
+    });
+  }
+
   test("configure + disable a reminder from Quest Settings", async ({
     page,
   }) => {
