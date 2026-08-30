@@ -1,5 +1,7 @@
 import { z } from "alepha";
 
+import { MAX_QUEST_OBJECTIVES } from "./questObjectivesLimit.ts";
+
 export const questCreateSchema = z.object({
   title: z.string(),
   // Optional — a title-only quest is allowed (sometimes the title says it
@@ -44,6 +46,10 @@ export const questCreateSchema = z.object({
    * and must not already be published.
    */
   releaseId: z.integer().optional(),
+  /**
+   * Capped at {@link MAX_QUEST_OBJECTIVES}. A flat cap is right HERE and
+   * wrong on update: a new quest has no history to be refused for.
+   */
   objectives: z
     .array(
       z.object({
@@ -51,6 +57,7 @@ export const questCreateSchema = z.object({
         completed: z.boolean(),
       }),
     )
+    .max(MAX_QUEST_OBJECTIVES)
     .default([])
     .optional(),
   attachments: z.array(z.uuid()).default([]).optional(),

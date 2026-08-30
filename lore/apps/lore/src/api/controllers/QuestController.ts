@@ -30,6 +30,10 @@ import {
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
+  exceedsObjectiveCap,
+  objectiveCapMessage,
+} from "../schemas/questObjectivesLimit.ts";
+import {
   type QuestResource,
   type QuestStatus,
   questResourceSchema,
@@ -1719,6 +1723,23 @@ export class QuestController {
             last ? ` (last change: ${last.action})` : ""
           }. Re-read the quest before writing.`,
         );
+      }
+
+      // ⚠️ The cap is "may not GROW past ten", not "may not BE over ten",
+      // and the difference is the whole reason this is a handler check
+      // rather than a `.max()` on the schema beside `createQuest`'s.
+      //
+      // Quests already exist above the cap. Renaming one sends its whole
+      // objective array back unchanged, so a flat cap would refuse an edit
+      // that adds nothing — and there would be no way to shrink it either,
+      // leaving a quest nobody can touch. Ticking an objective and
+      // completing the quest go through other endpoints entirely and never
+      // reach this.
+      if (
+        body.objectives &&
+        exceedsObjectiveCap(body.objectives.length, quest.objectives.length)
+      ) {
+        throw new BadRequestError(objectiveCapMessage(body.objectives.length));
       }
 
       // On completed quests the only field that can be revised is the
