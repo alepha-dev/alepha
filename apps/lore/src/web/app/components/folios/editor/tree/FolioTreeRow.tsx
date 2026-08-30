@@ -64,6 +64,11 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   // mistaken for a user-initiated blur-to-commit.
   const cancelledRef = useRef(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  // Holds a directory row's deferred toggle so the double click can cancel
+  // it. See `handleClick`.
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => () => clearTimeout(clickTimerRef.current), []);
   // React-documented "adjust state during render" pattern: reset the draft
   // to the CURRENT name exactly on the OFF→ON transition into rename mode,
   // not just at this row's mount. `useState(node.name)`'s initializer only
@@ -86,9 +91,43 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
     }
   }, [isRenaming]);
 
-  const handleClick = (): void => {
+  const handleClick = (e: MouseEvent): void => {
     if (isRenaming) return;
-    tree.select(node);
+    // The second click of a double click must not repeat the first one's
+    // action. `detail` is the browser's own click counter for the burst, so
+    // this costs no timer and no latency.
+    if (e.detail > 1) return;
+
+    if (!isDirectory) {
+      // A folio opens on the first click, immediately. Opening a folio is
+      // the tree's most common action and must not pay the double-click
+      // window; the row survives the navigation (same `$page`, different
+      // param), so the rename input `onDoubleClick` opens is not unmounted
+      // by it.
+      tree.select(node);
+      return;
+    }
+
+    // A directory's row-body toggle is the one action that has to wait.
+    // `onDoubleClick` fires only AFTER both clicks, so toggling on the
+    // first one would expand and collapse the disclosure on the way to the
+    // rename. Deferring by the double-click window is what keeps that from
+    // being visible.
+    //
+    // The chevron is deliberately NOT deferred: it stops propagation, so it
+    // can never be the first half of a row double click, which leaves it as
+    // the zero-latency way to open a directory.
+    clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = setTimeout(
+      () => tree.select(node),
+      DOUBLE_CLICK_WINDOW_MS,
+    );
+  };
+
+  const handleDoubleClick = (): void => {
+    if (isRenaming) return;
+    clearTimeout(clickTimerRef.current);
+    tree.beginRename(node.id);
   };
 
   const handleToggle = (e: MouseEvent): void => {
@@ -182,6 +221,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
             onDrop={handleDrop}
             onDragEnd={handleDragEnd}
             onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
             className={cn(
               "hover:bg-muted/60 relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm select-none",
               isSelected && "bg-muted font-medium",
@@ -203,6 +243,10 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
           <button
             type="button"
             onClick={handleToggle}
+            // `handleToggle` stops the click, but `dblclick` is a separate
+            // event that would still reach the row and open a rename nobody
+            // asked for on a fast double toggle.
+            onDoubleClick={(e) => e.stopPropagation()}
             className="flex size-3.5 shrink-0 items-center justify-center"
           >
             {isCollapsed ? (
@@ -228,6 +272,10 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
             onKeyDown={handleRenameKeyDown}
             onBlur={commit}
             onClick={(e) => e.stopPropagation()}
+            // Double clicking a word to select it is a normal thing to do in
+            // a text input, and must not read as a rename request on the row
+            // underneath.
+            onDoubleClick={(e) => e.stopPropagation()}
             className="border-primary bg-background min-w-0 flex-1 rounded border px-1 text-sm outline-none"
           />
         ) : (
@@ -245,6 +293,17 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
     </ContextMenu>
   );
 };
+
+/**
+ * How long a directory row's toggle waits to see whether a second click is
+ * coming. There is no way to read the platform's real double-click interval
+ * from the web, so this is the conventional 250ms every file tree uses. Too
+ * short and a slow double click expands the directory before renaming it;
+ * too long and clicking a directory feels broken.
+ *
+ * Only directory ROWS pay it. See `handleClick`.
+ */
+const DOUBLE_CLICK_WINDOW_MS = 250;
 
 /**
  * Whether a drag carries OS files rather than one of this tree's own rows.
