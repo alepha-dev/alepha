@@ -89,6 +89,10 @@ export class FakeD1 implements D1Database {
     (D1SessionBookmark & {}) | D1SessionConstraint | undefined
   > = [];
   /**
+   * The statements handed to each `batch` call, in arrival order.
+   */
+  public readonly batched: D1PreparedStatement[][] = [];
+  /**
    * Flip to make subsequent calls hang, simulating a primary that stalls.
    */
   public stalling = false;
@@ -111,7 +115,23 @@ export class FakeD1 implements D1Database {
     return new FakeStatement(this.settle, (bound) => this.executed.push(bound));
   }
 
-  batch<T>(): Promise<T[]> {
+  /**
+   * Type-checks its argument, the way the real binding does.
+   *
+   * `workerd` accepts only prepared statements this binding produced; hand it
+   * a look-alike and it raises rather than running anything. Modelled here
+   * because a fake that accepted any shape is what let the timeout wrapper
+   * forward its own wrapper objects for as long as it did.
+   */
+  batch<T>(statements: D1PreparedStatement[] = []): Promise<T[]> {
+    for (const statement of statements) {
+      if (!(statement instanceof FakeStatement)) {
+        throw new TypeError(
+          "batch() expects prepared statements produced by this binding",
+        );
+      }
+    }
+    this.batched.push(statements);
     return this.settle();
   }
 
@@ -133,7 +153,8 @@ export class FakeD1 implements D1Database {
     this.sessions.push(constraintOrBookmark);
     return {
       prepare: (query: string) => this.prepare(query),
-      batch: <T>() => this.batch<T>(),
+      batch: <T>(statements: D1PreparedStatement[]) =>
+        this.batch<T>(statements),
       getBookmark: () => this.bookmark,
     };
   };
