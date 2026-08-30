@@ -19,9 +19,9 @@ import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ReleaseChangelogPanel from "./ReleaseChangelogPanel.tsx";
+import ReleaseContents from "./ReleaseContents.tsx";
 import ReleaseDetailHero from "./ReleaseDetailHero.tsx";
 import ReleaseEditForm from "./ReleaseEditForm.tsx";
-import ReleaseEpicProgressList from "./ReleaseEpicProgressList.tsx";
 import ReleaseSaveToFolioDialog from "./ReleaseSaveToFolioDialog.tsx";
 
 export interface ProjectReleaseProps {
@@ -171,7 +171,11 @@ const ProjectRelease = (props: ProjectReleaseProps) => {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-5 py-6 lg:px-7">
       <ReleaseDetailHero release={release} onChanged={reload} />
 
-      <ReleaseEpicProgressList releaseId={release.id} />
+      <ReleaseContents
+        releaseId={release.id}
+        readOnly={published}
+        onChanged={() => void reload()}
+      />
 
       {/* Editing is offered only while the release is open. A published one
           reads as a record: the server refuses the write anyway, and an

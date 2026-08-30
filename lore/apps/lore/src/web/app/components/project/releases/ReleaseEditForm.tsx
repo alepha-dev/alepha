@@ -3,15 +3,18 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
+import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import { Save } from "lucide-react";
 import { useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { Release } from "@/api/entities/releases.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ReleaseEditFormProps {
@@ -23,6 +26,8 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const api = useClient<ReleaseController>();
+  const dialog = useDialog();
+  const router = useRouter<AppRouter>();
   const [tag, setTag] = useState(props.release.tag ?? "");
   const [title, setTitle] = useState(props.release.title);
   const [description, setDescription] = useState(props.release.description);
@@ -40,12 +45,40 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
     targetDate !== (props.release.targetDate?.slice(0, 10) ?? "");
 
   const handleSave = async () => {
+    const currentTag = props.release.tag ?? "";
+    const nextTag = tag.trim();
+
+    // ⚠️ The confirmation gates the API call from INSIDE the handler, and
+    // cancelling puts the old tag back — otherwise the field would go on
+    // showing a retag that never happened.
+    //
+    // Inside the handler rather than on the Save button, because only some
+    // edits move the URL: changing the description or the target date leaves
+    // it alone, and the button cannot know which edit this was. Copied from
+    // `ProjectUpdate.tsx`, which solved this exact problem for a project's
+    // title-derived slug.
+    if (nextTag && nextTag !== currentTag) {
+      const confirmed = await dialog.confirm({
+        title: String(tr("release.retag.title")),
+        description: String(
+          tr("release.retag.description", { args: [currentTag, nextTag] }),
+        ),
+        confirmLabel: String(tr("release.retag.confirm")),
+        cancelLabel: String(tr("common.cancel")),
+        destructive: true,
+      });
+      if (!confirmed) {
+        setTag(currentTag);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const updated = await api.updateRelease({
         params: { id: props.release.id },
         body: {
-          ...(tag ? { tag } : {}),
+          ...(nextTag ? { tag: nextTag } : {}),
           title,
           description,
           // `null` clears the estimate; the server distinguishes it from an
@@ -55,6 +88,13 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
       });
       props.onUpdated(updated);
       toaster.success(tr("release.detail.saved"));
+
+      // The URL this page is sitting on went stale the moment that resolved.
+      if (updated.tag && updated.tag !== currentTag) {
+        await router.push("projectRelease", {
+          params: { releaseTag: updated.tag },
+        });
+      }
     } catch {
       // The fields keep what was typed: the save failed, so the form is
       // still the unsaved truth and `dirty` must stay true.
