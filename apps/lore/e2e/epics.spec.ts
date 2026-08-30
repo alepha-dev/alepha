@@ -533,6 +533,12 @@ test.describe("Epics — the list", () => {
       await page.getByRole("link", { name: empty }).click();
       await page.getByRole("button", { name: "Begin the Epic" }).click();
 
+      // Begin asks first now (#1594): it releases the epic's quests into the
+      // backlog, so it changes what other people see. The dialog's confirm
+      // button carries the same label as the page button that opened it, on
+      // purpose, so `.last()` is what distinguishes them.
+      await page.getByRole("button", { name: "Begin the Epic" }).last().click();
+
       await expect(epicsBadge(page)).toHaveText("2", { timeout: 15_000 });
     });
   });
@@ -844,6 +850,77 @@ test.describe("Epics — a member, not just the owner", () => {
     } finally {
       await member.ctx.close();
     }
+  });
+});
+
+/**
+ * Beginning an epic from the list's row menu.
+ *
+ * The confirmation is the point, not decoration: beginning an epic releases
+ * its quests into the project backlog (`EpicVisibilityService`), so it
+ * changes what other people see on a page they are not looking at. The test
+ * therefore drives the cancel path too, since a confirm that cannot say no
+ * is a confirm that is not doing anything.
+ */
+test.describe("Epics — beginning from the list", () => {
+  test("offers Begin on a planned epic only, and asks first", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `epicbegin${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Eb${t}`.slice(0, 20),
+    );
+    await setProjectFeature(page, projectId, "epics", true);
+
+    const title = `Begin${t}`;
+    await page.evaluate(
+      async ({ projectId, title }) => {
+        const r = await fetch(`/api/createEpic/${projectId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ title }),
+        });
+        if (!r.ok) throw new Error(`createEpic ${r.status} ${await r.text()}`);
+      },
+      { projectId, title },
+    );
+
+    await page.goto(`/${slug}/epics`);
+    const row = page.locator("tbody tr", { hasText: title });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(row).toContainText("Planned");
+
+    const openMenu = async () => {
+      await row.getByRole("button").last().click();
+    };
+
+    await test.step("cancelling leaves the epic planned", async () => {
+      await openMenu();
+      await page.getByRole("menuitem", { name: "Begin the Epic" }).click();
+      await page.getByRole("button", { name: "Cancel" }).click();
+      await expect(row).toContainText("Planned");
+    });
+
+    await test.step("confirming begins it and the chip repaints", async () => {
+      await openMenu();
+      await page.getByRole("menuitem", { name: "Begin the Epic" }).click();
+      await page.getByRole("button", { name: "Begin the Epic" }).last().click();
+
+      // `refresh()` from the row-action context is what repaints this.
+      await expect(row).toContainText("Active", { timeout: 15_000 });
+    });
+
+    await test.step("and the entry is gone now that it has begun", async () => {
+      await openMenu();
+      await expect(
+        page.getByRole("menuitem", { name: "Begin the Epic" }),
+      ).toHaveCount(0);
+    });
   });
 });
 
