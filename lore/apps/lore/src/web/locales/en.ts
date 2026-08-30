@@ -572,7 +572,7 @@ export default {
     "A drag & drop board to move quests between New, In Progress and Completed.",
   "project.settings.kanban.tagColors.title": "Tag colours",
   "project.settings.kanban.tagColors.description":
-    "Give each tag a colour so board cards can be read at a glance. Tags with no colour stay neutral.",
+    "Give each tag a colour so board cards and quest pages can be read at a glance. Tags with no colour stay neutral.",
   "project.settings.kanban.tagColors.empty":
     "No tags yet. Add one to a quest and it will show up here.",
   "project.settings.kanban.defaultSurface.title": "Open on the board",

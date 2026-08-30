@@ -27,30 +27,35 @@ export const AREA_DOT_CLASS: Record<PaletteColor, string> = {
 export const AREA_DOT_FALLBACK = "bg-muted-foreground/50";
 
 /**
- * The same palette as a filled chip, for tag labels on a board card.
+ * The same palette as the hue half of a `Badge variant="tint"`, for tag
+ * chips. Pass it as that badge's `className`, never on a bare span.
  *
  * A separate table rather than a suffix on `AREA_DOT_CLASS`, for the same
  * Tailwind reason: these are the literal strings the scanner has to find.
- * Border and text are tinted together so a chip reads as a colour at a
- * glance without shouting over the card's title.
+ *
+ * ⚠️ Fill and border only. The label stays body text, which is the rule
+ * `tint` states and gives a reason for: at chip size, coloured text on a
+ * coloured ground is the pairing that fails contrast first. These used to
+ * tint the text instead of the border, on a bare span, which is what made
+ * the board's tags a third format of their own (quest #1638).
  */
 export const TAG_CHIP_CLASS: Record<PaletteColor, string> = {
-  slate: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
-  blue: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
-  green: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  amber: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  red: "bg-red-500/15 text-red-700 dark:text-red-300",
-  violet: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
-  cyan: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
-  pink: "bg-pink-500/15 text-pink-700 dark:text-pink-300",
+  slate: "border-slate-500/40 bg-slate-500/15",
+  blue: "border-blue-500/40 bg-blue-500/15",
+  green: "border-emerald-500/40 bg-emerald-500/15",
+  amber: "border-amber-500/40 bg-amber-500/15",
+  red: "border-red-500/40 bg-red-500/15",
+  violet: "border-violet-500/40 bg-violet-500/15",
+  cyan: "border-cyan-500/40 bg-cyan-500/15",
+  pink: "border-pink-500/40 bg-pink-500/15",
 };
 
 /**
  * A tag the project has picked no colour for. Neutral rather than hidden:
  * the label still carries the word, it just does not claim a meaning the
- * owner has not assigned.
+ * owner has not assigned. Identical to the badge's own `neutral` tone.
  */
-export const TAG_CHIP_FALLBACK = "bg-muted text-muted-foreground";
+export const TAG_CHIP_FALLBACK = "border-border bg-muted text-muted-foreground";
 
 export class AreaDotColor {
   protected readonly byName: Map<string, string>;
