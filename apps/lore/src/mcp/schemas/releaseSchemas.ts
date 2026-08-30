@@ -15,7 +15,6 @@ export const releaseListResultSchema = z.object({
       number: z.integer(),
       title: z.string(),
       description: z.string(),
-      questCount: z.integer(),
       closedAt: z.datetime().optional(),
       createdAt: z.datetime(),
     }),
@@ -29,8 +28,9 @@ export const releaseListResultSchema = z.object({
 export const releaseStartParamsSchema = projectParamsSchema.extend({
   title: z
     .string()
-    .describe("Release title (optional, defaults to 'Release N' if omitted)")
-    .optional(),
+    .describe(
+      "Release title. Required: the fantasy-name generator that used to fill this in is gone, because a release is called `0.28.0`.",
+    ),
   description: z.string().describe("Release description").optional(),
 });
 

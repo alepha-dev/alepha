@@ -183,8 +183,7 @@ test.describe("Epics — the backlog gate", () => {
       // of scope"; a planned epic means "not released yet". Both hide a quest
       // from the backlog, and neither may imply the other.
       // `shelveQuest` has no body schema, so it is GET at the canonical
-      // /api/shelveQuest/:id — the same shape releases.spec.ts drives for
-      // `acceptQuest`.
+      // /api/shelveQuest/:id.
       await page.evaluate(async (questId) => {
         const r = await fetch(`/api/shelveQuest/${questId}`, {
           method: "GET",

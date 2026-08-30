@@ -1,5 +1,4 @@
 import { $inject, z } from "alepha";
-import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { OwnedResourceProvider, $secure } from "alepha/security";
@@ -11,7 +10,6 @@ import {
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
-import type { Project } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { type Release, releases } from "../entities/releases.ts";
 import {
@@ -26,18 +24,16 @@ export class ReleaseController {
   quests = $repository(quests);
   dt = $inject(DateTimeProvider);
   limits = $inject(ProjectLimits);
-  crypto = $inject(CryptoProvider);
   owned = $inject(OwnedResourceProvider);
 
   /**
    * The four gates this controller needs, and the first place in the app
    * where both variants sit on one class.
    *
-   * Member for reading a release or the backlog; owner for starting,
-   * closing, editing and deleting one - a release is part of a project's
-   * configuration, not of the work. `owner: true` drops the `via` join
-   * rather than adding a second check, which is how `$owns` has always
-   * expressed owner-only.
+   * Member for reading a release; owner for creating, closing, editing and
+   * deleting one - a release is part of a project's configuration, not of the
+   * work. `owner: true` drops the `via` join rather than adding a second
+   * check, which is how `$owns` has always expressed owner-only.
    *
    * Declared above the actions: `use: [this.ownsRelease()]` is a field
    * initializer reading another field.
@@ -58,103 +54,8 @@ export class ReleaseController {
     });
 
   /**
-   * Name parts for the release-name generator. Two lists rather than one
-   * table of finished names: 20 x 20 gives 400 combinations from 40 lines.
-   */
-  protected readonly NAME_PREFIXES = [
-    "The Fall of",
-    "Rise of the",
-    "Whispers of",
-    "The Siege of",
-    "Beyond the",
-    "Echoes of",
-    "The Last",
-    "Dawn of",
-    "Shadows over",
-    "The Trials of",
-    "Wrath of the",
-    "Ashes of",
-    "The Sundering of",
-    "Secrets of the",
-    "Into the",
-    "The Awakening of",
-    "Curse of the",
-    "March on",
-    "Beneath the",
-    "Legacy of the",
-  ];
-
-  protected readonly NAME_SUBJECTS = [
-    "Stormhold",
-    "Iron Citadel",
-    "Forgotten Realm",
-    "Ancient Grove",
-    "Crimson Keep",
-    "Shattered Throne",
-    "Obsidian Spire",
-    "Hollow Mountain",
-    "Ember Wastes",
-    "Frozen Reach",
-    "Twilight Depths",
-    "Verdant Wilds",
-    "Sunken Temple",
-    "Ashen Lands",
-    "Crystal Sanctum",
-    "Dragonspine",
-    "Thornwall",
-    "Moonlit Ruins",
-    "Gilded Tomb",
-    "Wraithwood",
-  ];
-
-  /**
-   * Parse a minimal subset of ISO 8601 duration strings (PnY, PnM, PnW, PnD,
-   * PT...) into milliseconds. Returns `null` for unparseable input. Months and
-   * years use approximate calendar lengths (30/365 days) - releases don't
-   * need calendar accuracy, only "roughly a month".
-   */
-  protected parseIsoDurationMs(iso: string): number | null {
-    const match = iso.match(
-      /^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/,
-    );
-    if (!match) return null;
-    const [, y, mo, w, d, h, mi, s] = match;
-    const Y = 365 * 24 * 60 * 60 * 1000;
-    const MO = 30 * 24 * 60 * 60 * 1000;
-    const W = 7 * 24 * 60 * 60 * 1000;
-    const D = 24 * 60 * 60 * 1000;
-    const H = 60 * 60 * 1000;
-    const MI = 60 * 1000;
-    const S = 1000;
-    let total = 0;
-    if (y) total += Number(y) * Y;
-    if (mo) total += Number(mo) * MO;
-    if (w) total += Number(w) * W;
-    if (d) total += Number(d) * D;
-    if (h) total += Number(h) * H;
-    if (mi) total += Number(mi) * MI;
-    if (s) total += Number(s) * S;
-    return total > 0 ? total : null;
-  }
-
-  /**
-   * A random flavour name for a release the author did not name.
-   *
-   * Drawn through `CryptoProvider.randomInt` rather than `Math.random()`, so
-   * a test can substitute the provider and pin the name instead of asserting
-   * "it looks like two words".
-   */
-  protected randomReleaseName(): string {
-    const prefix =
-      this.NAME_PREFIXES[this.crypto.randomInt(this.NAME_PREFIXES.length)];
-    const subject =
-      this.NAME_SUBJECTS[this.crypto.randomInt(this.NAME_SUBJECTS.length)];
-    return `${prefix} ${subject}`;
-  }
-
-  /**
    * Per-project sequence for `releases.number`. Replaces the old MAX+1
-   * lookup with an atomic counter — race-safe even under concurrent starts.
+   * lookup with an atomic counter — race-safe even under concurrent creates.
    *
    * `$sequence` keys its counter on the property name, not the table, so a
    * rename orphans the old counter row and restarts at 1. `chapterNumber`
@@ -174,44 +75,30 @@ export class ReleaseController {
       $secure({ permissions: ["quest:read"] }),
       this.ownsProject(),
       // `noCache` rather than a `maxAge` window: this list changes the
-      // instant someone starts, closes or deletes a release, and a
+      // instant someone creates, closes or deletes a release, and a
       // freshness window made those mutations invisible to the browser for
-      // its whole duration — start a release and the page kept showing
-      // "nothing is recording" until the entry expired. `no-cache` still
-      // lets the ETag answer 304, so revalidation stays cheap; it only
-      // forbids serving the body without asking.
+      // its whole duration. `no-cache` still lets the ETag answer 304, so
+      // revalidation stays cheap; it only forbids serving the body without
+      // asking.
       $etag({ control: { private: true, noCache: true } }),
     ],
     schema: {
       params: z.object({
         projectId: z.integer(),
       }),
-      response: z.array(
-        releases.schema.extend({
-          questCount: z.integer(),
-        }),
-      ),
+      response: z.array(releases.schema),
     },
     handler: async ({ params }) => {
-      const allReleases = await this.releases.findMany({
+      return await this.releases.findMany({
         where: {
           projectId: { eq: params.projectId },
         },
         orderBy: [{ column: "number", direction: "desc" }],
       });
-
-      const counts = await Promise.all(
-        allReleases.map((ch) => this.countCompletedInWindow(ch)),
-      );
-
-      return allReleases.map((ch, i) => ({
-        ...ch,
-        questCount: counts[i],
-      }));
     },
   });
 
-  startRelease = $action({
+  createRelease = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
       $secure({ permissions: ["quest:create"] }),
@@ -223,28 +110,24 @@ export class ReleaseController {
         projectId: z.integer(),
       }),
       body: z.object({
-        title: z.string().min(1).max(100).optional(),
+        /**
+         * Required, unlike the release it replaced. The fantasy-name
+         * generator that filled this in is gone: a release is called
+         * `0.28.0`, and no generator can guess that.
+         */
+        title: z.string().min(1).max(100),
         description: z.string().meta({ size: "rich" }).optional(),
         tags: z.array(z.string()).optional(),
       }),
       response: releases.schema,
     },
     handler: async ({ params, body }) => {
-      const active = await this.releases.findMany({
-        where: {
-          projectId: { eq: params.projectId },
-          closedAt: { isNull: true },
-        },
-      });
-
-      if (active.length > 0) {
-        throw new BadRequestError(
-          "An active release already exists. Close it before starting a new one.",
-        );
-      }
-
-      // Closed releases count too: the cap bounds the table, and the
-      // one-active rule above already bounds what is open.
+      // There is deliberately no "one open at a time" guard: `0.28.0`,
+      // `1.0.0` and `1.1.0` are meant to coexist, and a hotfix is a new
+      // release beside the one it patches rather than a state on it.
+      //
+      // That makes this cap the ONLY thing bounding the table, so it matters
+      // more than it did, not less.
       const maxReleasesPerProject = await this.limits.maxReleasesPerProject();
       const releaseCount = await this.releases.count({
         projectId: { eq: params.projectId },
@@ -255,21 +138,15 @@ export class ReleaseController {
         );
       }
 
-      // After the caps, so a refused start does not burn a number.
+      // After the cap, so a refused create does not burn a number.
       const number = await this.releaseNumber.next(String(params.projectId));
-
-      // The gate already read this row; `authority()` hands it back rather
-      // than issuing the same query a second time.
-      const project = this.owned.authority<Project>();
-      const closesAt = this.computeClosesAt(project.milestoneDuration);
 
       return await this.releases.create({
         projectId: params.projectId,
         number,
-        title: body.title || this.randomReleaseName(),
+        title: body.title,
         description: body.description ?? "",
         tags: body.tags ?? [],
-        closesAt,
       });
     },
   });
@@ -342,15 +219,12 @@ export class ReleaseController {
       response: okSchema,
     },
     handler: async ({ params }) => {
-      const release = this.owned.get<Release>();
-
-      const count = await this.countCompletedInWindow(release);
-      if (count > 0) {
-        throw new BadRequestError(
-          "Cannot delete a release that recorded completed quests.",
-        );
-      }
-
+      // Deleting is deliberately cheap. The old guard refused whenever the
+      // release's time window had caught any completed quest, which meant a
+      // mistyped release locked itself the moment anything completed anywhere
+      // in the project. Membership is an assignment now and
+      // `quests.releaseId` is `ON DELETE SET NULL`, so nothing is lost here
+      // but the row itself.
       await this.releases.deleteById(params.id);
       return { ok: true };
     },
@@ -361,8 +235,8 @@ export class ReleaseController {
       $secure({ permissions: ["quest:read"] }),
       this.ownsRelease(),
       // Same reasoning as `getReleases`: an open release's changelog is
-      // recomputed from completed quests, so a freshness window hides work
-      // that just landed. ETag-only revalidation keeps it cheap.
+      // recomputed from its completed quests, so a freshness window hides
+      // work that just landed. ETag-only revalidation keeps it cheap.
       $etag({ control: { private: true, noCache: true } }),
     ],
     schema: {
@@ -388,12 +262,11 @@ export class ReleaseController {
     handler: async () => {
       const release = this.owned.get<Release>();
 
-      const completed = await this.queryCompletedInWindow(release);
+      const completed = await this.queryCompleted(release);
       const { areas, stats } = this.summarize(completed);
 
       // Closed releases return the frozen markdown snapshot when there is
-      // one; `areas` is recomputed either way, so a post-close quest edit
-      // shows up in the rows but not in the downloadable `.md`.
+      // one; `areas` is recomputed either way.
       if (release.closedAt && release.changelog) {
         return { markdown: release.changelog, release, areas, stats };
       }
@@ -404,97 +277,14 @@ export class ReleaseController {
   });
 
   /**
-   * How many quests have been completed since the last release closed —
-   * work that is landing in no changelog at all because nothing is
-   * recording. Drives the "nothing is recording" banner, which needs to say
-   * what that costs rather than just that it is true.
-   *
-   * Counts from the whole project when no release has ever closed, and
-   * returns 0 while a release is open (that work is being recorded).
-   */
-  getReleaseBacklog = $action({
-    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
-    schema: {
-      params: z.object({
-        projectId: z.integer(),
-      }),
-      response: z.object({
-        count: z.integer(),
-        /**
-         * `closedAt` of the last closed release, when there is one.
-         */
-        since: z.datetime().optional(),
-        lastNumber: z.integer().optional(),
-        lastTitle: z.string().optional(),
-      }),
-    },
-    handler: async ({ params }) => {
-      const open = await this.releases.findMany({
-        where: {
-          projectId: { eq: params.projectId },
-          closedAt: { isNull: true },
-        },
-        limit: 1,
-      });
-
-      const [last] = await this.releases.findMany({
-        where: {
-          projectId: { eq: params.projectId },
-          closedAt: { isNotNull: true },
-        },
-        orderBy: [{ column: "closedAt", direction: "desc" }],
-        limit: 1,
-      });
-
-      // A release is recording — nothing is falling through the cracks.
-      if (open.length > 0) {
-        return {
-          count: 0,
-          ...(last?.closedAt ? { since: last.closedAt } : {}),
-          ...(last ? { lastNumber: last.number, lastTitle: last.title } : {}),
-        };
-      }
-
-      const count = await this.quests.count({
-        projectId: { eq: params.projectId },
-        completedAt: last?.closedAt
-          ? { isNotNull: true, gt: last.closedAt }
-          : { isNotNull: true },
-      });
-
-      return {
-        count,
-        ...(last?.closedAt ? { since: last.closedAt } : {}),
-        ...(last ? { lastNumber: last.number, lastTitle: last.title } : {}),
-      };
-    },
-  });
-
-  /**
-   * Deliberately ungated beyond the permission: it reads no project data and
-   * touches no row, so there is no resource for `$ownsProject` to name.
-   */
-  getRandomReleaseName = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
-    schema: {
-      response: z.object({ title: z.string() }),
-    },
-    handler: async () => ({ title: this.randomReleaseName() }),
-  });
-
-  /**
-   * Render the changelog markdown and persist it on the release row,
-   * along with `closedAt` and any caller-supplied metadata. Shared by
-   * the manual `closeRelease` action and the auto-close cron job.
+   * Render the changelog markdown and persist it on the release row, along
+   * with `closedAt` and any caller-supplied metadata.
    */
   async finalizeRelease(
     release: Release,
     overrides: { title?: string; tags?: string[] } = {},
   ): Promise<Release> {
-    const completed = await this.queryCompletedInWindow({
-      ...release,
-      closedAt: release.closedAt ?? this.dt.nowISOString(),
-    });
+    const completed = await this.queryCompleted(release);
     const { markdown } = this.renderChangelog(
       {
         ...release,
@@ -513,42 +303,22 @@ export class ReleaseController {
   }
 
   /**
-   * Find all open releases whose `closesAt` is in the past — used by the
-   * auto-close cron.
+   * The completed quests attached to a release.
+   *
+   * This replaced `queryCompletedInWindow`, which asked
+   * `completedAt BETWEEN release.createdAt AND (closedAt ?? now)` — a time
+   * window, i.e. `git log --since --until` grouped by area. Membership is an
+   * assignment now, so the question is which quests were put in the release,
+   * not which happened to finish while it was open.
    */
-  async findExpiredReleases(now: string): Promise<Release[]> {
-    return await this.releases.findMany({
-      where: {
-        closedAt: { isNull: true },
-        closesAt: { isNotNull: true, lte: now },
-      },
-    });
-  }
-
-  protected computeClosesAt(duration?: string): string | undefined {
-    if (!duration) return undefined;
-    const ms = this.parseIsoDurationMs(duration);
-    if (ms == null || ms <= 0) return undefined;
-    return new Date(this.dt.nowMillis() + ms).toISOString();
-  }
-
-  protected async queryCompletedInWindow(release: Release): Promise<Quest[]> {
-    const upper = release.closedAt ?? this.dt.nowISOString();
+  protected async queryCompleted(release: Release): Promise<Quest[]> {
     return await this.quests.findMany({
       where: {
         projectId: { eq: release.projectId },
-        completedAt: {
-          isNotNull: true,
-          gte: release.createdAt,
-          lte: upper,
-        },
+        releaseId: { eq: release.id },
+        completedAt: { isNotNull: true },
       },
     });
-  }
-
-  protected async countCompletedInWindow(release: Release): Promise<number> {
-    const completed = await this.queryCompletedInWindow(release);
-    return completed.length;
   }
 
   /**

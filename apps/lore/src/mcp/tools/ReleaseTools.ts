@@ -91,7 +91,7 @@ export class ReleaseTools {
    */
   milestone_list = $tool({
     description:
-      "List all releases for a project, both active (open) and closed. Releases are time-boxed cycles that capture completed quests. Sorted by release number, newest first. Each entry includes id, number, title, description, questCount, createdAt, and closedAt (undefined for the active release).",
+      "List all releases for a project, open and closed. A release HOLDS the quests assigned to it - it is not a time window, and nothing is attached to it by having been completed while it was open. Several releases are open at once, and that is the normal state. Sorted by release number, newest first. Each entry includes id, number, title, description, createdAt, and closedAt (undefined while the release is open).",
     title: "List releases",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -114,7 +114,6 @@ export class ReleaseTools {
           number: ch.number,
           title: ch.title,
           description: ch.description,
-          questCount: ch.questCount,
           closedAt: ch.closedAt,
           createdAt: ch.createdAt,
         })),
@@ -123,12 +122,12 @@ export class ReleaseTools {
   });
 
   /**
-   * Start a new release.
+   * Create a new release.
    */
   milestone_start = $tool({
     description:
-      "Start a new release for a project. Only one release can be active at a time. Quests completed while a release is active are automatically attached to it.",
-    title: "Start release",
+      "Create a new release for a project. Any number of releases may be open at once - `0.28.0` and `1.0.0` coexist, and a hotfix is a new release beside the one it patches rather than a state on it. Nothing is attached automatically: a quest is in a release because it was put there.",
+    title: "Create release",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
       params: releaseStartParamsSchema,
@@ -140,7 +139,7 @@ export class ReleaseTools {
         params.project_name,
       );
 
-      const release = await this.releaseController.startRelease({
+      const release = await this.releaseController.createRelease({
         params: { projectId },
         body: {
           title: params.title,
@@ -158,11 +157,11 @@ export class ReleaseTools {
   });
 
   /**
-   * Close an active release.
+   * Close an open release.
    */
   milestone_close = $tool({
     description:
-      "Close an active release. No more quests will be attached to it after closing.",
+      "Close an open release, freezing its changelog. Nothing closes on a timer, so this is the only way a release closes.",
     title: "Close release",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -190,7 +189,7 @@ export class ReleaseTools {
    */
   milestone_changelog = $tool({
     description:
-      "Generate a Markdown changelog for a release, listing all completed quests grouped by area.",
+      "Generate a Markdown changelog for a release, listing the completed quests ATTACHED to it, grouped by area. A frozen snapshot once the release is closed.",
     title: "Release changelog",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {

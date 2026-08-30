@@ -430,7 +430,6 @@ export class ProjectController {
         title: projectTitleSchema.optional(),
         icon: z.uuid().nullable().optional(),
         features: projectFeaturesSchema.partial().optional(),
-        milestoneDuration: z.string().nullable().optional(),
         preferredLanguage: z.string().max(8).nullable().optional(),
         // Blights retention window in days (Quest #90). `null` clears the
         // override → the purge cron falls back to the global 30-day default.
@@ -476,10 +475,6 @@ export class ProjectController {
           await this.assertIconBelongsToUser(body.icon, user);
           project.icon = body.icon;
         }
-      }
-
-      if ("milestoneDuration" in body) {
-        project.milestoneDuration = body.milestoneDuration ?? undefined;
       }
 
       if ("retentionDays" in body) {

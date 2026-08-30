@@ -33,7 +33,6 @@ import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
-import { ReleaseJobs } from "./jobs/ReleaseJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
@@ -108,7 +107,6 @@ export const LoreApi = $module({
     FolioLinkService,
     InvitationService,
     InvitationJobs,
-    ReleaseJobs,
     QuestJobs,
     BlightJobs,
     SigilJobs,

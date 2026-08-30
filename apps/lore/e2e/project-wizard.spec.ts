@@ -39,12 +39,12 @@ test.describe("Project wizard — feature toggles", () => {
 
     // Step 3 — modules. Toggle Kanban + Releases OFF.
     // ModuleToggle renders as <button aria-pressed=…> with the label
-    // ("Kanban — Visual board" / "Releases — Sprints") inside.
+    // ("Kanban - Visual board" / "Releases - Shipping") inside.
     const kanbanToggle = page
       .getByRole("button", { name: /kanban.*visual board|kanban.*tableau/i })
       .first();
     const releasesToggle = page
-      .getByRole("button", { name: /releases.*sprints|chapitres.*cycles/i })
+      .getByRole("button", { name: /releases.*shipping|versions.*livraisons/i })
       .first();
     await expect(kanbanToggle).toHaveAttribute("aria-pressed", "true");
     await expect(releasesToggle).toHaveAttribute("aria-pressed", "true");

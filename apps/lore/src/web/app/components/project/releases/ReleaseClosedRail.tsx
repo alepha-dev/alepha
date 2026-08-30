@@ -2,13 +2,12 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { ChevronRight, History, Trash } from "lucide-react";
 
+import type { Release } from "@/api/entities/releases.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { ReleaseWithCount } from "./ProjectReleases.tsx";
-
 export interface ReleaseClosedRailProps {
-  releases: ReleaseWithCount[];
-  onOpenDetail: (release: ReleaseWithCount) => void;
+  releases: Release[];
+  onOpenDetail: (release: Release) => void;
   onDelete: (id: number) => void;
 }
 
@@ -63,7 +62,6 @@ const ReleaseClosedRail = (props: ReleaseClosedRailProps) => {
                 <div className="text-muted-foreground mt-0.5 text-[11.5px]">
                   {tr("release.ledger.closed.meta", {
                     args: [
-                      String(release.questCount),
                       String(
                         release.closedAt
                           ? i18n.l(release.closedAt, { date: "ll" })
@@ -73,23 +71,23 @@ const ReleaseClosedRail = (props: ReleaseClosedRailProps) => {
                   })}
                 </div>
               </div>
-              {/* Only empty releases can be deleted — the API refuses any
-                  that recorded quests, so offering the button would be a
-                  guaranteed error toast. */}
-              {release.questCount === 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive size-7 shrink-0 p-0 opacity-0 transition-opacity group-hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    props.onDelete(release.id);
-                  }}
-                  aria-label={String(tr("release.delete"))}
-                >
-                  <Trash className="size-3.5" />
-                </Button>
-              )}
+              {/* Offered on every row now. The button used to be hidden
+                  unless the release had caught no quests, because the API
+                  refused to delete one whose time window had recorded any.
+                  Deleting is cheap again: `quests.releaseId` is
+                  `ON DELETE SET NULL`, so nothing is lost but the row. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive size-7 shrink-0 p-0 opacity-0 transition-opacity group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.onDelete(release.id);
+                }}
+                aria-label={String(tr("release.delete"))}
+              >
+                <Trash className="size-3.5" />
+              </Button>
               <ChevronRight className="text-muted-foreground size-3.5 shrink-0" />
             </div>
           ))

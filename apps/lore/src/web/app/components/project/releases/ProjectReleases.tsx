@@ -18,7 +18,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Dices, Play } from "lucide-react";
+import { Library, Play } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { FolioController } from "@/api/controllers/FolioController.ts";
@@ -36,13 +36,10 @@ import ProjectReleasesCloseModal from "./ProjectReleasesCloseModal.tsx";
 import ProjectReleasesDetail from "./ProjectReleasesDetail.tsx";
 import ReleaseChangelogPanel from "./ReleaseChangelogPanel.tsx";
 import ReleaseClosedRail from "./ReleaseClosedRail.tsx";
-import ReleaseEmptyBanner from "./ReleaseEmptyBanner.tsx";
 import ReleaseLedgerHero from "./ReleaseLedgerHero.tsx";
 import ReleaseOpenQuestsRail from "./ReleaseOpenQuestsRail.tsx";
 import ReleaseSaveToFolioDialog from "./ReleaseSaveToFolioDialog.tsx";
 import ReleaseTagInput from "./ReleaseTagInput.tsx";
-
-export type ReleaseWithCount = Release & { questCount: number };
 
 interface ChangelogState {
   markdown: string;
@@ -50,22 +47,20 @@ interface ChangelogState {
   stats: { questCount: number; areaCount: number; contributorCount: number };
 }
 
-interface BacklogState {
-  count: number;
-  since?: string;
-  lastNumber?: number;
-  lastTitle?: string;
-}
-
 /**
- * The Releases page — a ledger. The active release gets a hero band, its
+ * The Releases page — a ledger. An open release gets a hero band, its
  * changelog fills the page, and a right rail carries what is still open and
  * what has already shipped.
  *
- * The changelog is always shown for *something*: the recording release
- * when there is one, otherwise the most recently closed. A page whose main
- * column is blank until you press a button teaches nothing about what
- * releases are for.
+ * The changelog is always shown for *something*: the open release when there
+ * is one, otherwise the most recently closed. A page whose main column is
+ * blank until you press a button teaches nothing about what releases are for.
+ *
+ * ⚠️ It still shows exactly ONE open release, which is now a lie the model
+ * allows: the one-open-at-a-time guard was deleted with the recorder, so
+ * `0.28.0` and `1.0.0` can coexist and this picks whichever comes first. The
+ * list page that renders all of them is #1557; nothing here is worth
+ * rebuilding twice in between.
  */
 const ProjectReleases = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -82,25 +77,22 @@ const ProjectReleases = () => {
   const [startTitle, setStartTitle] = useState("");
   const [startDescription, setStartDescription] = useState("");
   const [startTags, setStartTags] = useState<string[]>([]);
-  const [closeModal, setCloseModal] = useState<ReleaseWithCount | null>(null);
-  const [detailRelease, setDetailRelease] = useState<ReleaseWithCount | null>(
-    null,
-  );
+  const [closeModal, setCloseModal] = useState<Release | null>(null);
+  const [detailRelease, setDetailRelease] = useState<Release | null>(null);
   const [folioOpen, setFolioOpen] = useState(false);
   const [folioSaving, setFolioSaving] = useState(false);
 
   const [changelog, setChangelog] = useState<ChangelogState | null>(null);
   const [changelogLoading, setChangelogLoading] = useState(true);
   const [changelogError, setChangelogError] = useState(false);
-  const [backlog, setBacklog] = useState<BacklogState | null>(null);
   const [openQuests, setOpenQuests] = useState<QuestResource[]>([]);
 
   const activeRelease = releases?.find((c) => !c.closedAt) as
-    | ReleaseWithCount
+    | Release
     | undefined;
 
   const closedReleases = useMemo(
-    () => ((releases ?? []) as ReleaseWithCount[]).filter((c) => c.closedAt),
+    () => ((releases ?? []) as Release[]).filter((c) => c.closedAt),
     [releases],
   );
 
@@ -116,7 +108,7 @@ const ProjectReleases = () => {
     const updated = await releaseApi.getReleases({
       params: { projectId: project.id },
     });
-    setReleases(updated as ReleaseWithCount[]);
+    setReleases(updated as Release[]);
   }, [project?.id]);
 
   // Changelog for whichever release is on screen.
@@ -152,28 +144,6 @@ const ProjectReleases = () => {
     };
   }, [shownRelease?.id, shownRelease?.closedAt]);
 
-  // Backlog only matters while nothing is recording.
-  useEffect(() => {
-    if (!project || activeRelease) {
-      // Early return of the loader below — nothing to fetch, so nothing to show.
-      // oxlint-disable-next-line react/set-state-in-effect
-      setBacklog(null);
-      return;
-    }
-    let cancelled = false;
-    releaseApi
-      .getReleaseBacklog({ params: { projectId: project.id } })
-      .then((res) => {
-        // A failed backlog fetch hides the sentence rather than breaking
-        // the empty state, so there is no error branch here.
-        if (!cancelled) setBacklog(res);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [project?.id, activeRelease?.id]);
-
   // "Still open" rail: accepted but not yet completed.
   useEffect(() => {
     if (!project) return;
@@ -186,8 +156,8 @@ const ProjectReleases = () => {
       .then((page) => {
         if (!cancelled) setOpenQuests(page.content);
       })
-      // A rail beside the release list, like the backlog sentence above:
-      // a failed fetch hides it rather than breaking the page around it.
+      // A rail beside the release list: a failed fetch hides it rather than
+      // breaking the page around it.
       .catch(() => {});
     return () => {
       cancelled = true;
@@ -195,30 +165,27 @@ const ProjectReleases = () => {
   }, [project?.id, releases]);
 
   /**
-   * Roll the suggested name *before* the dialog opens. Opening first and
-   * awaiting the roll meant the response landed after the field was already
-   * focused, overwriting whatever had been typed in the meantime.
+   * The title starts empty and the author types it. It used to be pre-filled
+   * by a server round-trip to a fantasy-name generator ("Wrath of the
+   * Thornwall"); a release is called `0.28.0`, and no generator can guess
+   * that.
    */
-  const openStart = async () => {
+  const openStart = () => {
     setStartDescription("");
     setStartTags([]);
     setStartTitle("");
-    await reroll();
     setStartOpen(true);
-  };
-
-  const reroll = async () => {
-    const { title } = await releaseApi.getRandomReleaseName();
-    setStartTitle(title);
   };
 
   const handleStart = async () => {
     if (!project) return;
+    const title = startTitle.trim();
+    if (!title) return;
     try {
-      await releaseApi.startRelease({
+      await releaseApi.createRelease({
         params: { projectId: project.id },
         body: {
-          title: startTitle.trim() || undefined,
+          title,
           description: startDescription.trim() || undefined,
           tags: startTags,
         },
@@ -255,8 +222,8 @@ const ProjectReleases = () => {
 
   const handleDetailUpdated = (updated: Release) => {
     setReleases(
-      ((releases ?? []) as ReleaseWithCount[]).map((c) =>
-        c.id === updated.id ? ({ ...c, ...updated } as ReleaseWithCount) : c,
+      ((releases ?? []) as Release[]).map((c) =>
+        c.id === updated.id ? ({ ...c, ...updated } as Release) : c,
       ),
     );
     setDetailRelease((prev) =>
@@ -317,24 +284,7 @@ const ProjectReleases = () => {
   if (!project) return null;
 
   const projectSlug = project.slug;
-  const settingsHref = router.path("projectSettingsReleases", {
-    params: { projectSlug },
-  });
   const questsHref = router.path("projectQuests", { params: { projectSlug } });
-
-  // Same wording the settings page offers, so the banner and the setting
-  // never disagree on what "auto-close" is currently set to.
-  const autoCloseLabel = String(
-    project.milestoneDuration === "P7D"
-      ? tr("project.settings.releases.duration.1w")
-      : project.milestoneDuration === "P14D"
-        ? tr("project.settings.releases.duration.2w")
-        : project.milestoneDuration === "P1M"
-          ? tr("project.settings.releases.duration.1mo")
-          : project.milestoneDuration === "P3M"
-            ? tr("project.settings.releases.duration.3mo")
-            : tr("project.settings.releases.duration.manual"),
-  );
 
   const statusLabel = !shownRelease
     ? tr("release.changelog.none")
@@ -352,37 +302,44 @@ const ProjectReleases = () => {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* No page header. The breadcrumb already reads "… › Releases", and
-          the two controls that lived here were both redundant: Auto-close
-          settings pointed at the same route as the banner's own `change`
-          link, and Close Release now sits on the hero, opposite where
-          Start Release sits on the empty banner. Both banner states are
-          full-bleed so they occupy the same band under the breadcrumb. */}
+          Close Release sits on the hero, opposite where New Release sits on
+          the empty band. Both states are full-bleed so they occupy the same
+          band under the breadcrumb. */}
       {activeRelease ? (
         <ReleaseLedgerHero
           release={activeRelease}
-          questCount={changelog?.stats.questCount ?? activeRelease.questCount}
+          questCount={changelog?.stats.questCount ?? 0}
           areaCount={changelog?.stats.areaCount ?? 0}
           contributorCount={changelog?.stats.contributorCount ?? 0}
           onOpenDetail={() => setDetailRelease(activeRelease)}
           onClose={() => setCloseModal(activeRelease)}
         />
       ) : (
-        <ReleaseEmptyBanner
-          backlogCount={backlog?.count ?? 0}
-          lastLabel={
-            backlog?.lastNumber
-              ? `#${backlog.lastNumber} ${backlog.lastTitle ?? ""}`.trim()
-              : undefined
-          }
-          lastClosedOn={
-            backlog?.since
-              ? String(i18n.l(backlog.since, { date: "ll" }))
-              : undefined
-          }
-          autoCloseLabel={autoCloseLabel}
-          settingsHref={settingsHref}
-          onStart={openStart}
-        />
+        // Deliberately plain. The band it replaced counted the quests that
+        // had completed since the last close and named what they were falling
+        // out of - the whole "nothing is recording" story, which only made
+        // sense while membership was a time window. Nothing falls through a
+        // gap now: a quest is in a release because someone put it there.
+        <div className="bg-card border-border flex flex-col gap-5 border-b px-5 py-5 md:flex-row md:items-center md:gap-6 lg:px-7">
+          <div className="bg-muted text-muted-foreground flex size-13 shrink-0 items-center justify-center rounded-xl">
+            <Library className="size-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[19px] font-semibold">
+              {tr("release.empty.title")}
+            </h2>
+            <p className="text-muted-foreground mt-1.5 max-w-2xl text-[13px] text-pretty">
+              {tr("release.empty.body")}
+            </p>
+          </div>
+          <Button
+            onClick={openStart}
+            className="bg-green-600 px-4 text-white hover:bg-green-700"
+          >
+            <Play className="size-4" />
+            {tr("release.start")}
+          </Button>
+        </div>
       )}
 
       <div className="border-border flex min-h-0 flex-1 flex-col border-t xl:flex-row">
@@ -415,24 +372,16 @@ const ProjectReleases = () => {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label>{tr("release.start.title")}</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={startTitle}
-                  onChange={(e) => setStartTitle(e.currentTarget.value)}
-                  placeholder={tr("release.start.placeholder")}
-                  // Autofocus on the field the dialog exists to fill, on open only.
-                  // oxlint-disable-next-line jsx-a11y/no-autofocus
-                  autoFocus
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void reroll()}
-                  aria-label={tr("release.start.reroll")}
-                >
-                  <Dices className="size-4" />
-                </Button>
-              </div>
+              {/* The reroll button that sat beside this field is gone with
+                  the fantasy-name generator behind it. */}
+              <Input
+                value={startTitle}
+                onChange={(e) => setStartTitle(e.currentTarget.value)}
+                placeholder={tr("release.start.placeholder")}
+                // Autofocus on the field the dialog exists to fill, on open only.
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>{tr("release.start.description")}</Label>

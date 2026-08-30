@@ -285,7 +285,7 @@ export default {
   "quest.create.dependsOn.clear": "Retirer la dépendance",
   "quest.create.due": "Échéance",
   "quest.create.due.helper":
-    "La date à laquelle cette quête doit être terminée. Indépendante de l'échéance d'un jalon.",
+    "La date à laquelle cette quête doit être terminée. Indépendante de la date visée d'une version.",
   "quest.create.due.clear": "Effacer l'échéance",
   "quest.create.estimate": "Estimation",
   "quest.create.estimate.helper":
@@ -344,7 +344,7 @@ export default {
   "quest.rail.epic": "Epic",
   "quest.rail.commits": "Commits",
   "quest.rail.due": "Échéance",
-  "quest.rail.release": "Jalon",
+  "quest.rail.release": "Version",
   "quest.rail.questline": "Chaîne de quêtes",
 
   "project.create.name": "Nom",
@@ -372,9 +372,9 @@ export default {
   "project.create.module.kanban": "Kanban : Tableau visuel",
   "project.create.module.kanban.helper":
     "Colonnes drag-and-drop pour suivre l'avancement, à côté de la vue tableau.",
-  "project.create.module.releases": "Jalons : Cycles",
+  "project.create.module.releases": "Versions : Livraisons",
   "project.create.module.releases.helper":
-    "Cycles datés qui regroupent les quêtes terminées en jalons avec un récapitulatif.",
+    "Des objectifs nommés (0.28.0, demo-1) qui portent les épopées et les quêtes à livrer.",
   "project.create.next": "Suivant",
   "project.create.back": "Retour",
   "project.create.building": "Forge en cours…",
@@ -516,7 +516,7 @@ export default {
   "project.settings.nav.epics": "Épopées",
   "project.settings.nav.feedback": "Retours",
   "project.settings.nav.sigils": "Sigils",
-  "project.settings.nav.releases": "Jalons",
+  "project.settings.nav.releases": "Versions",
   "project.settings.nav.quests": "Quêtes",
   "project.reports.nav.overview": "Vue d'ensemble",
   "project.reports.nav.quests": "Quêtes",
@@ -604,7 +604,7 @@ export default {
   "project.settings.folios.summary.description":
     "Affiche le court résumé que chaque folio conserve pour les agents IA. Il est toujours enregistré et toujours lisible via MCP. Ceci décide seulement si le champ apparaît à la lecture ou à l’édition.",
   "project.settings.feature.releases.description":
-    "Regroupez les quêtes en jalons avec dates de début / fin et historique.",
+    "Regroupez épopées et quêtes dans des versions nommées, avec leur avancement et leur journal.",
   "project.settings.feature.sigils.description":
     "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals, un jeton par application.",
   "project.settings.feature.feedback.description":
@@ -618,25 +618,24 @@ export default {
   "project.settings.delete.modal.cancel": "Annuler",
   "project.settings.delete.modal.submit": "Détruire le projet",
 
-  "project.menu.releases": "Jalons",
+  "project.menu.releases": "Versions",
 
   "markdown.mode.edit": "Modifier",
   "markdown.mode.preview": "Aperçu",
-  "release.start": "Ouvrir un jalon",
-  "release.start.title": "Titre du jalon",
-  "release.start.placeholder": "Nommez ce jalon...",
+  "release.start": "Nouvelle version",
+  "release.start.title": "Titre de la version",
+  "release.start.placeholder": "Nommez cette version...",
   "release.start.cancel": "Annuler",
-  "release.close": "Clore le jalon",
-  "release.close.modal.title": "Clore le jalon",
+  "release.close": "Clore la version",
+  "release.close.modal.title": "Clore la version",
   "release.close.modal.description":
-    "Donnez un nom définitif à ce jalon avant de le sceller définitivement.",
-  "release.close.modal.label": "Titre du jalon",
+    "Donnez un nom définitif à cette version avant de la sceller définitivement.",
+  "release.close.modal.label": "Titre de la version",
   "release.delete": "Supprimer",
-  "release.delete.error":
-    "Impossible de supprimer un jalon contenant des quêtes.",
-  "release.start.error": "Impossible de démarrer le jalon.",
-  "release.close.error": "Impossible de clore le jalon.",
-  "release.detail.error": "Impossible d'enregistrer le jalon.",
+  "release.delete.error": "Impossible de supprimer la version.",
+  "release.start.error": "Impossible de créer la version.",
+  "release.close.error": "Impossible de clore la version.",
+  "release.detail.error": "Impossible d'enregistrer la version.",
   "release.changelog": "Changelog",
   "release.changelog.copy": "Copier",
   "release.changelog.download": "Télécharger",
@@ -644,49 +643,38 @@ export default {
   "release.tags": "Étiquettes",
   "release.tags.placeholder": "Ajouter une étiquette…",
   "release.start.description": "Notes (optionnel)",
-  "release.start.reroll": "Régénérer le nom",
-  "release.detail.title": "Jalon #$1 : $2",
+  "release.detail.title": "Version #$1 : $2",
   "release.detail.editTitle": "Titre",
   "release.detail.editDescription": "Notes",
   "release.detail.save": "Enregistrer",
-  "release.detail.saved": "Jalon mis à jour",
-  "release.hero.progress": "Temps écoulé",
+  "release.detail.saved": "Version mise à jour",
   "release.history.empty":
-    "Aucun jalon clôturé. Une fois scellés, vos jalons apparaîtront ici comme un témoignage permanent.",
-  "release.status.active": "Actif",
-  "release.status.closed": "Clos",
+    "Aucune version close. Une fois scellées, vos versions apparaîtront ici comme un témoignage permanent.",
+  "release.empty.title": "Aucune version ouverte",
+  "release.empty.body":
+    "Une version est un objectif nommé - 0.28.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
+  "release.status.active": "Ouverte",
+  "release.status.closed": "Close",
 
-  "release.ledger.recording": "Enregistrement",
-  "release.ledger.edit": "Modifier le jalon",
-  "release.ledger.started": "ouvert $1",
-  "release.ledger.autoCloses": "Clôture automatique le $1 · $2",
-  "release.ledger.manualOnly": "Clôture manuelle uniquement",
-  "release.ledger.window": "Fenêtre",
+  "release.ledger.open": "Ouverte",
+  "release.ledger.edit": "Modifier la version",
+  "release.ledger.started": "ouverte $1",
   "release.ledger.stat.quests": "Quêtes",
   "release.ledger.stat.areas": "Domaines",
   "release.ledger.stat.members": "Membres",
-  "release.ledger.empty.title": "Aucun enregistrement en cours",
-  "release.ledger.empty.body":
-    "$1 quête(s) ont été terminées depuis la clôture de $2 le $3. Elles resteront hors de tout journal tant qu'aucun jalon n'est ouvert.",
-  "release.ledger.empty.bodyNoHistory":
-    "$1 quête(s) ont été terminées. Elles resteront hors de tout journal tant qu'aucun jalon n'est ouvert.",
-  "release.ledger.empty.bodyNone":
-    "Les quêtes terminées restent hors de tout journal tant qu'aucun jalon n'est ouvert.",
-  "release.ledger.autoClose": "Clôture automatique : $1 ·",
-  "release.ledger.autoClose.change": "modifier",
   "release.ledger.stillOpen": "Encore ouvertes",
   "release.ledger.stillOpen.empty": "Rien en cours.",
   "release.ledger.viewInQuests": "Voir dans Quêtes →",
   "release.ledger.closed": "Publiés",
-  "release.ledger.closed.meta": "$1 quête(s) · clos le $2",
+  "release.ledger.closed.meta": "close le $1",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Enregistrer dans les Folios",
   "release.changelog.live": "EN DIRECT · $1 quête(s)",
   "release.changelog.frozen": "#$1 · FIGÉ LE $2",
-  "release.changelog.none": "Aucun jalon pour l'instant",
+  "release.changelog.none": "Aucune version pour l'instant",
   "release.changelog.empty":
-    "Aucune quête n'a encore été terminée dans cette fenêtre.",
+    "Aucune quête terminée n'est rattachée à cette version.",
   "release.changelog.loading": "Chargement du journal…",
   "release.changelog.error": "Impossible de charger le journal.",
   "release.changelog.copyError": "Impossible de copier le journal.",
@@ -695,18 +683,12 @@ export default {
   "release.folio.description":
     "Le journal est enregistré comme folio de ce projet, lisible par tous les membres, et par tout agent via MCP.",
   "release.folio.title": "Titre du folio",
-  "release.folio.defaultTitle": "Jalon #$1 : $2",
+  "release.folio.defaultTitle": "Version #$1 : $2",
   "release.folio.save": "Enregistrer",
   "release.folio.saved": "Journal enregistré dans les Folios",
   "release.folio.error": "Impossible d'enregistrer le journal.",
-  "release.folio.summary": "Journal du jalon #$1 : $2 quête(s) enregistrée(s).",
-
-  "project.settings.releases.cadence.title": "Cadence de publication",
-  "project.settings.releases.duration.manual": "Clôture manuelle uniquement",
-  "project.settings.releases.duration.1w": "1 semaine",
-  "project.settings.releases.duration.2w": "2 semaines",
-  "project.settings.releases.duration.1mo": "1 mois",
-  "project.settings.releases.duration.3mo": "3 mois",
+  "release.folio.summary":
+    "Journal de la version #$1 : $2 quête(s) enregistrée(s).",
 
   "kanban.column.new": "Nouvelles",
   "kanban.column.completed": "Terminées",
@@ -1330,7 +1312,7 @@ export default {
     "Aucune app de vos projets ne remonte cela pour l'instant.",
 
   "dashboard.group.quests": "Quetes",
-  "dashboard.group.epics": "Epopees et jalons",
+  "dashboard.group.epics": "Epopees et versions",
   "dashboard.group.inbox": "Boite de reception",
   "dashboard.group.apps": "Apps",
 

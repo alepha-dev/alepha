@@ -365,9 +365,9 @@ export default {
   "project.create.module.kanban": "Kanban: Visual board",
   "project.create.module.kanban.helper":
     "Drag-and-drop columns for tracking work in progress alongside the table view.",
-  "project.create.module.releases": "Releases: Sprints",
+  "project.create.module.releases": "Releases: Shipping",
   "project.create.module.releases.helper":
-    "Time-boxed cycles that group completed quests and close with a recap.",
+    "Named goals (0.28.0, demo-1) holding the epics and quests due to ship in them.",
   "project.create.next": "Next",
   "project.create.back": "Back",
   "project.create.building": "Forging your project…",
@@ -591,7 +591,7 @@ export default {
   "project.settings.folios.summary.description":
     "Reveal the short summary each folio carries for AI agents. It is always written and always readable over MCP. This only decides whether the field shows while you read or edit.",
   "project.settings.feature.releases.description":
-    "Group quests into time-boxed cycles with start / end dates and changelogs.",
+    "Group epics and quests into named releases, each with its own progress and changelog.",
   "project.settings.feature.sigils.description":
     "Enroll your applications so they can report crashes, page views and web vitals here, one token per app.",
   "project.settings.feature.feedback.description":
@@ -609,7 +609,7 @@ export default {
 
   "markdown.mode.edit": "Edit",
   "markdown.mode.preview": "Preview",
-  "release.start": "Start Release",
+  "release.start": "New Release",
   "release.start.title": "Release Title",
   "release.start.placeholder": "Name this release...",
   "release.start.cancel": "Cancel",
@@ -619,8 +619,8 @@ export default {
     "Give this release its final name before sealing it for good.",
   "release.close.modal.label": "Release Title",
   "release.delete": "Delete",
-  "release.delete.error": "Cannot delete a release that has quests attached.",
-  "release.start.error": "Could not start the release.",
+  "release.delete.error": "Could not delete the release.",
+  "release.start.error": "Could not create the release.",
   "release.close.error": "Could not close the release.",
   "release.detail.error": "Could not save the release.",
   "release.changelog": "Changelog",
@@ -630,41 +630,30 @@ export default {
   "release.tags": "Tags",
   "release.tags.placeholder": "Add a tag…",
   "release.start.description": "Notes (optional)",
-  "release.start.reroll": "Reroll name",
   "release.detail.title": "Release #$1: $2",
   "release.detail.editTitle": "Title",
   "release.detail.editDescription": "Notes",
   "release.detail.save": "Save",
   "release.detail.saved": "Release updated",
-  "release.hero.progress": "Time spent",
   "release.history.empty":
     "No closed releases yet. Once you seal a release, it will appear here as a permanent record.",
-  "release.status.active": "Active",
+  "release.empty.title": "No release is open",
+  "release.empty.body":
+    "A release is a named goal - 0.28.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
+  "release.status.active": "Open",
   "release.status.closed": "Closed",
 
-  "release.ledger.recording": "Recording",
+  "release.ledger.open": "Open",
   "release.ledger.edit": "Edit release",
   "release.ledger.started": "started $1",
-  "release.ledger.autoCloses": "Auto-closes $1 · $2",
-  "release.ledger.manualOnly": "Closes when you say so",
-  "release.ledger.window": "Window",
   "release.ledger.stat.quests": "Quests",
   "release.ledger.stat.areas": "Areas",
   "release.ledger.stat.members": "Members",
-  "release.ledger.empty.title": "Nothing is recording",
-  "release.ledger.empty.body":
-    "$1 quest(s) have been completed since $2 closed on $3. They stay out of every changelog until a release is open.",
-  "release.ledger.empty.bodyNoHistory":
-    "$1 quest(s) have been completed. They stay out of every changelog until a release is open.",
-  "release.ledger.empty.bodyNone":
-    "Completed quests stay out of every changelog until a release is open.",
-  "release.ledger.autoClose": "Auto-close: $1 ·",
-  "release.ledger.autoClose.change": "change",
   "release.ledger.stillOpen": "Still open",
   "release.ledger.stillOpen.empty": "Nothing in flight.",
   "release.ledger.viewInQuests": "View in Quests →",
   "release.ledger.closed": "Released",
-  "release.ledger.closed.meta": "$1 quest(s) · closed $2",
+  "release.ledger.closed.meta": "closed $1",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Save to Folios",
@@ -672,7 +661,7 @@ export default {
   "release.changelog.frozen": "#$1 · FROZEN $2",
   "release.changelog.none": "No release yet",
   "release.changelog.empty":
-    "No quest has been completed inside this window yet.",
+    "No completed quest is attached to this release yet.",
   "release.changelog.loading": "Loading changelog…",
   "release.changelog.error": "Could not load the changelog.",
   "release.changelog.copyError": "Could not copy the changelog.",
@@ -686,13 +675,6 @@ export default {
   "release.folio.saved": "Changelog saved to Folios",
   "release.folio.error": "Could not save the changelog.",
   "release.folio.summary": "Changelog for release #$1: $2 quest(s) recorded.",
-
-  "project.settings.releases.cadence.title": "Release cadence",
-  "project.settings.releases.duration.manual": "Manual close only",
-  "project.settings.releases.duration.1w": "1 week",
-  "project.settings.releases.duration.2w": "2 weeks",
-  "project.settings.releases.duration.1mo": "1 month",
-  "project.settings.releases.duration.3mo": "3 months",
 
   "kanban.column.new": "New",
   "kanban.column.completed": "Completed",
