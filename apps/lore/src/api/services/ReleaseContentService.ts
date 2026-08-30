@@ -1,0 +1,114 @@
+import type { PgQueryWhere } from "alepha/orm";
+import { $repository } from "alepha/orm";
+
+import { type Epic, epics } from "../entities/epics.ts";
+import { type Quest, quests } from "../entities/quests.ts";
+import type { Release } from "../entities/releases.ts";
+
+export interface ReleaseContents {
+  /**
+   * The epics attached to this release, in `number` order.
+   */
+  epics: Epic[];
+  /**
+   * Every quest in the release, each exactly once.
+   */
+  quests: Quest[];
+  /**
+   * The subset attached DIRECTLY, whose epic is not one of this release's.
+   * The loose work: a hotfix, a doc pass, one chore.
+   */
+  looseQuests: Quest[];
+  /**
+   * In the release, but decided out of scope.
+   *
+   * Kept OUT of {@link quests} so no denominator counts work that was
+   * declined, and returned here rather than dropped so the progress rollup
+   * can still report it as its own bucket - the same four-bucket vocabulary
+   * `EpicController.computeProgress` uses. A release with six shelved quests
+   * should say so; folding them into the untouched remainder would read as
+   * work outstanding when it is work declined.
+   */
+  shelvedQuests: Quest[];
+}
+
+/**
+ * The single answer to "what is in this release".
+ *
+ * A release contains two overlapping sets: the quests attached to it directly,
+ * and the quests of the epics attached to it. Four surfaces need that answer -
+ * the progress rollup, the changelog, the release detail page and the roadmap
+ * - and **they must never disagree**.
+ *
+ * That is the whole reason this is a service, and not that the query is hard.
+ * The failure mode of inlining it is silent: the progress bar and the
+ * changelog end up counting different things and nothing goes red.
+ */
+export class ReleaseContentService {
+  epics = $repository(epics);
+  quests = $repository(quests);
+
+  async contentsOf(release: Release): Promise<ReleaseContents> {
+    const attachedEpics = await this.epics.findMany({
+      where: { releaseId: { eq: release.id } },
+      orderBy: [{ column: "number", direction: "asc" }],
+    });
+    const epicIds = attachedEpics.map((epic) => epic.id);
+
+    const where: PgQueryWhere<typeof quests.schema> = {
+      projectId: { eq: release.projectId },
+    };
+
+    // ONE query, not two and a Set. `FilterOperators` is the per-COLUMN
+    // operator set and has no disjunction, but `PgQueryWhereConditions` gives
+    // every `where` an `and` and an `or` one level up, ANDed with the sibling
+    // keys by `QueryManager.toSQL` - so the `projectId` scoping survives.
+    // `EpicVisibilityService.applyBacklogGate` does the same thing today.
+    //
+    // ⚠️ With no epics attached the `epicId` branch is OMITTED ENTIRELY rather
+    // than passed an empty array. `inArray: []` is not an empty match: `IN ()`
+    // is a SQL syntax error and the sibling `notInArray: []` throws. A release
+    // with no epics is the normal case, not an edge case.
+    //
+    // ⚠️ No `deletedAt` filter here on purpose. `Repository.withDeletedAt`
+    // wraps this as `{ and: [callerWhere, { deletedAt: { isNull: true } }] }`,
+    // so the `or` is nested INSIDE that `and` rather than flattened beside it,
+    // and soft-deleted quests are excluded correctly. Hand-writing one would
+    // be both redundant and easy to get wrong.
+    if (epicIds.length > 0) {
+      where.or = [
+        { releaseId: { eq: release.id } },
+        // ⚠️ `releaseId: { isNull: true }` is what makes an explicit
+        // attachment OVERRIDE the epic's. A quest inside one of this
+        // release's epics that names a DIFFERENT release belongs to the one
+        // it names and is absent from this one entirely - otherwise it would
+        // be counted twice across two denominators and "the progress of
+        // 0.28.0" would include work that shipped in 1.0.0.
+        //
+        // A quest that names THIS release and sits in one of its epics is
+        // caught by the first branch, so nothing is lost.
+        { epicId: { inArray: epicIds }, releaseId: { isNull: true } },
+      ];
+    } else {
+      where.releaseId = { eq: release.id };
+    }
+
+    const found = await this.quests.findMany({ where });
+
+    // Split rather than filtered in SQL: both halves are wanted, and one
+    // query answering the whole membership question is the point of this
+    // service. `quests` is what every denominator counts.
+    const all = found.filter((quest) => quest.shelvedAt == null);
+    const shelvedQuests = found.filter((quest) => quest.shelvedAt != null);
+
+    // A quest reachable BOTH ways counts once, as an epic quest. The `or`
+    // already returns it once; this partition is where it could be counted
+    // twice, so the epic membership is tested first.
+    const epicIdSet = new Set(epicIds);
+    const looseQuests = all.filter(
+      (quest) => quest.epicId == null || !epicIdSet.has(quest.epicId),
+    );
+
+    return { epics: attachedEpics, quests: all, looseQuests, shelvedQuests };
+  }
+}

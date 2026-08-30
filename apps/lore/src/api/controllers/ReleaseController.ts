@@ -22,12 +22,14 @@ import {
 } from "../schemas/releaseTagSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
+import { ReleaseContentService } from "../services/ReleaseContentService.ts";
 
 export class ReleaseController {
   releases = $repository(releases);
   quests = $repository(quests);
   dt = $inject(DateTimeProvider);
   limits = $inject(ProjectLimits);
+  contents = $inject(ReleaseContentService);
   owned = $inject(OwnedResourceProvider);
 
   /**
@@ -397,22 +399,21 @@ export class ReleaseController {
     shelved: number;
     total: number;
   }> {
-    const scope = {
-      projectId: { eq: release.projectId },
-      releaseId: { eq: release.id },
-    };
-    const [total, completed, inProgress, shelved] = await Promise.all([
-      this.quests.count(scope),
-      this.quests.count({ ...scope, completedAt: { isNotNull: true } }),
-      this.quests.count({
-        ...scope,
-        acceptedAt: { isNotNull: true },
-        completedAt: { isNull: true },
-      }),
-      this.quests.count({ ...scope, shelvedAt: { isNotNull: true } }),
-    ]);
+    // Counted over `ReleaseContentService`, never with a `releaseId` count of
+    // its own. A release is mostly a set of EPICS, so a direct-attachment
+    // count would report 0/0 for the normal case and disagree with the
+    // changelog beside it - which is the exact failure the service exists to
+    // make impossible.
+    const { quests, shelvedQuests } = await this.contents.contentsOf(release);
 
-    return { completed, inProgress, shelved, total };
+    return {
+      completed: quests.filter((quest) => quest.completedAt != null).length,
+      inProgress: quests.filter(
+        (quest) => quest.acceptedAt != null && quest.completedAt == null,
+      ).length,
+      shelved: shelvedQuests.length,
+      total: quests.length,
+    };
   }
 
   /**
@@ -423,15 +424,14 @@ export class ReleaseController {
    * window, i.e. `git log --since --until` grouped by area. Membership is an
    * assignment now, so the question is which quests were put in the release,
    * not which happened to finish while it was open.
+   *
+   * Reads `ReleaseContentService` rather than the `releaseId` column, so the
+   * changelog and the progress counts are two projections of ONE membership
+   * answer and cannot drift apart.
    */
   protected async queryCompleted(release: Release): Promise<Quest[]> {
-    return await this.quests.findMany({
-      where: {
-        projectId: { eq: release.projectId },
-        releaseId: { eq: release.id },
-        completedAt: { isNotNull: true },
-      },
-    });
+    const { quests } = await this.contents.contentsOf(release);
+    return quests.filter((quest) => quest.completedAt != null);
   }
 
   /**
