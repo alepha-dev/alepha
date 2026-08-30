@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -129,6 +130,7 @@ const ProjectEpics = () => {
         );
       }),
       sort,
+      releases,
     );
 
     const offset = page * size;
@@ -273,6 +275,7 @@ const ProjectEpics = () => {
           // for the epic rather than as where it ships.
           releaseId: {
             label: tr("epic.list.column.release"),
+            sortable: true,
             className: "w-32",
             cell: (epic) => {
               const release = releases?.find((r) => r.id === epic.releaseId);
@@ -353,7 +356,11 @@ export default ProjectEpics;
  * number ascending, which is the order `getEpics` already returns and the
  * order the numbers themselves imply.
  */
-const sortEpics = (items: EpicResource[], sort?: string): EpicResource[] => {
+const sortEpics = (
+  items: EpicResource[],
+  sort?: string,
+  releases?: ReleaseResource[],
+): EpicResource[] => {
   const field = sort?.replace(/^-/, "");
   const dir = sort?.startsWith("-") ? -1 : 1;
   const rows = [...items];
@@ -370,12 +377,47 @@ const sortEpics = (items: EpicResource[], sort?: string): EpicResource[] => {
     if (field === "status") {
       return (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) * dir;
     }
+    if (field === "releaseId") {
+      const rankA = releaseRank(a, releases);
+      const rankB = releaseRank(b, releases);
+      // Epics with no release sort LAST in both directions, so flipping the
+      // arrow reorders the releases without dragging the (usually large)
+      // unassigned pile through the middle of the list. A null that swaps
+      // ends reads as the sort being broken rather than reversed.
+      if (rankA === undefined || rankB === undefined) {
+        if (rankA === rankB) return a.number - b.number;
+        return rankA === undefined ? 1 : -1;
+      }
+      // Tie-break on `number` so epics sharing a release keep a stable,
+      // meaningful order instead of whatever the filter happened to produce.
+      return (rankA - rankB) * dir || a.number - b.number;
+    }
     if (field === "number") {
       return (a.number - b.number) * dir;
     }
     return a.number - b.number;
   });
   return rows;
+};
+
+/**
+ * An epic's position in the release order, or `undefined` when it has none.
+ *
+ * ⚠️ Sorts on the release's `number`, never on its `tag`. `ProjectReleases`
+ * carries the same warning: semver does not sort as text, so `0.10.0` comes
+ * before `0.9.0`. Writing a semver comparator over the tag here would be a
+ * second answer to a question this codebase has already answered once, and
+ * the two would drift.
+ *
+ * `epic.releaseId` is not usable either: it is a row id, and nothing
+ * guarantees it tracks `number`.
+ */
+const releaseRank = (
+  epic: EpicResource,
+  releases?: ReleaseResource[],
+): number | undefined => {
+  if (!epic.releaseId) return undefined;
+  return releases?.find((release) => release.id === epic.releaseId)?.number;
 };
 
 /**

@@ -848,6 +848,100 @@ test.describe("Epics — a member, not just the owner", () => {
 });
 
 /**
+ * Sorting the Epics list by Release.
+ *
+ * ⚠️ The whole point is the KEY. Sorting on the release's `tag` as text puts
+ * `0.28.0` before `0.9.0`, and sorting on `epic.releaseId` sorts by row id,
+ * which is not a version order at all. Only the release's `number` is right,
+ * which is what `ProjectReleases` already sorts on.
+ *
+ * The fixture is chosen so the three answers disagree: created in version
+ * order, the tags sort differently as text than by number, so a string
+ * comparator fails the first assertion rather than passing by luck.
+ */
+test.describe("Epics — sorting by release", () => {
+  test("orders by the release's number, not its tag, and keeps unassigned last", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `epicsort${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Es${t}`.slice(0, 20),
+    );
+    await setProjectFeature(page, projectId, "epics", true);
+
+    const post = async <T>(path: string, body: unknown): Promise<T> =>
+      (await page.evaluate(
+        async ({ path, body }) => {
+          const r = await fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(body),
+          });
+          if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+          return r.json();
+        },
+        { path, body },
+      )) as T;
+
+    // Version order, which is creation order, which is `number` order. As
+    // TEXT these sort 0.28.0, 0.29.0, 0.9.0, 1.0.0 — a different answer, so
+    // the assertion below can tell the two apart.
+    const tags = ["0.9.0", "0.28.0", "0.29.0", "1.0.0"];
+    for (const [i, tag] of tags.entries()) {
+      const release = await post<{ id: number }>(
+        `/api/createRelease/${projectId}`,
+        { tag },
+      );
+      const epic = await post<{ id: number }>(`/api/createEpic/${projectId}`, {
+        title: `Ships in ${tag} ${t}`,
+      });
+      await post(`/api/updateEpic/${epic.id}`, { releaseId: release.id });
+      expect(i).toBeGreaterThanOrEqual(0);
+    }
+    // The unassigned pile, which most epics are.
+    await post(`/api/createEpic/${projectId}`, { title: `Unassigned ${t}` });
+
+    await page.goto(`/${slug}/epics`);
+    const header = page.getByRole("button", { name: "Release" });
+    await expect(header).toBeVisible({ timeout: 15_000 });
+
+    // The release cell of every row, in rendered order. An empty string is an
+    // epic with no release, which is exactly what the last-in-both-directions
+    // assertion is about.
+    const order = async () =>
+      await page
+        .locator("tbody tr")
+        .evaluateAll((rows) =>
+          rows.map(
+            (row) => row.querySelectorAll("td")[3]?.textContent?.trim() ?? "",
+          ),
+        );
+
+    await test.step("ascending walks the versions, unassigned last", async () => {
+      await header.click();
+      await expect
+        .poll(order, { timeout: 15_000 })
+        .toEqual(["0.9.0", "0.28.0", "0.29.0", "1.0.0", ""]);
+    });
+
+    await test.step("descending reverses the versions, unassigned STILL last", async () => {
+      // Not a detail. If the empty rows swapped ends with the arrow they
+      // would drag the whole unassigned pile through the middle of the list,
+      // and the sort would read as broken rather than reversed.
+      await header.click();
+      await expect
+        .poll(order, { timeout: 15_000 })
+        .toEqual(["1.0.0", "0.29.0", "0.28.0", "0.9.0", ""]);
+    });
+  });
+});
+
+/**
  * The Release control on the epic aside, driven through the UI.
  *
  * ⚠️ `releases.spec.ts` attaches over the API (`/api/attachQuest/...`), so
