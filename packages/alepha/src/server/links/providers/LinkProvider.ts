@@ -1,4 +1,5 @@
 import { $inject, $store, Alepha, AlephaError, type Async, z } from "alepha";
+import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import type { SecureOptions } from "alepha/security";
@@ -42,6 +43,7 @@ export class LinkProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly httpClient = $inject(HttpClient);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly crypto = $inject(CryptoProvider);
 
   // Server-side: all registered links (local + remote), keyed by name
   protected serverLinkMap = new Map<string, HttpClientLink>();
@@ -200,10 +202,12 @@ export class LinkProvider {
    */
   public async fetchLinks(scope: ClientScope = {}): Promise<HttpClientLink[]> {
     if (scope.hostname) {
+      const resolved = await this.resolveScope(scope);
       const host = this.normalizeHost(scope.hostname);
       const registry = await this.fetchRemoteRegistry(
         host,
-        this.registryKey(host, scope),
+        await this.registryKey(host, resolved),
+        resolved,
       );
       return [...registry.links.values()];
     }
@@ -231,9 +235,11 @@ export class LinkProvider {
    * emits an ETag and {@link HttpClient} revalidates with `if-none-match`, so
    * an expired entry costs a 304 rather than a payload.
    */
-  protected async remoteRegistry(scope: ClientScope): Promise<RemoteRegistry> {
+  protected async remoteRegistry(
+    scope: ResolvedClientScope,
+  ): Promise<RemoteRegistry> {
     const host = this.normalizeHost(scope.hostname as string);
-    const key = this.registryKey(host, scope);
+    const key = await this.registryKey(host, scope);
     const cached = this.remoteLinks.get(key);
 
     if (
@@ -244,19 +250,119 @@ export class LinkProvider {
       return cached;
     }
 
-    return await this.fetchRemoteRegistry(host, key);
+    return await this.fetchRemoteRegistry(host, key, scope);
   }
 
   /**
    * What identifies one cached registry.
    *
-   * The host alone today, because nothing yet authenticates the fetch. It has
-   * to stay a seam: `/api/_links` filters its answer by caller, so once a
-   * credential is on the scope a host-only key would serve one caller's action
-   * set to another.
+   * ⚠️ Not the host alone. `/api/_links` filters its answer by caller, so a
+   * host-only key serves one caller's action set to another — an anonymous
+   * fetch's registry, missing every `$secure` action, answered to a caller who
+   * is signed in and allowed.
+   *
+   * The fingerprint, never the material. This map lives for the life of the
+   * process and turns up in a heap dump, in a debugger, and in any log that
+   * prints its keys.
    */
-  protected registryKey(host: string, _scope: ClientScope): string {
-    return host;
+  protected async registryKey(
+    host: string,
+    scope: ResolvedClientScope,
+  ): Promise<string> {
+    const material = [...this.scopeHeaders(scope).entries()]
+      .map(([name, value]) => `${name}=${value}`)
+      .sort()
+      .join("");
+
+    if (!material) {
+      return host;
+    }
+
+    // Escapes, not literal control bytes: a raw NUL in the source makes the
+    // whole file binary to grep, git-diff and code search, which then
+    // silently return nothing for it.
+    return `${host}\u0000${await this.hash(material)}`;
+  }
+
+  /**
+   * A hash, whichever crypto provider this runtime installed.
+   *
+   * ⚠️ The two disagree on their signature. `CryptoProvider.hash` returns a
+   * `string`; the `BrowserCryptoProvider` that replaces it in a browser build
+   * is `async` and returns a Promise. A bare call therefore yields
+   * `"[object Promise]"` in a browser, while a plain `await` is refused by
+   * `await-thenable`, which reads the Node signature the types come from.
+   * Normalising is the only form correct on both.
+   */
+  protected hash(material: string): Promise<string> {
+    return Promise.resolve(this.crypto.hash(material));
+  }
+
+  /**
+   * The headers a scope contributes, credential included.
+   *
+   * `headers` sits below `authorization` (see {@link followRemote} for the
+   * whole ladder), so naming both is not ambiguous: the dedicated field wins.
+   */
+  protected scopeHeaders(scope: ResolvedClientScope): Headers {
+    const headers = new Headers();
+
+    for (const [name, value] of Object.entries(scope.headers ?? {})) {
+      headers.set(name, value);
+    }
+
+    if (scope.authorization) {
+      headers.set("authorization", scope.authorization);
+    }
+
+    return headers;
+  }
+
+  /**
+   * One scope and one call's options, merged the same way for all three call
+   * shapes {@link createVirtualAction} builds.
+   *
+   * ⚠️ The four `ClientScope` fields are read, not just spread. A scope may be
+   * a class instance whose `hostname` is a **prototype getter** - which is
+   * exactly what `ServerProvider` is, and what `$remote.spec.ts` passes - and
+   * a spread copies own enumerable properties only. Such a scope would resolve
+   * as if it named no host at all: a silent fall back to the local registry,
+   * ending in a relative URL and `ERR_INVALID_URL`.
+   *
+   * The spread stays underneath so anything else a caller hangs on its scope
+   * object still travels, as it always has.
+   */
+  protected mergeScope(
+    scope: ClientScope,
+    options: ClientRequestOptions & ClientScope,
+  ): ClientRequestOptions & ClientScope {
+    return {
+      ...scope,
+      ...options,
+      service: options.service ?? scope.service,
+      hostname: options.hostname ?? scope.hostname,
+      authorization: options.authorization ?? scope.authorization,
+      headers: options.headers ?? scope.headers,
+    };
+  }
+
+  /**
+   * The scope as a request can use it: the credential thunk awaited.
+   *
+   * Awaited per request and never cached. A device-flow token refreshes, and a
+   * long-running process would otherwise pin whatever the first call happened
+   * to see at construction — working for an hour and then failing for good.
+   */
+  protected async resolveScope<T extends ClientScope>(
+    scope: T,
+  ): Promise<T & ResolvedClientScope> {
+    const { authorization } = scope;
+
+    if (typeof authorization !== "function") {
+      return scope as T & ResolvedClientScope;
+    }
+
+    return { ...scope, authorization: await authorization() };
   }
 
   /**
@@ -289,6 +395,7 @@ export class LinkProvider {
   protected async fetchRemoteRegistry(
     host: string,
     key: string,
+    scope: ResolvedClientScope,
   ): Promise<RemoteRegistry> {
     let data: ApiRegistryResponse;
 
@@ -297,6 +404,13 @@ export class LinkProvider {
         `${host}${LinkProvider.path.apiLinks}`,
         {
           method: "GET",
+          // ⚠️ The credential belongs on THIS request, not only on the calls
+          // that follow. `/api/_links` prunes every action the caller may not
+          // invoke, so an anonymous fetch omits all of them — and the failure
+          // is `Action not found` for a route that plainly exists and that the
+          // caller is plainly allowed to call. That is the single most
+          // confusing way this can be half-built.
+          headers: this.scopeHeaders(scope),
           schema: {
             response: apiRegistryResponseSchema,
           },
@@ -413,8 +527,13 @@ export class LinkProvider {
   public async follow(
     name: string,
     config: Partial<ServerRequestConfigEntry> = {},
-    options: ClientRequestOptions & ClientScope = {},
+    scope: ClientRequestOptions & ClientScope = {},
   ): Promise<any> {
+    // Once, here, for both the link resolution and the request that follows.
+    // The logger redacts `authorization` anywhere in a payload, so tracing the
+    // resolved scope does not print the credential.
+    const options = await this.resolveScope(scope);
+
     this.log.trace("Following link", { name, config, options });
     const link = await this.getLinkByName(name, options);
 
@@ -468,10 +587,7 @@ export class LinkProvider {
       config: any = {},
       options: ClientRequestOptions = {},
     ) => {
-      return this.follow(name, config, {
-        ...scope,
-        ...options,
-      });
+      return this.follow(name, config, this.mergeScope(scope, options));
     };
 
     Object.defineProperty($, "name", {
@@ -480,18 +596,16 @@ export class LinkProvider {
     });
 
     $.run = async (config: any = {}, options: ClientRequestOptions) => {
-      return this.follow(name, config, {
-        ...scope,
-        ...options,
-      });
+      return this.follow(name, config, this.mergeScope(scope, options ?? {}));
     };
 
     $.fetch = async (config: any = {}, options: ClientRequestOptions = {}) => {
-      const link = await this.getLinkByName(name, scope);
       // Merged the way `$` and `$.run` merge it. This used the scope to
       // resolve the link and then dropped it for the request itself, so the
       // hostname survived (it is baked into the link) and nothing else did.
-      return this.followRemote(link, config, { ...scope, ...options });
+      const merged = await this.resolveScope(this.mergeScope(scope, options));
+      const link = await this.getLinkByName(name, merged);
+      return this.followRemote(link, config, merged);
     };
 
     $.can = () => {
@@ -504,19 +618,34 @@ export class LinkProvider {
   protected async followRemote(
     link: HttpClientLink,
     config: Partial<ServerRequestConfigEntry> = {},
-    options: ClientRequestOptions = {},
+    options: ClientRequestOptions & ResolvedClientScope = {},
   ): Promise<FetchResponse> {
-    options.request ??= {};
-    options.request.headers = new Headers(options.request.headers);
+    // Weakest first, each source overwriting the one before it:
+    //
+    //   ALS  <  scope.headers  <  scope.authorization  <  per-call headers
+    const headers = new Headers();
 
+    // The ambient incoming request. Exactly right when a server proxies on
+    // behalf of the user who called it, and wrong the moment this client named
+    // a credential of its own — the point of a scope credential is that it is
+    // not the visitor's. Weakest, so it only fills a gap; unchanged for every
+    // caller that sets nothing, which is every caller that exists today.
     const als = this.alepha.store.get("alepha.http.request");
     if (als?.headers.authorization) {
-      options.request.headers.set("authorization", als.headers.authorization);
+      headers.set("authorization", als.headers.authorization);
+    }
+
+    for (const [name, value] of this.scopeHeaders(options)) {
+      headers.set(name, value);
+    }
+
+    for (const [name, value] of new Headers(options.request?.headers)) {
+      headers.set(name, value);
     }
 
     const context = this.alepha.context.get("context");
     if (typeof context === "string") {
-      options.request.headers.set("x-request-id", context);
+      headers.set("x-request-id", context);
     }
 
     const action = {
@@ -537,18 +666,37 @@ export class LinkProvider {
     action.path = `${action.prefix ?? "/api"}${action.path}`;
     action.prefix = undefined; // prefix is not used in the client
 
+    // A fresh object rather than a mutated one. `{ ...scope, ...options }` is
+    // a shallow merge, so `options.request` IS the scope's own object, and
+    // writing headers onto it persists one call's ambient credential into
+    // every later call made from the same client.
+    //
+    // ⚠️ The scope's own keys are stripped, not carried. `fetchAction` ends
+    // with `fetch(url, { ...request, schema, ...options })`, so a stray
+    // `headers` on `options` would clobber the ladder composed above — and
+    // `authorization` may be a function, which has no business on a RequestInit.
+    //
+    // `delete` rather than `= undefined`: the key surviving with an undefined
+    // value clobbers just as thoroughly as a real one.
+    const forwarded: ClientRequestOptions & ClientScope = { ...options };
+    delete forwarded.authorization;
+    delete forwarded.headers;
+    delete forwarded.hostname;
+    delete forwarded.service;
+    forwarded.request = { ...options.request, headers };
+
     // else, make a request
     return this.httpClient.fetchAction({
       host: link.host,
       config,
-      options,
+      options: forwarded,
       action: action as any, // schema.body ZodAny is not accepted
     });
   }
 
   protected async getLinkByName(
     name: string,
-    options: ClientScope = {},
+    options: ResolvedClientScope = {},
   ): Promise<HttpClientLink> {
     // First, and self-contained: a named host resolves against that host's own
     // registry and nothing else. Everything below is the local/browser/SSR
@@ -610,7 +758,7 @@ export class LinkProvider {
 
   protected async getRemoteLinkByName(
     name: string,
-    scope: ClientScope,
+    scope: ResolvedClientScope,
   ): Promise<HttpClientLink> {
     const registry = await this.remoteRegistry(scope);
     const link = registry.links.get(name);
@@ -657,6 +805,43 @@ export interface HttpClientLink {
 export interface ClientScope {
   service?: string;
   hostname?: string;
+
+  /**
+   * Credential sent with every request this client makes, including the fetch
+   * of the remote's action registry.
+   *
+   * A thunk as well as a string, and the thunk is awaited per request rather
+   * than resolved once: a device-flow token refreshes, and a long-running
+   * process that pinned the first value would work for an hour and then fail
+   * for good. A plain string stays accepted because it is the common case.
+   *
+   * Allowed without a `hostname`, and applied wherever a request is actually
+   * made — which means it is **inert when the link resolves to a local
+   * handler**, since there is no request to carry it.
+   */
+  authorization?: string | (() => Async<string>);
+
+  /**
+   * Extra headers sent with every request, the registry fetch included.
+   *
+   * Below {@link authorization} in precedence, so naming both is not
+   * ambiguous.
+   */
+  headers?: Record<string, string>;
+}
+
+/**
+ * A {@link ClientScope} whose credential thunk has been awaited.
+ *
+ * Resolved once at the entry point of a call and threaded down, so a thunk
+ * that costs a network round-trip is not paid twice - once to key the registry
+ * and once to make the request.
+ */
+export interface ResolvedClientScope extends Omit<
+  ClientScope,
+  "authorization"
+> {
+  authorization?: string;
 }
 
 /**
