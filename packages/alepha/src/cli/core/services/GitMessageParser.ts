@@ -30,11 +30,20 @@ export class GitMessageParser {
    * this used to accept `docs|refactor|perf|revert` too, which the command
    * then dropped on the floor, so a `perf` commit was parsed and silently lost.
    *
-   * **Breaking changes:** Use `!` before `:` (e.g., `feat(api)!: remove endpoint`)
+   * **Breaking changes:** `!` before `:` (e.g. `feat(api)!: remove endpoint`),
+   * the word "breaking" in the subject, or a marker in the BODY — see
+   * {@link breakingNotes}.
    *
+   * @param record One commit: the `--oneline` subject on the first line,
+   *   the body on the rest. A bare subject still parses, which is what
+   *   keeps every existing caller and spec working.
    * @returns Commit object or null if not matching/ignored
    */
-  parseCommit(line: string, config: ChangelogOptions): Commit | null {
+  parseCommit(record: string, config: ChangelogOptions): Commit | null {
+    const newline = record.indexOf("\n");
+    const line = newline === -1 ? record : record.slice(0, newline);
+    const body = newline === -1 ? "" : record.slice(newline + 1);
+
     // Extract hash and message from git log --oneline format
     const match = line.match(/^([a-f0-9]+)\s+(.+)$/);
     if (!match) return null;
@@ -68,8 +77,13 @@ export class GitMessageParser {
     // Breaking change detection:
     // 1. Explicit `!` marker: feat(api)!: change
     // 2. Word "breaking" in description: feat(api): breaking change to auth
+    // 3. A marker in the BODY, which is where both conventional commits and
+    //    this repository actually declare them.
+    const notes = this.breakingNotes(body);
     const breaking =
-      breakingMark === "!" || description.toLowerCase().includes("breaking");
+      breakingMark === "!" ||
+      description.toLowerCase().includes("breaking") ||
+      notes.length > 0;
 
     return {
       hash: hash.substring(0, 8),
@@ -77,7 +91,66 @@ export class GitMessageParser {
       scope,
       description: description.trim(),
       breaking,
+      breakingNotes: notes,
     };
+  }
+
+  /**
+   * The prose a commit wrote about what it breaks, or an empty list.
+   *
+   * Two markers, and the second is the one that matters. Conventional
+   * commits put breaks behind a `BREAKING CHANGE:` footer; this repository
+   * writes a bare `Breaking changes` heading followed by a list, and always
+   * has. Over `0.27.0..HEAD` **no commit** carried a `!`, no subject
+   * contained the word, and exactly one declared breaks — in the second
+   * form. Matching only the footer would have been correct against the
+   * specification and useless against the history.
+   *
+   * Reading stops at the first blank line after the list, so the paragraph
+   * a commit adds afterwards ("Also fixes …") does not become a breaking
+   * note. Indented lines continue the note above them, because these bodies
+   * are hard-wrapped at ~76 columns and a wrapped bullet is one item, not
+   * two.
+   */
+  protected breakingNotes(body: string): string[] {
+    if (!body.trim()) return [];
+
+    const lines = body.split("\n");
+    const start = lines.findIndex(
+      (line) =>
+        /^#{0,3}\s*breaking[- ]changes?\s*:?\s*$/i.test(line) ||
+        /^BREAKING[ -]CHANGE:/.test(line),
+    );
+    if (start === -1) return [];
+
+    const notes: string[] = [];
+
+    // The footer form carries its text on the marker line itself.
+    const inline = lines[start].match(/^BREAKING[ -]CHANGE:\s*(.+)$/);
+    if (inline) notes.push(inline[1].trim());
+
+    for (const line of lines.slice(start + 1)) {
+      const item = line.match(/^\s*[-*]\s+(.+)$/);
+      if (item) {
+        notes.push(item[1].trim());
+        continue;
+      }
+      if (!line.trim()) {
+        if (notes.length > 0) break;
+        continue;
+      }
+      if (/^\s+\S/.test(line) && notes.length > 0) {
+        notes[notes.length - 1] += ` ${line.trim()}`;
+        continue;
+      }
+      // A new paragraph at column zero: the section is over, unless nothing
+      // has been collected yet — then it IS the note (the footer's
+      // free-prose form, wrapped onto the next line).
+      if (notes.length > 0) break;
+      notes.push(line.trim());
+    }
+
+    return notes;
   }
 
   /**

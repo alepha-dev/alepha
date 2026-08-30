@@ -5,6 +5,7 @@ import { HttpClient } from "alepha/server";
 import { Mail, MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { OutboxDetail } from "./OutboxDetail.tsx";
 
@@ -21,20 +22,6 @@ const querySchema = z.object({
   kind: z.text().optional(),
 });
 
-const relative = (iso: string): string => {
-  const at = new Date(iso).getTime();
-  if (Number.isNaN(at)) return "unknown";
-  const diff = Date.now() - at;
-  if (diff < 1000) return "just now";
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  // The capture directory is not cleared between runs, so it accumulates for
-  // as long as the checkout lives. Without a day bucket a week-old message read
-  // "170h ago", which is arithmetic rather than an answer.
-  return `${Math.floor(diff / 86_400_000)}d ago`;
-};
-
 /**
  * Everything the application sent outward, in one place.
  *
@@ -44,6 +31,7 @@ const relative = (iso: string): string => {
  */
 export const DevOutbox = () => {
   const http = useInject(HttpClient);
+  const relative = useRelativeTime({ fallback: "unknown" });
   const [params, setParams] = useQueryParams(querySchema, {
     format: "querystring",
   });

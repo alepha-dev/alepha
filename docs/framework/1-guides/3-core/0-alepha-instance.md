@@ -124,14 +124,16 @@ run(alepha);
 In tests, you often want manual lifecycle control:
 
 ```typescript
-test("MyService", async () => {
-  const app = Alepha.create().with(MyService);
-  await app.start();
+describe("MyService", () => {
+  it("MyService", async () => {
+    const app = Alepha.create().with(MyService);
+    await app.start();
 
-  const service = app.inject(MyService);
-  expect(service.isReady).toBe(true);
+    const service = app.inject(MyService);
+    expect(service.isReady).toBe(true);
 
-  // await app.stop(); ← automatically called by Vitest hooks
+    // await app.stop(); ← automatically called by Vitest hooks
+  });
 });
 ```
 

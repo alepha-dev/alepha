@@ -13,7 +13,6 @@ import {
   GitCommitHorizontal,
   Hourglass,
   Layers,
-  Link2,
   MapPin,
   Ruler,
   User,
@@ -39,7 +38,6 @@ import QuestViewTimer from "./QuestViewTimer.tsx";
 
 export interface QuestViewRailProps {
   quest: QuestResource;
-  questline: QuestlineSummary;
   onUpdate: (quest: QuestResource) => void;
   onShelve: () => void;
   onUnshelve: () => void;
@@ -105,22 +103,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
     completed: tr("quest.status.completed"),
     shelved: tr("quest.status.shelved"),
   }[quest.metadata.status];
-
-  const questlineParts: string[] = [];
-  if (props.questline.predecessor) {
-    questlineParts.push(
-      tr("quest.view.questline.blockedBy", {
-        args: [String(props.questline.predecessor.shortId)],
-      }) as string,
-    );
-  }
-  for (const dependent of props.questline.dependents) {
-    questlineParts.push(
-      tr("quest.view.questline.unlocks", {
-        args: [String(dependent.shortId)],
-      }) as string,
-    );
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -198,10 +180,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           </QuestViewRailRow>
         )}
 
-        <QuestViewRailRow icon={Link2} label={tr("quest.rail.questline")}>
-          {questlineParts.length > 0 ? questlineParts.join(" · ") : undefined}
-        </QuestViewRailRow>
-
         {/* What shipped. No link target: Lore does not know the project's
             repository, and a row that looks clickable and is not is worse
             than a row that does not. */}
@@ -210,9 +188,16 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           label={tr("quest.rail.commits")}
         >
           {quest.commits?.length ? (
-            <span className="flex flex-col items-end gap-0.5">
+            // `w-full` on BOTH, and the leaf's is the load-bearing one.
+            // `truncate` sets `white-space: nowrap`, which makes the leaf's
+            // min-content equal its max-content, so `items-end` sizes it to
+            // the whole commit line however narrow the column gets — and a
+            // right-aligned overflow spills left, over the "Commits" label.
+            // A definite width is the only thing `text-overflow` can clip
+            // against.
+            <span className="flex w-full min-w-0 flex-col items-end gap-0.5">
               {quest.commits.map((commit) => (
-                <span key={commit.sha} className="min-w-0 truncate">
+                <span key={commit.sha} className="w-full min-w-0 truncate">
                   <code className="font-mono">{commit.sha.slice(0, 7)}</code>
                   {commit.message ? (
                     <span className="text-muted-foreground font-normal">
@@ -290,31 +275,6 @@ const QuestViewRail = (props: QuestViewRailProps) => {
     </div>
   );
 };
-
-/**
- * The questline as `QuestView` already fetched it — passed down rather than
- * re-fetched, so opening a quest still costs one `getQuestLine`.
- */
-export interface QuestlineSummary {
-  predecessor?: QuestlineNode;
-  dependents: QuestlineNode[];
-}
-
-/**
- * One end of a questline link.
- *
- * `completedAt` / `shelvedAt` are what let a reader tell "blocked" from
- * "unblocked" and from "blocked by something parked". They were missing
- * here while `QuestView`'s own state carried them, so anything typed
- * against this interface could not see the difference.
- */
-export interface QuestlineNode {
-  id: number;
-  shortId: number;
-  title: string;
-  completedAt?: string;
-  shelvedAt?: string;
-}
 
 interface EpicSummary {
   id: number;

@@ -153,16 +153,31 @@ export * from "./services/UserAgentParser.ts";
  *
  * @module alepha.server
  */
+/**
+ * The outbound HTTP client, owned by nothing that serves.
+ *
+ * `HttpClient` used to live in {@link AlephaServer}'s `services`, and
+ * `Alepha.inject` auto-registers a service's owning module - so injecting an
+ * OUTBOUND client registered an inbound HTTP listener, and every consumer
+ * (a CLI, a script, a worker) silently bound a port on `start()`.
+ *
+ * @module alepha.http
+ */
+export const AlephaHttpClient = $module({
+  name: "alepha.http",
+  services: [HttpClient],
+});
+
 export const AlephaServer = $module({
   name: "alepha.server",
   primitives: [$route, $action, $middleware, $sse],
+  imports: [AlephaHttpClient],
   services: [
     ServerBodyParserProvider,
     ServerCompressProvider,
     ServerHealthProvider,
     ServerHelmetProvider,
     ServerMultipartProvider,
-    HttpClient,
     UserAgentParser,
     ServerRequestParser,
     ServerRouterProvider,

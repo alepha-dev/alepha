@@ -1,4 +1,5 @@
 import { useActionHistory } from "../../hooks/useActionHistory.ts";
+import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 
 export interface ActionHistoryProps {
@@ -10,15 +11,9 @@ export interface ActionHistoryProps {
   }) => void;
 }
 
-const relative = (at: number): string => {
-  const diff = Date.now() - at;
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`;
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  return `${Math.floor(diff / 3_600_000)}h ago`;
-};
-
 export const ActionHistory = (props: ActionHistoryProps) => {
   const history = useActionHistory(props.actionKey);
+  const relative = useRelativeTime();
 
   if (history.entries.length === 0) {
     return (

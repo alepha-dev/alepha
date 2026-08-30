@@ -558,6 +558,175 @@ test.describe("Folio workspace", () => {
     await expect(page.locator(".cm-lineNumbers")).toHaveCount(0);
   });
 
+  /**
+   * Tab indents, and Escape-then-Tab is the way back out.
+   *
+   * `codeMirrorSetup.browser.spec.ts` can assert the keymap holds
+   * `indentWithTab` and that `EditorView.setTabFocusMode` still exists, but
+   * not that the pair actually works: tab-focus mode lives on `InputState`,
+   * which only exists on a live `EditorView`, and that spec builds a bare
+   * `EditorState` because jsdom supplies no `Range.getClientRects`.
+   *
+   * So the half that matters most is only checkable here. Mounting
+   * `indentWithTab` makes this field a keyboard trap unless Escape really
+   * does release the next Tab, and a trap is not something to take on
+   * faith from a dependency's source.
+   */
+  test("08e — Tab indents in the editor, and Escape then Tab leaves it", async () => {
+    await page.goto(folioUrl);
+    const toggle = page.getByTestId("markdown-mode-toggle");
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+
+    if ((await toggle.getAttribute("data-mode")) !== "edit") {
+      await toggle.click();
+    }
+    await expect(toggle).toHaveAttribute("data-mode", "edit");
+
+    const content = page.locator(".cm-content");
+    await expect(content).toBeVisible({ timeout: 15_000 });
+
+    // A line of our own at the end, so the assertion reads a string this
+    // test wrote rather than whatever the folio already held.
+    await content.click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("indent-me");
+
+    // Read the LINE's raw `textContent`, not the pane's text. Both
+    // `toContainText` and `toHaveText` normalize whitespace, so they cannot
+    // tell "  indent-me" from "indent-me" — which is the entire assertion.
+    const lastLine = page.locator(".cm-line").last();
+    await expect.poll(() => lastLine.textContent()).toBe("indent-me");
+
+    await page.keyboard.press("Tab");
+    await expect.poll(() => lastLine.textContent()).toMatch(/^\s\s+indent-me$/);
+
+    // Shift-Tab takes it back — the half `indentWithTab` carries in `shift`.
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() => lastLine.textContent()).toBe("indent-me");
+
+    // The escape hatch. Focus has to actually leave `.cm-content`, which is
+    // the whole claim: a Tab that merely stopped indenting would still be a
+    // trap.
+    await expect(content).toBeFocused();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Tab");
+    await expect(content).not.toBeFocused();
+  });
+
+  /**
+   * The ⌘F panel, and the reason it is CodeMirror's rather than the find bar.
+   *
+   * Both halves are asserted here because both are DOM: `.cm-panels` used to
+   * theme only the frame, so the strip was a Lore border around native
+   * `<input>`s and grey buttons, and the fix is a stylesheet — nothing a
+   * bare `EditorState` can see.
+   *
+   * The colours are compared against the SAME custom properties the rest of
+   * the app reads, resolved through a probe element, rather than against
+   * literal rgb strings. That is what makes one run stand for every Lore
+   * theme and both light and dark: the assertion is the var indirection, and
+   * a hardcoded colour anywhere in the panel breaks it.
+   */
+  test("08f — the ⌘F panel is Lore chrome and finds a match below the fold", async () => {
+    const needle = `needle-${stamp}`;
+    const longUrl = await createFolio(
+      `Long-${stamp}`.slice(0, 24),
+      [
+        ...Array.from({ length: 400 }, (_, n) => `Line ${n} of padding.`),
+        // Twice, adjacent, so one match ends up selected and the other
+        // plain — the two rules are separate and both can regress.
+        needle,
+        needle,
+      ].join("\n\n"),
+    );
+
+    await page.goto(longUrl);
+    const toggle = page.getByTestId("markdown-mode-toggle");
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+    // Polled rather than clicked once: a 400-paragraph folio is still
+    // settling when the toggle first paints, and the click landed on a node
+    // React had already replaced.
+    await expect
+      .poll(
+        async () => {
+          const mode = await toggle.getAttribute("data-mode");
+          if (mode === "edit") return mode;
+          await toggle.click({ timeout: 2_000 }).catch(() => {});
+          return toggle.getAttribute("data-mode");
+        },
+        { timeout: 30_000 },
+      )
+      .toBe("edit");
+
+    const content = page.locator(".cm-content");
+    await expect(content).toBeVisible({ timeout: 15_000 });
+
+    // The premise of the whole test: CodeMirror paints its viewport only, so
+    // the needle 400 paragraphs down is not in the DOM. `useFolioFind` walks
+    // exactly this DOM, which is why it cannot serve Edit mode and why the
+    // panel below is worth keeping rather than removing.
+    await expect(content).not.toContainText(needle);
+
+    await content.click();
+    await page.keyboard.press("ControlOrMeta+f");
+    const panel = page.locator(".cm-panel.cm-search");
+    await expect(panel).toBeVisible();
+
+    const colours = await page.evaluate(() => {
+      // Resolve a custom property the way any element in the app would, so
+      // the comparison is against the live theme rather than a copy of it.
+      const token = (value: string): string => {
+        const probe = document.createElement("div");
+        probe.style.color = value;
+        document.body.appendChild(probe);
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+        return resolved;
+      };
+      const field = document.querySelector<HTMLElement>(
+        ".cm-panel.cm-search .cm-textfield",
+      );
+      const button = document.querySelector<HTMLElement>(
+        ".cm-panel.cm-search .cm-button",
+      );
+      return {
+        fieldBackground: field && getComputedStyle(field).backgroundColor,
+        buttonBorder: button && getComputedStyle(button).borderTopColor,
+        background: token("var(--color-background)"),
+        border: token("var(--color-border)"),
+      };
+    });
+
+    expect(colours.fieldBackground).toBe(colours.background);
+    expect(colours.buttonBorder).toBe(colours.border);
+
+    // Typed, not `fill()`ed: CodeMirror's search field commits its query on
+    // `keyup`, and a `fill()` sets the value without ever firing one, so the
+    // panel showed the needle and searched for the empty string.
+    const field = panel.locator('.cm-textfield[name="search"]');
+    await field.click();
+    await field.pressSequentially(needle);
+    await page.keyboard.press("Enter");
+
+    // Found, painted, and scrolled to — the match is in the DOM now only
+    // because the search brought its line into the viewport.
+    await expect(page.locator(".cm-searchMatch")).toHaveCount(2);
+    await expect(content).toContainText(needle);
+
+    // And painted the same green `::highlight(folio-find)` uses in View
+    // mode, not the stock yellow. Worth asserting rather than assuming:
+    // the stock rule is `&light .cm-searchMatch`, which carries the same
+    // specificity as a plain override, so this is decided by a `.cm-content`
+    // qualifier that is easy to drop while the rule still looks right.
+    await expect(
+      page.locator(".cm-searchMatch.cm-searchMatch-selected"),
+    ).toHaveCSS("background-color", "oklch(0.696 0.17 162.48)");
+    await expect(
+      page.locator(".cm-searchMatch:not(.cm-searchMatch-selected)"),
+    ).toHaveCSS("background-color", "oklch(0.696 0.17 162.48 / 0.32)");
+  });
+
   test("09b — the empty-state menubar keeps its shape, only its enablement changes", async () => {
     await page.goto(`/${projectSlug}/folios`);
     await expect(page.locator('[data-slot="folio-menubar"]')).toBeVisible({
@@ -626,6 +795,77 @@ test.describe("Folio workspace", () => {
       await page.keyboard.press("ControlOrMeta+\\");
       await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible();
     });
+  });
+
+  /**
+   * A rename in the tree survives the editor's next save.
+   *
+   * The draft is seeded once, at mount, from the route loader's snapshot,
+   * and the tree's rename writes only `userFoliosAtom` — so every save path
+   * kept sending the title the editor was opened with, and the rename was
+   * silently reverted. Data loss, and invisible until a reload: the
+   * workspace has no title FIELD at all, so nothing on screen contradicted
+   * the tree's label.
+   *
+   * That is also why this can only be an e2e. `useFolioDraft.browser.spec`
+   * covers `adoptTitle` itself; the sequence that breaks runs across two
+   * panes, an atom and two `PATCH`es, and the evidence is what the server
+   * holds afterwards.
+   */
+  test("09e — a tree rename survives the editor's next save", async () => {
+    const original = `Seed-${stamp}`.slice(0, 24);
+    const renamed = `Renamed-${stamp}`.slice(0, 24);
+    const seedUrl = await createFolio(original, "seed");
+    await page.goto(seedUrl);
+
+    const tree = page.locator('[data-slot="folio-tree"]');
+    await expect(tree).toBeVisible({ timeout: 15_000 });
+
+    // Rename the OPEN folio from the tree, the way the report does: its row
+    // is the one the workspace is already showing. Right-click, then
+    // Rename — there is no double-click shortcut.
+    const row = tree.getByText(original, { exact: true });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.click({ button: "right" });
+    await page.getByRole("menuitem", { name: /rename|renommer/i }).click();
+
+    const renameBox = tree.getByRole("textbox");
+    await expect(renameBox).toBeVisible({ timeout: 10_000 });
+    await renameBox.fill(renamed);
+
+    const renameSaved = page.waitForResponse(
+      (r) => /\/api\/update\//.test(r.url()) && r.status() === 200,
+    );
+    await renameBox.press("Enter");
+    await renameSaved;
+    await expect(tree.getByText(renamed, { exact: true })).toBeVisible();
+
+    // Now make the editor save. Before the fix this write carried the title
+    // the draft was seeded with and undid the rename. A folio with content
+    // opens in View, so the body has to be reachable first.
+    const toggle = page.getByTestId("markdown-mode-toggle");
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+    if ((await toggle.getAttribute("data-mode")) !== "edit") {
+      await toggle.click();
+    }
+    await expect(toggle).toHaveAttribute("data-mode", "edit");
+    await expect(page.locator(".cm-content")).toBeVisible({ timeout: 15_000 });
+
+    const editorSaved = page.waitForResponse(
+      (r) => /\/api\/update\//.test(r.url()) && r.status() === 200,
+      { timeout: 30_000 },
+    );
+    await page.locator(".cm-content").click();
+    await page.keyboard.type(" and a body edit");
+    await editorSaved;
+
+    // From the server, not from a tree label that might simply still be
+    // showing what it last rendered.
+    await page.reload();
+    await expect(tree.getByText(renamed, { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(tree.getByText(original, { exact: true })).toHaveCount(0);
   });
 
   test("09c — New directory works from the empty-state menubar", async () => {

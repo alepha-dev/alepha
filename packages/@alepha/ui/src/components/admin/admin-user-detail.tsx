@@ -121,8 +121,25 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
   // refetch() — so the mutations below just call the relevant refetch()
   // instead of bumping a manual reload key.
 
+  // ⚠️ Every query keyed on `userId` is gated on it being non-empty.
+  //
+  // `resolveUserDetailId` falls back to `""` on purpose, so a vendored
+  // consumer declaring `/users/:id` keeps working — but the fallback used to
+  // be dispatched anyway. `useRouterState` is a GLOBAL store, so navigating
+  // away re-renders this component with the next route's params before it
+  // unmounts: `userId` becomes `""`, the dep changes, and the query re-runs
+  // with it. The batch then posts `params: { id: "" }` and the server answers
+  // `Invalid GUID at /id` — blight #358, seven hits, and #118 before it on
+  // the previous bundle.
+  //
+  // Skipping the request is also what makes the fallback fail VISIBLY: with
+  // nothing in flight, `loading` is false and `user` is undefined, so the
+  // `notFound` branch below renders instead of a 400 nobody sees.
+  const hasUserId = userId !== "";
+
   const userQuery = useQuery(
     {
+      enabled: hasUserId,
       handler: ({ signal }) =>
         userClient.getUser(
           {
@@ -158,6 +175,9 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
 
   const identitiesQuery = useQuery(
     {
+      // Same gate: this one sends `userId` as a filter, so an empty one asks
+      // for every identity in the realm rather than failing.
+      enabled: hasUserId,
       handler: ({ signal }) =>
         identityClient.findIdentities(
           { query: { userId, size: 100, userRealmName: props.userRealmName } },

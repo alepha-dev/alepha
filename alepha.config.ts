@@ -80,6 +80,27 @@ export default (alepha: Alepha) => {
     ],
   });
 
+  // The machine-wide queue key held by the steps that cannot overlap between
+  // checkouts. Two reasons, one key:
+  //
+  //   test, test:bun   `vitest.config.ts` points EVERY checkout at the same
+  //                    services (postgres on 15432, redis on 16379, s3mock on
+  //                    19090, emqx on 11883), one database and one bucket
+  //                    between them. Two worktrees testing at once interleave
+  //                    writes into a single postgres, which is the likeliest
+  //                    cause of the intermittent, never-the-same-spec failures
+  //                    this pipeline used to produce.
+  //
+  //   e2e, e2e-cli     Nothing shared: ports come from the checkout path (see
+  //                    `playwright.port.ts`) and the databases are `:memory:`.
+  //                    They queue for the machine. Two concurrent browser
+  //                    suites on one laptop time each other out, and a flaky
+  //                    e2e failure costs more to diagnose than the wait.
+  //
+  // Namespaced because the queue is machine-wide: a bare "test" would put this
+  // repo behind any other project on the machine that picked the same word.
+  const suites = "alepha:test";
+
   return {
     clean: $command({
       description: "Will remove all generated files.",
@@ -117,8 +138,6 @@ export default (alepha: Alepha) => {
     }),
     "verify:go": $command({
       aliases: ["v:go"],
-      // Shares one slot with `verify`, see the note there.
-      exclusive: "alepha:verify",
       description: "Run the Go suite (apps/bay) on the platform it ships for.",
       handler: async ({ run }) => {
         // A lane of its own rather than a step inside `verify`, because the two
@@ -145,24 +164,24 @@ export default (alepha: Alepha) => {
         // `test:linux` reproduces the `bay` CI job in a container: gofmt, vet,
         // build, the whole suite, and a cross-compile for both Linux
         // architectures.
+        //
+        // No exclusive slot. It used to share one with `verify` on the grounds
+        // that both saturate the machine, which cost more than it bought: this
+        // lane runs in its own container and touches none of the four services
+        // `verify`'s test steps queue for, so all it did was make one command
+        // wait out the other for no shared resource at all.
         await run(`yarn w bay test:linux`);
       },
     }),
     verify: $command({
       aliases: ["v"],
-      // One machine-wide slot, shared with `verify:go`, because what these two
-      // contend for is the machine rather than the lane. `vitest.config.ts`
-      // points every checkout at the SAME services: postgres on 15432, redis
-      // on 16379, s3mock on 19090, emqx on 11883, one database and one bucket
-      // between them. Two worktrees running `yarn v` at once therefore
-      // interleave writes into a single postgres, which is the likeliest cause
-      // of the intermittent, never-the-same-spec failures this pipeline used
-      // to produce. The CPU cost of two concurrent typecheck/test/build runs
-      // is the smaller half of the problem.
+      // The machine-wide slot is on the steps that contend, not on this
+      // command: see `suites` above and the `exclusive:` options below.
       //
-      // An explicit key rather than `true`: `true` derives from the command
-      // name, which would hand these two lanes separate slots.
-      exclusive: "alepha:verify",
+      // It was on the command first. Correct, and far too wide. `lint`,
+      // `typecheck`, `check:*` and `build` share nothing between checkouts, so
+      // a second worktree sat through eight minutes of them before finding out
+      // its own typecheck was broken.
       description:
         "Run linter, checker and tests (JavaScript/TypeScript only — Go lives in `v:go`).",
       flags: z.object({
@@ -242,7 +261,16 @@ export default (alepha: Alepha) => {
             `yarn check:migrations`,
           ]);
           await assertServicesUp();
-          await run([`yarn test`, `yarn test:bun`]);
+
+          // Sequential, like the full lane below. These two ran as a parallel
+          // group here for as long as this lane existed, and that is one
+          // process interleaving with itself: `test:bun` drives the same
+          // postgres on 15432 as `test` does, so no queue at any granularity
+          // could have saved it. This is the lane used as the gate before a
+          // commit, which makes it a good suspect for a flake that never
+          // reproduces the same way twice.
+          await run(`yarn test`, { exclusive: suites });
+          await run(`yarn test:bun`, { exclusive: suites });
           return;
         }
 
@@ -289,8 +317,14 @@ export default (alepha: Alepha) => {
         // stretched from 47.4s to 115.6s under the contention. Thirteen seconds
         // is not worth a test run that takes two and a half times as long to
         // tell you it failed.
-        await run(`yarn test`);
-        await run(`yarn test:bun`);
+        //
+        // Two acquires rather than one, so another checkout can legitimately
+        // take the slot in between and this one queues again. That is the
+        // trade for not grouping them: `run([a, b])` is `Promise.all`, and
+        // running these two together is exactly the interleaving the slot
+        // exists to prevent.
+        await run(`yarn test`, { exclusive: suites });
+        await run(`yarn test:bun`, { exclusive: suites });
         await run(`yarn build`);
 
         // Give the one dev-mode e2e suite a cold Vite cache. Only
@@ -311,7 +345,10 @@ export default (alepha: Alepha) => {
         // `e2e` serves the playground on its own port (see its
         // playwright.config.ts) and `e2e-cli` exercises a packed tarball with
         // no server at all.
-        await run([`yarn e2e`, `yarn e2e-cli`]);
+        //
+        // One slot for the pair, not one each, so the parallelism above
+        // survives the queue.
+        await run([`yarn e2e`, `yarn e2e-cli`], { exclusive: suites });
 
         await run(`cd apps/docs && yarn alepha gen:llms`);
         await run(`yarn clean`);

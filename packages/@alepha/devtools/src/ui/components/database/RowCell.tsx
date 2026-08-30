@@ -1,5 +1,6 @@
 import { Link2 } from "lucide-react";
 
+import { useRelativeTime } from "../../hooks/useRelativeTime.ts";
 import { toText } from "../shared/toText.ts";
 
 export interface RowCellProps {
@@ -7,14 +8,6 @@ export interface RowCellProps {
   column: any;
   onFollow?: (entity: string, id: string) => void;
 }
-
-const relative = (ts: number): string => {
-  const diff = Date.now() - ts;
-  if (diff < 60_000) return "just now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return `${Math.floor(diff / 86_400_000)}d ago`;
-};
 
 /**
  * One grid cell, rendered by column type.
@@ -26,6 +19,10 @@ const relative = (ts: number): string => {
  */
 export const RowCell = (props: RowCellProps) => {
   const { value, column } = props;
+  // Every branch below this line can return, and only the timestamp one wants
+  // the formatter — but a hook after an early return is a hook that runs on
+  // some renders and not others.
+  const relative = useRelativeTime();
 
   if (value === undefined || value === null) {
     return (

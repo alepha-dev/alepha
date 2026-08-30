@@ -162,4 +162,86 @@ test.describe("admin user detail", () => {
       )
       .toEqual({ email: newEmail, emailVerified: false });
   });
+
+  /**
+   * Navigating AWAY from the page must not fire `getUser` with an empty id.
+   *
+   * Blight #358 on `shop-production`, seven hits, and #118 before it on the
+   * previous bundle. The reported stack points at `CodecManager.encode` and
+   * reads like a response-serialisation failure; it is not. `$action.run()`
+   * encodes the REQUEST through the same codec before validating it, so
+   * `Invalid GUID at /id` is `params.id` failing `z.uuid()`.
+   *
+   * `resolveUserDetailId` falls back to `""` on purpose, so a vendored
+   * consumer declaring `/users/:id` keeps working. What was missing is the
+   * gate: `useRouterState` is a global store, so leaving the page re-renders
+   * this component with the NEXT route's params before it unmounts, `userId`
+   * becomes `""`, the dep changes, and the query re-runs with it.
+   *
+   * Asserted on the REQUEST rather than on a failure, because the call goes
+   * through `/api/_batch`, which catches per-entry errors and answers 200. A
+   * test waiting for a red response would pass while the bug was live.
+   */
+  test("leaving the page issues no request with an empty user id", async ({
+    page,
+  }) => {
+    const stamp = Date.now();
+    await registerAndVerify(
+      page,
+      `bystander-${stamp}@example.com`,
+      "GoodPassw0rd",
+    );
+    await page.goto("/auth/logout");
+    await page.waitForLoadState("domcontentloaded");
+    await signInAsAdmin(page);
+
+    const usersJson = await page.evaluate(async () => {
+      const res = await fetch("/api/users?size=100");
+      return res.json();
+    });
+    type ListedUser = { id: string; email: string };
+    const users: ListedUser[] = usersJson.content ?? usersJson;
+    const victim = users.find((u) => u.email?.startsWith(`bystander-${stamp}`));
+    expect(victim, "the seeded user must be listed").toBeTruthy();
+
+    const emptyIdCalls: string[] = [];
+    page.on("request", (request) => {
+      const body = request.postData();
+      if (!body) return;
+      // Both shapes: the batched envelope and a direct action call.
+      if (!/getUser|findIdentities/.test(body)) return;
+      if (/"id"\s*:\s*""|"userId"\s*:\s*""/.test(body)) {
+        emptyIdCalls.push(`${request.url()} ${body.slice(0, 300)}`);
+      }
+    });
+
+    await page.goto(`/admin/users/${victim!.id}`);
+    await expect(
+      page.getByText(`bystander-${stamp}@example.com`).first(),
+    ).toBeVisible({ timeout: 15_000 });
+
+    // ⚠️ CLIENT-SIDE navigation, not `page.goto`. A `goto` is a full document
+    // load: the old component never re-renders, so the outgoing render this
+    // is about cannot happen and the test passes with or without the fix.
+    // Only an in-app link keeps React mounted across the params change.
+    // Arriving is a full load; LEAVING is the click. Repeated three times
+    // because the empty id rides one render, and a single sample of a
+    // timing-dependent render is a coin toss reported as a result.
+    const usersLink = page.getByRole("link", { name: /^users$/i }).first();
+    for (let n = 0; n < 3; n++) {
+      await usersLink.click();
+      await expect(page).toHaveURL(/\/admin\/users\/?$/, { timeout: 15_000 });
+      await page.waitForLoadState("networkidle");
+
+      await page.goto(`/admin/users/${victim!.id}`);
+      await expect(
+        page.getByText(`bystander-${stamp}@example.com`).first(),
+      ).toBeVisible({ timeout: 15_000 });
+    }
+    await usersLink.click();
+    await expect(page).toHaveURL(/\/admin\/users\/?$/, { timeout: 15_000 });
+    await page.waitForLoadState("networkidle");
+
+    expect(emptyIdCalls, emptyIdCalls.join("\n")).toEqual([]);
+  });
 });

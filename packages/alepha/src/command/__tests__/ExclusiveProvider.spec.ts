@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -6,12 +7,14 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { Alepha, AlephaError } from "alepha";
 import { describe, expect, it } from "vitest";
 
+import type { ExclusiveTicket } from "../index.ts";
 import { ExclusiveProvider, exclusiveOptions } from "../index.ts";
 
 describe("ExclusiveProvider", () => {
@@ -305,6 +308,126 @@ describe("ExclusiveProvider", () => {
       } finally {
         delete process.env.ALEPHA_NO_EXCLUSIVE;
       }
+    });
+  });
+
+  /**
+   * Two processes must not both end up inside the critical section.
+   *
+   * The claim is a read-then-write, and the read can miss a ticket that has
+   * not landed yet: A reads before B's file exists, sees itself alone at
+   * position 0, and starts its `holding: true` write; B lands, reads, sees A
+   * still `holding: false`, and claims too. Both return.
+   *
+   * `holding` was added for a different case — a later arrival meeting an
+   * ALREADY claimed slot — and says nothing about the window before the claim
+   * lands.
+   *
+   * Driven deterministically rather than by racing real processes.
+   * `exclusive-cross-process.spec.ts` spawns children and cannot hit this
+   * window on purpose: it is microseconds wide and depends on which of two
+   * writes reaches the filesystem first.
+   */
+  describe("two arrivals claiming the same unclaimed slot", () => {
+    /**
+     * Holds the FIRST claim write open, and reports when it has been reached,
+     * so the other instance can be driven through the window by hand.
+     */
+    class GatedExclusiveProvider extends ExclusiveProvider {
+      public gate?: Promise<void>;
+      public reached!: Promise<void>;
+      protected announceReached!: () => void;
+      protected claims = 0;
+
+      public arm(gate: Promise<void>): void {
+        this.gate = gate;
+        this.reached = new Promise((resolve) => {
+          this.announceReached = resolve;
+        });
+      }
+
+      public testWaitForTurn = this.waitForTurn.bind(this);
+
+      protected override async writeTicket(
+        file: string,
+        ticket: ExclusiveTicket,
+      ): Promise<void> {
+        if (ticket.holding && this.gate && this.claims++ === 0) {
+          this.announceReached();
+          await this.gate;
+        }
+        return super.writeTicket(file, ticket);
+      }
+    }
+
+    const gated = (): GatedExclusiveProvider =>
+      Alepha.create().inject(GatedExclusiveProvider);
+
+    it("lets exactly one in", async () => {
+      const key = `alepha-exclusive-race-${randomUUID()}`;
+      const a = gated();
+      const b = gated();
+      const dir = a.queueDir(key);
+      await mkdir(dir, { recursive: true });
+
+      // B's ticket sorts EARLIER, which is what makes it the rightful winner
+      // and this the interesting direction: A claims first in wall-clock time
+      // and still has to yield.
+      const at = 2_000;
+      const bt = 1_000;
+      const aName = a.ticketName(at);
+      const bName = b.ticketName(bt);
+      const aFile = join(dir, aName);
+      const bFile = join(dir, bName);
+
+      const ticket = (startedAt: number): ExclusiveTicket => ({
+        pid: process.pid,
+        key,
+        command: "verify",
+        cwd: process.cwd(),
+        startedAt,
+        heartbeatAt: startedAt,
+        holding: false,
+      });
+      const aTicket = ticket(at);
+      const bTicket = ticket(bt);
+
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      a.arm(gate);
+
+      // A arrives alone and starts claiming.
+      writeFileSync(aFile, JSON.stringify(aTicket), "utf8");
+      let aEntered = false;
+      const aTurn = a.testWaitForTurn(dir, aFile, aName, aTicket).then(() => {
+        aEntered = true;
+        return undefined;
+      });
+      await a.reached;
+
+      // B lands and reads INSIDE A's window, so it sees A not yet holding.
+      writeFileSync(bFile, JSON.stringify(bTicket), "utf8");
+      let bEntered = false;
+      const bTurn = b.testWaitForTurn(dir, bFile, bName, bTicket).then(() => {
+        bEntered = true;
+        return undefined;
+      });
+      await bTurn;
+
+      release();
+      // A either returns (having verified) or goes back to waiting. Give it
+      // room to do whichever, then read the outcome.
+      await Promise.race([
+        aTurn,
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ]);
+
+      // Both assertions matter. "not two" alone would also be satisfied by a
+      // deadlock in which neither side ever enters.
+      expect([aEntered, bEntered].filter(Boolean)).toHaveLength(1);
+      expect(bEntered).toBe(true);
     });
   });
 });

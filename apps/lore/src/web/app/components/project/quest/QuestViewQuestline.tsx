@@ -8,7 +8,34 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import type { QuestlineSummary } from "./QuestViewRail.tsx";
+/**
+ * The questline as `QuestView` already fetched it — passed down rather than
+ * re-fetched, so opening a quest still costs one `getQuestLine`.
+ *
+ * Declared here rather than in `QuestViewRail`, which used to own it: the
+ * rail no longer takes a questline at all, and this banner is the only
+ * consumer left.
+ */
+export interface QuestlineSummary {
+  predecessor?: QuestlineNode;
+  dependents: QuestlineNode[];
+}
+
+/**
+ * One end of a questline link.
+ *
+ * `completedAt` / `shelvedAt` are what let a reader tell "blocked" from
+ * "unblocked" and from "blocked by something parked". They were missing
+ * here while `QuestView`'s own state carried them, so anything typed
+ * against this interface could not see the difference.
+ */
+export interface QuestlineNode {
+  id: number;
+  shortId: number;
+  title: string;
+  completedAt?: string;
+  shelvedAt?: string;
+}
 
 export interface QuestViewQuestlineProps {
   quest: QuestResource;

@@ -1,11 +1,17 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
+import { cacheOptions } from "alepha/cache";
+import {
+  MemoryDestinationProvider,
+  LogDestinationProvider,
+} from "alepha/logger";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
 import { $issuer, SecurityProvider, type UserAccount } from "alepha/security";
 import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
+import { OAuthController } from "../controllers/OAuthController.ts";
 import { renderConsentPage } from "../helpers/consentPage.ts";
 import { buildAuthorizationServerMetadata } from "../helpers/oauthMetadata.ts";
 import { AlephaOAuth, oauthOptions } from "../index.ts";
@@ -879,5 +885,143 @@ describe("device authorization grant", () => {
     });
     // Not "no such code": that would confirm which codes ever existed.
     expect((await res.json()).error).toBe("expired_token");
+  });
+});
+
+/**
+ * The two ways the DCR rate limiter used to disappear without saying so.
+ *
+ * Dynamic client registration is unauthenticated by design, so this limiter
+ * is the only thing between an open write path and an unbounded row count.
+ * Both bypasses were silent, which is what made them worth a quest: the
+ * control was absent and looked present.
+ */
+describe("OAuthController — the DCR limiter cannot silently disappear", () => {
+  const boot = async (
+    env?: Record<string, string | boolean>,
+    cache?: object,
+  ) => {
+    // The substitution goes FIRST: the container refuses one for a service
+    // something has already used, and the modules below inject the logger.
+    const alepha = Alepha.create(env ? { env } : undefined)
+      .with({
+        provide: LogDestinationProvider,
+        use: MemoryDestinationProvider,
+      })
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    if (cache) alepha.set(cacheOptions, cache as any);
+    await alepha.start();
+    return alepha;
+  };
+
+  const register = (hostname: string, name: string) =>
+    fetch(`${hostname}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_name: name,
+        redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+      }),
+    });
+
+  it("refuses the eleventh registration from one address", async ({
+    expect,
+  }) => {
+    const alepha = await boot();
+    const { hostname } = alepha.inject(ServerProvider);
+
+    for (let n = 0; n < 10; n++) {
+      expect((await register(hostname, `Client ${n}`)).status).toBe(201);
+    }
+
+    // The window is fifteen minutes and the counter is created with it, so
+    // the eleventh is refused rather than sliding.
+    const refused = await register(hostname, "Client 11");
+    expect(refused.status).toBe(429);
+  });
+
+  it("counts a registration with no client address, and says so", ({
+    expect,
+  }) => {
+    // Reached directly: a request over a real socket always has a connection
+    // IP, so no HTTP test can produce the `undefined` this branch exists for.
+    class TestOAuthController extends OAuthController {
+      public testBucket = this.registrationBucket.bind(this);
+    }
+
+    const alepha = Alepha.create()
+      .with({
+        provide: LogDestinationProvider,
+        use: MemoryDestinationProvider,
+      })
+      .with(AlephaServer)
+      .with(AlephaOrmPostgres)
+      .with(AlephaOAuth);
+    alepha.set(oauthOptions, {
+      realm: "users",
+      resource: "/mcp",
+      loginPath: "/login",
+    });
+    const controller = alepha.inject(TestOAuthController);
+    const logs = alepha.inject(MemoryDestinationProvider);
+
+    expect(controller.testBucket("203.0.113.7")).toBe("203.0.113.7");
+    expect(logs.logs.filter((l) => l.level === "WARN")).toHaveLength(0);
+
+    // Bucketed, not exempted — the old code returned early and counted
+    // nothing at all.
+    expect(controller.testBucket(undefined)).toBe("unknown");
+    const warnings = logs.logs.filter((l) => l.level === "WARN");
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toContain("TRUST_PROXY");
+  });
+
+  it("refuses registration in production when the cache is disabled", async ({
+    expect,
+  }) => {
+    // `incr` answers 1 from a disabled cache, which is indistinguishable from
+    // a first call — so without asking, the endpoint would serve an unlimited
+    // registration path and report success.
+    // Two more env vars, both about getting a production container to boot
+    // at all rather than about the limiter: production refuses the built-in
+    // `APP_SECRET`, and it refuses to push a schema, which this app has no
+    // migrations for. Neither is reached — the 503 fires before any query.
+    const alepha = await boot(
+      {
+        NODE_ENV: "production",
+        APP_SECRET: "a-strong-unique-secret",
+        DATABASE_SYNC: false,
+      },
+      { enabled: false },
+    );
+    const { hostname } = alepha.inject(ServerProvider);
+
+    const resp = await register(hostname, "Claude");
+    expect(resp.status).toBe(503);
+  });
+
+  it("warns but still registers outside production with the cache disabled", async ({
+    expect,
+  }) => {
+    // A developer running with caching off must not be blocked; only a
+    // production deploy is refused.
+    const alepha = await boot(undefined, { enabled: false });
+    const { hostname } = alepha.inject(ServerProvider);
+    const logs = alepha.inject(MemoryDestinationProvider);
+
+    const resp = await register(hostname, "Claude");
+    expect(resp.status).toBe(201);
+    expect(
+      logs.logs.some(
+        (l) => l.level === "WARN" && l.message.includes("unbounded"),
+      ),
+    ).toBe(true);
   });
 });

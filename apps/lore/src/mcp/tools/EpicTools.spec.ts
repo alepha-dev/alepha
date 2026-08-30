@@ -5,7 +5,7 @@ import { AlephaFake } from "alepha/fake";
 import { AlephaMcp } from "alepha/mcp";
 import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
-import { AlephaServer } from "alepha/server";
+import { AlephaServer, NotFoundError } from "alepha/server";
 import { describe, it } from "vitest";
 
 import {
@@ -369,6 +369,88 @@ describe("Lore MCP — epics", () => {
       expect((await repos.quests.getById(quest.id)).updatedAt).toEqual(
         questUpdatedAtBefore,
       );
+    });
+  });
+
+  describe("epic_delete", () => {
+    it("detaches the epic's quests and folios instead of deleting them", async ({
+      expect,
+    }) => {
+      // The FK's `ON DELETE SET NULL` is the whole contract of this tool, and
+      // the reason its description has to say so: an agent reading only the
+      // tool list must not have to guess whether it is about to erase the
+      // work filed under the epic.
+      const { alepha, repos, project, epicTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
+      const folio = await createTestFolio(alepha, project, { epicId: epic.id });
+
+      const result = await call(epicTools.epic_delete, {
+        project: project.id,
+        number: epic.number,
+      });
+
+      expect(result.ok).toBe(true);
+      expect((await repos.quests.getById(quest.id)).epicId).toBeUndefined();
+      expect((await repos.folios.getById(folio.id)).epicId).toBeUndefined();
+    });
+
+    it("removes the epic from epic_list, epic_get and project_context", async ({
+      expect,
+    }) => {
+      // `epics` carries `deletedAt`, so a plain soft delete would leave the
+      // row readable on all three surfaces while the caller believed it gone.
+      // `deleteEpic` passes `force: true` for exactly that reason.
+      const { alepha, project, epicTools, projectTools, call } = await setup();
+      const doomed = await createTestEpic(alepha, project, { title: "Doomed" });
+      const kept = await createTestEpic(alepha, project, { title: "Kept" });
+
+      await call(epicTools.epic_delete, {
+        project: project.id,
+        number: doomed.number,
+      });
+
+      const list = await call(epicTools.epic_list, { project: project.id });
+      expect(list.epics.map((e: any) => e.number)).toEqual([kept.number]);
+
+      await expect(
+        call(epicTools.epic_get, {
+          project: project.id,
+          number: doomed.number,
+        }),
+      ).rejects.toThrowError();
+
+      const context = await call(projectTools.project_context, {
+        project: project.id,
+      });
+      expect(context.epics.map((e: any) => e.title)).toEqual(["Kept"]);
+    });
+
+    it("refuses a caller who does not belong to the project", async ({
+      expect,
+    }) => {
+      // Not a new behaviour: `resolveProjectId` filters through
+      // `getMyProjects`, and `deleteEpic` carries its own `$ownsProject`.
+      // Pinned anyway because this is the most destructive surface
+      // `EpicTools` exposes, and both of those gates sit outside the tool.
+      const { alepha, repos, project, epicTools, call } = await setup();
+      const epic = await createTestEpic(alepha, project);
+      const stranger = crypto.randomUUID();
+
+      // `NotFoundError` and not `ForbiddenError`, asserted rather than left
+      // to a bare `toThrowError()`: the refusal has to come from the
+      // membership filter, and a bare assertion would also pass if the call
+      // died on a broken fixture. The project is reported as not found
+      // rather than forbidden, so the tool leaks no existence either.
+      await expect(
+        call(
+          epicTools.epic_delete,
+          { project: project.id, number: epic.number },
+          stranger,
+        ),
+      ).rejects.toThrowError(NotFoundError);
+
+      expect(await repos.epics.getById(epic.id)).toBeDefined();
     });
   });
 

@@ -12,11 +12,13 @@ import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
 
 import type { I18n } from "../../../../services/I18n.ts";
+import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
 import {
   FOLIO_MENUS,
   type FolioActionState,
   type FolioMenuItem,
+  folioShortcutGlyph,
   isFolioActionEnabled,
 } from "./folioMenubarModel.ts";
 
@@ -34,6 +36,12 @@ export interface FolioMenubarProps {
    * press it for no reason.
    */
   dirty?: boolean;
+  /**
+   * Which face the document is showing, so a glyph is not advertised for a
+   * key the editor has taken over. Absent on the empty `/folios` state,
+   * where there is no document and so no editor to take anything.
+   */
+  mode?: MarkdownEditorMode;
 }
 
 /**
@@ -95,9 +103,9 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
                     onClick={() => dispatch(entry.id)}
                   >
                     {tr(labelKeyFor(entry))}
-                    {(entry.shortcut ?? entry.syntaxHint) && (
+                    {folioShortcutGlyph(entry, props.mode) && (
                       <MenubarShortcut>
-                        {entry.shortcut ?? entry.syntaxHint}
+                        {folioShortcutGlyph(entry, props.mode)}
                       </MenubarShortcut>
                     )}
                   </MenubarItem>

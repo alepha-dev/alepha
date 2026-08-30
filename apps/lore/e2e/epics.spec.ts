@@ -153,6 +153,116 @@ test.describe("Epics — the backlog gate", () => {
       await expect(page.getByText(releasedTitle).first()).toBeVisible();
     });
 
+    await test.step("the count stays readable once its tab is selected", async () => {
+      // Feedback #2007: the "0" beside Quests vanished once that tab was
+      // selected. The count carried `text-muted-foreground`, which is right
+      // while the segment is inactive and nearly invisible on the active one,
+      // where the thumb paints `bg-primary` underneath it.
+      //
+      // The same element is measured in both states rather than two different
+      // counts, because that is the comparison the report actually makes:
+      // "perfectly legible on the inactive segments". A fixed threshold alone
+      // would encode one Lore theme's palette.
+      await page.goto(`/${slug}/epics/${epic.number}?tab=quests`);
+      // The count is `quests?.length`, so it does not exist until that fetch
+      // lands. Measuring first reads an absent element, not an invisible one.
+      await expect(
+        page.locator('[data-slot="segmented-count"]').first(),
+      ).toBeVisible({ timeout: 15_000 });
+
+      const measure = () =>
+        page.evaluate(() => {
+          // ⚠️ Colours come back as `oklab(...)` / `oklch(...)`, not `rgb()`.
+          // Parsing the first three numbers as RGB channels reads
+          // `oklab(0.985 0 0 / 0.7)` as near-black and reports a contrast of
+          // 1.0 against a near-black thumb — a fix that works, measured as a
+          // total failure. A canvas converts whatever the browser hands over,
+          // and painting foreground OVER background composites the alpha,
+          // which a translucent count needs.
+          const canvas = document.createElement("canvas");
+          canvas.width = 1;
+          canvas.height = 1;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          const pixel = (background: string, foreground?: string) => {
+            if (!ctx) return [0, 0, 0];
+            ctx.clearRect(0, 0, 1, 1);
+            ctx.fillStyle = background;
+            ctx.fillRect(0, 0, 1, 1);
+            if (foreground) {
+              ctx.fillStyle = foreground;
+              ctx.fillRect(0, 0, 1, 1);
+            }
+            return Array.from(ctx.getImageData(0, 0, 1, 1).data.slice(0, 3));
+          };
+          const luminance = ([r, g, b]: number[]): number => {
+            const channel = (v: number) => {
+              const c = v / 255;
+              return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+            };
+            return (
+              0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+            );
+          };
+
+          const count = document.querySelector<HTMLElement>(
+            '[data-slot="segmented-count"]',
+          );
+          if (!count) return null;
+
+          const segment = count.closest('[data-slot="segmented-item"]');
+          const active = segment?.getAttribute("data-state") === "active";
+
+          // The active segment's own background is transparent — the thumb is
+          // a separate absolutely-positioned span behind it — so an active
+          // count has to be measured against the thumb.
+          let background = "rgb(255, 255, 255)";
+          if (active) {
+            const thumb = document.querySelector<HTMLElement>(
+              '[data-slot="segmented-thumb"]',
+            );
+            if (thumb) background = getComputedStyle(thumb).backgroundColor;
+          } else {
+            let node: Element | null = count;
+            while (node) {
+              const bg = getComputedStyle(node).backgroundColor;
+              if (bg && !/rgba?\([^)]*,\s*0\)/.test(bg)) {
+                background = bg;
+                break;
+              }
+              node = node.parentElement;
+            }
+          }
+
+          const a = luminance(pixel(background, getComputedStyle(count).color));
+          const b = luminance(pixel(background));
+          return {
+            active,
+            ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+          };
+        });
+
+      const selected = await measure();
+      expect(selected, "the Quests count must be on screen").not.toBeNull();
+      expect(selected?.active).toBe(true);
+
+      // Now the same count with its segment inactive, which is the state the
+      // report calls readable.
+      await page.getByRole("radio", { name: /overview|aperçu/i }).click();
+      await expect(
+        page.locator('[data-slot="segmented-count"]').first(),
+      ).toBeVisible();
+      const resting = await measure();
+      expect(resting?.active).toBe(false);
+
+      // Both halves. A bare "is it legible" would pass on a count that is
+      // still markedly worse than it was; a bare comparison would pass on two
+      // equally unreadable states.
+      expect(selected?.ratio ?? 0).toBeGreaterThanOrEqual(4.5);
+      expect(selected?.ratio ?? 0).toBeGreaterThanOrEqual(
+        (resting?.ratio ?? 0) * 0.9,
+      );
+    });
+
     await test.step("beginning the epic releases them in one write", async () => {
       await page.evaluate(async (epicId) => {
         const r = await fetch(`/api/setEpicStatus/${epicId}`, {

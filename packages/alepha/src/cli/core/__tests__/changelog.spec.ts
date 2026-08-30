@@ -33,6 +33,27 @@ class MockGitProvider extends GitProvider {
   }
 }
 
+/**
+ * What `git log --pretty=format:%h %s%n%b%x1e` actually emits.
+ *
+ * Each commit is `<subject>\n<body>\x1e`, and git joins the entries with a
+ * newline — so every record after the first arrives with a leading one.
+ * Built here rather than written inline because the leading newline is
+ * exactly the detail a hand-written fixture drops, and dropping it makes
+ * every record after the first unparseable.
+ */
+function gitLog(
+  entries: Array<string | { line: string; body: string }>,
+): string {
+  return entries
+    .map((entry) =>
+      typeof entry === "string"
+        ? `${entry}\n\x1e`
+        : `${entry.line}\n${entry.body}\x1e`,
+    )
+    .join("\n");
+}
+
 function setMockGitResponses(
   mocks: Array<{ cmd: string; response: string }>,
 ): void {
@@ -68,6 +89,7 @@ describe("changelog", () => {
         scope: "ui",
         description: "add button component",
         breaking: false,
+        breakingNotes: [],
       });
     });
 
@@ -93,6 +115,7 @@ describe("changelog", () => {
         scope: "api",
         description: "remove deprecated endpoint",
         breaking: true,
+        breakingNotes: [],
       });
     });
 
@@ -109,7 +132,88 @@ describe("changelog", () => {
         scope: "auth",
         description: "breaking change to token format",
         breaking: true,
+        breakingNotes: [],
       });
+    });
+
+    /**
+     * The body of `04facd519`, verbatim, wrapping and all.
+     *
+     * The point of using a real one: it is the ONLY commit in 0.27.0..HEAD
+     * that declared a break, it uses the bare-heading form rather than the
+     * conventional-commits footer, and its items wrap at ~76 columns. A
+     * fixture written from the specification instead would have been green
+     * against a parser that still missed every break this repository has
+     * ever written.
+     */
+    const realBreakingBody = [
+      "Implements epic Notifications v2 (#6) in full: all eleven quests.",
+      "",
+      "Breaking changes",
+      "- the admin notification list is backed by receipts, so notifications",
+      "  pushed before this have none and do not appear",
+      "- notificationQuerySchema.status changes from the job vocabulary to the",
+      "  receipt one",
+      "- notificationContactSchema is deleted and",
+      "  notificationContactPreferencesSchema is rewritten onto two axes",
+      "- the notification $parameter is renamed to api.notifications and the realm",
+      "  settings $parameter to api.realms.<realm>; both are keyed by name, so",
+      "  stored overrides are orphaned and revert to defaults",
+      "",
+      "Also fixes JobProvider.pushMany dropping options on its keyed path, which",
+      "lost the tenant on every keyed row.",
+    ].join("\n");
+
+    test("should detect a bare 'Breaking changes' heading in the body", () => {
+      const parser = getParser();
+      const result = parser.parseCommit(
+        `04facd51 feat(api): delivery hygiene, receipts and React email templates\n${realBreakingBody}`,
+        { ...defaultConfig, scopes: undefined },
+      );
+
+      expect(result?.breaking).toBe(true);
+      // Four items, not five lines: each wrapped bullet is one item.
+      expect(result?.breakingNotes).toHaveLength(4);
+      expect(result?.breakingNotes[0]).toBe(
+        "the admin notification list is backed by receipts, so notifications pushed before this have none and do not appear",
+      );
+      // Reading stops at the blank line, so the paragraph after the list is
+      // not mistaken for a fifth break.
+      expect(result?.breakingNotes.join(" ")).not.toContain("pushMany");
+    });
+
+    test("should detect the conventional-commits footer", () => {
+      const parser = getParser();
+      const result = parser.parseCommit(
+        [
+          "eee11111 feat(api): rework the token format",
+          "Some ordinary prose about the change.",
+          "",
+          "BREAKING CHANGE: tokens minted before this no longer verify",
+        ].join("\n"),
+        defaultConfig,
+      );
+
+      expect(result?.breaking).toBe(true);
+      expect(result?.breakingNotes).toEqual([
+        "tokens minted before this no longer verify",
+      ]);
+    });
+
+    test("should leave an ordinary body alone", () => {
+      const parser = getParser();
+      const result = parser.parseCommit(
+        [
+          "fff22222 feat(api): add an endpoint",
+          "A body that talks about breaking down the work into steps.",
+        ].join("\n"),
+        defaultConfig,
+      );
+
+      // The word appears, but not as a marker: a body that merely mentions
+      // breaking something up must not flag the release.
+      expect(result?.breaking).toBe(false);
+      expect(result?.breakingNotes).toEqual([]);
     });
 
     test("should ignore commits with ignored scope", () => {
@@ -202,6 +306,7 @@ describe("changelog", () => {
         scope: "api/users",
         description: "add endpoint",
         breaking: false,
+        breakingNotes: [],
       });
     });
 
@@ -323,7 +428,10 @@ describe("changelog", () => {
       public testFormat = this.formatEntry.bind(this);
     }
 
-    const render = async (log: string[], options?: object) => {
+    const render = async (
+      log: Array<string | { line: string; body: string }>,
+      options?: object,
+    ) => {
       const alepha = Alepha.create();
       if (options) {
         alepha.set(changelogOptions, options as any);
@@ -331,8 +439,48 @@ describe("changelog", () => {
       const command = alepha.inject(TestChangelogCommand);
       await alepha.start();
 
-      return command.testFormat(command.testParse(log.join("\n")));
+      return command.testFormat(command.testParse(gitLog(log)));
     };
+
+    test("should put breaking changes above everything, with their prose", async () => {
+      const output = await render([
+        "abc12345 fix(orm): a fix",
+        {
+          line: "def45678 feat(core): rework the cache layout",
+          body: [
+            "Breaking changes",
+            "- the key layout changed, so deploying this starts with a cold",
+            "  cache",
+            "- del() no longer accepts backend storage keys",
+          ].join("\n"),
+        },
+      ]);
+
+      expect(output).toBe(
+        [
+          "### Breaking Changes\n",
+          "- **core**: the key layout changed, so deploying this starts with a cold cache (`def45678`)",
+          "- **core**: del() no longer accepts backend storage keys (`def45678`)",
+          "",
+          "### Features\n",
+          "- **core**: rework the cache layout [BREAKING] (`def45678`)",
+          "",
+          "### Bug Fixes\n",
+          "- **orm**: a fix (`abc12345`)",
+          "",
+        ].join("\n"),
+      );
+    });
+
+    test("names a `!`-only breaking change by its subject", async () => {
+      // Nothing to quote: `!` says THAT something broke and never what, so
+      // an empty bullet would be worse than repeating the subject.
+      const output = await render(["abc12345 feat(core)!: remove the old API"]);
+
+      expect(output).toContain(
+        "### Breaking Changes\n\n- **core**: remove the old API (`abc12345`)",
+      );
+    });
 
     test("should render features before fixes", async () => {
       const output = await render([
@@ -419,11 +567,11 @@ describe("changelog", () => {
       await setupCommand([
         { cmd: "tag --sort=-version:refname", response: "1.0.0\n0.9.0\n" },
         {
-          cmd: "log 1.0.0..HEAD --oneline",
-          response: [
+          cmd: "log 1.0.0..HEAD --pretty=format:%h %s%n%b%x1e",
+          response: gitLog([
             "abc12345 feat(ui): add dashboard",
             "def56789 fix(core): resolve crash",
-          ].join("\n"),
+          ]),
         },
       ]);
       // Outputs to stdout - test verifies no error
@@ -433,8 +581,8 @@ describe("changelog", () => {
       await setupCommand(
         [
           {
-            cmd: "log 0.5.0..HEAD --oneline",
-            response: "abc12345 feat(api): new feature",
+            cmd: "log 0.5.0..HEAD --pretty=format:%h %s%n%b%x1e",
+            response: gitLog(["abc12345 feat(api): new feature"]),
           },
         ],
         ["changelog", "--from=0.5.0"],
@@ -452,7 +600,7 @@ describe("changelog", () => {
     test("should handle no changes since tag", async () => {
       await setupCommand([
         { cmd: "tag --sort=-version:refname", response: "1.0.0\n" },
-        { cmd: "log 1.0.0..HEAD --oneline", response: "" },
+        { cmd: "log 1.0.0..HEAD --pretty=format:%h %s%n%b%x1e", response: "" },
       ]);
       // Should output "No changes since 1.0.0" - no error
     });
@@ -462,11 +610,11 @@ describe("changelog", () => {
         [
           { cmd: "tag --sort=-version:refname", response: "1.0.0\n" },
           {
-            cmd: "log 1.0.0..HEAD --oneline",
-            response: [
+            cmd: "log 1.0.0..HEAD --pretty=format:%h %s%n%b%x1e",
+            response: gitLog([
               "abc12345 feat(ui): add dashboard",
               "def56789 feat(internal): should be filtered",
-            ].join("\n"),
+            ]),
           },
         ],
         ["changelog"],
@@ -479,8 +627,8 @@ describe("changelog", () => {
       await setupCommand(
         [
           {
-            cmd: "log 0.8.0..HEAD --oneline",
-            response: "abc12345 feat(cli): new command",
+            cmd: "log 0.8.0..HEAD --pretty=format:%h %s%n%b%x1e",
+            response: gitLog(["abc12345 feat(cli): new command"]),
           },
         ],
         ["changelog", "-f=0.8.0"],
