@@ -46,6 +46,8 @@ const NAV_ROUTE_NAMES = [
   "projectBlights",
   "projectFeedback",
   "projectReleases",
+  // Opening a release from the list — ProjectReleases.tsx
+  "projectRelease",
   "projectFolios",
   "projectReports",
   "projectSettingsBanner",
@@ -182,6 +184,7 @@ describe("AppRouter route table", () => {
       appName,
       shortId: "3",
       epicNumber: "7",
+      releaseTag: "0.28.0",
       areaId: 1,
       analyticsDimension: "path",
     };

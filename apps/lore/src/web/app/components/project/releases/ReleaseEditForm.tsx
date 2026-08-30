@@ -1,28 +1,25 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
-import { Card } from "@alepha/ui/components/ui/card";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Copy, Download, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Save } from "lucide-react";
+import { useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { Release } from "@/api/entities/releases.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import ReleaseEpicProgressList from "./ReleaseEpicProgressList.tsx";
-
-export interface ProjectReleasesDetailProps {
+export interface ReleaseEditFormProps {
   release: ReleaseResource;
   onUpdated: (release: Release) => void;
 }
 
-const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
+const ReleaseEditForm = (props: ReleaseEditFormProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const api = useClient<ReleaseController>();
@@ -32,28 +29,7 @@ const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
   const [targetDate, setTargetDate] = useState(
     props.release.targetDate?.slice(0, 10) ?? "",
   );
-  const [markdown, setMarkdown] = useState<string>("");
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const result = await api.getReleaseChangelog({
-          params: { id: props.release.id },
-        });
-        if (!cancelled) setMarkdown(result.markdown);
-      } catch {
-        // `markdown` stays empty, which is what the Copy and Download
-        // controls key off — without this the rejection was unhandled and
-        // both stayed live over nothing.
-        if (!cancelled) toaster.error(tr("release.changelog.error"));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [props.release.id]);
 
   const published = !!props.release.releasedAt;
 
@@ -86,27 +62,6 @@ const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(markdown);
-      toaster.success(tr("release.changelog.copied"));
-    } catch {
-      // The clipboard rejects on a page without focus or permission, and the
-      // "copied" toast was firing regardless.
-      toaster.error(tr("release.changelog.copyError"));
-    }
-  };
-
-  const handleDownload = () => {
-    const blob = new Blob([markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `release-${props.release.number}-changelog.md`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -170,29 +125,8 @@ const ProjectReleasesDetail = (props: ProjectReleasesDetailProps) => {
         <Save className="size-4" />
         {tr("release.detail.save")}
       </Button>
-
-      <ReleaseEpicProgressList releaseId={props.release.id} />
-
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <Label>{tr("release.changelog")}</Label>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleCopy}>
-              <Copy className="size-3.5" />
-              {tr("release.changelog.copy")}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="size-3.5" />
-              {tr("release.changelog.download")}
-            </Button>
-          </div>
-        </div>
-        <Card className="max-h-[40vh] overflow-auto p-4 font-mono text-xs whitespace-pre-wrap">
-          {markdown}
-        </Card>
-      </div>
     </div>
   );
 };
 
-export default ProjectReleasesDetail;
+export default ReleaseEditForm;

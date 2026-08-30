@@ -228,8 +228,8 @@ const ProjectView = () => {
   // Four unlabelled groups (`NavGroup.label` omitted on purpose, see the great
   // rename Task 9), split by whether you ACT on a surface or READ it:
   //
-  //   Work      Quests, Epics, Feedback, Blights
-  //   Record    Folios, Releases, Reports
+  //   Work      Quests, Epics, Releases, Feedback, Blights
+  //   Record    Folios, Reports
   //   Ops       Apps
   //   Settings
   //
@@ -238,11 +238,17 @@ const ProjectView = () => {
   // one group rather than two, so the separator falls only where the mode
   // changes from acting to reading.
   //
-  // Releases sits in Record, not beside Quests, because it plans nothing:
-  // the entity carries no objective or target, membership is a time window
-  // (`completedAt > last.closedAt`) rather than an assignment, no quest
-  // surface can even set `releaseId`, and it auto-closes on a cron into a
-  // rich-markdown `changelog`. It is a folio the app fills in for you.
+  // Releases sits in Work now, beside Quests and Epics. It used to sit in
+  // Record, and the comment here said why: the entity carried no objective or
+  // target, membership was a TIME WINDOW rather than an assignment, no quest
+  // surface could set `releaseId`, and it auto-closed on a cron into a
+  // rich-markdown changelog. It was a folio the app filled in for you.
+  //
+  // Every clause of that is now false (epic #14). A release carries a tag and
+  // a target date, membership is an assignment made from the quest, the epic
+  // and the release itself, nothing closes on a timer, and it reports
+  // completed-against-attached. It is where you say what ships next, which is
+  // planning, so it belongs with the surfaces you act on.
   //
   // Groups with no items are dropped by the `.filter` below, so an
   // all-gates-off project still renders a clean sidebar.
@@ -292,6 +298,16 @@ const ProjectView = () => {
       badge: epicCount?.count ? epicCount.count : undefined,
     });
   }
+  // What ships next. After Epics because it is a lens on them: an epic is
+  // what is being built, a release is when it goes out.
+  if (features.milestones) {
+    workItems.push({
+      label: tr("project.menu.releases"),
+      icon: Flag,
+      href: router.path("projectReleases", { params: { projectSlug } }),
+      active: name === "projectReleases" || name === "projectRelease",
+    });
+  }
   // Arrived rather than chosen. Feedback leads because a human wrote it; a
   // blight is filed by a machine.
   if (features.feedback) {
@@ -337,14 +353,6 @@ const ProjectView = () => {
       icon: BookOpen,
       href: router.path("projectFolios", { params: { projectSlug } }),
       active: name.startsWith("projectFolios"),
-    });
-  }
-  if (features.milestones) {
-    recordItems.push({
-      label: tr("project.menu.releases"),
-      icon: Flag,
-      href: router.path("projectReleases", { params: { projectSlug } }),
-      active: name === "projectReleases",
     });
   }
   recordItems.push({
