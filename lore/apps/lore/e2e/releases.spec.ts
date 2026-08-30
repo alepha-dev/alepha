@@ -241,6 +241,58 @@ test.describe("Releases", () => {
    * order by `number`. As text `0.28.0` sorts before `0.9.0`, so a string
    * comparator fails this rather than passing by luck.
    */
+  /**
+   * Creating a release, which is a dialog now rather than a bordered row
+   * swapped into the top of the page.
+   *
+   * The second half is the half worth having. A duplicate tag is the failure
+   * this form actually meets, and it has to be recoverable by editing the
+   * value that is already typed — so the message belongs under the field,
+   * with the dialog still open holding it, not in a toast that outlives the
+   * dialog and takes the typed tag with it.
+   */
+  test("the create dialog refreshes the list and keeps its own errors", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `relnew${t}@example.com`, "RelTest123!");
+    const { slug } = await createProjectViaWizard(page, `RN${t}`.slice(0, 20));
+
+    await page.goto(`/${slug}/releases`);
+
+    const open = page.getByRole("button", { name: "New Release" }).first();
+    const tagField = page.getByLabel("Tag");
+
+    await test.step("creating one puts it in the list", async () => {
+      await expect(open).toBeVisible({ timeout: 15_000 });
+      await open.click();
+      await tagField.fill("0.1.0");
+      await page.getByRole("button", { name: "Create" }).click();
+
+      // The table fetches its own rows, so this is the assertion that the
+      // create actually signalled it rather than only writing to the atom.
+      await expect(page.locator("tbody").getByText("0.1.0")).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
+    await test.step("a duplicate tag is reported inside the dialog", async () => {
+      await open.click();
+      await tagField.fill("0.1.0");
+      await page.getByRole("button", { name: "Create" }).click();
+
+      // Still open, still holding the typed tag, with the reason in it.
+      await expect(tagField).toBeVisible({ timeout: 15_000 });
+      await expect(tagField).toHaveValue("0.1.0");
+      await expect(tagField).toHaveAttribute("aria-invalid", "true");
+
+      // And the list did not grow behind it.
+      await expect(page.locator("tbody").getByText("0.1.0")).toHaveCount(1);
+    });
+  });
+
   test("the table filters by state and sorts tags by number", async ({
     page,
   }) => {

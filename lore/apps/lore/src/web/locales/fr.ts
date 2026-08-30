@@ -632,6 +632,9 @@ export default {
   "markdown.mode.preview": "Aperçu",
   "release.start": "Nouvelle version",
   "release.create.confirm": "Créer",
+  "release.create.tag": "Version",
+  "release.create.tag.help":
+    "L'adresse et le nom de la version. Elle devient l'URL, donc restez court : 0.28.0, demo-1.",
   "release.group.open": "Ouvertes",
   "release.group.released": "Publiées",
   "release.list.column.state": "État",

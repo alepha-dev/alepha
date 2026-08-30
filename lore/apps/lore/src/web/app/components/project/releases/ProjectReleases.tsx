@@ -2,8 +2,6 @@ import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -18,6 +16,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 import ReleaseProgress from "./ReleaseProgress.tsx";
 import {
   releaseState,
@@ -79,7 +78,6 @@ const releasesFiltersSchema = z.object({
  */
 const ProjectReleases = () => {
   const { tr, l } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
   // Write-only. The table fetches its own rows, but the atom is what the
@@ -88,40 +86,22 @@ const ProjectReleases = () => {
   const releaseApi = useClient<ReleaseController>();
 
   const [creating, setCreating] = useState(false);
-  const [newTag, setNewTag] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   // Bumped after a create, which happens outside the table and so has no
   // `ctx.refresh()` of its own to call.
   const [reload, setReload] = useState(0);
 
   if (!project) return null;
 
-  const create = async () => {
-    const tag = newTag.trim();
-    if (!tag || submitting) return;
-    setSubmitting(true);
-    try {
-      // One field. `title` is NOT NULL at the column and defaults to the tag
-      // server-side, so a release called only `0.28.0` reads as `0.28.0` and
-      // the form never has to ask.
-      await releaseApi.createRelease({
-        params: { projectId: project.id },
-        body: { tag },
-      });
-      setNewTag("");
-      setCreating(false);
-      setReleases(
-        await releaseApi.getReleases({ params: { projectId: project.id } }),
-      );
-      setReload((n) => n + 1);
-    } catch (error) {
-      // The row stays open so the typed tag is not lost: the usual failure
-      // here is a tag already taken or a shape the URL cannot carry, and both
-      // are fixed by editing what is already there.
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSubmitting(false);
-    }
+  /**
+   * The table refetches itself off `refreshSignal`, but the atom has to be
+   * refreshed by hand: it is what the sidebar and both release CONTROLS
+   * read, and none of them is watching this table.
+   */
+  const created = async () => {
+    setReleases(
+      await releaseApi.getReleases({ params: { projectId: project.id } }),
+    );
+    setReload((n) => n + 1);
   };
 
   const fetchReleases = async ({
@@ -176,33 +156,12 @@ const ProjectReleases = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-4">
-      {/* An inline row rather than the modal the old flow used, which opened
-          with a server round-trip to a fantasy-name generator. Replacing it
-          with a dialog is #1635; the list had to move first, or that work
-          would have been thrown away with the page around it. */}
-      {creating && (
-        <div className="border-border mb-3 flex items-center gap-2 rounded-lg border p-3">
-          <Input
-            value={newTag}
-            className="font-mono"
-            placeholder={tr("release.start.tag.placeholder")}
-            onChange={(e) => setNewTag(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void create();
-              if (e.key === "Escape") setCreating(false);
-            }}
-            // Autofocus on the field the row exists to fill, on open only.
-            // oxlint-disable-next-line jsx-a11y/no-autofocus
-            autoFocus
-          />
-          <Button onClick={() => void create()} disabled={submitting}>
-            {tr("release.create.confirm")}
-          </Button>
-          <Button variant="ghost" onClick={() => setCreating(false)}>
-            {tr("common.cancel")}
-          </Button>
-        </div>
-      )}
+      <ReleaseCreateDialog
+        projectId={project.id}
+        open={creating}
+        onOpenChange={setCreating}
+        onCreated={() => void created()}
+      />
 
       <AlephaTable<ReleaseResource>
         className="min-h-0 flex-1"
