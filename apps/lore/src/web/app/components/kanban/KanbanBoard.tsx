@@ -20,8 +20,10 @@ import {
   CalendarClock,
   ChevronDown,
   Loader2,
+  MapPin,
   Rows3,
   Search,
+  Tag,
   User,
   X,
 } from "lucide-react";
@@ -695,10 +697,15 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         <form {...filterForm.props} className="flex flex-1 items-center gap-2">
           {areaOptions.length > 0 && (
             <div className="w-64 max-w-full">
+              {/* Same icons as the quest table's own area and tag filters
+                  (`ProjectQuestsTable.tsx`), deliberately. The two surfaces
+                  filter the same two fields, and two glyphs for one concept
+                  reads worse than none. */}
               <Control
                 input={filterForm.input.areas}
                 label=""
                 clearable
+                icon={MapPin}
                 clearLabel={tr("kanban.filter.allAreas")}
                 items={areaOptions}
               />
@@ -710,6 +717,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                 input={filterForm.input.tags}
                 label=""
                 clearable
+                icon={Tag}
                 clearLabel={tr("kanban.filter.allTags")}
                 items={knownTags.map((t) => ({ value: t, label: t }))}
               />
