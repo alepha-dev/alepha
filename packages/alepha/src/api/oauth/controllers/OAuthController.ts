@@ -141,6 +141,32 @@ export class OAuthController {
    */
   protected readonly registerMaxPerWindow = 10;
 
+  /**
+   * Which budget a registration is counted against.
+   *
+   * No address is not a reason to skip the budget. `getRequestIp` answers
+   * `undefined` without `TRUST_PROXY` on any runtime with no socket to fall
+   * back to, and this used to skip the limiter ENTIRELY — leaving an
+   * unauthenticated write path with nothing in front of it, and no log to say
+   * so.
+   *
+   * One shared bucket keeps the unattributable registrations bounded, and
+   * costs nothing real: a genuine client registers once and keeps its id, so
+   * a budget of ten shared between them is not a limit anybody meets by
+   * accident.
+   *
+   * A method rather than two lines in the handler, because the branch that
+   * matters is the one an HTTP test cannot reach: a request over a real
+   * socket always has a connection IP.
+   */
+  protected registrationBucket(ip: string | undefined): string {
+    if (ip) return ip;
+    this.log.warn(
+      "Dynamic client registration with no client address; counting it against the shared bucket. Set TRUST_PROXY if this app is behind a proxy.",
+    );
+    return "unknown";
+  }
+
   register = $route({
     method: "POST",
     path: "/oauth/register",
@@ -149,20 +175,52 @@ export class OAuthController {
       // Read off the request atom, the same way the registration limiter
       // reaches the address: a `$route` handler's context does not carry it.
       const ip = this.alepha.store.get("alepha.http.request")?.ip;
-      if (ip) {
-        const count = await this.registerRateLimit.incr(`dcr:ip:${ip}`);
-        if (count > this.registerMaxPerWindow) {
-          this.log.warn("Dynamic client registration rate limit exceeded", {
-            ip,
-          });
-          // 429, not the 400 the registration limiter answers: a caller that
-          // waits and retries is doing the right thing, and only this status
-          // says so.
+
+      // No address is not a reason to skip the budget. `getRequestIp` answers
+      // `undefined` without `TRUST_PROXY` on any runtime with no socket to
+      // fall back to, and this used to skip the limiter ENTIRELY — leaving an
+      // unauthenticated write path with nothing in front of it, and no log to
+      // say so. One shared bucket keeps the unattributable registrations
+      // bounded, and costs nothing real: a genuine client registers once and
+      // keeps its id, so a budget of ten between them is not a constraint
+      // anybody meets by accident.
+      const bucket = this.registrationBucket(ip);
+
+      // Asked, not inferred. A disabled cache answers `incr` with `1`, which
+      // is indistinguishable from a first call, so the limiter cannot detect
+      // its own absence through the count. `cacheOptions.enabled` is an
+      // operator-facing atom, so turning caching off — a reasonable thing to
+      // do while debugging — silently removed the only bound on this
+      // endpoint.
+      if (!this.registerRateLimit.enabled) {
+        if (this.alepha.isProduction()) {
+          // Refuse rather than serve it unprotected. DCR is unauthenticated,
+          // and an unbounded row count is the failure this limiter exists for.
           throw new HttpError({
-            message: "Too many client registrations, please try again later",
-            status: 429,
+            message:
+              "Client registration is unavailable: its rate limiter requires the cache, which is disabled.",
+            status: 503,
           });
         }
+        // Outside production, a developer running with caching off should
+        // still be able to register a client.
+        this.log.warn(
+          "Cache is disabled, so dynamic client registration is unbounded. Do not run this configuration in production.",
+        );
+      }
+
+      const count = await this.registerRateLimit.incr(`dcr:ip:${bucket}`);
+      if (count > this.registerMaxPerWindow) {
+        this.log.warn("Dynamic client registration rate limit exceeded", {
+          ip: bucket,
+        });
+        // 429, not the 400 the registration limiter answers: a caller that
+        // waits and retries is doing the right thing, and only this status
+        // says so.
+        throw new HttpError({
+          message: "Too many client registrations, please try again later",
+          status: 429,
+        });
       }
 
       const client = await this.clients.register({

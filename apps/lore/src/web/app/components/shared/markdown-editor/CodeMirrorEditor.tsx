@@ -1,8 +1,15 @@
 import type { CompletionSource } from "@codemirror/autocomplete";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { type MouseEvent as ReactMouseEvent, useEffect, useRef } from "react";
+import { useI18n } from "alepha/react/i18n";
+import {
+  type MouseEvent as ReactMouseEvent,
+  useEffect,
+  useId,
+  useRef,
+} from "react";
 
+import type { I18n } from "../../../services/I18n.ts";
 import { createMarkdownExtensions } from "./codeMirrorSetup.ts";
 import { imageMarkdown, insertAtCursor } from "./insertAtCursor.ts";
 
@@ -62,6 +69,8 @@ export interface CodeMirrorEditorProps {
  * something upstream is rewriting the markdown and that is the bug.
  */
 const CodeMirrorEditor = (props: CodeMirrorEditorProps) => {
+  const { tr } = useI18n<I18n, "en">();
+  const hintId = useId();
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   // Read through refs so the mount effect can stay `[]`. Depending on the
@@ -104,6 +113,16 @@ const CodeMirrorEditor = (props: CodeMirrorEditorProps) => {
                 ]
               : undefined,
           }),
+          // Tab indents here (`indentWithTab` in the extension list), which
+          // makes the field a keyboard trap unless the way out is stated:
+          // WCAG 2.1.2 asks for the method to be advertised, not merely to
+          // exist. The way out is Escape then Tab, armed by
+          // `@codemirror/view`'s own keydown handler.
+          //
+          // `aria-describedby` onto a visually-hidden paragraph rather than
+          // `aria-label`, which is the field's NAME and would replace what
+          // CodeMirror already says about the textbox.
+          EditorView.contentAttributes.of({ "aria-describedby": hintId }),
           EditorView.updateListener.of((update) => {
             if (!update.docChanged) return;
             onChangeRef.current(update.state.doc.toString());
@@ -185,29 +204,39 @@ const CodeMirrorEditor = (props: CodeMirrorEditorProps) => {
   };
 
   return (
-    // Wrapper around the CodeMirror instance, which owns its own key handling.
-    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div
-      ref={hostRef}
-      onMouseDown={focusEnd}
-      // `min-w-0` because grid and flex items default to `min-width: auto`,
-      // which forbids shrinking below min-content width. Two quest dialogs
-      // embed this and had exactly that overflow bug once.
-      // `min-height: inherit` on `.cm-editor`: `minHeight` below sits on THIS host,
-      // while CodeMirror sizes itself to its content, so a short document
-      // left the rest of the box as dead space no click reached. Every
-      // textarea on earth puts the caret at the end when you click its
-      // empty lower half. Stretching CM to the host is half of that; the
-      // `onMouseDown` above is the other half, because CM hit-tests only
-      // inside `.cm-content`.
-      //
-      // `inherit`, not `min-h-full`: a percentage min-height resolves
-      // against the parent's HEIGHT, and the host only sets `min-height`,
-      // so `100%` collapsed to nothing and CodeMirror stayed 20px tall in a
-      // 246px box.
-      className="min-w-0 [&>.cm-editor]:[min-height:inherit]"
-      style={props.minHeight ? { minHeight: props.minHeight } : undefined}
-    />
+    <>
+      {/* What `aria-describedby` on the content DOM points at: how to get
+          the keyboard back out, now that Tab indents instead of moving
+          focus. Visually hidden because it is a caption for a field the
+          sighted reader can see is an editor. */}
+      <p id={hintId} className="sr-only">
+        {tr("markdown-editor.tab-hint")}
+      </p>
+      {/* Wrapper around the CodeMirror instance, which owns its own key
+          handling. */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
+      <div
+        ref={hostRef}
+        onMouseDown={focusEnd}
+        // `min-w-0` because grid and flex items default to `min-width: auto`,
+        // which forbids shrinking below min-content width. Two quest dialogs
+        // embed this and had exactly that overflow bug once.
+        // `min-height: inherit` on `.cm-editor`: `minHeight` below sits on THIS host,
+        // while CodeMirror sizes itself to its content, so a short document
+        // left the rest of the box as dead space no click reached. Every
+        // textarea on earth puts the caret at the end when you click its
+        // empty lower half. Stretching CM to the host is half of that; the
+        // `onMouseDown` above is the other half, because CM hit-tests only
+        // inside `.cm-content`.
+        //
+        // `inherit`, not `min-h-full`: a percentage min-height resolves
+        // against the parent's HEIGHT, and the host only sets `min-height`,
+        // so `100%` collapsed to nothing and CodeMirror stayed 20px tall in a
+        // 246px box.
+        className="min-w-0 [&>.cm-editor]:[min-height:inherit]"
+        style={props.minHeight ? { minHeight: props.minHeight } : undefined}
+      />
+    </>
   );
 };
 

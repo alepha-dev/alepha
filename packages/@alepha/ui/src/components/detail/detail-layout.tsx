@@ -14,6 +14,12 @@ export interface DetailTab {
   value: string;
   label: React.ReactNode;
   /**
+   * A trailing count. Passed through to `Segmented`, which colours it from
+   * the segment's own state — see {@link SegmentedOption.count} for why a
+   * count folded into `label` cannot be read on the active tab.
+   */
+  count?: React.ReactNode;
+  /**
    * Rendered at `size-4` before the label. Passed as a component rather than
    * an element so callers hand over data — every detail page used to repeat
    * the same `inline-flex items-center gap-1.5` wrapper by hand.
@@ -126,6 +132,7 @@ export const DetailLayout = (props: DetailLayoutProps) => {
     const Icon = entry.icon;
     return {
       value: entry.value,
+      count: entry.count,
       label: Icon ? (
         <span className="inline-flex items-center gap-1.5">
           <Icon className="size-4" />

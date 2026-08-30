@@ -1,5 +1,6 @@
 import { AutoForm } from "@alepha/ui/components/auto-form/auto-form";
 import { jsonSchemaToZod, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { HttpClient } from "alepha/server";
@@ -32,6 +33,7 @@ interface TryItResponse {
 export const ActionTryIt = (props: ActionTryItProps) => {
   const action = props.action;
   const http = useInject(HttpClient);
+  const dateTime = useInject(DateTimeProvider);
   const history = useActionHistory(`${action.method}:${action.fullPath}`);
   const [response, setResponse] = useState<TryItResponse | null>(null);
   const [sending, setSending] = useState(false);
@@ -112,7 +114,7 @@ export const ActionTryIt = (props: ActionTryItProps) => {
       const ms = Math.round(performance.now() - started);
       setResponse({ status: res.status, data: res.data, ms });
       history.record({
-        at: Date.now(),
+        at: dateTime.nowMillis(),
         status: res.status,
         ms,
         params: paramsSchema ? paramsForm.currentValues : undefined,
@@ -123,7 +125,7 @@ export const ActionTryIt = (props: ActionTryItProps) => {
       const ms = Math.round(performance.now() - started);
       setResponse({ error: e?.message ?? "Request failed", ms });
       history.record({
-        at: Date.now(),
+        at: dateTime.nowMillis(),
         ms,
         error: e?.message ?? "Request failed",
         params: paramsSchema ? paramsForm.currentValues : undefined,

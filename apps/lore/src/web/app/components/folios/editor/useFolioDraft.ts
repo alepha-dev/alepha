@@ -87,6 +87,28 @@ export interface FolioDraft {
    */
   touchSavedAt: (at: string) => void;
   /**
+   * Adopt a title this client did not type, and treat it as persisted.
+   *
+   * The tree's inline rename PATCHes the row and updates
+   * `userFoliosAtom`; it has no way to reach the open editor's buffer,
+   * which was seeded from the route loader's snapshot at mount. Every
+   * save path then sent that stale `values.title`, so a rename made
+   * between the create and the first save was silently overwritten by the
+   * editor — the last writer, and the wrong one.
+   *
+   * Deliberately narrower than `markSaved`, which moves the WHOLE
+   * baseline: doing that here would adopt whatever body text is
+   * mid-sentence in the buffer as "what the server holds", so the status
+   * line would read "Saved" over content the server has never seen. Only
+   * the title moves; a diverged body keeps reading `dirty: true`.
+   *
+   * Deliberately wider than `touchSavedAt`, which moves neither the form
+   * nor the baseline: the title genuinely did change on the server, and
+   * leaving it out of the baseline would report the adopted title as an
+   * unsaved edit.
+   */
+  adoptTitle: (title: string, at: string) => void;
+  /**
    * Read the CURRENT form values directly off the `FormModel`, bypassing
    * the `values` snapshot above.
    *
@@ -225,6 +247,19 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     if (revisionsChanged) setRevisionsAt(at);
   };
 
+  const adoptTitle = (title: string, at: string): void => {
+    form.input.title.set(title);
+    // `baseline` only. `formInitial` is what `useForm` reads as
+    // `initialValues`, and moving it would re-trigger `setInitialValues`
+    // and wipe the live buffer — losing exactly the unsaved body text this
+    // is meant to leave alone.
+    baseline.current = { ...baseline.current, title };
+    setSavedAt(at);
+    // A rename opens a revision of its own, so the History tab's list has
+    // moved and its fetch effect keys on this.
+    setRevisionsAt(at);
+  };
+
   const touchSavedAt = (at: string): void => {
     setSavedAt(at);
     // Unconditional. Every caller is reporting a server-side change this
@@ -256,6 +291,7 @@ export const useFolioDraft = (folio: Folio | undefined): FolioDraft => {
     revisionsAt,
     markSaved,
     touchSavedAt,
+    adoptTitle,
     getLiveValues,
   };
 };

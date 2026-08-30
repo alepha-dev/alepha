@@ -770,6 +770,26 @@ export abstract class Repository<T extends ZObject> {
     // committed, or missing rows it had written.
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
 
+    try {
+      return await this.runCountForPage(db, where, withRelations);
+    } catch (error) {
+      // The `findMany` task beside this one in `paginate`'s `Promise.all` is
+      // wrapped; this one was not, so the two halves of the same call
+      // reported failures in different shapes. See `count()` for what a raw
+      // drizzle error puts in its message.
+      throw this.handleError(error, "Query count has failed");
+    }
+  }
+
+  /**
+   * The statement itself, split out so the wrapper above stays one `try`
+   * around every path rather than one per branch.
+   */
+  protected async runCountForPage(
+    db: PgAsyncDatabase<any>,
+    where: PgQueryWhereOrSQL<T>,
+    withRelations: PgRelationMap<T> | undefined,
+  ): Promise<number> {
     if (!withRelations) {
       return await db.$count(this.table, this.toSQL(where));
     }
@@ -1607,7 +1627,24 @@ export abstract class Repository<T extends ZObject> {
   ): Promise<number> {
     where = this.withOrganization(this.withDeletedAt(where, opts));
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
-    return db.$count(this.table, this.toSQL(where));
+    try {
+      return await db.$count(this.table, this.toSQL(where));
+    } catch (error) {
+      // Wrapped like every sibling statement, and this one was not. A raw
+      // drizzle error carries the SQL and its BOUND VALUES in the message —
+      // `Failed query: select count(*) from "quests" where ... params: 1,1` —
+      // so on a filtered query it publishes whatever the caller filtered on
+      // into error reporting. That text reached Lore's blight inbox
+      // (#326, beside #325 which is the same incident through `findMany`,
+      // classified and scrubbed).
+      //
+      // Classification matters as much as scrubbing: `handleError` runs
+      // `DbTimeoutError.from` first, because drizzle demotes the driver's
+      // error to `cause`. A count that timed out surfaced as an
+      // unclassified 500, so the caller was never told the one thing it
+      // could act on. And code catching `DbError` missed this path entirely.
+      throw this.handleError(error, "Query count has failed");
+    }
   }
 
   // -------------------------------------------------------------------------------------------------------------------

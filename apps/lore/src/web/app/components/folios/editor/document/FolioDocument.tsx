@@ -101,14 +101,18 @@ export interface FolioDocumentProps {
  * deliberately: this component never unmounts while a folio is open (only
  * the `MarkdownEditor`/`FolioLockedPanel` ternary below swaps), so binding
  * shortcuts here — once — keeps every `availableWhenLocked` action (the
- * pane toggles, ⌘S, ⌘D, …) reachable by keyboard the whole time, including
+ * pane toggles, ⌘\, ⌘F, …) reachable by keyboard the whole time, including
  * while `FolioMenubar` itself isn't mounted (locked).
  *
- * The mode is threaded into `useFolioShortcuts` because ⌘F means two
- * different things: in View mode this hook claims it for the find bar, and
- * in Edit mode it stands aside so `@codemirror/search` gets the keydown.
- * See that hook's `editorOwnsBinding` for why the walk-the-text-nodes
- * implementation cannot serve both.
+ * The mode is threaded into `useFolioShortcuts` AND into `FolioMenubar`,
+ * because two bindings belong to the editor while it holds the caret.
+ * ⌘F means the same thing either way and only changes implementation —
+ * this hook claims it for the find bar in View mode and stands aside for
+ * `@codemirror/search` in Edit, since a walk of the rendered pane's text
+ * nodes cannot see CodeMirror's virtualized viewport. ⌘D means two
+ * different things: duplicate-folio here, duplicate-line in the editor,
+ * which is why the menubar also stops showing its glyph in Edit mode.
+ * See `EDITOR_OWNED_BINDINGS` in `folioMenubarModel.ts`.
  */
 const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
@@ -166,6 +170,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
             state={props.actions.actionState}
             saving={props.actions.saving}
             dirty={props.draft.dirty}
+            mode={props.mode}
           />,
           props.chromeSlot,
         )}

@@ -9,6 +9,7 @@ import {
   DbConflictError,
   DbConnectionError,
   DbDeadlockError,
+  DbError,
   DbForeignKeyError,
   DbNotNullError,
   DbTableNotFoundError,
@@ -266,6 +267,70 @@ describe("Database Error Tests", () => {
             "does not exist",
           );
         }
+      });
+    });
+
+    /**
+     * `count()` and `paginate()`'s count half were the two statements in
+     * `Repository` with no `handleError` around them.
+     *
+     * Blights #325 and #326 are the same incident through two routes, in the
+     * same millisecond: #325 came through `findMany`, classified and
+     * scrubbed; #326 came through the count as a raw
+     * `DrizzleQueryError: Failed query: select count(*) from "quests"
+     * where ... params: 1,1`. On a filtered query those bound values are
+     * whatever the caller filtered on, and they were published into the
+     * blight inbox verbatim.
+     */
+    describe("the count paths are wrapped like every sibling statement", () => {
+      const withDroppedTable = async () => {
+        const alepha = Alepha.create().with(AlephaOrmPostgres);
+        const app = alepha.inject(App);
+        await alepha.start();
+
+        // The statement has to fail at the DRIVER, so the table goes out from
+        // under the repository. Children first: it holds the foreign key.
+        await app.parents.query(
+          () => sql`DROP TABLE ${sql.raw("error_test_children")}`,
+        );
+        await app.parents.query(
+          () => sql`DROP TABLE ${sql.raw("error_test_parents")}`,
+        );
+        return app;
+      };
+
+      it("count() raises a classified DbError carrying no SQL or parameters", async () => {
+        const app = await withDroppedTable();
+
+        try {
+          await app.parents.count({ email: "someone@example.com" });
+          expect.fail("Should have thrown");
+        } catch (error) {
+          // Classified, which is the half `handleError` adds beyond
+          // scrubbing: it runs `DbTimeoutError.from` first because drizzle
+          // demotes the driver error to `cause`, so an unwrapped count
+          // reported a retryable timeout as an unclassified 500.
+          expect(error).toBeInstanceOf(DbError);
+          expect(error).toBeInstanceOf(DbTableNotFoundError);
+
+          // And scrubbed. `message` is what reporting publishes — the raw
+          // error's text is still reachable through `cause` for a debugger.
+          const message = (error as Error).message;
+          expect(message).not.toMatch(/params:/i);
+          expect(message).not.toMatch(/select /i);
+          expect(message).not.toContain("someone@example.com");
+        }
+      });
+
+      it("paginate()'s count half behaves like the findMany half beside it", async () => {
+        // Both tasks sit in one `Promise.all`; only one of them was wrapped,
+        // so the same failure reported in two different shapes depending on
+        // which task lost the race.
+        const app = await withDroppedTable();
+
+        await expect(
+          app.parents.paginate({}, {}, { count: true }),
+        ).rejects.toBeInstanceOf(DbError);
       });
     });
 
