@@ -16,6 +16,7 @@ import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -72,6 +73,7 @@ const ProjectEpics = () => {
   const epicApi = useClient<EpicController>();
   const dt = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
+  const [releases] = useStore(currentReleasesAtom);
   const alepha = useAlepha();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -265,6 +267,22 @@ const ProjectEpics = () => {
             label: tr("epic.list.column.progress"),
             className: "w-56",
             cell: (epic) => <ProjectEpicsProgress epic={epic} />,
+          },
+          // The tag, not the title: the tag is what a release is called
+          // ("0.28.0"), and a column of prose titles reads as a second name
+          // for the epic rather than as where it ships.
+          releaseId: {
+            label: tr("epic.list.column.release"),
+            className: "w-32",
+            cell: (epic) => {
+              const release = releases?.find((r) => r.id === epic.releaseId);
+              if (!release) return null;
+              return (
+                <Badge variant="outline" className="font-mono">
+                  {release.tag ?? release.title}
+                </Badge>
+              );
+            },
           },
           updatedAt: {
             label: tr("epic.list.column.updated"),

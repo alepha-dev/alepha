@@ -13,6 +13,7 @@ import {
 } from "../schemas/epicResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
+import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 
 /**
  * CRUD, the status lifecycle, and attach/detach for quests and folios.
@@ -52,6 +53,7 @@ export class EpicController {
   folios = $repository(folios);
   dt = $inject(DateTimeProvider);
   linkService = $inject(FolioLinkService);
+  attachment = $inject(ReleaseAttachmentService);
   owned = $inject(OwnedResourceProvider);
 
   /**
@@ -198,15 +200,35 @@ export class EpicController {
       body: z.object({
         title: z.string().min(3).max(80).optional(),
         description: z.string().meta({ size: "rich" }).optional(),
+        /**
+         * The release this epic ships in. `null` detaches it.
+         *
+         * A field on the one write path rather than a separate
+         * attach/detach pair: one write path is easier to keep honest than
+         * two, and both directions need the same refusal anyway.
+         */
+        releaseId: z.integer().nullable().optional(),
       }),
       response: epicResourceSchema,
     },
     handler: async ({ params, body }) => {
+      const epic = this.owned.get<Epic>();
+
+      const releaseId =
+        body.releaseId !== undefined
+          ? await this.attachment.resolve(
+              epic.projectId,
+              epic.releaseId,
+              body.releaseId,
+            )
+          : undefined;
+
       const updated = await this.epics.updateById(params.id, {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined
           ? { description: body.description }
           : {}),
+        ...(releaseId !== undefined ? { releaseId } : {}),
       });
       await this.syncEpicLinks(updated);
 

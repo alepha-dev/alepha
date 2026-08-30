@@ -2,6 +2,7 @@ import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
 import { projects } from "./projects.ts";
+import { releases } from "./releases.ts";
 
 /**
  * A bounded initiative inside a project: it spans several areas, owns
@@ -51,10 +52,31 @@ export const epics = $entity({
     ),
     activatedAt: z.datetime().optional(),
     completedAt: z.datetime().optional(),
+    /**
+     * The release this epic is due to ship in. At most one.
+     *
+     * A single FK rather than a join table, decided 2026-08-29: an epic that
+     * would span `0.1.0` and `0.2.0` gets **split into two epics**, which is
+     * the honest answer rather than a limitation. "Partly in demo-1" is not a
+     * shippable statement, and a shared epic makes "the progress of 0.1.0"
+     * ambiguous in a way no rule fixes cleanly.
+     *
+     * `SET NULL` and not `CASCADE`: deleting a release orphans its epics, it
+     * never deletes them. Deleting a release has to stay cheap - a release
+     * that locks itself is exactly what made the recorder unusable.
+     *
+     * ⚠️ Declared optional with NO `db.default(...)` so the migration is a
+     * plain additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a
+     * table rebuild on D1. Precedent: `quests.epicId`.
+     */
+    releaseId: db.ref(z.integer().optional(), () => releases.cols.id, {
+      onDelete: "set null",
+    }),
   }),
   indexes: [
     { columns: ["projectId", "number"], unique: true },
     { columns: ["projectId", "status"] },
+    { columns: ["releaseId"] },
   ],
 });
 
