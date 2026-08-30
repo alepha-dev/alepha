@@ -586,7 +586,7 @@ export default {
     "Un tableau drag & drop pour déplacer les quêtes entre Nouvelle, En cours et Terminée.",
   "project.settings.kanban.tagColors.title": "Couleurs des étiquettes",
   "project.settings.kanban.tagColors.description":
-    "Donnez une couleur à chaque étiquette pour lire les cartes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
+    "Donnez une couleur à chaque étiquette pour lire les cartes et les quêtes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
   "project.settings.kanban.tagColors.empty":
     "Aucune étiquette pour l'instant. Ajoutez-en une à une quête et elle apparaîtra ici.",
   "project.settings.kanban.defaultSurface.title": "Ouvrir sur le tableau",

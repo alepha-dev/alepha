@@ -180,16 +180,21 @@ const KanbanCard = (props: KanbanCardProps) => {
           {shownTags.length > 0 && (
             <div className="flex flex-wrap items-center gap-1 pt-0.5">
               {shownTags.map((tag) => (
-                <span
+                // The same chip the quest rail renders, in the same palette:
+                // one `Badge variant="tint"`, differing only in the size a
+                // card can afford. It was a bare span in its own format
+                // before #1638.
+                <Badge
                   key={tag}
+                  variant="tint"
                   data-testid="kanban-card-tag"
-                  className={`truncate rounded px-1 py-px text-[10px] leading-4 font-medium ${
+                  className={`h-4 max-w-full truncate px-1.5 font-mono text-[10px] leading-none ${
                     TAG_CHIP_CLASS[props.tagColors?.[tag] as PaletteColor] ??
                     TAG_CHIP_FALLBACK
                   }`}
                 >
                   {tag}
-                </span>
+                </Badge>
               ))}
               {hiddenTagCount > 0 && (
                 <span className="text-muted-foreground text-[10px]">
