@@ -43,6 +43,7 @@ import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
+import FilterSlot from "../shared/FilterSlot.tsx";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
 import { QUEST_PRIORITY_TONE } from "./quest/questChips.ts";
@@ -173,7 +174,7 @@ const ProjectQuestsTable = () => {
           seedValues: seededStatus ? { status: seededStatus } : undefined,
           render: (form) => (
             <>
-              <div className="w-44">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
@@ -181,8 +182,8 @@ const ProjectQuestsTable = () => {
                   placeholder={tr("board.filter.search")}
                   inputProps={{ "aria-label": tr("board.filter.search") }}
                 />
-              </div>
-              <div className="w-44">
+              </FilterSlot>
+              <FilterSlot>
                 <Control
                   input={form.input.status}
                   label=""
@@ -198,9 +199,9 @@ const ProjectQuestsTable = () => {
                   }))}
                   inputProps={{ "aria-label": tr("board.filter.status") }}
                 />
-              </div>
+              </FilterSlot>
               {areaOptions.length > 0 && (
-                <div className="w-44">
+                <FilterSlot>
                   <Control
                     input={form.input.area}
                     label=""
@@ -211,10 +212,10 @@ const ProjectQuestsTable = () => {
                     items={areaOptions}
                     inputProps={{ "aria-label": tr("board.filter.area") }}
                   />
-                </div>
+                </FilterSlot>
               )}
               {releaseOptions.length > 0 && (
-                <div className="w-44">
+                <FilterSlot>
                   <Control
                     input={form.input.release}
                     label=""
@@ -225,10 +226,10 @@ const ProjectQuestsTable = () => {
                     items={releaseOptions}
                     inputProps={{ "aria-label": tr("board.filter.release") }}
                   />
-                </div>
+                </FilterSlot>
               )}
               {knownTags.length > 0 && (
-                <div className="w-44">
+                <FilterSlot>
                   <Control
                     input={form.input.tag}
                     label=""
@@ -239,7 +240,7 @@ const ProjectQuestsTable = () => {
                     items={knownTags.map((tag) => ({ label: tag, value: tag }))}
                     inputProps={{ "aria-label": tr("board.filter.tag") }}
                   />
-                </div>
+                </FilterSlot>
               )}
             </>
           ),
