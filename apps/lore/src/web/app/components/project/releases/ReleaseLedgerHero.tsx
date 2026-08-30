@@ -43,7 +43,6 @@ const ReleaseLedgerHero = (props: ReleaseLedgerHeroProps) => {
   const { release } = props;
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
-  const tags = release.tags ?? [];
 
   return (
     <div className="bg-card border-border flex flex-col gap-6 border-b px-5 py-5 transition-colors lg:flex-row lg:items-center lg:gap-7 lg:px-7">
@@ -87,17 +86,14 @@ const ReleaseLedgerHero = (props: ReleaseLedgerHeroProps) => {
         <h2 className="mt-1.5 truncate text-[22px] font-semibold tracking-[-0.015em]">
           {release.title}
         </h2>
-        {tags.length > 0 && (
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <Badge
-                key={tag}
-                variant="outline"
-                className="font-mono text-[11px]"
-              >
-                {tag}
-              </Badge>
-            ))}
+        {/* One tag, not a free-form label list. `releases.tags` is gone:
+            `release.tag` beside `release.tags` was a one-character trap, and
+            the tag is the identity rather than a decoration. */}
+        {release.tag && (
+          <div className="mt-2.5">
+            <Badge variant="outline" className="font-mono text-[11px]">
+              {release.tag}
+            </Badge>
           </div>
         )}
       </div>

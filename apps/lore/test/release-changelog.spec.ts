@@ -164,7 +164,7 @@ describe("ReleaseController.getReleaseChangelog", () => {
     const project = await createTestProject(ctx, user);
 
     const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { title: "0.1.0" } },
+      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
       { user },
     );
 
@@ -224,7 +224,7 @@ describe("ReleaseController.getReleaseChangelog", () => {
     const project = await createTestProject(ctx, user);
 
     const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { title: "0.1.0" } },
+      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
       { user },
     );
 
@@ -263,14 +263,14 @@ describe("ReleaseController.getReleaseChangelog", () => {
     expect(result.data.stats.areaCount).toBe(result.data.areas.length);
   });
 
-  it("returns the frozen markdown snapshot for a closed release", async ({
+  it("returns the frozen markdown snapshot for a published release", async ({
     expect,
   }) => {
     const user = await createTestUser(ctx);
     const project = await createTestProject(ctx, user);
 
     const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { title: "0.1.0" } },
+      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
       { user },
     );
 
@@ -281,20 +281,20 @@ describe("ReleaseController.getReleaseChangelog", () => {
     });
     await attach(ctx, a.id, release.data.id);
 
-    const closed = await ctx.releaseController.closeRelease.fetch(
+    const published = await ctx.releaseController.publishRelease.fetch(
       { params: { id: release.data.id }, body: {} },
       { user },
     );
-    expect(closed.data.changelog).toBeDefined();
+    expect(published.data.changelog).toBeDefined();
 
     const result = await ctx.releaseController.getReleaseChangelog.fetch(
       { params: { id: release.data.id } },
       { user },
     );
 
-    expect(result.data.markdown).toBe(closed.data.changelog);
+    expect(result.data.markdown).toBe(published.data.changelog);
     // Areas are recomputed rather than frozen — they still describe the same
-    // attachments, so the closed release is not returned bare.
+    // attachments, so the published release is not returned bare.
     expect(result.data.areas).toHaveLength(1);
     expect(result.data.areas[0].quests[0].title).toBe(
       "Sequence counter per project",
@@ -306,7 +306,7 @@ describe("ReleaseController.getReleaseChangelog", () => {
     const project = await createTestProject(ctx, user);
 
     const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { title: "0.1.0" } },
+      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
       { user },
     );
 
@@ -327,7 +327,7 @@ describe("ReleaseController.getReleaseChangelog", () => {
     const project = await createTestProject(ctx, user);
 
     const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { title: "0.1.0" } },
+      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
       { user },
     );
 
@@ -364,7 +364,7 @@ describe("ReleaseController.getReleaseChangelog", () => {
     const project = await createTestProject(ctx, user);
 
     const release = await ctx.releaseController.createRelease.fetch(
-      { params: { projectId: project.id }, body: { title: "0.1.0" } },
+      { params: { projectId: project.id }, body: { tag: "0.1.0" } },
       { user },
     );
 
