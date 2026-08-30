@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { MAX_QUEST_OBJECTIVES } from "../src/api/schemas/questObjectivesLimit.ts";
 import {
   apiPath,
   apiPost,
@@ -225,7 +226,7 @@ test.describe("Quest", () => {
   });
 
   /**
-   * Completing a quest with many unticked objectives.
+   * Completing a quest with a full list of unticked objectives.
    *
    * The dialog had no height cap and no scroll container, and it is
    * `fixed top-1/2 -translate-y-1/2` — so a long waiver list grew past the
@@ -233,12 +234,23 @@ test.describe("Quest", () => {
    * button with it. The quest could not be closed at all.
    *
    * Run at two viewport heights because the failure is a function of the
-   * viewport, not of the DOM: at 900px twenty objectives already overflow,
-   * and at 600px there is barely room for the editor, which is where a cap
-   * that merely moves the problem shows up.
+   * viewport rather than of the DOM: the tall case is the ordinary window,
+   * and the short one is where a cap that merely MOVES the problem shows up.
+   *
+   * ⚠️ This used to seed twenty objectives, and cannot any more: #1505 caps a
+   * quest at ten on the write path, so twenty is no longer reachable through
+   * the API this test uses. Ten is now the worst case a user can create, and
+   * the short viewport dropped from 600px to 500px to keep the same pressure
+   * on the dialog with the smaller list.
+   *
+   * The dialog's own fix is count-independent — a max height plus a scroll
+   * container, not a check on the number — so what it must survive is
+   * "more objectives than fit", which both heights still deliver. Quests
+   * created before the cap can still hold more, and this is the closest the
+   * suite can get to them.
    */
-  for (const height of [900, 600]) {
-    test(`a quest with 20 unticked objectives can be completed at ${height}px`, async ({
+  for (const height of [900, 500]) {
+    test(`a quest with ${MAX_QUEST_OBJECTIVES} unticked objectives can be completed at ${height}px`, async ({
       page,
     }) => {
       test.setTimeout(90_000);
@@ -260,10 +272,10 @@ test.describe("Quest", () => {
       }>(page, "createQuest", {
         projectId,
         title: `Waive${t}`,
-        description: "Twenty objectives, none of them done",
+        description: "A full list of objectives, none of them done",
         area: "Main",
         priority: "medium",
-        objectives: Array.from({ length: 20 }, (_, n) => ({
+        objectives: Array.from({ length: MAX_QUEST_OBJECTIVES }, (_, n) => ({
           title: `Objective number ${n + 1}`,
           completed: false,
         })),
@@ -312,9 +324,10 @@ test.describe("Quest", () => {
         .evaluate((el) => el.scrollHeight > el.clientHeight);
       expect(scrolled).toBe(true);
 
-      // End to end: twenty reasons, then close the quest for real. The
-      // twentieth field is only reachable by scrolling the region above.
-      for (let n = 0; n < 20; n++) {
+      // End to end: a reason for every objective, then close the quest for
+      // real. The last field is only reachable by scrolling the region
+      // above, which is the half of the fix a layout assertion cannot see.
+      for (let n = 0; n < MAX_QUEST_OBJECTIVES; n++) {
         await dialog
           .getByPlaceholder(/why|pourquoi/i)
           .nth(n)
@@ -323,7 +336,7 @@ test.describe("Quest", () => {
       // The summary the button is named after. Reaching it at all is half
       // the point: before the cap it was below the fold with the button.
       await dialog.locator(".cm-content").click();
-      await page.keyboard.type("Closed with twenty waivers.");
+      await page.keyboard.type("Closed with a waiver for each objective.");
 
       await expect(submit).toBeEnabled({ timeout: 10_000 });
       await submit.click();
@@ -1030,10 +1043,11 @@ test.describe("Quest", () => {
    * nothing. It inverts rather than breaks: the final assertion, that the
    * path renders no board, becomes the positive case.
    *
-   * The bar still switches the two, but by navigating rather than by writing
-   * a preference, so the URL is what changes.
+   * It drove the "Quest list | Kanban board" rail until #1510 removed it. The
+   * sidebar entry does the same navigation, and the rail's disappearance is
+   * only safe BECAUSE it does, so this now drives the sidebar.
    */
-  test("kanban is a route, and the view bar navigates to it", async ({
+  test("kanban is a route, and the sidebar navigates to it", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -1050,14 +1064,14 @@ test.describe("Quest", () => {
     );
 
     await page.goto(`/${projectSlug}/`);
-    await page.getByTestId("quests-view-kanban").click();
+    await page.locator(`a[href="/${projectSlug}/kanban"]`).first().click();
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
     });
     // The switch is a navigation now, so it is addressable.
     await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
 
-    await page.getByTestId("quests-view-list").click();
+    await page.locator(`a[href="/${projectSlug}/"]`).first().click();
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
     });
@@ -1330,7 +1344,19 @@ test.describe("Quest", () => {
   // is an entry in the Discussion feed on either mount, so there is no
   // folded section left to reveal.
 
-  test("view switcher reaches the kanban board, and defaultSurface decides the landing", async ({
+  /**
+   * The board is reached from the SIDEBAR, and `defaultSurface` decides where
+   * a bare project URL lands.
+   *
+   * ⚠️ This used to drive the "Quest list | Kanban board" rail, which is gone
+   * (#1510). The rail existed for two real bugs and this test is what keeps
+   * them from returning by another route: the board was once unreachable from
+   * the UI at all (#1135), and picking it once trapped the project on the
+   * board (#1156). Both were fixed by making Kanban a route with a sidebar
+   * entry, which is exactly why the rail became redundant - so the sidebar
+   * entry is now the ONLY way in, and it has to work.
+   */
+  test("the sidebar reaches the kanban board, and defaultSurface decides the landing", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -1346,23 +1372,28 @@ test.describe("Quest", () => {
       projectTitle,
     );
 
+    const sidebarLink = (href: string) =>
+      page.locator(`a[href="/${projectSlug}${href}"]`).first();
+
     await page.goto(`/${projectSlug}/`);
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
     });
 
-    await test.step("rail switches to the board and back", async () => {
-      await page.getByTestId("quests-view-kanban").click();
+    await test.step("the rail is gone, and the sidebar is the way in", async () => {
+      await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
+
+      await sidebarLink("/kanban").click();
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
-      // The board is a destination, so the switch is a navigation. Still
-      // never a QUERY param: `?view=kanban` is what #156 was about, and the
-      // seeding effect that kept it in sync bounced every sidebar link.
+      // The board is a destination, so this is a navigation. Still never a
+      // QUERY param: `?view=kanban` is what #156 was about, and the seeding
+      // effect that kept it in sync bounced every sidebar link.
       await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
       expect(new URL(page.url()).search).toBe("");
 
-      await page.getByTestId("quests-view-list").click();
+      await sidebarLink("/").click();
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
@@ -1406,7 +1437,7 @@ test.describe("Quest", () => {
         timeout: 10_000,
       });
 
-      await page.locator(`a[href="/${projectSlug}/folios"]`).first().click();
+      await sidebarLink("/folios").click();
       await page.waitForURL(`**/${projectSlug}/folios`, { timeout: 15_000 });
       await page.waitForTimeout(1_500);
       expect(new URL(page.url()).pathname).toBe(`/${projectSlug}/folios`);
@@ -1423,59 +1454,17 @@ test.describe("Quest", () => {
       );
     });
 
-    await test.step("back on the board for the layout checks", async () => {
-      // Clear the preference first: the layout checks below start from the
-      // list, and a bare URL would otherwise redirect past it.
+    await test.step("the quest log still renders beside the list and the detail", async () => {
+      // What the deleted layout step was really protecting: the quest log's
+      // position. The rail used to sit above it and the assertions were
+      // about their relative y. With the rail gone the log is simply the top
+      // of the content area, on both routes that carry it.
       await setProjectDefaultSurface(page, projectId, "list");
-      await page.goto(`/${projectSlug}/kanban`);
-      await expect(page.getByTestId("kanban-board")).toBeVisible({
-        timeout: 10_000,
-      });
-      await page.getByTestId("quests-view-list").click();
-      await expect(page.getByTestId("quests-table")).toBeVisible({
-        timeout: 10_000,
-      });
-    });
-
-    await test.step("the view bar is above the quest log and never moves", async () => {
-      // #153: the switcher used to be rendered by the Quests PAGE, which put
-      // it between the quest log and the table — reading as a control for the
-      // table rather than for the surface. It is now the first child of the
-      // content area, outside the layout's three-way branch.
-      //
-      // #163 turned it from a vertical left rail into a horizontal top bar,
-      // which rotates the invariant onto the other axis: its y must be smaller
-      // than the log's and identical under the board (which has no log at all
-      // and goes full width). Being outside the branch is what buys that, on
-      // whichever axis — anything rendered from inside a branch is necessarily
-      // right of, and below, the quest log.
       await page.goto(`/${projectSlug}/`);
-      await expect(page.getByTestId("quests-table")).toBeVisible({
+      await expect(page.getByTestId("quest-log")).toBeVisible({
         timeout: 10_000,
       });
-      const barInList = await page
-        .getByTestId("quests-view-switcher")
-        .boundingBox();
-      const log = await page.getByTestId("quest-log").boundingBox();
-      if (!barInList || !log) throw new Error("missing bounding boxes");
-      expect(barInList.y).toBeLessThan(log.y);
 
-      await page.getByTestId("quests-view-kanban").click();
-      await expect(page.getByTestId("kanban-board")).toBeVisible({
-        timeout: 10_000,
-      });
-      const barInKanban = await page
-        .getByTestId("quests-view-switcher")
-        .boundingBox();
-      if (!barInKanban) throw new Error("missing bounding box");
-      expect(barInKanban.y).toBe(barInList.y);
-
-      // The detail route keeps BOTH again. The log is how you move between
-      // quests without going back to the list first, which is exactly what
-      // the detail route wants, and the bar rides with it: the two are
-      // driven by one route set, so dropping the bar here would shift the
-      // log up the moment a quest opened.
-      await page.goto(`/${projectSlug}/`);
       const { shortId } = await apiPost<{ shortId: number }>(
         page,
         "createQuest",
@@ -1496,64 +1485,18 @@ test.describe("Quest", () => {
       await expect(page.getByTestId("quest-log")).toBeVisible({
         timeout: 10_000,
       });
-      await expect(page.getByTestId("quests-view-switcher")).toBeVisible();
+      await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
     });
 
-    await test.step("picking a view from a quest detail lands on that view", async () => {
-      // The bar renders on the detail route to keep the log from jumping,
-      // but the detail route has no list and no board of its own. It used
-      // to answer a click by writing a cookie and staying put - the pressed
-      // entry moved and nothing else did. Picking a view there means going
-      // up to the page that has one, and since epic #2 both pages are real
-      // routes, so each lands on its own URL.
-      const { shortId } = await apiPost<{ shortId: number }>(
-        page,
-        "createQuest",
-        {
-          projectId,
-          title: `ViewJump${t}`,
-          description: "Seeded so the detail route has something to open",
-          area: "Main",
-          priority: "low",
-          objectives: [],
-          attachments: [],
-        },
-      );
-
-      await page.goto(`/${projectSlug}/quests/${shortId}`);
-      await expect(page.getByTestId("quests-view-switcher")).toBeVisible({
-        timeout: 10_000,
-      });
-      await page.getByTestId("quests-view-kanban").click();
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`), {
-        timeout: 10_000,
-      });
-      await expect(page.getByTestId("kanban-board")).toBeVisible({
-        timeout: 10_000,
-      });
-
-      // ...and the same in the other direction, so this is not just "any
-      // click leaves the detail route".
-      await page.goto(`/${projectSlug}/quests/${shortId}`);
-      await expect(page.getByTestId("quests-view-switcher")).toBeVisible({
-        timeout: 10_000,
-      });
-      await page.getByTestId("quests-view-list").click();
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
-        timeout: 10_000,
-      });
-      await expect(page.getByTestId("quests-table")).toBeVisible({
-        timeout: 10_000,
-      });
-    });
-
-    await test.step("the view bar disappears when kanban is off", async () => {
+    await test.step("kanban off removes the sidebar entry, not the route", async () => {
       await setProjectFeature(page, projectId, "kanban", false);
       await page.goto(`/${projectSlug}/`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
-      await expect(page.getByTestId("quests-view-switcher")).toHaveCount(0);
+      await expect(
+        page.locator(`a[href="/${projectSlug}/kanban"]`),
+      ).toHaveCount(0);
     });
   });
 

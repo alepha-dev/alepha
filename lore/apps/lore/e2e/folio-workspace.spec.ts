@@ -922,30 +922,12 @@ test.describe("Folio workspace", () => {
 
     await page.goto(`/${projectSlug}/folios`);
     await expect(tree).toBeVisible({ timeout: 15_000 });
-    await expect(row(folioTitle)).toBeVisible({ timeout: 15_000 });
-
-    // ── A folio row ───────────────────────────────────────────────────
-    await row(folioTitle).dblclick();
-
-    const box = tree.getByRole("textbox");
-    await expect(box).toBeVisible({ timeout: 10_000 });
-    // Opens on the CURRENT name, fully selected, so typing replaces it.
-    await expect(box).toHaveValue(folioTitle);
-    expect(
-      await box.evaluate((el: HTMLInputElement) => [
-        el.selectionStart,
-        el.selectionEnd,
-      ]),
-    ).toEqual([0, folioTitle.length]);
-
-    // Escape cancels, exactly as it does from the context-menu path.
-    await box.press("Escape");
-    await expect(tree.getByRole("textbox")).toHaveCount(0);
-    await expect(row(folioTitle)).toBeVisible();
-
-    // ── A directory row ───────────────────────────────────────────────
-    // Closed by default, so the child is the witness for the disclosure.
     await expect(row(dirTitle)).toBeVisible({ timeout: 15_000 });
+
+    // ── A directory row, FIRST ────────────────────────────────────────
+    // Deliberately before the folio half: a directory row's click toggles
+    // and never navigates, so nothing here can be racing a route change.
+    // Closed by default, so the child is the witness for the disclosure.
     await expect(row(insideTitle)).toHaveCount(0);
 
     await row(dirTitle).dblclick();
@@ -965,6 +947,38 @@ test.describe("Folio workspace", () => {
     // double-click window it now waits out).
     await row(dirTitle).click();
     await expect(row(insideTitle)).toBeVisible({ timeout: 10_000 });
+
+    // ── A folio row ───────────────────────────────────────────────────
+    // ⚠️ Open the folio BEFORE double-clicking its row. A folio row's first
+    // click navigates, and this test does not want to measure that: on a
+    // slow runner the workspace was still mounting when the rename input
+    // appeared, so the input Playwright had hold of was detached under it
+    // and `press` retried until the test timeout. Opening first makes the
+    // first click a same-route no-op, which is also the case the report
+    // describes: renaming the folio you are looking at.
+    await row(folioTitle).click();
+    await expect(page).toHaveURL(/\/folios\/\d+$/, { timeout: 15_000 });
+    await expect(page.getByTestId("markdown-mode-toggle")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await row(folioTitle).dblclick();
+
+    const box = tree.getByRole("textbox");
+    await expect(box).toBeVisible({ timeout: 10_000 });
+    // Opens on the CURRENT name, fully selected, so typing replaces it.
+    await expect(box).toHaveValue(folioTitle);
+    expect(
+      await box.evaluate((el: HTMLInputElement) => [
+        el.selectionStart,
+        el.selectionEnd,
+      ]),
+    ).toEqual([0, folioTitle.length]);
+
+    // Escape cancels, exactly as it does from the context-menu path.
+    await box.press("Escape");
+    await expect(tree.getByRole("textbox")).toHaveCount(0);
+    await expect(row(folioTitle)).toBeVisible();
   });
 
   test("09c — New directory works from the empty-state menubar", async () => {
