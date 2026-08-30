@@ -30,7 +30,14 @@ const QuestViewRailRow = (props: QuestViewRailRowProps) => {
         <Icon className="size-3.5" />
         {props.label}
       </span>
-      <span className="min-w-0 text-right text-xs font-medium">
+      {/* `break-words` is the row's own guard, not decoration: `min-w-0`
+          lets this cell shrink, and without a break rule a single long
+          unbreakable value (an area name, an epic title, an email) still
+          renders at max-content and spills LEFT over the label, because
+          the cell is right-aligned. Values that carry `white-space: nowrap`
+          of their own — the commits column — additionally need a definite
+          width to truncate against; see `QuestViewRail`. */}
+      <span className="min-w-0 text-right text-xs font-medium break-words">
         {props.children}
       </span>
     </div>

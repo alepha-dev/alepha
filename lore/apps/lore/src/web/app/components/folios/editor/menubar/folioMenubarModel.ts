@@ -2,6 +2,8 @@
  * Every action the folio workspace menubar, toolbar and keyboard can
  * trigger. One flat union so a handler map is exhaustive-checkable.
  */
+import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
+
 export type FolioActionId =
   | "folio.new"
   | "folio.newDirectory"
@@ -313,6 +315,73 @@ export const folioShortcutBindings = (): Map<string, FolioActionId> => {
     if (item.binding) map.set(item.binding, item.id);
   }
   return map;
+};
+
+/**
+ * Bindings the CodeMirror editor owns while it holds the caret, so
+ * `useFolioShortcuts` must stand aside rather than claim them.
+ *
+ * The set used to hold ⌘B/⌘I/⌘Z/⇧⌘Z/⌘K: Lexical translated those into
+ * `beforeinput` natively, so binding them here double-handled them. Every
+ * one of those ids is gone with the formatting commands.
+ *
+ * ⌘F replaced them, and for a sharper reason. Find-in-folio has two
+ * implementations by design: `useFolioFind` walks the RENDERED pane's text
+ * nodes and paints through the CSS Custom Highlight API, which is exactly
+ * right for View mode and completely wrong for Edit mode — CodeMirror
+ * virtualizes its viewport, so a text-node walk sees only the lines
+ * currently painted and silently reports no match for anything scrolled out
+ * of sight. `@codemirror/search` handles that correctly and is already
+ * mounted, so in Edit mode this hook stands aside and lets the keydown
+ * reach it.
+ *
+ * ⌘D joined it for a third reason again. There the editor's binding is not
+ * another implementation of the same action but a DIFFERENT action:
+ * duplicate-line, which is what ⌘D means to anyone who has used an editor.
+ * Duplicating the whole folio is a file-manager action nobody reaches for
+ * mid-sentence, and `duplicate()` creates the row with no dialog to cancel,
+ * so a typing reflex used to leave a stray copy in the tree.
+ *
+ * The listener is capture-phase, so standing aside is the ONLY way
+ * CodeMirror ever sees the key: a `preventDefault()` there would beat it
+ * every time.
+ */
+const EDITOR_OWNED_BINDINGS = new Set<FolioActionId>([
+  "edit.find",
+  "folio.duplicate",
+]);
+
+export const editorOwnsBinding = (
+  id: FolioActionId,
+  mode: MarkdownEditorMode,
+): boolean => mode === "edit" && EDITOR_OWNED_BINDINGS.has(id);
+
+/**
+ * Of the above, the ones whose glyph the menu must stop advertising while
+ * the editor holds the caret.
+ *
+ * ⌘F is not in here: it still finds, so `edit.find`'s glyph is true in
+ * either mode and only the implementation behind it changes. ⌘D is,
+ * because there the key does something else entirely — a "⌘D" beside
+ * "Duplicate" would be telling the reader that pressing it duplicates the
+ * folio, which in Edit mode it does not.
+ */
+const EDIT_MODE_HIDDEN_SHORTCUTS = new Set<FolioActionId>(["folio.duplicate"]);
+
+/**
+ * The glyph to render right-aligned in the menu, or `undefined` for none.
+ *
+ * `mode` is optional because the empty `/folios` state renders the menubar
+ * with no document and so no editor to own anything.
+ */
+export const folioShortcutGlyph = (
+  item: FolioMenuItem,
+  mode?: MarkdownEditorMode,
+): string | undefined => {
+  if (mode === "edit" && EDIT_MODE_HIDDEN_SHORTCUTS.has(item.id)) {
+    return item.syntaxHint;
+  }
+  return item.shortcut ?? item.syntaxHint;
 };
 
 /**

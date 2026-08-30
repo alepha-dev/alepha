@@ -259,6 +259,47 @@ export const useFolioActions = (
   const [folios, setFolios] = useStore(userFoliosAtom);
   const projectSlug = project ? project.slug : "";
 
+  /**
+   * Adopt a rename that happened somewhere other than this buffer.
+   *
+   * The tree's inline rename PATCHes the row and writes the result into
+   * `userFoliosAtom`. It cannot reach the open editor's draft, which was
+   * seeded from the route loader's snapshot at mount and never re-seeded
+   * (the re-baseline effect in `useFolioDraft` keys on `folio.updatedAt`,
+   * and the loader's object does not change under a rename). Every save
+   * path below then sent that stale title, so a rename made between
+   * creating a folio and its first save was silently reverted by the
+   * editor.
+   *
+   * `updatedAt` is the arbiter, and it has to be: `save()` writes this same
+   * atom, so an unconditional adopt would let a row this hook wrote a
+   * moment ago overwrite the title the user just typed — the same bug from
+   * the other side. A row is only newer than `savedAt` when somebody else
+   * wrote it, because every write from here moves both together.
+   *
+   * ⚠️ An unsaved title typed in the editor loses to a completed rename.
+   * That is the intended reading — the rename is a finished action against
+   * the server, the field is not — but it is a choice, not a consequence.
+   */
+  const openRow = input.folio
+    ? folios.find((f) => f.id === input.folio?.id)
+    : undefined;
+  const savedAt = input.draft.savedAt;
+  const adoptTitle = input.draft.adoptTitle;
+  const liveTitle = input.draft.getLiveValues().title;
+
+  useEffect(() => {
+    if (!openRow || !savedAt) return;
+    // ISO-8601, so a lexicographic comparison is a chronological one.
+    if (openRow.updatedAt <= savedAt) return;
+    if (openRow.title === liveTitle) return;
+    adoptTitle(openRow.title, openRow.updatedAt);
+    // `liveTitle` is deliberately out of the deps: it changes on every
+    // keystroke, and re-running this on each one would race the user's
+    // typing against a row that has not moved. It is read here only as a
+    // "nothing to do" guard, never as the trigger.
+  }, [openRow?.updatedAt, openRow?.title, savedAt, adoptTitle]);
+
   // Seeded once from the loader-provided `folio` prop. Safe as an
   // INITIALIZER only because `FolioWorkspace` remounts this whole subtree
   // on every folio switch (see the file doc above) — these are the local
