@@ -43,6 +43,7 @@ import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import { QuestService } from "../services/QuestService.ts";
+import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 
 export class QuestController {
   log = $logger();
@@ -63,6 +64,7 @@ export class QuestController {
   questMapper = $inject(QuestResourceMapper);
   questService = $inject(QuestService);
   areaService = $inject(AreaService);
+  releaseAttachment = $inject(ReleaseAttachmentService);
   linkService = $inject(FolioLinkService);
 
   attachments = $storage({
@@ -365,11 +367,24 @@ export class QuestController {
         }
       }
 
+      // Same rule as `updateQuestById`, through the same service: a quest
+      // cannot be created straight into a published release, and the release
+      // has to belong to this project.
+      const releaseId =
+        body.releaseId != null
+          ? ((await this.releaseAttachment.resolve(
+              body.projectId,
+              undefined,
+              body.releaseId,
+            )) ?? undefined)
+          : undefined;
+
       // Quest-creation mechanics (shortId sequence, area-ensure, HTML
       // sanitization, defaults) live in QuestService — the single path
       // shared with BlightController.forwardBlightToQuest.
       const quest = await this.questService.createQuest({
         projectId: body.projectId,
+        releaseId,
         title: body.title,
         // Title-only quests are allowed; default the optional description to
         // "" so the NOT-NULL column never sees undefined.
@@ -1637,6 +1652,14 @@ export class QuestController {
           // sets it. Picking from the entity schema would emit
           // `optional<integer>` only, dropping the explicit-clear path.
           dependsOn: z.integer().nullable().optional(),
+          /**
+           * The release this quest ships in. `null` detaches it.
+           *
+           * Same three-way shape as `dependsOn`: picking it from the entity
+           * schema would emit `optional<integer>` only, and there would be no
+           * way to take a quest back out of a release.
+           */
+          releaseId: z.integer().nullable().optional(),
           // `feedbackId` links this quest back to an accepted feedback item
           // (what the feedback inbox's "linked quests" reads). `null` clears
           // the link; integer sets it. Owner-only + accepted-feedback checks
@@ -1817,6 +1840,16 @@ export class QuestController {
           }
           patch.feedbackId = body.feedbackId;
         }
+      }
+      // Attach to / detach from a release. The refusal on a PUBLISHED
+      // release lives in the service, not here: three other write paths need
+      // the same rule and a copy in each is how they drift apart.
+      if (body.releaseId !== undefined) {
+        patch.releaseId = await this.releaseAttachment.resolve(
+          quest.projectId,
+          quest.releaseId,
+          body.releaseId,
+        );
       }
       if (
         body.completionMessage !== undefined &&

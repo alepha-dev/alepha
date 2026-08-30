@@ -38,6 +38,12 @@ export const questCreateSchema = z.object({
    */
   dueAt: z.datetime().nullable().optional(),
   projectId: z.integer(),
+  /**
+   * Optional release this quest ships in. Validated at handler time against
+   * `ReleaseAttachmentService`: the release must belong to the same project
+   * and must not already be published.
+   */
+  releaseId: z.integer().optional(),
   objectives: z
     .array(
       z.object({

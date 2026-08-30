@@ -25,6 +25,7 @@ import {
   Minus,
   Search,
   Signature,
+  Flag,
   Tag,
   Trash,
 } from "lucide-react";
@@ -38,6 +39,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -68,6 +70,9 @@ const boardFiltersSchema = z.object({
   status: z.enum(["new", "accepted", "completed", "shelved"]).optional(),
   area: z.string().optional(),
   tag: z.string().optional(),
+  // The release's numeric id, carried as a string because that is what a
+  // select's value is. Coerced back on the way into the query.
+  release: z.string().optional(),
 });
 
 /**
@@ -82,6 +87,7 @@ const SEEDABLE_STATUSES = ["new", "accepted", "completed", "shelved"] as const;
 const ProjectQuestsTable = () => {
   const [project] = useStore(currentProjectAtom);
   const [currentAreas] = useStore(currentAreasAtom);
+  const [releases] = useStore(currentReleasesAtom);
   const questApi = useClient<QuestController>();
   const questMutations = useQuestMutations();
   const projectApi = useClient<ProjectController>();
@@ -134,6 +140,14 @@ const ProjectQuestsTable = () => {
   const areaOptions = (currentAreas ?? []).map((a) => ({
     value: a.name,
     label: a.name,
+  }));
+
+  // Every release, published included: this is a filter over history, not a
+  // picker for an attachment, so hiding what has shipped would make the
+  // table unable to answer "what went into 0.27.0".
+  const releaseOptions = (releases ?? []).map((r) => ({
+    value: String(r.id),
+    label: r.tag ?? r.title,
   }));
 
   return (
@@ -198,6 +212,20 @@ const ProjectQuestsTable = () => {
                   />
                 </div>
               )}
+              {releaseOptions.length > 0 && (
+                <div className="w-44">
+                  <Control
+                    input={form.input.release}
+                    label=""
+                    clearable
+                    icon={Flag}
+                    clearLabel={tr("board.filter.allReleases")}
+                    triggerClassName="w-full"
+                    items={releaseOptions}
+                    inputProps={{ "aria-label": tr("board.filter.release") }}
+                  />
+                </div>
+              )}
               {knownTags.length > 0 && (
                 <div className="w-44">
                   <Control
@@ -226,6 +254,7 @@ const ProjectQuestsTable = () => {
               status: f?.status || undefined,
               area: f?.area || undefined,
               tag: f?.tag || undefined,
+              releaseId: f?.release ? Number(f.release) : undefined,
             } as any,
           })
         }
@@ -355,6 +384,24 @@ const ProjectQuestsTable = () => {
               ) : (
                 <span className="text-muted-foreground">-</span>
               ),
+          },
+          releaseId: {
+            label: tr("board.table.release"),
+            // Niche enough to start hidden, like `linked`: most projects run
+            // one release at a time and the filter above answers the common
+            // question. The column is for reading a mixed list.
+            defaultHidden: true,
+            className: "w-28",
+            cell: (quest: QuestResource) => {
+              const release = releases?.find((r) => r.id === quest.releaseId);
+              return release ? (
+                <Badge variant="outline" className="font-mono">
+                  {release.tag ?? release.title}
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              );
+            },
           },
           linked: {
             label: tr("board.table.linked"),

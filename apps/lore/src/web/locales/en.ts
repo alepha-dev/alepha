@@ -226,6 +226,9 @@ export default {
   "board.table.assigned": "Assigned",
   "board.table.title": "Quest",
   "board.table.tags": "Tags",
+  "board.table.release": "Release",
+  "board.filter.release": "Release",
+  "board.filter.allReleases": "All releases",
   "board.table.linked": "Linked",
   "board.table.linked.tooltip": "Blocked by quest #$1",
   "board.table.priority": "Priority",
@@ -291,6 +294,8 @@ export default {
   "quest.create.estimate.unit.days": "days",
   "quest.create.estimate.unit.days.one": "day",
   "quest.create.estimate.clear": "Clear estimate",
+  "quest.create.release": "Release",
+  "quest.create.release.helper": "Which release this quest ships in. Optional.",
   "quest.create.tags": "Tags",
   "quest.create.tags.helper":
     "Labels for the nature of the quest (bug, feat, chore…). Area says where, tag says what kind.",
@@ -337,6 +342,7 @@ export default {
   "quest.rail.commits": "Commits",
   "quest.rail.due": "Due",
   "quest.rail.release": "Release",
+  "quest.rail.release.none": "None",
   "quest.rail.questline": "Questline",
 
   "project.create.name": "Name",
