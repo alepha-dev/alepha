@@ -5,7 +5,10 @@ import { $logger } from "alepha/logger";
 import { JwtProvider } from "alepha/security";
 import { $route, HttpError } from "alepha/server";
 
-import { renderConsentPage } from "../helpers/consentPage.ts";
+import {
+  type ConsentScope,
+  renderConsentPage,
+} from "../helpers/consentPage.ts";
 import {
   buildAuthorizationServerMetadata,
   buildProtectedResourceMetadata,
@@ -14,6 +17,7 @@ import { buildOpenIdConfiguration } from "../helpers/oidcMetadata.ts";
 import { authorizeDecisionBodySchema } from "../schemas/authorizeDecisionBodySchema.ts";
 import { authorizeQuerySchema } from "../schemas/authorizeQuerySchema.ts";
 import { deviceAuthorizationBodySchema } from "../schemas/deviceAuthorizationBodySchema.ts";
+import { oauthScopeCopySchema } from "../schemas/oauthScopeCopySchema.ts";
 import { registerClientBodySchema } from "../schemas/registerClientBodySchema.ts";
 import { tokenRequestBodySchema } from "../schemas/tokenRequestBodySchema.ts";
 import {
@@ -46,6 +50,34 @@ export const oauthOptions = $atom({
      * app already configuring them would stop compiling.
      */
     devicePath: z.text({ default: "/device" }).optional(),
+    /**
+     * The app's own name, shown on the consent screen as the party being
+     * connected to ("Claude wants access to your Lore account").
+     *
+     * ⚠️ Deliberately NOT defaulted to `APP_NAME`. That variable is a log
+     * prefix - Lore sets it to `RDM` - so falling back to it would put an
+     * initialism where a product name goes, on the one page a third party
+     * sees. Unset means the screen omits the identity rather than inventing
+     * one.
+     */
+    productName: z.text().optional(),
+    /**
+     * Where a user revokes a granted connection, e.g. `/account/connections`.
+     * Linked from the consent screen when set, and never guessed: the page is
+     * `@alepha/ui`'s account router, which an app may not mount at all.
+     */
+    connectionsPath: z.text().optional(),
+    /**
+     * What each scope MEANS, keyed by scope identifier.
+     *
+     * A scope id is a wire token, and printing it at somebody about to grant
+     * it tells them nothing - Lore's screen listed one bullet reading `mcp`.
+     * Only the app knows what its own scopes reach, so the copy is declared
+     * here rather than shipped with the framework. An undeclared scope falls
+     * back to its raw identifier, which is what the screen did for all of
+     * them before.
+     */
+    scopes: z.record(z.string(), oauthScopeCopySchema).optional(),
   }),
   default: {
     realm: "users",
@@ -74,6 +106,41 @@ export class OAuthController {
    */
   protected baseUrl(url: URL): string {
     return `${url.protocol}//${url.host}`;
+  }
+
+  /**
+   * The scopes about to be granted, each with whatever copy the app declared
+   * for it.
+   *
+   * The identifier is carried through even when a label exists: it is what
+   * the issued token will actually contain, and the screen shows it beside
+   * the label so a reader who knows the protocol can check one against the
+   * other. A scope with no declared copy falls back to its identifier, which
+   * is exactly what every scope did before this existed.
+   */
+  protected describeScopes(scopes: string[]): ConsentScope[] {
+    const copy = this.options.scopes ?? {};
+    return scopes.map((id) => ({ id, ...copy[id] }));
+  }
+
+  /**
+   * Host of the client's redirect URI, for the consent screen.
+   *
+   * The one part of a client's identity this server can vouch for. A
+   * `clientName` is whatever the client wrote at registration and a hostile
+   * one can claim any name it likes; the redirect URI is where the
+   * authorization code is actually delivered, and it was validated against
+   * the registration before this page is rendered.
+   *
+   * Returns `undefined` rather than the raw string if it will not parse, so
+   * a malformed value is omitted instead of printed as identity.
+   */
+  protected redirectHost(redirectUri: string): string | undefined {
+    try {
+      return new URL(redirectUri).host || undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   metadata = $route({
@@ -349,10 +416,12 @@ export class OAuthController {
         userName: user.name ?? user.email ?? "your account",
         // Show the user the scopes they will actually grant, not the raw
         // (possibly over-broad) request.
-        scopes: this.clients.intersectScopes(
-          query.scope?.split(" "),
-          client.scopes,
+        scopes: this.describeScopes(
+          this.clients.intersectScopes(query.scope?.split(" "), client.scopes),
         ),
+        productName: this.options.productName,
+        redirectHost: this.redirectHost(query.redirect_uri),
+        connectionsUrl: this.options.connectionsPath,
         hidden: {
           response_type: query.response_type,
           client_id: query.client_id,

@@ -12,7 +12,10 @@ import { AlephaServer, ServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { OAuthController } from "../controllers/OAuthController.ts";
-import { renderConsentPage } from "../helpers/consentPage.ts";
+import {
+  type ConsentPageOptions,
+  renderConsentPage,
+} from "../helpers/consentPage.ts";
 import { buildAuthorizationServerMetadata } from "../helpers/oauthMetadata.ts";
 import { AlephaOAuth, oauthOptions } from "../index.ts";
 import { OAuthClientService } from "../services/OAuthClientService.ts";
@@ -43,11 +46,127 @@ describe("oauth helpers", () => {
     const html = renderConsentPage({
       clientName: "<script>x</script>",
       userName: "Bob",
-      scopes: ["mcp"],
+      scopes: [{ id: "mcp" }],
       hidden: { client_id: "abc" },
     });
     expect(html).not.toContain("<script>x</script>");
     expect(html).toContain("&lt;script&gt;");
+  });
+
+  /**
+   * The consent screen, quest #1322. It used to be a bare card listing a
+   * bullet that read `mcp` - the raw wire token, at somebody about to grant
+   * it.
+   */
+  describe("the consent screen", () => {
+    const render = (options: Partial<ConsentPageOptions> = {}) =>
+      renderConsentPage({
+        clientName: "Claude",
+        userName: "Bob",
+        scopes: [{ id: "mcp" }],
+        hidden: { client_id: "abc" },
+        ...options,
+      });
+
+    it("prints a declared label and description, and keeps the raw id beside them", ({
+      expect,
+    }) => {
+      const html = render({
+        scopes: [
+          {
+            id: "mcp",
+            label: "Projects, quests and folios",
+            description: "Read and manage your projects, quests and folios.",
+          },
+        ],
+      });
+
+      expect(html).toContain("Projects, quests and folios");
+      expect(html).toContain("Read and manage your projects");
+      // The identifier is what the token will carry, so a reader who knows
+      // the protocol can check the copy against it.
+      expect(html).toContain('class="scope-id">mcp<');
+    });
+
+    it("falls back to the raw identifier when the app declared nothing", ({
+      expect,
+    }) => {
+      const html = render({ scopes: [{ id: "mcp" }] });
+
+      expect(html).toContain("mcp");
+      // ...and does not print it twice, once as a label and once as a chip.
+      expect(html).not.toContain('class="scope-id">mcp<');
+    });
+
+    it("says so when nothing beyond sign-in is granted", ({ expect }) => {
+      // An empty intersection is a real outcome, and an empty list reads as a
+      // page that failed to load.
+      expect(render({ scopes: [] })).toContain(
+        "No other access is being granted",
+      );
+    });
+
+    it("names the product being connected to, when the app declared one", ({
+      expect,
+    }) => {
+      expect(render({ productName: "Lore" })).toContain(
+        "wants access to your Lore account",
+      );
+      // ...and never invents one.
+      expect(render()).toContain("wants to connect");
+    });
+
+    /**
+     * The one part of a client's identity the server can vouch for: a
+     * `clientName` is whatever the client registered.
+     */
+    it("shows the host the code will be delivered to", ({ expect }) => {
+      const html = render({ redirectHost: "claude.ai" });
+      expect(html).toContain("claude.ai");
+    });
+
+    it("links revocation only when the app has a page for it", ({ expect }) => {
+      expect(render({ connectionsUrl: "/account/connections" })).toContain(
+        'href="/account/connections"',
+      );
+      expect(render()).not.toContain("revoke this at any time");
+    });
+
+    /**
+     * ⚠️ The constraint the whole file exists under. This page is served to a
+     * browser that has loaded nothing of the app - a native client's popup, an
+     * agent's webview - so a stylesheet link or a font request is a page that
+     * renders unstyled for somebody.
+     */
+    it("requests nothing from the network", ({ expect }) => {
+      const html = render({ productName: "Lore", redirectHost: "claude.ai" });
+
+      expect(html).not.toContain("<script");
+      expect(html).not.toContain("<link");
+      expect(html).not.toContain("http://");
+      expect(html).not.toContain("https://");
+      // Inline, and the only style there is.
+      expect(html).toContain("<style>");
+    });
+
+    it("escapes every value it is handed, not only the client name", ({
+      expect,
+    }) => {
+      const html = render({
+        userName: '"><img src=x onerror=alert(1)>',
+        productName: "<b>Lore</b>",
+        redirectHost: "<i>evil</i>",
+        connectionsUrl: '"><script>x</script>',
+        scopes: [{ id: "<x>", label: "<y>", description: "<z>" }],
+      });
+
+      expect(html).not.toContain("<img src=x");
+      expect(html).not.toContain("<b>Lore</b>");
+      expect(html).not.toContain("<i>evil</i>");
+      expect(html).not.toContain("<script>x</script>");
+      expect(html).not.toContain("<y>");
+      expect(html).not.toContain("<z>");
+    });
   });
 });
 
