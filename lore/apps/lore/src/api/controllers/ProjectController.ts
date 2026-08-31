@@ -847,16 +847,18 @@ export class ProjectController {
         throw new BadRequestError("A column with this name already exists.");
       }
 
-      // Cascade-rename onto every quest that lives in that column.
-      const affected = await this.quests.findMany({
-        where: {
+      // Cascade-rename onto every quest that lives in that column, in ONE
+      // statement. It used to read the column and then update row by row,
+      // which is unbounded in the size of the column: on D1 each update is
+      // a round trip, so a column holding 400 quests was several seconds of
+      // them against a 5000 ms `DATABASE_TIMEOUT`.
+      await this.quests.updateMany(
+        {
           projectId: { eq: params.id },
           kanbanColumn: { eq: body.oldName },
         },
-      });
-      for (const quest of affected) {
-        await this.quests.updateById(quest.id, { kanbanColumn: newName });
-      }
+        { kanbanColumn: newName },
+      );
 
       const updated = current.map((c) => (c === body.oldName ? newName : c));
       // The settings map is keyed by name, so a rename has to carry the

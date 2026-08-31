@@ -2422,13 +2422,14 @@ export class QuestController {
       // Clear dependents' `dependsOn` so the dependency graph does not keep
       // edges to a deleted quest. `null`, not `undefined`: the repository
       // strips undefined keys from an update, which made this a no-op.
-      const dependents = await this.quests.findMany({
-        where: { dependsOn: { eq: params.id } },
-        columns: ["id"],
-      });
-      for (const dep of dependents) {
-        await this.quests.updateById(dep.id, { dependsOn: null });
-      }
+      //
+      // One statement rather than a read plus an update per dependent: on
+      // D1 each of those was a round trip, inside a delete that is already
+      // transactional.
+      await this.quests.updateMany(
+        { dependsOn: { eq: params.id } },
+        { dependsOn: null },
+      );
 
       // Hand the blight back to the inbox before its quest disappears.
       //
