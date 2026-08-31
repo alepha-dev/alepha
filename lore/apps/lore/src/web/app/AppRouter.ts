@@ -24,6 +24,7 @@ import type { ProjectReportsController } from "../../api/controllers/ProjectRepo
 import type { QualityController } from "../../api/controllers/QualityController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
 import type { ReleaseController } from "../../api/controllers/ReleaseController.ts";
+import type { RoadmapController } from "../../api/controllers/RoadmapController.ts";
 import type { SigilController } from "../../api/controllers/SigilController.ts";
 import { currentAreasAtom } from "./atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
@@ -43,6 +44,7 @@ import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
+import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
@@ -82,6 +84,7 @@ export class AppRouter {
   areaApi = $client<AreaController>();
   blightApi = $client<BlightController>();
   releaseApi = $client<ReleaseController>();
+  roadmapApi = $client<RoadmapController>();
   sigilApi = $client<SigilController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
@@ -175,6 +178,7 @@ export class AppRouter {
       this.project,
       this.projectCreate,
       this.projectFeedbackRequest,
+      this.projectRoadmap,
       this.account.layout,
       this.notFound,
     ],
@@ -1638,6 +1642,95 @@ export class AppRouter {
     // mount is `useEffect`-only and survives hydration.
     lazy: () =>
       import("./components/project/feedback/ProjectFeedbackRequest.tsx"),
+  });
+
+  /**
+   * The roadmap: a project's open releases and the epics inside them, read
+   * only, for an audience the project owner chooses.
+   *
+   * ⚠️ **Top-level, and unguarded, and both are load-bearing.**
+   *
+   * `/:projectSlug` carries `use: [$secure()]`, which member-gates its whole
+   * subtree AND puts it in CSR - so a child route there would render no HTML
+   * a crawler could ever read, which is most of what this page is for. Two
+   * routes cannot own one path either, so there is exactly ONE route here and
+   * the members view (#1561) renders into it rather than beside it.
+   *
+   * `projectFeedbackRequest` escapes the same guard the same way, and this
+   * route shares its tree position. The param MUST therefore be named
+   * `projectSlug`: `RouterProvider.push` keeps one param name per position,
+   * and two routes naming it differently collapse onto one, the outer wins,
+   * and the inner value arrives missing.
+   *
+   * Being unguarded is also what makes it server-render, since Lore derives
+   * the mode from the guard rather than setting it (`test/app-ssr-mode.spec.ts`
+   * pins that, and pins this route as public).
+   *
+   * The gate is `projects.roadmapVisibility`, applied by the endpoint: `off`
+   * and a project whose slug does not exist both 404 with the same message,
+   * because a 403 would confirm the project exists.
+   */
+  projectRoadmap = $page({
+    name: "projectRoadmap",
+    path: "/:projectSlug/roadmap",
+    schema: {
+      params: z.object({ projectSlug: z.string() }),
+    },
+    head: (props) => {
+      const roadmap = (
+        props as { roadmap?: { project?: { title?: string } } } | undefined
+      )?.roadmap;
+      return {
+        title: `${roadmap?.project?.title ?? "Roadmap"} › Roadmap`,
+      };
+    },
+    lazy: () => import("./components/project/roadmap/ProjectRoadmap.tsx"),
+    /*
+     * ⚠️ Buffered, so the page can answer a real 404.
+     *
+     * A streamed page flushes its `<head>` before the loader runs, which
+     * commits the status. This route can legitimately not exist - the slug
+     * may be nobody's, or the roadmap may be off - and it is the ONE page in
+     * Lore a crawler reaches, so a 200 carrying an error would be indexed as
+     * a real page. `/:projectSlug/roadmap` matches any root segment, so that
+     * would be an unbounded surface of soft 404s rather than one.
+     *
+     * The cost is the first byte waiting for the whole render, which for a
+     * page this small is what the correct status is worth.
+     */
+    stream: false,
+    onServerResponse: ({ reply }) => {
+      if (this.alepha.store.get(roadmapNotFoundAtom)?.missing) {
+        reply.status = 404;
+      }
+    },
+    errorHandler: (error) => {
+      // Same shape as the `project` route's: a 404 renders the real
+      // not-found page rather than the layout's generic ErrorPage.
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+    loader: async ({ params }) => {
+      try {
+        // The anonymous endpoint, called with no session on purpose. A
+        // signed-in member reading a `members` roadmap is #1561's branch and
+        // gets its own action; this one answers only while the roadmap is
+        // `public`, so the guarantee it carries cannot depend on who asks.
+        const roadmap = await this.roadmapApi.getPublicRoadmap({
+          params: { slug: params.projectSlug },
+        });
+        return { roadmap };
+      } catch (error) {
+        if (HttpError.is(error, 404)) {
+          // The only way to tell `onServerResponse` what happened: it gets
+          // the request and nothing about the loader. See
+          // `roadmapNotFoundAtom`.
+          this.alepha.store.set(roadmapNotFoundAtom, { missing: true });
+        }
+        throw error;
+      }
+    },
   });
 
   notFound = $page({

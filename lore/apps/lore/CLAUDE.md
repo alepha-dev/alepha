@@ -56,7 +56,7 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (24)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
+**Controllers (25)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Roadmap`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
 
 > `User`, `Session` and `Identity` were **deleted** when Lore moved onto the shared
 > `/account` area: they duplicated the framework's `MyProfileController`,
@@ -119,6 +119,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/:projectSlug/settings/releases`                           | `projectSettingsReleases` | `…/ProjectSettingsReleasesPage.tsx`           | Release config (the `features.milestones` toggle: the persisted key kept its pre-rename name)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `/:projectSlug/settings/quests`                             | `projectSettingsQuests`   | `…/ProjectSettingsQuestsPage.tsx`             | Per-quest module toggles (chrono / reminder)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `/:projectSlug/request`                                     | `projectFeedbackRequest`  | `project/feedback/ProjectFeedbackRequest.tsx` | First-party feedback form (login required). Top-level, **not** nested under the `project` layout — no membership check                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `/:projectSlug/roadmap`                                     | `projectRoadmap`          | `project/roadmap/ProjectRoadmap.tsx`          | Open releases and the epics inside them, read only. Top-level and **unguarded**, for the same reason `projectFeedbackRequest` is: `/:projectSlug` carries `$secure()`, which member-gates its subtree AND puts it in CSR. This is the ONE page a crawler reaches, so it is also the one that server-renders real data - and the one with `stream: false`, so a slug nobody owns answers a real 404 instead of a soft one. Who may read it is `projects.roadmapVisibility`                                                                                                                                                                                                                                                                                          |
 | `/account/feedback`                                         | `myFeedback`              | `account/feedback/MyFeedback.tsx`             | A reporter's own submissions across all projects, declared in `src/web/app/components/account/LoreAccountRouter.ts` via `$pageAccount`, not in `AppRouter`. Detail is a drawer/sheet (`MyFeedbackEditSheet.tsx`), not a separate route — there is no per-feedback status page anymore. **The route name is deliberately still `myFeedback`**, not `accountFeedback`: it predates the `/account` migration and a `$page` rename is not typecheck-protected                                                                                                                                                                                                                                                                                                          |
 | `/account/projects`                                         | `accountProjects`         | `account/MyProjects.tsx`                      | Every project the signed-in user belongs to. `$pageAccount`, group `Lore`, and the one of the three with no `can()` gate — the endpoint is member-scoped, so the page is always reachable                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `/account/invitations`                                      | `accountInvitations`      | `account/MyInvitations.tsx`                   | Pending invitations addressed to the signed-in user. Also `$pageAccount`, group `Lore`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -256,10 +257,55 @@ When `onClose` is provided, it's used instead of router navigation. When `onQues
 ### Project access model
 
 Lore projects are private. Every project-scoped endpoint is gated
-member-or-owner, or creator-only. There is no anonymous or
-"any-logged-in-user can browse" path - the old `project.public` flag was
-removed (the column is kept in the schema only because dropping it on D1
-triggers a cascade-wipe).
+member-or-owner, or creator-only, with **exactly one exception**: the
+roadmap (below). The old `project.public` flag is not that exception and is
+not coming back - it was removed, and the column is kept in the schema only
+because dropping it on D1 triggers a cascade-wipe.
+
+#### ⚠️ The roadmap is the one anonymous read path
+
+`RoadmapController.getPublicRoadmap` (`GET /api/projects/by-slug/:slug/roadmap`)
+is the **only `$action` in the application without `$secure()`**. Every other
+one has it, `FeedbackController.submitFeedback` included: even the public
+"report a bug" page requires sign-in, and the unguarded `/:projectSlug/request`
+page exists to render a sign-in CTA rather than to accept anonymous writes.
+`SigilIngestController` is a `$route` with its own bearer token, not an
+exception to this.
+
+Four properties hold it in place, and each is load-bearing:
+
+- **Opt-in per project, off by default.** `projects.roadmapVisibility` is
+  `off | members | public`, absent reads as `off`
+  (`ProjectSecurityService.roadmapVisibilityOf`), and the one gate both
+  audiences share is `isRoadmapVisible(project, user?)`.
+- **Its own narrow response schema.** `roadmapResourceSchema` is built with
+  `pick`, so exclusion is the default and a column added to `releases` or
+  `epics` cannot ride along. `test/roadmap-public-endpoint.spec.ts` pins its
+  exact key set and fails when a key is added.
+- **`assertMember` is untouched.** Not widened, not bypassed, not made
+  conditional. A diff that changes it while touching the roadmap is the wrong
+  design.
+- **404, never 403**, with one message for "no such slug" and "not public" -
+  a 403 confirms the project exists.
+
+Folio #1073 is the governing note: a public page must be a separate, narrow,
+opt-in surface with its own response schema, never a relaxation of the
+membership gate.
+
+⚠️ **Turning a roadmap off is not instant, and that is disclosed rather than
+fixed.** The response is publicly cacheable for 60 seconds (`max-age=60`,
+`s-maxage=60`), and the members action reads the project row through the 30
+second `$ownsProject` window. The settings card says so
+(`project.settings.roadmap.delay`, "changes can take up to a minute to reach
+visitors"), and the cache directives are pinned to that promise by a test -
+raising either means changing that string in both locales first.
+
+⚠️ **Publishing a roadmap publishes the titles of epics nobody has
+announced.** Planned epics are shown on purpose: an epic that is specified and
+not started is exactly what a roadmap is for, and hiding it would make the
+page useless for the one question it exists to answer. The safeguard is the
+confirmation naming that outcome before the switch applies, not a filter in
+the endpoint - a filter there would silently contradict the members page.
 
 **Two mechanisms, and the declarative one is the default for anything new.**
 `$ownsProject` (below) is middleware in a `use:` array; it cannot be

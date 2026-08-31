@@ -778,6 +778,19 @@ export default {
   "release.bucket.share": "$1% of $2",
   "release.bucket.outside": "outside the $1",
 
+  "roadmap.subtitle": "What is being worked on, and what is coming next.",
+  "roadmap.empty": "Nothing on the roadmap yet.",
+  "roadmap.section.upcoming": "Upcoming",
+  "roadmap.section.shipped": "Shipped",
+  // "Estimated", never "due". Nothing enforces a target date and no cron
+  // reads it, and this wording is what keeps it from reading as a promise.
+  "roadmap.release.estimated": "Estimated $1",
+  "roadmap.release.released": "Released $1",
+  "roadmap.release.noDate": "No estimated date yet",
+  "roadmap.epic.ref": "Epic $1",
+  "roadmap.epic.ratio": "$1/$2",
+  "roadmap.poweredBy": "Roadmap published with Alepha Lore.",
+
   "release.kpi.ready.label": "Ready to ship",
   "release.kpi.ready.remaining.one": "1 quest still to land.",
   "release.kpi.ready.remaining.many": "$1 quests still to land.",
