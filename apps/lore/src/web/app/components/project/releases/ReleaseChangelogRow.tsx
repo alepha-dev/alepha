@@ -12,7 +12,7 @@ export interface ReleaseChangelogRowProps {
  * read top to bottom, not a navigation surface.
  */
 const ReleaseChangelogRow = (props: ReleaseChangelogRowProps) => (
-  <div className="border-border/60 flex items-center gap-3 border-b px-0.5 py-2 last:border-b-0">
+  <div className="flex items-center gap-3 px-0.5 py-[7px]">
     <span className="text-muted-foreground w-9 shrink-0 font-mono text-[11px]">
       #{props.shortId}
     </span>

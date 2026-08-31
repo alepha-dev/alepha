@@ -1,10 +1,19 @@
 import { join } from "node:path";
 
-import { __alephaRef, $inject, type Alepha, AlephaError } from "alepha";
+import {
+  __alephaRef,
+  $inject,
+  $store,
+  type Alepha,
+  AlephaError,
+  type AlephaMeta,
+} from "alepha";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 import type { Plugin, ViteDevServer } from "vite";
 
+import { metaOptions } from "../atoms/metaOptions.ts";
+import { MetaResolver } from "../services/MetaResolver.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import type { AppEntry } from "./AppEntryProvider.ts";
 
@@ -56,6 +65,17 @@ export class ViteDevServerProvider {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly colors = $inject(ConsoleColorProvider);
   protected readonly viteUtils = $inject(ViteUtils);
+  protected readonly metaResolver = $inject(MetaResolver);
+  protected readonly metaOverride = $store(metaOptions);
+
+  /**
+   * This dev session's build metadata, resolved once when the server starts.
+   *
+   * Held on the provider because it is needed twice, by two different
+   * mechanisms: `define` covers the SSR side, and {@link generateDevHead}
+   * has to hand the same record to the browser separately - see there for why.
+   */
+  protected devMeta?: AlephaMeta;
 
   protected server!: ViteDevServer;
   protected options!: DevServerOptions;
@@ -187,10 +207,24 @@ export class ViteDevServerProvider {
       port = config.server?.port ? Number(config.server.port) : 5173;
     }
 
+    // The dev server's own build metadata. `dev: true` is what stops the
+    // stamped date being read as a build that never happened, and the runtime
+    // is whatever is actually interpreting this process.
+    this.devMeta = await this.metaResolver.resolve({
+      root: this.options.root,
+      runtime: "Bun" in globalThis ? "bun" : "node",
+      dev: true,
+      override: this.metaOverride,
+    });
+
     this.server = await createServer({
       root: this.options.root,
       plugins,
       appType: "custom",
+      // Without this, `alepha.meta` under `alepha dev` silently falls back to
+      // the no-build record and `/version` reports name "unknown" - no error
+      // anywhere, since the token is simply never substituted.
+      define: this.metaResolver.define(this.devMeta),
       resolve: {
         dedupe: [
           "react",
@@ -657,6 +691,26 @@ export class ViteDevServerProvider {
     const tags: string[] = [];
     if (preamble) {
       tags.push(preamble);
+    }
+
+    // Hand the build metadata to the browser explicitly.
+    //
+    // ⚠️ NOT redundant with the `define` on the dev server's config. Vite's
+    // define transform opens with `if (environment.config.consumer ===
+    // "client") return`, so in dev a user `define` reaches the SSR modules and
+    // never the client ones - measured, not assumed. Without this the browser
+    // silently falls back to the no-build record and disagrees with its own
+    // server about what is running.
+    //
+    // A classic script, not a module: module scripts are deferred, and this
+    // has to have run before the entry below reads it. Assigning to
+    // `globalThis` is what makes the plain `typeof __ALEPHA_META__` guard in
+    // core see it, so nothing about the read has to know dev from production.
+    if (this.devMeta) {
+      const token = this.metaResolver
+        .define(this.devMeta)
+        .__ALEPHA_META__.replaceAll("<", "\\u003c");
+      tags.push(`<script>globalThis.__ALEPHA_META__=${token};</script>`);
     }
 
     // Reload handler: polls /__alepha/ready before reloading to avoid

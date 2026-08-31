@@ -1,5 +1,3 @@
-import { execSync } from "node:child_process";
-
 import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
 import { i18n } from "alepha/cli/i18n";
@@ -13,24 +11,18 @@ import { platform } from "alepha/cli/platform";
 // a continuously deployed app is running.
 import pkg from "../../packages/alepha/package.json" with { type: "json" };
 
-let gitCommit = "unknown";
-try {
-  gitCommit = execSync("git rev-parse --short HEAD").toString().trim();
-} catch {
-  // No git (e.g. tarball install). Keep "unknown".
-}
-
 export default defineConfig({
   // Dev ports live in the 33xx band, which `playwright.port.ts` keeps strictly
   // DISJOINT from the 4300-4999 e2e band. The two used to be the same number,
   // and a running `yarn dev` was then adopted by the e2e suite. Every app
   // without a `dev.port` binds 5173.
   dev: { port: 3303 },
-  env: {
-    VITE_VERSION: pkg.version,
-    VITE_GIT_COMMIT: gitCommit,
-    VITE_BUILD_DATE: new Date().toISOString(),
-  },
+  // Commit and build date are resolved by the build itself now, and served on
+  // `GET /version` by `AlephaServer`. Only `version` is declared here, and it
+  // still has to be: Lore deploys on every push to main, while tags exist only
+  // on releases, so the built-in git-tag chain would report "latest" on almost
+  // every deploy.
+  meta: { version: pkg.version },
   plugins: [
     devtools(),
     platform({
