@@ -17,7 +17,15 @@ describe("LoreClientService", () => {
     env: Record<string, string> = {},
     options?: { project?: string },
   ) => {
-    const alepha = Alepha.create({ env });
+    // ⚠️ Both blanked unless a case sets them. They are real variables that a
+    // developer who has ever run this command for real will have exported, and
+    // a spec that reads the ambient environment passes or fails by machine.
+    // Its sibling `QualityCommand.spec.ts` learned this from CI: GitHub
+    // Actions sets `GITHUB_SHA`, so the git-fallback cases there silently
+    // asserted nothing.
+    const alepha = Alepha.create({
+      env: { LORE_API_KEY: "", LORE_URL: "", ...env },
+    });
     if (options) {
       alepha.set(loreOptions, options);
     }

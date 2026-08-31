@@ -49,7 +49,12 @@ export class LoreClientService {
    */
   public scope(): ClientScope {
     return {
-      hostname: String(this.env.LORE_URL),
+      // `||`, not `??`. A schema default only fills an ABSENT variable, and
+      // `LORE_URL=` in a `.env` file or a CI environment is present and empty
+      // - which would otherwise resolve to an empty hostname and send the
+      // request nowhere, with nothing saying why. Empty reads as "unset",
+      // which is how `requireKey` already reads an empty key.
+      hostname: String(this.env.LORE_URL || LoreClientService.DEFAULT_HOSTNAME),
       authorization: () => `Bearer ${this.requireKey()}`,
     };
   }
