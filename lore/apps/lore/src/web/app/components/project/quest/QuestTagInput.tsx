@@ -2,7 +2,7 @@ import { Badge } from "@alepha/ui/components/ui/badge";
 import { Input } from "@alepha/ui/components/ui/input";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { X } from "lucide-react";
+import { Tags as TagsIcon, X } from "lucide-react";
 import { type KeyboardEvent, useEffect, useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -85,6 +85,12 @@ const QuestTagInput = (props: QuestTagInputProps) => {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5">
+        {/* Anchored to the bordered box, not absolutely positioned against
+            the inner `<Input>` the way a plain text control does it: the
+            input here is borderless and reflows below the chips once they
+            wrap, so an icon pinned to it would drift down the box. As a
+            flex child it stays on the first row, level with the border. */}
+        <TagsIcon className="text-muted-foreground pointer-events-none size-4 shrink-0" />
         {value.map((tag) => (
           <Badge
             key={tag}
