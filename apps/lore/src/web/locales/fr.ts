@@ -410,10 +410,8 @@ export default {
   "project.create.building": "Forge en cours…",
 
   "quest.view.description": "Description",
-  "quest.graph.empty": "Aucune quête liée pour le moment.",
-  "quest.graph.noDescription": "(pas de description)",
-  "quest.graph.pickAQuest":
-    "Sélectionnez une quête sur la timeline pour voir sa description.",
+  "quest.questline.empty":
+    "Rien ne dépend de cette quête, et elle ne dépend de rien.",
   "quest.view.actions.complete": "Marquer comme accomplie",
   "quest.view.actions.unassign": "Se désassigner",
   "quest.view.actions.shelve": "Mettre de côté",

@@ -236,13 +236,13 @@ describe("project security gates", () => {
       { user: owner },
     );
 
-    // `{ dependsOn: undefined }` was a no-op update, so the graph kept an
-    // edge to a deleted quest.
-    const graph = await ctx.quests.getDependencyGraph.fetch(
-      { params: { projectId: project.id } },
+    // `{ dependsOn: undefined }` was a no-op update, so the questline kept
+    // an edge to a deleted quest.
+    const questline = await ctx.quests.getQuestline.fetch(
+      { params: { projectId: project.id, shortId: y.shortId } },
       { user: owner },
     );
-    const yRow = graph.data.find((q) => q.id === y.id);
+    const yRow = questline.data.quests.find((q) => q.id === y.id);
     expect(yRow?.dependsOn ?? null).toBeNull();
   });
 

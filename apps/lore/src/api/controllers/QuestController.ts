@@ -1162,55 +1162,143 @@ export class QuestController {
    * exposed there only in aggregate via separate calls).
    */
   /**
-   * Lightweight per-project edge list for the dependency-graph page
-   * (Lore #98). Returns just `{ id, shortId, title, status, dependsOn }`
-   * for every quest in the project — small enough to keep in the
-   * client and BFS-walk to compute an epic component without burning
-   * the full QuestResource pagination.
+   * Everything the questline page needs, in one answer: whether this quest
+   * belongs to an epic, and if it does not, the quests it is connected to.
+   *
+   * ## Why the two live on one call
+   *
+   * The page's whole job is a fork - a quest inside an epic is sent to that
+   * epic's Flow tab, a quest outside one draws its own questline here - and
+   * the fork is decided by data the client does not have. Answering it in a
+   * second round trip would mean a page that renders, then navigates away.
+   * When `epic` comes back set, `quests` is deliberately empty: the caller is
+   * leaving, and building a component for it would be work thrown away.
+   *
+   * `epic` carries the per-project `number`, not the id, because that is what
+   * the route is addressed by (`/epics/:epicNumber`). The quest row has only
+   * `epicId`, so a client resolving this itself would need the epic list.
+   *
+   * ## Why the component is walked here
+   *
+   * "The quests connected to this one through `dependsOn`" is not a `WHERE`.
+   * It is a graph walk, and the alternatives both cost more: walking it in
+   * the browser needs the project's whole edge list shipped first (what the
+   * retired `getDependencyGraph` did), and that edge list was too thin to
+   * draw with - `Questline` reads `area` and `metadata`, so a second fetch
+   * for the real rows followed.
+   *
+   * Two queries: the edge list to find the component, then the component's
+   * rows in full. The first is deliberately `columns`-narrowed, since it is
+   * read entirely to be thrown away.
    */
-  getDependencyGraph = $action({
+  getQuestline = $action({
     use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
-    path: "/projects/:projectId/quests/graph",
+    path: "/projects/:projectId/quests/:shortId/questline",
     schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: z.array(
-        z.object({
-          id: z.integer(),
-          shortId: z.integer(),
-          title: z.string(),
-          status: questStatusSchema,
-          dependsOn: z.integer().optional(),
-        }),
-      ),
+      params: z.object({
+        projectId: z.integer(),
+        shortId: z.integer(),
+      }),
+      response: z.object({
+        /**
+         * Set when the quest belongs to an epic, which is the signal to open
+         * that epic's Flow tab instead of drawing anything here.
+         */
+        epic: z
+          .object({
+            number: z.integer(),
+            title: z.string(),
+          })
+          .optional(),
+        /**
+         * The connected `dependsOn` component containing this quest, the
+         * quest itself included - so a quest with no relations comes back
+         * alone rather than empty, and "no questline" stays distinguishable
+         * from "could not read it".
+         *
+         * Empty when `epic` is set, and only then.
+         */
+        quests: z.array(questResourceSchema),
+      }),
     },
     handler: async ({ params }) => {
-      const rows = await this.quests.findMany({
-        where: { projectId: { eq: params.projectId } },
-        columns: [
-          "id",
-          "shortId",
-          "title",
-          "acceptedAt",
-          "completedAt",
-          "shelvedAt",
-          "dependsOn",
-        ],
+      const focus = await this.quests.getOne({
+        where: {
+          projectId: { eq: params.projectId },
+          shortId: { eq: params.shortId },
+        },
       });
-      return rows.map((q) => ({
-        id: q.id,
-        shortId: q.shortId,
-        title: q.title,
-        status: (q.completedAt
-          ? "completed"
-          : q.acceptedAt
-            ? "accepted"
-            : q.shelvedAt
-              ? "shelved"
-              : "new") as "new" | "accepted" | "completed" | "shelved",
-        dependsOn: q.dependsOn ?? undefined,
-      }));
+
+      if (focus.epicId != null) {
+        const epic = await this.epics.findOne({
+          where: { id: { eq: focus.epicId } },
+        });
+        // A missing epic row is not a reason to refuse: `quests.epicId` is a
+        // real FK, so this is unreachable, and falling through to the
+        // questline is a better answer than a 500 if it ever is not.
+        if (epic) {
+          return {
+            epic: { number: epic.number, title: epic.title },
+            quests: [],
+          };
+        }
+      }
+
+      const edges = await this.quests.findMany({
+        where: { projectId: { eq: params.projectId } },
+        columns: ["id", "dependsOn"],
+      });
+
+      const component = this.connectedQuests(edges, focus.id);
+
+      // `inArray: []` throws, and cannot happen: `connectedQuests` always
+      // returns at least the quest it started from.
+      const rows = await this.quests.findMany({
+        where: { id: { inArray: [...component] } },
+      });
+
+      return { quests: rows.map((row) => this.mapQuestToResource(row)) };
     },
   });
+
+  /**
+   * The ids reachable from `startId` through `dependsOn`, in either
+   * direction, `startId` included.
+   *
+   * ⚠️ Undirected on purpose. What blocks a quest and what it unblocks are
+   * both part of the questline the reader is looking at, and following only
+   * the `dependsOn` direction would draw the chain above the quest while
+   * hiding everything the quest itself unblocks.
+   */
+  protected connectedQuests(
+    edges: Array<{ id: number; dependsOn?: number | null }>,
+    startId: number,
+  ): Set<number> {
+    const neighbours = new Map<number, Set<number>>();
+    const link = (from: number, to: number) => {
+      const set = neighbours.get(from) ?? new Set<number>();
+      set.add(to);
+      neighbours.set(from, set);
+    };
+
+    for (const edge of edges) {
+      if (edge.dependsOn == null) continue;
+      link(edge.id, edge.dependsOn);
+      link(edge.dependsOn, edge.id);
+    }
+
+    const seen = new Set<number>([startId]);
+    const queue = [startId];
+    while (queue.length > 0) {
+      for (const next of neighbours.get(queue.shift()!) ?? []) {
+        if (seen.has(next)) continue;
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+
+    return seen;
+  }
 
   getQuestLine = $action({
     use: [$secure({ permissions: ["quest:read"] }), this.ownsQuest()],
