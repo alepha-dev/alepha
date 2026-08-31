@@ -20,6 +20,17 @@ export class MemoryQueueProvider extends QueueProvider {
   protected queueList: Record<string, MemoryQueueEntry[]> = {};
 
   /**
+   * Every message ever pushed, in order, and never drained.
+   *
+   * ⚠️ Separate from `queueList` on purpose. `pop` REMOVES an entry, so a
+   * `wasEnqueued` reading the queue would answer "no" for a message that was
+   * enqueued and then consumed - which is usually exactly the run a test is
+   * asserting about. What a spec asks is what the code under test DID, and
+   * only a call log can answer that.
+   */
+  public pushCalls: Array<{ queue: string; message: string }> = [];
+
+  /**
    * Takes ONE message, not a rest parameter.
    *
    * It used to be variadic, which read as a convenience and was in fact a
@@ -42,6 +53,7 @@ export class MemoryQueueProvider extends QueueProvider {
       message,
       dueAt: this.dt.nowMillis() + delayMs,
     });
+    this.pushCalls.push({ queue, message });
   }
 
   public override async pushMany(
@@ -69,5 +81,28 @@ export class MemoryQueueProvider extends QueueProvider {
     const index = entries.findIndex((entry) => entry.dueAt <= now);
     if (index === -1) return undefined;
     return entries.splice(index, 1)[0].message;
+  }
+
+  /**
+   * Whether a message was pushed onto this queue.
+   *
+   * @example
+   * ```typescript
+   * expect(queue.wasEnqueued("emails")).toBe(true);
+   * expect(queue.wasEnqueued("emails", /"to":"a@b.c"/)).toBe(true);
+   * ```
+   *
+   * Reads the push log, not the queue, so a message that was enqueued and
+   * then consumed still answers `true` - see `pushCalls`.
+   */
+  public wasEnqueued(queue: string, message?: RegExp | string): boolean {
+    return this.pushCalls.some(
+      (call) =>
+        call.queue === queue &&
+        (message === undefined ||
+          (typeof message === "string"
+            ? call.message.includes(message)
+            : message.test(call.message))),
+    );
   }
 }

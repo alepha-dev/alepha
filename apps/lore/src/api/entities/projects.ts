@@ -192,6 +192,22 @@ export const projects = $entity({
      */
     preferredLanguage: z.string().optional(),
     /**
+     * The repository this project's commits live in, as a full URL
+     * (`https://github.com/alepha-dev/alepha`). Set it and a quest's commit
+     * shas become links; leave it and they render as they always have.
+     *
+     * ⚠️ Deliberately permissive here and constrained on the way in, the same
+     * split `title` uses: `projectRepositoryUrlSchema` is what refuses a bare
+     * `owner/repo`, a query string or a trailing slash, and it runs on write
+     * only. A stored value must always load.
+     *
+     * One URL rather than a slug and a provider, because one project is one
+     * repository (2026-08-29). `quests.commits[].repo` stays stored and
+     * accepted - existing rows carry it and it is public MCP surface - but
+     * the link is built from this alone.
+     */
+    repositoryUrl: z.string().max(200).optional(),
+    /**
      * Blights retention window, in days. A daily purge cron deletes `open`
      * blights whose `lastSeenAt` is older than this many days (resolved and
      * `quest:`-forwarded blights are kept as audit trail). `null`/absent

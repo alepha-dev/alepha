@@ -312,6 +312,60 @@ describe("ExclusiveProvider", () => {
   });
 
   /**
+   * A release must not race the heartbeat it is cancelling.
+   *
+   * `clearInterval` stops the NEXT tick, but says nothing about a beat that
+   * already fired: its write is enqueued synchronously on the write chain and
+   * lands two async hops later, so an unlink issued in between deletes the
+   * ticket first and the beat's rename puts it straight back.
+   */
+  describe("release racing its own heartbeat", () => {
+    /**
+     * Records the live ticket, so a heartbeat tick can be replayed by hand.
+     *
+     * Driven explicitly rather than by waiting for the real interval: the
+     * window is two microtasks wide, and a test that waited for a timer to
+     * land inside it would be exactly the flake it is meant to prevent.
+     */
+    class BeatingExclusiveProvider extends ExclusiveProvider {
+      public file = "";
+      public ticket?: ExclusiveTicket;
+      public testBeat = this.beat.bind(this);
+
+      protected override async writeTicket(
+        file: string,
+        ticket: ExclusiveTicket,
+      ): Promise<void> {
+        this.file = file;
+        this.ticket = ticket;
+        return super.writeTicket(file, ticket);
+      }
+    }
+
+    it("leaves no ticket behind when a beat is still in flight", async () => {
+      const dir = scratch();
+      const alepha = Alepha.create();
+      alepha.store.mut(exclusiveOptions, (old) => ({ ...old, dir }));
+      const p = alepha.inject(BeatingExclusiveProvider);
+      const queue = p.queueDir("k");
+
+      const handle = await p.acquire("k", { command: "live", cwd: "/live" });
+      expect(p.ticket).toBeDefined();
+
+      // Exactly what the interval callback does: start a beat and do not
+      // await it. Releasing in the same turn is what a starved event loop
+      // produces on its own.
+      const beating = p.testBeat(p.file, p.ticket as ExclusiveTicket);
+      await handle.release();
+      await beating;
+
+      expect(
+        readdirSync(queue).filter((f) => f.endsWith(".json")),
+      ).toHaveLength(0);
+    });
+  });
+
+  /**
    * Two processes must not both end up inside the critical section.
    *
    * The claim is a read-then-write, and the read can miss a ticket that has

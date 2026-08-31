@@ -2,11 +2,18 @@ import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@alepha/ui/components/ui/sheet";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useStore } from "alepha/react";
@@ -19,10 +26,12 @@ import {
   ChevronsUp,
   ChevronUp,
   CircleDot,
+  Hash,
   Link2,
   type LucideIcon,
   MapPin,
   Minus,
+  Pencil,
   Search,
   Signature,
   Flag,
@@ -43,9 +52,11 @@ import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
+import FilterSlot from "../shared/FilterSlot.tsx";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
 import { QUEST_PRIORITY_TONE } from "./quest/questChips.ts";
+import QuestCreate from "./quest/QuestCreate.tsx";
 import { formatQuestSize } from "./quest/questSize.ts";
 
 /**
@@ -66,14 +77,30 @@ const PRIORITY_ICONS: Record<QuestResource["priority"], LucideIcon> = {
  * until you ask for them explicitly. AlephaTable persists the chosen
  * values per project via `persistenceKey` (see #113).
  */
+/**
+ * ⚠️ Every filter but `search` is a LIST, and empty means all.
+ *
+ * The board has taken lists since it was written while this table took one
+ * value each, so "new or in progress", or two areas at once, was expressible
+ * on one surface and not the other (quest #1644). The shape is ported from
+ * `KanbanBoard.tsx` rather than designed, and `Control` needs nothing new:
+ * an array field already renders as a multi-select.
+ *
+ * On the wire each list is comma-joined into a single query param, which is
+ * what `getQuests` accepts. A repeated key would be the other option and is
+ * not available: `ServerProvider.parseQueryString` returns
+ * `Record<string, string>`, so `?area=a&area=b` keeps only the last one.
+ */
 const boardFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z.enum(["new", "accepted", "completed", "shelved"]).optional(),
-  area: z.string().optional(),
-  tag: z.string().optional(),
-  // The release's numeric id, carried as a string because that is what a
+  status: z
+    .array(z.enum(["new", "accepted", "completed", "shelved"]))
+    .optional(),
+  area: z.array(z.string()).optional(),
+  tag: z.array(z.string()).optional(),
+  // The releases' numeric ids, carried as strings because that is what a
   // select's value is. Coerced back on the way into the query.
-  release: z.string().optional(),
+  release: z.array(z.string()).optional(),
 });
 
 /**
@@ -96,7 +123,16 @@ const ProjectQuestsTable = () => {
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
+  const toaster = useToast();
   const [users, setUsers] = useState<Array<User>>([]);
+  // The row whose edit drawer is open, or nothing. Held here rather than per
+  // row: one Sheet for the table, the same way the delete confirm is one
+  // dialog rather than 25.
+  const [editing, setEditing] = useState<QuestResource | undefined>();
+  // Bumped when the edit drawer saves. A row action gets `ctx.refresh()`, but
+  // the drawer outlives the menu that opened it, so this is the escape hatch
+  // `refreshSignal` exists for.
+  const [reload, setReload] = useState(0);
   const [knownTags, setKnownTags] = useState<string[]>([]);
 
   /**
@@ -168,12 +204,13 @@ const ProjectQuestsTable = () => {
         // values, column visibility, and sort under this key (replaces the
         // hand-rolled toolbar + localStorage that used to live here).
         persistenceKey={`lor.board.${project.id}`}
+        refreshSignal={reload}
         filters={{
           schema: boardFiltersSchema,
-          seedValues: seededStatus ? { status: seededStatus } : undefined,
+          seedValues: seededStatus ? { status: [seededStatus] } : undefined,
           render: (form) => (
             <>
-              <div className="w-44">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
@@ -181,8 +218,8 @@ const ProjectQuestsTable = () => {
                   placeholder={tr("board.filter.search")}
                   inputProps={{ "aria-label": tr("board.filter.search") }}
                 />
-              </div>
-              <div className="w-44">
+              </FilterSlot>
+              <FilterSlot>
                 <Control
                   input={form.input.status}
                   label=""
@@ -198,9 +235,9 @@ const ProjectQuestsTable = () => {
                   }))}
                   inputProps={{ "aria-label": tr("board.filter.status") }}
                 />
-              </div>
+              </FilterSlot>
               {areaOptions.length > 0 && (
-                <div className="w-44">
+                <FilterSlot>
                   <Control
                     input={form.input.area}
                     label=""
@@ -211,10 +248,10 @@ const ProjectQuestsTable = () => {
                     items={areaOptions}
                     inputProps={{ "aria-label": tr("board.filter.area") }}
                   />
-                </div>
+                </FilterSlot>
               )}
               {releaseOptions.length > 0 && (
-                <div className="w-44">
+                <FilterSlot>
                   <Control
                     input={form.input.release}
                     label=""
@@ -225,10 +262,10 @@ const ProjectQuestsTable = () => {
                     items={releaseOptions}
                     inputProps={{ "aria-label": tr("board.filter.release") }}
                   />
-                </div>
+                </FilterSlot>
               )}
               {knownTags.length > 0 && (
-                <div className="w-44">
+                <FilterSlot>
                   <Control
                     input={form.input.tag}
                     label=""
@@ -239,26 +276,33 @@ const ProjectQuestsTable = () => {
                     items={knownTags.map((tag) => ({ label: tag, value: tag }))}
                     inputProps={{ "aria-label": tr("board.filter.tag") }}
                   />
-                </div>
+                </FilterSlot>
               )}
             </>
           ),
         }}
-        fetch={async ({ page, size, sort, filters: f }) =>
-          questApi.getQuests({
+        fetch={async ({ page, size, sort, filters: f }) => {
+          // Comma-joined, and omitted entirely when empty. An empty list and
+          // an absent filter are the same question, and sending `status=`
+          // would be a third thing for the endpoint to interpret.
+          const list = (values: unknown): string | undefined =>
+            Array.isArray(values) && values.length > 0
+              ? values.join(",")
+              : undefined;
+          return questApi.getQuests({
             params: { projectId: project.id },
             query: {
               page,
               size,
               sort,
               search: f?.search || undefined,
-              status: f?.status || undefined,
-              area: f?.area || undefined,
-              tag: f?.tag || undefined,
-              releaseId: f?.release ? Number(f.release) : undefined,
+              status: list(f?.status),
+              area: list(f?.area),
+              tag: list(f?.tag),
+              releaseId: list(f?.release),
             } as any,
-          })
-        }
+          });
+        }}
         onRowClick={(quest) =>
           router.push("projectQuest", {
             params: { shortId: String(quest.shortId) },
@@ -497,6 +541,40 @@ const ProjectQuestsTable = () => {
           },
         }}
         rowActions={(quest) => [
+          // ⚠️ Ahead of the lifecycle moves on purpose. These two are the
+          // things done most often from a list - paste a reference into a
+          // commit or a prompt, nudge a priority - and neither existed here,
+          // so both cost a page load and a trip back (feedback #2010).
+          {
+            icon: Hash,
+            label: tr("board.action.copyId"),
+            onClick: async () => {
+              // The `#N` reference, not the row id. That is the form the
+              // whole app already speaks: quest titles, `[[quest:#12]]` over
+              // MCP, and what someone types into a commit message. The row
+              // id is a database detail nobody pastes anywhere.
+              const reference = `#${quest.shortId}`;
+              try {
+                await navigator.clipboard.writeText(reference);
+                toaster.success(
+                  tr("board.action.copiedId", { args: [reference] }),
+                );
+              } catch {
+                toaster.error(tr("board.action.copyIdError"));
+              }
+            },
+          },
+          ...(questApi.updateQuestById.can()
+            ? [
+                {
+                  icon: Pencil,
+                  label: tr("board.action.editQuest"),
+                  // The same drawer the quest page opens, so a priority
+                  // change is one gesture rather than a navigation.
+                  onClick: () => setEditing(quest),
+                },
+              ]
+            : []),
           ...(!quest.acceptedAt && questApi.acceptQuest.can()
             ? [
                 {
@@ -590,6 +668,35 @@ const ProjectQuestsTable = () => {
             : []),
         ]}
       />
+
+      {/* One drawer for the table, opened by whichever row asked. The same
+          `QuestCreate` the quest page edits through, so there is one editor
+          rather than a second, thinner one for lists. */}
+      <Sheet
+        open={editing !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setEditing(undefined);
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-[50vw]"
+        >
+          <SheetHeader className="shrink-0">
+            <SheetTitle>{tr("quest.create.update")}</SheetTitle>
+          </SheetHeader>
+          {editing ? (
+            <QuestCreate
+              project={project}
+              quest={editing}
+              onSubmit={() => {
+                setEditing(undefined);
+                setReload((n) => n + 1);
+              }}
+            />
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

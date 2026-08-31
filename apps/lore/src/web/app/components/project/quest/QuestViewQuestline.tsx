@@ -72,7 +72,14 @@ const QuestViewQuestline = (props: QuestViewQuestlineProps) => {
       params: { projectSlug, shortId: String(shortId) },
     });
 
-  const graphHref = router.path("projectQuestGraph", {
+  /**
+   * The route name still says `graph` and the path still ends `/graph` - it
+   * is a link people hold - but what it opens is the questline map. For a
+   * quest that belongs to an epic the loader redirects to that epic's Flow
+   * tab, which draws the same map beside the epic's own chrome, so this one
+   * label is honest either way.
+   */
+  const questlineHref = router.path("projectQuestGraph", {
     params: { projectSlug, shortId: String(props.quest.shortId) },
   });
 
@@ -98,7 +105,7 @@ const QuestViewQuestline = (props: QuestViewQuestlineProps) => {
       </Link>
       <span className="text-muted-foreground min-w-0 truncate">{title}</span>
       <Link
-        href={graphHref}
+        href={questlineHref}
         className="text-muted-foreground hover:text-foreground ml-auto shrink-0 text-xs hover:underline"
       >
         {tr("quest.view.questline.open")}

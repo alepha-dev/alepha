@@ -92,6 +92,7 @@ export const uiFr: Record<string, string> = {
 
   // Select, combobox and boolean controls.
   "controlSelect.create": "Créer « $1 »",
+  "controlSelect.selectAll": "Sélectionner les $1 résultats de « $2 »",
   "controlSelect.loading": "Chargement…",
   "controlSelect.no": "Non",
   "controlSelect.noResults": "Aucun résultat.",
@@ -493,8 +494,18 @@ export const uiFr: Record<string, string> = {
   "admin.sessions.colLastUsed": "Dernière activité",
   "admin.sessions.colStarted": "Ouverte le",
   "admin.sessions.colUser": "Utilisateur",
+  "admin.sessions.countryAll": "Tous les pays",
+  "admin.sessions.lastUsed1": "Dernière heure",
+  "admin.sessions.lastUsed24": "Dernier jour",
+  "admin.sessions.lastUsed168": "Dernière semaine",
+  "admin.sessions.lastUsedAny": "N'importe quand",
   "admin.sessions.lastUsedNever": "Jamais",
   "admin.sessions.revoke": "Révoquer",
+  "admin.sessions.search": "Rechercher des sessions",
+  "admin.sessions.searchPlaceholder": "E-mail, identifiant ou IP…",
+  "admin.sessions.statusActive": "Active",
+  "admin.sessions.statusAll": "Toutes les sessions",
+  "admin.sessions.statusExpired": "Expirée",
   "admin.sessions.revokeConfirm":
     "L'utilisateur sera déconnecté de cette session.",
   "admin.sessions.revokeTitle": "Révoquer la session",
@@ -506,7 +517,7 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.cancel": "Annuler",
   "admin.userDetail.changePassword": "Changer le mot de passe",
   "admin.userDetail.clearTotpConfirm":
-    "Ce compte se connectera avec son seul mot de passe jusqu'à ce que l'utilisateur enregistre à nouveau une application d'authentification. Ne le faites que s'il a perdu à la fois l'appareil et ses codes de secours.",
+    "$1 se connectera avec son seul mot de passe jusqu'à ce qu'une application d'authentification soit à nouveau enregistrée. Ne le faites que si l'appareil et les codes de secours sont tous deux perdus.",
   "admin.userDetail.clearTotpTitle": "Supprimer le second facteur",
   "admin.userDetail.colAction": "Action",
   "admin.userDetail.colAuditStatus": "Statut",

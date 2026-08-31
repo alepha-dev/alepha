@@ -35,9 +35,16 @@ export const releases = $entity({
       onDelete: "cascade",
     }),
     /**
-     * Per-project sequence. The internal reference AND the sort key: lists are
-     * ordered by this, **never by `tag`**, because semver does not sort as
-     * text and `0.10.0` would come before `0.9.0`.
+     * Per-project sequence. The internal reference, and the sort key on the
+     * way out of the database: `listReleases` orders by this, **never by
+     * `tag`**, because semver does not sort as text and `0.10.0` would come
+     * before `0.9.0`.
+     *
+     * ⚠️ It is creation order, not version order, and the two disagree the
+     * moment a release is planned ahead of one that ships sooner. The UI
+     * therefore does NOT sort on it: both release tables parse the tag
+     * (`web/app/components/project/releases/releaseOrder.ts`) and keep this
+     * only as a tiebreak. See quest #1640.
      */
     number: z.integer().min(1),
     /**

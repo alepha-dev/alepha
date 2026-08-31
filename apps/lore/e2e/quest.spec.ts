@@ -877,13 +877,11 @@ test.describe("Quest", () => {
     });
 
     await test.step("Shelved filter brings it back", async () => {
-      // The filter Select trigger carries no accessible name (the Control's
-      // `inputProps` aria-label lands on the hidden input, not the trigger),
-      // so target it by the value it currently displays.
-      await page
-        .getByRole("combobox")
-        .filter({ hasText: "All status" })
-        .click();
+      // The status filter takes several values now (#1644), so its trigger
+      // is a chips box with a search input rather than a button showing the
+      // current value. `clearLabel` is that input's placeholder while
+      // nothing is selected, which is the only accessible handle it has.
+      await page.getByPlaceholder("All status").click();
       await page.getByRole("option", { name: "Shelved" }).click();
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -1501,6 +1499,368 @@ test.describe("Quest", () => {
   });
 
   /**
+   * #1521, from feedback #2021. The Due date field was a bare
+   * `<input type="date">` beside controls that all use the shared kit; it is
+   * `ControlDate` now, through the `Control` the field's schema already
+   * dispatches to.
+   *
+   * ⚠️ What is asserted is the API, not the widget. The custom control's own
+   * JSDoc documented three behaviours worth keeping, and two of them are
+   * invisible in the form: clearing has to send `null` (an omitted key leaves
+   * the old deadline in place), and a date-only value must not be run through
+   * `toISOString()`, which shifts the day backwards west of UTC.
+   */
+  test("a due date round-trips through the form and clears for real", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    const projectTitle = `DD${t}`.slice(0, 20);
+
+    await registerAndVerify(page, `duedate${t}@example.com`, "DueDate123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { id: questId, shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      projectId,
+      title: `Has a deadline ${t}`,
+      description: "<p>x</p>",
+      area: "Main",
+      priority: "low",
+      objectives: [],
+      attachments: [],
+    });
+
+    const questPath = (await apiPath(page, "getQuestById")).replace(
+      ":id",
+      String(questId),
+    );
+    const readDueAt = async () =>
+      page.evaluate(async (url) => {
+        const res = await fetch(url, { credentials: "include" });
+        return ((await res.json()) as { dueAt?: string | null }).dueAt ?? null;
+      }, questPath);
+
+    // The 15th of whichever month the calendar opens on. A day number rather
+    // than a computed date because the picker's cells are numbers, and 15 is
+    // the one that cannot also appear as a neighbouring month's spill-over.
+    const day = 15;
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+    await page.getByRole("button", { name: /edit/i }).first().click();
+
+    await test.step("picking a day stores that day, ending at its end", async () => {
+      const picker = page.getByRole("button", { name: /pick a date|due/i });
+      await expect(picker.first()).toBeVisible({ timeout: 15_000 });
+      await picker.first().click();
+
+      // The calendar opens on the current month when the field is empty.
+      const month = new Date().getMonth();
+      await page.getByText(String(day), { exact: true }).first().click();
+      await page
+        .getByRole("button", { name: /save|update/i })
+        .first()
+        .click();
+
+      await expect.poll(readDueAt, { timeout: 15_000 }).not.toBeNull();
+
+      const local = new Date((await readDueAt()) as string);
+      // The DAY has to survive, which is what `toISOString()` on a date-only
+      // value would break west of UTC. Read back in LOCAL time, because that
+      // is the timezone the day was chosen in.
+      expect(local.getDate()).toBe(day);
+      expect(local.getMonth()).toBe(month);
+      // And it lands at the END of that day, which is what keeps a quest due
+      // today from reading as overdue in the morning.
+      expect(local.getHours()).toBe(23);
+    });
+
+    await test.step("clearing it actually clears it", async () => {
+      await page.reload();
+      await page.getByRole("button", { name: /edit/i }).first().click();
+      const clear = page.getByRole("button", { name: /clear date/i }).first();
+      await expect(clear).toBeVisible({ timeout: 15_000 });
+      await clear.click();
+      await page
+        .getByRole("button", { name: /save|update/i })
+        .first()
+        .click();
+
+      // ⚠️ Against the API, not the form. `undefined` is dropped by the ORM
+      // update layer, so a form that looks empty can leave the old deadline
+      // in the database.
+      await expect.poll(readDueAt, { timeout: 15_000 }).toBeNull();
+    });
+  });
+
+  /**
+   * #1571. The commit trail already worked; it rendered the sha as dead text,
+   * because `questCommitSchema` said outright that "Lore does not know a
+   * project's repository and should not pretend to". Giving the project one
+   * URL removes that premise.
+   *
+   * One project is one repository (2026-08-29), so this is a single field on
+   * the project rather than a slug plus a provider setting - and the link is
+   * built from the project, never from the per-commit `repo`, which stays
+   * stored for the rows that already carry it.
+   */
+  test("a quest's commit links into the project repository once one is set", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    const projectTitle = `RU${t}`.slice(0, 20);
+    const sha = "ded61fa6c0ffee1234567890abcdef1234567890";
+
+    await registerAndVerify(page, `repourl${t}@example.com`, "RepoUrl123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { id: questId, shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      projectId,
+      title: `Shipped something ${t}`,
+      description: "<p>x</p>",
+      area: "Main",
+      priority: "low",
+      objectives: [],
+      attachments: [],
+    });
+    // `apiPost` resolves an action by NAME and does not substitute params,
+    // so a `:id` route is posted to by hand.
+    const commitPath = (await apiPath(page, "addQuestCommit")).replace(
+      ":id",
+      String(questId),
+    );
+    await page.evaluate(
+      async ({ url, body }) => {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      },
+      { url: commitPath, body: { sha, message: "feat: the thing" } },
+    );
+
+    const questUrl = `/${projectSlug}/quests/${shortId}`;
+    const commit = page.getByText(sha.slice(0, 7)).first();
+
+    await test.step("plain text while the project has no repository", async () => {
+      await page.goto(questUrl);
+      await expect(commit).toBeVisible({ timeout: 15_000 });
+      // A row that looks clickable and is not is worse than one that does
+      // not, so the absence of the anchor is the assertion.
+      await expect(page.locator(`a[href*="/commit/${sha}"]`)).toHaveCount(0);
+    });
+
+    await test.step("a link once the owner sets one", async () => {
+      await page.goto(`/${projectSlug}/settings/`);
+      const field = page.getByPlaceholder("https://github.com/you/your-repo");
+      await expect(field).toBeVisible({ timeout: 15_000 });
+      // With a trailing slash, which the schema strips: the rail appends a
+      // path and must not have to guess whether there is already one.
+      await field.fill("https://github.com/alepha-dev/alepha/");
+      // The form is `disabledIfPristine`, so the button only becomes live
+      // once the field is dirty - waiting on that is also the assertion that
+      // the fill registered.
+      // The form is `disabledIfPristine`, so waiting for the button to go
+      // live is also the assertion that the fill registered.
+      const save = page
+        .getByRole("button", { name: /save|enregistrer/i })
+        .first();
+      await expect(save).toBeEnabled({ timeout: 10_000 });
+
+      await save.click();
+
+      // ⚠️ Poll the API until the value is actually stored, rather than
+      // waiting on the button or on a response. The button is disabled while
+      // the request is in flight, so `toBeDisabled` is satisfied a beat early;
+      // and every call in this app is batched through one `/api/_batch` POST,
+      // so a `waitForResponse` keyed on the method matches an unrelated batch.
+      // Navigating on either one cancels the save mid-request.
+      const slugPath = (await apiPath(page, "getProjectBySlug")).replace(
+        ":slug",
+        projectSlug,
+      );
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(async (url) => {
+              const res = await fetch(url, { credentials: "include" });
+              if (!res.ok) return null;
+              return ((await res.json()) as { repositoryUrl?: string })
+                .repositoryUrl;
+            }, slugPath),
+          { timeout: 15_000 },
+        )
+        .toBe("https://github.com/alepha-dev/alepha");
+
+      await page.goto(questUrl);
+      await expect(
+        page.locator(
+          `a[href="https://github.com/alepha-dev/alepha/commit/${sha}"]`,
+        ),
+      ).toBeVisible({ timeout: 15_000 });
+    });
+  });
+
+  /**
+   * #1323, from feedback #2009. Areas are named by import path, so the prefix
+   * is the meaningful unit: "everything under lore/" took one pick per area.
+   *
+   * ⚠️ The row resolves to the individual areas rather than carrying a
+   * pattern, so the assertion is on the CHIPS, not on the row. That is the
+   * design decision: what is filtered is exactly what is shown.
+   */
+  test("typing a prefix in the area filter selects every area under it", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    const projectTitle = `AP${t}`.slice(0, 20);
+    const areas = ["lore/quests", "lore/folios", "lore/ui", "alepha/orm"];
+
+    await registerAndVerify(page, `areapfx${t}@example.com`, "AreaPfx123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    for (const [index, area] of areas.entries()) {
+      await apiPost(page, "createQuest", {
+        projectId,
+        title: `Area probe ${index} ${t}`,
+        description: "<p>x</p>",
+        area,
+        priority: "low",
+        objectives: [],
+        attachments: [],
+      });
+    }
+
+    await page.goto(`/${projectSlug}/`);
+    await expect(page.locator("tbody tr").first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const filter = page.getByPlaceholder("All areas");
+    await expect(filter).toBeVisible({ timeout: 15_000 });
+    await filter.click();
+    await filter.fill("lore/");
+
+    // One row, standing for the three matches. It only appears when it would
+    // do something: two or more unselected matches.
+    await page.getByRole("option", { name: /select 3 matching/i }).click();
+    await page.keyboard.press("Escape");
+
+    // Three chips, one per area, not a "lore/" chip. Removing one has to be
+    // an ordinary gesture rather than an escape from a prefix.
+    for (const area of ["lore/quests", "lore/folios", "lore/ui"]) {
+      await expect(page.getByText(area, { exact: true }).first()).toBeVisible({
+        timeout: 10_000,
+      });
+    }
+
+    // And the table narrowed to the three, leaving the alepha/orm quest out.
+    await expect
+      .poll(async () => page.locator("tbody tr").count(), { timeout: 15_000 })
+      .toBe(3);
+  });
+
+  /**
+   * #1324, from feedback #2010. The row menu offered two lifecycle moves and
+   * a destructive one, and nothing for the two things done most often from a
+   * list: pasting a quest's reference somewhere, and nudging a field.
+   *
+   * ⚠️ The clipboard assertion reads the real clipboard through
+   * `navigator.clipboard.readText`, which needs the permission granted on the
+   * context. Asserting the toast alone would pass on a handler that copied
+   * the wrong string.
+   */
+  test("copy id and edit from the quests table row actions", async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    const projectTitle = `RA${t}`.slice(0, 20);
+    const questTitle = `RowActions${t}`;
+
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await registerAndVerify(page, `rowact${t}@example.com`, "RowAct123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { shortId } = await apiPost<{ shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: questTitle,
+        description: "Seeded for the row actions",
+        area: "Main",
+        priority: "low",
+        objectives: [],
+        attachments: [],
+      },
+    );
+
+    await page.goto(`/${projectSlug}/`);
+    await expect(page.getByText(questTitle).first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await test.step("Copy ID puts the #N reference on the clipboard", async () => {
+      await page.getByRole("button", { name: "Open row actions" }).click();
+      await page.getByRole("menuitem", { name: /copy id/i }).click();
+
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      // The `#N` reference, not the row id: that is what pastes usefully into
+      // a commit message, a prompt or a folio.
+      expect(copied).toBe(`#${shortId}`);
+    });
+
+    await test.step("Edit opens the drawer and saves in place", async () => {
+      await page.getByRole("button", { name: "Open row actions" }).click();
+      await page.getByRole("menuitem", { name: /edit quest/i }).click();
+
+      const renamed = `${questTitle}Edited`;
+      const title = page.getByRole("textbox", { name: /name/i }).first();
+      await expect(title).toBeVisible({ timeout: 10_000 });
+      await title.fill(renamed);
+      await page
+        .getByRole("button", { name: /save|update/i })
+        .first()
+        .click();
+
+      // The table refetches off `refreshSignal`, so the row shows the new
+      // title without a navigation - which is the whole point of the entry.
+      await expect(page.getByText(renamed).first()).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/$`));
+    });
+  });
+
+  /**
    * Shelve is reversible and Delete is not, so Shelve must be at least as
    * reachable — one click from the list, same as Delete (#136). The entry is
    * state-aware: a shelved row offers Unshelve instead, never both.
@@ -1553,11 +1913,14 @@ test.describe("Quest", () => {
     });
 
     await test.step("the shelved row offers Unshelve, not Shelve", async () => {
-      await page
-        .getByRole("combobox")
-        .filter({ hasText: "All status" })
-        .click();
+      // See the note in "Shelved filter brings it back": a chips input, and
+      // its placeholder is the handle.
+      await page.getByPlaceholder("All status").click();
       await page.getByRole("option", { name: "Shelved" }).click();
+      // A multi-select does NOT close on pick - the point is to take several
+      // - so the popup would sit over the table for the row-action click
+      // below. Single-select used to close itself.
+      await page.keyboard.press("Escape");
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
       });
@@ -1656,5 +2019,119 @@ test.describe("Quest table — the Size column", () => {
     await expect
       .poll(sizeColumn, { timeout: 15_000 })
       .toEqual(["XL", "M", "XS"]);
+  });
+});
+
+/**
+ * The standalone questline route (`/quests/:shortId/graph`), quest #1336.
+ *
+ * It used to be a page of its own design - a left rail plus a
+ * PREVIOUS / current / NEXT window - over a client-side walk of an edge list
+ * it re-fetched for the whole project every minute. It draws the same
+ * `Questline` map the epic's Flow tab does now, and for a quest that HAS an
+ * epic it does not draw at all: it sends the reader to that epic's Flow tab,
+ * where the same map already lives beside the epic's own chrome.
+ *
+ * The fork is what only an e2e can check, because it is decided by the loader
+ * against a real response and resolves before anything paints.
+ */
+test.describe("Quest — the questline route", () => {
+  test("draws a component, and defers to the epic when there is one", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `qline${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Ql${t}`.slice(0, 20),
+    );
+    await setProjectFeature(page, projectId, "epics", true);
+
+    const seed = async (title: string, dependsOn?: number) =>
+      await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
+        projectId,
+        title,
+        description: "Seeded for the questline route",
+        area: "orm",
+        priority: "high",
+        objectives: [],
+        attachments: [],
+        ...(dependsOn != null ? { dependsOn } : {}),
+      });
+
+    const root = await seed(`Root${t}`);
+    const next = await seed(`Next${t}`, root.id);
+    const alone = await seed(`Alone${t}`);
+
+    const card = (quest: { shortId: number }, title: string) =>
+      page.getByRole("button", { name: `#${quest.shortId} ${title}` });
+
+    await test.step("an unfiled quest draws its own component", async () => {
+      await page.goto(`/${slug}/quests/${root.shortId}/graph`);
+
+      // Both of them, from either end of the edge: the walk is undirected, so
+      // asking from the root has to reach what the root unblocks.
+      await expect(card(root, `Root${t}`)).toBeVisible({ timeout: 15_000 });
+      await expect(card(next, `Next${t}`)).toBeVisible();
+      // And nothing else in the project.
+      await expect(card(alone, `Alone${t}`)).toHaveCount(0);
+    });
+
+    await test.step("asking from the other end draws the same component", async () => {
+      await page.goto(`/${slug}/quests/${next.shortId}/graph`);
+
+      await expect(card(root, `Root${t}`)).toBeVisible({ timeout: 15_000 });
+      await expect(card(next, `Next${t}`)).toBeVisible();
+    });
+
+    await test.step("a quest with no relations says so", async () => {
+      await page.goto(`/${slug}/quests/${alone.shortId}/graph`);
+
+      await expect(page.getByText(/depends on nothing/i)).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
+    await test.step("a quest inside an epic goes to that epic's Flow tab", async () => {
+      const epic = await page.evaluate(
+        async ({ projectId, title }) => {
+          const r = await fetch(`/api/createEpic/${projectId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ title }),
+          });
+          if (!r.ok) throw new Error(`createEpic ${r.status}`);
+          return r.json() as Promise<{ id: number; number: number }>;
+        },
+        { projectId, title: `Ep${t}` },
+      );
+
+      await page.evaluate(
+        async ({ epicId, questId }) => {
+          const r = await fetch(`/api/attachQuest/${epicId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ questId }),
+          });
+          if (!r.ok) throw new Error(`attachQuest ${r.status}`);
+        },
+        { epicId: epic.id, questId: root.id },
+      );
+
+      await page.goto(`/${slug}/quests/${root.shortId}/graph`);
+
+      // The redirect is a loader throw, so it resolves before anything of the
+      // questline page paints - there is no frame where the reader sees one
+      // surface on the way to the other.
+      await expect(page).toHaveURL(
+        new RegExp(`/epics/${epic.number}\\?tab=flow$`),
+        { timeout: 15_000 },
+      );
+      await expect(card(root, `Root${t}`)).toBeVisible({ timeout: 15_000 });
+    });
   });
 });

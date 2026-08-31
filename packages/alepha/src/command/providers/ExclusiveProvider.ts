@@ -155,6 +155,20 @@ export class ExclusiveProvider {
         process.off("exit", cleanup);
         process.off("SIGINT", onSignal);
         process.off("SIGTERM", onSignal);
+
+        // `clearInterval` only stops the NEXT tick. A beat that already fired
+        // is enqueued on the write chain synchronously but lands two async
+        // hops later, so unlinking now would delete the ticket and let that
+        // beat's `rename` put it straight back: holding the slot, with a fresh
+        // heartbeat, and with the `exit` handler already detached. Nothing
+        // would then remove it before the stale sweep, so a released queue
+        // would keep blocking for `staleAfterMs`.
+        //
+        // Draining the chain first is enough precisely because the enqueue is
+        // synchronous: a beat either got on the chain before the
+        // `clearInterval` above, or it never fires.
+        await this.writeChain.catch(() => {});
+
         await unlink(file).catch(() => {});
       },
     };

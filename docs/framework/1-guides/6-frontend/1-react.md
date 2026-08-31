@@ -236,6 +236,55 @@ const StatusBar = () => {
 
 The second argument is a dependency list (same as `useEffect`). Events are fully typed based on the `Hooks` interface. Note that `useEvents` no-ops outside the browser - an SSR pass registers nothing, so don't rely on it for server-side listeners.
 
+## Hydration mismatches
+
+When the server-rendered HTML and the first client render disagree, React
+**recovers**: it re-renders the offending subtree on the client, so the visitor
+sees a correct page. Nothing throws and no error boundary fires. It is still a
+defect - the page paints twice, and whatever made the two renders differ is
+usually a browser-only read during render.
+
+Alepha reports it on `react:recoverable:error`:
+
+```typescript
+alepha.events.on(
+  "react:recoverable:error",
+  ({ error, componentStack, state }) => {
+    console.error(
+      `Hydration mismatch on ${state.url.pathname}`,
+      componentStack,
+    );
+  },
+);
+```
+
+`componentStack` names the subtree that mismatched, and React fills it **even
+in a production build** - which is the whole reason to listen here rather than
+on `window.onerror`. React's own default handler calls `reportError`, so a
+production mismatch reaches `window.onerror` as a minified code with its
+arguments blanked: no route, no component, nothing to open.
+
+⚠️ **Alepha passes `onRecoverableError` to `hydrateRoot` and `createRoot`,
+which replaces that default.** These errors therefore no longer reach
+`window.onerror` at all. A crash reporter that listened there has to subscribe
+to this event instead - which is what `@alepha/sigil` does, appending
+`componentStack` to the reported stack so two mismatches in different subtrees
+are two rows rather than one.
+
+The event is not hydration-only, despite hydration being where it usually comes
+from: a root keeps the handler for its whole life, so an error a Suspense
+boundary retried past arrives here too.
+
+The usual causes, in order of how often they turn out to be it:
+
+- reading `localStorage`, `matchMedia`, `navigator` or `window` during render
+  instead of in an effect;
+- `new Date()` or `Math.random()` in a `useState` initialiser;
+- markup a browser extension injected into the hydrated subtree.
+
+The fix is the same each time: render what the server rendered, then correct it
+in an effect after mount.
+
 ## Data fetching and cache invalidation
 
 `useQuery` works without a cache - pass a handler, get `data` / `loading` / `error` / `refetch`. Pass a `key` and it joins a shared cache.

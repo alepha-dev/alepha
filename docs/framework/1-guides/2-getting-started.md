@@ -43,6 +43,18 @@ The flags that change what is scaffolded are `--preset` and `--no-devtools`;
 npx alepha@latest init my-app --pm=bun
 ```
 
+`npm create alepha` asks for anything no flag has answered. To run it with no
+prompts at all - a CI, a Dockerfile, any script with no stdin - pass `--yes`,
+which answers every remaining question with its default:
+
+```bash
+npm create alepha my-app -- --yes    # or -y
+```
+
+Flags still win over `--yes`, so `--yes --preset saas` is promptless too. The
+project name is the one thing it cannot supply, since it has no default.
+`alepha init` never prompts and needs none of this.
+
 ## Your First Server
 
 After running `init`, enter the project:

@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 
+import type { DocProduct } from "../config/docs.ts";
 import BottomNavigation from "./doc/BottomNavigation.tsx";
 import FileHeader from "./doc/FileHeader.tsx";
 import HtmlContent from "./doc/HtmlContent.tsx";
 import TableOfContents from "./doc/TableOfContents.tsx";
 
 interface ContentProps {
+  product: DocProduct;
   name: string;
   content: string;
   path?: string;
@@ -58,7 +60,7 @@ const Docs = (props: ContentProps) => {
         </div>
 
         {/* Navigation */}
-        <BottomNavigation name={props.name} />
+        <BottomNavigation product={props.product} name={props.name} />
       </div>
 
       {/* Table of Contents */}

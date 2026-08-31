@@ -11,6 +11,7 @@ import {
 import {
   BuildCloudflareTask,
   type BuildManifest,
+  buildManifestSchema,
   type BuildTaskContext,
 } from "alepha/cli";
 import { EnvUtils, Runner, type RunnerMethod } from "alepha/command";
@@ -393,6 +394,29 @@ export class CloudflareAdapter extends PlatformAdapter {
           `Prebuilt deploys require dist/manifest.json (emitted by \`alepha build -t cloudflare\`).`,
       );
     }
+
+    // Parsed rather than cast. Everything below builds a worker out of this
+    // object without a live Alepha to check it against, so a manifest that is
+    // truncated or from a different tool emits a worker with no bindings and
+    // still reports success. Refused by name here instead, where the fix is
+    // rebuilding the artifact.
+    //
+    // Refused, not fallen back on: unlike `platform.ts`'s `readManifest`, this
+    // path has no introspection to fall through to — prebuilt mode exists
+    // precisely because the app cannot be booted here.
+    const validated = buildManifestSchema.safeParse(manifest);
+    if (!validated.success) {
+      throw new AlephaError(
+        `${manifestPath} is not a valid build manifest: ` +
+          `${validated.error.issues
+            .map(
+              (issue) => `${issue.path.join(".") || "(root)"} ${issue.message}`,
+            )
+            .join("; ")}. ` +
+          `Rebuild the artifact with \`alepha build -t cloudflare\`.`,
+      );
+    }
+    manifest = validated.data;
 
     const ctx: BuildTaskContext = {
       // null at runtime — task takes the manifest path and never

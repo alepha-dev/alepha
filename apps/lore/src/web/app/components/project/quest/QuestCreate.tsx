@@ -6,23 +6,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
-import { Separator } from "@alepha/ui/components/ui/separator";
 import { z } from "alepha";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   ChevronDown,
   FileText,
+  Flag,
   CalendarClock,
   Hourglass,
-  Link2,
   ListChecks,
   Paperclip,
   Plus,
   Save,
   Signature,
+  SlidersHorizontal,
   Tag,
   Tags as TagsIcon,
   Tent,
@@ -40,11 +41,11 @@ import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuests
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
 import { useLoreEditorControl } from "../../shared/element/useLoreEditorControl.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
-import QuestDueDateInput from "./QuestDueDateInput.tsx";
 import QuestEstimateInput from "./QuestEstimateInput.tsx";
 import { DEFAULT_QUEST_SIZE, QUEST_SIZE_OPTIONS } from "./questSize.ts";
 import QuestTagInput from "./QuestTagInput.tsx";
@@ -60,6 +61,7 @@ const QuestCreate = (props: QuestCreateProps) => {
   const questApi = useClient<QuestController>();
   const areaApi = useClient<AreaController>();
   const alepha = useAlepha();
+  const dt = useInject(DateTimeProvider);
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const [currentAreas] = useStore(currentAreasAtom);
@@ -90,13 +92,46 @@ const QuestCreate = (props: QuestCreateProps) => {
       // no basis for a value) but mandatory here, where a human is looking
       // straight at the control. `initialValues` seeds M, so it is never
       // actually empty; the override exists to draw the required marker.
-      .extend({ size: z.integer().min(1).max(5) }),
+      .extend({
+        size: z.integer().min(1).max(5),
+        // ⚠️ `YYYY-MM-DD` in the FORM, an instant on the WIRE.
+        //
+        // The column and `questCreateSchema` are both datetime, and the
+        // handler below converts. The field is date-only because nothing in
+        // Lore reads a time-of-day deadline, and because day-granularity has
+        // to be stored as the END of the chosen day or "due Friday" is
+        // overdue at 00:01 on Friday (quest #1521).
+        //
+        // Declaring it here rather than forcing `date` on the Control is what
+        // makes `ControlDate` parse and format it locally: given a datetime
+        // schema it would store the picked instant and lose the end-of-day
+        // rule silently.
+        dueAt: z.date().nullable().optional(),
+      }),
     initialValues: {
       ...(props.quest as QuestResource),
       priority: props.quest?.priority ?? "optional",
       size: props.quest?.size ?? DEFAULT_QUEST_SIZE,
+      // The stored instant, as the day it falls on in the reader's own
+      // timezone. Never `toISOString().slice(0, 10)`, which shifts the day
+      // backwards west of UTC - the classic way a deadline moves.
+      dueAt: props.quest?.dueAt
+        ? dt.of(props.quest.dueAt).format("YYYY-MM-DD")
+        : undefined,
     },
-    handler: async (data) => {
+    handler: async (input) => {
+      // The form's date-only `dueAt` becomes the instant the API stores: the
+      // END of the chosen day, in local time. `null` rather than `undefined`
+      // when it is cleared, because the ORM update layer drops an undefined
+      // key (`"dueAt" in body` reads false) and the old deadline would
+      // silently survive.
+      const data = {
+        ...input,
+        dueAt: input.dueAt
+          ? dt.of(input.dueAt).endOf("day").toDate().toISOString()
+          : null,
+      };
+
       if (props.quest?.id) {
         const resp = await questApi.updateQuestById({
           params: { id: props.quest.id },
@@ -193,6 +228,21 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const areas = (currentAreas ?? []).map((a) => a.name);
 
+  // Does the quest we opened with already carry anything from the Advanced
+  // section? Computed from `props.quest` and not from live form state, since
+  // `defaultOpen` is only read on mount - reopening on every keystroke would
+  // fight whoever just collapsed the section by hand. `estimateMinutes` is
+  // tested against 0 rather than null because the handler reads any
+  // non-positive value as "no estimate".
+  const q = props.quest;
+  const hasAdvancedValues =
+    (q?.tags?.length ?? 0) > 0 ||
+    (q?.estimateMinutes ?? 0) > 0 ||
+    q?.dueAt != null ||
+    (q?.objectives?.length ?? 0) > 0 ||
+    q?.dependsOn != null ||
+    q?.releaseId != null;
+
   const releasesEnabled = props.project.features?.milestones === true;
   const releaseOptions = (releases ?? [])
     .filter((r) => !r.releasedAt || r.id === props.quest?.releaseId)
@@ -265,102 +315,131 @@ const QuestCreate = (props: QuestCreateProps) => {
           />
         </div>
 
-        {/* Which release this ships in. Optional, and offered only when the
-            module is on. Only OPEN releases are listed, plus the quest's own
-            current one so editing a quest that already shipped does not read
-            as though its release were lost. `clearable` is what puts the
-            quest back outside every release. */}
-        {releasesEnabled && releaseOptions.length > 0 && (
-          <Control
-            input={form.input.releaseId}
-            label={tr("quest.create.release")}
-            description={tr("quest.create.release.helper")}
-            clearable
-            items={releaseOptions}
-          />
-        )}
-
-        <Separator />
-
-        {/* Tags and Estimate share the row below the divider: both are
-            optional trimmings rather than part of how the quest is framed.
-
-            The grid is applied only when Estimate actually renders. Left on
-            unconditionally, a project with estimation switched off would sit
-            Tags in a half-width column with dead space beside it. */}
-        <div
-          className={
-            questEstimateEnabled
-              ? "grid grid-cols-1 gap-3 md:grid-cols-2"
-              : undefined
-          }
+        {/* Everything below the fold is optional trimming rather than part of
+            how the quest is framed, so it opens only when it has something to
+            show. `defaultOpen` is read from the INITIAL values rather than
+            from `update`: a duplicate is a create (no `id`) that arrives
+            carrying the source quest's objectives, and keying on edit-mode
+            alone would hide them. A blank create has none of these, so it
+            still starts collapsed. */}
+        <CollapsibleBlock
+          icon={<SlidersHorizontal className="size-5" />}
+          label={tr("quest.create.advanced")}
+          defaultOpen={hasAdvancedValues}
         >
-          <Control
-            label={tr("quest.create.tags")}
-            description={tr("quest.create.tags.helper")}
-            input={form.input.tags}
-            icon={TagsIcon}
-            custom={
-              ((p: { value?: string[]; onChange?: (v: string[]) => void }) => (
-                <QuestTagInput
-                  value={p.value}
-                  onChange={p.onChange}
-                  projectId={props.project.id}
-                />
-              )) as never
-            }
-          />
+          <div className="flex flex-col gap-4">
+            {/* Tags, Estimate and Due date share the first row of the
+                section.
 
-          {/* Estimation is a methodology, not a default — see
+                The grid is always on, and the column count follows how many
+                fields actually render. It used to be applied only with
+                Estimate enabled, to avoid leaving Tags in a half-width column
+                with dead space beside it - but that put Due date alone on a
+                second row in both configurations, which is what was reported.
+                With Due date filling the second column there is no dead space
+                to avoid. */}
+            <div
+              className={
+                questEstimateEnabled
+                  ? "grid grid-cols-1 gap-3 md:grid-cols-3"
+                  : "grid grid-cols-1 gap-3 md:grid-cols-2"
+              }
+            >
+              <Control
+                label={tr("quest.create.tags")}
+                description={tr("quest.create.tags.helper")}
+                input={form.input.tags}
+                icon={TagsIcon}
+                custom={
+                  ((p: {
+                    value?: string[];
+                    onChange?: (v: string[]) => void;
+                  }) => (
+                    <QuestTagInput
+                      value={p.value}
+                      onChange={p.onChange}
+                      projectId={props.project.id}
+                    />
+                  )) as never
+                }
+              />
+
+              {/* Estimation is a methodology, not a default — see
               `projectFeaturesSchema.questEstimate`. With the switch off the
               field is not rendered, but a stored estimate still rides along
               in `initialValues` and is submitted untouched, so turning the
               switch back on shows the old value rather than a blank. */}
-          {questEstimateEnabled && (
-            <Control
-              label={tr("quest.create.estimate")}
-              description={tr("quest.create.estimate.helper")}
-              input={form.input.estimateMinutes}
-              icon={Hourglass}
-              custom={QuestEstimateInput as never}
-            />
-          )}
+              {questEstimateEnabled && (
+                <Control
+                  label={tr("quest.create.estimate")}
+                  description={tr("quest.create.estimate.helper")}
+                  input={form.input.estimateMinutes}
+                  icon={Hourglass}
+                  custom={QuestEstimateInput as never}
+                />
+              )}
 
-          {/* A deadline, not a duration — `estimateMinutes` above answers
+              {/* A deadline, not a duration — `estimateMinutes` above answers
               "how long", this answers "by when". Ungated: unlike estimation,
               a due date is not a methodology anyone has to opt into. */}
-          <Control
-            label={tr("quest.create.due")}
-            description={tr("quest.create.due.helper")}
-            input={form.input.dueAt}
-            icon={CalendarClock}
-            custom={QuestDueDateInput as never}
-          />
-        </div>
+              <Control
+                label={tr("quest.create.due")}
+                description={tr("quest.create.due.helper")}
+                input={form.input.dueAt}
+                icon={CalendarClock}
+                clearable
+              />
+            </div>
 
-        <Control
-          label={tr("quest.create.objectives")}
-          description={tr("quest.create.objectives.helper")}
-          input={form.input.objectives}
-          icon={ListChecks}
-          custom={QuestCreateObjectives as never}
-        />
+            <Control
+              label={tr("quest.create.objectives")}
+              description={tr("quest.create.objectives.helper")}
+              input={form.input.objectives}
+              icon={ListChecks}
+              custom={QuestCreateObjectives as never}
+            />
 
-        <div className="flex flex-col gap-1.5">
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <Link2 className="text-muted-foreground size-4" />
-            {tr("quest.create.dependsOn")}
-          </span>
-          <QuestDependencyPicker
-            projectId={props.project.id}
-            value={dependsOn}
-            onChange={setDependsOn}
-            excludeQuestId={props.quest?.id}
-          />
-          <span className="text-muted-foreground text-xs">
-            {tr("quest.create.dependsOn.helper")}
-          </span>
-        </div>
+            <div className="flex flex-col gap-1.5">
+              {/* No glyph beside the label: every icon in this form sits
+                  inside its input, and the picker below carries this one. */}
+              <span className="text-sm font-medium">
+                {tr("quest.create.dependsOn")}
+              </span>
+              <QuestDependencyPicker
+                projectId={props.project.id}
+                value={dependsOn}
+                onChange={setDependsOn}
+                excludeQuestId={props.quest?.id}
+              />
+              <span className="text-muted-foreground text-xs">
+                {tr("quest.create.dependsOn.helper")}
+              </span>
+            </div>
+
+            {/* Which release this ships in. Optional, and offered only when the
+            module is on. Only OPEN releases are listed, plus the quest's own
+            current one so editing a quest that already shipped does not read
+            as though its release were lost. `clearable` is what puts the
+            quest back outside every release.
+
+            Sits last, next to Depends On: both answer "what is this quest
+            attached to" rather than what it is, and both are pickers over
+            other records. `select` is explicit because `releaseId` is an
+            integer, and `Control` resolves a numeric schema to a number
+            input before it ever looks at `items`. */}
+            {releasesEnabled && releaseOptions.length > 0 && (
+              <Control
+                input={form.input.releaseId}
+                label={tr("quest.create.release")}
+                description={tr("quest.create.release.helper")}
+                icon={Flag}
+                select
+                clearable
+                items={releaseOptions}
+              />
+            )}
+          </div>
+        </CollapsibleBlock>
       </div>
 
       <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">

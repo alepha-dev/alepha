@@ -175,6 +175,75 @@ test.describe("Kanban", () => {
   });
 
   /**
+   * #1639. The filter bar's search was a raw `<input>` with its own border,
+   * height and focus ring, next to a hand-positioned icon, where the quests
+   * table passes the same concept through `Control`. Adopting `Control`
+   * moved search into `filterForm`, which is a real change to how the value
+   * is held - so what the bar DOES is pinned here.
+   *
+   * ⚠️ Nothing covered this bar before. The quest's description says the
+   * e2e suite reaches these controls by `data-testid`; it does not, and did
+   * not, which is why the rewire had no guard to answer to.
+   */
+  test("the filter bar searches on each keystroke and resets all of it", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    const projectTitle = `KF${t}`.slice(0, 20);
+    const kept = `Keep${t}`;
+    const filtered = `Drop${t}`;
+
+    await registerAndVerify(page, `kbfilter${t}@example.com`, "KanbanFlt123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    for (const title of [kept, filtered]) {
+      await apiPost(page, "createQuest", {
+        projectId,
+        title,
+        description: "Seeded for the filter bar",
+        area: "Main",
+        priority: "low",
+        objectives: [],
+        attachments: [],
+      });
+    }
+
+    await page.goto(`/${projectSlug}/kanban`);
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByTestId("kanban-card")).toHaveCount(2, {
+      timeout: 15_000,
+    });
+
+    await test.step("typing filters the board without submitting", async () => {
+      // `pressSequentially`, not `fill`: the point is that each keystroke
+      // filters. `fill` sets the value in one shot and would pass even if
+      // the bar had grown a submit button.
+      await page.getByTestId("kanban-search").pressSequentially(kept);
+      await expect(page.getByTestId("kanban-card")).toHaveCount(1, {
+        timeout: 10_000,
+      });
+      await expect(page.getByText(kept).first()).toBeVisible();
+    });
+
+    await test.step("reset clears the search and brings the board back", async () => {
+      // The reset button only exists while something is filtered, which is
+      // itself the assertion that search registered as an active filter.
+      await page.getByTestId("kanban-filter-reset").click();
+      await expect(page.getByTestId("kanban-card")).toHaveCount(2, {
+        timeout: 10_000,
+      });
+      await expect(page.getByTestId("kanban-search")).toHaveValue("");
+    });
+  });
+
+  /**
    * #1209. The column row was `overflow-hidden` around `min-w-[260px]`
    * children. Seven columns need 1820px, and flex cannot shrink past a
    * min-width, so the rightmost columns were clipped with no way to reach

@@ -9,6 +9,7 @@ const BayHome = () => {
         tagline="Your own VPS, without the yak shaving."
         lead="A lightweight self-hosted application server for Alepha apps. Long-lived processes on a machine you own, with TLS, automatic S3 backups and process isolation handled for you. One small Go binary, and nothing else to keep running."
         command="curl -sSL https://alepha.dev/bay/install.sh | sh"
+        docsHref="/bay/docs/guides-introduction"
       />
 
       <div

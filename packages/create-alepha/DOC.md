@@ -12,9 +12,21 @@ gets - `yarn create alepha`, `pnpm create alepha` and `bun create alepha` all
 resolve themselves through `npm_config_user_agent`, so there is nothing to
 answer.
 
-Pass the name, `--preset` and `--no-devtools` and it runs start to finish
-without a prompt, which is what a CI needs. Omit any of them and an interactive
-wizard asks for what is missing.
+Pass the name and `--yes` and it runs start to finish without a prompt, which
+is what a CI, a Dockerfile or a scripted scaffold needs:
+
+```bash
+npm create alepha my-app -- --yes
+```
+
+`--yes` answers every remaining question with its default, so the project it
+produces is the same one a human gets by pressing Enter. Flags still win over
+it, so `--yes --preset saas --no-devtools` is a complete, promptless
+description of a different shape. The project name is the one thing `--yes`
+cannot supply, because it has no default; leave it out and the command says so
+rather than prompting.
+
+Omit `--yes` and an interactive wizard asks for whatever no flag has answered.
 
 The package is standalone with no runtime dependencies, so `npm create` stays
 fast. It scaffolds the same layout as `alepha init`; use `init` from inside an
@@ -41,6 +53,7 @@ preset decides what is mounted, never where it lives.
 | `--preset <name>` | `default` (the default) or `saas`                           |
 | `--pm <manager>`  | Force a package manager: `yarn`, `npm`, `pnpm`, or `bun`    |
 | `--no-devtools`   | Skip the devtools question and leave `@alepha/devtools` out |
+| `--yes`, `-y`     | Take the default for every remaining question               |
 
 ## After creating
 

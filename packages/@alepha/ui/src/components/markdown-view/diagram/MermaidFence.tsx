@@ -4,6 +4,7 @@ void React;
 
 import type { ReactNode } from "react";
 
+import { diagramKind } from "./diagramKind.ts";
 import { FlowchartDiagram } from "./FlowchartDiagram.tsx";
 import { parseFlowchart } from "./flowchartParser.ts";
 import { layoutFlowchart } from "./layoutFlowchart.ts";
@@ -66,29 +67,6 @@ export const MermaidFence = (props: MermaidFenceProps) => {
   }
 
   return <>{props.fallback}</>;
-};
-
-/**
- * Which pipeline a fence belongs to, from its header line.
- *
- * The header is the first line that is not YAML frontmatter, a
- * `%%{init: …}%%` directive or a `%%` comment - mermaid allows all three
- * above it. Both parsers check their own header again, because both are
- * independently callable; this exists so an unsupported diagram type never
- * enters a parser at all.
- */
-const diagramKind = (source: string): "sequence" | "flowchart" | undefined => {
-  const header = source
-    .replace(/^\s*---\r?\n[\s\S]*?\r?\n---\r?\n/, "")
-    .replace(/%%\{[\s\S]*?\}%%/g, "")
-    .split(/\r?\n/)
-    .map((line) => line.replace(/%%.*$/, "").trim())
-    .find(Boolean);
-
-  if (!header) return undefined;
-  if (/^sequenceDiagram\b/i.test(header)) return "sequence";
-  if (/^(?:flowchart|graph)\b/i.test(header)) return "flowchart";
-  return undefined;
 };
 
 // Default export as well, so the `lazy()` call site stays a bare

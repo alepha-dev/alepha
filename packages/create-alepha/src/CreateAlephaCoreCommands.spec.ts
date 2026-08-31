@@ -194,6 +194,67 @@ describe("create-alepha", () => {
     );
   });
 
+  /**
+   * ⚠️ The case the per-question flags could not express, and the reason
+   * `--yes` exists (quest #1647). `--no-devtools` is a NEGATIVE boolean, so
+   * the ONLY fully flagged path was the one that turns devtools off: a
+   * script could not produce the DEFAULT shape, which is what a human gets
+   * by pressing Enter and what the docs recommend. `npm create alepha my-app
+   * --preset default` prompted, then died on closed stdin.
+   *
+   * `questionCount` is the assertion that matters. Reading the package.json
+   * alone would pass on the old code too, since the auto-answering double
+   * takes `default: true` for the question it should never have been asked.
+   */
+  it("should reach the scaffolder with the DEFAULT shape and no question, under --yes", async () => {
+    const { fs, cli, cmd, asker } = createTestEnv();
+
+    await cli.run(cmd.root, { argv: "my-app --yes", root: "/project" });
+
+    expect(asker.questionCount).toBe(0);
+    expect(await readDevDependencies(fs)).toHaveProperty("@alepha/devtools");
+    // `--yes` takes the preset's default too, which is `default`, not saas.
+    expect(await readDependencies(fs)).not.toHaveProperty("@alepha/ui");
+  });
+
+  it("should accept -y, the short form", async () => {
+    const { fs, cli, cmd, asker } = createTestEnv();
+
+    await cli.run(cmd.root, { argv: "my-app -y", root: "/project" });
+
+    expect(asker.questionCount).toBe(0);
+    expect(await readDevDependencies(fs)).toHaveProperty("@alepha/devtools");
+  });
+
+  it("should let a flag win over --yes", async () => {
+    const { fs, cli, cmd, asker } = createTestEnv();
+
+    await cli.run(cmd.root, {
+      argv: "my-app --yes --preset saas --no-devtools",
+      root: "/project",
+    });
+
+    expect(asker.questionCount).toBe(0);
+    expect(await readDependencies(fs)).toHaveProperty("@alepha/ui");
+    expect(await readDevDependencies(fs)).not.toHaveProperty(
+      "@alepha/devtools",
+    );
+  });
+
+  /**
+   * The name is the one question with no default, so `--yes` cannot answer
+   * it. Refused with the fix in the message rather than prompting anyway:
+   * `--yes` is what a script passes, and a script has no stdin to answer
+   * with, so a prompt there is the hang this quest was filed about.
+   */
+  it("should refuse --yes without a project name, and say how to fix it", async () => {
+    const { cli, cmd } = createTestEnv();
+
+    await expect(
+      cli.run(cmd.root, { argv: "--yes", root: "/project" }),
+    ).rejects.toThrow(/project name/i);
+  });
+
   it("should include devtools by default when --no-devtools is not passed", async () => {
     const { fs, cli, cmd, asker } = createTestEnv();
 

@@ -1,4 +1,5 @@
 import { $inject } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import type { Page } from "alepha/orm";
 import { NotFoundError } from "alepha/server";
@@ -31,9 +32,41 @@ export class SessionCrudService {
 
   protected readonly log = $logger();
   protected readonly realmProvider = $inject(RealmProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
+
+  /**
+   * How many owners a search resolves before it stops widening the session
+   * query. A bound rather than a page: an admin typing `@` should not turn
+   * one listing into an `IN` over every user in the realm.
+   */
+  protected readonly searchOwnerLimit = 200;
+
+  /**
+   * A uuid no user can hold, used to express "this search matched no owner".
+   * `inArray: []` throws rather than matching nothing, so an empty result set
+   * needs a value instead of an empty list.
+   */
+  protected readonly noSuchUser = "00000000-0000-0000-0000-000000000000";
 
   public sessions(userRealmName?: string) {
     return this.realmProvider.sessionRepository(userRealmName);
+  }
+
+  /**
+   * The country codes actually present on sessions, for the admin filter.
+   *
+   * Read from the rows rather than a country list, the same way the audit log
+   * builds its resource-type facet: an offer of 249 codes where three have
+   * ever been seen is a worse control than three.
+   */
+  public async getSessionCountries(userRealmName?: string): Promise<string[]> {
+    const rows = await this.sessions(userRealmName).findMany({
+      distinct: ["country"],
+    });
+    return rows
+      .map((row) => row.country)
+      .filter((code): code is string => typeof code === "string" && !!code)
+      .sort();
   }
 
   /**
@@ -50,6 +83,57 @@ export class SessionCrudService {
 
     if (q.userId) {
       where.userId = { eq: q.userId };
+    }
+
+    if (q.country) {
+      where.country = { eq: q.country.toUpperCase() };
+    }
+
+    if (q.status) {
+      const now = new Date(this.dateTime.nowMillis()).toISOString();
+      where.expiresAt = q.status === "active" ? { gt: now } : { lte: now };
+    }
+
+    if (q.lastUsedWithinHours) {
+      // A session that has never been used is not "recently active", so the
+      // `gte` excludes the nulls rather than a separate isNotNull.
+      const since = new Date(
+        this.dateTime.nowMillis() - q.lastUsedWithinHours * 3_600_000,
+      ).toISOString();
+      where.lastUsedAt = { gte: since };
+    }
+
+    if (q.search?.trim()) {
+      const needle = q.search.trim();
+      // The owner lives in a JOINed table, and this repository cannot filter
+      // a paginated COUNT on a joined column (see the realm note below, which
+      // is the same limitation). So the users are resolved to ids first and
+      // the session query stays entirely on its own table.
+      //
+      // An IP is matched on the session row directly, and the two are OR'd:
+      // an admin looking a session up has one string in hand and should not
+      // have to say which kind it is.
+      const owners = await this.realmProvider
+        .userRepository(userRealmName)
+        .findMany({
+          columns: ["id"],
+          where: {
+            or: [
+              { email: { ilike: `%${needle}%` } },
+              { username: { ilike: `%${needle}%` } },
+            ],
+          },
+          limit: this.searchOwnerLimit,
+        });
+
+      const ids = owners.map((owner) => owner.id);
+      where.or = [
+        { ip: { ilike: `%${needle}%` } },
+        // `inArray: []` throws, so an unmatched search has to say "no owner"
+        // some other way. A userId that cannot exist is the honest one: it
+        // narrows to the IP branch and matches no owner at all.
+        { userId: ids.length ? { inArray: ids } : { eq: this.noSuchUser } },
+      ];
     }
 
     const result = await this.sessions(userRealmName).paginate(

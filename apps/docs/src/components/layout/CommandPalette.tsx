@@ -3,7 +3,7 @@ import { useRouter } from "alepha/react/router";
 import Fuse, { type IFuseOptions } from "fuse.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { tree } from "../../config/docs.ts";
+import { trees } from "../../config/docs.ts";
 import {
   findMatchedKeyword,
   flattenTree,
@@ -54,7 +54,13 @@ const CommandPalette = () => {
   const { open, openDialog, closeDialog, dialogProps } = useDialog();
 
   // Flatten docs and create Fuse index
-  const allDocs = useMemo(() => flattenTree(tree), []);
+  // Every doc set, unlike the sidebar. The palette is how you jump ACROSS
+  // products - a Bay page is exactly what you cannot reach from the framework
+  // sidebar - so scoping it would remove the one place the split is not felt.
+  const allDocs = useMemo(
+    () => Object.values(trees).flatMap((tree) => flattenTree(tree)),
+    [],
+  );
   const fuse = useMemo(() => new Fuse(allDocs, FUSE_OPTIONS), [allDocs]);
 
   // Search results with scoring

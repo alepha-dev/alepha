@@ -17,6 +17,7 @@ import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
+import { compareReleaseTags } from "./releaseOrder.ts";
 import ReleaseProgress from "./ReleaseProgress.tsx";
 import {
   releaseState,
@@ -344,13 +345,17 @@ const ProjectReleases = () => {
 };
 
 /**
- * ⚠️ Every ordering here resolves to `number`, including the one the header
- * calls "Tag".
+ * ⚠️ The tag column parses the tag. It does NOT sort it as text, and it no
+ * longer sorts on `number` either.
  *
- * Semver does not sort as text, so `["0.9.0", "0.28.0"].sort()` yields
- * `0.28.0` first. `number` is the creation sequence, which for releases IS
- * version order, and it is what `ProjectReleases` has always ordered by and
- * what the Epics list sorts on for the same column.
+ * `["0.9.0", "0.28.0"].sort()` yields `0.28.0` first, which is why sorting
+ * the string is wrong. `number` was adopted as a proxy for version order and
+ * is not one: it is a `$sequence`, so it tracks version order only while
+ * releases are created in version order. A project that planned `1.0.0`
+ * before `0.29.0` read `0.28.0, 1.0.0, 0.29.0` under an ascending header.
+ *
+ * `compareReleaseTags` is the single answer, shared with the Epics list.
+ * `number` stays as the tiebreak, where it is honest.
  */
 const sortReleases = (
   items: ReleaseResource[],
@@ -383,8 +388,11 @@ const sortReleases = (
           dir || a.number - b.number
       );
     }
-    // `tag` and the fallback both land here.
-    return (a.number - b.number) * dir;
+    if (field === "tag") {
+      return compareReleaseTags(a.tag, b.tag) * dir || a.number - b.number;
+    }
+    // No sort at all: creation order, which is what the list arrives in.
+    return a.number - b.number;
   });
   return rows;
 };

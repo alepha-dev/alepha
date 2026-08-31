@@ -2,6 +2,7 @@ import { z } from "alepha";
 
 import { linkSourceKindSchema } from "../../api/schemas/linkSourceKindSchema.ts";
 import { linkTargetKindSchema } from "../../api/schemas/linkTargetKindSchema.ts";
+import { diagramWarningsShape } from "./diagramWarningsSchema.ts";
 import { epicStatusSchema } from "./epicStatusSchema.ts";
 
 /**
@@ -81,6 +82,11 @@ export const folioFullSchema = z.object({
       inbound: z.array(folioInboundLinkRefSchema),
     })
     .optional(),
+  /**
+   * Set by `folio_create` / `folio_update` only. `folio_get` never carries
+   * it: nothing was written, so there is nothing to warn about.
+   */
+  ...diagramWarningsShape,
 });
 
 /**

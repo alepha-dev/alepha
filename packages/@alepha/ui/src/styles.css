@@ -132,17 +132,27 @@
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Interaction state layer — light mode.
+ * Interaction state layer.
  *
  * shadcn spends ABSOLUTE colors on interaction states: `--accent`, `--muted`
  * and `--sidebar-accent` are all `oklch(0.97 0 0)`, i.e. 3% off white. Dark
- * mode gets a 12% step (0.145 → 0.269), which is why only light mode reads as
- * broken — this whole block is scoped to light and leaves dark bit-for-bit.
+ * mode gets a 12% step (0.145 → 0.269) against `--background`, which is why
+ * light looked like the only broken half.
  *
  * An absolute fill cannot track a surface that varies, so the step shrinks to
  * nothing as the surface darkens: on `--sidebar` (0.985) it is 1.5%, and a
  * `hover:bg-muted` child sitting on a `bg-muted` panel is a 0% step — the
  * state is literally invisible. Below 0.97 it inverts and hovering BRIGHTENS.
+ *
+ * ⚠️ That 0% case is NOT light-specific, and this block was scoped to light
+ * for a year on the assumption that it was. `hover:bg-muted` on a `bg-muted`
+ * panel is a 0% step in dark too — same token on both sides, and the
+ * measurement is `oklch(0.269 0 0)` for the hovered control and
+ * `oklch(0.269 0 0)` for the panel it sits on. That is the whole of quest
+ * #1643: the AlephaTable toolbar IS a `bg-muted` panel, so its three icon
+ * buttons had no hover at all in dark. Light was fine on that same panel
+ * only because the wash below already applied there. So the selector block
+ * now runs in both modes, and dark gets its own state-layer values.
  *
  * So the state fill is an ALPHA WASH rather than a color. Alpha composites
  * over whatever it lands on, which turns the step into a constant ratio of the
@@ -175,6 +185,22 @@
   --sidebar-accent: var(--state-layer);
 }
 
+/* Dark carries the wash too, so the selector block below can drop its light
+ * scoping. The same 10%/5% of `--foreground`, which in dark is a near-white:
+ * over `--card` (0.22) or `--muted` (0.269) it lifts the surface rather than
+ * replacing it, and it stays a constant ratio the way it does in light.
+ *
+ * ⚠️ `--accent` and `--sidebar-accent` are deliberately NOT redirected here.
+ * Their light redirect is safe because stock light `--accent` is 3% off
+ * white and reads as nothing; dark `--accent` is a real step (0.269 against
+ * a 0.145 background) and Lore's themes hand-tune it per theme, so the
+ * markdown toolbar and every other deliberate `bg-accent` hover would lose
+ * the value someone chose. Only `--muted`'s state variants move. */
+.dark {
+  --state-layer: color-mix(in oklch, var(--foreground) 10%, transparent);
+  --state-layer-weak: color-mix(in oklch, var(--foreground) 5%, transparent);
+}
+
 /* `--muted` is the exception: it is BOTH a state fill and an opaque surface
  * (progress track, tabs list, kbd, card footer, slider). It must stay opaque,
  * so its state variants are reached by selector instead of via the token.
@@ -190,27 +216,25 @@
  * tokens cannot do that. The cost is that the fractional list below is
  * enumerated rather than wildcarded — a fraction nobody listed keeps today's
  * behaviour, which is a no-op, not a wrong result. */
-:root:not(.dark)
-  :is(
-    [class~="hover:bg-muted"]:hover,
-    [class~="focus:bg-muted"]:focus,
-    [class~="aria-expanded:bg-muted"][aria-expanded="true"]
-  ) {
+:is(
+  [class~="hover:bg-muted"]:hover,
+  [class~="focus:bg-muted"]:focus,
+  [class~="aria-expanded:bg-muted"][aria-expanded="true"]
+) {
   background-color: var(--state-layer);
 }
 
-:root:not(.dark)
-  :is(
-    [class~="hover:bg-muted/30"]:hover,
-    [class~="hover:bg-muted/40"]:hover,
-    [class~="hover:bg-muted/50"]:hover,
-    [class~="hover:bg-muted/60"]:hover,
-    [class~="hover:bg-muted/70"]:hover,
-    [class~="data-open:bg-muted/50"][data-open],
-    [class~="data-active:bg-muted/50"][data-active],
-    [class~="data-popup-open:bg-muted/50"][data-popup-open],
-    [class~="aria-expanded:bg-muted/50"][aria-expanded="true"]
-  ) {
+:is(
+  [class~="hover:bg-muted/30"]:hover,
+  [class~="hover:bg-muted/40"]:hover,
+  [class~="hover:bg-muted/50"]:hover,
+  [class~="hover:bg-muted/60"]:hover,
+  [class~="hover:bg-muted/70"]:hover,
+  [class~="data-open:bg-muted/50"][data-open],
+  [class~="data-active:bg-muted/50"][data-active],
+  [class~="data-popup-open:bg-muted/50"][data-popup-open],
+  [class~="aria-expanded:bg-muted/50"][aria-expanded="true"]
+) {
   background-color: var(--state-layer-weak);
 }
 

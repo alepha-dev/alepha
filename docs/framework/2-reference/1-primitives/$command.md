@@ -26,7 +26,7 @@ token after it is an argument even when it starts with a dash.
 | `name`        | `string`                             | No       | The name of the command                                               |
 | `description` | `string`                             | No       | A short description of the command, shown in the help message.        |
 | `aliases`     | `string[]`                           | No       | An array of alternative names for the command.                        |
-| `flags`       | `T`                                  | No       | A Zod object schema defining the flags for the command.               |
+| `flags`       | `T`                                  | No       | A Zod object schema defining the flags for the command                |
 | `env`         | `E`                                  | No       | A Zod object schema defining required environment variables           |
 | `args`        | `A`                                  | No       | An optional Zod schema defining the arguments for the command         |
 | `root`        | `boolean`                            | No       | Marks this command as the root command                                |

@@ -11,6 +11,7 @@ import type {
   ChangelogEntry,
   DocItem,
   DocNode,
+  DocProduct,
 } from "./interfaces.ts";
 import { snippets } from "./snippets.ts";
 
@@ -22,22 +23,43 @@ import { snippets } from "./snippets.ts";
  * not just the framework - and then published nowhere. Two introduction pages
  * nobody could read, with nothing anywhere to say they were missing.
  *
- * `framework` keeps the empty category so its slugs stay exactly what they
- * are: it is the bulk of the site, and seeding it would rewrite every existing
- * `/docs/...` URL. The other two carry an order prefix in their CATEGORY
- * rather than in their directory name, which is what sorts them after `4-cli`
- * at the root while leaving the paths people edit as `docs/bay` and
- * `docs/lore`. `cleanName` strips the prefix again on the way to the slug, so
- * they publish as `/docs/bay-...` and `/docs/lore-...`.
+ * ⚠️ **`product` is the URL space, and every root now carries an empty
+ * category.** Bay and Lore used to be seeded with `5-bay` / `6-lore`, which
+ * did two jobs at once: it sorted them after `4-cli` in the one shared tree,
+ * and it prefixed their slugs so they published as `/docs/bay-...`. That made
+ * a Bay guide read as a framework page that happened to be named `bay-`
+ * something. Each product now has its own URL space (`/bay/docs/:slug`), its
+ * own tree and its own sidebar, so neither job is needed and both roots go
+ * back to a plain empty category (quest #1603).
  *
- * `level` starts at the depth the seeded category already represents, so the
- * recursion guard counts the same tree depth in all three.
+ * `framework` keeps its empty category for the reason it always had: it is the
+ * bulk of the site, and prefixing it would rewrite every existing `/docs/...`
+ * URL. That constraint is untouched here - this moves the two small doc sets
+ * and leaves all 378 framework URLs exactly where they are.
+ *
+ * A slug is therefore unique only WITHIN a product: `guides-introduction`
+ * exists in all three. Everything downstream that names a file by slug has to
+ * carry the product too - see `outputName` and `gen-llms.ts`.
+ *
+ * `level` starts at 0 everywhere now, so the recursion guard counts the same
+ * tree depth in all three.
  */
-const DOC_ROOTS: Array<{ dir: string; category: string; level: number }> = [
-  { dir: "docs/framework", category: "", level: 0 },
-  { dir: "docs/bay", category: "5-bay", level: 1 },
-  { dir: "docs/lore", category: "6-lore", level: 1 },
+const DOC_ROOTS: Array<{
+  dir: string;
+  category: string;
+  level: number;
+  product: DocProduct;
+}> = [
+  { dir: "docs/framework", category: "", level: 0, product: "" },
+  { dir: "docs/bay", category: "", level: 0, product: "bay" },
+  { dir: "docs/lore", category: "", level: 0, product: "lore" },
 ];
+
+/**
+ * A slug's namespace, and the first URL segment that goes with it: `""` for
+ * the framework at `/docs/:slug`, `"bay"` for `/bay/docs/:slug`.
+ */
+export const DOC_PRODUCTS = ["", "bay", "lore"] as const;
 
 /**
  * Command for generating documentation tree for the website
@@ -553,6 +575,7 @@ export class TreeCommand {
     items: DocItem[],
     rootDir: string,
     level: number,
+    product: DocProduct,
     maxDepth = 3,
   ) {
     if (level > maxDepth) {
@@ -585,6 +608,7 @@ export class TreeCommand {
           items,
           rootDir,
           level + 1,
+          product,
           maxDepth,
         );
       } else if (entry.name.endsWith(".md")) {
@@ -602,6 +626,7 @@ export class TreeCommand {
         const keywords = this.extractKeywords(originalContent);
 
         const item = {
+          product,
           slug: fullSlug,
           name: this.pretty(filename),
           description: "",
@@ -657,6 +682,15 @@ export class TreeCommand {
   getPackageDisplayName(_categoryPath: string, itemName: string): string {
     // Just return the slug of the item name - the directory structure provides context
     return this.slug(itemName);
+  }
+
+  /**
+   * A doc's name in `.gen/`, and the one place the product-plus-slug pair is
+   * turned into a filename. Framework pages keep their bare slug so the
+   * generated tree is unchanged for the 378 pages that are not moving.
+   */
+  outputName(item: { product: DocProduct; slug: string }): string {
+    return item.product ? `${item.product}-${item.slug}` : item.slug;
   }
 
   buildTree(items: DocItem[]): DocNode[] {
@@ -754,7 +788,8 @@ export class TreeCommand {
           slug: item.slug,
           name: displayName,
           order: item.order,
-          href: `/docs/${item.slug}`,
+          // The product is in the PATH now, not in the slug.
+          href: `${item.product ? `/${item.product}` : ""}/docs/${item.slug}`,
           description: item.description,
           keywords: item.keywords,
         });
@@ -915,10 +950,17 @@ export class TreeCommand {
       const items: DocItem[] = [];
 
       await run("parse docs", async () => {
-        for (const { dir, category, level } of DOC_ROOTS) {
+        for (const { dir, category, level, product } of DOC_ROOTS) {
           const from = join(rootDir, dir);
           this.log.debug(`Scanning doc root: ${from}`);
-          await this.scanDocsDir(from, category, items, rootDir, level);
+          await this.scanDocsDir(
+            from,
+            category,
+            items,
+            rootDir,
+            level,
+            product,
+          );
         }
         this.log.debug(`Parsed ${items.length} docs from /docs`);
       });
@@ -928,14 +970,18 @@ export class TreeCommand {
         const result: Array<any> = [];
 
         for (const item of items) {
-          this.log.trace(`Writing doc: ${item.slug}`);
+          this.log.trace(`Writing doc: ${item.product}/${item.slug}`);
           const content = item.content
             .replaceAll("\\", "\\\\")
             .replaceAll("`", "\\`")
             .replaceAll("${", "\\${")
             .replaceAll("\t", "  ");
 
-          const filename = `${item.slug}.ts`;
+          // ⚠️ The product is part of the filename, not decoration. A slug is
+          // unique only within a product now, so `guides-introduction` exists
+          // three times and one flat directory would have kept the last one
+          // written.
+          const filename = `${this.outputName(item)}.ts`;
           await writeFile(
             path.join(outputDir, filename),
             `export default \`${content}\``,
@@ -943,11 +989,15 @@ export class TreeCommand {
 
           const category = item.category.split("/")[0];
           await writeFile(
-            path.join(outputDir, `${category}-${item.originalName}`),
+            path.join(
+              outputDir,
+              `${item.product ? `${item.product}-` : ""}${category}-${item.originalName}`,
+            ),
             item.originalContent,
           );
 
           result.push({
+            product: item.product,
             slug: item.slug,
             name: item.name,
             description: item.description,
@@ -973,8 +1023,16 @@ export class TreeCommand {
           )) as string;
         }
 
-        const treeData = this.buildTree(items);
-        this.log.debug("Built navigation tree");
+        // One tree per product, so each sidebar shows its own doc set and
+        // nothing else. They used to share a tree, which is why bay and lore
+        // needed a seeded category to sort after `4-cli`.
+        const trees: Record<string, DocNode[]> = {};
+        for (const product of DOC_PRODUCTS) {
+          trees[product] = this.buildTree(
+            items.filter((item) => item.product === product),
+          );
+        }
+        this.log.debug(`Built ${DOC_PRODUCTS.length} navigation trees`);
 
         // Parse changelog
         const changelogPath = join(rootDir, "CHANGELOG.md");
@@ -993,7 +1051,7 @@ export class TreeCommand {
         const outputFilepath = join(outputDir, "index.ts");
         const outputFileContent = `
 				export const docs = ${JSON.stringify(result, jsonReplacer, 2)};
-				export const tree = ${JSON.stringify(treeData, jsonReplacer, 2)};
+				export const trees = ${JSON.stringify(trees, jsonReplacer, 2)};
 				export const snippets = ${JSON.stringify(renderedSnippets, null, 2)};
 				export const changelog = ${JSON.stringify(changelog, null, 2)};
 				`

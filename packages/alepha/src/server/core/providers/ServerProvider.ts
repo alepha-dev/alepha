@@ -9,6 +9,7 @@ import type { RouteMethod } from "../constants/routeMethods.ts";
 import type {
   NodeRequestEvent,
   ServerRequestData,
+  ServerResponse,
   WebRequestEvent,
 } from "../interfaces/ServerRequest.ts";
 import { ServerRouterProvider } from "./ServerRouterProvider.ts";
@@ -72,6 +73,55 @@ export class ServerProvider {
    * Parse query string manually - faster than new URL() + URLSearchParams.
    * Returns empty object if no query string.
    */
+  /**
+   * The answer to a HEAD request, from the response its GET route produced:
+   * the same status, the same headers, and no body.
+   *
+   * `content-length` is the subtle half. RFC 9110 wants it to describe what a
+   * GET would have returned, not the zero bytes actually sent, so a monitor
+   * measuring a page's size gets a real number. A string or a buffer knows
+   * its length; a STREAM does not, and a GET of one sends no `content-length`
+   * either (it goes out chunked), so the honest answer there is to send none
+   * rather than to drain the stream into a buffer nobody will read.
+   *
+   * Draining is also wrong for a second reason: the SSR document is a
+   * `renderToReadableStream`, and an open-ended producer would keep rendering
+   * into a discarded buffer. The source is cancelled instead, which is what
+   * tells it to stop.
+   */
+  protected async stripBody(
+    response: ServerResponse,
+  ): Promise<{ status: number; headers: Record<string, string> }> {
+    const headers = { ...response.headers };
+    const body = response.body;
+
+    const declared = Object.keys(headers).some(
+      (key) => key.toLowerCase() === "content-length",
+    );
+
+    if (!declared) {
+      if (typeof body === "string") {
+        headers["content-length"] = String(Buffer.byteLength(body));
+      } else if (Buffer.isBuffer(body)) {
+        headers["content-length"] = String(body.length);
+      } else if (body instanceof ArrayBuffer) {
+        headers["content-length"] = String(body.byteLength);
+      }
+    }
+
+    if (body instanceof Readable) {
+      body.destroy();
+    } else if (body instanceof ReadableStream) {
+      await body
+        .cancel()
+        .catch((error) =>
+          this.log.debug("Failed to cancel body for HEAD", error),
+        );
+    }
+
+    return { status: response.status, headers };
+  }
+
   protected parseQueryString(rawUrl: string): Record<string, string> {
     const qIndex = rawUrl.indexOf("?");
     if (qIndex === -1) {
@@ -167,7 +217,22 @@ export class ServerProvider {
   ): Promise<void> {
     const { req, res } = nodeRequestEvent;
     const rawUrl = req.url!;
-    const { route, params } = this.router.match(`/${req.method}${rawUrl}`);
+    let { route, params } = this.router.match(`/${req.method}${rawUrl}`);
+
+    // RFC 9110: HEAD is GET without the body. The router keys a route by
+    // `/<METHOD><path>`, so nothing registered under `/GET` was ever
+    // reachable by a request keyed `/HEAD` - every GET route in every app
+    // answered HEAD with 404, `/health` included, which is what most uptime
+    // monitors and load balancers check and most of them check with HEAD.
+    //
+    // A fallback on the MISS rather than a second registration, so a route
+    // that declares HEAD for itself still wins, and so the fallback reaches
+    // GET and nothing else: HEAD must not become a way to probe a
+    // POST-only path.
+    const headFallback = !route && req.method === "HEAD";
+    if (headFallback) {
+      ({ route, params } = this.router.match(`/GET${rawUrl}`));
+    }
 
     if (!route) {
       // Skip if response was already sent (e.g., by Vite middleware)
@@ -207,6 +272,13 @@ export class ServerProvider {
 
     // Skip if response was already sent (e.g., by Vite middleware)
     if (res.headersSent) {
+      return;
+    }
+
+    if (headFallback) {
+      const { status, headers } = await this.stripBody(response);
+      res.writeHead(status, headers);
+      res.end();
       return;
     }
 
@@ -316,9 +388,13 @@ export class ServerProvider {
   public async handleWebRequest(ev: WebRequestEvent): Promise<void> {
     const req = ev.req;
     const url = new URL(req.url);
-    const { route, params } = this.router.match(
-      `/${req.method}${url.pathname}`,
-    );
+    let { route, params } = this.router.match(`/${req.method}${url.pathname}`);
+
+    // See `handleNodeRequest` for why HEAD falls back to GET on a miss.
+    const headFallback = !route && req.method === "HEAD";
+    if (headFallback) {
+      ({ route, params } = this.router.match(`/GET${url.pathname}`));
+    }
 
     if (this.isViteNotFound(req.url, route, params)) {
       return;
@@ -357,6 +433,15 @@ export class ServerProvider {
     const response = await route
       .handler(request)
       .catch(this.handleInternalError);
+
+    if (headFallback) {
+      const { status, headers } = await this.stripBody(response);
+      ev.res = new Response(null, {
+        status,
+        headers: this.toWebHeaders(headers),
+      });
+      return;
+    }
 
     const webHeaders = this.toWebHeaders(response.headers);
 

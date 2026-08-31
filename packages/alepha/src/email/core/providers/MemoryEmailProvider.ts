@@ -55,4 +55,54 @@ export class MemoryEmailProvider implements EmailProvider {
   public get last(): EmailRecord | undefined {
     return this.records[this.records.length - 1];
   }
+
+  /**
+   * Whether an email was sent to this address.
+   *
+   * @example
+   * ```typescript
+   * expect(email.wasSent("user@example.com")).toBe(true);
+   * expect(email.wasSent("user@example.com", /verify/i)).toBe(true);
+   * ```
+   *
+   * `subject` matches the subject line. For the body, use
+   * {@link wasSentMatching}: a subject is a short deliberate string and a
+   * body is markup, so one loose match over both would go green on the
+   * wrong thing.
+   *
+   * ⚠️ One record per RECIPIENT. A single send to three addresses answers
+   * `true` for each of them, which is what a spec asking "did this person
+   * get the mail" means.
+   */
+  public wasSent(to: string, subject?: RegExp | string): boolean {
+    return this.records.some(
+      (record) =>
+        record.to === to &&
+        (subject === undefined ||
+          (typeof subject === "string"
+            ? record.subject.includes(subject)
+            : subject.test(record.subject))),
+    );
+  }
+
+  /**
+   * Whether an email to this address had a BODY matching `pattern`.
+   *
+   * @example
+   * ```typescript
+   * expect(email.wasSentMatching("user@example.com", /\/verify\?code=/)).toBe(
+   *   true,
+   * );
+   * ```
+   *
+   * Checks the html body and the text alternative, because an app may send
+   * either and a test should not have to know which.
+   */
+  public wasSentMatching(to: string, pattern: RegExp): boolean {
+    return this.records.some(
+      (record) =>
+        record.to === to &&
+        (pattern.test(record.body ?? "") || pattern.test(record.text ?? "")),
+    );
+  }
 }

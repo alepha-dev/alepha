@@ -1,16 +1,18 @@
 import { $env, z } from "alepha";
 import { $head, type Head } from "alepha/react/head";
-import { $page, NotFound } from "alepha/react/router";
+import { $page, NotFound, Redirection } from "alepha/react/router";
 import { $sitemap } from "alepha/react/sitemap";
 import { HttpError, NotFoundError } from "alepha/server";
 
 import Changelog from "./components/Changelog.tsx";
 import Docs from "./components/Docs.tsx";
 import Home from "./components/Home.tsx";
+import { DOCS_THEME_BOOT_SCRIPT } from "./components/layout/docsTheme.ts";
 import Layout from "./components/layout/Layout.tsx";
 import BayHome from "./components/product/BayHome.tsx";
 import LoreHome from "./components/product/LoreHome.tsx";
-import { changelog, docs } from "./config/docs.ts";
+import type { DocProduct } from "./config/docs.ts";
+import { changelog, docs, docsHref, docsOf } from "./config/docs.ts";
 
 declare module "alepha/react/router" {
   interface PagePrimitiveOptions {
@@ -55,13 +57,7 @@ export class AppRouter {
         card: "summary_large_image",
         title: ogTitle,
       },
-      script: [
-        `
-          var stored = localStorage.getItem('alepha-docs-mode');
-          var theme = stored === 'light' ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', theme);
-        `.trim(),
-      ],
+      script: [DOCS_THEME_BOOT_SCRIPT],
       link: [
         // No `rel="icon"` here on purpose: ReactServerProvider detects
         // `public/favicon.png` and emits the tag itself, into early head.
@@ -108,6 +104,8 @@ export class AppRouter {
       this.bay,
       this.changelog,
       this.m,
+      this.bayDocs,
+      this.loreDocs,
       this.github404,
       this.notFound,
     ],
@@ -158,6 +156,16 @@ export class AppRouter {
     }),
   });
 
+  /**
+   * The framework docs, and the ONLY one of the three whose URLs are frozen.
+   * 378 pages live under `/docs/:slug` and every link to them, internal and
+   * external, would break if this moved (quest #1603).
+   *
+   * It also carries the redirects for the two doc sets that DID move: a slug
+   * beginning `bay-` or `lore-` was a Bay or Lore page under this route until
+   * this change, and those URLs are live. The check runs before the lookup
+   * because there is no longer a framework page by either name to find.
+   */
   m = $page({
     sidebar: true,
     path: "/docs/:slug",
@@ -168,47 +176,108 @@ export class AppRouter {
       }),
     },
     static: {
-      entries: docs.map((it) => ({
+      entries: docsOf("").map((it) => ({
         params: { slug: it.slug },
         label: it.name,
       })),
     },
     loader: async ({ params }) => {
-      for (const pkg of docs) {
-        if (pkg.slug === params.slug) {
-          return { ...pkg, content: await pkg.content() };
+      for (const product of ["bay", "lore"] as const) {
+        if (params.slug.startsWith(`${product}-`)) {
+          throw new Redirection(
+            docsHref({
+              product,
+              slug: params.slug.slice(product.length + 1),
+            }),
+          );
         }
       }
-      throw new NotFoundError("Document not found");
+      return this.loadDoc("", params.slug);
     },
-    head: (args) => {
-      const title = args.slug.startsWith("packages")
-        ? args.slug
-            .replace("packages-alepha-", "")
-            .replaceAll("-", "/")
-            .replace("/core", "")
-        : args.name;
-
-      const keywords = args.keywords ? args.keywords.join(",") : undefined;
-
-      return {
-        title,
-        meta: keywords
-          ? [
-              {
-                name: "keywords",
-                content: keywords,
-              },
-            ]
-          : undefined,
-      };
-    },
+    head: (args) => this.docHead(args),
     errorHandler: (error) => {
       if (HttpError.is(error, 404)) {
         return <NotFound />;
       }
     },
   });
+
+  bayDocs = $page({
+    sidebar: true,
+    path: "/bay/docs/:slug",
+    component: Docs,
+    schema: { params: z.object({ slug: z.text() }) },
+    static: {
+      entries: docsOf("bay").map((it) => ({
+        params: { slug: it.slug },
+        label: it.name,
+      })),
+    },
+    loader: async ({ params }) => this.loadDoc("bay", params.slug),
+    head: (args) => this.docHead(args),
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return <NotFound />;
+      }
+    },
+  });
+
+  loreDocs = $page({
+    sidebar: true,
+    path: "/lore/docs/:slug",
+    component: Docs,
+    schema: { params: z.object({ slug: z.text() }) },
+    static: {
+      entries: docsOf("lore").map((it) => ({
+        params: { slug: it.slug },
+        label: it.name,
+      })),
+    },
+    loader: async ({ params }) => this.loadDoc("lore", params.slug),
+    head: (args) => this.docHead(args),
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return <NotFound />;
+      }
+    },
+  });
+
+  /**
+   * ⚠️ Narrowed by product, not by slug alone. A slug is unique only within a
+   * doc set now, so `guides-introduction` exists three times and a search of
+   * the flat list would answer with whichever came first.
+   */
+  protected async loadDoc(product: DocProduct, slug: string) {
+    for (const doc of docs) {
+      if (doc.product === product && doc.slug === slug) {
+        return { ...doc, content: await doc.content() };
+      }
+    }
+    throw new NotFoundError("Document not found");
+  }
+
+  protected docHead(args: { slug: string; name: string; keywords?: string[] }) {
+    const title = args.slug.startsWith("packages")
+      ? args.slug
+          .replace("packages-alepha-", "")
+          .replaceAll("-", "/")
+          .replace("/core", "")
+      : args.name;
+
+    const keywords = args.keywords ? args.keywords.join(",") : undefined;
+
+    return {
+      title,
+      meta: keywords
+        ? [
+            {
+              name: "keywords",
+              content: keywords,
+            },
+          ]
+        : undefined,
+    };
+  }
 
   github404 = $page({
     path: "/404",

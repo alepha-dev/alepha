@@ -199,12 +199,21 @@ export interface ControlProps {
   rows?: number;
   /**
    * Escape hatch — extra native attributes (event handlers, `className`,
-   * `aria-*`, `style`, …) forwarded to whichever element the control
-   * actually renders (text input / textarea / password input). The form
-   * bindings (`value`, `onChange`, `id`, `name`) always win and cannot be
-   * overridden here.
+   * `aria-*`, `data-*`, `style`, …) forwarded to whichever element the
+   * control actually renders (text input / textarea / password input). The
+   * form bindings (`value`, `onChange`, `id`, `name`) always win and cannot
+   * be overridden here.
+   *
+   * `data-*` is spelled out because `HTMLAttributes` does not carry it:
+   * TypeScript special-cases dashed attributes in JSX only, so an object
+   * literal `{ "data-testid": … }` is an excess property and fails to
+   * compile. Without this a control cannot carry a test hook, which meant a
+   * surface with an e2e had to keep a raw `<input>` rather than adopt the
+   * shared control.
    */
-  inputProps?: HTMLAttributes<HTMLElement>;
+  inputProps?: HTMLAttributes<HTMLElement> & {
+    [attribute: `data-${string}`]: string | number | boolean | undefined;
+  };
   /**
    * Allow user to create new entries in select / multi-select.
    */
@@ -467,6 +476,7 @@ export const Control = (props: ControlProps) => {
         datetime={merged.datetime}
         time={merged.time}
         disabled={merged.disabled}
+        clearable={merged.clearable}
       />,
     );
   }

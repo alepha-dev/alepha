@@ -927,17 +927,18 @@ test.describe("Epics — beginning from the list", () => {
 /**
  * Sorting the Epics list by Release.
  *
- * ⚠️ The whole point is the KEY. Sorting on the release's `tag` as text puts
- * `0.28.0` before `0.9.0`, and sorting on `epic.releaseId` sorts by row id,
- * which is not a version order at all. Only the release's `number` is right,
- * which is what `ProjectReleases` already sorts on.
+ * ⚠️ The whole point is the KEY, and there are now four wrong ones. Sorting
+ * the `tag` as text puts `0.28.0` before `0.9.0`; sorting on `epic.releaseId`
+ * sorts by row id; sorting on the release's `number` sorts by CREATION, which
+ * is the bug quest #1640 was filed for. The right key is the parsed version,
+ * `compareReleaseTags`, shared with `ProjectReleases`.
  *
- * The fixture is chosen so the three answers disagree: created in version
- * order, the tags sort differently as text than by number, so a string
- * comparator fails the first assertion rather than passing by luck.
+ * The fixture creates the releases OUT of version order so all four answers
+ * disagree. It used to create them in version order, where `number` and the
+ * version agree exactly and this test passed against either.
  */
 test.describe("Epics — sorting by release", () => {
-  test("orders by the release's number, not its tag, and keeps unassigned last", async ({
+  test("orders by parsed version, not by creation or as text, and keeps unassigned last", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -965,10 +966,11 @@ test.describe("Epics — sorting by release", () => {
         { path, body },
       )) as T;
 
-    // Version order, which is creation order, which is `number` order. As
-    // TEXT these sort 0.28.0, 0.29.0, 0.9.0, 1.0.0 — a different answer, so
-    // the assertion below can tell the two apart.
-    const tags = ["0.9.0", "0.28.0", "0.29.0", "1.0.0"];
+    // Deliberately NOT version order. Creation gives 0.28.0, 1.0.0, 0.29.0,
+    // 0.9.0; text gives 0.28.0, 0.29.0, 0.9.0, 1.0.0; the parsed version
+    // gives the order asserted below. All three differ, so the assertion can
+    // tell them apart - which it could not while the fixture was sorted.
+    const tags = ["0.28.0", "1.0.0", "0.29.0", "0.9.0"];
     for (const [i, tag] of tags.entries()) {
       const release = await post<{ id: number }>(
         `/api/createRelease/${projectId}`,

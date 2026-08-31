@@ -6,13 +6,55 @@ import { AdminPage } from "@alepha/ui/components/admin/admin-page";
 import { AdminUserCell } from "@alepha/ui/components/admin/admin-user-cell";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import { Control } from "@alepha/ui/components/control/control";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { z } from "alepha";
 import type { AdminSessionController, SessionResource } from "alepha/api/users";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { LogOut } from "lucide-react";
-import { useCallback } from "react";
+import { CircleDot, Clock, Globe, LogOut, Search } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+
+/**
+ * The filter bar this page rendered empty until #1319.
+ *
+ * Shape copied from `admin-users` and `admin-audits` rather than invented: a
+ * search box first in a fixed-width box, then `clearable` selects with an
+ * icon and a `clearLabel` naming the unfiltered state. Free-form strings
+ * rather than enums, for the reason `admin-users` gives - an unknown value
+ * left in persisted state falls back to "all" instead of throwing on schema
+ * validation.
+ */
+const filtersSchema = z.object({
+  search: z.string().optional(),
+  country: z.string().optional(),
+  status: z.string().optional(),
+  lastUsed: z.string().optional(),
+});
+
+/**
+ * Windows offered for "last used", in hours, because a session's whole life
+ * is usually measured in them.
+ *
+ * ⚠️ A literal `labelKey`, never `admin.sessions.lastUsed${hours}`.
+ * `i18n-fr.spec.ts` extracts keys by reading them out of the source, so an
+ * interpolated one is invisible to it in both directions: the French
+ * catalogue would report the translations as unused extras while the
+ * component silently fell back to English. This is the declarative form that
+ * check already understands, and the reason it understands it.
+ *
+ * That regex reads comments too, so this one avoids writing an example key.
+ */
+const LAST_USED_WINDOWS = [
+  { hours: "1", labelKey: "admin.sessions.lastUsed1", fallback: "Last hour" },
+  { hours: "24", labelKey: "admin.sessions.lastUsed24", fallback: "Last day" },
+  {
+    hours: "168",
+    labelKey: "admin.sessions.lastUsed168",
+    fallback: "Last week",
+  },
+] as const;
 
 export const AdminSessions = () => {
   const client = useClient<AdminSessionController>();
@@ -20,9 +62,43 @@ export const AdminSessions = () => {
   const dialog = useDialog();
   const { l, tr } = useI18n();
 
+  // Same shape as the audit log's action facet: the values come from the
+  // rows, so the control offers the countries this instance has actually seen
+  // rather than all 249. Failure costs the facet, not the page.
+  const [countries, setCountries] = useState<string[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    client
+      .getSessionCountries()
+      .then((rows) => {
+        if (alive) setCountries(rows);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [client]);
+
   const fetcher = useCallback(
-    async (params: { page: number; size: number; sort?: string }) => {
-      return client.findSessions({ query: params });
+    async (params: {
+      page: number;
+      size: number;
+      sort?: string;
+      filters?: Record<string, any>;
+    }) => {
+      const { filters, ...page } = params;
+      return client.findSessions({
+        query: {
+          ...page,
+          search: filters?.search || undefined,
+          country: filters?.country || undefined,
+          status: (filters?.status as "active" | "expired") || undefined,
+          lastUsedWithinHours: filters?.lastUsed
+            ? Number(filters.lastUsed)
+            : undefined,
+        },
+      });
     },
     [client],
   );
@@ -84,6 +160,90 @@ export const AdminSessions = () => {
         className="min-h-0 flex-1"
         persistenceKey="admin.sessions"
         fetch={fetcher}
+        filters={{
+          schema: filtersSchema,
+          render: (form) => (
+            <div className="flex items-center gap-2">
+              <div className="w-72">
+                <Control
+                  input={form.input.search}
+                  label=""
+                  icon={Search}
+                  placeholder={String(
+                    tr("admin.sessions.searchPlaceholder", {
+                      default: "Email, username or IP…",
+                    }),
+                  )}
+                  inputProps={{
+                    "aria-label": String(
+                      tr("admin.sessions.search", {
+                        default: "Search sessions",
+                      }),
+                    ),
+                  }}
+                />
+              </div>
+              <Control
+                input={form.input.status}
+                label=""
+                clearable
+                icon={CircleDot}
+                clearLabel={String(
+                  tr("admin.sessions.statusAll", { default: "All sessions" }),
+                )}
+                triggerClassName="w-40"
+                items={[
+                  {
+                    value: "active",
+                    label: String(
+                      tr("admin.sessions.statusActive", { default: "Active" }),
+                    ),
+                  },
+                  {
+                    value: "expired",
+                    label: String(
+                      tr("admin.sessions.statusExpired", {
+                        default: "Expired",
+                      }),
+                    ),
+                  },
+                ]}
+              />
+              <Control
+                input={form.input.country}
+                label=""
+                clearable
+                icon={Globe}
+                clearLabel={String(
+                  tr("admin.sessions.countryAll", {
+                    default: "All countries",
+                  }),
+                )}
+                triggerClassName="w-40"
+                items={countries.map((code) => ({
+                  value: code,
+                  label: code,
+                }))}
+              />
+              <Control
+                input={form.input.lastUsed}
+                label=""
+                clearable
+                icon={Clock}
+                clearLabel={String(
+                  tr("admin.sessions.lastUsedAny", { default: "Any time" }),
+                )}
+                triggerClassName="w-44"
+                items={LAST_USED_WINDOWS.map((window) => ({
+                  value: window.hours,
+                  label: String(
+                    tr(window.labelKey, { default: window.fallback }),
+                  ),
+                }))}
+              />
+            </div>
+          ),
+        }}
         bulkActions={[
           {
             label: tr("admin.sessions.bulkRevoke", {

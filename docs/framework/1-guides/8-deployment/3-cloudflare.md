@@ -78,6 +78,71 @@ The build automatically adds the D1 binding to `wrangler.jsonc` (the binding is 
 }
 ```
 
+### Query timeouts
+
+A D1 query has no client-side deadline of its own, so a slow one occupies the
+Worker until the platform kills the whole invocation. Two variables bound it:
+
+| Variable                 | Values                     | Default                             |
+| ------------------------ | -------------------------- | ----------------------------------- |
+| `DATABASE_TIMEOUT`       | milliseconds, `0` disables | `5000` on serverless, off elsewhere |
+| `DATABASE_TIMEOUT_SCOPE` | `all`, `reads`             | `all`                               |
+
+The budget is on by default on serverless because that is where an unbounded
+query costs an invocation rather than a connection. `reads` narrows it to
+statements that only read, for an app that would rather a long write finish
+than be abandoned halfway.
+
+### Read replication
+
+D1 can serve reads from regional replicas, which lowers read latency for users
+far from the primary. It does nothing unless the code opens a **session**:
+without `withSession`, every query goes to the primary whatever the dashboard
+says.
+
+```bash
+DATABASE_D1_MODE=sessions   # 'primary' is the default
+```
+
+**⚠️ This is a latency and throughput feature, not an availability one.** A
+replica may happen to answer while the primary is busy, but Cloudflare
+documents no such guarantee, and it must not be relied on as one. If the
+primary is down, treat the database as down.
+
+**The consistency model, and the one thing to understand.** A session is
+anchored to a _bookmark_: a position in the database's history. Reads inside
+a session see everything up to that bookmark, so within one session you always
+read your own writes. Across requests the bookmark has to travel, or a user
+who just created something can be served by a replica that has not caught up
+and the write appears to have vanished.
+
+Alepha carries it for you, in a cookie:
+
+```
+set-cookie: alepha_d1_bookmark=<bookmark>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600
+```
+
+A cookie rather than a header because the browser returns it with no
+client-side code. An API client that does not keep cookies gets a fresh
+session per request, which is correct but forfeits read-your-writes across
+calls - send the cookie back yourself if that matters.
+
+Two consequences worth knowing before switching it on:
+
+- **A response that sets the bookmark cookie is not edge-cacheable.** Alepha
+  decides cacheability before attaching the cookie, and the two are mutually
+  exclusive: a shared public response cannot depend on one caller's read
+  position.
+- **The default is `primary`, deliberately.** It changes consistency
+  semantics, and a bookmark-propagation bug surfaces as stale reads, which is
+  an unpleasant class of bug to chase. Turn it on for an app whose users are
+  spread across regions, and leave it off for one whose primary already sits
+  next to its traffic.
+
+Enabling replication on the database itself is a separate, one-time action in
+the Cloudflare dashboard. Setting `DATABASE_D1_MODE=sessions` without it, or
+enabling it without the flag, changes nothing on its own.
+
 ## R2 Buckets
 
 The R2 binding is added to `wrangler.jsonc` when `R2_BUCKET_NAME` is set at build time - the platform plugin sets it automatically when your app declares any `$storage`; for a manual build, set it yourself in the environment. R2 keys every object as `{prefix}/{tenantId}/{storage}/{fileId}` inside that one bucket - a storage is a prefix, not a bucket of its own. The leading prefix comes from `S3_KEY_PREFIX`, falling back to `APP_NAME`.

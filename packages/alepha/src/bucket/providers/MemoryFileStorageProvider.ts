@@ -108,4 +108,29 @@ export class MemoryFileStorageProvider implements FileStorageProvider {
   protected createId(): string {
     return this.crypto.randomUUID();
   }
+
+  /**
+   * Whether a file was uploaded to this bucket.
+   *
+   * @example
+   * ```typescript
+   * expect(storage.wasUploaded("avatars")).toBe(true);
+   * expect(storage.wasUploaded("avatars", fileId)).toBe(true);
+   * ```
+   *
+   * ⚠️ Reads what is STORED, so a file uploaded and then deleted answers
+   * `false`. That is the honest answer for this provider: unlike the queue or
+   * the cache it keeps no call log, and inventing one here would change what
+   * `files` means for the specs already reading it.
+   *
+   * Tenant-scoped like every other read, because `key()` prefixes the current
+   * tenant: a spec running under one tenant does not see another's uploads.
+   */
+  public wasUploaded(bucketName: string, fileId?: string): boolean {
+    if (fileId !== undefined) {
+      return this.key(bucketName, fileId) in this.files;
+    }
+    const prefix = this.key(bucketName);
+    return Object.keys(this.files).some((key) => key.startsWith(prefix));
+  }
 }

@@ -65,6 +65,44 @@ export interface CommandPrimitiveOptions<
 
   /**
    * A Zod object schema defining the flags for the command.
+   *
+   * Each key is a flag: `verbose` is `--verbose`. A boolean flag may be
+   * passed bare (`--verbose`), turned off with `--no-verbose`, or given an
+   * explicit value (`--verbose=false`); anything else takes a value, either
+   * `--name=value` or `--name value`.
+   *
+   * ## Short aliases
+   *
+   * A flag names its own short forms through `.meta({ aliases: [...] })`,
+   * beside the schema it aliases rather than in a second map, so a flag
+   * cannot be renamed without its alias moving too:
+   *
+   * ```ts
+   * $command({
+   *   flags: z.object({
+   *     verbose: z
+   *       .boolean()
+   *       .meta({ aliases: ["v"] })
+   *       .describe("Print every step")
+   *       .optional(),
+   *   }),
+   *   handler: ({ flags }) => {
+   *     // `-v`, `--verbose` and `--verbose=true` all arrive here as
+   *     // `flags.verbose === true`.
+   *   },
+   * });
+   * ```
+   *
+   * `.meta({ alias: "v" })` is accepted for a single one. Aliases are
+   * metadata, so they never change the inferred type: the handler still reads
+   * `flags.verbose`, whichever spelling the caller typed.
+   *
+   * ⚠️ An alias is matched by name, not by length: `-v` and `--v` are the
+   * same flag, and a two-letter alias is legal. What it must not do is
+   * collide with another flag's key or alias in the same command - the first
+   * match in declaration order wins, silently.
+   *
+   * This is not the same thing as {@link aliases}, which names the COMMAND.
    */
   flags?: T;
 

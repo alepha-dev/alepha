@@ -53,6 +53,29 @@ alepha.set(oauthOptions, {
   realm: "default",
   resource: "/mcp",
   loginPath: "/auth/login",
+  // The consent screen is the first page a third party ever sees from Lore -
+  // Claude renders it when connecting to the MCP endpoint - so it says which
+  // product it is asking on behalf of, and where the grant can be undone.
+  productName: "Lore",
+  connectionsPath: "/account/connections",
+  /*
+   * ⚠️ `mcp` is one scope and it is the whole application. A client holding it
+   * reads and writes every project this account is a member of: quests,
+   * folios, feedback, blights, the lot. The copy says so in those words rather
+   * than in the word "mcp", which is what the screen used to print and which
+   * tells a reader nothing about what they are handing over.
+   */
+  scopes: {
+    mcp: {
+      label: "Your projects",
+      description:
+        "Read and manage the projects you are a member of - their quests, folios, feedback and blights.",
+    },
+    openid: {
+      label: "Who you are",
+      description: "Your name and email address, so it can tell it is you.",
+    },
+  },
 });
 
 // Lore's admin chrome (the back-arrow brand + hidden name columns on the

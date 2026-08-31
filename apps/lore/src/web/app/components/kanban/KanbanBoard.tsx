@@ -19,7 +19,6 @@ import { useRouter } from "alepha/react/router";
 import {
   CalendarClock,
   ChevronDown,
-  Loader2,
   MapPin,
   Rows3,
   Search,
@@ -43,6 +42,8 @@ import { kanbanFiltersAtom } from "../../atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { AreaDotColor } from "../shared/areaColor.ts";
+import FilterSlot from "../shared/FilterSlot.tsx";
+import ToolbarSpinner from "../shared/ToolbarSpinner.tsx";
 import { useProjectUsers } from "../shared/useProjectUsers.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { KanbanAging } from "./kanbanAging.ts";
@@ -98,10 +99,16 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     schema: z.object({
       areas: z.array(z.text()),
       tags: z.array(z.text()),
+      // Search joined the form when the raw `<input>` became a `Control`
+      // (#1639). It is still written to the atom on every keystroke - by the
+      // mirroring effect below rather than by an inline onChange - so the
+      // persisted shape and the reset button are unchanged.
+      search: z.text(),
     }),
     initialValues: {
       areas: (seeded.areas ?? []) as string[],
       tags: (seeded.tags ?? []) as string[],
+      search: seeded.search ?? "",
     },
     handler: async () => {},
   });
@@ -109,7 +116,10 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const areaFilter = (areaFilterValue as string[] | undefined) ?? [];
   const [tagFilterValue] = useFieldValue(filterForm.input.tags);
   const tagFilter = (tagFilterValue as string[] | undefined) ?? [];
-  const search = seeded.search ?? "";
+  const [searchValue] = useFieldValue(filterForm.input.search);
+  // The form is the live value, so a keystroke filters this render rather
+  // than the one after the atom write lands.
+  const search = (searchValue as string | undefined) ?? "";
   const assigneeFilter = seeded.assignee;
   const dueFilter = seeded.due;
 
@@ -136,12 +146,13 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     if (
       storedFilters?.projectId === project.id &&
       JSON.stringify(storedFilters.areas) === JSON.stringify(areaFilter) &&
-      JSON.stringify(storedFilters.tags) === JSON.stringify(tagFilter)
+      JSON.stringify(storedFilters.tags) === JSON.stringify(tagFilter) &&
+      (storedFilters.search ?? "") === search
     ) {
       return;
     }
-    patchFilters({ areas: areaFilter, tags: tagFilter });
-  }, [areaFilter, tagFilter, project.id]);
+    patchFilters({ areas: areaFilter, tags: tagFilter, search });
+  }, [areaFilter, tagFilter, search, project.id]);
   const [knownTags, setKnownTags] = useState<string[]>([]);
   // Board-local, not persisted: collapsing is a "get this out of my way for
   // a minute" gesture, and a column still folded away three days later
@@ -691,54 +702,61 @@ const KanbanBoard = (props: KanbanBoardProps) => {
     >
       {/* Filter nav */}
       <div className="border-border bg-card flex items-center gap-2 border-b px-3 py-1.5">
-        {loading && (
-          <Loader2 className="text-muted-foreground size-3.5 animate-spin" />
-        )}
+        {/* The same widget the quests table's toolbar renders: a `Control`
+            per filter, in a `FilterSlot` that owns the width. Both bars
+            filter the same fields, and the icons were already matched on
+            that argument - it covers the whole control, not just the glyph.
+            The bar around them stays this app's own: the table's toolbar is
+            a chunky panel above a grid, this is a dense strip under the
+            page header. */}
         <form {...filterForm.props} className="flex flex-1 items-center gap-2">
+          <FilterSlot>
+            <Control
+              input={filterForm.input.search}
+              label=""
+              icon={Search}
+              placeholder={String(tr("kanban.filter.search"))}
+              inputProps={{
+                "aria-label": String(tr("kanban.filter.search")),
+                "data-testid": "kanban-search",
+              }}
+            />
+          </FilterSlot>
           {areaOptions.length > 0 && (
-            <div className="w-64 max-w-full">
-              {/* Same icons as the quest table's own area and tag filters
-                  (`ProjectQuestsTable.tsx`), deliberately. The two surfaces
-                  filter the same two fields, and two glyphs for one concept
-                  reads worse than none. */}
+            <FilterSlot>
               <Control
                 input={filterForm.input.areas}
                 label=""
                 clearable
                 icon={MapPin}
                 clearLabel={tr("kanban.filter.allAreas")}
+                triggerClassName="w-full"
                 items={areaOptions}
+                inputProps={{
+                  "aria-label": String(tr("kanban.filter.allAreas")),
+                }}
               />
-            </div>
+            </FilterSlot>
           )}
           {knownTags.length > 0 && (
-            <div className="w-64 max-w-full">
+            <FilterSlot>
               <Control
                 input={filterForm.input.tags}
                 label=""
                 clearable
                 icon={Tag}
                 clearLabel={tr("kanban.filter.allTags")}
+                triggerClassName="w-full"
                 items={knownTags.map((t) => ({ value: t, label: t }))}
+                inputProps={{
+                  "aria-label": String(tr("kanban.filter.allTags")),
+                }}
               />
-            </div>
+            </FilterSlot>
           )}
         </form>
 
         <div className="flex items-center gap-1">
-          <div className="relative">
-            <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2" />
-            <input
-              type="search"
-              value={search}
-              data-testid="kanban-search"
-              placeholder={String(tr("kanban.filter.search"))}
-              aria-label={String(tr("kanban.filter.search"))}
-              className="border-border bg-background focus-visible:ring-ring h-7 w-44 rounded-md border pr-2 pl-7 text-xs focus-visible:ring-2 focus-visible:outline-none"
-              onChange={(e) => patchFilters({ search: e.currentTarget.value })}
-            />
-          </div>
-
           {/* "My cards" is the filter people reach for most and the only one
               that needs no picker, so it gets a button of its own rather
               than a row in the assignee menu. */}
@@ -813,8 +831,10 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               className="text-muted-foreground h-7 text-xs"
               data-testid="kanban-filter-reset"
               onClick={() => {
+                // All three, and the form is the source for all three now.
                 filterForm.input.areas.set([]);
                 filterForm.input.tags.set([]);
+                filterForm.input.search.set("");
                 setStoredFilters({
                   projectId: project.id,
                   areas: [],
@@ -827,6 +847,8 @@ const KanbanBoard = (props: KanbanBoardProps) => {
               {tr("kanban.filter.reset")}
             </Button>
           )}
+
+          <ToolbarSpinner loading={loading} className="size-3.5" />
         </div>
       </div>
 

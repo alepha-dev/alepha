@@ -1365,6 +1365,24 @@ export class AppRouter {
 
   // Quest dependency graph page (Lore #98). Focused quest's connected
   // `dependsOn` component, laid out client-side, loaded once on mount.
+  /**
+   * One quest's questline: the `dependsOn` component it sits in, drawn with
+   * the same `Questline` map the epic's Flow tab uses.
+   *
+   * ⚠️ **A quest inside an epic never renders here.** Its questline is the
+   * epic's, and the epic's Flow tab already draws it beside that epic's own
+   * chrome, so the loader redirects there rather than showing a second,
+   * lonelier copy of the same map. The route survives for the quests that
+   * belong to no epic, which are the ones with nowhere else to be drawn.
+   *
+   * The redirect is decided by `getQuestline`, in the same call that fetches
+   * the component - the fork cannot be decided client-side, and answering it
+   * in a second round trip would mean a page that renders and then navigates
+   * away.
+   *
+   * The path keeps `/graph`. It is a link people already hold, and the page
+   * behind it still answers the question that name asks.
+   */
   projectQuestGraph = $page({
     name: "projectQuestGraph",
     path: "/quests/:shortId/graph",
@@ -1377,22 +1395,32 @@ export class AppRouter {
       const quest = (props as { quest?: { title?: string } } | undefined)
         ?.quest;
       return {
-        title: `${previous?.title ?? ""} › ${quest?.title ?? "Quest"} › Graph`,
+        title: `${previous?.title ?? ""} › ${quest?.title ?? "Quest"} › Questline`,
       };
     },
-    lazy: () => import("./components/project/quest/QuestGraph.tsx"),
+    lazy: () => import("./components/project/quest/QuestQuestline.tsx"),
     loader: async ({ params }) => {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      const quest = await this.questApi.getQuestByShortId({
+      const { epic, quests } = await this.questApi.getQuestline({
         params: {
           projectId: project.id,
           shortId: params.shortId,
         },
       });
-      return { quest };
+
+      if (epic) {
+        // `?tab=flow` is what `useDetailTab` reads on the epic page, so this
+        // lands on the Flow tab rather than the epic's default one.
+        throw new Redirection(`/${project.slug}/epics/${epic.number}?tab=flow`);
+      }
+
+      // The focus quest is in the component by construction - it is the
+      // quest the walk started from - so the head needs no second fetch.
+      const quest = quests.find((q) => q.shortId === params.shortId);
+      return { quest, quests };
     },
     errorHandler: (error) => {
       if (HttpError.is(error, 404)) {

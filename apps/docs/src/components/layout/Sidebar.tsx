@@ -1,7 +1,8 @@
 import { IconFold, IconFoldDown } from "@tabler/icons-react";
+import { useRouterState } from "alepha/react/router";
 import { useState } from "react";
 
-import { tree } from "../../config/docs.ts";
+import { type DocProduct, trees } from "../../config/docs.ts";
 import { FileTree } from "./FileTree.tsx";
 
 interface SidebarProps {
@@ -9,8 +10,24 @@ interface SidebarProps {
   isMobileDrawer?: boolean;
 }
 
+/**
+ * The doc set the current URL belongs to.
+ *
+ * Read off the path rather than off the loaded page, because the sidebar
+ * renders beside the route rather than inside it and has no access to its
+ * loader data. `/bay/docs/...` and `/lore/docs/...` are the only two products
+ * there are; everything else, `/docs/...` included, is the framework.
+ */
+const productOf = (path: string): DocProduct => {
+  if (path.startsWith("/bay/docs")) return "bay";
+  if (path.startsWith("/lore/docs")) return "lore";
+  return "";
+};
+
 const Sidebar = (props: SidebarProps) => {
   const { width = 280, isMobileDrawer = false } = props;
+  const state = useRouterState();
+  const tree = trees[productOf(state.url?.pathname ?? "")];
   const [expandKey, setExpandKey] = useState(0);
   const [defaultExpanded, setDefaultExpanded] = useState<boolean | undefined>(
     undefined,

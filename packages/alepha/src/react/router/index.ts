@@ -79,6 +79,30 @@ declare module "alepha" {
       state: ReactRouterState;
       hydration?: ReactHydrationState;
     };
+    /**
+     * Fires when React recovered from a render error on the browser, most
+     * often a hydration mismatch (`#418` in a production build).
+     *
+     * **Recovered**, so the visitor sees a correct page — React re-rendered
+     * the offending subtree on the client. It is a defect to report, never a
+     * reason to show an error boundary.
+     *
+     * It exists so a crash reporter has something better to listen to than
+     * `window.onerror`. React's own default handler calls `reportError`, which
+     * strips a production mismatch down to a minified code with blank
+     * arguments; this carries `componentStack`, which names the subtree, and
+     * the router state, which names the route.
+     *
+     * ⚠️ Passing `onRecoverableError` REPLACES React's default, so a reporter
+     * listening only on `window.onerror` now hears nothing at all about these.
+     * That is the point — one report with context beats two, one of them
+     * useless — but a reporter has to subscribe here to keep hearing them.
+     */
+    "react:recoverable:error": {
+      error: unknown;
+      componentStack?: string;
+      state: ReactRouterState;
+    };
     // -----------------------------------------------------------------------------------------------------------------
     // SPECIFIC: Route transitions
     /**
