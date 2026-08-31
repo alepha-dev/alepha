@@ -253,6 +253,10 @@ export default {
   "board.filter.area": "Domaine",
   "board.filter.tag": "Étiquette",
   "board.filter.allStatuses": "Tous les statuts",
+  "board.filter.statusCount": "$1 statuts",
+  "board.filter.areaCount": "$1 domaines",
+  "board.filter.releaseCount": "$1 versions",
+  "board.filter.tagCount": "$1 étiquettes",
   "board.filter.allAreas": "Tous les domaines",
   "board.filter.allTags": "Toutes les étiquettes",
 
@@ -313,6 +317,8 @@ export default {
   "quest.create.tags": "Étiquettes",
   "quest.create.tags.helper":
     "Étiquettes décrivant la nature de la quête (bug, feat, chore…). Le domaine dit où, l'étiquette dit quoi.",
+  "quest.create.tags.empty": "Ajouter des étiquettes",
+  "quest.create.tagCount": "$1 étiquettes",
   "quest.tags.placeholder": "Ajouter une étiquette puis Entrée",
   "quest.tags.suggestions": "Réutiliser :",
   "quest.view.questline.blockedBy": "Bloquée par",

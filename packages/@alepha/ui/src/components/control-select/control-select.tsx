@@ -5,9 +5,6 @@ void React;
 import { FormField } from "@alepha/ui/components/control-base/form-field";
 import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
 import {
-  ComboboxChip,
-  ComboboxChips,
-  ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
   ComboboxInput,
@@ -15,7 +12,6 @@ import {
   ComboboxList,
   Combobox as ComboboxRoot,
   ComboboxTrigger,
-  useComboboxAnchor,
 } from "@alepha/ui/components/ui/combobox";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { cn } from "@alepha/ui/lib/utils";
@@ -83,10 +79,14 @@ export interface ControlSelectProps {
    */
   combobox?: boolean;
   /**
-   * Whether the dropdown carries a search input. Defaults to "auto": on for
-   * multi-select, for a long-mode `loader`, and for static lists longer than
+   * Whether the dropdown carries a search input. Defaults to "auto": on for a
+   * long-mode `loader` (the rows are not all here), when `createNewEntry` is
+   * set (typing IS how an entry is made), and for lists longer than
    * `SEARCH_THRESHOLD`. Set explicitly to search a short list or to drop the
    * search field from a long one.
+   *
+   * Multi-select obeys the same rule as everything else; it used to force the
+   * field on because its chips box doubled as the search input.
    */
   searchable?: boolean;
   /**
@@ -145,6 +145,13 @@ export interface ControlSelectProps {
    */
   clearLabel?: string;
   /**
+   * Trigger text for a multi-select holding two or more values, e.g.
+   * `(n) => \`${n} status\``. One selection always shows the value itself, so
+   * this is only ever asked for the collapsed case. Defaults to
+   * `"{n} selected"`.
+   */
+  countLabel?: (count: number) => string;
+  /**
    * Extra className applied to the visible trigger (the `<SelectTrigger>`
    * or combobox `<Button>`). Useful for sizing filter chips
    * (`"w-40"`, `"w-72"`, etc.) without wrapping the whole `FormField` in
@@ -179,7 +186,10 @@ const SELECT_ALL_VALUE = "__alepha_select_all__";
  * the very same combobox renders without one — the threshold decides whether
  * you can type, never which control you get.
  */
-const SEARCH_THRESHOLD = 20;
+// Past this many rows, scanning by eye stops being realistic and the popup
+// grows a search field. Raised 20 -> 50 with the multi-select rework: the old
+// value put a search box on lists a reader takes in at a glance.
+const SEARCH_THRESHOLD = 50;
 
 const optValue = (o: SelectOption) => (typeof o === "string" ? o : o.value);
 const optLabel = (o: SelectOption) => (typeof o === "string" ? o : o.label);
@@ -315,10 +325,20 @@ export const ControlSelect = (props: ControlSelectProps) => {
   // `tag`, per-option `disabled` and `deselectable`, and styled its trigger
   // differently, purely because a list happened to be short.
   // Multi-select is never search-less: the chips input IS its trigger.
+  // A search field is offered only when scanning the list by eye stops being
+  // realistic: a server-driven list (whose rows are not all here), one past
+  // `SEARCH_THRESHOLD`, or one where typing is how a new entry is made.
+  //
+  // Multi-select used to force it on unconditionally, because the chips box
+  // WAS the search input and there was no other way to open the popup. The
+  // trigger is a button now, so multi obeys the same rule as everything else
+  // and a four-row status filter no longer opens onto a search field.
   const searchable =
-    isArray ||
-    (props.searchable ??
-      (props.combobox || mode === "long" || data.length > SEARCH_THRESHOLD));
+    props.searchable ??
+    (props.combobox ||
+      mode === "long" ||
+      Boolean(props.createNewEntry) ||
+      data.length > SEARCH_THRESHOLD);
 
   return (
     <FormField
@@ -349,13 +369,18 @@ export const ControlSelect = (props: ControlSelectProps) => {
         // options) could be set but never put back to "All …".
         clearable={props.clearable}
         clearLabel={clearLabel}
+        countLabel={props.countLabel}
         // An optional field must also be able to go back to empty without a
         // dedicated row: Base UI never emits `null`, so re-pressing the
         // selected row deselects (see `handleSingle`). A required field keeps
         // its value — clearing it would only produce a validation error the
         // user cannot see yet.
         deselectable={props.clearable || !meta.required}
-        placeholder={props.clearable ? clearLabel : undefined}
+        // Multi shows this muted when nothing is picked, so it reaches the
+        // trigger whether or not the field is `clearable` — a multi-select
+        // has no clear ROW (it clears by deselecting), and without this its
+        // empty trigger fell back to a bare "Select…".
+        placeholder={props.clearable || isArray ? clearLabel : undefined}
       />
     </FormField>
   );
@@ -395,6 +420,10 @@ interface ComboboxProps {
    * Label of the `clearable` row (e.g. "All zones").
    */
   clearLabel?: string;
+  /**
+   * See `ControlSelectProps.countLabel`.
+   */
+  countLabel?: (count: number) => string;
   /**
    * Allow the single-select value to be unset by pressing the row that is
    * already selected. Set for optional (and `clearable`) fields only.
@@ -450,9 +479,6 @@ function Combobox(props: ComboboxProps) {
   // a human label even after the source option drops out of a server-filtered
   // `data` set — or for freshly created entries that never existed in `data`.
   const labelCache = useRef(new Map<string, string>());
-  // Positioning anchor for the multi-select chips box (the popup is anchored to
-  // the chips container rather than the inline input).
-  const anchor = useComboboxAnchor();
 
   const options: ComboOption[] = props.data.map((o) => ({
     value: optValue(o),
@@ -478,9 +504,6 @@ function Combobox(props: ComboboxProps) {
     options.find((o) => o.value === val)?.label ??
     labelCache.current.get(val) ??
     val;
-
-  const disabledFor = (val: string) =>
-    options.find((o) => o.value === val)?.disabled ?? false;
 
   // Server mode (`onSearch`) filters upstream; for static lists we filter on
   // the visible label — never the value/id (that was the cmdk bug).
@@ -635,10 +658,34 @@ function Combobox(props: ComboboxProps) {
 
   const emptyLabel =
     props.placeholder ?? tr("controlSelect.select", { default: "Select…" });
-  const triggerLabel = selected[0] ? labelFor(selected[0]) : emptyLabel;
 
-  // The list (loading / empty / items) is identical for single and multi — only
-  // the trigger differs (button vs. chips box), so render it once.
+  /**
+   * Value, then count.
+   *
+   * One selection names itself; two or more collapse to a count. That is what
+   * keeps a filter row at a FIXED width: chips grew the trigger with every
+   * pick and then truncated, so the control both moved its neighbours and
+   * stopped saying what it was filtering on. A count does neither, and the
+   * single-selection case — much the commonest — still reads as the value.
+   */
+  const triggerLabel = props.multi
+    ? selected.length === 0
+      ? emptyLabel
+      : selected.length === 1
+        ? labelFor(selected[0])
+        : (props.countLabel?.(selected.length) ??
+          String(
+            tr("controlSelect.count", {
+              default: `${selected.length} selected`,
+              args: [String(selected.length)],
+            }),
+          ))
+    : selected[0]
+      ? labelFor(selected[0])
+      : emptyLabel;
+
+  // The list (loading / empty / items) is identical for single and multi, and
+  // so is the trigger now, so render it once.
   const popupBody = props.loading ? (
     <div className="text-muted-foreground flex items-center justify-center gap-2 p-4 text-sm">
       <Loader2 className="size-4 animate-spin" />{" "}
@@ -722,75 +769,48 @@ function Combobox(props: ComboboxProps) {
         props.onSearch?.(v);
       }}
     >
-      {props.multi ? (
-        // Multi-select: removable chips for each value with an inline search
-        // input, all inside the bordered chips box (Base UI's native shape).
-        <>
-          <ComboboxChips
-            ref={anchor}
-            id={props.id}
-            className={cn(
-              "w-full",
-              props.disabled && "pointer-events-none opacity-50",
-              props.triggerClassName,
-            )}
-          >
-            {props.icon && (
-              <props.icon className="text-muted-foreground ml-1 size-4 shrink-0" />
-            )}
-            {selected.map((val) => (
-              <ComboboxChip key={val} showRemove={!disabledFor(val)}>
-                {labelFor(val)}
-              </ComboboxChip>
-            ))}
-            <ComboboxChipsInput
-              placeholder={
-                selected.length === 0
-                  ? (props.placeholder ?? "Search…")
-                  : "Search…"
-              }
-            />
-          </ComboboxChips>
-          <ComboboxContent anchor={anchor}>{popupBody}</ComboboxContent>
-        </>
-      ) : (
-        // Single-select: a button trigger styled to mirror <SelectTrigger>,
-        // with the search input inside the popup.
-        <>
-          <ComboboxTrigger
-            id={props.id}
-            disabled={props.disabled}
-            className={cn(
-              "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
-              // Muted means "nothing chosen yet", which is only true without
-              // a clear row. WITH one, empty is a selected value — the popup
-              // already puts the check mark on it (see `cbValue`), and the
-              // native `Select` path renders the same state in full contrast
-              // because it makes the clear label a genuine `selectedValue`.
-              // Muting here made one `clearable` filter look unset and its
-              // neighbour look set for the same meaning, purely because the
-              // option count crossed the 20 that picks between the two paths.
-              selected.length === 0 &&
-                !props.clearable &&
-                "text-muted-foreground",
-              props.triggerClassName,
-            )}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              {props.icon && (
-                <props.icon className="text-muted-foreground size-4 shrink-0" />
-              )}
-              <span className="truncate">{triggerLabel}</span>
-            </span>
-          </ComboboxTrigger>
-          <ComboboxContent>
-            {props.searchable && (
-              <ComboboxInput showTrigger={false} placeholder="Search…" />
-            )}
-            {popupBody}
-          </ComboboxContent>
-        </>
-      )}
+      {/* One trigger for single AND multi. Multi used to render a bordered
+          chips box instead, which made it a different-looking control for the
+          same job, grew with every pick, and forced a search field on because
+          the chips input was the only way to open the popup. */}
+      <ComboboxTrigger
+        id={props.id}
+        disabled={props.disabled}
+        className={cn(
+          "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
+          // Muted means "nothing chosen yet".
+          //
+          // For MULTI that is simply "no selection": there is no clear row to
+          // stand in for it, so empty is empty and the placeholder is shown in
+          // placeholder colour.
+          //
+          // For SINGLE it is only true without a clear row. WITH one, empty is
+          // a selected value — the popup already puts the check mark on it
+          // (see `cbValue`), and the native `Select` path renders the same
+          // state in full contrast because it makes the clear label a genuine
+          // `selectedValue`. Muting there made one `clearable` filter look
+          // unset and its neighbour look set for the same meaning, purely
+          // because the option count crossed the threshold that picks between
+          // the two paths.
+          selected.length === 0 &&
+            (props.multi || !props.clearable) &&
+            "text-muted-foreground",
+          props.triggerClassName,
+        )}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          {props.icon && (
+            <props.icon className="text-muted-foreground size-4 shrink-0" />
+          )}
+          <span className="truncate">{triggerLabel}</span>
+        </span>
+      </ComboboxTrigger>
+      <ComboboxContent>
+        {props.searchable && (
+          <ComboboxInput showTrigger={false} placeholder="Search…" />
+        )}
+        {popupBody}
+      </ComboboxContent>
     </ComboboxRoot>
   );
 }

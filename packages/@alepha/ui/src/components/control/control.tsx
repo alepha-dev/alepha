@@ -108,8 +108,8 @@ export interface ControlProps {
    */
   combobox?: boolean;
   /**
-   * Force the select's search input on or off. Defaults to "auto" — on above
-   * ~20 options, off below.
+   * Force the select's search input on or off. Defaults to "auto" — on for an
+   * async list, when `createNewEntry` is set, or above ~50 options.
    */
   searchable?: boolean;
   /**
@@ -243,6 +243,13 @@ export interface ControlProps {
    * used as the empty-state trigger placeholder. Defaults to "None".
    */
   clearLabel?: string;
+  /**
+   * Trigger text for a multi-select holding two or more values, e.g.
+   * `(n) => \`${n} status\``. One selection always shows the value itself, so
+   * this is only ever asked for the collapsed case. Defaults to
+   * `"{n} selected"`.
+   */
+  countLabel?: (count: number) => string;
   /**
    * Forwarded to `ControlSelect` — extra className on the trigger.
    * Useful for sizing filter chips inline.
@@ -425,6 +432,7 @@ export const Control = (props: ControlProps) => {
         }
         clearable={merged.clearable}
         clearLabel={merged.clearLabel}
+        countLabel={merged.countLabel}
         triggerClassName={merged.triggerClassName}
       />,
     );

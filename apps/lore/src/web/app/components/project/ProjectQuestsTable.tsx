@@ -226,6 +226,11 @@ const ProjectQuestsTable = () => {
                   clearable
                   icon={CircleDot}
                   clearLabel={tr("board.filter.allStatuses")}
+                  countLabel={(n) =>
+                    String(
+                      tr("board.filter.statusCount", { args: [String(n)] }),
+                    )
+                  }
                   triggerClassName="w-full"
                   items={(
                     ["new", "accepted", "completed", "shelved"] as const
@@ -244,6 +249,20 @@ const ProjectQuestsTable = () => {
                     clearable
                     icon={MapPin}
                     clearLabel={tr("board.filter.allAreas")}
+                    countLabel={(n) =>
+                      String(
+                        tr("board.filter.areaCount", { args: [String(n)] }),
+                      )
+                    }
+                    // Opted in rather than left to the option count. Areas
+                    // are named by import path (`lore/quests`, `lore/folios`),
+                    // so the "select every match" row - the whole of feedback
+                    // #2009 - only appears once a prefix has been TYPED, and
+                    // typing needs this field. A project under the search
+                    // threshold would otherwise lose prefix-selection
+                    // entirely: a default meant to remove noise quietly
+                    // removing a feature.
+                    searchable
                     triggerClassName="w-full"
                     items={areaOptions}
                     inputProps={{ "aria-label": tr("board.filter.area") }}
@@ -258,6 +277,11 @@ const ProjectQuestsTable = () => {
                     clearable
                     icon={Flag}
                     clearLabel={tr("board.filter.allReleases")}
+                    countLabel={(n) =>
+                      String(
+                        tr("board.filter.releaseCount", { args: [String(n)] }),
+                      )
+                    }
                     triggerClassName="w-full"
                     items={releaseOptions}
                     inputProps={{ "aria-label": tr("board.filter.release") }}
@@ -272,6 +296,9 @@ const ProjectQuestsTable = () => {
                     clearable
                     icon={Tag}
                     clearLabel={tr("board.filter.allTags")}
+                    countLabel={(n) =>
+                      String(tr("board.filter.tagCount", { args: [String(n)] }))
+                    }
                     triggerClassName="w-full"
                     items={knownTags.map((tag) => ({ label: tag, value: tag }))}
                     inputProps={{ "aria-label": tr("board.filter.tag") }}

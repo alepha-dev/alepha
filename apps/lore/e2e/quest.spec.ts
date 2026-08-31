@@ -11,6 +11,26 @@ import {
 } from "./_helpers.ts";
 
 /**
+ * Reveal the quest form's ADVANCED section.
+ *
+ * Tags, Objectives, Due date, Depends on and Release moved behind a
+ * collapsible block, open only when the quest already carries one of them. A
+ * quest seeded by these tests carries none, so anything down there is hidden
+ * until this runs — which is what took three tests down at once when the
+ * section landed.
+ *
+ * Idempotent: `aria-expanded` is read first, so calling it on an already-open
+ * section (a quest that does have tags) does not close it.
+ */
+const openAdvanced = async (page: import("@playwright/test").Page) => {
+  const toggle = page.getByRole("button", { name: /advanced/i }).first();
+  await expect(toggle).toBeVisible({ timeout: 15_000 });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await toggle.click();
+  }
+};
+
+/**
  * Quest feature e2e: seeded via API to keep the setup cheap, then driven
  * through the real shadcn UI for open → accept → complete. Creating an area
  * from the Area combobox has its own test at the bottom of this file.
@@ -607,6 +627,7 @@ test.describe("Quest", () => {
 
     await test.step("open edit, pick the predecessor as dependency, save", async () => {
       await page.getByRole("button", { name: "Edit" }).first().click();
+      await openAdvanced(page);
       // The picker trigger reads "No dependency" until one is chosen.
       await page.getByRole("button", { name: /no dependency/i }).click();
       const search = page.getByPlaceholder("Search quests…");
@@ -877,11 +898,16 @@ test.describe("Quest", () => {
     });
 
     await test.step("Shelved filter brings it back", async () => {
-      // The status filter takes several values now (#1644), so its trigger
-      // is a chips box with a search input rather than a button showing the
-      // current value. `clearLabel` is that input's placeholder while
-      // nothing is selected, which is the only accessible handle it has.
-      await page.getByPlaceholder("All status").click();
+      // The status filter takes several values (#1644), but its trigger is a
+      // plain button again: the chips box (whose search input carried "All
+      // status" as a placeholder, the handle this used to grab) was replaced
+      // by a value-then-count trigger. With nothing selected it shows
+      // `clearLabel` as its own text, so match on that.
+      await page
+        .getByRole("combobox")
+        .filter({ hasText: "All status" })
+        .first()
+        .click();
       await page.getByRole("option", { name: "Shelved" }).click();
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -1555,6 +1581,8 @@ test.describe("Quest", () => {
     await page.goto(`/${projectSlug}/quests/${shortId}`);
     await page.getByRole("button", { name: /edit/i }).first().click();
 
+    await openAdvanced(page);
+
     await test.step("picking a day stores that day, ending at its end", async () => {
       const picker = page.getByRole("button", { name: /pick a date|due/i });
       await expect(picker.first()).toBeVisible({ timeout: 15_000 });
@@ -1758,23 +1786,36 @@ test.describe("Quest", () => {
       timeout: 15_000,
     });
 
-    const filter = page.getByPlaceholder("All areas");
+    // Two steps now, where the chips box was one: the trigger opens the
+    // popup, and the search field lives INSIDE it. The areas filter passes
+    // `searchable` explicitly so this field exists at any option count -
+    // without it there is no way to type a prefix and the row below never
+    // appears.
+    const filter = page
+      .getByRole("combobox")
+      .filter({ hasText: "All areas" })
+      .first();
     await expect(filter).toBeVisible({ timeout: 15_000 });
     await filter.click();
-    await filter.fill("lore/");
+    await page.getByPlaceholder("Search…").fill("lore/");
 
     // One row, standing for the three matches. It only appears when it would
     // do something: two or more unselected matches.
     await page.getByRole("option", { name: /select 3 matching/i }).click();
     await page.keyboard.press("Escape");
 
-    // Three chips, one per area, not a "lore/" chip. Removing one has to be
-    // an ordinary gesture rather than an escape from a prefix.
-    for (const area of ["lore/quests", "lore/folios", "lore/ui"]) {
-      await expect(page.getByText(area, { exact: true }).first()).toBeVisible({
-        timeout: 10_000,
-      });
-    }
+    // THREE values were added, not one "lore/" pattern - which is the whole
+    // point of the row: it resolves to the individual areas. The trigger's
+    // collapsed count is what proves the number now.
+    //
+    // This used to assert a chip per area. That check cannot survive the
+    // chips box being replaced by a value-then-count trigger, and it must not
+    // simply be pointed at the same text: `lore/quests` and its two siblings
+    // are also printed in the table's own Area column, so a `getByText` would
+    // go green whether the filter held three values, one, or a pattern.
+    await expect(
+      page.getByRole("combobox").filter({ hasText: "3 areas" }).first(),
+    ).toBeVisible({ timeout: 10_000 });
 
     // And the table narrowed to the three, leaving the alepha/orm quest out.
     await expect
@@ -1913,9 +1954,13 @@ test.describe("Quest", () => {
     });
 
     await test.step("the shelved row offers Unshelve, not Shelve", async () => {
-      // See the note in "Shelved filter brings it back": a chips input, and
-      // its placeholder is the handle.
-      await page.getByPlaceholder("All status").click();
+      // See the note in "Shelved filter brings it back": a button trigger
+      // showing `clearLabel`, not a chips input with a placeholder.
+      await page
+        .getByRole("combobox")
+        .filter({ hasText: "All status" })
+        .first()
+        .click();
       await page.getByRole("option", { name: "Shelved" }).click();
       // A multi-select does NOT close on pick - the point is to take several
       // - so the popup would sit over the table for the row-action click

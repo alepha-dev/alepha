@@ -28,7 +28,7 @@ import {
   Tags as TagsIcon,
   Tent,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -48,7 +48,6 @@ import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
 import QuestEstimateInput from "./QuestEstimateInput.tsx";
 import { DEFAULT_QUEST_SIZE, QUEST_SIZE_OPTIONS } from "./questSize.ts";
-import QuestTagInput from "./QuestTagInput.tsx";
 
 export interface QuestCreateProps {
   onSubmit: (quest: QuestResource) => void;
@@ -83,6 +82,27 @@ const QuestCreate = (props: QuestCreateProps) => {
   // that's refreshed every render so submit reads the picked value.
   const dependsOnRef = useRef(dependsOn);
   dependsOnRef.current = dependsOn;
+
+  // The project's existing tags, offered as the Tags select's options. Fetched
+  // here rather than inside a widget because the field is a plain multi-select
+  // `Control` now, and `items` is what feeds it.
+  const [knownTags, setKnownTags] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    questApi
+      .listQuestTags({ query: { projectId: props.project.id } })
+      .then((tags) => {
+        if (alive) setKnownTags(tags);
+      })
+      .catch(() => {
+        // Suggestions are a convenience, not the feature: `createNewEntry`
+        // means the field still accepts any tag with an empty option list, so
+        // a failed fetch must not cost the form.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [props.project.id]);
 
   const form = useForm({
     id: "quest-create",
@@ -345,22 +365,27 @@ const QuestCreate = (props: QuestCreateProps) => {
                   : "grid grid-cols-1 gap-3 md:grid-cols-2"
               }
             >
+              {/* A plain multi-select, not the bespoke chips widget it used
+                  to be: `tags` is an array field, which is the whole of the
+                  multi-select API, and `createNewEntry` covers the one thing
+                  a stock select could not do — name a tag that does not exist
+                  yet. It also earns the popup's search field, which a
+                  four-row list would not get.
+
+                  What this drops is the "Reuse:" wall of every tag in the
+                  project, printed under the input and growing without bound.
+                  The same list is the dropdown now, searchable, and it no
+                  longer sets the height of the section. */}
               <Control
                 label={tr("quest.create.tags")}
                 description={tr("quest.create.tags.helper")}
                 input={form.input.tags}
                 icon={TagsIcon}
-                custom={
-                  ((p: {
-                    value?: string[];
-                    onChange?: (v: string[]) => void;
-                  }) => (
-                    <QuestTagInput
-                      value={p.value}
-                      onChange={p.onChange}
-                      projectId={props.project.id}
-                    />
-                  )) as never
+                createNewEntry
+                items={knownTags}
+                clearLabel={tr("quest.create.tags.empty")}
+                countLabel={(n) =>
+                  String(tr("quest.create.tagCount", { args: [String(n)] }))
                 }
               />
 

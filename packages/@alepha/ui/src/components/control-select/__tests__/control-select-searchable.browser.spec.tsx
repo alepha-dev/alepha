@@ -34,7 +34,11 @@ describe("ControlSelect searchable", () => {
     { value: "editor", label: "Editor", tag: "write" },
   ];
 
-  const LONG = Array.from({ length: 30 }, (_, i) => `opt-${i}`);
+  // Must stay above `SEARCH_THRESHOLD`, which is 50 — this was 30, and went
+  // red when the threshold was raised from 20. The number is a fixture for
+  // "long enough to need a search field", so it follows the threshold rather
+  // than pinning a value of its own.
+  const LONG = Array.from({ length: 60 }, (_, i) => `opt-${i}`);
 
   const Probe = (props: {
     searchable?: boolean;
