@@ -56,6 +56,28 @@ export class MetaResolver {
   }
 
   /**
+   * Make the record visible to code running IN THIS PROCESS.
+   *
+   * `define` only reaches what a bundler transforms, and `BuildPrerenderTask`
+   * does not go through one: it invokes `$page` and `static` `$route` handlers
+   * on the already-created primitives, inside the CLI, so `alepha.meta` there
+   * finds no token and falls back. The prerendered HTML then disagreed with
+   * the bundles sitting beside it in the same `dist/` - alepha.dev shipped a
+   * header reading "v latest" while its own client bundle carried 0.27.1, and
+   * only hydration corrected it.
+   *
+   * Assigning to `globalThis` creates a real global binding, so the plain
+   * `typeof __ALEPHA_META__` guard in core resolves it with no knowledge of
+   * how it got there. A JSON string rather than the object, because that guard
+   * is followed by a `JSON.parse`. Same mechanism the dev server uses to hand
+   * the record to the browser.
+   */
+  public install(meta: AlephaMeta): void {
+    (globalThis as Record<string, unknown>).__ALEPHA_META__ =
+      JSON.stringify(meta);
+  }
+
+  /**
    * The app's name as the deploy knows it.
    *
    * Slugified basename of the root, which is what `BuildManifestTask` records

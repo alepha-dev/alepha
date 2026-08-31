@@ -1,6 +1,6 @@
 import { Alepha } from "alepha";
 import { MemoryShellProvider, ShellProvider } from "alepha/system";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { MetaResolver } from "../services/MetaResolver.ts";
 
@@ -217,6 +217,49 @@ describe("MetaResolver", () => {
       // Baked here because `alepha/package.json` is not resolvable on every
       // target the bundle runs on.
       expect(meta.framework).toMatch(/^\d+\.\d+\.\d+/);
+    });
+  });
+
+  describe("install", () => {
+    afterEach(() => {
+      delete (globalThis as Record<string, unknown>).__ALEPHA_META__;
+    });
+
+    /**
+     * `BuildPrerenderTask` renders pages and routes IN-PROCESS, inside the
+     * CLI, where the build token was never substituted. Without this the
+     * prerendered HTML carries the no-build fallback while the bundles beside
+     * it carry the real record - `alepha.dev` shipped a header reading
+     * "v latest" that way, corrected only once hydration replaced it.
+     */
+    it("should make the record visible to an in-process render", async () => {
+      const resolver = setup({ [TAG]: "0.27.1\n" });
+      const meta = await resolver.resolve({
+        root: "/w/docs",
+        runtime: "static",
+        dev: false,
+      });
+
+      resolver.install(meta);
+
+      expect(Alepha.create().meta).toEqual(meta);
+    });
+
+    it("should install a string, so the typeof guard in core sees a binding", async () => {
+      const resolver = setup({});
+      const meta = await resolver.resolve({
+        root: "/w/docs",
+        runtime: "node",
+        dev: false,
+      });
+
+      resolver.install(meta);
+
+      // Core reads `typeof __ALEPHA_META__ === "string"` and JSON.parses it.
+      // An object here would satisfy the guard and then throw on parse.
+      expect(
+        typeof (globalThis as Record<string, unknown>).__ALEPHA_META__,
+      ).toBe("string");
     });
   });
 });

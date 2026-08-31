@@ -1,5 +1,5 @@
 import { Alepha } from "alepha";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 /**
  * `alepha.meta` under vitest, where no build ever ran.
@@ -38,5 +38,59 @@ describe("Alepha.meta", () => {
     const alepha = Alepha.create();
 
     expect(alepha.meta.commit).toBeUndefined();
+  });
+
+  describe("a record installed on globalThis", () => {
+    afterEach(() => {
+      delete (globalThis as Record<string, unknown>).__ALEPHA_META__;
+    });
+
+    /**
+     * How the build hands the record to an in-process render.
+     *
+     * `BuildPrerenderTask` invokes route and page handlers inside the CLI's own
+     * process, where the build token was never substituted, so a prerendered
+     * page would otherwise bake the no-build fallback into its HTML. Assigning
+     * to `globalThis` creates a real global BINDING, which is what the plain
+     * `typeof` guard already looks for - the same mechanism the dev server uses
+     * for the browser.
+     */
+    it("should be read in preference to the no-build fallback", () => {
+      (globalThis as Record<string, unknown>).__ALEPHA_META__ = JSON.stringify({
+        name: "docs",
+        version: "0.27.1",
+        commit: "1972cdf5",
+        build: {
+          date: "2026-08-31T17:36:45.475Z",
+          runtime: "static",
+          dev: false,
+        },
+        framework: "0.27.1",
+      });
+
+      expect(Alepha.create().meta.version).toBe("0.27.1");
+    });
+
+    /**
+     * The fallback must not be sticky.
+     *
+     * The build resolves and installs the record after the app container
+     * already exists, so anything that read `meta` during introspection would
+     * otherwise pin the fallback in the memo and the prerender would still
+     * write "latest".
+     */
+    it("should not be shadowed by an earlier read that fell back", () => {
+      const alepha = Alepha.create();
+      expect(alepha.meta.version).toBe("latest");
+
+      (globalThis as Record<string, unknown>).__ALEPHA_META__ = JSON.stringify({
+        name: "docs",
+        version: "0.27.1",
+        build: { runtime: "static", dev: false },
+        framework: "0.27.1",
+      });
+
+      expect(alepha.meta.version).toBe("0.27.1");
+    });
   });
 });

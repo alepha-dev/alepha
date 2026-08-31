@@ -272,6 +272,11 @@ export class BuildCommand {
         override: this.metaOverride,
       });
 
+      // The prerender runs in THIS process, not in a bundle, so `define` never
+      // reaches it. Installed before the pipeline so anything the build renders
+      // in-process reads the same record the bundles carry.
+      this.metaResolver.install(meta);
+
       const ctx: BuildTaskContext = {
         // Cast: when manifest mode is active, BuildCloudflareTask reads
         // from ctx.manifest and never dereferences ctx.alepha. Bundle
