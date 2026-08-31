@@ -287,7 +287,10 @@ describe("Attaching a quest to a release", () => {
     const page = await ctx.questController.getQuests.fetch(
       {
         params: { projectId: project.id },
-        query: { releaseId: release.data.id },
+        // A string, because `releaseId` takes a comma-separated LIST now
+        // (`?releaseId=3,4`) and a query param is text on the wire either
+        // way. See `getQuests`' schema.
+        query: { releaseId: String(release.data.id) },
       },
       { user },
     );

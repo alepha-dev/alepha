@@ -67,14 +67,30 @@ const PRIORITY_ICONS: Record<QuestResource["priority"], LucideIcon> = {
  * until you ask for them explicitly. AlephaTable persists the chosen
  * values per project via `persistenceKey` (see #113).
  */
+/**
+ * ⚠️ Every filter but `search` is a LIST, and empty means all.
+ *
+ * The board has taken lists since it was written while this table took one
+ * value each, so "new or in progress", or two areas at once, was expressible
+ * on one surface and not the other (quest #1644). The shape is ported from
+ * `KanbanBoard.tsx` rather than designed, and `Control` needs nothing new:
+ * an array field already renders as a multi-select.
+ *
+ * On the wire each list is comma-joined into a single query param, which is
+ * what `getQuests` accepts. A repeated key would be the other option and is
+ * not available: `ServerProvider.parseQueryString` returns
+ * `Record<string, string>`, so `?area=a&area=b` keeps only the last one.
+ */
 const boardFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z.enum(["new", "accepted", "completed", "shelved"]).optional(),
-  area: z.string().optional(),
-  tag: z.string().optional(),
-  // The release's numeric id, carried as a string because that is what a
+  status: z
+    .array(z.enum(["new", "accepted", "completed", "shelved"]))
+    .optional(),
+  area: z.array(z.string()).optional(),
+  tag: z.array(z.string()).optional(),
+  // The releases' numeric ids, carried as strings because that is what a
   // select's value is. Coerced back on the way into the query.
-  release: z.string().optional(),
+  release: z.array(z.string()).optional(),
 });
 
 /**
@@ -171,7 +187,7 @@ const ProjectQuestsTable = () => {
         persistenceKey={`lor.board.${project.id}`}
         filters={{
           schema: boardFiltersSchema,
-          seedValues: seededStatus ? { status: seededStatus } : undefined,
+          seedValues: seededStatus ? { status: [seededStatus] } : undefined,
           render: (form) => (
             <>
               <FilterSlot>
@@ -245,21 +261,28 @@ const ProjectQuestsTable = () => {
             </>
           ),
         }}
-        fetch={async ({ page, size, sort, filters: f }) =>
-          questApi.getQuests({
+        fetch={async ({ page, size, sort, filters: f }) => {
+          // Comma-joined, and omitted entirely when empty. An empty list and
+          // an absent filter are the same question, and sending `status=`
+          // would be a third thing for the endpoint to interpret.
+          const list = (values: unknown): string | undefined =>
+            Array.isArray(values) && values.length > 0
+              ? values.join(",")
+              : undefined;
+          return questApi.getQuests({
             params: { projectId: project.id },
             query: {
               page,
               size,
               sort,
               search: f?.search || undefined,
-              status: f?.status || undefined,
-              area: f?.area || undefined,
-              tag: f?.tag || undefined,
-              releaseId: f?.release ? Number(f.release) : undefined,
+              status: list(f?.status),
+              area: list(f?.area),
+              tag: list(f?.tag),
+              releaseId: list(f?.release),
             } as any,
-          })
-        }
+          });
+        }}
         onRowClick={(quest) =>
           router.push("projectQuest", {
             params: { shortId: String(quest.shortId) },
