@@ -217,6 +217,15 @@ describe("create-alepha", () => {
     expect(await readDependencies(fs)).not.toHaveProperty("@alepha/ui");
   });
 
+  it("should accept -y, the short form", async () => {
+    const { fs, cli, cmd, asker } = createTestEnv();
+
+    await cli.run(cmd.root, { argv: "my-app -y", root: "/project" });
+
+    expect(asker.questionCount).toBe(0);
+    expect(await readDevDependencies(fs)).toHaveProperty("@alepha/devtools");
+  });
+
   it("should let a flag win over --yes", async () => {
     const { fs, cli, cmd, asker } = createTestEnv();
 

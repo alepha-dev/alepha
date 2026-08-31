@@ -48,7 +48,7 @@ prompts at all - a CI, a Dockerfile, any script with no stdin - pass `--yes`,
 which answers every remaining question with its default:
 
 ```bash
-npm create alepha my-app -- --yes
+npm create alepha my-app -- --yes    # or -y
 ```
 
 Flags still win over `--yes`, so `--yes --preset saas` is promptless too. The

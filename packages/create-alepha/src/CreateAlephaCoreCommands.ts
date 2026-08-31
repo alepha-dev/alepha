@@ -82,8 +82,9 @@ export class CreateAlephaCoreCommands {
         .optional(),
       yes: z
         .boolean()
+        .meta({ aliases: ["y"] })
         .describe(
-          "Answer every remaining question with its default, so the command runs with stdin closed. Needs the project name, which has no default. Flags still win over it",
+          "Answer every remaining question with its default, so the command runs with stdin closed. Needs the project name, which has no default. Flags still win over it. Short form: -y",
         )
         .optional(),
     }),
