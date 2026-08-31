@@ -44,20 +44,38 @@ export interface MultipartPart {
  * usually an attack, and an oversized header is always one.
  */
 export class MultipartLimitError extends AlephaError {
+  public readonly limit: number;
+
+  /**
+   * Which budget was spent.
+   *
+   * Carried as data rather than left to be read out of the message, so a
+   * caller can phrase the refusal in its own vocabulary — an HTTP layer
+   * naming the field that overflowed, say — without matching on prose that
+   * was never meant to be an interface.
+   */
+  public readonly kind: "header" | "file" | "parts" | "total";
+
+  /**
+   * ⚠️ Assigned in the body rather than declared as constructor parameter
+   * properties, which is what this was.
+   *
+   * A parameter property is the one piece of TypeScript that Node's
+   * type-stripping loader cannot handle: it is not a type annotation to erase
+   * but a declaration plus an assignment to emit. `alepha.config.ts` is loaded
+   * by that stripper, so any config importing something that reaches this file
+   * died with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` — pointing at a multipart
+   * parser it had never heard of. This was the only occurrence in the
+   * framework; keep it that way.
+   */
   constructor(
     message: string,
-    public readonly limit: number,
-    /**
-     * Which budget was spent.
-     *
-     * Carried as data rather than left to be read out of the message, so a
-     * caller can phrase the refusal in its own vocabulary — an HTTP layer
-     * naming the field that overflowed, say — without matching on prose that
-     * was never meant to be an interface.
-     */
-    public readonly kind: "header" | "file" | "parts" | "total",
+    limit: number,
+    kind: "header" | "file" | "parts" | "total",
   ) {
     super(message);
+    this.limit = limit;
+    this.kind = kind;
   }
 }
 
