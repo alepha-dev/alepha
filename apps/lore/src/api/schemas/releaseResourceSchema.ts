@@ -24,6 +24,9 @@ export const releaseResourceSchema = releases.schema.extend({
      * `shelved` — a shelved quest is by definition still `new`, so the three
      * buckets never overlap and `total - completed - inProgress` is the count
      * still open and untouched.
+     *
+     * That subtraction has no `- shelved` in it, and that is not an
+     * oversight: see the note on `shelved` below, and `releases.total`.
      */
     inProgress: z.integer(),
     /**
