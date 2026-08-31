@@ -100,8 +100,15 @@ export class EpicController {
         orderBy: [{ column: "number", direction: "asc" }],
       });
 
-      return await Promise.all(
-        allEpics.map((epic) => this.buildEpicResource(epic)),
+      // Two aggregates for the whole page rather than four counts per row.
+      // The list used to fan `computeProgress` out over every epic, which is
+      // where `GET /api/getEpics/1` got its 89 D1 round trips.
+      const progress = await this.computeProgressOf(
+        allEpics.map((epic) => epic.id),
+      );
+
+      return allEpics.map((epic) =>
+        this.toEpicResource(epic, progress.get(epic.id) ?? this.zeroProgress()),
       );
     },
   });
@@ -417,8 +424,24 @@ export class EpicController {
    * are hidden from it is not (design §5.3).
    */
   protected async buildEpicResource(epic: Epic): Promise<EpicResource> {
-    const progress = await this.computeProgress(epic);
+    return this.toEpicResource(epic, await this.computeProgress(epic));
+  }
+
+  /**
+   * Assembles the resource once the rollup is in hand, so the single-epic
+   * path and the batched list path cannot drift on what a resource is.
+   */
+  protected toEpicResource(epic: Epic, progress: EpicProgress): EpicResource {
     return { ...epic, progress, questCount: progress.total };
+  }
+
+  /**
+   * What an epic with no quests reports. `aggregate()` returns no row at
+   * all for an empty group, so the caller supplies the zeros rather than
+   * reading them back.
+   */
+  protected zeroProgress(): EpicProgress {
+    return { completed: 0, inProgress: 0, shelved: 0, total: 0 };
   }
 
   /**
@@ -430,12 +453,7 @@ export class EpicController {
    * `completedAt`, and `inProgress` explicitly excludes both of the
    * others.
    */
-  protected async computeProgress(epic: Epic): Promise<{
-    completed: number;
-    inProgress: number;
-    shelved: number;
-    total: number;
-  }> {
+  protected async computeProgress(epic: Epic): Promise<EpicProgress> {
     const [total, completed, inProgress, shelved] = await Promise.all([
       this.quests.count({ epicId: { eq: epic.id } }),
       this.quests.count({
@@ -455,4 +473,85 @@ export class EpicController {
 
     return { completed, inProgress, shelved, total };
   }
+
+  /**
+   * `computeProgress` for a whole page of epics, in TWO queries whatever
+   * the page holds — the batched sibling, not a replacement. The
+   * single-epic callers (`getEpicByNumber`, the create/update/status
+   * hops) keep `computeProgress`, where four counts is already the right
+   * shape.
+   *
+   * The first aggregate carries three of the four buckets as selected
+   * columns rather than as their own queries: `count` compiles to
+   * `COUNT(col)`, which skips NULLs, so counting `completedAt` counts the
+   * quests that have one. `inProgress` is a conjunction — accepted AND NOT
+   * completed — which no single column count expresses, so it gets its own
+   * WHERE and its own pass.
+   *
+   * ⚠️ Not `COUNT(accepted_at) - COUNT(completed_at)`, which would collapse
+   * it to one query but only if "completed implies accepted" held. Nothing
+   * in `quests` states that, so the derivation would be silently wrong the
+   * first time a quest is completed without being accepted.
+   *
+   * `aggregate()` applies `withOrganization` / `withDeletedAt` exactly like
+   * `count()`, so the tenancy and soft-delete filtering is unchanged.
+   */
+  protected async computeProgressOf(
+    epicIds: number[],
+  ): Promise<Map<number, EpicProgress>> {
+    const progress = new Map<number, EpicProgress>();
+    // `inArray: []` throws, so a project with no epics never reaches the
+    // queries. An empty map is the right answer for it anyway.
+    if (epicIds.length === 0) {
+      return progress;
+    }
+
+    const [buckets, inProgress] = await Promise.all([
+      this.quests.aggregate({
+        select: {
+          epicId: true,
+          id: { count: true },
+          completedAt: { count: true },
+          shelvedAt: { count: true },
+        },
+        where: { epicId: { inArray: epicIds } },
+        groupBy: ["epicId"],
+      }),
+      this.quests.aggregate({
+        select: { epicId: true, id: { count: true } },
+        where: {
+          epicId: { inArray: epicIds },
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+        groupBy: ["epicId"],
+      }),
+    ]);
+
+    for (const row of buckets) {
+      if (row.epicId == null) continue;
+      progress.set(row.epicId, {
+        completed: row.completedAt.count,
+        inProgress: 0,
+        shelved: row.shelvedAt.count,
+        total: row.id.count,
+      });
+    }
+
+    for (const row of inProgress) {
+      if (row.epicId == null) continue;
+      const found = progress.get(row.epicId);
+      if (found) {
+        found.inProgress = row.id.count;
+      }
+    }
+
+    return progress;
+  }
 }
+
+/**
+ * The rollup `epicResourceSchema.progress` carries, named once so the
+ * per-epic and batched paths cannot disagree on its shape.
+ */
+type EpicProgress = EpicResource["progress"];
