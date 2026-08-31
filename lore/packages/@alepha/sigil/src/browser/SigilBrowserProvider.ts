@@ -192,18 +192,26 @@ export class SigilBrowserProvider {
         this.queue!.addView(path, this.dateTime.nowMillis());
       });
 
+      // ⚠️ All three sources go through `isCrash`. `react:action:error` fires
+      // for every failed `$client` call, so without it a mistyped password,
+      // a duplicate email on register and a 403 on a page the visitor may
+      // not see all arrived as crashes.
       this.alepha.events.on("react:action:error", (ev) => {
         if (!this.wants("errors")) return;
+        if (!this.isCrash(ev.error)) return;
         this.queue!.addError(this.toError(ev.error, location.href));
       });
 
       window.addEventListener("error", (e) => {
         if (!this.wants("errors")) return;
-        this.queue!.addError(this.toError(e.error ?? e, location.href));
+        const error = e.error ?? e;
+        if (!this.isCrash(error)) return;
+        this.queue!.addError(this.toError(error, location.href));
       });
 
       window.addEventListener("unhandledrejection", (e) => {
         if (!this.wants("errors")) return;
+        if (!this.isCrash(e.reason)) return;
         this.queue!.addError(this.toError(e.reason, location.href));
       });
 
@@ -456,6 +464,14 @@ export class SigilBrowserProvider {
     return this.queue?.pendingViewRecords() ?? [];
   }
 
+  /**
+   * The messages of the pending errors, so a test can ask which errors the
+   * `isCrash` filter kept.
+   */
+  public debugPendingErrors(): string[] {
+    return this.queue?.pendingErrorMessages() ?? [];
+  }
+
   public debugPendingEngagements(): string[] {
     return this.queue?.pendingEngagements() ?? [];
   }
@@ -491,6 +507,39 @@ export class SigilBrowserProvider {
    * was carrying. Callers pass `location.href`; what goes in the envelope is
    * the origin and path.
    */
+  /**
+   * Whether this is a fault rather than a refusal.
+   *
+   * **The same rule the server side applies**, deliberately duplicated rather
+   * than derived: `SigilServerErrors.isCrash` states it at length, and the
+   * short version is that every 4xx is the app working. 400 is bad input, 404
+   * is a path that does not exist, 401 and 403 are a logged-out or
+   * under-privileged visitor. A crash inbox that lists them is an inbox
+   * nobody opens, which costs the 5xx sitting underneath.
+   *
+   * The browser side had no such filter, and it is the side that produces
+   * the most of them: `react:action:error` fires for every failed `$client`
+   * call, so every 4xx an API hands a form was filed as a crash. A public
+   * login form across N tenants meant every mistyped password minted ingest
+   * traffic and an inbox row - and the fingerprint is stack-based, so each
+   * deploy re-fingerprinted them into fresh blights.
+   *
+   * Kept: 5xx, and anything with no status at all. A missing status means the
+   * error never reached the point of becoming a response, which is the
+   * definition of a crash - and it is what makes a plain `TypeError` from a
+   * render still report.
+   *
+   * ⚠️ The status is NOT carried in the envelope. Its only use is this
+   * decision, the browser knows it at the moment it decides, and sending it
+   * so the sink could re-derive the same answer would put the policy in two
+   * places - which is the thing this filter exists to stop.
+   */
+  protected isCrash(error: unknown): boolean {
+    const status = (error as { status?: number } | undefined)?.status;
+    if (typeof status !== "number") return true;
+    return status >= 500;
+  }
+
   protected toError(err: unknown, sourceUrl: string) {
     // A thrown value is whatever the thrower felt like: `Partial<Error>` says
     // "read these three if they are there" without claiming they are.
