@@ -84,7 +84,19 @@ describe("alepha lore quality push", () => {
     } = {},
   ) => {
     const alepha = Alepha.create({
-      env: { LORE_API_KEY: "lore_secret", ...options.env },
+      env: {
+        LORE_API_KEY: "lore_secret",
+        // ⚠️ Blanked unless a case sets them, and this is load-bearing rather
+        // than tidy: these two are REAL variables in the environment this
+        // suite runs in. GitHub Actions sets `GITHUB_SHA` and
+        // `GITHUB_REF_NAME` on every job, so without this the git-fallback
+        // cases below read the actual CI commit, never enter the fallback,
+        // and assert nothing - passing on a laptop and failing in CI, which
+        // is exactly what they did.
+        GITHUB_SHA: "",
+        GITHUB_REF_NAME: "",
+        ...options.env,
+      },
     })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
