@@ -1,6 +1,6 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
-import { Plus, Trash2 } from "lucide-react";
+import { ListChecks, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { MAX_QUEST_OBJECTIVES } from "@/api/schemas/questObjectivesLimit.ts";
@@ -76,18 +76,24 @@ const QuestCreateObjectives = (props: QuestCreateObjectivesProps) => {
         </p>
       ) : (
         <div className="flex items-center gap-2">
-          <Input
-            value={newObjective}
-            onChange={(e) => setNewObjective(e.target.value)}
-            placeholder="Add new objective..."
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addObjective();
-              }
-            }}
-            className="flex-1"
-          />
+          {/* `relative` wrapper + absolutely-positioned glyph + `pl-9`: the
+              shape `<Control>` gives every text input, restated here because
+              this row is hand-built rather than rendered by the control. */}
+          <div className="relative flex-1">
+            <ListChecks className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+            <Input
+              value={newObjective}
+              onChange={(e) => setNewObjective(e.target.value)}
+              placeholder="Add new objective..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addObjective();
+                }
+              }}
+              className="w-full pl-9"
+            />
+          </div>
           <Button
             type="button"
             variant="ghost"

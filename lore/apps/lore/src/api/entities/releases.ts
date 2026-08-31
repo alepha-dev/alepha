@@ -104,11 +104,26 @@ export const releases = $entity({
      * shipped would silently rewrite what `0.28.0` shipped — exactly the
      * dishonesty the frozen changelog exists to prevent.
      *
-     * The four buckets are disjoint by construction, so a reader derives the
-     * untouched remainder as `total - completed - inProgress - shelved`:
-     * `shelvedAt` is only ever set on a quest still in `new` status, so it
-     * never coexists with `acceptedAt` or `completedAt`, and `inProgress`
-     * excludes both of the others.
+     * ⚠️ **`shelved` sits OUTSIDE `total`**, so the untouched remainder is
+     * `total - completed - inProgress` and the four numbers add up to
+     * `total + shelved`, not to `total`. `ReleaseContentService.partition`
+     * is where that happens: it splits the fetched quests into `quests` and
+     * `shelvedQuests`, and `progressOf` counts `total` over the first list
+     * alone. The reason is in `releaseResourceSchema`: declined work must
+     * not read as work outstanding, and it must not dilute the ratio a
+     * release is judged on either.
+     *
+     * This comment used to say `total - completed - inProgress - shelved`,
+     * which is the EPIC convention (`EpicController.computeProgress` counts
+     * every quest of the epic, shelved included) and has never been true
+     * here. Two sibling rollups with the same field names and different
+     * denominators is a trap; both are deliberate, and this is where the
+     * release's half is written down.
+     *
+     * The three in-total buckets are disjoint by construction, so no fifth
+     * count is needed: `shelvedAt` is only ever set on a quest still in
+     * `new` status, so it never coexists with `acceptedAt` or `completedAt`,
+     * and `inProgress` excludes both of the others.
      */
     completed: z.integer().optional(),
     inProgress: z.integer().optional(),

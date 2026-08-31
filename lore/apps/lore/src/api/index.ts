@@ -28,7 +28,6 @@ import { ReleaseController } from "./controllers/ReleaseController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
-import { VersionController } from "./controllers/VersionController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
@@ -185,6 +184,5 @@ export const LoreApi = $module({
     InsightsController,
     BlightController,
     DashboardController,
-    VersionController,
   ],
 });
