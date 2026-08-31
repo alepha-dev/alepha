@@ -648,6 +648,22 @@ export default {
     "Reveal the short summary each folio carries for AI agents. It is always written and always readable over MCP. This only decides whether the field shows while you read or edit.",
   "project.settings.feature.releases.description":
     "Group epics and quests into named releases, each with its own progress and changelog.",
+  "project.settings.roadmap.title": "Roadmap",
+  "project.settings.roadmap.description":
+    "A read-only page listing your open releases and the epics inside them. No quests, no names, no backlog.",
+  "project.settings.roadmap.visibility.label": "Who can see it",
+  "project.settings.roadmap.delay":
+    "Changes can take up to a minute to reach visitors.",
+  "project.settings.roadmap.level.off": "Off",
+  "project.settings.roadmap.level.members": "Members only",
+  "project.settings.roadmap.level.public": "Public",
+  "project.settings.roadmap.url.label": "Link",
+  "project.settings.roadmap.url.copy": "Copy the roadmap link",
+  "project.settings.roadmap.url.copied": "Link copied.",
+  "project.settings.roadmap.publicConfirm.title": "Publish this roadmap?",
+  "project.settings.roadmap.publicConfirm.description":
+    "Anyone with the link will see your release tags, their target dates, and the titles of the epics inside them, including epics you have not started yet.",
+  "project.settings.roadmap.publicConfirm.confirm": "Make it public",
   "project.settings.feature.sigils.description":
     "Enroll your applications so they can report crashes, page views and web vitals here, one token per app.",
   "project.settings.feature.feedback.description":

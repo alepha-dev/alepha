@@ -4,6 +4,7 @@ import { ForbiddenError } from "alepha/server";
 
 import { type Member, members } from "../entities/members.ts";
 import { type Project, projects } from "../entities/projects.ts";
+import type { RoadmapVisibility } from "../schemas/roadmapVisibilitySchema.ts";
 
 /**
  * Project access gates.
@@ -154,6 +155,67 @@ export class ProjectSecurityService {
       },
     });
     return !!member;
+  }
+
+  /**
+   * The roadmap's own gate, and the only one in the app that can answer
+   * "yes" to a caller with no session at all.
+   *
+   * `off` refuses everyone, `members` requires membership, `public` allows
+   * anonymous. Both roadmap actions call this so the members page and the
+   * public endpoint share one decision instead of re-deriving it - a page and
+   * an endpoint that disagree about who may read something is how a leak
+   * survives a green test.
+   *
+   * ## Why a service method and not a `$roadmapVisible` middleware
+   *
+   * Every other gate in the app is a middleware now (`$ownsProject`), and a
+   * lone service method is the odd one out. It stays one for a concrete
+   * reason rather than inertia: `$owns` is built ON `$secure`
+   * (`$owns.ts` returns `$secure({ guard })`), so a middleware in that family
+   * cannot run on an action that has no authenticated caller - which is
+   * precisely the case this gate exists for. A middleware here would have to
+   * be a second, parallel mechanism that only the roadmap uses, which is
+   * worse than one method both actions call.
+   *
+   * ⚠️ **Turning the roadmap off is not instant.** The `project` row reaches
+   * these callers through the 30 second window in
+   * {@link PROJECT_CACHE_TTL_MS}, and it carries `roadmapVisibility` with it.
+   * Carving out one uncached read for this path was considered and rejected:
+   * it makes the roadmap the single exception to a rule that holds
+   * everywhere else, for a page nobody hits in a loop, to close a window
+   * measured in seconds. The settings card discloses the window instead
+   * (`project.settings.roadmap.delay`).
+   *
+   * Returns `false` rather than throwing: the caller 404s, and it must be a
+   * 404 rather than a 403 because a 403 confirms the project exists.
+   */
+  async isRoadmapVisible(
+    project: Project,
+    user?: UserAccountToken,
+  ): Promise<boolean> {
+    const visibility = this.roadmapVisibilityOf(project);
+    if (visibility === "public") {
+      return true;
+    }
+    if (visibility === "off" || !user) {
+      return false;
+    }
+    return await this.isMember(project.id, user);
+  }
+
+  /**
+   * The `off` fallback for a row written before the column existed.
+   *
+   * It lives here and NOT in a column `DEFAULT`: a DEFAULT on `projects`
+   * triggers the D1 table rebuild that cascade-wipes members, quests,
+   * releases, folios and feedback. See `roadmapVisibilitySchema`.
+   *
+   * Defaulting closed is the only safe reading - an absent value must never
+   * publish anything.
+   */
+  roadmapVisibilityOf(project: Project): RoadmapVisibility {
+    return project.roadmapVisibility ?? "off";
   }
 
   /**
