@@ -1257,7 +1257,6 @@ export default {
   "epic.folios.detach.title": "Detach this folio?",
   "epic.folios.detach.confirm":
     '"$1" will no longer be linked to this epic. The folio itself is not deleted.',
-  "epic.quests.title": "Quests",
   "epic.quests.empty": "No quests in this epic yet.",
   "epic.quests.loading": "Loading quests…",
   "epic.quests.attach": "Attach Quest",

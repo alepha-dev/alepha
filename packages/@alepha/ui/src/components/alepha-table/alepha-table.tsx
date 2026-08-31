@@ -250,6 +250,48 @@ export type AlephaTableSource<T> =
 export type AlephaTableProps<T> = AlephaTableBaseProps<T> &
   AlephaTableSource<T>;
 
+/**
+ * ⚠️ **A page-level action goes INSIDE the table, not above it.**
+ *
+ * AlephaTable owns a toolbar, and that toolbar is the page's action bar. A
+ * "New" button, a picker, an import, an export all belong in it. Putting one
+ * in a `CardHeader` above the table produces two stacked bars saying one
+ * thing - which is exactly what the epic page's Quests tab looked like until
+ * feedback #2006, a hand-rolled header holding a title and an "Attach Quest"
+ * button, sitting directly on top of a toolbar holding the column picker and
+ * refresh.
+ *
+ * The rule is written here rather than only on the props because this is
+ * where a reader - human or agent - looks first, and the drift comes from
+ * not knowing the slot exists rather than from choosing against it.
+ *
+ * Three slots, and which one is a question about the control, not the action:
+ *
+ * - `actions` - an icon button that does something on click. Rendered in the
+ *   right-hand icon group beside the column picker, with a tooltip from its
+ *   own `label`.
+ * - `toolbar` - anything else: a labelled button, a popover trigger, a
+ *   segmented control, a group of them. Rendered to the right of the filter
+ *   inputs and vertically centred, so it does not have to match their height.
+ * - `bulkActions` - operates on the checkbox selection, and only appears
+ *   while something is selected.
+ *
+ * ```tsx
+ * <AlephaTable<Quest>
+ *   data={quests}
+ *   columns={columns}
+ *   // A popover trigger: `toolbar`, because it is not an icon button.
+ *   toolbar={<QuestPicker onAttach={attach} />}
+ *   // An icon button that acts on click: `actions`.
+ *   actions={[{ icon: Download, label: "Export", onClick: exportAll }]}
+ * />
+ * ```
+ *
+ * The exception is a control that LEAVES the page - a back link, a tab bar,
+ * breadcrumbs. Those are navigation, not actions on this table, and belong
+ * where the page's other navigation is.
+ */
+
 export interface AlephaTableBaseProps<T> {
   /**
    * Column definitions, keyed by the property name they read from.
@@ -337,7 +379,9 @@ export interface AlephaTableBaseProps<T> {
   hideActionsMenu?: boolean;
   /**
    * Extra slot rendered to the right of the filter inputs in the
-   * toolbar — typically a "New" / "Create" button.
+   * toolbar — typically a "New" / "Create" button, or any page-level action
+   * that is not a bare icon button (see the note on `AlephaTableProps`: it
+   * belongs here rather than in a header above the table).
    *
    * Vertically centred in the bar (`self-center`) regardless of its own
    * height, so it no longer has to match the filter inputs. It used to inherit

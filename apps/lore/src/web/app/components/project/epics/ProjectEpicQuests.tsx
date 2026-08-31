@@ -1,11 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@alepha/ui/components/ui/card";
+import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
@@ -59,14 +54,11 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   return (
     <div className="min-h-0 flex-1 overflow-auto p-4">
       <Card className="py-0 shadow">
-        <CardHeader className="flex flex-row items-center justify-between gap-2 p-4">
-          <CardTitle>{tr("epic.quests.title")}</CardTitle>
-          <EpicQuestPicker
-            projectId={props.projectId}
-            attachedIds={attachedIds}
-            onAttach={props.onAttach}
-          />
-        </CardHeader>
+        {/* No header row. It held the word "Quests" and the attach button
+            directly above the table's own toolbar, which is two stacked bars
+            saying one thing (feedback #2006). The tab is already named
+            "Quests"; the button belongs in the toolbar's slot, beside the
+            column picker and refresh. */}
         <CardContent className="p-0">
           {quests === null ? (
             <div className="text-muted-foreground p-6 text-center text-sm">
@@ -77,6 +69,17 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
               data={quests}
               defaultSize={25}
               emptyMessage={tr("epic.quests.empty")}
+              // The page-level action, in the slot the table keeps for it.
+              // `toolbar` rather than `actions` because this one opens a
+              // popover of its own: `actions` is for icon buttons that do
+              // something on click.
+              toolbar={
+                <EpicQuestPicker
+                  projectId={props.projectId}
+                  attachedIds={attachedIds}
+                  onAttach={props.onAttach}
+                />
+              }
               // Per project, not per epic: how the reader likes this table
               // sorted is a preference about quests, not about one epic.
               persistenceKey={`lor.epicQuests.${props.projectId}`}
