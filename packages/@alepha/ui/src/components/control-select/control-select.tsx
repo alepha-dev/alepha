@@ -28,7 +28,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Loader2 } from "lucide-react";
+import { ListChecks, Loader2 } from "lucide-react";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 
 export type SelectOption =
@@ -166,6 +166,13 @@ export interface ControlSelectProps {
  * the boundary so callers never see it.
  */
 const CLEAR_VALUE = "__alepha_clear__";
+
+/**
+ * Internal sentinel for the "select every match" row. Same reasoning as
+ * `CLEAR_VALUE`: it never reaches a caller, because it is expanded into the
+ * matching values before `onChange` is called.
+ */
+const SELECT_ALL_VALUE = "__alepha_select_all__";
 
 /**
  * Static option count above which the dropdown grows a search input. Below it
@@ -417,6 +424,11 @@ interface ComboOption {
    */
   clear?: boolean;
   /**
+   * Marks the synthetic "select every match" row a multi-select offers while
+   * a query is narrowing the list.
+   */
+  selectAll?: boolean;
+  /**
    * The raw query that produced a `create` row (used as the new entry's label).
    */
   query?: string;
@@ -515,8 +527,47 @@ function Combobox(props: ComboboxProps) {
   // leave "All zones" stranded at the top of a list it doesn't match.
   const showClear = clearRow && clearRow.label.toLowerCase().includes(q);
 
+  /**
+   * "Select every match" — the row that makes a typed prefix a filter clause
+   * rather than a way to find one item.
+   *
+   * Areas are named by import path (`lore/quests`, `lore/folios`, `lore/ui`),
+   * so the prefix is the meaningful unit and "everything under lore/" took
+   * eight separate picks (feedback #2009). Typing `lore/` and pressing one row
+   * is the whole feature.
+   *
+   * ⚠️ It resolves to the individual values, deliberately, rather than
+   * becoming a pattern the query carries. Two consequences, and both are the
+   * point: the caller's schema and endpoint are untouched (a list of values is
+   * what they already take), and the chips stay honest - what is filtered is
+   * exactly what is shown, so removing one of the eight is an ordinary
+   * gesture rather than an escape from a prefix.
+   *
+   * Only when it would do something: multi-select, a non-empty query, and at
+   * least two matches that are not already selected. One match is what
+   * pressing the row itself does.
+   */
+  const unselectedMatches = props.multi
+    ? filtered.filter((o) => !o.disabled && !selected.includes(o.value))
+    : [];
+
+  const selectAllRow: ComboOption | undefined =
+    props.multi && q.length > 0 && unselectedMatches.length > 1
+      ? {
+          value: SELECT_ALL_VALUE,
+          label: String(
+            tr("controlSelect.selectAll", {
+              default: `Select ${unselectedMatches.length} matching "${query}"`,
+              args: [String(unselectedMatches.length), query],
+            }),
+          ),
+          selectAll: true,
+        }
+      : undefined;
+
   const items: ComboOption[] = [
     ...(showClear && clearRow ? [clearRow] : []),
+    ...(selectAllRow ? [selectAllRow] : []),
     ...filtered,
     ...(createOption ? [createOption] : []),
   ];
@@ -565,8 +616,20 @@ function Combobox(props: ComboboxProps) {
   };
 
   const handleMulti = (list: ComboOption[]) => {
-    for (const o of list) remember(o);
-    props.onChange(list.map((o) => props.coerce(o.value)));
+    // The "select every match" row arrives here as one more selected item.
+    // Swap it for the values it stands for, so the sentinel never leaves this
+    // component and the chips show the real areas rather than a prefix.
+    const expanded = list.flatMap((o) =>
+      o.selectAll ? unselectedMatches : [o],
+    );
+    // Base UI can hand the same option back twice when the expansion overlaps
+    // something already selected.
+    const seen = new Set<string>();
+    const unique = expanded.filter((o) =>
+      seen.has(o.value) ? false : (seen.add(o.value), true),
+    );
+    for (const o of unique) remember(o);
+    props.onChange(unique.map((o) => props.coerce(o.value)));
     setQuery("");
   };
 
@@ -590,7 +653,12 @@ function Combobox(props: ComboboxProps) {
       </ComboboxEmpty>
       <ComboboxList>
         {(opt: ComboOption) =>
-          opt.create ? (
+          opt.selectAll ? (
+            <ComboboxItem key="__select_all__" value={opt}>
+              <ListChecks className="mr-2 size-4 shrink-0" />
+              <span className="truncate font-medium">{opt.label}</span>
+            </ComboboxItem>
+          ) : opt.create ? (
             <ComboboxItem key={`__create__${opt.value}`} value={opt}>
               <span className="mr-2">+</span>
               {tr("controlSelect.create", {
