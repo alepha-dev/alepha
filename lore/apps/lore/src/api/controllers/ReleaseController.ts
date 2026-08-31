@@ -16,6 +16,7 @@ import {
   type ReleaseChangelogGroup,
   releaseChangelogGroupSchema,
 } from "../schemas/releaseChangelogGroupSchema.ts";
+import { releaseContentQuestSchema } from "../schemas/releaseContentQuestSchema.ts";
 import { releaseResourceSchema } from "../schemas/releaseResourceSchema.ts";
 import {
   RELEASE_TAG_PATTERN,
@@ -337,6 +338,13 @@ export class ReleaseController {
    * names a different release (`ReleaseContentService` lets an explicit
    * attachment override its epic's), and counting that quest here would make
    * the epic bars add up to more than the release bar above them.
+   *
+   * Each epic carries the very quest ROWS its `completed` and `total` were
+   * counted from. The page used to fetch them separately, one `getQuests`
+   * per card, filtered by epic and blind to which release each quest names —
+   * so a card could print `4/7` above a list of nine rows, four of which
+   * belonged to another release. One endpoint, one membership answer, one
+   * set of numbers.
    */
   getReleaseContents = $action({
     use: [$secure({ permissions: ["quest:read"] }), this.ownsRelease()],
@@ -353,28 +361,37 @@ export class ReleaseController {
             status: z.string(),
             completed: z.integer(),
             total: z.integer(),
+            quests: z.array(releaseContentQuestSchema),
           }),
         ),
-        looseQuests: z.array(
-          z.object({
-            id: z.integer(),
-            shortId: z.integer(),
-            title: z.string(),
-            area: z.string().optional(),
-            priority: z.string(),
-            completedAt: z.datetime().optional(),
-          }),
-        ),
+        looseQuests: z.array(releaseContentQuestSchema),
       }),
     },
     handler: async () => {
       const release = this.owned.get<Release>();
-      const { epics, quests, looseQuests } =
+      const { epics, quests, looseQuests, shelvedQuests } =
         await this.contents.contentsOf(release);
+
+      // `contentsOf` hands back the shelved quests separately, because they
+      // are outside every denominator (see `progressOf`). They are still
+      // part of what is in the release and are listed as such - struck
+      // through rather than hidden, so "we decided not to" is visible
+      // instead of looking like work that was never mentioned.
+      //
+      // Placed by the SAME rule `partition` uses on the unshelved ones: a
+      // quest sits under an epic only if that epic is attached to this
+      // release, and is loose otherwise. Testing `epicId === epic.id` alone
+      // would drop a shelved quest that names this release from inside an
+      // epic that does not - it would match no card and fail the `== null`
+      // test for the loose group, and vanish from the page entirely.
+      const epicIds = new Set(epics.map((epic) => epic.id));
+      const under = (quest: Quest, epicId: number) => quest.epicId === epicId;
+      const loose = (quest: Quest) =>
+        quest.epicId == null || !epicIds.has(quest.epicId);
 
       return {
         epics: epics.map((epic) => {
-          const own = quests.filter((quest) => quest.epicId === epic.id);
+          const own = quests.filter((quest) => under(quest, epic.id));
           return {
             id: epic.id,
             number: epic.number,
@@ -382,18 +399,32 @@ export class ReleaseController {
             status: epic.status,
             completed: own.filter((quest) => quest.completedAt != null).length,
             total: own.length,
+            quests: [
+              ...own,
+              ...shelvedQuests.filter((quest) => under(quest, epic.id)),
+            ].map(this.contentQuest),
           };
         }),
-        looseQuests: looseQuests.map((quest) => ({
-          id: quest.id,
-          shortId: quest.shortId,
-          title: quest.title,
-          area: quest.area,
-          priority: quest.priority,
-          completedAt: quest.completedAt,
-        })),
+        looseQuests: [...looseQuests, ...shelvedQuests.filter(loose)].map(
+          this.contentQuest,
+        ),
       };
     },
+  });
+
+  /**
+   * One quest as `getReleaseContents` reports it. A method rather than a
+   * closure so both call sites above are provably the same projection.
+   */
+  protected contentQuest = (quest: Quest) => ({
+    id: quest.id,
+    shortId: quest.shortId,
+    title: quest.title,
+    area: quest.area,
+    priority: quest.priority,
+    completedAt: quest.completedAt,
+    acceptedAt: quest.acceptedAt,
+    shelvedAt: quest.shelvedAt,
   });
 
   getReleaseChangelog = $action({
@@ -491,11 +522,15 @@ export class ReleaseController {
   /**
    * The four progress buckets over a release's quests.
    *
-   * Disjoint by construction, so a reader derives the untouched remainder as
-   * `total - completed - inProgress - shelved` without a fifth count:
-   * `shelvedAt` is only ever set on a quest still in `new` status, so it never
-   * coexists with `acceptedAt` or `completedAt`, and `inProgress` excludes
-   * both of the others. Same shape as `EpicController.computeProgress`.
+   * ⚠️ `shelved` is counted OUTSIDE `total` — see `releases.total`. The
+   * untouched remainder is `total - completed - inProgress`, and this is
+   * NOT the same denominator as `EpicController.computeProgress`, which
+   * counts every quest of the epic including the shelved ones.
+   *
+   * The three in-total buckets are disjoint, so no fifth count is needed:
+   * `shelvedAt` is only ever set on a quest still in `new` status, so it
+   * never coexists with `acceptedAt` or `completedAt`, and `inProgress`
+   * excludes both of the others.
    *
    * Called at publish and stamped onto the row. #1555 is what serves it live
    * for an open release.
