@@ -88,8 +88,13 @@ export class LlmsCommand {
       await run("generate index", async () => {
         // Generate doc tree links
         const indexModule = await import("../.gen/index.ts");
-        const tree = indexModule.tree as DocNode[];
-        const docLinks = this.generateDocLinks(tree);
+        // ⚠️ `trees`, plural, and keyed by product. It was a single `tree`
+        // until quest #1603 gave Bay and Lore their own doc sets; this file
+        // kept reading the old name through an `as DocNode[]` cast, which is
+        // why nothing typechecked it and the whole task died on
+        // "tree is not iterable" the first time it actually ran.
+        const trees = indexModule.trees;
+        const docLinks = this.generateDocLinks(trees);
 
         // Combine base content with generated doc links
         indexContent = `${baseContent}\n${docLinks}`;
@@ -162,11 +167,40 @@ export class LlmsCommand {
     },
   });
 
-  protected generateDocLinks(tree: DocNode[]): string {
+  /**
+   * The whole site's page list, one section per doc set.
+   *
+   * `llms.txt` covers every product rather than the framework alone, so all
+   * three trees are walked. The framework keeps the bare category headings it
+   * has always had (`## Guides`, `## Reference`, …) and each product gets a
+   * heading of its own instead: all three name their root category `guides`,
+   * so without one the file would carry three `## Guides` sections and read
+   * as one doc set repeated.
+   *
+   * Every `href` already carries its product prefix (`/bay/docs/…`), so the
+   * absolute URLs need nothing done to them here.
+   */
+  protected generateDocLinks(trees: Record<string, DocNode[]>): string {
     const lines: string[] = [];
 
-    for (const node of tree) {
-      this.renderNode(node, lines, 0);
+    for (const [product, tree] of Object.entries(trees)) {
+      if (tree.length === 0) continue;
+
+      if (product) {
+        lines.push(`## ${this.formatTitle(product)}`);
+        lines.push("");
+      }
+
+      for (const node of tree) {
+        // Depth 1 under a product heading, so the root category does not emit
+        // a competing `##` of its own — it becomes the parent name on each
+        // leaf instead ("Guides - Introduction").
+        this.renderNode(node, lines, product ? 1 : 0);
+      }
+
+      if (product) {
+        lines.push("");
+      }
     }
 
     return lines.join("\n");

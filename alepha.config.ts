@@ -350,7 +350,17 @@ export default (alepha: Alepha) => {
         // survives the queue.
         await run([`yarn e2e`, `yarn e2e-cli`], { exclusive: suites });
 
-        await run(`cd apps/docs && yarn alepha gen:llms`);
+        // ⚠️ `{ root }`, never `cd X && …`. `shell.run(string)` passes every
+        // token through as a LITERAL argument on both runtimes — that is a
+        // deliberate contract, pinned by `shellStringContract.spec.ts`, so
+        // metacharacters cannot break out of an argument. A `&&` here is not
+        // a separator: the whole line spawned the binary `cd` with `&&` and
+        // the rest as its arguments, which exits 0 in ten milliseconds having
+        // done nothing. This step reported success on every run for as long
+        // as it existed and never once generated anything; CI caught the
+        // first real failure in it only because the deploy job runs the
+        // command properly.
+        await run(`yarn alepha gen:llms`, { root: "apps/docs" });
         await run(`yarn clean`);
         await run("yarn");
       },
