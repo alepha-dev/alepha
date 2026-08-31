@@ -162,6 +162,23 @@ const unsubscribe = this.pricing.sub((value) => {
 instance, so treat it as a cache invalidation signal rather than a place to do
 work once.
 
+### How long a change takes to land everywhere
+
+The topic rides the queue provider, which is in-memory by default. On a single
+long-lived Node process that is instant and this section does not apply. On a
+serverless runtime it does not apply either, for the opposite reason: many
+isolates serve the same app, and a `set()` handled by one of them never reaches
+the others.
+
+So the cache also expires. `get()` re-reads the row once the cached value is
+older than `PARAMETERS_CACHE_TTL_MS`, which defaults to **30 seconds on
+serverless** and to `0` (never revalidate) elsewhere. A flip therefore reaches
+every isolate within about half a minute, and an operator who reloads the page
+one second after saving may still see the old behaviour.
+
+Say so wherever an admin flips something that a human will immediately go and
+test. A switch that appears not to have worked gets flipped again.
+
 ## History, and the version that was in force
 
 ```typescript

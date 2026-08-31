@@ -30,6 +30,11 @@ export class AppSecurityProvider {
         .min(1)
         .meta({ secret: false })
         .optional(),
+      // Whether self-registration is open when the realm has never been
+      // configured from the admin Parameters page. See the note on
+      // `registrationAllowed` below for why this is a boot-time default and
+      // not a live switch.
+      REGISTRATION_ALLOWED: z.boolean().meta({ secret: false }).optional(),
     }),
   );
 
@@ -44,6 +49,22 @@ export class AppSecurityProvider {
       // to `/mcp` via Dynamic Client Registration instead of a pasted
       // `?api_key=` query string. The legacy api-key path stays working.
       oauth: true,
+      // Mints a `$parameter` named `api.realms.default` over the whole
+      // settings object below, which `RealmProvider.getSettings()` then reads
+      // in preference to the literal. An owner flips `registrationAllowed`
+      // from the admin Parameters page with no redeploy.
+      //
+      // ⚠️ **The settings below become boot-time DEFAULTS, not the live
+      // values.** The first time an admin opens the Parameters page, the
+      // whole object is written to the `parameters` table as v1
+      // ("Auto-seeded from compiled defaults", `ParameterProvider`
+      // `getCurrentWithDefault`). From that moment, editing anything in this
+      // block changes nothing on a deployed instance: the stored row wins.
+      // Env-derived keys (`captchaRequired`, `registrationIpMaxAttempts`,
+      // `adminEmails`, `registrationAllowed`) are frozen the same way, so
+      // adding `TURNSTILE_SITE_KEY` or `ADMIN_EMAIL` to a running instance
+      // also means flipping the matching field in admin.
+      parameters: true,
     },
     settings: {
       username: "email",
@@ -51,6 +72,16 @@ export class AppSecurityProvider {
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
       captchaRequired: !!this.env.TURNSTILE_SITE_KEY,
+      // Open by default, so lore.alepha.dev keeps accepting signups. A
+      // self-hosted image ships `REGISTRATION_ALLOWED=false` instead and
+      // opens itself through the empty-users-table bootstrap exception.
+      //
+      // This is a default and not a gate: once the parameter row exists the
+      // env var is inert, and the switch lives in admin. Setting it after
+      // first boot is a no-op, which is the intended shape: a self-hosted
+      // operator closes an instance permanently from the UI, not by editing
+      // a compose file nobody re-reads.
+      registrationAllowed: this.env.REGISTRATION_ALLOWED !== false,
       registrationIpMaxAttempts: this.env.REGISTRATION_IP_MAX_ATTEMPTS
         ? Number(this.env.REGISTRATION_IP_MAX_ATTEMPTS)
         : undefined,
