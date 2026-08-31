@@ -221,6 +221,12 @@ export default {
   "board.filter.area": "Area",
   "board.filter.tag": "Tag",
   "board.filter.allStatuses": "All status",
+  // Multi-select triggers collapse to a count past one selection, so these
+  // are only ever shown for 2+ (one selection renders the value itself).
+  "board.filter.statusCount": "$1 status",
+  "board.filter.areaCount": "$1 areas",
+  "board.filter.releaseCount": "$1 releases",
+  "board.filter.tagCount": "$1 tags",
   "board.filter.allAreas": "All areas",
   "board.filter.allTags": "All tags",
 
@@ -304,6 +310,8 @@ export default {
   "quest.create.tags": "Tags",
   "quest.create.tags.helper":
     "Labels for the nature of the quest (bug, feat, chore…). Area says where, tag says what kind.",
+  "quest.create.tags.empty": "Add tags",
+  "quest.create.tagCount": "$1 tags",
   "quest.tags.placeholder": "Add a tag and press Enter",
   "quest.tags.suggestions": "Reuse:",
   "quest.view.questline.blockedBy": "Blocked by",
