@@ -1,10 +1,10 @@
-import { VITALS_THRESHOLDS } from "@alepha/sigil";
+import { VITALS_THRESHOLDS } from "@alepha/lore/sigil";
 
 /**
  * The five metrics, in the order the tab shows them, with the label key and the
  * unit each needs.
  *
- * The thresholds are NOT restated here: they come from `@alepha/sigil`'s
+ * The thresholds are NOT restated here: they come from `@alepha/lore`'s
  * `VITALS_THRESHOLDS`, in the same scale as the buckets, so the colour on a
  * card and the ranking the endpoint applies to a path cannot disagree about
  * what "poor" means. CLS is stored ×1000 like its boundaries and un-scaled

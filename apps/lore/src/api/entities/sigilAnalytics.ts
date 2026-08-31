@@ -32,7 +32,7 @@ export const UNIQUES_COLLAPSED_HASH = "*";
 /**
  * The three sigil aggregate tables: views, uniques, vitals.
  *
- * They lived in `@alepha/sigil/ingest` for a while, behind a factory that took
+ * They lived in `@alepha/lore/ingest` for a while, behind a factory that took
  * `sigils.cols.id` as a parameter. That indirection existed for exactly one
  * reason: every table carries
  * `db.ref(z.uuid(), () => sigils.cols.id, { onDelete: "cascade" })`, and
@@ -46,7 +46,7 @@ export const UNIQUES_COLLAPSED_HASH = "*";
  * reversed two thirds of it (see `sigilViewsHourly.ts` and
  * `sigilVitalsHourly.ts`: both frozen). What a second sink genuinely needs to
  * speak the protocol - the ingest path, the envelope schema, the key format -
- * is still shared, from `@alepha/sigil`. Storage is not protocol.
+ * is still shared, from `@alepha/lore`. Storage is not protocol.
  *
  * The cascade is load-bearing and is why dropping the ref for a plain uuid was
  * rejected: deleting a sigil erases everything it ever reported, which is
@@ -191,7 +191,7 @@ const uniques = $entity({
  * storage cost. Keeping raw values would grow with traffic to compute the
  * same percentiles.
  *
- * The bucket boundaries come from `@alepha/sigil`, shared so the
+ * The bucket boundaries come from `@alepha/lore`, shared so the
  * chart and the ingest agree on what "good" means.
  *
  * **Seven integer columns, not one JSON blob.** The histogram used to live

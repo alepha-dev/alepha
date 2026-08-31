@@ -15,8 +15,8 @@
   "dependencies": {
     "@alepha/commerce": "workspace:*",
     "@alepha/devtools": "workspace:*",
+    "@alepha/lore": "workspace:*",
     "@alepha/payments-stripe": "workspace:*",
-    "@alepha/sigil": "workspace:*",
     "@alepha/ui": "workspace:*",
     "@fontsource-variable/archivo": "^5.3.0",
     "alepha": "workspace:^",

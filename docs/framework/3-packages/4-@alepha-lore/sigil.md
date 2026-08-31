@@ -1,11 +1,9 @@
-# @alepha/sigil
-
-Reports page views, vitals and errors from an Alepha app to a Sigil instance.
+# @alepha/lore - Sigil
 
 ## Installation
 
 ```bash
-npm install @alepha/sigil
+npm install @alepha/lore
 ```
 
 ## Overview
@@ -41,7 +39,7 @@ could import the module without it, but `react` and `react-dom` are already
 peer dependencies of this package, so such an app had to install them anyway.
 The split bought one unused import at the cost of a second module every host
 had to know about. If a genuinely React-free consumer ever appears, move
-the `register` below into its own module behind `@alepha/sigil`.
+the `register` below into its own module behind `@alepha/lore`.
 
 An app that wants the link somewhere else in its own layout can still render
 it from `useFeedbackUrl()`; `<SigilRoot />` hides itself when there is no URL,

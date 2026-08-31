@@ -1,4 +1,4 @@
-import { AlephaSigil } from "@alepha/sigil";
+import { AlephaSigil } from "@alepha/lore/sigil";
 import { Alepha, run } from "alepha";
 import { AlephaReactI18n } from "alepha/react/i18n";
 

@@ -8,7 +8,7 @@
  * (on the host page) listens for it and flashes a brief "thank you"
  * acknowledgement — the only feedback the user gets once the popup is gone.
  *
- * Importable React-free via `@alepha/sigil` so the Lore feedback page
+ * Importable React-free via `@alepha/lore` so the Lore feedback page
  * can share the exact string without pulling the module barrel.
  */
 export const SIGIL_FEEDBACK_SUBMITTED_MESSAGE =

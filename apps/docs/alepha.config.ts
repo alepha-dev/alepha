@@ -34,7 +34,7 @@ export default defineConfig({
   // fallback: the asset manifest is consulted first, and a match is served from
   // the edge without invoking the worker - free and unlimited on every plan.
   // The worker exists for `POST /api/sigil/ingest` and nothing else: docs
-  // registers no `$action` of its own, and `@alepha/sigil` needs a same-origin
+  // registers no `$action` of its own, and `@alepha/lore` needs a same-origin
   // endpoint to post to. That endpoint is the one thing a purely static host
   // cannot offer, and it is where the visitor IP becomes a salted hash and
   // where the sigil credential stays instead of shipping to every reader. It

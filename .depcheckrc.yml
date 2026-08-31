@@ -4,11 +4,17 @@ ignores:
   - "@alepha/mantine"
   - "@alepha/mqtt"
   - "@alepha/devtools"
-  # Self-referenced by its own spec, which resolves `@alepha/sigil/react`
+  # Self-referenced by its own spec, which resolves `@alepha/lore/react`
   # through the package's `exports` map — the only way to prove that subpath
   # is reachable outside the `browser` condition. Same treatment as the other
   # workspace packages above.
-  - "@alepha/sigil"
+  - "@alepha/lore"
+  # `@alepha/lore` devDepends on `lore` to type `@alepha/lore/cli` against
+  # Lore's own controllers. The edge is `import type` and nothing else, so it
+  # is erased before anything runs and depcheck reads the manifest entry as
+  # unused. Removing the entry would not simplify anything: it would drop the
+  # types the CLI is built on and leave the deep import resolving by luck.
+  - "lore"
   - "@vitejs/plugin-react"
   - "jsdom"
   - "@vitest/coverage-v8"

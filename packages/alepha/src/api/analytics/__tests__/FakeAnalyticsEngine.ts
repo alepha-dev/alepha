@@ -12,7 +12,7 @@ interface Point {
 /**
  * An in-process stand-in for a Workers Analytics Engine dataset **and** its
  * SQL API, shaped for `WaeAnalyticsProvider` — not a reuse of
- * `@alepha/sigil`'s `FakeAnalyticsEngine`, which hard-codes the older
+ * `@alepha/lore`'s `FakeAnalyticsEngine`, which hard-codes the older
  * `WaeAnalyticsStore`'s SQL text, a different slot map and a different
  * discriminator.
  *

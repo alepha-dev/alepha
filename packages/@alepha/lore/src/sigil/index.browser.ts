@@ -27,7 +27,7 @@ export * from "./sigilEnv.ts";
  * hydrate a tree the server did not render.
  *
  * The React surface is still deliberately **not** re-exported here. It lives at
- * `@alepha/sigil`, a condition-free subpath, so that it resolves the same
+ * `@alepha/lore`, a condition-free subpath, so that it resolves the same
  * way on an SSR server pass as in a client bundle. Exporting it from a
  * `browser`-only entry made it unimportable under `types` / `import` /
  * `default`, which is a compile error in every host that is not a browser

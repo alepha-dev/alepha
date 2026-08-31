@@ -1,12 +1,12 @@
 # Sigil (analytics, vitals & errors)
 
-`@alepha/sigil` makes an Alepha app report what it is doing: page views,
+`@alepha/lore` makes an Alepha app report what it is doing: page views,
 Web Vitals, and client and server errors - to the **sink** the app names. A
 sink is anything serving the two sigil endpoints; Lore is one.
 
 ```typescript
 import { Alepha } from "alepha";
-import { AlephaSigil } from "@alepha/sigil";
+import { AlephaSigil } from "@alepha/lore/sigil";
 
 Alepha.create().with(AlephaSigil).with(App).start();
 ```
@@ -217,10 +217,10 @@ no JSX to place. Control it from `SIGIL_CONFIG` - `feedbackButton: "hidden"`
 keeps it out of the tree, `feedbackButtonExcludedPaths` keeps it off specific
 routes.
 
-To render your own link instead, `@alepha/sigil` re-exports the pieces:
+To render your own link instead, `@alepha/lore` re-exports the pieces:
 
 ```tsx
-import { useFeedbackUrl } from "@alepha/sigil";
+import { useFeedbackUrl } from "@alepha/lore/sigil";
 
 // Renders only when the sink hands out a feedback URL
 // and the current path is not excluded.

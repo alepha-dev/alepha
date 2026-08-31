@@ -84,7 +84,7 @@ Alepha uses a hybrid monorepo structure:
 
 - `@alepha/ui` - Shared shadcn Base UI Nova components. Edit `src/components/` directly. Stock shadcn primitives can be refreshed with `yarn w @alepha/ui sync`, which fetches them from the public `ui.shadcn.com/r/styles/base-nova` registry. Our own blocks (controls, admin, auth, app-shell, alepha-table, …) are not touched by `sync` — they're hand-maintained.
 - `@alepha/devtools` - Development tools and inspection UI
-- `@alepha/sigil` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by `SIGIL_SINK` (default `https://lore.alepha.dev`), authenticated by `SIGIL_KEY`. The key is the only required variable and the only secret: it is shaped `sg_<project>_<secret>`, so it names its own project and the app needs nothing else. `SIGIL_CONFIG` is optional and holds switches only. Lore is the sink (`apps/lore`, `SigilIngestController`)
+- `@alepha/lore` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by `SIGIL_SINK` (default `https://lore.alepha.dev`), authenticated by `SIGIL_KEY`. The key is the only required variable and the only secret: it is shaped `sg_<project>_<secret>`, so it names its own project and the app needs nothing else. `SIGIL_CONFIG` is optional and holds switches only. Lore is the sink (`apps/lore`, `SigilIngestController`)
 - `@alepha/payments-stripe` - Stripe payments backend
 - `@alepha/payments-mollie` - Mollie payments backend
 - `@alepha/mqtt` - MQTT transport

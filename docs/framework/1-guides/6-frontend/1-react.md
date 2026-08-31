@@ -267,7 +267,7 @@ arguments blanked: no route, no component, nothing to open.
 ⚠️ **Alepha passes `onRecoverableError` to `hydrateRoot` and `createRoot`,
 which replaces that default.** These errors therefore no longer reach
 `window.onerror` at all. A crash reporter that listened there has to subscribe
-to this event instead - which is what `@alepha/sigil` does, appending
+to this event instead - which is what `@alepha/lore` does, appending
 `componentStack` to the reported stack so two mismatches in different subtrees
 are two rows rather than one.
 

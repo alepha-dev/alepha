@@ -1,15 +1,24 @@
-The reporting half of a sigil. Add it to an Alepha app and the app reports page
-views, Web Vitals, and client and server errors to the sink you name: a Lore
-instance, or anything else that serves the sigil ingest endpoint.
+Everything an Alepha app needs to talk to [Lore](https://lore.alepha.dev), in two
+subpaths that no host installs for the same reason.
 
-Named for the credential it holds, not for what it collects. The previous name
-(`@alepha/telemetry`) suggested a generic collector you could point anywhere; it
-is not one. It speaks one protocol, to one kind of endpoint.
+|                      |                                                                                           |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| `@alepha/lore/sigil` | the reporting half. A running app pushes page views, Web Vitals and errors to a sink.     |
+| `@alepha/lore/cli`   | the command half. A build or a CI job pushes a record of what it produced into a project. |
+
+The package is not part of the framework, and that is deliberate: Lore is a
+superset of Alepha, so no Lore code belongs inside `alepha` itself. Both halves
+live together because they share one answer to "where is Lore, and how do I
+authenticate to it".
+
+⚠️ The `SIGIL_*` variables below are unchanged by the rename. They name the
+concept, not the package: a sigil is still a sigil inside Lore, and a deployed
+app keeps reporting across the upgrade.
 
 ## Integration
 
 ```ts
-import { AlephaSigil } from "@alepha/sigil";
+import { AlephaSigil } from "@alepha/lore/sigil";
 
 alepha.with(AlephaSigil);
 ```
@@ -113,7 +122,7 @@ An app that would rather place the link itself sets `feedbackButton` to `hidden`
 and reads the URL directly:
 
 ```tsx
-import { useFeedbackUrl } from "@alepha/sigil";
+import { useFeedbackUrl } from "@alepha/lore/sigil";
 ```
 
 `useFeedbackUrl()` returns the URL and nothing else, and `<SigilRoot />` hides

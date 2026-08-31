@@ -204,7 +204,7 @@ if (versionViolations.length > 0) {
  * where that decision is permanent - a published subpath is a compatibility
  * promise, and there is no taking it back.
  *
- * `@alepha/sigil` is why this exists. It reached the eve of its first release
+ * `@alepha/lore` is why this exists. It reached the eve of its first release
  * with 14 subpaths and one module: `./key` was `src/shared/sigilKey.ts`,
  * `./paths` was `src/shared/sigilPaths.ts`, ten more of the same. None of them
  * saved a consumer anything, because every importer already loaded the module

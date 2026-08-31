@@ -1,4 +1,4 @@
-import { SIGIL_FEEDBACK_POSITIONS } from "@alepha/sigil";
+import { SIGIL_FEEDBACK_POSITIONS } from "@alepha/lore/sigil";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 

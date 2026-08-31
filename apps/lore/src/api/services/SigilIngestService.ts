@@ -1,8 +1,8 @@
-import type { SigilForwarded } from "@alepha/sigil";
-import { sigilFingerprintSource } from "@alepha/sigil";
-import { sigilHost, sigilNormalizeReportedConfig } from "@alepha/sigil";
-import { sigilScrubUrl } from "@alepha/sigil";
-import { bucketIndex, type VitalMetric } from "@alepha/sigil";
+import type { SigilForwarded } from "@alepha/lore/sigil";
+import { sigilFingerprintSource } from "@alepha/lore/sigil";
+import { sigilHost, sigilNormalizeReportedConfig } from "@alepha/lore/sigil";
+import { sigilScrubUrl } from "@alepha/lore/sigil";
+import { bucketIndex, type VitalMetric } from "@alepha/lore/sigil";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
