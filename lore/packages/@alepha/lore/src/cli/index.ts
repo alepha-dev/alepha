@@ -2,7 +2,10 @@ import { $context, $module } from "alepha";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
 import { type LoreOptions, loreOptions } from "./atoms/loreOptions.ts";
+import { QualityCommand } from "./commands/QualityCommand.ts";
+import { GitContextService } from "./services/GitContextService.ts";
 import { LoreClientService } from "./services/LoreClientService.ts";
+import { QualityReportReader } from "./services/QualityReportReader.ts";
 
 // ---------------------------------------------------------------------------
 
@@ -47,7 +50,16 @@ export const AlephaLoreCliPlugin = $module({
   name: "alepha.lore.cli",
   imports: [AlephaServerLinksClient],
   atoms: [loreOptions],
-  services: [LoreClientService],
+  services: [
+    LoreClientService,
+    QualityReportReader,
+    GitContextService,
+    // ⚠️ NOT re-exported below. It names `QualityController` and
+    // `ProjectController`, both types from the private `lore` workspace, and
+    // an exported signature carrying either would put that workspace in the
+    // published `.d.ts`. `scripts/check-dts.mjs` fails the build if it does.
+    QualityCommand,
+  ],
 });
 
 export const lore = (options: LoreOptions = {}) => {
@@ -60,4 +72,6 @@ export const lore = (options: LoreOptions = {}) => {
 // ---------------------------------------------------------------------------
 
 export * from "./atoms/loreOptions.ts";
+export * from "./services/GitContextService.ts";
 export * from "./services/LoreClientService.ts";
+export * from "./services/QualityReportReader.ts";
