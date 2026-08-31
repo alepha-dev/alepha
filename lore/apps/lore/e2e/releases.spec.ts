@@ -170,13 +170,21 @@ test.describe("Releases", () => {
     )!;
     expect(beforePublish.progress).toMatchObject({ completed: 1, total: 4 });
 
-    // ── The detail page resolves by TAG ───────────────────────────────────
-    await page.goto(`/${slug}/releases/0.1.0`);
+    // ── The detail page resolves by TAG, and `?tab=` deep-links ───────────
+    // The page is a plate over four tabs and opens on Overview, so what is
+    // IN the release is one tab across. `?tab=contents` is asserted rather
+    // than a click on purpose: `useDetailTab` binds the selection to the URL
+    // precisely so "that release's contents" is a link somebody can share,
+    // and a click would never exercise that.
+    await page.goto(`/${slug}/releases/0.1.0?tab=contents`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText("The big feature").first()).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByText(`Loose${t}`).first()).toBeVisible();
+
+    // The plate reads the same release from the store, with no round-trip.
+    await expect(page.getByText("0.1.0").first()).toBeVisible();
 
     // ── Publishing freezes the changelog AND the counts ───────────────────
     await post(page, `/api/publishRelease/${first.id}`, {});
@@ -201,7 +209,7 @@ test.describe("Releases", () => {
     ).toBe(400);
 
     // …and offers nothing to click for it in the UI.
-    await page.goto(`/${slug}/releases/0.1.0`);
+    await page.goto(`/${slug}/releases/0.1.0?tab=contents`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByText("The big feature").first()).toBeVisible({
       timeout: 10_000,
@@ -215,6 +223,9 @@ test.describe("Releases", () => {
     await expect(page.getByRole("button", { name: /^publish$/i })).toHaveCount(
       0,
     );
+    // Editing a record is not offered either - the plate hides the button
+    // rather than disabling it, because the server refuses the write anyway.
+    await expect(page.getByRole("button", { name: /^edit$/i })).toHaveCount(0);
   });
 
   test("orders by number, not by tag", async ({ page }) => {
