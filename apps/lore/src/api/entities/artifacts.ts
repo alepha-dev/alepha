@@ -55,8 +55,11 @@ export const artifacts = $entity({
     id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
     /**
-     * When the bytes under this key were last replaced. Only a mutable tag can
-     * move it; a pinned tag is written once and never updated.
+     * When the bytes under this key were last replaced.
+     *
+     * `latest` moves on its own and a pinned tag moves only under `--force`,
+     * so on a pinned row this normally equals `createdAt` - and where it does
+     * not, somebody retagged deliberately and this is the record of it.
      */
     updatedAt: db.updatedAt(),
     projectId: db.ref(z.integer(), () => projects.cols.id, {
@@ -74,6 +77,11 @@ export const artifacts = $entity({
     app: z.string().min(1).max(100),
     /**
      * The version this build is named by: `1.2.3`, `latest`, `demo-1`.
+     *
+     * ⚠️ `latest` is the one tag whose bytes may change, and replacing it in
+     * place IS the retention policy: one row and one stored object per key,
+     * with no sweep job and nothing to cap. Every other tag is write-once.
+     * See `ArtifactService.push`.
      */
     tag: z.string().min(1).max(100),
     /**

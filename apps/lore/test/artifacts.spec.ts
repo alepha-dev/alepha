@@ -120,6 +120,7 @@ describe("artifacts", () => {
       app?: string;
       tag?: string;
       commitSha?: string;
+      force?: boolean;
       file: File;
     },
   ) =>
@@ -130,6 +131,7 @@ describe("artifacts", () => {
           app: body.app ?? "my-app",
           tag: body.tag ?? "1.2.3",
           commitSha: body.commitSha,
+          force: body.force,
           file: body.file,
         },
       },
@@ -350,6 +352,23 @@ describe("artifacts", () => {
     });
 
     /**
+     * The message is the whole remedy. A pusher that hits this has tagged the
+     * wrong commit, and the fix is one flag away - but only if the refusal
+     * names it.
+     */
+    it("names --force in the refusal", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      await push(projectId, owner, { file: await packedArtifact() });
+
+      await expect(
+        push(projectId, owner, {
+          file: await packedArtifact({ filler: "// a later commit" }),
+        }),
+      ).rejects.toThrowError(/--force/);
+    });
+
+    /**
      * `1.2.3` for workerd and `1.2.3` for node are one release with two
      * variants, so the second must not read as a conflict with the first.
      */
@@ -373,6 +392,159 @@ describe("artifacts", () => {
         "node",
         "workerd",
       ]);
+    });
+  });
+
+  describe("the latest tag", () => {
+    /**
+     * `latest` replacing in place IS the retention policy: one row, one stored
+     * object, no sweep job to schedule and nothing to cap.
+     */
+    it("replaces in place, leaving one row and one stored object", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      const first = await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact(),
+      });
+      const second = await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact({ filler: "// a later commit" }),
+      });
+
+      expect(second.data.stored).toBe(true);
+      // The same row, moved - not a second one beside the first.
+      expect(second.data.artifact.id).toBe(first.data.artifact.id);
+      expect(second.data.artifact.sha256).not.toBe(first.data.artifact.sha256);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
+
+      // The previous bytes are reclaimed, which is the half a row count
+      // cannot see: a replace that only rewrote the row would leave every
+      // superseded build in the bucket forever.
+      const held = await ctx.artifactController.artifactBucket.list({});
+      expect(held.content).toHaveLength(1);
+    });
+
+    it("re-pushing the same bytes churns nothing", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      const first = await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact(),
+      });
+      const second = await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact(),
+      });
+
+      expect(second.data.stored).toBe(false);
+      expect(second.data.artifact.updatedAt).toBe(
+        first.data.artifact.updatedAt,
+      );
+      const held = await ctx.artifactController.artifactBucket.list({});
+      expect(held.content).toHaveLength(1);
+    });
+
+    /**
+     * ⚠️ The ORM reads an explicit `undefined` as an absent key, so the naive
+     * update leaves the row naming the commit that produced the bytes it just
+     * threw away.
+     */
+    it("clears the commit when the replacing push names none", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      await push(projectId, owner, {
+        tag: "latest",
+        commitSha: "0b35cb375",
+        file: await packedArtifact(),
+      });
+      const second = await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact({ filler: "// pushed from a laptop" }),
+      });
+
+      expect(second.data.artifact.commitSha).toBeUndefined();
+    });
+  });
+
+  describe("force", () => {
+    it("moves a pinned tag onto new bytes", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      const first = await push(projectId, owner, {
+        tag: "1.2.3",
+        file: await packedArtifact(),
+      });
+      const forced = await push(projectId, owner, {
+        tag: "1.2.3",
+        force: true,
+        file: await packedArtifact({ filler: "// the right commit this time" }),
+      });
+
+      expect(forced.data.artifact.id).toBe(first.data.artifact.id);
+      expect(forced.data.artifact.sha256).not.toBe(first.data.artifact.sha256);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
+      const held = await ctx.artifactController.artifactBucket.list({});
+      expect(held.content).toHaveLength(1);
+    });
+
+    /**
+     * A CI job that always passes `--force` should not have to know which tag
+     * it is pushing, so passing it where it changes nothing is not an error.
+     */
+    it("is inert on a first push", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      const fresh = await push(projectId, owner, {
+        tag: "2.0.0",
+        force: true,
+        file: await packedArtifact(),
+      });
+
+      expect(fresh.data.stored).toBe(true);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
+    });
+
+    it("does not turn identical bytes into a replace", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      const first = await push(projectId, owner, {
+        tag: "2.0.0",
+        force: true,
+        file: await packedArtifact(),
+      });
+      const same = await push(projectId, owner, {
+        tag: "2.0.0",
+        force: true,
+        file: await packedArtifact(),
+      });
+
+      // `--force` says "you may move this tag", never "move it anyway": the
+      // sha256 check comes first, so a forced re-push of the same build still
+      // stores nothing and leaves `updatedAt` where it was.
+      expect(same.data.stored).toBe(false);
+      expect(same.data.artifact.updatedAt).toBe(first.data.artifact.updatedAt);
+    });
+
+    it("is inert on latest, which moves either way", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact(),
+      });
+      const forced = await push(projectId, owner, {
+        tag: "latest",
+        force: true,
+        file: await packedArtifact({ filler: "// a later commit" }),
+      });
+
+      expect(forced.data.stored).toBe(true);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
     });
   });
 

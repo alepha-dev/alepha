@@ -46,6 +46,23 @@ A part's `data` must be consumed - fully or not at all - before advancing to the
 next one. The parser drains whatever is left behind, because the delimiter of
 the next part can only be found by walking past this one's content.
 
+## Scalar Fields Are Coerced
+
+A form can carry more than files, and the fields beside them are declared the
+way any other body field is: `z.boolean()`, `z.integer()`, `z.enum()`, an
+object. A part has no way to say what type it holds, so those values arrive as
+text and are **coerced before validation**, exactly as a query parameter or a
+header is - `"true"` becomes `true`, `"42"` becomes `42`, and a part holding
+JSON is parsed for an object or array field.
+
+A JSON request body is not coerced, and neither is the ORM: both carry their own
+types, so widening them would only hide mistakes. A multipart part cannot, which
+is the difference.
+
+Coercion widens what is _accepted_, never what is _valid_. A value that cannot
+be coerced is passed through unchanged, so the schema is still what rejects it:
+`flag=yes` against a `z.boolean()` is a 400, not a `true`.
+
 ## How a Limit Is Resolved
 
 Three levels, most specific last:

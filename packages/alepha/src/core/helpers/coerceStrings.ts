@@ -5,8 +5,13 @@ import { z } from "../providers/ZodProvider.ts";
  * HTTP headers, environment variables) to the JS type its schema declares.
  *
  * This is the zod-standard `z.coerce` behavior applied only at the edges where
- * inputs are inherently strings — request bodies and the ORM stay strict. A
- * value that cannot be coerced is returned unchanged so the subsequent
+ * inputs are inherently strings. A JSON request body and the ORM stay strict —
+ * both carry their own types — but the non-file parts of a MULTIPART body do
+ * not, and are coerced here too: without it a `z.boolean()` or `z.integer()`
+ * field is undeclarable in a form, since the wire can only ever deliver a
+ * string for it.
+ *
+ * A value that cannot be coerced is returned unchanged so the subsequent
  * validation produces a proper rejection. Arrays coerce element-wise.
  */
 export const coerceScalar = (schema: unknown, value: unknown): unknown => {

@@ -80,6 +80,9 @@ export class ArtifactController {
    * flag and a manifest eventually disagree and the manifest is the artifact's
    * own claim about itself. Two builds of `1.2.3` for different runtimes are
    * one release with two variants, not two releases.
+   *
+   * `latest` is the one tag that moves on its own; every other one is
+   * write-once and needs `force`. See {@link ArtifactService.push}.
    */
   pushArtifact = $action({
     use: [$secure(), this.ownsProject()],
@@ -96,6 +99,12 @@ export class ArtifactController {
          * has no commit to name, and an artifact is not a git object.
          */
         commitSha: z.string().max(40).optional(),
+        /**
+         * Move a pinned tag onto new bytes. For "tagged the wrong commit",
+         * which happens; not for a pipeline that pushes the same version
+         * twice, which is what `latest` is for.
+         */
+        force: z.boolean().optional(),
         file: z.file({ maxBytes: 20 * 1024 * 1024 }),
       }),
       response: artifactPushResultSchema,
@@ -106,6 +115,7 @@ export class ArtifactController {
         app: body.app,
         tag: body.tag,
         commitSha: body.commitSha,
+        force: body.force,
         file: body.file,
       });
 

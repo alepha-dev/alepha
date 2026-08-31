@@ -503,6 +503,93 @@ describe("ServerMultipartProvider - Size Limits", () => {
  * do neither: a streamed field leaves the iterator suspended on purpose, and a
  * blown limit throws from the part's own iterator, not from `parse`.
  */
+describe("ServerMultipartProvider - scalar fields", () => {
+  /**
+   * A multipart part is a string-only boundary: the wire has no way to say
+   * "this is a boolean". So a strict decode makes such a field impossible to
+   * declare rather than merely awkward - the client sends "true", zod refuses
+   * a string, and the refusal surfaces as "Malformed multipart/form-data",
+   * which names the transport instead of the field.
+   *
+   * Query parameters and headers have been coerced at this boundary since they
+   * existed. These tests are what stops the two drifting apart again.
+   */
+  class ScalarApp {
+    submit = $action({
+      schema: {
+        body: z.object({
+          file: z.file(),
+          flag: z.boolean().optional(),
+          count: z.integer().optional(),
+        }),
+        response: z.text(),
+      },
+      handler: async ({ body }) =>
+        `${typeof body.flag}:${body.flag} ${typeof body.count}:${body.count}`,
+    });
+  }
+
+  const post = async (fields: Record<string, string>) => {
+    const alepha = Alepha.create().with(AlephaServer).with(ScalarApp);
+    await alepha.start();
+
+    const form = new FormData();
+    form.append("file", new File(["x"], "x.txt", { type: "text/plain" }));
+    for (const [key, value] of Object.entries(fields)) {
+      form.append(key, value);
+    }
+
+    const resp = await fetch(
+      `${alepha.inject(ServerProvider).hostname}/api/submit`,
+      { method: "POST", body: form },
+    );
+    return { status: resp.status, text: await resp.text() };
+  };
+
+  test("should decode a boolean sent as text", async ({ expect }) => {
+    const resp = await post({ flag: "true" });
+
+    expect(resp.status).toBe(200);
+    expect(resp.text).toContain("boolean:true");
+  });
+
+  test("should decode false rather than read it as truthy", async ({
+    expect,
+  }) => {
+    const resp = await post({ flag: "false" });
+
+    expect(resp.status).toBe(200);
+    expect(resp.text).toContain("boolean:false");
+  });
+
+  test("should decode an integer sent as text", async ({ expect }) => {
+    const resp = await post({ count: "42" });
+
+    expect(resp.status).toBe(200);
+    expect(resp.text).toContain("number:42");
+  });
+
+  /**
+   * Coercion widens what is accepted; it must not make anything acceptable
+   * that was not. A value that cannot be coerced is passed through unchanged
+   * so the schema is still what rejects it.
+   */
+  test("should still refuse a value that is not a boolean", async ({
+    expect,
+  }) => {
+    const resp = await post({ flag: "yes" });
+
+    expect(resp.status).toBe(400);
+  });
+
+  test("should leave an absent optional field absent", async ({ expect }) => {
+    const resp = await post({});
+
+    expect(resp.status).toBe(200);
+    expect(resp.text).toBe("undefined:undefined undefined:undefined");
+  });
+});
+
 describe("ServerMultipartProvider - source cleanup", () => {
   const BOUNDARY = "----AlephaCleanup";
 

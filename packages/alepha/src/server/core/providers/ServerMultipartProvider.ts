@@ -6,6 +6,7 @@ import {
   $inject,
   $store,
   Alepha,
+  coerceScalar,
   type FileLike,
   type Infer,
   isTypeFile,
@@ -348,7 +349,18 @@ export class ServerMultipartProvider {
         if (isTypeFile(schema)) {
           body[key] = await this.materialise(part, key);
         } else {
-          body[key] = this.alepha.codec.decode(schema, await this.textOf(part));
+          // ⚠️ Coerced first, the same way a query parameter and a header are.
+          // A multipart part is a string-only boundary - there is no JSON
+          // envelope to carry a type - so a strict decode made `z.boolean()`
+          // and `z.integer()` fields UNDECLARABLE here: the client encoded
+          // `true` as "true", zod refused it, and the refusal surfaced as
+          // "Malformed multipart/form-data", which points at the transport
+          // rather than at the field. `HttpClient` already stringifies scalars
+          // into the form on purpose; this is the other half of that.
+          body[key] = this.alepha.codec.decode(
+            schema,
+            coerceScalar(schema, await this.textOf(part)),
+          );
         }
       }
     } catch (error) {
