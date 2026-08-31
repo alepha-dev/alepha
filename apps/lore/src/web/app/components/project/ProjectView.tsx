@@ -81,6 +81,11 @@ const ROUTES_FULL_WIDTH = new Set([
   "projectEpics",
   "projectEpic",
   "projectReleases",
+  // The release view is a full-width plate over four tabs, and it owns its
+  // own scroll: the plate stays put while a tab body scrolls under it. Capped
+  // and centred, the plate would sit in a 1024px column with a gutter down
+  // both sides and the artifact table would lose the width it is built for.
+  "projectRelease",
   "projectFolios",
   "projectFoliosNew",
   "projectFoliosFolio",
@@ -111,13 +116,18 @@ const ROUTES_FULL_WIDTH = new Set([
  */
 const SECTION_HREF_ROUTES: Record<
   string,
-  "projectFolios" | "projectEpics" | "projectQuests" | "projectApps"
+  | "projectFolios"
+  | "projectEpics"
+  | "projectQuests"
+  | "projectApps"
+  | "projectReleases"
 > = {
   projectFolios: "projectFolios",
   projectFoliosNew: "projectFolios",
   projectFoliosFolio: "projectFolios",
   projectEpic: "projectEpics",
   projectQuest: "projectQuests",
+  projectRelease: "projectReleases",
   projectApp: "projectApps",
   app: "projectApps",
   appAnalytics: "projectApps",
@@ -133,6 +143,7 @@ const SECTION_LABEL_KEYS: Record<string, string> = {
   projectEpics: "project.menu.epics",
   projectEpic: "project.menu.epics",
   projectReleases: "project.menu.releases",
+  projectRelease: "project.menu.releases",
   projectReports: "project.menu.reports",
   reportsOverview: "project.menu.reports",
   reportsQuests: "project.menu.reports",
@@ -457,6 +468,17 @@ const ProjectView = () => {
   // and a long one would push the crumbs off the bar.
   if (name === "projectQuest" && quest) {
     breadcrumbs.push({ label: `#${quest.shortId}` });
+  }
+  // And the release detail page contributes its TAG, which is the one leaf
+  // on this bar that is not a `#number`.
+  //
+  // The tag rather than the number for the same reason the URL is
+  // `/releases/0.28.0`: the number is the internal sequence and nobody
+  // reading the bar knows it. It is read straight from the route params -
+  // this route has no loader and no atom of its own, and the tag is already
+  // the thing the URL carries.
+  if (name === "projectRelease" && routerState.params.releaseTag) {
+    breadcrumbs.push({ label: String(routerState.params.releaseTag) });
   }
   // Folio routes contribute their directory chain (and the folio
   // title leaf) via `currentFolioPathAtom`, written by the folio loaders.
