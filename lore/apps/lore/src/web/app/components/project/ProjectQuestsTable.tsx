@@ -2,11 +2,18 @@ import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@alepha/ui/components/ui/sheet";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useStore } from "alepha/react";
@@ -19,10 +26,12 @@ import {
   ChevronsUp,
   ChevronUp,
   CircleDot,
+  Hash,
   Link2,
   type LucideIcon,
   MapPin,
   Minus,
+  Pencil,
   Search,
   Signature,
   Flag,
@@ -47,6 +56,7 @@ import FilterSlot from "../shared/FilterSlot.tsx";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
 import { QUEST_PRIORITY_TONE } from "./quest/questChips.ts";
+import QuestCreate from "./quest/QuestCreate.tsx";
 import { formatQuestSize } from "./quest/questSize.ts";
 
 /**
@@ -113,7 +123,16 @@ const ProjectQuestsTable = () => {
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
+  const toaster = useToast();
   const [users, setUsers] = useState<Array<User>>([]);
+  // The row whose edit drawer is open, or nothing. Held here rather than per
+  // row: one Sheet for the table, the same way the delete confirm is one
+  // dialog rather than 25.
+  const [editing, setEditing] = useState<QuestResource | undefined>();
+  // Bumped when the edit drawer saves. A row action gets `ctx.refresh()`, but
+  // the drawer outlives the menu that opened it, so this is the escape hatch
+  // `refreshSignal` exists for.
+  const [reload, setReload] = useState(0);
   const [knownTags, setKnownTags] = useState<string[]>([]);
 
   /**
@@ -185,6 +204,7 @@ const ProjectQuestsTable = () => {
         // values, column visibility, and sort under this key (replaces the
         // hand-rolled toolbar + localStorage that used to live here).
         persistenceKey={`lor.board.${project.id}`}
+        refreshSignal={reload}
         filters={{
           schema: boardFiltersSchema,
           seedValues: seededStatus ? { status: [seededStatus] } : undefined,
@@ -521,6 +541,40 @@ const ProjectQuestsTable = () => {
           },
         }}
         rowActions={(quest) => [
+          // ⚠️ Ahead of the lifecycle moves on purpose. These two are the
+          // things done most often from a list - paste a reference into a
+          // commit or a prompt, nudge a priority - and neither existed here,
+          // so both cost a page load and a trip back (feedback #2010).
+          {
+            icon: Hash,
+            label: tr("board.action.copyId"),
+            onClick: async () => {
+              // The `#N` reference, not the row id. That is the form the
+              // whole app already speaks: quest titles, `[[quest:#12]]` over
+              // MCP, and what someone types into a commit message. The row
+              // id is a database detail nobody pastes anywhere.
+              const reference = `#${quest.shortId}`;
+              try {
+                await navigator.clipboard.writeText(reference);
+                toaster.success(
+                  tr("board.action.copiedId", { args: [reference] }),
+                );
+              } catch {
+                toaster.error(tr("board.action.copyIdError"));
+              }
+            },
+          },
+          ...(questApi.updateQuestById.can()
+            ? [
+                {
+                  icon: Pencil,
+                  label: tr("board.action.editQuest"),
+                  // The same drawer the quest page opens, so a priority
+                  // change is one gesture rather than a navigation.
+                  onClick: () => setEditing(quest),
+                },
+              ]
+            : []),
           ...(!quest.acceptedAt && questApi.acceptQuest.can()
             ? [
                 {
@@ -614,6 +668,35 @@ const ProjectQuestsTable = () => {
             : []),
         ]}
       />
+
+      {/* One drawer for the table, opened by whichever row asked. The same
+          `QuestCreate` the quest page edits through, so there is one editor
+          rather than a second, thinner one for lists. */}
+      <Sheet
+        open={editing !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setEditing(undefined);
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-[50vw]"
+        >
+          <SheetHeader className="shrink-0">
+            <SheetTitle>{tr("quest.create.update")}</SheetTitle>
+          </SheetHeader>
+          {editing ? (
+            <QuestCreate
+              project={project}
+              quest={editing}
+              onSubmit={() => {
+                setEditing(undefined);
+                setReload((n) => n + 1);
+              }}
+            />
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

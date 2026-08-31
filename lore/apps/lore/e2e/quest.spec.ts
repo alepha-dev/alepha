@@ -1499,6 +1499,84 @@ test.describe("Quest", () => {
   });
 
   /**
+   * #1324, from feedback #2010. The row menu offered two lifecycle moves and
+   * a destructive one, and nothing for the two things done most often from a
+   * list: pasting a quest's reference somewhere, and nudging a field.
+   *
+   * ⚠️ The clipboard assertion reads the real clipboard through
+   * `navigator.clipboard.readText`, which needs the permission granted on the
+   * context. Asserting the toast alone would pass on a handler that copied
+   * the wrong string.
+   */
+  test("copy id and edit from the quests table row actions", async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    const projectTitle = `RA${t}`.slice(0, 20);
+    const questTitle = `RowActions${t}`;
+
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await registerAndVerify(page, `rowact${t}@example.com`, "RowAct123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { shortId } = await apiPost<{ shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: questTitle,
+        description: "Seeded for the row actions",
+        area: "Main",
+        priority: "low",
+        objectives: [],
+        attachments: [],
+      },
+    );
+
+    await page.goto(`/${projectSlug}/`);
+    await expect(page.getByText(questTitle).first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await test.step("Copy ID puts the #N reference on the clipboard", async () => {
+      await page.getByRole("button", { name: "Open row actions" }).click();
+      await page.getByRole("menuitem", { name: /copy id/i }).click();
+
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      // The `#N` reference, not the row id: that is what pastes usefully into
+      // a commit message, a prompt or a folio.
+      expect(copied).toBe(`#${shortId}`);
+    });
+
+    await test.step("Edit opens the drawer and saves in place", async () => {
+      await page.getByRole("button", { name: "Open row actions" }).click();
+      await page.getByRole("menuitem", { name: /edit quest/i }).click();
+
+      const renamed = `${questTitle}Edited`;
+      const title = page.getByRole("textbox", { name: /name/i }).first();
+      await expect(title).toBeVisible({ timeout: 10_000 });
+      await title.fill(renamed);
+      await page
+        .getByRole("button", { name: /save|update/i })
+        .first()
+        .click();
+
+      // The table refetches off `refreshSignal`, so the row shows the new
+      // title without a navigation - which is the whole point of the entry.
+      await expect(page.getByText(renamed).first()).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/$`));
+    });
+  });
+
+  /**
    * Shelve is reversible and Delete is not, so Shelve must be at least as
    * reachable — one click from the list, same as Delete (#136). The entry is
    * state-aware: a shelved row offers Unshelve instead, never both.
