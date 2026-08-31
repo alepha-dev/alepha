@@ -7,6 +7,7 @@ import {
 import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
+import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { BlobController } from "./controllers/BlobController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
@@ -41,6 +42,8 @@ import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AreaService } from "./services/AreaService.ts";
+import { ArtifactService } from "./services/ArtifactService.ts";
+import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
@@ -128,6 +131,8 @@ export const LoreApi = $module({
     QuestImportFormatProvider,
     QuestService,
     QualityService,
+    ArtifactTarReader,
+    ArtifactService,
     ProjectLimits,
     AreaService,
     ProjectActivityService,
@@ -169,6 +174,7 @@ export const LoreApi = $module({
     AreaController,
     ProjectReportsController,
     QualityController,
+    ArtifactController,
     ProjectQuestPortabilityController,
     InvitationController,
     AdminInvitationController,

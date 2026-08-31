@@ -114,6 +114,19 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // that proves it: `grep -rn "folioLinks.cols" src/api/entities/` must be
   // empty.
   "20260819225121_cloudy_lila_cheney": ["folio_links"],
+  // ⚠️ NOT a rebuild, and not a table that existed when this guard was
+  // written. `artifacts` was the server half of the abandoned Bay control
+  // plane, shipped 2026-08-05 and dropped here with the rest of the outpost
+  // purge the day after. Epic #18 gave the NAME back to a new table with a
+  // different shape - `(projectId, app, tag, runtime)`, sha256-addressed, no
+  // `deployments` beside it - so the entity walk started producing "artifacts"
+  // and this historical drop became a violation retroactively.
+  //
+  // Sanctioned rather than renamed around: the old table has been gone from
+  // production for a month, `artifacts` is the honest name for what the new
+  // one holds, and the per-migration shape of this list is exactly what lets
+  // one dead drop be excused without unguarding the live table anywhere else.
+  "20260805233951_striped_captain_flint": ["artifacts"],
 };
 
 /**
