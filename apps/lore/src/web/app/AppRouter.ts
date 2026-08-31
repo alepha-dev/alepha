@@ -21,6 +21,7 @@ import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
+import type { QualityController } from "../../api/controllers/QualityController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
 import type { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import type { SigilController } from "../../api/controllers/SigilController.ts";
@@ -73,6 +74,7 @@ export class AppRouter {
   questApi = $client<QuestController>();
   projectApi = $client<ProjectController>();
   projectReportsApi = $client<ProjectReportsController>();
+  qualityApi = $client<QualityController>();
   invitationAdminApi = $client<AdminInvitationController>();
   invitationApi = $client<InvitationController>();
   feedbackApi = $client<FeedbackController>();
@@ -1052,6 +1054,7 @@ export class AppRouter {
       this.reportsOverview,
       this.reportsQuests,
       this.reportsMembers,
+      this.reportsQuality,
     ],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Reports`,
@@ -1093,6 +1096,28 @@ export class AppRouter {
       members: await this.projectReportsApi.getReportsMembers({
         params: {
           id: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+        },
+      }),
+    }),
+  });
+
+  /**
+   * The one Reports tab whose data is INGESTED rather than derived.
+   *
+   * Deliberately not 404'd when `features.quality` is off, matching how the
+   * `projectKanban` route stays reachable while only its sidebar entry is
+   * gated: the flag decides whether the tab is offered, and a link someone
+   * already holds should not break because a switch moved. What the flag does
+   * gate is `reportsTabs`, so the tab is not advertised.
+   */
+  reportsQuality = $page({
+    name: "reportsQuality",
+    path: "/quality",
+    lazy: () => import("./components/project/reports/ReportsQuality.tsx"),
+    loader: async () => ({
+      quality: await this.qualityApi.getQualityRuns({
+        params: {
+          projectId: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
         },
       }),
     }),
