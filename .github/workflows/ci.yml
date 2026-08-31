@@ -7,11 +7,9 @@ on:
   push:
     branches:
       - main
-  # Without this, the only CI run that ever happens is the one on `main` — the
-  # same event that deploys Lore to production. Verification and deployment
-  # were literally the same moment, so a branch could only be proven green by
-  # shipping it. PRs get the full checks/test/bay/e2e matrix; the deploy jobs
-  # opt out below.
+  # Without this, the only CI run that ever happens is the one on `main` - the
+  # same event that deploys Lore to production, so a branch could only be
+  # proven green by shipping it. PRs get test/e2e/bay; the deploys opt out.
   pull_request:
     branches:
       - main
@@ -24,16 +22,16 @@ concurrency:
   # `workflow_run` runs get a group of their own, and that separation is the
   # whole point of this expression.
   #
-  # `github.ref` for a `workflow_run` event is the DEFAULT BRANCH — so a
-  # Release completing resolved to `ci-refs/heads/main`, the same group a push
-  # to main uses. With `cancel-in-progress`, the Release follow-up then
-  # cancelled the push run that was still mid-test, and that push run is the
-  # only one carrying `deploy-lore-production`. Lore silently did not ship, and
-  # the evidence was a run marked `cancelled` that looks exactly like the
-  # ordinary "a newer push superseded this one".
+  # `github.ref` for a `workflow_run` event is the DEFAULT BRANCH, so a Release
+  # completing resolved to `ci-refs/heads/main` - the same group a push to main
+  # uses. With `cancel-in-progress`, the Release follow-up then cancelled the
+  # push run still mid-test, and that push run is the only one carrying
+  # `deploy-lore-production`. Lore silently did not ship, and the evidence was
+  # a run marked `cancelled` that looks exactly like "a newer push superseded
+  # this one".
   #
   # Keyed on `head_branch` rather than a constant so two Releases in a row
-  # still supersede each other, which is the behaviour worth keeping.
+  # still supersede each other.
   #
   # One line, deliberately: a folded `>-` block keeps the newlines of any
   # more-indented continuation, so a "tidier" multi-line version smuggles
@@ -43,12 +41,47 @@ concurrency:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────
-  # Fast checks — lint, typecheck, dep / i18n / migration audits.
-  # No services needed. Runs in parallel with `test` and `e2e`.
+  # Checks + tests. What `yarn v` runs, minus the build and e2e half.
+  #
+  # Coverage is measured here rather than in a second job running the same
+  # 850 files a second time. Instrumentation costs roughly two minutes on top
+  # of the plain run, which is cheaper than the duplicate suite it replaces,
+  # and it means one red X per broken test instead of two.
   # ──────────────────────────────────────────────────────────────────────
-  checks:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # A hang detector, not a budget. Public-repo minutes are free and the
+    # GitHub cap is 6 hours, so a generous number costs nothing while a tight
+    # one costs a blocked deploy: a job killed on the timeout reports as the
+    # failure the deploys gate on.
+    timeout-minutes: 30
+    services:
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3mock:
+        image: adobe/s3mock
+        ports:
+          - 19090:9090
+
+      emqx:
+        image: emqx/emqx
+        ports:
+          - 11883:1883
+        env:
+          EMQX_ALLOW_ANONYMOUS: "true"
+
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -77,171 +110,135 @@ jobs:
       - name: DB Migrations Check
         run: yarn check:migrations
 
-      # The two checks `yarn v` runs that this job did not: a `throw new
-      # Error` / `Date.now()` regression or a doc-breaking JSDoc change used to
-      # reach main (and the Lore deploy) whenever nobody ran `yarn v` locally.
       - name: Conventions Check
         run: yarn check:conventions
 
       - name: Docs Check
         run: yarn check:docs
 
-  # ──────────────────────────────────────────────────────────────────────
-  # Unit + integration tests (Vitest, Bun providers).
-  # Needs services for the integration tests that hit real backends.
-  # ──────────────────────────────────────────────────────────────────────
-  test:
-    runs-on: ubuntu-latest
-    # 20, not 12. This is a hang detector, not a budget: public-repo minutes are
-    # free and the GitHub cap is 6 hours, so a generous number costs nothing.
-    # A tight one costs a blocked `deploy-lore-production`, because a job killed
-    # on the timeout reports as a failure the deploy gates on.
-    #
-    # 12 was set against a ~4m30s suite plus a `Setup` step that is 36s on a
-    # cache hit and 2m20s on a miss (every dependency bump is a miss, since the
-    # lockfile is the cache key). The suite has grown into it: a run at 11m53s
-    # left 7 seconds of headroom, and a slow runner would have taken the deploy
-    # down with it.
-    #
-    # The number to watch is `Test Project`, not this one. If that alone
-    # approaches 8 minutes, the suite has genuinely regressed and raising this
-    # again is the wrong move.
-    timeout-minutes: 20
-    services:
-      redis:
-        image: redis
-        ports:
-          - 16379:6379
-
-      postgres:
-        image: postgres
-        ports:
-          - 15432:5432
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-
-      s3mock:
-        image: adobe/s3mock
-        ports:
-          - 19090:9090
-
-      emqx:
-        image: emqx/emqx
-        ports:
-          - 11883:1883
-        env:
-          EMQX_ALLOW_ANONYMOUS: "true"
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Clean
-        run: yarn clean
-
-      - name: Prepare
-        run: yarn copy
-
+      # Writes coverage/coverage-summary.json and coverage/test-results.json.
+      # Those paths are the convention the push step below reads; neither is
+      # passed as an argument.
       - name: Test Project
-        run: yarn test
+        run: yarn alepha test --coverage
 
       - name: Test Bun Providers
         run: yarn test:bun
 
-  # ──────────────────────────────────────────────────────────────────────
-  # Coverage — measure the suite and record what it measured in Lore.
-  #
-  # Its own job, on main only, gating nothing. Three independent constraints
-  # force that exact shape and any one of them alone would be enough:
-  #
-  #   1. The `test` job GATES `deploy-lore-production` and already runs at 11
-  #      to 12 minutes against a 20-minute hang detector. Istanbul
-  #      instrumentation is not free, and a coverage run inside that job puts
-  #      the Lore deploy behind it.
-  #   2. This repository is public and CI runs on `pull_request`. Fork PRs get
-  #      no secrets, so a push step there fails on a missing LORE_API_KEY by
-  #      construction rather than by accident. `if: github.event_name !=
-  #      'pull_request'` is the same guard `deploy-docs-production` uses.
-  #   3. The push records what landed. It is not meant to gate what lands.
-  #
-  # It runs the suite a SECOND time, which is the deliberate price of not
-  # touching the deploy gate. Public-repo minutes are free.
-  #
-  # ⚠️ Nothing else in this repository runs `alepha test`. The root script is
-  # `yarn vitest run`, and `verify` shells out to `yarn test` / `yarn test:bun`
-  # directly — so the report convention produces no files anywhere but here.
-  # ──────────────────────────────────────────────────────────────────────
-  coverage:
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    # The same four the `test` job declares, copied rather than trimmed to
-    # "the ones coverage needs": without them a large slice of the suite fails
-    # and the published number is wrong rather than merely lower.
-    services:
-      redis:
-        image: redis
-        ports:
-          - 16379:6379
-
-      postgres:
-        image: postgres
-        ports:
-          - 15432:5432
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-
-      s3mock:
-        image: adobe/s3mock
-        ports:
-          - 19090:9090
-
-      emqx:
-        image: emqx/emqx
-        ports:
-          - 11883:1883
-        env:
-          EMQX_ALLOW_ANONYMOUS: "true"
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Clean
-        run: yarn clean
-
-      - name: Prepare
-        run: yarn copy
-
-      # Writes coverage/coverage-summary.json and coverage/test-results.json.
-      # The paths are the convention the push step reads; neither is passed as
-      # an argument.
-      - name: Test With Coverage
-        run: yarn alepha test --coverage
-
-      # The credential is on THIS step only. A repository-wide `env:` would put
-      # a full-admin Lore key in the environment of the test run itself, which
+      # This repository is public and CI runs on `pull_request`. Fork PRs get
+      # no secrets, so the push would fail on a missing LORE_API_KEY by
+      # construction. Same guard `deploy-docs-production` uses.
+      #
+      # The credential is on THIS step only. A job-wide `env:` would put a
+      # full-admin Lore key in the environment of the test run itself, which
       # executes every spec in the repository.
       - name: Push Coverage To Lore
+        if: github.event_name != 'pull_request'
         run: yarn alepha lore quality push
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
   # ──────────────────────────────────────────────────────────────────────
-  # Bay — the Go control plane. Nothing in the yarn pipeline compiles or
-  # tests it, which is how a `.gitignore` pattern that swallowed the whole
-  # `cmd/bay/` directory reached a commit unnoticed: the working tree built
-  # fine because the files were there.
+  # Build + E2E. The long pole, and the half of `yarn v` the job above skips.
+  # ──────────────────────────────────────────────────────────────────────
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3mock:
+        image: adobe/s3mock
+        ports:
+          - 19090:9090
+
+      emqx:
+        image: emqx/emqx
+        ports:
+          - 11883:1883
+        env:
+          EMQX_ALLOW_ANONYMOUS: "true"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
+
+      - name: Build Project
+        run: yarn build
+
+      # Keyed on the exact Playwright version rather than on the lockfile: the
+      # lockfile churns constantly in a monorepo this size, and a miss that
+      # only costs a re-download is not worth taking on every dependency bump.
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(yarn playwright --version | tr -d '\n' | sed 's/.* //')"
+          [ -n "$version" ] || { echo "could not resolve the Playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      # `--with-deps` is deliberately absent. On `ubuntu-latest` every shared
+      # library chromium needs is already on the image; all the flag adds is
+      # nine font packages, and it pays for them by putting `apt-get update`
+      # against `azure.archive.ubuntu.com` on the critical path. On 2026-08-19
+      # that mirror flapped and took the e2e job of three consecutive pushes
+      # with it, at up to 12min per fetch, each run reported `cancelled` with
+      # no test output and each skipping the Lore deploy.
+      #
+      # The suites render Latin text only and there is no screenshot
+      # comparison anywhere, so nothing can observe a glyph. If a runner image
+      # ever does drop a real chromium dependency the failure is a missing
+      # `.so` at browser launch - restore the flag then, off the critical path.
+      - name: Install Playwright
+        timeout-minutes: 4
+        run: yarn playwright install chromium
+
+      # Bounded on the step, not just the job. Playwright's `globalTimeout`
+      # covers the tests but not teardown, and teardown is where this hangs: a
+      # failing run once printed its results and then sat five minutes holding
+      # orphaned wrangler and browser processes until the job cap killed
+      # everything, which reads as "CI is slow" rather than "two tests failed".
+      - name: Run E2E Tests
+        timeout-minutes: 20
+        run: yarn e2e
+
+      # Its own step: `e2e-cli` packs the workspace with `yarn pack` and
+      # installs the tarball into a throwaway project, so a failure here means
+      # a packaging bug rather than a UI one.
+      - name: Run CLI E2E Tests
+        timeout-minutes: 10
+        run: yarn e2e-cli
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Bay - the Go control plane. Nothing in the yarn pipeline compiles or tests
+  # it, which is how a `.gitignore` pattern that swallowed the whole
+  # `cmd/bay/` directory reached a commit unnoticed.
   #
   # Cross-compiles as well as builds: Bay is developed on macOS and only ever
   # runs on Linux, so a Linux-only compile error would otherwise surface on
@@ -290,161 +287,23 @@ jobs:
             GOOS=linux GOARCH=$target CGO_ENABLED=0 go build -o /dev/null ./cmd/bay
           done
 
-  # ──────────────────────────────────────────────────────────────────────
-  # Build + E2E. The long pole.
-  # ──────────────────────────────────────────────────────────────────────
-  e2e:
-    runs-on: ubuntu-latest
-    # Same reasoning as `test` above: a hang detector, not a budget. Observed
-    # around 11m20s, and this job also gates `deploy-lore-production`.
-    #
-    # 25 rather than 20 since 2026-08-30, to keep the step cap below it with
-    # room to spare after the Playwright step was re-sized. See the step.
-    timeout-minutes: 25
-    services:
-      redis:
-        image: redis
-        ports:
-          - 16379:6379
-
-      postgres:
-        image: postgres
-        ports:
-          - 15432:5432
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-
-      s3mock:
-        image: adobe/s3mock
-        ports:
-          - 19090:9090
-
-      emqx:
-        image: emqx/emqx
-        ports:
-          - 11883:1883
-        env:
-          EMQX_ALLOW_ANONYMOUS: "true"
-
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Clean
-        run: yarn clean
-
-      - name: Prepare
-        run: yarn copy
-
-      - name: Build Project
-        run: yarn build
-
-      # The browsers, keyed on the exact Playwright version rather than on the
-      # lockfile: the lockfile churns constantly in a monorepo this size, and a
-      # miss that only costs a re-download is not worth taking on every
-      # dependency bump.
-      - name: Resolve Playwright version
-        id: playwright-version
-        run: |
-          version="$(yarn playwright --version | tr -d '\n' | sed 's/.* //')"
-          [ -n "$version" ] || { echo "could not resolve the Playwright version"; exit 1; }
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
-
-      # `--with-deps` is deliberately absent, and this is the whole point of
-      # the block. On `ubuntu-latest` every shared library chromium actually
-      # needs is already on the image; the only thing the flag adds is nine
-      # font packages — CJK, Cyrillic, Thai — and it pays for them by putting
-      # `apt-get update` against `azure.archive.ubuntu.com` on the critical
-      # path.
-      #
-      # On 2026-08-19 that mirror flapped for an afternoon and took the e2e job
-      # of three consecutive pushes with it. The apt fetch alone ran 19s at
-      # best and 12min at worst; at 12min the 15min job cap fired before the
-      # suite had started, so the run was reported `cancelled` with no test
-      # output, and every cancelled run skipped `deploy-lore-production`. Lore
-      # sat two commits behind production for five hours because of a Ubuntu
-      # mirror. The browser download itself was never the problem: it is ~9s
-      # from `cdn.playwright.dev`, and it is what the cache above covers.
-      #
-      # The fonts bought nothing here. The suites render Latin text only, and
-      # there is no `toHaveScreenshot`/`toMatchSnapshot` anywhere, so nothing
-      # can observe a glyph. If a future runner image ever does drop a real
-      # chromium dependency the failure is a missing `.so` at browser launch —
-      # restore `--with-deps` then, but keep it off the critical path.
-      #
-      # Bounded so that if this ever stalls again it is reported as this step
-      # failing, with the budget for the suite below still intact, instead of
-      # silently eating the job.
-      - name: Install Playwright
-        timeout-minutes: 4
-        run: yarn playwright install chromium
-
-      # Bounded on the step, not just the job. Playwright's `globalTimeout`
-      # covers the tests; it does not cover teardown, and teardown is where
-      # this hangs — a failing run once printed its results and then sat for
-      # five minutes holding orphaned wrangler and browser processes until the
-      # job cap killed everything. That reads as "CI is slow" rather than
-      # "two tests failed", and it costs the whole remaining budget.
-      #
-      # Slightly under half the job's 15, so a hang is reported as a failed
-      # step with the test output intact, and the CLI suite below still gets
-      # its turn.
-      - name: Run E2E Tests
-        # 11 rather than 7 since 2026-08-30. The suite grew by seven lore
-        # specs in one batch of quests, and this is a HANG detector, not a
-        # budget, so a legitimately longer suite hitting it means the detector
-        # is mis-sized rather than that the suite is broken.
-        #
-        # ⚠️ Read the failure before raising it again. The run that forced
-        # this printed complete results for shop, playground, docs and ssr and
-        # was killed in the middle of LORE with no output, which is what a
-        # capacity failure looks like. A hang looks different: results printed
-        # for everything, then silence in teardown, which is the case the
-        # original 7 was chosen for.
-        #
-        # The number to watch is the local wall time of `apps/lore`'s suite,
-        # currently ~3.1m at 7 workers. CI gets one or two, and every test
-        # that calls `registerAndVerify` + `createProjectViaWizard` pays about
-        # 25s of setup before it asserts anything. That setup, not the
-        # assertions, is what moves this number: prefer folding new
-        # assertions into an existing spec's steps over adding a spec with
-        # its own registration.
-        timeout-minutes: 11
-        run: yarn e2e
-
-      - name: Run CLI E2E Tests
-        timeout-minutes: 5
-        run: yarn e2e-cli
-
   # ---------------------------------------------------------------------------
   # Cloudflare Workers deploy of the docs at `alepha.dev`.
   #
-  # This replaced a `deploy-docs` job that published the same `dist/public` to
-  # GitHub Pages. Pages is gone as a deploy target because it cannot host the
-  # one thing the site needs: a same-origin `POST /api/sigil/ingest`, which is
-  # where the visitor's IP becomes a salted hash and where the sigil credential
-  # stays instead of shipping to every reader. A static host can offer neither,
-  # so `alepha.dev` had no analytics at all.
+  # This replaced a job that published the same `dist/public` to GitHub Pages.
+  # Pages is gone as a target because it cannot host the one thing the site
+  # needs: a same-origin `POST /api/sigil/ingest`, which is where the visitor's
+  # IP becomes a salted hash and where the sigil credential stays instead of
+  # shipping to every reader.
   #
   # The cutover was a Worker *Route* (`alepha.dev/*`), not a Custom Domain, so
-  # the apex DNS records were never touched — see the `platform()` block in
+  # the apex DNS records were never touched - see the `platform()` block in
   # `apps/docs/alepha.config.ts` for why, and for how to roll back.
   # ---------------------------------------------------------------------------
   deploy-docs-production:
-    # Doesn't require the e2e job — only that the codebase is lint/typecheck-
-    # clean and tests pass.
-    needs: [checks, test]
+    # Doesn't require e2e - only that the codebase is lint/typecheck-clean and
+    # the tests pass.
+    needs: [test]
     # Deploying is a real side effect, so it must not fire for a proposed
     # change. Phrased as "not a PR" rather than copying
     # `deploy-lore-production`'s `push && ref == main`: docs also deploy on the
@@ -453,8 +312,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Scopes the app's own secrets to this job. Without it `secrets.SIGIL_*`
-    # resolve to empty and the deploy pushes nothing — the worker keeps whatever
-    # it already had, so the failure is a config that silently stops tracking
+    # resolve to empty and the deploy pushes nothing - the worker keeps
+    # whatever it had, so the failure is a config that silently stops tracking
     # `.env.production` rather than anything that goes red.
     environment: docs-production
 
@@ -473,10 +332,10 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # This job's artifact is deployed, and `alepha.meta.version` reads the
-          # git tag on the built commit. The default checkout fetches shallow
-          # and passes --no-tags, so without this every deploy would report
-          # "latest". The other jobs deploy nothing and need no tags.
+          # This job's artifact is deployed, and `alepha.meta.version` reads
+          # the git tag on the built commit. The default checkout fetches
+          # shallow and passes --no-tags, so without this every deploy would
+          # report "latest". The other jobs deploy nothing and need no tags.
           fetch-tags: true
 
       - name: Setup
@@ -487,7 +346,7 @@ jobs:
 
       # Build and deploy are split on purpose. `gen:llms` writes `llms.txt`,
       # `llms-full.txt` and the raw markdown into `dist/public` *after* the
-      # bundle, and `alepha platform up` cleans `dist/` before building — so
+      # bundle, and `alepha platform up` cleans `dist/` before building - so
       # letting it build would delete them. Build first, fill `dist/public`,
       # then deploy with `--prebuilt`, which skips the bundle and only
       # regenerates `wrangler.jsonc` before uploading.
@@ -500,7 +359,7 @@ jobs:
         run: yarn alepha platform up --env production --prebuilt
 
   deploy-lore-production:
-    needs: [checks, test, e2e]
+    needs: [test, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -521,10 +380,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # This job's artifact is deployed, and `alepha.meta.version` reads the
-          # git tag on the built commit. The default checkout fetches shallow
-          # and passes --no-tags, so without this every deploy would report
-          # "latest". The other jobs deploy nothing and need no tags.
+          # Same as the docs deploy: without the tags `alepha.meta.version`
+          # reports "latest".
           fetch-tags: true
 
       - name: Setup
