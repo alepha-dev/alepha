@@ -8,12 +8,12 @@ import type { QuestCommentResource } from "@/api/schemas/questCommentResourceSch
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import QuestDiscussionComment from "./QuestDiscussionComment.tsx";
 import QuestDiscussionComposer from "./QuestDiscussionComposer.tsx";
 import { buildQuestDiscussionEntries } from "./questDiscussionEntries.ts";
 import QuestDiscussionEvent from "./QuestDiscussionEvent.tsx";
-import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
 
 export interface QuestDiscussionProps {
   quest: QuestResource;
@@ -64,7 +64,7 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
     // hand-roll its own header to stay permanently open, which made it the
     // one section with no chevron and no way to fold a long thread out of
     // the way. Still open by default: it is what a returning reader came for.
-    <QuestViewCollapsibleBlock
+    <CollapsibleBlock
       icon={<MessageSquare className="size-5" />}
       label={String(tr("quest.discussion.title"))}
       defaultOpen
@@ -101,7 +101,7 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
           onPosted={(comment) => setComments((prev) => [...prev, comment])}
         />
       )}
-    </QuestViewCollapsibleBlock>
+    </CollapsibleBlock>
   );
 };
 

@@ -27,13 +27,13 @@ import { currentQuestAtom } from "@/web/app/atoms/currentQuestAtom.ts";
 import { useQuestMutations } from "@/web/app/components/shared/useQuestMutations.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
 import QuestAttachments from "./QuestAttachments.tsx";
 import { QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
 import { QuestDueDate } from "./questDueDate.ts";
-import QuestViewCollapsibleBlock from "./QuestViewCollapsibleBlock.tsx";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
 import QuestViewQuestline from "./QuestViewQuestline.tsx";
@@ -528,7 +528,7 @@ const QuestView = (props: QuestViewProps) => {
               <QuestViewQuestline quest={quest} questline={questline} />
 
               {/* Description (collapsible, default expanded) */}
-              <QuestViewCollapsibleBlock
+              <CollapsibleBlock
                 icon={<FileText className="size-5" />}
                 label={tr("quest.view.description")}
                 defaultOpen
@@ -537,11 +537,11 @@ const QuestView = (props: QuestViewProps) => {
                   quest={quest}
                   onEdit={() => setShowDialog(true)}
                 />
-              </QuestViewCollapsibleBlock>
+              </CollapsibleBlock>
 
               {/* Objectives (collapsible, default expanded) */}
               {quest.objectives.length > 0 && (
-                <QuestViewCollapsibleBlock
+                <CollapsibleBlock
                   icon={<ListChecks className="size-5" />}
                   label={tr("quest.view.objectives")}
                   // Open while there is work to do, folded once there is
@@ -592,7 +592,7 @@ const QuestView = (props: QuestViewProps) => {
                       alepha.store.set(currentQuestAtom, updatedQuest);
                     }}
                   />
-                </QuestViewCollapsibleBlock>
+                </CollapsibleBlock>
               )}
 
               {/* Attachments. Non-collapsible, and rendered even when empty
@@ -602,7 +602,7 @@ const QuestView = (props: QuestViewProps) => {
                   is the upload control that already existed for that dialog
                   and had no caller at all. */}
               {(quest.attachments?.length || !quest.completedAt) && (
-                <QuestViewCollapsibleBlock
+                <CollapsibleBlock
                   icon={<Paperclip className="size-5" />}
                   label={String(tr("quest.view.attachments"))}
                   defaultOpen
@@ -630,7 +630,7 @@ const QuestView = (props: QuestViewProps) => {
                       alepha.store.set(currentQuestAtom, updated);
                     }}
                   />
-                </QuestViewCollapsibleBlock>
+                </CollapsibleBlock>
               )}
 
               {/* Discussion: the quest's history events and its comments in

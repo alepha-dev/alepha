@@ -284,6 +284,7 @@ export default {
   "quest.create.title.helper": "Un nom court et héroïque",
   "quest.create.objectives": "Objectifs",
   "quest.create.objectives.helper": "Liste des objectifs pour cette quête",
+  "quest.create.advanced": "Avancé",
   "quest.create.dependsOn": "Dépend de",
   "quest.create.dependsOn.helper":
     "Cette quête ne peut pas démarrer tant que la quête sélectionnée n'est pas terminée.",

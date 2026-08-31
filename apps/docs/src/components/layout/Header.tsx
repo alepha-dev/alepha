@@ -9,6 +9,7 @@ import {
   IconSun,
   IconX,
 } from "@tabler/icons-react";
+import { useAlepha } from "alepha/react";
 import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { useCallback, useEffect, useState } from "react";
 
@@ -35,6 +36,7 @@ export interface HeaderProps {
 
 const Header = (props: HeaderProps) => {
   const { showTabs = true } = props;
+  const alepha = useAlepha();
   const routerState = useRouterState();
 
   return (
@@ -114,7 +116,7 @@ const Header = (props: HeaderProps) => {
           title="View Changelog"
         >
           <IconGitBranch size={14} />
-          <span>v{import.meta.env.VITE_VERSION || "0.0.0"}</span>
+          <span>v{alepha.meta.version}</span>
         </Link>
 
         {/* Products. One version number covers all of them, which is why they
