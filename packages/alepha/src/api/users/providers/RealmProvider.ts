@@ -1,4 +1,4 @@
-import { $inject, Alepha, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError, type Async } from "alepha";
 import type { ParameterPrimitive } from "alepha/api/parameters";
 import { CaptchaProvider } from "alepha/captcha";
 import { $repository, type Repository } from "alepha/orm";
@@ -25,7 +25,99 @@ export interface Realm {
   features: RealmFeatures;
   settingsParameter?: ParameterPrimitive<typeof realmAuthSettingsAtom.schema>;
   getSettings(): Promise<RealmAuthSettings>;
+  isPreAuthorized?: RegistrationPreAuthorizationFn;
 }
+
+/**
+ * What the app is told when a CLOSED realm meets a registration.
+ *
+ * Filled by the two entry points that can create an account
+ * (`RegistrationService.createRegistrationIntent` and `SessionService.link`'s
+ * OAuth first login) and handed to the closure the app registered on its
+ * realm. The realm name is filled in by
+ * {@link RealmProvider.preAuthorizeRegistration}, so a caller cannot pass one
+ * that disagrees with the realm it asked.
+ */
+export interface RegistrationPreAuthorizationContext {
+  /**
+   * The address being registered.
+   *
+   * Never blank: a closed realm refuses a registration carrying no address
+   * before the seam is consulted, since there would be nothing to vouch for.
+   */
+  email: string;
+
+  /**
+   * The realm the registration is for.
+   */
+  realm: string;
+
+  /**
+   * Which entry point is asking. The two differ in what they have already
+   * proven, so an app that only trusts one of them can say so.
+   */
+  method: "credentials" | "oauth";
+
+  /**
+   * The OAuth provider, when `method` is `"oauth"`.
+   */
+  provider?: string;
+
+  /**
+   * Whether the identity provider asserted the address is verified.
+   *
+   * `undefined` on the credentials path, where nothing has been proven yet,
+   * which is precisely why that path also carries a {@link token}.
+   */
+  emailVerified?: boolean;
+
+  /**
+   * The opaque pre-authorization token the caller supplied
+   * (`preAuthToken` on the register request).
+   *
+   * The framework never reads it, never validates it and never logs it. It
+   * exists so an app whose proof of pre-authorization is a secret in the
+   * caller's hands (an invitation link, a signup code) can get that secret
+   * to its own closure without reaching into the HTTP request.
+   */
+  token?: string;
+}
+
+/**
+ * The app's answer, when it is more than "yes".
+ *
+ * Returning `true` is the same as returning `{}`; returning `false` or
+ * `undefined` refuses.
+ */
+export interface RegistrationPreAuthorization {
+  /**
+   * Treat the address as already proven, so the credentials flow neither
+   * sends a verification code nor asks for one, and the account still lands
+   * `emailVerified: true`.
+   *
+   * Set this only when the pre-authorization was itself delivered to that
+   * mailbox, an invitation link say. It is the app asserting the thing the
+   * verification email would otherwise establish, so asserting it falsely
+   * hands out verified accounts for addresses nobody proved.
+   *
+   * Ignored on the OAuth path, where the provider is the authority on whether
+   * an address is verified and `trustProviderEmail` decides what to do when
+   * it says nothing.
+   */
+  emailVerified?: boolean;
+}
+
+/**
+ * The seam a realm fills to let SPECIFIC addresses through while
+ * `registrationAllowed` is `false`.
+ *
+ * Same arrangement as `login` / `link` / the second-factor trio: the module
+ * that owns the decision cannot import the app, so the app hands it a
+ * closure. Absent, a closed realm behaves exactly as it always has.
+ */
+export type RegistrationPreAuthorizationFn = (
+  context: RegistrationPreAuthorizationContext,
+) => Async<boolean | RegistrationPreAuthorization | undefined>;
 
 export class RealmProvider {
   protected readonly alepha = $inject(Alepha);
@@ -93,9 +185,54 @@ export class RealmProvider {
         }
         return this.settings;
       },
+      isPreAuthorized: realmOptions.isPreAuthorized,
     };
     this.realms.set(realmName, realm);
     return this.getRealm(realmName);
+  }
+
+  /**
+   * Ask the app whether ONE address may register into a closed realm.
+   *
+   * Consulted by both entry points, and only after
+   * `registrationAllowed === false` has been established, so a realm that is
+   * open never runs it and a realm that filled no closure behaves exactly as
+   * it did before this existed.
+   *
+   * Three properties this deliberately does NOT have, each one a way the
+   * seam could have become a hole:
+   *
+   * - it is not a rate-limit bypass. The per-IP registration cap runs before
+   *   the caller ever reaches the closed check, so a pre-authorized address
+   *   is throttled like any other.
+   * - it is not a captcha bypass. The captcha gate is further down the same
+   *   method: an invitation proves an address, not a human.
+   * - it does not answer differently. A refusal returns `undefined` and the
+   *   caller throws the message a closed realm has always thrown, so a
+   *   prober cannot tell a pre-authorized address from any other.
+   *
+   * `true` normalizes to `{}` so callers can treat any returned object as
+   * "allowed" and read the hints off it.
+   */
+  public async preAuthorizeRegistration(
+    realmName: string | undefined,
+    context: Omit<RegistrationPreAuthorizationContext, "realm">,
+  ): Promise<RegistrationPreAuthorization | undefined> {
+    const realm = this.getRealm(realmName);
+    if (!realm.isPreAuthorized) {
+      return undefined;
+    }
+    // The realm name is filled here rather than taken from the caller: the
+    // two could otherwise disagree, and the closure would be answering about
+    // a realm nobody asked about.
+    const result = await realm.isPreAuthorized({
+      ...context,
+      realm: realm.name,
+    });
+    if (!result) {
+      return undefined;
+    }
+    return result === true ? {} : result;
   }
 
   /**

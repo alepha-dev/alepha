@@ -35,6 +35,19 @@ export const registerRequestSchema = z.object({
     .string()
     .describe("Captcha response token (if captcha is required)")
     .optional(),
+
+  // Opaque proof that THIS address may register into a CLOSED realm, handed
+  // straight to the realm's `isPreAuthorized` closure. The framework never
+  // reads it, never validates it and never logs it: it is the app's secret,
+  // and only the app knows what shape it has. Ignored entirely when the
+  // realm is open.
+  preAuthToken: z
+    .string()
+    .max(512)
+    .describe(
+      "App-defined pre-authorization token, e.g. from an invitation link",
+    )
+    .optional(),
 });
 
 export type RegisterRequest = Infer<typeof registerRequestSchema>;

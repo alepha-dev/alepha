@@ -915,6 +915,113 @@ describe("alepha/api/users - SessionService.link", () => {
     ).rejects.toThrowError(BadRequestError);
   });
 
+  /**
+   * The pre-authorization seam on the OAuth side. It exists here and not
+   * only on the credentials path because a realm that is closed to one and
+   * open to the other is not closed at all.
+   */
+  it("should still refuse OAuth2 account creation when the seam refuses", async ({
+    expect,
+  }) => {
+    const { sessionService, alepha } = await setup();
+
+    const realmProvider = alepha.inject(RealmProvider);
+    const seen: Array<Record<string, unknown>> = [];
+    realmProvider.register("closed-oauth-refusing", {
+      settings: { registrationAllowed: false } as never,
+      isPreAuthorized: (context) => {
+        seen.push({ ...context });
+        return false;
+      },
+    });
+
+    await expect(
+      sessionService.link(
+        "google",
+        {
+          sub: "google-456",
+          email: "stranger@example.com",
+          email_verified: true,
+        },
+        "closed-oauth-refusing",
+      ),
+      // Unchanged message, same reason as the credentials path.
+    ).rejects.toThrowError("Account doesn't exist");
+
+    expect(seen[0]).toMatchObject({
+      email: "stranger@example.com",
+      realm: "closed-oauth-refusing",
+      method: "oauth",
+      provider: "google",
+      emailVerified: true,
+    });
+  });
+
+  it("should let a pre-authorized address through OAuth2 first login", async ({
+    expect,
+  }) => {
+    const { sessionService, alepha } = await setup();
+
+    const realmProvider = alepha.inject(RealmProvider);
+    realmProvider.register("closed-oauth-inviting", {
+      settings: { registrationAllowed: false } as never,
+      isPreAuthorized: ({ email }) => email === "invited@example.com",
+    });
+
+    const user = await sessionService.link(
+      "google",
+      {
+        sub: "google-789",
+        email: "invited@example.com",
+        email_verified: true,
+      },
+      "closed-oauth-inviting",
+    );
+
+    expect(user.email).toBe("invited@example.com");
+
+    await expect(
+      sessionService.link(
+        "google",
+        {
+          sub: "google-999",
+          email: "someone-else@example.com",
+          email_verified: true,
+        },
+        "closed-oauth-inviting",
+      ),
+    ).rejects.toThrowError("Account doesn't exist");
+  });
+
+  it("should not consult the seam on OAuth2 while the realm is open", async ({
+    expect,
+  }) => {
+    const { sessionService, alepha } = await setup();
+
+    const realmProvider = alepha.inject(RealmProvider);
+    let consulted = 0;
+    realmProvider.register("open-oauth-with-seam", {
+      settings: { registrationAllowed: true } as never,
+      isPreAuthorized: () => {
+        consulted++;
+        return false;
+      },
+    });
+
+    const user = await sessionService.link(
+      "google",
+      {
+        sub: "google-open",
+        email: "anyone@example.com",
+        email_verified: true,
+      },
+      "open-oauth-with-seam",
+    );
+
+    expect(user.email).toBe("anyone@example.com");
+    expect(consulted).toBe(0);
+  });
+
   it("should allow OAuth2 login for existing users when registration is disabled", async ({
     expect,
   }) => {

@@ -834,11 +834,38 @@ export class SessionService {
     const isAdmin = profile.email && adminEmails.includes(profile.email);
 
     if (realmSettings?.registrationAllowed === false && !isAdmin) {
-      this.log.warn("Registration not allowed for realm via OAuth2", {
+      // Same seam as the credentials path, so a closed realm is not open on
+      // one entry point and shut on the other. `profile.email_verified` goes
+      // with it: an app may well want to refuse a provider that has asserted
+      // nothing, and only the app can weigh that against what it knows.
+      //
+      // The answer's `emailVerified` hint is deliberately NOT read here. On
+      // this path the provider is the authority, and `trustProviderEmail`
+      // below already decides what an unverified profile is worth; letting
+      // the closure override it would hand out verified accounts on the word
+      // of an address the provider itself would not vouch for.
+      const preAuthorized = await this.realmProvider.preAuthorizeRegistration(
+        userRealmName,
+        {
+          email: profile.email,
+          method: "oauth",
+          provider,
+          emailVerified: profile.email_verified,
+        },
+      );
+      if (!preAuthorized) {
+        this.log.warn("Registration not allowed for realm via OAuth2", {
+          provider,
+          userRealmName,
+        });
+        // Unchanged message. A pre-authorized address that fails must be
+        // indistinguishable from one that was never invited.
+        throw new BadRequestError("Account doesn't exist");
+      }
+      this.log.debug("OAuth2 first login pre-authorized for a closed realm", {
         provider,
         userRealmName,
       });
-      throw new BadRequestError("Account doesn't exist");
     }
 
     const username = await this.generateUniqueUsername(profile, userRealmName);

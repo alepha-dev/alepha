@@ -149,6 +149,59 @@ If you present registration errors in your own UI, do not try to map the
 generic conflict back to a specific field - there is nothing to map it to,
 and re-deriving it client-side would reopen the hole.
 
+### Letting One Address Into a Closed Realm
+
+`settings.registrationAllowed: false` closes a realm to everyone. An app that
+invites people by email needs a third state: closed, except for the addresses
+it has invited. That is `isPreAuthorized`.
+
+```typescript check
+import { $realm } from "alepha/api/users";
+
+class Security {
+  realm = $realm({
+    settings: { registrationAllowed: false },
+    isPreAuthorized: async ({ email, method, token }) => {
+      // The credentials path has proven nothing yet, so ask for the secret
+      // that arrived in the invitation mail.
+      if (method === "credentials") {
+        return token === "the-token-you-mailed-them"
+          ? { emailVerified: true }
+          : false;
+      }
+      // The OAuth provider has already proven the address, so a pending
+      // invitation for it is enough.
+      return email.endsWith("@example.com");
+    },
+  });
+}
+```
+
+It is consulted only when the realm is closed, and at **both** entry points
+that can create an account: credentials registration and OAuth first login. A
+realm that is closed to one and open to the other is not closed.
+
+Three things it deliberately is not:
+
+- **Not a rate-limit bypass.** The per-IP registration cap runs before the
+  closed check, so a pre-authorized address is throttled like any other.
+- **Not a captcha bypass.** `captchaRequired` is enforced after it. An
+  invitation proves an address, not a human.
+- **Not a different answer.** A refusal produces the message a closed realm
+  has always produced, so a prober cannot tell an invited address from any
+  other one.
+
+The credentials path carries `preAuthToken` on the register request body,
+capped at 512 characters and otherwise opaque: the framework never reads it,
+validates it or logs it. Returning `{ emailVerified: true }` says the
+pre-authorization was itself delivered to that mailbox, so no verification
+code is sent or asked for and the account still lands verified. Say that only
+when it is true. On the OAuth path the hint is ignored, because there the
+provider is the authority.
+
+Leave `isPreAuthorized` unset and a closed realm behaves exactly as it did
+before this existed.
+
 ### Identity Providers
 
 Enable login methods through the `identities` option:

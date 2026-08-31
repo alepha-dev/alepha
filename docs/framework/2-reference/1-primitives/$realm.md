@@ -23,12 +23,13 @@ Environment Variables:
 
 ## Options
 
-| Option       | Type                                    | Required | Description                                                            |
-| ------------ | --------------------------------------- | -------- | ---------------------------------------------------------------------- |
-| `secret`     | `string`                                | No       | Secret key for signing tokens                                          |
-| `signing`    | `SigningConfig`                         | No       | Asymmetric signing config for this realm's tokens (OIDC provider mode) |
-| `issuer`     | `Partial&lt;IssuerPrimitiveOptions&gt;` | No       | Issuer configuration options                                           |
-| `entities`   | `Object`                                | No       | Override entities.                                                     |
-| `settings`   | `Partial&lt;RealmAuthSettings&gt;`      | No       |                                                                        |
-| `identities` | `Object`                                | No       |                                                                        |
-| `features`   | `Partial&lt;RealmFeatures&gt;`          | No       | Enable or disable realm features                                       |
+| Option            | Type                                    | Required | Description                                                                                                                               |
+| ----------------- | --------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `secret`          | `string`                                | No       | Secret key for signing tokens                                                                                                             |
+| `signing`         | `SigningConfig`                         | No       | Asymmetric signing config for this realm's tokens (OIDC provider mode)                                                                    |
+| `issuer`          | `Partial&lt;IssuerPrimitiveOptions&gt;` | No       | Issuer configuration options                                                                                                              |
+| `entities`        | `Object`                                | No       | Override entities.                                                                                                                        |
+| `settings`        | `Partial&lt;RealmAuthSettings&gt;`      | No       |                                                                                                                                           |
+| `isPreAuthorized` | `RegistrationPreAuthorizationFn`        | No       | Let SPECIFIC addresses register while `settings.registrationAllowed` is `false`, instead of the realm being open to everyone or to nobody |
+| `identities`      | `Object`                                | No       |                                                                                                                                           |
+| `features`        | `Partial&lt;RealmFeatures&gt;`          | No       | Enable or disable realm features                                                                                                          |
