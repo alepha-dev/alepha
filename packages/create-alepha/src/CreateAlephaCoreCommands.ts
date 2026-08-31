@@ -45,6 +45,16 @@ export class CreateAlephaCoreCommands {
    * DevTools follows the same shape as preset: `--no-devtools` skips the
    * question, and leaving it unset asks. It is dev-only and costs nothing in
    * a production bundle, so the default answer is yes.
+   *
+   * ⚠️ Those per-question flags do NOT add up to a promptless default shape,
+   * which is what `--yes` is for. `--no-devtools` is a NEGATIVE boolean, so
+   * "leave devtools at its default" and "said nothing about devtools" are the
+   * same state, and that state prompts — the only fully flagged path was the
+   * one that turns devtools OFF, so a script could not produce the shape a
+   * human gets by pressing Enter. `--yes` answers every remaining question
+   * with its default, the way `npm init -y` does, and keeps covering
+   * questions added later. A plain `--devtools` was the other candidate and
+   * would have fixed exactly one prompt.
    */
   public readonly root = $command({
     root: true,
@@ -70,11 +80,27 @@ export class CreateAlephaCoreCommands {
           "Skip @alepha/devtools. It is included by default and is dev-only, so it costs nothing in a production bundle",
         )
         .optional(),
+      yes: z
+        .boolean()
+        .describe(
+          "Answer every remaining question with its default, so the command runs with stdin closed. Needs the project name, which has no default. Flags still win over it",
+        )
+        .optional(),
     }),
     handler: async ({ ask, args, flags, run, root }) => {
       ask.intro("Create Alepha");
 
-      // 1. Project name
+      // 1. Project name.
+      //
+      // The one question `--yes` cannot answer: every other prompt has a
+      // default and a name does not. Refused with the fix in the message
+      // rather than prompting anyway, because `--yes` is what a script
+      // passes and a script has no stdin to answer with.
+      if (flags.yes && !args) {
+        throw new AlephaError(
+          "--yes needs a project name, which is the one question with no default. Pass it as an argument: create-alepha my-app --yes",
+        );
+      }
       const name =
         args ??
         (await ask.prompt("What is your project name?", {
@@ -91,20 +117,22 @@ export class CreateAlephaCoreCommands {
       // 2. Project shape, unless the caller already picked one
       const preset =
         flags.preset ??
-        (await ask.choice(
-          "Project shape:",
-          [
-            {
-              value: "default",
-              label: "default (API + web + Tailwind)",
-            },
-            {
-              value: "saas",
-              label: "saas (adds @alepha/ui with auth, account and admin)",
-            },
-          ],
-          { default: "default" },
-        ));
+        (flags.yes
+          ? "default"
+          : await ask.choice(
+              "Project shape:",
+              [
+                {
+                  value: "default",
+                  label: "default (API + web + Tailwind)",
+                },
+                {
+                  value: "saas",
+                  label: "saas (adds @alepha/ui with auth, account and admin)",
+                },
+              ],
+              { default: "default" },
+            ));
 
       // 3. DevTools is dev-only and costs nothing in a production bundle, so
       // the default is yes. Asked only when the caller did not already decide:
@@ -113,7 +141,11 @@ export class CreateAlephaCoreCommands {
       const devtools =
         flags["no-devtools"] !== undefined
           ? !flags["no-devtools"]
-          : await ask.confirm("Include @alepha/devtools?", { default: true });
+          : flags.yes
+            ? true
+            : await ask.confirm("Include @alepha/devtools?", {
+                default: true,
+              });
 
       // Create directory
       await this.fs.mkdir(name);
