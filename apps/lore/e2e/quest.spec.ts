@@ -1499,6 +1499,125 @@ test.describe("Quest", () => {
   });
 
   /**
+   * #1571. The commit trail already worked; it rendered the sha as dead text,
+   * because `questCommitSchema` said outright that "Lore does not know a
+   * project's repository and should not pretend to". Giving the project one
+   * URL removes that premise.
+   *
+   * One project is one repository (2026-08-29), so this is a single field on
+   * the project rather than a slug plus a provider setting - and the link is
+   * built from the project, never from the per-commit `repo`, which stays
+   * stored for the rows that already carry it.
+   */
+  test("a quest's commit links into the project repository once one is set", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    const projectTitle = `RU${t}`.slice(0, 20);
+    const sha = "ded61fa6c0ffee1234567890abcdef1234567890";
+
+    await registerAndVerify(page, `repourl${t}@example.com`, "RepoUrl123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { id: questId, shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      projectId,
+      title: `Shipped something ${t}`,
+      description: "<p>x</p>",
+      area: "Main",
+      priority: "low",
+      objectives: [],
+      attachments: [],
+    });
+    // `apiPost` resolves an action by NAME and does not substitute params,
+    // so a `:id` route is posted to by hand.
+    const commitPath = (await apiPath(page, "addQuestCommit")).replace(
+      ":id",
+      String(questId),
+    );
+    await page.evaluate(
+      async ({ url, body }) => {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      },
+      { url: commitPath, body: { sha, message: "feat: the thing" } },
+    );
+
+    const questUrl = `/${projectSlug}/quests/${shortId}`;
+    const commit = page.getByText(sha.slice(0, 7)).first();
+
+    await test.step("plain text while the project has no repository", async () => {
+      await page.goto(questUrl);
+      await expect(commit).toBeVisible({ timeout: 15_000 });
+      // A row that looks clickable and is not is worse than one that does
+      // not, so the absence of the anchor is the assertion.
+      await expect(page.locator(`a[href*="/commit/${sha}"]`)).toHaveCount(0);
+    });
+
+    await test.step("a link once the owner sets one", async () => {
+      await page.goto(`/${projectSlug}/settings/`);
+      const field = page.getByPlaceholder("https://github.com/you/your-repo");
+      await expect(field).toBeVisible({ timeout: 15_000 });
+      // With a trailing slash, which the schema strips: the rail appends a
+      // path and must not have to guess whether there is already one.
+      await field.fill("https://github.com/alepha-dev/alepha/");
+      // The form is `disabledIfPristine`, so the button only becomes live
+      // once the field is dirty - waiting on that is also the assertion that
+      // the fill registered.
+      // The form is `disabledIfPristine`, so waiting for the button to go
+      // live is also the assertion that the fill registered.
+      const save = page
+        .getByRole("button", { name: /save|enregistrer/i })
+        .first();
+      await expect(save).toBeEnabled({ timeout: 10_000 });
+
+      await save.click();
+
+      // ⚠️ Poll the API until the value is actually stored, rather than
+      // waiting on the button or on a response. The button is disabled while
+      // the request is in flight, so `toBeDisabled` is satisfied a beat early;
+      // and every call in this app is batched through one `/api/_batch` POST,
+      // so a `waitForResponse` keyed on the method matches an unrelated batch.
+      // Navigating on either one cancels the save mid-request.
+      const slugPath = (await apiPath(page, "getProjectBySlug")).replace(
+        ":slug",
+        projectSlug,
+      );
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(async (url) => {
+              const res = await fetch(url, { credentials: "include" });
+              if (!res.ok) return null;
+              return ((await res.json()) as { repositoryUrl?: string })
+                .repositoryUrl;
+            }, slugPath),
+          { timeout: 15_000 },
+        )
+        .toBe("https://github.com/alepha-dev/alepha");
+
+      await page.goto(questUrl);
+      await expect(
+        page.locator(
+          `a[href="https://github.com/alepha-dev/alepha/commit/${sha}"]`,
+        ),
+      ).toBeVisible({ timeout: 15_000 });
+    });
+  });
+
+  /**
    * #1323, from feedback #2009. Areas are named by import path, so the prefix
    * is the meaningful unit: "everything under lore/" took one pick per area.
    *

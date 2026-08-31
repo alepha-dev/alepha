@@ -377,6 +377,9 @@ export default {
 
   "project.create.name": "Nom",
   "project.create.name.helper": "Un nom marquant pour votre épopée.",
+  "project.update.repositoryUrl.label": "Dépôt",
+  "project.update.repositoryUrl.helper":
+    "Le dépôt où vivent les commits de ce projet. Renseignez-le et les références de commit d'une quête deviennent des liens.",
   "project.update.preferredLanguage.label": "Langue préférée",
   "project.update.preferredLanguage.helper":
     "Langue que les agents IA doivent utiliser pour le contenu généré (quêtes, folios).",

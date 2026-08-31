@@ -369,6 +369,9 @@ export default {
   "project.create.name": "Name",
   "project.create.name.helper":
     "Set a short name for identifying your project.",
+  "project.update.repositoryUrl.label": "Repository",
+  "project.update.repositoryUrl.helper":
+    "The repository this project's commits live in. Set it and a quest's commit references become links.",
   "project.update.preferredLanguage.label": "Preferred Language",
   "project.update.preferredLanguage.helper":
     "Language AI agents should use for generated content (quests, folios).",
