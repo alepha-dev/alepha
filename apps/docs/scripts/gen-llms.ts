@@ -8,6 +8,7 @@ import { $logger } from "alepha/logger";
 import type { DocNode } from "./interfaces.ts";
 
 interface DocItem {
+  product: string;
   slug: string;
   path: string;
 }
@@ -124,15 +125,24 @@ export class LlmsCommand {
         let copiedCount = 0;
         for (const doc of docs) {
           const sourcePath = join(rootDir, doc.path);
-          const destPath = join(docsOutputDir, `${doc.slug}.md`);
+          // The product goes in the PATH, mirroring the URL these files
+          // stand in for: `/docs/x.md`, `/bay/docs/x.md`. A slug is unique
+          // only within a product now, so a flat directory would have kept
+          // whichever of the three was written last (quest #1603).
+          const destDir = doc.product
+            ? join(outputDir, doc.product, "docs")
+            : docsOutputDir;
+          await fs.mkdir(destDir, { recursive: true });
+          const destPath = join(destDir, `${doc.slug}.md`);
+          const label = doc.product ? `${doc.product}/${doc.slug}` : doc.slug;
 
           try {
             const content = await fs.readFile(sourcePath, "utf-8");
             await fs.writeFile(destPath, content, "utf-8");
             copiedCount++;
-            this.log.trace(`Copied: ${doc.slug}.md`);
+            this.log.trace(`Copied: ${label}.md`);
           } catch (error) {
-            this.log.warn(`Failed to copy ${doc.slug}:`, error);
+            this.log.warn(`Failed to copy ${label}:`, error);
           }
         }
 

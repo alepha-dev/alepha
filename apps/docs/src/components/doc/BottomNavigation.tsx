@@ -2,31 +2,40 @@ import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { useActive, useRouter } from "alepha/react/router";
 import { useMemo } from "react";
 
-import { docs } from "../../config/docs.ts";
+import { type DocProduct, docsHref, docsOf } from "../../config/docs.ts";
 
 interface BottomNavigationProps {
+  product: DocProduct;
   name: string;
 }
 
+/**
+ * ⚠️ Scoped to one doc set. The flat `docs` list holds all three now, in root
+ * order, so walking it would step off the end of the framework guides and
+ * into the Bay introduction - and a name is not unique across products
+ * either, so even finding the current page needs the narrowing first (quest
+ * #1603).
+ */
 const BottomNavigation = (props: BottomNavigationProps) => {
   const nav = useMemo(() => {
-    const index = docs.findIndex((it) => it.name === props.name);
+    const pages = docsOf(props.product);
+    const index = pages.findIndex((it) => it.name === props.name);
 
     return {
-      next: docs[index + 1]
+      next: pages[index + 1]
         ? {
-            path: `/docs/${docs[index + 1].slug}`,
-            name: docs[index + 1].name,
+            path: docsHref(pages[index + 1]),
+            name: pages[index + 1].name,
           }
         : undefined,
-      previous: docs[index - 1]
+      previous: pages[index - 1]
         ? {
-            path: `/docs/${docs[index - 1].slug}`,
-            name: docs[index - 1].name,
+            path: docsHref(pages[index - 1]),
+            name: pages[index - 1].name,
           }
         : undefined,
     };
-  }, [props.name]);
+  }, [props.product, props.name]);
 
   return (
     <nav

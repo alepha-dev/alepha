@@ -119,12 +119,16 @@ const Header = (props: HeaderProps) => {
             sit next to it rather than in their own nav. */}
         <nav className="product-nav hidden-mobile" aria-label="Products">
           {PRODUCTS.map((it) => {
-            // Framework owns "/" and so has to match exactly, or it would light
-            // up on every page. The others match their prefix, so /lore/docs
-            // still highlights Lore once those routes exist.
+            // Framework owns TWO spaces, `/` and `/docs/*`, and cannot match
+            // by prefix because `/` is a prefix of everything. It used to
+            // match `/` exactly, which meant no product was highlighted on any
+            // of its 378 doc pages. The others match their prefix, which is
+            // what lights Lore up on `/lore/docs/...` (quest #1603).
             const path = routerState.url.pathname;
             const active =
-              it.href === "/" ? path === "/" : path.startsWith(it.href);
+              it.href === "/"
+                ? path === "/" || path.startsWith("/docs")
+                : path.startsWith(it.href);
 
             return (
               <Link

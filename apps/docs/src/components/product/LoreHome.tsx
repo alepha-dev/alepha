@@ -10,6 +10,7 @@ const LoreHome = () => {
         name="Lore."
         tagline="Project management, for agents too."
         lead="An open-source project management app built on Alepha. Quests, folios, feedback and crash telemetry, every one of them readable and writable over MCP."
+        docsHref="/lore/docs/guides-introduction"
       >
         {/* A hosted instance to try, the way GitLab runs gitlab.com: it is one
             deployment of the same open-source app you can run yourself. */}
