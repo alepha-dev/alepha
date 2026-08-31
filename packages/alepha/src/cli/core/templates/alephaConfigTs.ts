@@ -66,10 +66,14 @@ export default defineConfig({
   //   runtime: "node",
   // },
   //
-  // env: {
-  //   VITE_BUILD_DATE: new Date().toISOString(),
-  //   VITE_VERSION: pkg.version,
-  // },
+  // Build metadata (version, commit, build date, runtime) is resolved for you
+  // and served on \`GET /version\`, readable anywhere as \`alepha.meta\`. The
+  // version comes from the git tag on the built commit, or "latest" when there
+  // is none. Declare one yourself only if that is not the answer you want -
+  // typically an app that deploys on every push, where tags exist only on
+  // releases:
+  //
+  // meta: { version: pkg.version },
   //
   // Deploy to Cloudflare in ~10s: \`alepha platform up --env production\`
   // Requires \`wrangler login\` once. D1, R2, KV, Queues and cron triggers

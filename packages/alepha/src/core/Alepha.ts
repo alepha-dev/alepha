@@ -1,3 +1,4 @@
+import { ALEPHA_META_FALLBACK } from "./constants/ALEPHA_META_FALLBACK.ts";
 import { KIND } from "./constants/KIND.ts";
 import { MODULE } from "./constants/MODULE.ts";
 import { OPTIONS } from "./constants/OPTIONS.ts";
@@ -8,6 +9,7 @@ import { TooLateSubstitutionError } from "./errors/TooLateSubstitutionError.ts";
 import { coerceObject } from "./helpers/coerceStrings.ts";
 import { Primitive } from "./helpers/primitive.ts";
 import { __alephaRef } from "./helpers/ref.ts";
+import type { AlephaMeta } from "./interfaces/AlephaMeta.ts";
 import type { Async } from "./interfaces/Async.ts";
 import type { LoggerInterface } from "./interfaces/LoggerInterface.ts";
 import {
@@ -31,6 +33,20 @@ import {
   type ZType,
   z,
 } from "./providers/ZodProvider.ts";
+
+/**
+ * The build metadata token, replaced by `alepha build` and `alepha dev`.
+ *
+ * A JSON **string** rather than an object literal, so no transform can reparse
+ * the substitution as a block, and declared module-locally rather than through
+ * `declare global` so nothing leaks into a consumer's global namespace.
+ *
+ * ⚠️ Only ever read behind `typeof`. When the token was never substituted this
+ * identifier does not exist, and a bare reference to it throws `ReferenceError`
+ * instead of evaluating to `undefined` - which is the whole reason the read in
+ * {@link Alepha.meta} is shaped the way it is.
+ */
+declare const __ALEPHA_META__: string | undefined;
 
 /**
  * Where an `$env` schema was declared.
@@ -402,6 +418,42 @@ export class Alepha {
   public get env(): Readonly<Env> {
     return this.store.get("env") ?? {};
   }
+
+  /**
+   * What this build is: version, commit, build date, runtime.
+   *
+   * Resolved once at build time and baked into the server AND the client
+   * bundle from the same resolution, so both agree about what is deployed.
+   * Served on `GET /version` by `AlephaServer`, and safe to read anywhere -
+   * a browser footer, a log line, a support answer.
+   *
+   * Falls back to {@link ALEPHA_META_FALLBACK} when no build produced this
+   * code (vitest, a `tsx` script, `alepha` imported outside Vite).
+   *
+   * @example
+   * ```ts
+   * alepha.meta.version;     // "0.27.1", or "latest" on an untagged commit
+   * alepha.meta.commit;      // "6faea71", absent without git
+   * alepha.meta.build.date;  // ISO, absent when nothing built this
+   * ```
+   */
+  public get meta(): Readonly<AlephaMeta> {
+    // `typeof` rather than a bare read: an unsubstituted token is not a
+    // declared binding, so touching it directly throws ReferenceError.
+    if (typeof __ALEPHA_META__ === "undefined") {
+      return ALEPHA_META_FALLBACK;
+    }
+
+    // Parsed once. The record is immutable for the life of the process, and
+    // this is read per request by the `/version` route.
+    this.cacheMeta ??= JSON.parse(__ALEPHA_META__);
+    return this.cacheMeta as AlephaMeta;
+  }
+
+  /**
+   * Memoized {@link meta}, parsed from the build token on first read.
+   */
+  protected cacheMeta?: AlephaMeta;
 
   constructor(state: Partial<State> = {}) {
     this.store = this.inject(StateManager, {

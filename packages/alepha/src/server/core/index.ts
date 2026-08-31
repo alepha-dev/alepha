@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 
 import { $module, type Alepha } from "alepha";
 
+import { versionOptions } from "./atoms/versionOptions.ts";
 import type { HttpError } from "./errors/HttpError.ts";
 import type {
   NodeRequestEvent,
@@ -32,6 +33,7 @@ import { ServerNotReadyProvider } from "./providers/ServerNotReadyProvider.ts";
 import { ServerProvider } from "./providers/ServerProvider.ts";
 import { ServerRouterProvider } from "./providers/ServerRouterProvider.ts";
 import { ServerTimingProvider } from "./providers/ServerTimingProvider.ts";
+import { ServerVersionProvider } from "./providers/ServerVersionProvider.ts";
 import type {
   HttpAction,
   ResolvedFetchOptions,
@@ -123,7 +125,9 @@ export * from "./providers/BunHttpServerProvider.ts";
 export * from "./providers/NodeHttpServerProvider.ts";
 export * from "./providers/ServerBodyParserProvider.ts";
 export * from "./providers/ServerCompressProvider.ts";
+export * from "./atoms/versionOptions.ts";
 export * from "./providers/ServerHealthProvider.ts";
+export * from "./providers/ServerVersionProvider.ts";
 export * from "./providers/ServerHelmetProvider.ts";
 export * from "./providers/ServerLoggerProvider.ts";
 export * from "./providers/ServerMultipartProvider.ts";
@@ -177,11 +181,13 @@ export const AlephaHttpClient = $module({
 export const AlephaServer = $module({
   name: "alepha.server",
   primitives: [$route, $action, $middleware, $sse],
+  atoms: [versionOptions],
   imports: [AlephaHttpClient],
   services: [
     ServerBodyParserProvider,
     ServerCompressProvider,
     ServerHealthProvider,
+    ServerVersionProvider,
     ServerHelmetProvider,
     ServerMultipartProvider,
     UserAgentParser,

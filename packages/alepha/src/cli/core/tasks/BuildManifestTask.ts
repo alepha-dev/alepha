@@ -1,5 +1,3 @@
-import { basename } from "node:path";
-
 import { $inject } from "alepha";
 import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
 import { FileSystemProvider } from "alepha/system";
@@ -8,6 +6,7 @@ import {
   type BuildManifest,
   buildManifestSchema,
 } from "../schemas/buildManifest.ts";
+import { MetaResolver } from "../services/MetaResolver.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
@@ -36,6 +35,7 @@ export class BuildManifestTask extends BuildTask {
   protected readonly cloudflareEmailProviderName = "CloudflareEmailProvider";
 
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly meta = $inject(MetaResolver);
 
   async run(ctx: BuildTaskContext): Promise<void> {
     // Prebuilt mode re-reads an existing manifest and would only rewrite the
@@ -102,11 +102,12 @@ export class BuildManifestTask extends BuildTask {
     // Slugified basename, matching what BuildCloudflareTask uses for the
     // wrangler placeholder name so the manifest keeps reporting the same
     // project identity it always has.
-    const name = basename(root)
-      .toLowerCase()
-      .replace(/[^a-z0-9-]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 63);
+    //
+    // Shared with MetaResolver rather than repeated, because `alepha.meta.name`
+    // promises to BE this string: an operator comparing `/version` against a
+    // deploy target has to be comparing the same slug, and two copies of the
+    // rule would eventually stop agreeing without anything failing.
+    const name = this.meta.slug(root);
 
     // Discover the same primitive shapes the Cloudflare enhance* methods read.
     // Errors are silently swallowed — an absent primitive class just

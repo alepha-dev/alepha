@@ -29,6 +29,7 @@ import {
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { ListChecks, Loader2 } from "lucide-react";
+import type { HTMLAttributes } from "react";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 
 export type SelectOption =
@@ -145,12 +146,24 @@ export interface ControlSelectProps {
    */
   clearLabel?: string;
   /**
-   * Extra className applied to the visible trigger (the `<SelectTrigger>`
-   * or combobox `<Button>`). Useful for sizing filter chips
-   * (`"w-40"`, `"w-72"`, etc.) without wrapping the whole `FormField` in
-   * an extra div.
+   * Extra className applied to the visible trigger: the combobox button, the
+   * multi-select chips box, or the segmented control, whichever this field
+   * renders. Useful for sizing filter chips (`"w-40"`, `"w-72"`, etc.)
+   * without wrapping the whole `FormField` in an extra div.
    */
   triggerClassName?: string;
+  /**
+   * Extra attributes for whichever trigger this field renders, forwarded from
+   * `Control`'s `inputProps`.
+   *
+   * The accessible name usually lives here, because a filter is routinely
+   * rendered with `label=""` next to its own heading: with no `<label>` to
+   * borrow a name from, a `role=combobox` button, a chips box or a radiogroup
+   * has no name at all. That is both an a11y hole and unaddressable from a
+   * test, and it was silent, since `Control` accepted `inputProps` and then
+   * dropped it on every select-shaped branch.
+   */
+  triggerProps?: HTMLAttributes<HTMLElement>;
   /**
    * Leading icon rendered on the left of the trigger, matching the
    * text-input controls. Resolved by the parent `Control` from its `icon`
@@ -292,6 +305,13 @@ export const ControlSelect = (props: ControlSelectProps) => {
         error={meta.error}
         required={meta.required}
       >
+        {/* `triggerProps` is deliberately NOT spread here. `Segmented`
+            redeclares two attributes that `HTMLAttributes` also has, with
+            narrower types (`defaultValue` is string-only, `onChange` takes a
+            value rather than an event), so a blanket spread neither typechecks
+            nor is safe. A segmented field also renders every option as visible
+            text, so it is the one branch that is not nameless without a label.
+            Name it with `label` if it needs one. */}
         <Segmented
           value={value != null ? String(value) : undefined}
           onChange={(v) => setValue(coerce(v))}
@@ -344,6 +364,7 @@ export const ControlSelect = (props: ControlSelectProps) => {
         // Used to be dropped on this path, so a filter chip sized `w-40` lost
         // its width as soon as its list crossed the threshold.
         triggerClassName={props.triggerClassName}
+        triggerProps={props.triggerProps}
         // `clearable` used to reach this path as a placeholder and nothing
         // else, so a filter chip that had switched to the combobox (>20
         // options) could be set but never put back to "All …".
@@ -380,6 +401,7 @@ interface ComboboxProps {
   createNewEntry?: ControlSelectProps["createNewEntry"];
   icon?: IconComponent;
   triggerClassName?: string;
+  triggerProps?: HTMLAttributes<HTMLElement>;
   /**
    * Trigger text when nothing is selected. Mirrors the native-Select path,
    * where a `clearable` field shows its `clearLabel` (e.g. "All zones") as the
@@ -729,6 +751,7 @@ function Combobox(props: ComboboxProps) {
           <ComboboxChips
             ref={anchor}
             id={props.id}
+            {...props.triggerProps}
             className={cn(
               "w-full",
               props.disabled && "pointer-events-none opacity-50",
@@ -760,6 +783,7 @@ function Combobox(props: ComboboxProps) {
           <ComboboxTrigger
             id={props.id}
             disabled={props.disabled}
+            {...props.triggerProps}
             className={cn(
               "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
               // Muted means "nothing chosen yet", which is only true without

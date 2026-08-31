@@ -14,9 +14,12 @@ export default defineConfig({
   // without a `dev.port` binds 5173.
   dev: { port: 3302 },
   services: [DocsCommand, TreeCommand, LlmsCommand, CheckDocsCommand],
+  // The build resolves commit and build date itself, and serves the lot on
+  // `GET /version`. `version` still has to be declared: the docs site deploys
+  // on every push to main, while tags exist only on releases, so the built-in
+  // git-tag chain would report "latest" on almost every deploy.
+  meta: { version: pkg.version },
   env: {
-    VITE_BUILD_DATE: new Date().toISOString(),
-    VITE_VERSION: pkg.version,
     // Here rather than in `.env.production` because the canonical URL is baked
     // into every page at prerender time, so it has to be set for a plain
     // `alepha build` too - and because it is the site's public address, not a
