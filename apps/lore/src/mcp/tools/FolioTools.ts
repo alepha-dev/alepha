@@ -15,6 +15,7 @@ import {
   folioRefParamsSchema,
   folioRefSchema,
 } from "../schemas/index.ts";
+import { DiagramCheckService } from "../services/DiagramCheckService.ts";
 import { EpicRefService } from "../services/EpicRefService.ts";
 
 /**
@@ -61,6 +62,7 @@ export class FolioTools {
   protected readonly blobController = $inject(BlobController);
   protected readonly epicController = $inject(EpicController);
   protected readonly epicRefs = $inject(EpicRefService);
+  protected readonly diagrams = $inject(DiagramCheckService);
 
   /**
    * Resolve project ID from params (by ID or name). Required: at least one
@@ -312,8 +314,7 @@ export class FolioTools {
 
   folio_create = $tool({
     description:
-      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. Pass `epic_number` to file the folio under an epic (it then shows on the epic's Folios tab and in `epic_get`), the same way quest_create does. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers. " +
-      DIAGRAM_CAPABILITY,
+      "Create a new folio in a project — a markdown note that becomes part of the project's memory for AI agents. Provide `project` (id) or `project_name`. `content` is markdown. Pass `epic_number` to file the folio under an epic (it then shows on the epic's Folios tab and in `epic_get`), the same way quest_create does. **Always set `summary`** — a 1-2 sentence (~200 chars) description of what the folio is for. It's the field other agents (and future calls of yours) read in `project_context` to decide whether to fetch the body. Without a summary, the index falls back to the title and orientation suffers.",
     title: "Create folio",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -321,7 +322,10 @@ export class FolioTools {
         project: z.integer().optional(),
         project_name: z.string().optional(),
         title: z.string().min(1).max(200),
-        content: z.string().optional(),
+        content: z
+          .string()
+          .describe(`The folio body, in Markdown. ${DIAGRAM_CAPABILITY}`)
+          .optional(),
         summary: z
           .string()
           .max(500)
@@ -405,20 +409,23 @@ export class FolioTools {
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
         epic: await this.epicRefs.refFor(projectId, epicId),
+        ...this.diagrams.warn(folio.content),
       };
     },
   });
 
   folio_update = $tool({
     description:
-      "Update a folio. Any omitted field stays unchanged. `epic_number` files the folio under an epic, and 0 detaches it from its current one. Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate. " +
-      DIAGRAM_CAPABILITY,
+      "Update a folio. Any omitted field stays unchanged. `epic_number` files the folio under an epic, and 0 detaches it from its current one. Updating `content` is a good moment to also refresh `summary` so the orientation index in `project_context` stays accurate.",
     title: "Update folio",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
       params: folioRefParamsSchema.extend({
         title: z.string().min(1).max(200).optional(),
-        content: z.string().optional(),
+        content: z
+          .string()
+          .describe(`The folio body, in Markdown. ${DIAGRAM_CAPABILITY}`)
+          .optional(),
         summary: z
           .string()
           .max(500)
@@ -521,6 +528,9 @@ export class FolioTools {
         createdAt: folio.createdAt,
         updatedAt: folio.updatedAt,
         epic: await this.epicRefs.refFor(folio.projectId, folio.epicId),
+        // `params.content`, not `folio.content`: a call that only renamed the
+        // folio must not be warned about a diagram it did not write.
+        ...this.diagrams.warn(params.content),
       };
     },
   });

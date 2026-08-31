@@ -1,6 +1,7 @@
 import { z } from "alepha";
 
 import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
+import { diagramWarningsShape } from "./diagramWarningsSchema.ts";
 import { epicStatusSchema } from "./epicStatusSchema.ts";
 import { projectParamsSchema } from "./projectParamsSchema.ts";
 
@@ -105,6 +106,7 @@ export const epicCreateResultSchema = z.object({
   // Always "planned" — every epic is created there (see EpicController).
   status: epicStatusSchema,
   createdAt: z.datetime(),
+  ...diagramWarningsShape,
 });
 
 // -----------------------------------------------------------------------------
@@ -124,6 +126,7 @@ export const epicUpdateResultSchema = z.object({
   number: z.integer(),
   title: z.string(),
   updatedAt: z.datetime(),
+  ...diagramWarningsShape,
 });
 
 // -----------------------------------------------------------------------------
