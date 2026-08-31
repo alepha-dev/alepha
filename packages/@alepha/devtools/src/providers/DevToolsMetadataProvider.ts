@@ -1,5 +1,3 @@
-import { createRequire } from "node:module";
-
 import { $inject, Alepha, type ZObject, type ZType, z } from "alepha";
 import { $storage } from "alepha/api/files";
 import { JobProvider } from "alepha/api/jobs";
@@ -605,30 +603,17 @@ export class DevToolsMetadataProvider {
     });
   }
 
-  /**
-   * The framework's own version.
-   *
-   * Read through `createRequire` rather than imported: `alepha` does export
-   * `./package.json`, but a static import of it would put the manifest into
-   * every bundle that reaches this file, and the build rewrites
-   * `createRequire` calls in emitted chunks anyway. Devtools is a development
-   * tool, so degrading to "unknown" is the right failure - a version string
-   * is not worth a crash at boot.
-   */
-  protected alephaVersion(): string {
-    try {
-      const require = createRequire(import.meta.url);
-      return String(require("alepha/package.json").version ?? "unknown");
-    } catch {
-      return "unknown";
-    }
-  }
-
   public getSystem(): DevSystem {
     const isBun = typeof globalThis.Bun !== "undefined";
     return {
-      appVersion: String(this.alepha.env.npm_package_version ?? "unknown"),
-      alephaVersion: this.alephaVersion(),
+      // Both come from the record the build baked in, rather than being
+      // re-derived here. `appVersion` used to read `npm_package_version`, which
+      // is set only when the process was started by a package manager, and
+      // `alephaVersion` used to `createRequire("alepha/package.json")`, which
+      // is not resolvable on every target. `alepha.meta` already answers both,
+      // identically to what `GET /version` serves.
+      appVersion: this.alepha.meta.version,
+      alephaVersion: this.alepha.meta.framework,
       nodeVersion: isBun
         ? (globalThis.Bun?.version ?? "unknown")
         : process.version,

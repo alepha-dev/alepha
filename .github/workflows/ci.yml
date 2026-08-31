@@ -388,6 +388,12 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # This job's artifact is deployed, and `alepha.meta.version` reads the
+          # git tag on the built commit. The default checkout fetches shallow
+          # and passes --no-tags, so without this every deploy would report
+          # "latest". The other jobs deploy nothing and need no tags.
+          fetch-tags: true
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -430,6 +436,12 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # This job's artifact is deployed, and `alepha.meta.version` reads the
+          # git tag on the built commit. The default checkout fetches shallow
+          # and passes --no-tags, so without this every deploy would report
+          # "latest". The other jobs deploy nothing and need no tags.
+          fetch-tags: true
 
       - name: Setup
         uses: ./.github/actions/setup

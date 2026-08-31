@@ -56,7 +56,7 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (24)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Release`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`, `Version`.
+**Controllers (23)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Release`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
 
 > `User`, `Session` and `Identity` were **deleted** when Lore moved onto the shared
 > `/account` area: they duplicated the framework's `MyProfileController`,
@@ -579,16 +579,39 @@ yarn deploy            # alepha platform up -e production (Cloudflare D1)
 
 ## What's deployed? — `GET /version`
 
-Every running instance exposes a public `/version` endpoint (`VersionController` uses `$route`, not `$action`, so it lives at the root instead of under `/api`) that returns the build stamp:
+`GET /version` is **baseline Alepha** now — `ServerVersionProvider` ships with
+`AlephaServer`, the way `/health` does, so Lore has no controller of its own for
+it any more (`VersionController` was deleted).
 
 ```bash
 curl -s https://lore.alepha.dev/version
-# {"version":"0.1.0","commit":"1f605e6","buildDate":"2026-05-17T21:10:42.808Z"}
+# {"name":"lore","version":"0.27.1","commit":"6faea71",
+#  "build":{"date":"2026-08-31T...","runtime":"workerd","dev":false},
+#  "framework":"0.27.1"}
 ```
 
-Use it to confirm a deploy actually went live (vs. a stale Cloudflare cache) and to map a reported bug to the exact tip it runs against. The three values come from `alepha.config.ts`'s `env: { VITE_VERSION, VITE_GIT_COMMIT, VITE_BUILD_DATE }` block — Alepha pipes those into `process.env` at config load, and the server reads them in `VersionController`. The `VITE_` prefix also auto-exposes them to the browser bundle via Vite (`import.meta.env.VITE_VERSION` etc.) if frontend ever needs them.
+Use it to confirm a deploy actually went live (vs. a stale Cloudflare cache) and
+to map a reported bug to the exact tip it runs against.
 
-The endpoint is public on purpose: Lore lives in the open-source `github.com/alepha-dev/alepha` monorepo under `apps/lore`, so the commit SHA leaks nothing. `$route` (not `$action`) so it lives at the root path, not under `/api`.
+The record is resolved once at build time and baked into the server **and** the
+client bundle, so `alepha.meta` reads the same answer in the browser as on the
+server. The endpoint is public on purpose: Lore lives in the open-source
+`github.com/alepha-dev/alepha` monorepo, so the commit SHA leaks nothing.
+
+⚠️ **`version` is declared in `alepha.config.ts` and has to be.** The framework
+resolves it from `git tag --points-at HEAD`, falling back to `"latest"`. Lore
+deploys on **every push to main** while tags exist only on releases, so the
+built-in chain would report `"latest"` on almost every deploy. The `meta` block
+keeps publishing the FRAMEWORK's `pkg.version` — Lore is private and carries no
+version of its own:
+
+```ts
+meta: { version: pkg.version },
+```
+
+`commit` and `build.date` need no such help and are gone from the config: the
+build resolves both. `commit` survives CI's shallow clone (resolving HEAD needs
+no tags), so even a `"latest"` build says exactly which commit is running.
 
 ## ⚠️ Migration safety on D1 (production-data bomb, real incident)
 

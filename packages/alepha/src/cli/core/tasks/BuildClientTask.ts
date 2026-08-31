@@ -2,6 +2,7 @@ import { $inject, Alepha } from "alepha";
 import { FileSystemProvider } from "alepha/system";
 import type { UserConfig } from "vite";
 
+import { MetaResolver } from "../services/MetaResolver.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -17,6 +18,7 @@ export class BuildClientTask extends BuildTask {
   protected readonly alepha = $inject(Alepha);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly viteUtils = $inject(ViteUtils);
+  protected readonly metaResolver = $inject(MetaResolver);
 
   async run(ctx: BuildTaskContext): Promise<void> {
     if (ctx.flags?.prebuilt) {
@@ -50,6 +52,7 @@ export class BuildClientTask extends BuildTask {
             dist: `${distDir}/${publicDir}`,
             stats,
             silent: !isCI,
+            meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
           });
         },
       });
@@ -62,6 +65,10 @@ export class BuildClientTask extends BuildTask {
     dist: string;
     stats?: boolean | "json";
     silent?: boolean;
+    /**
+     * The build metadata token, already encoded as a `define` entry.
+     */
+    meta?: Record<string, string>;
   }): Promise<void> {
     const { build: viteBuild } = await this.viteUtils.importVite();
     const plugins: any[] = [];
@@ -90,6 +97,10 @@ export class BuildClientTask extends BuildTask {
       logLevel: opts.silent ? "silent" : undefined,
       define: {
         "process.env.NODE_ENV": '"production"',
+        // The build metadata token. Baked into BOTH bundles from the one
+        // record on `ctx.meta`, so `alepha.meta` reads the same answer in the
+        // browser as it does on the server.
+        ...opts.meta,
       },
       resolve: {
         dedupe: [

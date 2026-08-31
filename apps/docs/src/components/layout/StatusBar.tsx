@@ -1,9 +1,10 @@
-import { ClientOnly } from "alepha/react";
+import { ClientOnly, useAlepha } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import { useEffect, useState } from "react";
 
 const StatusBar = () => {
+  const alepha = useAlepha();
   const state = useRouterState();
   const { l } = useI18n();
   const currentPage = state.url?.pathname || "/";
@@ -50,7 +51,7 @@ const StatusBar = () => {
         <span>
           <ClientOnly>
             built{" "}
-            {l(import.meta.env.VITE_BUILD_DATE?.split("T")[0] || "", {
+            {l(alepha.meta.build.date?.split("T")[0] || "", {
               date: "fromNow",
             })}
           </ClientOnly>

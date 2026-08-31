@@ -11,6 +11,7 @@ import { $module } from "alepha";
 import { appEntryOptions } from "./atoms/appEntryOptions.ts";
 import { buildOptions } from "./atoms/buildOptions.ts";
 import { devOptions } from "./atoms/devOptions.ts";
+import { metaOptions } from "./atoms/metaOptions.ts";
 import { BuildCommand } from "./commands/build.ts";
 import { CleanCommand } from "./commands/clean.ts";
 import { DbCommand } from "./commands/db.ts";
@@ -54,6 +55,7 @@ export * from "./atoms/appEntryOptions.ts";
 export * from "./atoms/buildOptions.ts";
 export * from "./atoms/changelogOptions.ts";
 export * from "./atoms/devOptions.ts";
+export * from "./atoms/metaOptions.ts";
 export * from "./commands/build.ts";
 export * from "./commands/clean.ts";
 export * from "./commands/db.ts";
@@ -119,7 +121,13 @@ export const AlephaCliServices = $module({
  */
 export const AlephaCli = $module({
   name: "alepha.cli",
-  atoms: [appEntryOptions, buildOptions, changelogOptions, devOptions],
+  atoms: [
+    appEntryOptions,
+    buildOptions,
+    changelogOptions,
+    devOptions,
+    metaOptions,
+  ],
   services: [
     AlephaCliExtensionProvider,
     // Commands

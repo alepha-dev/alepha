@@ -1,4 +1,4 @@
-import type { Alepha } from "alepha";
+import type { Alepha, AlephaMeta } from "alepha";
 import type { RunnerMethod } from "alepha/command";
 
 import type { BuildOptions } from "../atoms/buildOptions.ts";
@@ -40,6 +40,21 @@ export interface BuildTaskContext {
    * Whether the app has a client-side bundle (React).
    */
   hasClient: boolean;
+
+  /**
+   * What this build is: version, commit, date, runtime.
+   *
+   * Resolved ONCE, here, and handed to every task that bakes it. The server
+   * bundle and the client bundle must carry the identical record - two
+   * resolutions could disagree about the build date alone, and a browser
+   * reporting a different build from its own server is worse than reporting
+   * none.
+   *
+   * Absent in prebuilt mode and on the deploy-side config paths, where no
+   * bundle is produced: there is no build to describe, and the bundle tasks
+   * that would bake it return early anyway.
+   */
+  meta?: AlephaMeta;
 
   /**
    * Build-time snapshot of primitive data, read from

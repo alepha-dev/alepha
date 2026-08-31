@@ -17,6 +17,7 @@ export * from "./helpers/FileLike.ts";
 export * from "./helpers/jsonSchemaToZod.ts";
 export * from "./helpers/primitive.ts";
 export * from "./helpers/ref.ts";
+export * from "./interfaces/AlephaMeta.ts";
 export * from "./interfaces/Async.ts";
 export * from "./interfaces/LoggerInterface.ts";
 export * from "./interfaces/Service.ts";
