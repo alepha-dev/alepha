@@ -402,10 +402,8 @@ export default {
   "project.create.building": "Forging your project…",
 
   "quest.view.description": "Description",
-  "quest.graph.empty": "No related quests yet.",
-  "quest.graph.noDescription": "(no description)",
-  "quest.graph.pickAQuest":
-    "Pick a quest on the timeline to see its description.",
+  "quest.questline.empty":
+    "Nothing depends on this quest, and it depends on nothing.",
   "quest.view.actions.complete": "Complete Quest",
   "quest.view.actions.unassign": "Unassign",
   "quest.view.actions.shelve": "Shelve",

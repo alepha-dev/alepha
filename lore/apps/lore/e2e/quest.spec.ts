@@ -2021,3 +2021,117 @@ test.describe("Quest table — the Size column", () => {
       .toEqual(["XL", "M", "XS"]);
   });
 });
+
+/**
+ * The standalone questline route (`/quests/:shortId/graph`), quest #1336.
+ *
+ * It used to be a page of its own design - a left rail plus a
+ * PREVIOUS / current / NEXT window - over a client-side walk of an edge list
+ * it re-fetched for the whole project every minute. It draws the same
+ * `Questline` map the epic's Flow tab does now, and for a quest that HAS an
+ * epic it does not draw at all: it sends the reader to that epic's Flow tab,
+ * where the same map already lives beside the epic's own chrome.
+ *
+ * The fork is what only an e2e can check, because it is decided by the loader
+ * against a real response and resolves before anything paints.
+ */
+test.describe("Quest — the questline route", () => {
+  test("draws a component, and defers to the epic when there is one", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `qline${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Ql${t}`.slice(0, 20),
+    );
+    await setProjectFeature(page, projectId, "epics", true);
+
+    const seed = async (title: string, dependsOn?: number) =>
+      await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
+        projectId,
+        title,
+        description: "Seeded for the questline route",
+        area: "orm",
+        priority: "high",
+        objectives: [],
+        attachments: [],
+        ...(dependsOn != null ? { dependsOn } : {}),
+      });
+
+    const root = await seed(`Root${t}`);
+    const next = await seed(`Next${t}`, root.id);
+    const alone = await seed(`Alone${t}`);
+
+    const card = (quest: { shortId: number }, title: string) =>
+      page.getByRole("button", { name: `#${quest.shortId} ${title}` });
+
+    await test.step("an unfiled quest draws its own component", async () => {
+      await page.goto(`/${slug}/quests/${root.shortId}/graph`);
+
+      // Both of them, from either end of the edge: the walk is undirected, so
+      // asking from the root has to reach what the root unblocks.
+      await expect(card(root, `Root${t}`)).toBeVisible({ timeout: 15_000 });
+      await expect(card(next, `Next${t}`)).toBeVisible();
+      // And nothing else in the project.
+      await expect(card(alone, `Alone${t}`)).toHaveCount(0);
+    });
+
+    await test.step("asking from the other end draws the same component", async () => {
+      await page.goto(`/${slug}/quests/${next.shortId}/graph`);
+
+      await expect(card(root, `Root${t}`)).toBeVisible({ timeout: 15_000 });
+      await expect(card(next, `Next${t}`)).toBeVisible();
+    });
+
+    await test.step("a quest with no relations says so", async () => {
+      await page.goto(`/${slug}/quests/${alone.shortId}/graph`);
+
+      await expect(page.getByText(/depends on nothing/i)).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
+    await test.step("a quest inside an epic goes to that epic's Flow tab", async () => {
+      const epic = await page.evaluate(
+        async ({ projectId, title }) => {
+          const r = await fetch(`/api/createEpic/${projectId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ title }),
+          });
+          if (!r.ok) throw new Error(`createEpic ${r.status}`);
+          return r.json() as Promise<{ id: number; number: number }>;
+        },
+        { projectId, title: `Ep${t}` },
+      );
+
+      await page.evaluate(
+        async ({ epicId, questId }) => {
+          const r = await fetch(`/api/attachQuest/${epicId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ questId }),
+          });
+          if (!r.ok) throw new Error(`attachQuest ${r.status}`);
+        },
+        { epicId: epic.id, questId: root.id },
+      );
+
+      await page.goto(`/${slug}/quests/${root.shortId}/graph`);
+
+      // The redirect is a loader throw, so it resolves before anything of the
+      // questline page paints - there is no frame where the reader sees one
+      // surface on the way to the other.
+      await expect(page).toHaveURL(
+        new RegExp(`/epics/${epic.number}\\?tab=flow$`),
+        { timeout: 15_000 },
+      );
+      await expect(card(root, `Root${t}`)).toBeVisible({ timeout: 15_000 });
+    });
+  });
+});
