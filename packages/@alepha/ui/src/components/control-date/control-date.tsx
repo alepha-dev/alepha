@@ -18,7 +18,12 @@ import {
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
-import { Calendar as CalendarIcon, Clock, X } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  ChevronDown as ChevronDownIcon,
+  Clock,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 export interface ControlDateProps {
@@ -211,6 +216,12 @@ const DatePopover = (props: DatePopoverProps) => {
         >
           <CalendarIcon className="mr-2 size-4" />
           {formatted || "Pick a date"}
+          {/* Same trailing caret a select trigger carries, for the same
+              reason: this opens a popover, and without it the control reads
+              as a text field that happens to have a calendar glyph. `ml-auto`
+              rather than `justify-between` so the calendar icon and the text
+              stay together on the left. */}
+          <ChevronDownIcon className="text-muted-foreground pointer-events-none ml-auto size-4 shrink-0" />
         </PopoverTrigger>
         {showClear && (
           <Button
