@@ -118,7 +118,7 @@ export class ReleaseController {
 
       return rows.map((release) => ({
         ...release,
-        progress: this.progressOf(release, contents.get(release.id)),
+        progress: this.contents.progressOf(release, contents.get(release.id)),
       }));
     },
   });
@@ -221,7 +221,7 @@ export class ReleaseController {
       // the frozen record cannot disagree with itself across two queries.
       const contents = await this.contents.contentsOf(release);
       const { markdown, groups } = this.renderChangelog(withTitle, contents);
-      const progress = this.progressOf(release, contents);
+      const progress = this.contents.progressOf(release, contents);
 
       return await this.releases.updateById(release.id, {
         releasedAt: this.dt.nowISOString(),
@@ -520,63 +520,6 @@ export class ReleaseController {
   }
 
   /**
-   * The four progress buckets over a release's quests.
-   *
-   * ⚠️ `shelved` is counted OUTSIDE `total` — see `releases.total`. The
-   * untouched remainder is `total - completed - inProgress`, and this is
-   * NOT the same denominator as `EpicController.computeProgress`, which
-   * counts every quest of the epic including the shelved ones.
-   *
-   * The three in-total buckets are disjoint, so no fifth count is needed:
-   * `shelvedAt` is only ever set on a quest still in `new` status, so it
-   * never coexists with `acceptedAt` or `completedAt`, and `inProgress`
-   * excludes both of the others.
-   *
-   * Called at publish and stamped onto the row. #1555 is what serves it live
-   * for an open release.
-   */
-  /**
-   * The four progress buckets, from the ONE source that is correct for this
-   * release's state.
-   *
-   * A released release reads its four FROZEN columns and is never recomputed;
-   * an open one is counted live from its contents. One method branching on
-   * `releasedAt`, so no caller can accidentally recompute a released one.
-   *
-   * That is not an optimisation. Completing a quest a month after `0.28.0`
-   * shipped must not silently rewrite what `0.28.0` shipped: a released
-   * release renders entirely from its own row, frozen changelog and frozen
-   * counts, with no live query at all.
-   */
-  progressOf(
-    release: Release,
-    contents?: ReleaseContents,
-  ): { completed: number; inProgress: number; shelved: number; total: number } {
-    if (release.releasedAt) {
-      return {
-        completed: release.completed ?? 0,
-        inProgress: release.inProgress ?? 0,
-        shelved: release.shelved ?? 0,
-        total: release.total ?? 0,
-      };
-    }
-
-    // An open release with no contents supplied reads as empty rather than
-    // throwing: the batched caller only looks up the open ones, so a missing
-    // entry means "nothing in it", not "not fetched".
-    const quests = contents?.quests ?? [];
-
-    return {
-      completed: quests.filter((quest) => quest.completedAt != null).length,
-      inProgress: quests.filter(
-        (quest) => quest.acceptedAt != null && quest.completedAt == null,
-      ).length,
-      shelved: contents?.shelvedQuests.length ?? 0,
-      total: quests.length,
-    };
-  }
-
-  /**
    * Counted over `ReleaseContentService`, never with a `releaseId` count of
    * its own. A release is mostly a set of EPICS, so a direct-attachment count
    * would report 0/0 for the normal case and disagree with the changelog
@@ -590,7 +533,10 @@ export class ReleaseController {
     shelved: number;
     total: number;
   }> {
-    return this.progressOf(release, await this.contents.contentsOf(release));
+    return this.contents.progressOf(
+      release,
+      await this.contents.contentsOf(release),
+    );
   }
 
   /**

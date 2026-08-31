@@ -792,6 +792,17 @@ export default {
   "release.bucket.share": "$1 % de $2",
   "release.bucket.outside": "hors des $1",
 
+  "roadmap.subtitle": "Ce qui est en cours, et ce qui arrive ensuite.",
+  "roadmap.empty": "Rien sur la feuille de route pour l’instant.",
+  "roadmap.section.upcoming": "À venir",
+  "roadmap.section.shipped": "Livré",
+  "roadmap.release.estimated": "Estimée au $1",
+  "roadmap.release.released": "Livrée le $1",
+  "roadmap.release.noDate": "Pas encore de date estimée",
+  "roadmap.epic.ref": "Épopée $1",
+  "roadmap.epic.ratio": "$1/$2",
+  "roadmap.poweredBy": "Feuille de route publiée avec Alepha Lore.",
+
   "release.kpi.ready.label": "Prête à livrer",
   "release.kpi.ready.remaining.one": "1 quête reste à livrer.",
   "release.kpi.ready.remaining.many": "$1 quêtes restent à livrer.",
