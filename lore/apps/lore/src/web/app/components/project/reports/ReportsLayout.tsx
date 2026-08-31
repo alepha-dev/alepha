@@ -1,4 +1,5 @@
 import { cn } from "@alepha/ui/lib/utils";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   Link,
@@ -8,41 +9,32 @@ import {
 } from "alepha/react/router";
 
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-type RouteName = "reportsOverview" | "reportsQuests" | "reportsMembers";
-
-type NavLabelKey =
-  | "project.reports.nav.overview"
-  | "project.reports.nav.quests"
-  | "project.reports.nav.members";
-
-interface ReportsTab {
-  route: RouteName;
-  labelKey: NavLabelKey;
-}
-
-const TABS: ReportsTab[] = [
-  { route: "reportsOverview", labelKey: "project.reports.nav.overview" },
-  { route: "reportsQuests", labelKey: "project.reports.nav.quests" },
-  { route: "reportsMembers", labelKey: "project.reports.nav.members" },
-];
+import { reportsTabs } from "./reportsTabs.ts";
 
 /**
- * Flat Reports shell — a horizontal tab sub-nav (Overview / Quests / Members)
- * above a `<NestedView />` that renders the active child page.
+ * Flat Reports shell — a horizontal tab sub-nav above a `<NestedView />` that
+ * renders the active child page.
+ *
+ * The tab list is no longer a constant: Quality only exists where
+ * `features.quality` is on. See `reportsTabs.ts` for why an ingested tab is
+ * gated where a derived one is not.
  */
 const ReportsLayout = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const routerState = useRouterState();
+  const [project] = useStore(currentProjectAtom);
 
   const activeRoute = routerState.name ?? "";
+  const tabs = reportsTabs(project?.features);
 
   return (
     <div className="mx-auto w-full max-w-5xl p-4">
       <div className="border-border flex gap-1 border-b">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const isActive = activeRoute === tab.route;
           const href = router.path(tab.route);
           return (
