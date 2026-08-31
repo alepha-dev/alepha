@@ -1286,7 +1286,6 @@ export default {
   "epic.folios.detach.title": "Détacher ce folio ?",
   "epic.folios.detach.confirm":
     "« $1 » ne sera plus lié à cette épopée. Le folio lui-même n'est pas supprimé.",
-  "epic.quests.title": "Quêtes",
   "epic.quests.empty": "Aucune quête dans cette épopée pour le moment.",
   "epic.quests.loading": "Chargement des quêtes…",
   "epic.quests.attach": "Associer une quête",
