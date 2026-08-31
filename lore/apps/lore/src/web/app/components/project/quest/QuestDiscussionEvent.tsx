@@ -85,6 +85,23 @@ const QuestDiscussionEvent = (props: QuestDiscussionEventProps) => {
           </span>
         </div>
 
+        {/* The changes past the first, which the header line already carries.
+            One row per save rather than per field: they share an actor and an
+            instant, so separate feed entries would repeat both. */}
+        {(entry.changes?.length ?? 0) > 1 && (
+          <ul className="flex flex-col gap-1">
+            {entry.changes?.slice(1).map((change, index) => (
+              <li
+                key={`${change.field}-${index}`}
+                className="text-muted-foreground flex gap-2 text-xs"
+              >
+                <Pencil className="mt-0.5 size-3.5 shrink-0" />
+                <span className="min-w-0">{changeLine(tr, change)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
         {/* Above the summary, because a reader deciding whether to trust a
             closed quest needs to know what was skipped before reading the
             account of what was done. */}
@@ -152,7 +169,81 @@ const predicate = (
       tr("quest.event.objectiveCompleted", { args: [entry.subject] }),
     );
   }
+  // An `updated` event says what it changed. The FIRST change becomes the
+  // header line so the row reads as a sentence; the rest are listed under it
+  // (see `changeLines`), because one save can move several fields and every
+  // one of them carries the same actor and instant.
+  if (entry.action === "updated" && entry.changes?.length) {
+    return changeLine(tr, entry.changes[0]);
+  }
   return String(tr(PREDICATE_KEYS[entry.action] ?? "quest.event.updated"));
+};
+
+/**
+ * One change, as the sentence that follows the actor's name.
+ *
+ * ⚠️ The fallback is the point, not an afterthought. `field` is a free-form
+ * string written by whatever version of the server produced the row, so a
+ * field this build has never heard of has to render as the honest generic
+ * line rather than as a lie about a field it guessed at (feedback #2004).
+ */
+const changeLine = (
+  tr: Tr,
+  change: { field: string; from?: string; to?: string },
+): string => {
+  const { field, from, to } = change;
+
+  switch (field) {
+    case "priority":
+      // The raw enum value, which is what every other surface shows: the
+      // table's badge renders `quest.priority` with `capitalize` and there
+      // are no per-value translations to reach for.
+      return String(
+        from && to
+          ? tr("quest.event.change.priority", { args: [from, to] })
+          : tr("quest.event.change.priorityTo", { args: [to ?? ""] }),
+      );
+    case "area":
+      return String(tr("quest.event.change.area", { args: [to ?? ""] }));
+    case "title":
+      return String(tr("quest.event.change.title", { args: [from ?? ""] }));
+    case "description":
+      return String(tr("quest.event.change.description"));
+    case "objectives":
+      return String(tr("quest.event.change.objectives"));
+    case "size":
+      return String(tr("quest.event.change.size"));
+    case "dueAt":
+      return String(
+        to ? tr("quest.event.change.due") : tr("quest.event.change.dueCleared"),
+      );
+    case "tags":
+      return String(
+        to
+          ? tr("quest.event.change.tagsAdded", { args: [to] })
+          : tr("quest.event.change.tagsRemoved", { args: [from ?? ""] }),
+      );
+    case "attachments":
+      return String(
+        to
+          ? tr("quest.event.change.attached", { args: [to] })
+          : tr("quest.event.change.detached", { args: [from ?? ""] }),
+      );
+    case "epic":
+      return String(
+        to
+          ? tr("quest.event.change.epic", { args: [to] })
+          : tr("quest.event.change.epicCleared"),
+      );
+    case "release":
+      return String(
+        to
+          ? tr("quest.event.change.release", { args: [to] })
+          : tr("quest.event.change.releaseCleared"),
+      );
+    default:
+      return String(tr("quest.event.updated"));
+  }
 };
 
 const ICONS: Record<string, LucideIcon> = {

@@ -18,6 +18,7 @@ import {
 } from "alepha/server";
 
 import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
+import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import type { Project } from "../entities/projects.ts";
 import {
@@ -27,6 +28,7 @@ import {
   REMINDER_INTERVAL_MS,
   REMINDER_INTERVAL_VALUES,
 } from "../entities/quests.ts";
+import { releases } from "../entities/releases.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
@@ -54,6 +56,15 @@ export class QuestController {
   quests = $repository(quests);
   feedback = $repository(feedback);
   blights = $repository(blights);
+  /**
+   * Read-only here, and only so a history line can name the epic or release a
+   * quest moved to by its `number` / `tag` rather than by a row id nobody
+   * recognises. Every MUTATION of either lives on its own controller, and
+   * attaching to a release still goes through `ReleaseAttachmentService`
+   * because a published release has to refuse it.
+   */
+  epics = $repository(epics);
+  releases = $repository(releases);
   dt = $inject(DateTimeProvider);
   owned = $inject(OwnedResourceProvider);
   /**
@@ -303,6 +314,159 @@ export class QuestController {
       default:
         return { shelvedAt: { isNotNull: true } };
     }
+  }
+
+  /**
+   * What an edit actually changed, as display-ready lines for the feed.
+   *
+   * Every mutation used to write one `updated` row, so uploading an
+   * attachment and renaming a quest produced the same "updated the quest"
+   * and two unrelated edits looked identical (feedback #2004).
+   *
+   * ⚠️ Only fields with something worth SAYING. A `patch` carries
+   * bookkeeping too (`attachments` is rewritten on every save to fold in
+   * embedded images, `completionMessageUpdatedAt` is a stamp), and a diff
+   * that reported those would trade one useless line for several.
+   *
+   * Attachment ids are resolved to filenames here, on the server, because
+   * this is the only place a REMOVED file's name still exists: by the time
+   * the feed renders, it is gone from the quest.
+   */
+  protected async diffQuest(
+    before: Quest,
+    patch: Partial<Quest>,
+  ): Promise<Array<{ field: string; from?: string; to?: string }>> {
+    const changes: Array<{ field: string; from?: string; to?: string }> = [];
+
+    // Narrowed rather than `unknown`: every caller passes a scalar column,
+    // and a wider type would let an object through to `String()` and print
+    // "[object Object]" into somebody's activity feed.
+    type Scalar = string | number | null | undefined;
+    const scalar = (field: string, next: Scalar, prev: Scalar) => {
+      if (next === undefined || next === prev) return;
+      changes.push({
+        field,
+        from: prev == null ? undefined : String(prev),
+        to: next == null ? undefined : String(next),
+      });
+    };
+
+    scalar("priority", patch.priority, before.priority);
+    scalar("area", patch.area, before.area);
+    scalar("size", patch.size, before.size);
+    scalar("dueAt", patch.dueAt, before.dueAt);
+    // Epic and release are named rather than numbered: an id says nothing to
+    // a reader, and both are cheap to resolve on a field that rarely moves.
+    if (patch.epicId !== undefined && patch.epicId !== before.epicId) {
+      const numbers = await this.epicNumbers([patch.epicId, before.epicId]);
+      changes.push({
+        field: "epic",
+        from: before.epicId ? numbers.get(before.epicId) : undefined,
+        to: patch.epicId ? numbers.get(patch.epicId) : undefined,
+      });
+    }
+
+    if (patch.releaseId !== undefined && patch.releaseId !== before.releaseId) {
+      const tags = await this.releaseTags([patch.releaseId, before.releaseId]);
+      changes.push({
+        field: "release",
+        from: before.releaseId ? tags.get(before.releaseId) : undefined,
+        to: patch.releaseId ? tags.get(patch.releaseId) : undefined,
+      });
+    }
+
+    if (patch.title !== undefined && patch.title !== before.title) {
+      // The old title, not the new one: the new one is the heading above
+      // the feed, so printing it again says nothing.
+      changes.push({ field: "title", from: before.title });
+    }
+
+    if (
+      patch.description !== undefined &&
+      patch.description !== before.description
+    ) {
+      // No values. A markdown diff in a one-line feed entry is unreadable,
+      // and "edited the description" is the honest whole of it.
+      changes.push({ field: "description" });
+    }
+
+    const list = (
+      field: string,
+      next: string[] | undefined,
+      prev: string[],
+      label: (value: string) => string = (value) => value,
+    ) => {
+      if (!next) return;
+      const added = next.filter((value) => !prev.includes(value));
+      const removed = prev.filter((value) => !next.includes(value));
+      if (added.length) {
+        changes.push({ field, to: added.map(label).join(", ") });
+      }
+      if (removed.length) {
+        changes.push({ field, from: removed.map(label).join(", ") });
+      }
+    };
+
+    list("tags", patch.tags, before.tags ?? []);
+
+    if (patch.attachments) {
+      const names = await this.attachmentNames([
+        ...patch.attachments,
+        ...before.attachments,
+      ]);
+      list(
+        "attachments",
+        patch.attachments,
+        before.attachments,
+        (id) => names.get(id) ?? id,
+      );
+    }
+
+    return changes;
+  }
+
+  /**
+   * Per-project epic numbers for a set of epic ids, for the history lines.
+   */
+  protected async epicNumbers(
+    ids: Array<number | undefined | null>,
+  ): Promise<Map<number, string>> {
+    const unique = [...new Set(ids.filter((id): id is number => !!id))];
+    if (unique.length === 0) return new Map();
+    const rows = await this.epics
+      .findMany({ where: { id: { inArray: unique } } })
+      .catch(() => []);
+    return new Map(rows.map((row) => [row.id, `#${row.number}`]));
+  }
+
+  /**
+   * Release tags for a set of release ids, for the history lines.
+   */
+  protected async releaseTags(
+    ids: Array<number | undefined | null>,
+  ): Promise<Map<number, string>> {
+    const unique = [...new Set(ids.filter((id): id is number => !!id))];
+    if (unique.length === 0) return new Map();
+    const rows = await this.releases
+      .findMany({ where: { id: { inArray: unique } } })
+      .catch(() => []);
+    return new Map(rows.map((row) => [row.id, row.tag ?? String(row.number)]));
+  }
+
+  /**
+   * Filenames for a set of file ids, for the history lines.
+   *
+   * Best effort: a file the lookup cannot resolve falls back to its id at
+   * the call site rather than dropping the line, because "an attachment was
+   * removed" is still true and more useful than silence.
+   */
+  protected async attachmentNames(ids: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return new Map();
+    const rows = await this.fileService.fileRepository
+      .findMany({ where: { id: { inArray: unique } } })
+      .catch(() => []);
+    return new Map(rows.map((row) => [row.id, row.name]));
   }
 
   /**
@@ -2008,6 +2172,7 @@ export class QuestController {
             at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
+            changes: await this.diffQuest(quest, patch),
           },
         ];
       }
@@ -2126,6 +2291,8 @@ export class QuestController {
             at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
+            // The one edit whose field is known without a diff.
+            changes: [{ field: "objectives" }],
           },
         ],
       });
