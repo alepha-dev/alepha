@@ -1,6 +1,6 @@
 import { $inject, type FileLike } from "alepha";
 import { FileService } from "alepha/api/files";
-import { $repository } from "alepha/orm";
+import { $repository, sql } from "alepha/orm";
 import { BadRequestError, ConflictError } from "alepha/server";
 
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
@@ -42,13 +42,23 @@ export class ArtifactService {
   /**
    * Store a build, or recognise that it is already stored.
    *
-   * ## ⚠️ Write-once, deliberately
+   * ## ⚠️ `latest` is mutable. Every other tag is write-once
    *
-   * A key that already holds DIFFERENT bytes is a conflict, not an overwrite.
-   * An artifact is what a deploy will later fetch by digest, so a tag that
-   * quietly changed underneath one would make "which version is running here"
-   * unanswerable - which is the one question content addressing exists to
-   * answer.
+   * A pinned tag that already holds DIFFERENT bytes is a conflict, not an
+   * overwrite. An artifact is what a deploy later fetches by digest, so a tag
+   * that quietly changed underneath one would make "which version is running
+   * here" unanswerable - the one question content addressing exists to answer.
+   * `force` is for the case that actually happens: tagged the wrong commit.
+   *
+   * {@link MUTABLE_TAG} is the exception, and it is also **the whole retention
+   * policy**. Pushing `latest` replaces it in place: one row, one stored
+   * object, the previous bytes reclaimed on the way through. That answers
+   * "keep only the last build" with no sweep job, no cap and nothing to
+   * schedule - which is why there is no `ArtifactJobs` beside this.
+   *
+   * Rollback is not what that costs. Cloudflare keeps every uploaded Worker
+   * version server-side, so a fast rollback never needs an old artifact; and a
+   * build worth returning to is a build worth pinning a real tag on.
    */
   public async push(input: ArtifactPushInput): Promise<ArtifactPushResult> {
     const app = this.normalizeApp(input.app);
@@ -74,14 +84,31 @@ export class ArtifactService {
     if (existing) {
       // Identical bytes under an identical key is the same push happening
       // twice - a re-run of a job, a retried step - and answering it with a
-      // conflict would turn an idempotent pipeline red for succeeding.
+      // conflict would turn an idempotent pipeline red for succeeding. Note
+      // this comes FIRST, so re-pushing `latest` unchanged replaces nothing
+      // and churns no storage.
       if (existing.sha256 === sha256) {
         return { artifact: existing, stored: false };
       }
 
-      throw new ConflictError(
-        `${app} ${tag} (${manifest.runtime}) already holds different bytes (${existing.sha256.slice(0, 12)}). Tags are write-once.`,
-      );
+      if (tag !== ArtifactService.MUTABLE_TAG && !input.force) {
+        throw new ConflictError(
+          `${app} ${tag} (${manifest.runtime}) already holds different bytes (${existing.sha256.slice(0, 12)}). Every tag but \`${ArtifactService.MUTABLE_TAG}\` is write-once - push --force to move it.`,
+        );
+      }
+
+      return {
+        artifact: await this.replace(existing, {
+          projectId: input.projectId,
+          app,
+          tag,
+          sha256,
+          size: bytes.length,
+          commitSha: input.commitSha,
+          file: input.file,
+        }),
+        stored: true,
+      };
     }
 
     const stored = await this.files.uploadFile(input.file, {
@@ -108,6 +135,60 @@ export class ArtifactService {
       await this.files.deleteFile(stored.id);
       throw error;
     }
+  }
+
+  /**
+   * Point an existing key at new bytes, and reclaim the old ones.
+   *
+   * Upload, then update, then delete - and the order is the whole method. The
+   * reverse leaves, on a failure in between, a row resolving to bytes that are
+   * already gone, which every reader renders as an artifact that exists and
+   * cannot be fetched. This order can only leak an object, which costs money
+   * and lies to nobody.
+   *
+   * That property survives two pushes racing, which is why there is no lock
+   * here. Both read the same row, both upload, and whichever updates last
+   * wins: the row ends up pointing at one of the two objects that certainly
+   * exists, and the loser's upload is orphaned. A dangling row is the failure
+   * worth preventing, and this order cannot produce one.
+   */
+  protected async replace(
+    existing: Artifact,
+    next: {
+      projectId: number;
+      app: string;
+      tag: string;
+      sha256: string;
+      size: number;
+      commitSha?: string;
+      file: FileLike;
+    },
+  ): Promise<Artifact> {
+    const stored = await this.files.uploadFile(next.file, {
+      bucket: ArtifactService.BUCKET,
+      tags: [`project:${next.projectId}`, `app:${next.app}`, `tag:${next.tag}`],
+    });
+
+    let updated: Artifact;
+    try {
+      updated = await this.rows.updateById(existing.id, {
+        sha256: next.sha256,
+        size: next.size,
+        fileId: stored.id,
+        // ⚠️ `sql\`NULL\``, not `undefined`. The ORM reads an explicit
+        // `undefined` as an absent key and leaves the column alone, so a
+        // replace pushed without a commit would leave the row still naming the
+        // commit that produced the PREVIOUS bytes - a claim nothing else in
+        // the system could contradict.
+        commitSha: next.commitSha ?? sql`NULL`,
+      });
+    } catch (error) {
+      await this.files.deleteFile(stored.id);
+      throw error;
+    }
+
+    await this.files.deleteFiles([existing.fileId]);
+    return updated;
   }
 
   /**
@@ -225,6 +306,15 @@ export class ArtifactService {
   public static readonly BUCKET = "artifacts";
 
   /**
+   * The one tag whose bytes may change.
+   *
+   * A literal rather than a project setting: a mutable tag is a promise the
+   * whole toolchain has to agree on, and one that varied per project would
+   * mean a CLI could not tell whether `--force` was needed without asking.
+   */
+  public static readonly MUTABLE_TAG = "latest";
+
+  /**
    * How many artifacts a listing hands back when the caller names no bound.
    */
   protected static readonly DEFAULT_LIMIT = 200;
@@ -250,6 +340,12 @@ export interface ArtifactPushInput {
   app: string;
   tag: string;
   commitSha?: string;
+  /**
+   * Move a pinned tag onto new bytes. Ignored for `latest`, which moves
+   * anyway, and it is not an error to pass it there: a CI job that always
+   * passes it should not have to know which tag it is pushing.
+   */
+  force?: boolean;
   file: FileLike;
 }
 
