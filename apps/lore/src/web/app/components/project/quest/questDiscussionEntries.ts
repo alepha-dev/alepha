@@ -58,6 +58,15 @@ export type QuestDiscussionEntry =
        * actor and the time and say nothing the card does not.
        */
       waivers?: Array<{ title: string; reason: string }>;
+      /**
+       * What an `updated` event actually changed, one entry per field.
+       *
+       * Folded onto the one event rather than expanded into a row each, for
+       * the reason the waivers are: every change in a save carries the same
+       * actor and the same instant, so separate rows would repeat both and
+       * add nothing.
+       */
+      changes?: Array<{ field: string; from?: string; to?: string }>;
     }
   | {
       kind: "comment";
@@ -124,6 +133,7 @@ export const buildQuestDiscussionEntries = (
         event.objectiveId != null
           ? quest.objectives.find((o) => o.id === event.objectiveId)?.title
           : undefined,
+      changes: event.changes?.length ? event.changes : undefined,
     });
   }
 
