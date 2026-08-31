@@ -124,6 +124,15 @@ update = $action({
 
 Supported methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `CONNECT`, `TRACE`.
 
+**`HEAD` is answered for free by every `GET` route.** A request the router
+cannot match under `HEAD` is retried under `GET`, and the response is sent
+without its body, keeping the status and the headers a `GET` would have sent -
+including `content-length`, which describes the body that was not sent. That is
+what an uptime monitor, a load balancer health check or a link checker expects,
+and most of them use `HEAD`. Declaring a `HEAD` route explicitly still wins over
+the fallback, and the fallback only ever reaches `GET`: a `POST`-only path stays
+unreachable by `HEAD`.
+
 ## Schema Object
 
 The `schema` option accepts up to five fields:
