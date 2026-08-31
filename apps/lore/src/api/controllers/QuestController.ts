@@ -235,6 +235,77 @@ export class QuestController {
   }
 
   /**
+   * A comma-separated query param, as a list of trimmed, non-empty values.
+   *
+   * ⚠️ Never throws and never rejects. A hand-edited link, a stale bookmark
+   * or a value from a future version of the page must land on the unfiltered
+   * list rather than on an error page or an empty table with no visible
+   * cause. Everything unusable is dropped, so the worst outcome is a filter
+   * that does nothing.
+   */
+  protected parseList(value: string | undefined): string[] {
+    if (!value) return [];
+    return value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+  }
+
+  /**
+   * The same, restricted to values the status filter understands. An
+   * unknown status is dropped rather than rejected, and duplicates are
+   * collapsed so `?status=new,new` is one condition.
+   */
+  protected parseStatusList(value: string | undefined): QuestStatus[] {
+    const known = new Set<string>(z.schema.enumValues(questStatusSchema));
+    return [...new Set(this.parseList(value))].filter(
+      (entry): entry is QuestStatus => known.has(entry),
+    );
+  }
+
+  /**
+   * The same, for a list of numeric ids. A non-numeric entry is dropped,
+   * which is what keeps `?releaseId=abc` a no-op instead of a 400.
+   */
+  protected parseIdList(value: string | undefined): number[] {
+    return [
+      ...new Set(
+        this.parseList(value)
+          .map((entry) => Number(entry))
+          .filter((entry) => Number.isInteger(entry)),
+      ),
+    ];
+  }
+
+  /**
+   * What one status means as a set of column conditions.
+   *
+   * Extracted because a status is not a column: each is a combination of
+   * three nullable timestamps, so a multi-status filter has to OR whole
+   * condition objects rather than values, and the single-status branch and
+   * the OR branch must not be allowed to drift apart.
+   */
+  protected statusConditions(status: QuestStatus): Record<string, any> {
+    switch (status) {
+      case "new":
+        return {
+          acceptedAt: { isNull: true },
+          completedAt: { isNull: true },
+          shelvedAt: { isNull: true },
+        };
+      case "accepted":
+        return {
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        };
+      case "completed":
+        return { completedAt: { isNotNull: true } };
+      default:
+        return { shelvedAt: { isNotNull: true } };
+    }
+  }
+
+  /**
    * The shape a caller sends to record a commit. `at` and `by` are stamped
    * server-side, so a caller cannot backdate the trail or credit someone
    * else with it.
@@ -731,9 +802,26 @@ export class QuestController {
         projectId: z.integer(),
       }),
       query: pageQuerySchema.extend({
-        status: questStatusSchema.optional(),
+        /**
+         * One status, or several comma-separated (`new,accepted`). Several
+         * means the union, and an empty or unparseable value means no status
+         * filter at all rather than an error - the Quests page is reachable
+         * by hand-edited link and by stale bookmark, and both must land on
+         * the unfiltered list (quest #1644).
+         *
+         * A list rather than repeated keys because
+         * `ServerProvider.parseQueryString` returns `Record<string, string>`:
+         * `?status=new&status=accepted` would keep only the last one.
+         */
+        status: z.string().optional(),
         search: z.string().optional(),
-        releaseId: z.integer().optional(),
+        /**
+         * One release id, or several comma-separated. Kept as text for the
+         * same reason `status` is: this is a query param, and the parsing
+         * lives in one place below rather than in the schema for one of the
+         * four and in the handler for the rest.
+         */
+        releaseId: z.string().optional(),
         epic: z.integer().optional(),
         includePlanned: z.boolean().optional(),
         area: z.string().optional(),
@@ -771,42 +859,65 @@ export class QuestController {
         }
       }
 
-      if (query.releaseId) {
-        where.releaseId = { eq: query.releaseId };
+      // Every multi-value filter is OR'd within itself and AND'd against the
+      // others, so `status=new,accepted` + `area=a,b` reads as "(new or
+      // accepted) and (area a or b)". The groups collect here because `where`
+      // itself carries only one `or`.
+      const groups: Array<Record<string, any>> = [];
+
+      const releaseIds = this.parseIdList(query.releaseId);
+      if (releaseIds.length === 1) {
+        where.releaseId = { eq: releaseIds[0] };
+      } else if (releaseIds.length > 1) {
+        where.releaseId = { inArray: releaseIds };
       }
 
       if (query.epic) {
         where.epicId = { eq: query.epic };
       }
 
-      if (query.area) {
-        where.area = { eq: query.area };
+      const areas = this.parseList(query.area);
+      if (areas.length === 1) {
+        where.area = { eq: areas[0] };
+      } else if (areas.length > 1) {
+        where.area = { inArray: areas };
       }
 
-      if (query.tag) {
+      const tags = this.parseList(query.tag);
+      if (tags.length > 0) {
         // tags are stored as a JSON array; LIKE the serialized form
         // matches an exact (normalized) value. Mirrors folio tag search.
-        where.tags = { like: `%"${query.tag.toLowerCase()}"%` };
+        // A quest matching ANY of the asked-for tags qualifies, which is the
+        // same reading the other three filters get.
+        groups.push({
+          or: tags.map((tag) => ({
+            tags: { like: `%"${tag.toLowerCase()}"%` },
+          })),
+        });
       }
 
-      if (query.status === "new") {
-        where.acceptedAt = { isNull: true };
-        where.completedAt = { isNull: true };
-        where.shelvedAt = { isNull: true };
-      } else if (query.status === "accepted") {
-        where.acceptedAt = { isNotNull: true };
-        where.completedAt = { isNull: true };
-      } else if (query.status === "completed") {
-        where.completedAt = { isNotNull: true };
-        query.sort ??= "-completedAt";
-      } else if (query.status === "shelved") {
-        where.shelvedAt = { isNotNull: true };
-        query.sort ??= "-shelvedAt";
-      } else {
+      const statuses = this.parseStatusList(query.status);
+      if (statuses.length === 0) {
         // No status filter means "everything I still care about" — shelved
         // quests are deliberately out of scope, so they only ever surface
-        // through the explicit `shelved` filter.
+        // through the explicit `shelved` filter. An empty list and an absent
+        // filter are the same question: selecting nothing cannot mean
+        // "show nothing", and selecting all four means the same as neither.
         where.shelvedAt = { isNull: true };
+      } else if (statuses.length === 1) {
+        Object.assign(where, this.statusConditions(statuses[0]));
+        // A default sort belongs to ONE chosen status. With several selected
+        // there is no single date the list is about, so `-updatedAt` stands.
+        if (statuses[0] === "completed") query.sort ??= "-completedAt";
+        if (statuses[0] === "shelved") query.sort ??= "-shelvedAt";
+      } else {
+        groups.push({
+          or: statuses.map((status) => this.statusConditions(status)),
+        });
+      }
+
+      if (groups.length > 0) {
+        where.and = groups as any;
       }
 
       // Quests of a `planned` epic are specified but not released into the

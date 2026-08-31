@@ -877,13 +877,11 @@ test.describe("Quest", () => {
     });
 
     await test.step("Shelved filter brings it back", async () => {
-      // The filter Select trigger carries no accessible name (the Control's
-      // `inputProps` aria-label lands on the hidden input, not the trigger),
-      // so target it by the value it currently displays.
-      await page
-        .getByRole("combobox")
-        .filter({ hasText: "All status" })
-        .click();
+      // The status filter takes several values now (#1644), so its trigger
+      // is a chips box with a search input rather than a button showing the
+      // current value. `clearLabel` is that input's placeholder while
+      // nothing is selected, which is the only accessible handle it has.
+      await page.getByPlaceholder("All status").click();
       await page.getByRole("option", { name: "Shelved" }).click();
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
@@ -1553,11 +1551,14 @@ test.describe("Quest", () => {
     });
 
     await test.step("the shelved row offers Unshelve, not Shelve", async () => {
-      await page
-        .getByRole("combobox")
-        .filter({ hasText: "All status" })
-        .click();
+      // See the note in "Shelved filter brings it back": a chips input, and
+      // its placeholder is the handle.
+      await page.getByPlaceholder("All status").click();
       await page.getByRole("option", { name: "Shelved" }).click();
+      // A multi-select does NOT close on pick - the point is to take several
+      // - so the popup would sit over the table for the row-action click
+      // below. Single-select used to close itself.
+      await page.keyboard.press("Escape");
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
       });

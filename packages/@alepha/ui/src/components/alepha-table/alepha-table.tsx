@@ -410,6 +410,50 @@ const readPersisted = <V,>(key: string, suffix: string): V | undefined => {
 };
 
 /**
+ * Reshape persisted filter values that no longer match the schema.
+ *
+ * Filters are stored in localStorage per `persistenceKey`, so a filter whose
+ * shape changes meets values written by the previous shape - on the machine
+ * of anyone who has used the page, and only there, which is precisely the
+ * class of bug no test environment contains. The first case was the Quests
+ * table going from one value per filter to many (quest #1644): a stored
+ * `area: "lore/feedback"` reaching an array field.
+ *
+ * A scalar where the schema now wants an array is WRAPPED, not dropped: the
+ * reader's filter survives the change, which is what makes the migration
+ * invisible. The reverse takes the first element, since there is no honest
+ * way to keep the rest. Anything else is left alone - this reconciles a
+ * container, not a value, and the form's own validation still has the last
+ * word.
+ */
+const reconcilePersistedFilters = (
+  schema: ZObject | undefined,
+  values: Record<string, any> | undefined,
+): Record<string, any> | undefined => {
+  if (!schema || !values) return values;
+  const shape = z.schema.shape(schema);
+  const out: Record<string, any> = {};
+  for (const [key, value] of Object.entries(values)) {
+    const field = shape[key];
+    if (!field) {
+      // A filter that no longer exists. Dropped rather than passed through,
+      // so a removed field cannot reappear in the fetch payload.
+      continue;
+    }
+    const wantsArray = z.schema.isArray(z.schema.unwrap(field));
+    const isArray = Array.isArray(value);
+    if (wantsArray && !isArray) {
+      out[key] = value === undefined || value === "" ? [] : [value];
+    } else if (!wantsArray && isArray) {
+      out[key] = value[0];
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+};
+
+/**
  * Synchronous localStorage write. Empty objects/null delete the key.
  */
 const writePersisted = (key: string, suffix: string, value: unknown): void => {
@@ -470,7 +514,10 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   // useForm captures `initialValues` only once via useMemo.
   const persistedFilterValues = useMemo(() => {
     if (!props.persistenceKey || !props.filters) return undefined;
-    return readPersisted<Record<string, any>>(props.persistenceKey, "filters");
+    return reconcilePersistedFilters(
+      props.filters.schema,
+      readPersisted<Record<string, any>>(props.persistenceKey, "filters"),
+    );
   }, [props.persistenceKey, props.filters]);
 
   const mergedFilterInitialValues = useMemo<Record<string, any>>(
