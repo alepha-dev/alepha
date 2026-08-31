@@ -231,6 +231,33 @@ export const quests = $entity({
            * written before this existed must still decode.
            */
           column: z.string().optional(),
+          /**
+           * For `updated` entries — which fields moved, so the feed can say
+           * what happened instead of "updated the quest" for every edit
+           * from a renamed title to an uploaded attachment (feedback #2004).
+           *
+           * `field` is a free-form string on purpose, NOT an enum. This is a
+           * JSON column validated on read, so a value written by a later
+           * version would fail an enum here and take every row with it -
+           * exactly the failure mode `targetUserId` documents above. An
+           * unknown field renders as the generic line instead.
+           *
+           * `from` / `to` are already display-shaped: a label, a list joined
+           * for reading, or absent when the change has no value worth
+           * printing (a description edit). The renderer does not resolve ids.
+           *
+           * Optional, like every other key here, and for the same reason:
+           * rows written before this existed must still decode.
+           */
+          changes: z
+            .array(
+              z.object({
+                field: z.string(),
+                from: z.string().optional(),
+                to: z.string().optional(),
+              }),
+            )
+            .optional(),
         }),
       )
       .default([]),

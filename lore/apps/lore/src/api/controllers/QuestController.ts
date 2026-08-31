@@ -18,6 +18,7 @@ import {
 } from "alepha/server";
 
 import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
+import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import type { Project } from "../entities/projects.ts";
 import {
@@ -27,6 +28,7 @@ import {
   REMINDER_INTERVAL_MS,
   REMINDER_INTERVAL_VALUES,
 } from "../entities/quests.ts";
+import { releases } from "../entities/releases.ts";
 import { questCommitSchema } from "../schemas/questCommitSchema.ts";
 import { questCreateSchema } from "../schemas/questCreateSchema.ts";
 import {
@@ -54,6 +56,15 @@ export class QuestController {
   quests = $repository(quests);
   feedback = $repository(feedback);
   blights = $repository(blights);
+  /**
+   * Read-only here, and only so a history line can name the epic or release a
+   * quest moved to by its `number` / `tag` rather than by a row id nobody
+   * recognises. Every MUTATION of either lives on its own controller, and
+   * attaching to a release still goes through `ReleaseAttachmentService`
+   * because a published release has to refuse it.
+   */
+  epics = $repository(epics);
+  releases = $repository(releases);
   dt = $inject(DateTimeProvider);
   owned = $inject(OwnedResourceProvider);
   /**
@@ -232,6 +243,230 @@ export class QuestController {
     objectives: Quest["objectives"],
   ): Quest["objectives"] {
     return this.questService.ensureObjectiveIds(objectives);
+  }
+
+  /**
+   * A comma-separated query param, as a list of trimmed, non-empty values.
+   *
+   * ⚠️ Never throws and never rejects. A hand-edited link, a stale bookmark
+   * or a value from a future version of the page must land on the unfiltered
+   * list rather than on an error page or an empty table with no visible
+   * cause. Everything unusable is dropped, so the worst outcome is a filter
+   * that does nothing.
+   */
+  protected parseList(value: string | undefined): string[] {
+    if (!value) return [];
+    return value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+  }
+
+  /**
+   * The same, restricted to values the status filter understands. An
+   * unknown status is dropped rather than rejected, and duplicates are
+   * collapsed so `?status=new,new` is one condition.
+   */
+  protected parseStatusList(value: string | undefined): QuestStatus[] {
+    const known = new Set<string>(z.schema.enumValues(questStatusSchema));
+    return [...new Set(this.parseList(value))].filter(
+      (entry): entry is QuestStatus => known.has(entry),
+    );
+  }
+
+  /**
+   * The same, for a list of numeric ids. A non-numeric entry is dropped,
+   * which is what keeps `?releaseId=abc` a no-op instead of a 400.
+   */
+  protected parseIdList(value: string | undefined): number[] {
+    return [
+      ...new Set(
+        this.parseList(value)
+          .map((entry) => Number(entry))
+          .filter((entry) => Number.isInteger(entry)),
+      ),
+    ];
+  }
+
+  /**
+   * What one status means as a set of column conditions.
+   *
+   * Extracted because a status is not a column: each is a combination of
+   * three nullable timestamps, so a multi-status filter has to OR whole
+   * condition objects rather than values, and the single-status branch and
+   * the OR branch must not be allowed to drift apart.
+   */
+  protected statusConditions(status: QuestStatus): Record<string, any> {
+    switch (status) {
+      case "new":
+        return {
+          acceptedAt: { isNull: true },
+          completedAt: { isNull: true },
+          shelvedAt: { isNull: true },
+        };
+      case "accepted":
+        return {
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        };
+      case "completed":
+        return { completedAt: { isNotNull: true } };
+      default:
+        return { shelvedAt: { isNotNull: true } };
+    }
+  }
+
+  /**
+   * What an edit actually changed, as display-ready lines for the feed.
+   *
+   * Every mutation used to write one `updated` row, so uploading an
+   * attachment and renaming a quest produced the same "updated the quest"
+   * and two unrelated edits looked identical (feedback #2004).
+   *
+   * ⚠️ Only fields with something worth SAYING. A `patch` carries
+   * bookkeeping too (`attachments` is rewritten on every save to fold in
+   * embedded images, `completionMessageUpdatedAt` is a stamp), and a diff
+   * that reported those would trade one useless line for several.
+   *
+   * Attachment ids are resolved to filenames here, on the server, because
+   * this is the only place a REMOVED file's name still exists: by the time
+   * the feed renders, it is gone from the quest.
+   */
+  protected async diffQuest(
+    before: Quest,
+    patch: Partial<Quest>,
+  ): Promise<Array<{ field: string; from?: string; to?: string }>> {
+    const changes: Array<{ field: string; from?: string; to?: string }> = [];
+
+    // Narrowed rather than `unknown`: every caller passes a scalar column,
+    // and a wider type would let an object through to `String()` and print
+    // "[object Object]" into somebody's activity feed.
+    type Scalar = string | number | null | undefined;
+    const scalar = (field: string, next: Scalar, prev: Scalar) => {
+      if (next === undefined || next === prev) return;
+      changes.push({
+        field,
+        from: prev == null ? undefined : String(prev),
+        to: next == null ? undefined : String(next),
+      });
+    };
+
+    scalar("priority", patch.priority, before.priority);
+    scalar("area", patch.area, before.area);
+    scalar("size", patch.size, before.size);
+    scalar("dueAt", patch.dueAt, before.dueAt);
+    // Epic and release are named rather than numbered: an id says nothing to
+    // a reader, and both are cheap to resolve on a field that rarely moves.
+    if (patch.epicId !== undefined && patch.epicId !== before.epicId) {
+      const numbers = await this.epicNumbers([patch.epicId, before.epicId]);
+      changes.push({
+        field: "epic",
+        from: before.epicId ? numbers.get(before.epicId) : undefined,
+        to: patch.epicId ? numbers.get(patch.epicId) : undefined,
+      });
+    }
+
+    if (patch.releaseId !== undefined && patch.releaseId !== before.releaseId) {
+      const tags = await this.releaseTags([patch.releaseId, before.releaseId]);
+      changes.push({
+        field: "release",
+        from: before.releaseId ? tags.get(before.releaseId) : undefined,
+        to: patch.releaseId ? tags.get(patch.releaseId) : undefined,
+      });
+    }
+
+    if (patch.title !== undefined && patch.title !== before.title) {
+      // The old title, not the new one: the new one is the heading above
+      // the feed, so printing it again says nothing.
+      changes.push({ field: "title", from: before.title });
+    }
+
+    if (
+      patch.description !== undefined &&
+      patch.description !== before.description
+    ) {
+      // No values. A markdown diff in a one-line feed entry is unreadable,
+      // and "edited the description" is the honest whole of it.
+      changes.push({ field: "description" });
+    }
+
+    const list = (
+      field: string,
+      next: string[] | undefined,
+      prev: string[],
+      label: (value: string) => string = (value) => value,
+    ) => {
+      if (!next) return;
+      const added = next.filter((value) => !prev.includes(value));
+      const removed = prev.filter((value) => !next.includes(value));
+      if (added.length) {
+        changes.push({ field, to: added.map(label).join(", ") });
+      }
+      if (removed.length) {
+        changes.push({ field, from: removed.map(label).join(", ") });
+      }
+    };
+
+    list("tags", patch.tags, before.tags ?? []);
+
+    if (patch.attachments) {
+      const names = await this.attachmentNames([
+        ...patch.attachments,
+        ...before.attachments,
+      ]);
+      list(
+        "attachments",
+        patch.attachments,
+        before.attachments,
+        (id) => names.get(id) ?? id,
+      );
+    }
+
+    return changes;
+  }
+
+  /**
+   * Per-project epic numbers for a set of epic ids, for the history lines.
+   */
+  protected async epicNumbers(
+    ids: Array<number | undefined | null>,
+  ): Promise<Map<number, string>> {
+    const unique = [...new Set(ids.filter((id): id is number => !!id))];
+    if (unique.length === 0) return new Map();
+    const rows = await this.epics
+      .findMany({ where: { id: { inArray: unique } } })
+      .catch(() => []);
+    return new Map(rows.map((row) => [row.id, `#${row.number}`]));
+  }
+
+  /**
+   * Release tags for a set of release ids, for the history lines.
+   */
+  protected async releaseTags(
+    ids: Array<number | undefined | null>,
+  ): Promise<Map<number, string>> {
+    const unique = [...new Set(ids.filter((id): id is number => !!id))];
+    if (unique.length === 0) return new Map();
+    const rows = await this.releases
+      .findMany({ where: { id: { inArray: unique } } })
+      .catch(() => []);
+    return new Map(rows.map((row) => [row.id, row.tag ?? String(row.number)]));
+  }
+
+  /**
+   * Filenames for a set of file ids, for the history lines.
+   *
+   * Best effort: a file the lookup cannot resolve falls back to its id at
+   * the call site rather than dropping the line, because "an attachment was
+   * removed" is still true and more useful than silence.
+   */
+  protected async attachmentNames(ids: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return new Map();
+    const rows = await this.fileService.fileRepository
+      .findMany({ where: { id: { inArray: unique } } })
+      .catch(() => []);
+    return new Map(rows.map((row) => [row.id, row.name]));
   }
 
   /**
@@ -731,9 +966,26 @@ export class QuestController {
         projectId: z.integer(),
       }),
       query: pageQuerySchema.extend({
-        status: questStatusSchema.optional(),
+        /**
+         * One status, or several comma-separated (`new,accepted`). Several
+         * means the union, and an empty or unparseable value means no status
+         * filter at all rather than an error - the Quests page is reachable
+         * by hand-edited link and by stale bookmark, and both must land on
+         * the unfiltered list (quest #1644).
+         *
+         * A list rather than repeated keys because
+         * `ServerProvider.parseQueryString` returns `Record<string, string>`:
+         * `?status=new&status=accepted` would keep only the last one.
+         */
+        status: z.string().optional(),
         search: z.string().optional(),
-        releaseId: z.integer().optional(),
+        /**
+         * One release id, or several comma-separated. Kept as text for the
+         * same reason `status` is: this is a query param, and the parsing
+         * lives in one place below rather than in the schema for one of the
+         * four and in the handler for the rest.
+         */
+        releaseId: z.string().optional(),
         epic: z.integer().optional(),
         includePlanned: z.boolean().optional(),
         area: z.string().optional(),
@@ -771,42 +1023,65 @@ export class QuestController {
         }
       }
 
-      if (query.releaseId) {
-        where.releaseId = { eq: query.releaseId };
+      // Every multi-value filter is OR'd within itself and AND'd against the
+      // others, so `status=new,accepted` + `area=a,b` reads as "(new or
+      // accepted) and (area a or b)". The groups collect here because `where`
+      // itself carries only one `or`.
+      const groups: Array<Record<string, any>> = [];
+
+      const releaseIds = this.parseIdList(query.releaseId);
+      if (releaseIds.length === 1) {
+        where.releaseId = { eq: releaseIds[0] };
+      } else if (releaseIds.length > 1) {
+        where.releaseId = { inArray: releaseIds };
       }
 
       if (query.epic) {
         where.epicId = { eq: query.epic };
       }
 
-      if (query.area) {
-        where.area = { eq: query.area };
+      const areas = this.parseList(query.area);
+      if (areas.length === 1) {
+        where.area = { eq: areas[0] };
+      } else if (areas.length > 1) {
+        where.area = { inArray: areas };
       }
 
-      if (query.tag) {
+      const tags = this.parseList(query.tag);
+      if (tags.length > 0) {
         // tags are stored as a JSON array; LIKE the serialized form
         // matches an exact (normalized) value. Mirrors folio tag search.
-        where.tags = { like: `%"${query.tag.toLowerCase()}"%` };
+        // A quest matching ANY of the asked-for tags qualifies, which is the
+        // same reading the other three filters get.
+        groups.push({
+          or: tags.map((tag) => ({
+            tags: { like: `%"${tag.toLowerCase()}"%` },
+          })),
+        });
       }
 
-      if (query.status === "new") {
-        where.acceptedAt = { isNull: true };
-        where.completedAt = { isNull: true };
-        where.shelvedAt = { isNull: true };
-      } else if (query.status === "accepted") {
-        where.acceptedAt = { isNotNull: true };
-        where.completedAt = { isNull: true };
-      } else if (query.status === "completed") {
-        where.completedAt = { isNotNull: true };
-        query.sort ??= "-completedAt";
-      } else if (query.status === "shelved") {
-        where.shelvedAt = { isNotNull: true };
-        query.sort ??= "-shelvedAt";
-      } else {
+      const statuses = this.parseStatusList(query.status);
+      if (statuses.length === 0) {
         // No status filter means "everything I still care about" — shelved
         // quests are deliberately out of scope, so they only ever surface
-        // through the explicit `shelved` filter.
+        // through the explicit `shelved` filter. An empty list and an absent
+        // filter are the same question: selecting nothing cannot mean
+        // "show nothing", and selecting all four means the same as neither.
         where.shelvedAt = { isNull: true };
+      } else if (statuses.length === 1) {
+        Object.assign(where, this.statusConditions(statuses[0]));
+        // A default sort belongs to ONE chosen status. With several selected
+        // there is no single date the list is about, so `-updatedAt` stands.
+        if (statuses[0] === "completed") query.sort ??= "-completedAt";
+        if (statuses[0] === "shelved") query.sort ??= "-shelvedAt";
+      } else {
+        groups.push({
+          or: statuses.map((status) => this.statusConditions(status)),
+        });
+      }
+
+      if (groups.length > 0) {
+        where.and = groups as any;
       }
 
       // Quests of a `planned` epic are specified but not released into the
@@ -887,55 +1162,143 @@ export class QuestController {
    * exposed there only in aggregate via separate calls).
    */
   /**
-   * Lightweight per-project edge list for the dependency-graph page
-   * (Lore #98). Returns just `{ id, shortId, title, status, dependsOn }`
-   * for every quest in the project — small enough to keep in the
-   * client and BFS-walk to compute an epic component without burning
-   * the full QuestResource pagination.
+   * Everything the questline page needs, in one answer: whether this quest
+   * belongs to an epic, and if it does not, the quests it is connected to.
+   *
+   * ## Why the two live on one call
+   *
+   * The page's whole job is a fork - a quest inside an epic is sent to that
+   * epic's Flow tab, a quest outside one draws its own questline here - and
+   * the fork is decided by data the client does not have. Answering it in a
+   * second round trip would mean a page that renders, then navigates away.
+   * When `epic` comes back set, `quests` is deliberately empty: the caller is
+   * leaving, and building a component for it would be work thrown away.
+   *
+   * `epic` carries the per-project `number`, not the id, because that is what
+   * the route is addressed by (`/epics/:epicNumber`). The quest row has only
+   * `epicId`, so a client resolving this itself would need the epic list.
+   *
+   * ## Why the component is walked here
+   *
+   * "The quests connected to this one through `dependsOn`" is not a `WHERE`.
+   * It is a graph walk, and the alternatives both cost more: walking it in
+   * the browser needs the project's whole edge list shipped first (what the
+   * retired `getDependencyGraph` did), and that edge list was too thin to
+   * draw with - `Questline` reads `area` and `metadata`, so a second fetch
+   * for the real rows followed.
+   *
+   * Two queries: the edge list to find the component, then the component's
+   * rows in full. The first is deliberately `columns`-narrowed, since it is
+   * read entirely to be thrown away.
    */
-  getDependencyGraph = $action({
+  getQuestline = $action({
     use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
-    path: "/projects/:projectId/quests/graph",
+    path: "/projects/:projectId/quests/:shortId/questline",
     schema: {
-      params: z.object({ projectId: z.integer() }),
-      response: z.array(
-        z.object({
-          id: z.integer(),
-          shortId: z.integer(),
-          title: z.string(),
-          status: questStatusSchema,
-          dependsOn: z.integer().optional(),
-        }),
-      ),
+      params: z.object({
+        projectId: z.integer(),
+        shortId: z.integer(),
+      }),
+      response: z.object({
+        /**
+         * Set when the quest belongs to an epic, which is the signal to open
+         * that epic's Flow tab instead of drawing anything here.
+         */
+        epic: z
+          .object({
+            number: z.integer(),
+            title: z.string(),
+          })
+          .optional(),
+        /**
+         * The connected `dependsOn` component containing this quest, the
+         * quest itself included - so a quest with no relations comes back
+         * alone rather than empty, and "no questline" stays distinguishable
+         * from "could not read it".
+         *
+         * Empty when `epic` is set, and only then.
+         */
+        quests: z.array(questResourceSchema),
+      }),
     },
     handler: async ({ params }) => {
-      const rows = await this.quests.findMany({
-        where: { projectId: { eq: params.projectId } },
-        columns: [
-          "id",
-          "shortId",
-          "title",
-          "acceptedAt",
-          "completedAt",
-          "shelvedAt",
-          "dependsOn",
-        ],
+      const focus = await this.quests.getOne({
+        where: {
+          projectId: { eq: params.projectId },
+          shortId: { eq: params.shortId },
+        },
       });
-      return rows.map((q) => ({
-        id: q.id,
-        shortId: q.shortId,
-        title: q.title,
-        status: (q.completedAt
-          ? "completed"
-          : q.acceptedAt
-            ? "accepted"
-            : q.shelvedAt
-              ? "shelved"
-              : "new") as "new" | "accepted" | "completed" | "shelved",
-        dependsOn: q.dependsOn ?? undefined,
-      }));
+
+      if (focus.epicId != null) {
+        const epic = await this.epics.findOne({
+          where: { id: { eq: focus.epicId } },
+        });
+        // A missing epic row is not a reason to refuse: `quests.epicId` is a
+        // real FK, so this is unreachable, and falling through to the
+        // questline is a better answer than a 500 if it ever is not.
+        if (epic) {
+          return {
+            epic: { number: epic.number, title: epic.title },
+            quests: [],
+          };
+        }
+      }
+
+      const edges = await this.quests.findMany({
+        where: { projectId: { eq: params.projectId } },
+        columns: ["id", "dependsOn"],
+      });
+
+      const component = this.connectedQuests(edges, focus.id);
+
+      // `inArray: []` throws, and cannot happen: `connectedQuests` always
+      // returns at least the quest it started from.
+      const rows = await this.quests.findMany({
+        where: { id: { inArray: [...component] } },
+      });
+
+      return { quests: rows.map((row) => this.mapQuestToResource(row)) };
     },
   });
+
+  /**
+   * The ids reachable from `startId` through `dependsOn`, in either
+   * direction, `startId` included.
+   *
+   * ⚠️ Undirected on purpose. What blocks a quest and what it unblocks are
+   * both part of the questline the reader is looking at, and following only
+   * the `dependsOn` direction would draw the chain above the quest while
+   * hiding everything the quest itself unblocks.
+   */
+  protected connectedQuests(
+    edges: Array<{ id: number; dependsOn?: number | null }>,
+    startId: number,
+  ): Set<number> {
+    const neighbours = new Map<number, Set<number>>();
+    const link = (from: number, to: number) => {
+      const set = neighbours.get(from) ?? new Set<number>();
+      set.add(to);
+      neighbours.set(from, set);
+    };
+
+    for (const edge of edges) {
+      if (edge.dependsOn == null) continue;
+      link(edge.id, edge.dependsOn);
+      link(edge.dependsOn, edge.id);
+    }
+
+    const seen = new Set<number>([startId]);
+    const queue = [startId];
+    while (queue.length > 0) {
+      for (const next of neighbours.get(queue.shift()!) ?? []) {
+        if (seen.has(next)) continue;
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+
+    return seen;
+  }
 
   getQuestLine = $action({
     use: [$secure({ permissions: ["quest:read"] }), this.ownsQuest()],
@@ -1897,6 +2260,7 @@ export class QuestController {
             at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
+            changes: await this.diffQuest(quest, patch),
           },
         ];
       }
@@ -2015,6 +2379,8 @@ export class QuestController {
             at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
+            // The one edit whose field is known without a diff.
+            changes: [{ field: "objectives" }],
           },
         ],
       });

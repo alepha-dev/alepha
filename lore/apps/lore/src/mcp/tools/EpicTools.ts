@@ -19,6 +19,7 @@ import {
   epicUpdateParamsSchema,
   epicUpdateResultSchema,
 } from "../schemas/index.ts";
+import { DiagramCheckService } from "../services/DiagramCheckService.ts";
 
 /**
  * MCP tools for epic operations.
@@ -32,6 +33,7 @@ export class EpicTools {
   protected readonly epicController = $inject(EpicController);
   protected readonly folioController = $inject(FolioController);
   protected readonly projectController = $inject(ProjectController);
+  protected readonly diagrams = $inject(DiagramCheckService);
 
   /**
    * Resolve project ID from params (by ID or name).
@@ -187,6 +189,7 @@ export class EpicTools {
         title: epic.title,
         status: epic.status,
         createdAt: epic.createdAt,
+        ...this.diagrams.warn(params.description),
       };
     },
   });
@@ -225,6 +228,7 @@ export class EpicTools {
         number: epic.number,
         title: epic.title,
         updatedAt: epic.updatedAt,
+        ...this.diagrams.warn(params.description),
       };
     },
   });

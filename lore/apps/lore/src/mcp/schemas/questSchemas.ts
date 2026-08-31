@@ -4,6 +4,7 @@ import { MAX_QUEST_OBJECTIVES } from "@/api/schemas/questObjectivesLimit.ts";
 
 import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
 import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
+import { diagramWarningsShape } from "./diagramWarningsSchema.ts";
 import { entityRefSchema } from "./entityRefSchema.ts";
 import { epicStatusSchema } from "./epicStatusSchema.ts";
 import { objectiveInputSchema } from "./objectiveInputSchema.ts";
@@ -302,7 +303,8 @@ export const questCommentAddParamsSchema = entityRefSchema.extend({
     .optional(),
 });
 
-export const questCommentAddResultSchema = questCommentSchema;
+export const questCommentAddResultSchema =
+  questCommentSchema.extend(diagramWarningsShape);
 
 export const questGetResultSchema = z.object({
   id: z.integer(),
@@ -445,6 +447,7 @@ export const questCreateResultSchema = z.object({
   // (e.g. blocked by an incomplete predecessor). The quest is still
   // created; this explains why it stayed in the 'new' lane.
   acceptNote: z.string().optional(),
+  ...diagramWarningsShape,
 });
 
 // -----------------------------------------------------------------------------
@@ -538,6 +541,7 @@ export const questCompleteResultSchema = z.object({
   shortId: z.integer(),
   title: z.string(),
   completedAt: z.datetime(),
+  ...diagramWarningsShape,
 });
 
 // -----------------------------------------------------------------------------
@@ -612,6 +616,7 @@ export const questUpdateResultSchema = z.object({
   shortId: z.integer(),
   title: z.string(),
   updatedAt: z.datetime(),
+  ...diagramWarningsShape,
 });
 
 // -----------------------------------------------------------------------------

@@ -270,6 +270,10 @@ export default {
   "board.table.area": "Domaine",
   "board.table.created": "Créée",
   "board.table.updated": "Mise à jour",
+  "board.action.copyId": "Copier l'identifiant",
+  "board.action.copiedId": "$1 copié",
+  "board.action.copyIdError": "Impossible de copier l'identifiant.",
+  "board.action.editQuest": "Modifier la quête",
   "board.action.acceptQuest": "Accepter la quête",
   "board.action.shelveQuest": "Mettre la quête de côté",
   "board.action.unshelveQuest": "Reprendre la quête",
@@ -280,6 +284,7 @@ export default {
   "quest.create.title.helper": "Un nom court et héroïque",
   "quest.create.objectives": "Objectifs",
   "quest.create.objectives.helper": "Liste des objectifs pour cette quête",
+  "quest.create.advanced": "Avancé",
   "quest.create.dependsOn": "Dépend de",
   "quest.create.dependsOn.helper":
     "Cette quête ne peut pas démarrer tant que la quête sélectionnée n'est pas terminée.",
@@ -290,7 +295,6 @@ export default {
   "quest.create.due": "Échéance",
   "quest.create.due.helper":
     "La date à laquelle cette quête doit être terminée. Indépendante de la date visée d'une version.",
-  "quest.create.due.clear": "Effacer l'échéance",
   "quest.create.estimate": "Estimation",
   "quest.create.estimate.helper":
     "Combien de temps cela pourrait prendre. Affiché dans le journal pour choisir une quête qui rentre dans le temps dont vous disposez.",
@@ -340,6 +344,23 @@ export default {
   "quest.event.shelved": "a mis la quête de côté",
   "quest.event.unshelved": "a remis la quête en jeu",
   "quest.event.updated": "a mis à jour la quête",
+  "quest.event.change.priority": "a changé la priorité de $1 à $2",
+  "quest.event.change.priorityTo": "a défini la priorité sur $1",
+  "quest.event.change.area": "a déplacé la quête vers $1",
+  "quest.event.change.title": 'a renommé la quête (avant : "$1")',
+  "quest.event.change.description": "a modifié la description",
+  "quest.event.change.objectives": "a modifié les objectifs",
+  "quest.event.change.size": "a changé la taille",
+  "quest.event.change.due": "a changé l'échéance",
+  "quest.event.change.dueCleared": "a retiré l'échéance",
+  "quest.event.change.tagsAdded": "a étiqueté la quête avec $1",
+  "quest.event.change.tagsRemoved": "a retiré $1 des étiquettes",
+  "quest.event.change.attached": "a joint $1",
+  "quest.event.change.detached": "a retiré $1 des pièces jointes",
+  "quest.event.change.epic": "a rattaché la quête à l'épopée $1",
+  "quest.event.change.epicCleared": "a détaché la quête de son épopée",
+  "quest.event.change.release": "a mis la quête dans la version $1",
+  "quest.event.change.releaseCleared": "a sorti la quête de sa version",
   "quest.objective.error": "Impossible de mettre à jour l'objectif.",
   "quest.status.new": "Nouvelle",
   "quest.status.accepted": "En cours",
@@ -356,6 +377,9 @@ export default {
 
   "project.create.name": "Nom",
   "project.create.name.helper": "Un nom marquant pour votre épopée.",
+  "project.update.repositoryUrl.label": "Dépôt",
+  "project.update.repositoryUrl.helper":
+    "Le dépôt où vivent les commits de ce projet. Renseignez-le et les références de commit d'une quête deviennent des liens.",
   "project.update.preferredLanguage.label": "Langue préférée",
   "project.update.preferredLanguage.helper":
     "Langue que les agents IA doivent utiliser pour le contenu généré (quêtes, folios).",
@@ -381,16 +405,14 @@ export default {
     "Colonnes drag-and-drop pour suivre l'avancement, à côté de la vue tableau.",
   "project.create.module.releases": "Versions : Livraisons",
   "project.create.module.releases.helper":
-    "Des objectifs nommés (0.28.0, demo-1) qui portent les épopées et les quêtes à livrer.",
+    "Des objectifs nommés (0.1.0, demo-1) qui portent les épopées et les quêtes à livrer.",
   "project.create.next": "Suivant",
   "project.create.back": "Retour",
   "project.create.building": "Forge en cours…",
 
   "quest.view.description": "Description",
-  "quest.graph.empty": "Aucune quête liée pour le moment.",
-  "quest.graph.noDescription": "(pas de description)",
-  "quest.graph.pickAQuest":
-    "Sélectionnez une quête sur la timeline pour voir sa description.",
+  "quest.questline.empty":
+    "Rien ne dépend de cette quête, et elle ne dépend de rien.",
   "quest.view.actions.complete": "Marquer comme accomplie",
   "quest.view.actions.unassign": "Se désassigner",
   "quest.view.actions.shelve": "Mettre de côté",
@@ -586,7 +608,7 @@ export default {
     "Un tableau drag & drop pour déplacer les quêtes entre Nouvelle, En cours et Terminée.",
   "project.settings.kanban.tagColors.title": "Couleurs des étiquettes",
   "project.settings.kanban.tagColors.description":
-    "Donnez une couleur à chaque étiquette pour lire les cartes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
+    "Donnez une couleur à chaque étiquette pour lire les cartes et les quêtes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
   "project.settings.kanban.tagColors.empty":
     "Aucune étiquette pour l'instant. Ajoutez-en une à une quête et elle apparaîtra ici.",
   "project.settings.kanban.defaultSurface.title": "Ouvrir sur le tableau",
@@ -633,7 +655,7 @@ export default {
   "release.create.confirm": "Créer",
   "release.create.tag": "Version",
   "release.create.tag.help":
-    "L'adresse et le nom de la version. Elle devient l'URL, donc restez court : 0.28.0, demo-1.",
+    "Son nom et son URL, donc restez court : 0.1.0, demo-1.",
   "release.group.open": "Ouvertes",
   "release.group.released": "Publiées",
   "release.list.column.state": "État",
@@ -663,7 +685,7 @@ export default {
   "release.reopen.description":
     "Pour une version publiée par erreur. La rouvrir efface le journal et les compteurs figés, et la version redevient calculée à partir de ce qu'elle contient.",
   "release.reopen.confirm": "Rouvrir",
-  "release.start.tag.placeholder": "0.28.0",
+  "release.start.tag.placeholder": "0.1.0",
   "release.start.cancel": "Annuler",
   "release.detail.error": "Impossible d'enregistrer la version.",
   "release.changelog": "Changelog",
@@ -688,7 +710,7 @@ export default {
   "release.hero.shelved": "$1 écartée(s)",
   "release.empty.title": "Aucune version ouverte",
   "release.empty.body":
-    "Une version est un objectif nommé - 0.28.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
+    "Une version est un objectif nommé - 0.1.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
   "release.status.active": "Ouverte",
   "release.status.closed": "Close",
 
@@ -1282,7 +1304,6 @@ export default {
   "epic.folios.detach.title": "Détacher ce folio ?",
   "epic.folios.detach.confirm":
     "« $1 » ne sera plus lié à cette épopée. Le folio lui-même n'est pas supprimé.",
-  "epic.quests.title": "Quêtes",
   "epic.quests.empty": "Aucune quête dans cette épopée pour le moment.",
   "epic.quests.loading": "Chargement des quêtes…",
   "epic.quests.attach": "Associer une quête",

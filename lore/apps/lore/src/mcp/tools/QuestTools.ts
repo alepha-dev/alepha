@@ -49,6 +49,7 @@ import {
   questUpdateResultSchema,
 } from "../schemas/index.ts";
 import { AttachmentContentService } from "../services/AttachmentContentService.ts";
+import { DiagramCheckService } from "../services/DiagramCheckService.ts";
 import { EpicRefService } from "../services/EpicRefService.ts";
 
 /**
@@ -64,6 +65,7 @@ export class QuestTools {
   protected readonly commentController = $inject(QuestCommentController);
   protected readonly questMapper = $inject(QuestResourceMapper);
   protected readonly attachmentContent = $inject(AttachmentContentService);
+  protected readonly diagrams = $inject(DiagramCheckService);
 
   /**
    * What `quest_attachment_add` accepts.
@@ -338,6 +340,7 @@ export class QuestTools {
         body: comment.body,
         createdAt: comment.createdAt,
         editedAt: comment.editedAt,
+        ...this.diagrams.warn(params.body),
       };
     },
   });
@@ -560,6 +563,7 @@ export class QuestTools {
         createdAt: quest.createdAt,
         acceptedAt,
         acceptNote,
+        ...this.diagrams.warn(params.description),
       };
     },
   });
@@ -723,6 +727,7 @@ export class QuestTools {
         shortId: result.shortId,
         title: result.title,
         completedAt: result.completedAt!,
+        ...this.diagrams.warn(params.message),
       };
     },
   });
@@ -1159,6 +1164,14 @@ export class QuestTools {
         shortId: quest.shortId,
         title: quest.title,
         updatedAt: quest.updatedAt,
+        // Both markdown fields this tool can write. `completionMessage` is
+        // the one an agent uses for a summary diagram, and it is the field
+        // most likely to carry one.
+        ...this.diagrams.warn(
+          [params.description, params.completionMessage]
+            .filter(Boolean)
+            .join("\n\n"),
+        ),
       };
     },
   });

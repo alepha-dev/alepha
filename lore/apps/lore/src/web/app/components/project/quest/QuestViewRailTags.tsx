@@ -1,8 +1,15 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Tags as TagsIcon } from "lucide-react";
 
+import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import {
+  TAG_CHIP_CLASS,
+  TAG_CHIP_FALLBACK,
+} from "@/web/app/components/shared/areaColor.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface QuestViewRailTagsProps {
@@ -21,6 +28,7 @@ export interface QuestViewRailTagsProps {
  */
 const QuestViewRailTags = (props: QuestViewRailTagsProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const [project] = useStore(currentProjectAtom);
   const tags = props.quest.tags ?? [];
 
   if (tags.length === 0) {
@@ -40,10 +48,16 @@ const QuestViewRailTags = (props: QuestViewRailTagsProps) => {
 
       <div className="flex flex-wrap items-center gap-1">
         {tags.map((tag) => (
+          // The project's tag colour, the same chip the board renders. It
+          // used to be a plain outline here and a tinted span there, so the
+          // colour the owner picked was visible on one surface only (#1638).
           <Badge
             key={tag}
-            variant="outline"
-            className="font-mono text-[11px] leading-none"
+            variant="tint"
+            className={`font-mono text-[11px] leading-none ${
+              TAG_CHIP_CLASS[project?.tagColors?.[tag] as PaletteColor] ??
+              TAG_CHIP_FALLBACK
+            }`}
           >
             {tag}
           </Badge>

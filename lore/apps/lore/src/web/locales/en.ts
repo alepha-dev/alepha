@@ -238,6 +238,10 @@ export default {
   "board.table.area": "Area",
   "board.table.created": "Created",
   "board.table.updated": "Updated",
+  "board.action.copyId": "Copy ID",
+  "board.action.copiedId": "Copied $1",
+  "board.action.copyIdError": "Could not copy the ID.",
+  "board.action.editQuest": "Edit Quest",
   "board.action.acceptQuest": "Accept Quest",
   "board.action.shelveQuest": "Shelve Quest",
   "board.action.unshelveQuest": "Unshelve Quest",
@@ -272,6 +276,7 @@ export default {
   "quest.create.title.helper": "Short and descriptive name",
   "quest.create.objectives": "Objectives",
   "quest.create.objectives.helper": "List of objectives for this quest",
+  "quest.create.advanced": "Advanced",
   "quest.create.dependsOn": "Depends on",
   "quest.create.dependsOn.helper":
     "This quest can't be started until the selected quest is completed.",
@@ -282,7 +287,6 @@ export default {
   "quest.create.due": "Due date",
   "quest.create.due.helper":
     "When this quest is meant to be finished. Separate from any release deadline.",
-  "quest.create.due.clear": "Clear due date",
   "quest.create.estimate": "Estimate",
   "quest.create.estimate.helper":
     "Roughly how long this might take. Shown in the questlog so you can grab one that fits the time you have.",
@@ -331,6 +335,23 @@ export default {
   "quest.event.shelved": "shelved the quest",
   "quest.event.unshelved": "put the quest back in play",
   "quest.event.updated": "updated the quest",
+  "quest.event.change.priority": "changed the priority from $1 to $2",
+  "quest.event.change.priorityTo": "set the priority to $1",
+  "quest.event.change.area": "moved the quest to $1",
+  "quest.event.change.title": 'renamed the quest (was "$1")',
+  "quest.event.change.description": "edited the description",
+  "quest.event.change.objectives": "edited the objectives",
+  "quest.event.change.size": "changed the size",
+  "quest.event.change.due": "changed the due date",
+  "quest.event.change.dueCleared": "cleared the due date",
+  "quest.event.change.tagsAdded": "tagged the quest with $1",
+  "quest.event.change.tagsRemoved": "removed $1 from the tags",
+  "quest.event.change.attached": "attached $1",
+  "quest.event.change.detached": "removed $1 from the attachments",
+  "quest.event.change.epic": "filed the quest under epic $1",
+  "quest.event.change.epicCleared": "removed the quest from its epic",
+  "quest.event.change.release": "put the quest in release $1",
+  "quest.event.change.releaseCleared": "took the quest out of its release",
   "quest.objective.error": "Could not update the objective.",
   "quest.status.new": "New",
   "quest.status.accepted": "In progress",
@@ -348,6 +369,9 @@ export default {
   "project.create.name": "Name",
   "project.create.name.helper":
     "Set a short name for identifying your project.",
+  "project.update.repositoryUrl.label": "Repository",
+  "project.update.repositoryUrl.helper":
+    "The repository this project's commits live in. Set it and a quest's commit references become links.",
   "project.update.preferredLanguage.label": "Preferred Language",
   "project.update.preferredLanguage.helper":
     "Language AI agents should use for generated content (quests, folios).",
@@ -373,16 +397,14 @@ export default {
     "Drag-and-drop columns for tracking work in progress alongside the table view.",
   "project.create.module.releases": "Releases: Shipping",
   "project.create.module.releases.helper":
-    "Named goals (0.28.0, demo-1) holding the epics and quests due to ship in them.",
+    "Named goals (0.1.0, demo-1) holding the epics and quests due to ship in them.",
   "project.create.next": "Next",
   "project.create.back": "Back",
   "project.create.building": "Forging your project…",
 
   "quest.view.description": "Description",
-  "quest.graph.empty": "No related quests yet.",
-  "quest.graph.noDescription": "(no description)",
-  "quest.graph.pickAQuest":
-    "Pick a quest on the timeline to see its description.",
+  "quest.questline.empty":
+    "Nothing depends on this quest, and it depends on nothing.",
   "quest.view.actions.complete": "Complete Quest",
   "quest.view.actions.unassign": "Unassign",
   "quest.view.actions.shelve": "Shelve",
@@ -572,7 +594,7 @@ export default {
     "A drag & drop board to move quests between New, In Progress and Completed.",
   "project.settings.kanban.tagColors.title": "Tag colours",
   "project.settings.kanban.tagColors.description":
-    "Give each tag a colour so board cards can be read at a glance. Tags with no colour stay neutral.",
+    "Give each tag a colour so board cards and quest pages can be read at a glance. Tags with no colour stay neutral.",
   "project.settings.kanban.tagColors.empty":
     "No tags yet. Add one to a quest and it will show up here.",
   "project.settings.kanban.defaultSurface.title": "Open on the board",
@@ -619,7 +641,7 @@ export default {
   "release.create.confirm": "Create",
   "release.create.tag": "Tag",
   "release.create.tag.help":
-    "The release's address and its name. It becomes the URL, so keep it short: 0.28.0, demo-1.",
+    "Its name and its URL, so keep it short: 0.1.0, demo-1.",
   "release.group.open": "Open",
   "release.group.released": "Released",
   "release.list.column.state": "State",
@@ -649,7 +671,7 @@ export default {
   "release.reopen.description":
     "For a release published by mistake. Reopening clears the frozen changelog and the frozen progress counts, and the release goes back to being computed from what it contains.",
   "release.reopen.confirm": "Reopen",
-  "release.start.tag.placeholder": "0.28.0",
+  "release.start.tag.placeholder": "0.1.0",
   "release.start.cancel": "Cancel",
   "release.detail.error": "Could not save the release.",
   "release.changelog": "Changelog",
@@ -674,7 +696,7 @@ export default {
   "release.hero.shelved": "$1 shelved",
   "release.empty.title": "No release is open",
   "release.empty.body":
-    "A release is a named goal - 0.28.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
+    "A release is a named goal - 0.1.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
   "release.status.active": "Open",
   "release.status.closed": "Closed",
 
@@ -1253,7 +1275,6 @@ export default {
   "epic.folios.detach.title": "Detach this folio?",
   "epic.folios.detach.confirm":
     '"$1" will no longer be linked to this epic. The folio itself is not deleted.',
-  "epic.quests.title": "Quests",
   "epic.quests.empty": "No quests in this epic yet.",
   "epic.quests.loading": "Loading quests…",
   "epic.quests.attach": "Attach Quest",

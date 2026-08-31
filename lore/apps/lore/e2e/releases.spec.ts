@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
+import { compareReleaseTags } from "../src/web/app/components/project/releases/releaseOrder.ts";
 import {
   apiPost,
   createProjectViaWizard,
@@ -226,15 +227,23 @@ test.describe("Releases", () => {
       `RO${t}`.slice(0, 20),
     );
 
-    // Sorted as TEXT, "0.10.0" comes before "0.9.0". Sorted by number — which
-    // is what the list does — the creation order holds. This is the bug class
-    // the epic names explicitly, and the only assertion that catches it.
-    await post(page, `/api/createRelease/${projectId}`, { tag: "0.9.0" });
+    // Created OUT of version order on purpose. `number` is a `$sequence`, so
+    // creating `0.10.0` first makes creation order and version order disagree
+    // - which is the only arrangement where text, `number` and a parsed
+    // version give three different answers. Created in version order, all
+    // three agree and the assertion passes against any of them (quest #1640).
     await post(page, `/api/createRelease/${projectId}`, { tag: "0.10.0" });
+    await post(page, `/api/createRelease/${projectId}`, { tag: "0.9.0" });
 
     const releases = await listReleases(page, projectId);
     const byNumber = [...releases].sort((a, b) => a.number - b.number);
-    expect(byNumber.map((r) => r.tag)).toEqual(["0.9.0", "0.10.0"]);
+    expect(byNumber.map((r) => r.tag)).toEqual(["0.10.0", "0.9.0"]);
+
+    // And the ordering the UI applies, which is neither of those.
+    const byVersion = [...releases].sort((a, b) =>
+      compareReleaseTags(a.tag, b.tag),
+    );
+    expect(byVersion.map((r) => r.tag)).toEqual(["0.9.0", "0.10.0"]);
   });
 
   /**
@@ -242,9 +251,10 @@ test.describe("Releases", () => {
    * affordances the rebuild added, and the ones a card list could not have.
    *
    * ⚠️ The sort assertion is the same trap as the data-level test above, one
-   * layer up: the header says "Release" and shows tags, and it must still
-   * order by `number`. As text `0.28.0` sorts before `0.9.0`, so a string
-   * comparator fails this rather than passing by luck.
+   * layer up. The header says "Release" and shows tags, and it must order
+   * them by parsed version. Its fixture creates them OUT of version order
+   * (`1.0.0` before `0.29.0`, the arrangement the reporter of #1640 had),
+   * so neither a text comparator nor the old `number` proxy can pass it.
    */
   /**
    * Creating a release, which is a dialog now rather than a bordered row
@@ -402,7 +412,7 @@ test.describe("Releases", () => {
     });
   });
 
-  test("the table filters by state and sorts tags by number", async ({
+  test("the table filters by state and sorts tags by version", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -414,12 +424,18 @@ test.describe("Releases", () => {
       `RT${t}`.slice(0, 20),
     );
 
-    // Created in version order, which is `number` order and NOT text order.
-    await post(page, `/api/createRelease/${projectId}`, { tag: "0.9.0" });
+    // Created OUT of version order, and out of text order too: creation gives
+    // `0.28.0, 1.0.0, 0.29.0, 0.9.0, demo-1`, text gives `0.28.0` first, and
+    // only a parsed version gives the order asserted below. `demo-1` is here
+    // because the New Release hint offers it, so a tag that is not a version
+    // has to have a defined place rather than landing among the 1.x.
     const mid = await post<Release>(page, `/api/createRelease/${projectId}`, {
       tag: "0.28.0",
     });
     await post(page, `/api/createRelease/${projectId}`, { tag: "1.0.0" });
+    await post(page, `/api/createRelease/${projectId}`, { tag: "0.29.0" });
+    await post(page, `/api/createRelease/${projectId}`, { tag: "0.9.0" });
+    await post(page, `/api/createRelease/${projectId}`, { tag: "demo-1" });
     await post(page, `/api/publishRelease/${mid.id}`, {});
 
     await page.goto(`/${slug}/releases`);
@@ -433,17 +449,32 @@ test.describe("Releases", () => {
           ),
         );
 
-    await test.step("the tag column orders by number, not as text", async () => {
+    await test.step("the tag column orders by version, not by creation or as text", async () => {
       // Scoped to `thead`: the toolbar's "New Release" action is on this page
       // too, and an unscoped name match finds both.
       const header = page.locator("thead").getByRole("button", {
         name: "Release",
       });
       await expect(header).toBeVisible({ timeout: 15_000 });
+
+      // The table opens on `defaultSort`, which is this column descending.
+      // `demo-1` leads because a tag that is not a version sorts after every
+      // one that is, so reversing puts it first.
+      await expect
+        .poll(tagColumn, { timeout: 15_000 })
+        .toEqual(["demo-1", "1.0.0", "0.29.0", "0.28.0", "0.9.0"]);
+
+      // ⚠️ TWO clicks, not one. `toggleSort` cycles asc → desc → NO SORT, and
+      // this column starts descending, so the first click clears the sort and
+      // the rows fall back to creation order. That fallback is what the
+      // pre-#1640 version of this test was actually asserting: its fixture
+      // was created in version order, so "no sort" and "ascending" produced
+      // the same five rows and the assertion could not tell them apart.
+      await header.click();
       await header.click();
       await expect
         .poll(tagColumn, { timeout: 15_000 })
-        .toEqual(["0.9.0", "0.28.0", "1.0.0"]);
+        .toEqual(["0.9.0", "0.28.0", "0.29.0", "1.0.0", "demo-1"]);
     });
 
     await test.step("the state filter replaces the two headings", async () => {
@@ -462,7 +493,7 @@ test.describe("Releases", () => {
       await page.getByRole("option", { name: "Open" }).click();
       await expect
         .poll(tagColumn, { timeout: 15_000 })
-        .toEqual(["0.9.0", "1.0.0"]);
+        .toEqual(["0.9.0", "0.29.0", "1.0.0", "demo-1"]);
     });
   });
 });

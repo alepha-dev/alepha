@@ -121,6 +121,123 @@ describe("SigilBrowserProvider", () => {
       },
     });
 
+  /**
+   * Quest #1335. `react:action:error` fires for every failed `$client` call,
+   * so every 4xx an API handed a form arrived as a crash: a mistyped
+   * password, a duplicate email on register, a 403 on a page the visitor may
+   * not see. The server side had decided this question long ago
+   * (`SigilServerErrors.isCrash`) and the browser side had no filter at all.
+   */
+  describe("a refusal is not a crash", () => {
+    const startedProvider = async () => {
+      const alepha = prodAlepha();
+      const provider = alepha.inject(SigilBrowserProvider);
+      await alepha.start();
+      alepha.store.set(sigilClientAtom, {
+        enabled: { views: true, errors: true, vitals: true },
+        feedbackButtonExcludedPaths: [],
+        configAt: Date.now(),
+      });
+      return { alepha, provider };
+    };
+
+    it("drops a 4xx from a failed action", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:action:error", {
+        error: Object.assign(new Error("Invalid credentials"), { status: 401 }),
+      });
+      expect(provider.debugPendingErrors()).toEqual([]);
+    });
+
+    it("keeps a 5xx from the same source", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:action:error", {
+        error: Object.assign(new Error("Internal Server Error"), {
+          status: 500,
+        }),
+      });
+      expect(provider.debugPendingErrors()).toEqual(["Internal Server Error"]);
+    });
+
+    it("keeps an error with no status at all", async () => {
+      // A missing status means the error never became a response, which is
+      // the definition of a crash - and is what keeps a plain render
+      // `TypeError` reporting.
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:action:error", {
+        error: new TypeError("x is not a function"),
+      });
+      expect(provider.debugPendingErrors()).toEqual(["x is not a function"]);
+    });
+
+    it("applies the same rule to an unhandled rejection", async () => {
+      // The three sources share one boundary: which listener saw it is not
+      // part of whether a refusal is a crash.
+      const { provider } = await startedProvider();
+      window.dispatchEvent(
+        Object.assign(new Event("unhandledrejection"), {
+          reason: Object.assign(new Error("Forbidden"), { status: 403 }),
+        }),
+      );
+      expect(provider.debugPendingErrors()).toEqual([]);
+    });
+  });
+
+  /**
+   * Quest #1328. `ReactBrowserRendererProvider` passes `onRecoverableError`,
+   * which REPLACES React's default `reportError` - so a hydration mismatch no
+   * longer reaches the `window.onerror` listener at all and this event is the
+   * only path left. The old report was a minified `#418` with blank arguments;
+   * the point of the new one is what it carries.
+   */
+  describe("a hydration mismatch is reported with its component stack", () => {
+    const startedProvider = async () => {
+      const alepha = prodAlepha();
+      const provider = alepha.inject(SigilBrowserProvider);
+      await alepha.start();
+      alepha.store.set(sigilClientAtom, {
+        enabled: { views: true, errors: true, vitals: true },
+        feedbackButtonExcludedPaths: [],
+        configAt: Date.now(),
+      });
+      return { alepha, provider };
+    };
+
+    it("appends the component stack to the stack the sink fingerprints on", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:recoverable:error", {
+        error: Object.assign(new Error("Hydration failed"), {
+          stack: "Error: Hydration failed\n    at hydrateRoot",
+        }),
+        componentStack: "\n    at StatusBar\n    at Layout",
+      });
+
+      expect(provider.debugPendingErrors()).toEqual(["Hydration failed"]);
+      // The subtree is what separates one mismatch from another, so it belongs
+      // in the field the fingerprint is taken over.
+      expect(provider.debugPendingErrorStacks()[0]).toContain("at StatusBar");
+    });
+
+    it("reports one with no component stack rather than dropping it", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:recoverable:error", {
+        error: new Error("Recovered, no stack"),
+      });
+      expect(provider.debugPendingErrors()).toEqual(["Recovered, no stack"]);
+    });
+
+    // The same `isCrash` gate as every other source: a recoverable error
+    // carrying a 4xx is the app working, and an inbox listing those is an
+    // inbox nobody opens.
+    it("drops a 4xx like every other source", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:recoverable:error", {
+        error: Object.assign(new Error("Forbidden"), { status: 403 }),
+      });
+      expect(provider.debugPendingErrors()).toEqual([]);
+    });
+  });
+
   it("attaches the referrer host to the landing pageview", async () => {
     const restore = withReferrer("https://news.ycombinator.com/item?id=42");
     try {

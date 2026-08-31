@@ -180,9 +180,19 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           </QuestViewRailRow>
         )}
 
-        {/* What shipped. No link target: Lore does not know the project's
-            repository, and a row that looks clickable and is not is worse
-            than a row that does not. */}
+        {/* What shipped. The sha links into the project's repository when the
+            owner has set one on the General settings page, and renders as
+            plain text when they have not - a row that looks clickable and is
+            not is worse than a row that does not (quest #1571).
+
+            `/commit/<sha>` is correct on GitHub and Gitea, and GitLab
+            redirects it to `/-/commit/`, which is why there is no provider
+            setting to go with the URL.
+
+            ⚠️ Built from the PROJECT, not from `commit.repo`. That field is
+            still stored and still accepted over MCP, because existing rows
+            carry it, but one project is one repository (2026-08-29) and two
+            sources for one link is how they drift. */}
         <QuestViewRailRow
           icon={GitCommitHorizontal}
           label={tr("quest.rail.commits")}
@@ -198,7 +208,18 @@ const QuestViewRail = (props: QuestViewRailProps) => {
             <span className="flex w-full min-w-0 flex-col items-end gap-0.5">
               {quest.commits.map((commit) => (
                 <span key={commit.sha} className="w-full min-w-0 truncate">
-                  <code className="font-mono">{commit.sha.slice(0, 7)}</code>
+                  {project?.repositoryUrl ? (
+                    <a
+                      href={`${project.repositoryUrl}/commit/${commit.sha}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono underline-offset-2 hover:underline"
+                    >
+                      {commit.sha.slice(0, 7)}
+                    </a>
+                  ) : (
+                    <code className="font-mono">{commit.sha.slice(0, 7)}</code>
+                  )}
                   {commit.message ? (
                     <span className="text-muted-foreground font-normal">
                       {" "}
