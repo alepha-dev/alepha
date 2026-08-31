@@ -1499,6 +1499,70 @@ test.describe("Quest", () => {
   });
 
   /**
+   * #1323, from feedback #2009. Areas are named by import path, so the prefix
+   * is the meaningful unit: "everything under lore/" took one pick per area.
+   *
+   * ⚠️ The row resolves to the individual areas rather than carrying a
+   * pattern, so the assertion is on the CHIPS, not on the row. That is the
+   * design decision: what is filtered is exactly what is shown.
+   */
+  test("typing a prefix in the area filter selects every area under it", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const t = Date.now();
+    const projectTitle = `AP${t}`.slice(0, 20);
+    const areas = ["lore/quests", "lore/folios", "lore/ui", "alepha/orm"];
+
+    await registerAndVerify(page, `areapfx${t}@example.com`, "AreaPfx123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    for (const [index, area] of areas.entries()) {
+      await apiPost(page, "createQuest", {
+        projectId,
+        title: `Area probe ${index} ${t}`,
+        description: "<p>x</p>",
+        area,
+        priority: "low",
+        objectives: [],
+        attachments: [],
+      });
+    }
+
+    await page.goto(`/${projectSlug}/`);
+    await expect(page.locator("tbody tr").first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const filter = page.getByPlaceholder("All areas");
+    await expect(filter).toBeVisible({ timeout: 15_000 });
+    await filter.click();
+    await filter.fill("lore/");
+
+    // One row, standing for the three matches. It only appears when it would
+    // do something: two or more unselected matches.
+    await page.getByRole("option", { name: /select 3 matching/i }).click();
+    await page.keyboard.press("Escape");
+
+    // Three chips, one per area, not a "lore/" chip. Removing one has to be
+    // an ordinary gesture rather than an escape from a prefix.
+    for (const area of ["lore/quests", "lore/folios", "lore/ui"]) {
+      await expect(page.getByText(area, { exact: true }).first()).toBeVisible({
+        timeout: 10_000,
+      });
+    }
+
+    // And the table narrowed to the three, leaving the alepha/orm quest out.
+    await expect
+      .poll(async () => page.locator("tbody tr").count(), { timeout: 15_000 })
+      .toBe(3);
+  });
+
+  /**
    * #1324, from feedback #2010. The row menu offered two lifecycle moves and
    * a destructive one, and nothing for the two things done most often from a
    * list: pasting a quest's reference somewhere, and nudging a field.
