@@ -82,6 +82,21 @@ export const projectFeaturesSchema = z.object({
    */
   epics: z.boolean().optional(),
   /**
+   * The Quality tab on Reports: coverage and test totals pushed by a CI job.
+   *
+   * Gates the TAB ONLY. `QualityController.pushQualityRun` accepts a push
+   * whatever this says, and that asymmetry is deliberate: a switch in the UI
+   * must never be able to turn someone's build red. Turning it off hides a
+   * history that keeps being written, exactly as the quest toggles hide
+   * `estimateMinutes` without deleting it.
+   *
+   * Optional and ABSENT from `defaultProjectFeatures` for the same reason as
+   * `sigils`, `folioSummary` and `epics`: a key there changes the column
+   * DEFAULT and triggers the D1 `projects` rebuild that cascade-wipes prod.
+   * Defaults to `false` via the `useProjectFeatureToggle` hook.
+   */
+  quality: z.boolean().optional(),
+  /**
    * @deprecated Superseded by per-app `sigils.kinds` (2026-08-06). Nothing
    * reads these three. They stay in the schema because dropping a `projects`
    * column risks the D1 rebuild path, and `projects` is the CASCADE parent
