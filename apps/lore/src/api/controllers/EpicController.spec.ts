@@ -16,6 +16,7 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
+import { ReadCounter } from "../../../test/fixtures/ReadCounter.ts";
 import type { Project } from "../entities/projects.ts";
 import { LoreApi } from "../index.ts";
 import { EpicController } from "./EpicController.ts";
@@ -25,6 +26,7 @@ interface TestContext {
   controller: EpicController;
   repos: TestEntityRepositories;
   dt: DateTimeProvider;
+  counter: ReadCounter;
 }
 
 /**
@@ -44,6 +46,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(LoreApi);
+  alepha.with(ReadCounter);
 
   // Registered before `start()` — the exact instance later `inject()` calls
   // must hit, so the FK closure `EpicController`'s fixtures reach (projects,
@@ -58,6 +61,7 @@ const setup = async (): Promise<TestContext> => {
     controller: alepha.inject(EpicController),
     repos,
     dt: alepha.inject(DateTimeProvider),
+    counter: alepha.inject(ReadCounter),
   };
 };
 
@@ -226,6 +230,82 @@ describe("EpicController", () => {
       shelved: 1,
       total: 4,
     });
+  });
+
+  it("reads the quests table a constant number of times per listing", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const params = { params: { projectId: project.id } };
+
+    const epic = await createTestEpic(ctx.alepha, project);
+    await createTestQuest(ctx.alepha, project, { epicId: epic.id });
+
+    ctx.counter.reset();
+    await ctx.controller.getEpics(params, { user });
+    const one = ctx.counter.of("quests");
+
+    for (let i = 0; i < 7; i += 1) {
+      const extra = await createTestEpic(ctx.alepha, project);
+      await createTestQuest(ctx.alepha, project, { epicId: extra.id });
+    }
+
+    ctx.counter.reset();
+    const resources = await ctx.controller.getEpics(params, { user });
+    const eight = ctx.counter.of("quests");
+
+    // Eight epics, still two reads: one grouped aggregate for total /
+    // completed / shelved, one more for the accepted-and-not-completed
+    // conjunction. The per-epic form was four counts EACH, which is where
+    // `GET /api/getEpics/1` got its 89 D1 round trips.
+    //
+    // Exact, never `toBeLessThan`: an upper bound passes just as happily
+    // when a later change stops counting anything at all.
+    expect({ one, eight }).toEqual({ one: 2, eight: 2 });
+    expect(resources).toHaveLength(8);
+    expect(resources.map((r) => r.questCount)).toEqual([
+      1, 1, 1, 1, 1, 1, 1, 1,
+    ]);
+  });
+
+  it("reports zeros for an epic holding no quests", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    await createTestEpic(ctx.alepha, project);
+
+    // The grouped aggregate returns NO ROW for an empty group, so this is
+    // the case the batched path has to default rather than read back.
+    const [resource] = await ctx.controller.getEpics(
+      { params: { projectId: project.id } },
+      { user },
+    );
+
+    expect(resource.progress).toEqual({
+      completed: 0,
+      inProgress: 0,
+      shelved: 0,
+      total: 0,
+    });
+    expect(resource.questCount).toBe(0);
+  });
+
+  it("lists nothing, and queries nothing, for a project with no epics", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+
+    ctx.counter.reset();
+    const resources = await ctx.controller.getEpics(
+      { params: { projectId: project.id } },
+      { user },
+    );
+
+    // `inArray: []` throws, so an empty epic list must never reach the
+    // aggregates at all.
+    expect(resources).toEqual([]);
+    expect(ctx.counter.of("quests")).toBe(0);
   });
 
   it("gets an epic by its per-project number", async ({ expect }) => {

@@ -1625,6 +1625,16 @@ export abstract class Repository<T extends ZObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<number> {
+    // Announced like `findMany`, and for the reason that matters to a
+    // listener: a count is a full round trip to the database. A counter
+    // wired to this event was blind to every `count()` in the app, so the
+    // shape it exists to catch — one count per row of a page — read as zero
+    // reads.
+    await this.alepha.events.emit("repository:read:before", {
+      tableName: this.tableName,
+      query: { where },
+    });
+
     where = this.withOrganization(this.withDeletedAt(where, opts));
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     try {
@@ -1668,6 +1678,13 @@ export abstract class Repository<T extends ZObject> {
     opts: StatementOptions = {},
   ): Promise<AggregateResult<T, S>[]> {
     const AGG_SEPARATOR = "___";
+
+    // Same reasoning as `count()`: one aggregate is one round trip, and a
+    // listener counting reads must see it.
+    await this.alepha.events.emit("repository:read:before", {
+      tableName: this.tableName,
+      query,
+    });
 
     // Build flat select fields
     const flatFields: Record<string, any> = {};
