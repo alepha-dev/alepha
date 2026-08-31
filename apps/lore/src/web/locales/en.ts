@@ -276,6 +276,7 @@ export default {
   "quest.create.title.helper": "Short and descriptive name",
   "quest.create.objectives": "Objectives",
   "quest.create.objectives.helper": "List of objectives for this quest",
+  "quest.create.advanced": "Advanced",
   "quest.create.dependsOn": "Depends on",
   "quest.create.dependsOn.helper":
     "This quest can't be started until the selected quest is completed.",
