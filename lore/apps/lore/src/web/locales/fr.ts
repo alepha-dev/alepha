@@ -294,7 +294,6 @@ export default {
   "quest.create.due": "Échéance",
   "quest.create.due.helper":
     "La date à laquelle cette quête doit être terminée. Indépendante de la date visée d'une version.",
-  "quest.create.due.clear": "Effacer l'échéance",
   "quest.create.estimate": "Estimation",
   "quest.create.estimate.helper":
     "Combien de temps cela pourrait prendre. Affiché dans le journal pour choisir une quête qui rentre dans le temps dont vous disposez.",

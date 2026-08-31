@@ -1499,6 +1499,107 @@ test.describe("Quest", () => {
   });
 
   /**
+   * #1521, from feedback #2021. The Due date field was a bare
+   * `<input type="date">` beside controls that all use the shared kit; it is
+   * `ControlDate` now, through the `Control` the field's schema already
+   * dispatches to.
+   *
+   * ⚠️ What is asserted is the API, not the widget. The custom control's own
+   * JSDoc documented three behaviours worth keeping, and two of them are
+   * invisible in the form: clearing has to send `null` (an omitted key leaves
+   * the old deadline in place), and a date-only value must not be run through
+   * `toISOString()`, which shifts the day backwards west of UTC.
+   */
+  test("a due date round-trips through the form and clears for real", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    const projectTitle = `DD${t}`.slice(0, 20);
+
+    await registerAndVerify(page, `duedate${t}@example.com`, "DueDate123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { id: questId, shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      projectId,
+      title: `Has a deadline ${t}`,
+      description: "<p>x</p>",
+      area: "Main",
+      priority: "low",
+      objectives: [],
+      attachments: [],
+    });
+
+    const questPath = (await apiPath(page, "getQuestById")).replace(
+      ":id",
+      String(questId),
+    );
+    const readDueAt = async () =>
+      page.evaluate(async (url) => {
+        const res = await fetch(url, { credentials: "include" });
+        return ((await res.json()) as { dueAt?: string | null }).dueAt ?? null;
+      }, questPath);
+
+    // The 15th of whichever month the calendar opens on. A day number rather
+    // than a computed date because the picker's cells are numbers, and 15 is
+    // the one that cannot also appear as a neighbouring month's spill-over.
+    const day = 15;
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+    await page.getByRole("button", { name: /edit/i }).first().click();
+
+    await test.step("picking a day stores that day, ending at its end", async () => {
+      const picker = page.getByRole("button", { name: /pick a date|due/i });
+      await expect(picker.first()).toBeVisible({ timeout: 15_000 });
+      await picker.first().click();
+
+      // The calendar opens on the current month when the field is empty.
+      const month = new Date().getMonth();
+      await page.getByText(String(day), { exact: true }).first().click();
+      await page
+        .getByRole("button", { name: /save|update/i })
+        .first()
+        .click();
+
+      await expect.poll(readDueAt, { timeout: 15_000 }).not.toBeNull();
+
+      const local = new Date((await readDueAt()) as string);
+      // The DAY has to survive, which is what `toISOString()` on a date-only
+      // value would break west of UTC. Read back in LOCAL time, because that
+      // is the timezone the day was chosen in.
+      expect(local.getDate()).toBe(day);
+      expect(local.getMonth()).toBe(month);
+      // And it lands at the END of that day, which is what keeps a quest due
+      // today from reading as overdue in the morning.
+      expect(local.getHours()).toBe(23);
+    });
+
+    await test.step("clearing it actually clears it", async () => {
+      await page.reload();
+      await page.getByRole("button", { name: /edit/i }).first().click();
+      const clear = page.getByRole("button", { name: /clear date/i }).first();
+      await expect(clear).toBeVisible({ timeout: 15_000 });
+      await clear.click();
+      await page
+        .getByRole("button", { name: /save|update/i })
+        .first()
+        .click();
+
+      // ⚠️ Against the API, not the form. `undefined` is dropped by the ORM
+      // update layer, so a form that looks empty can leave the old deadline
+      // in the database.
+      await expect.poll(readDueAt, { timeout: 15_000 }).toBeNull();
+    });
+  });
+
+  /**
    * #1571. The commit trail already worked; it rendered the sha as dead text,
    * because `questCommitSchema` said outright that "Lore does not know a
    * project's repository and should not pretend to". Giving the project one
