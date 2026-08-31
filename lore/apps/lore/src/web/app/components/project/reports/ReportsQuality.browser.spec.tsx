@@ -31,6 +31,10 @@ const aRun: QualityRunResource = {
   id: "00000000-0000-4000-8000-000000000001",
   projectId: 1,
   createdAt: "2026-08-30T09:41:00.000Z",
+  // Deliberately later than `createdAt`: the staleness line must render the
+  // push that was kept, not the day's first one.
+  updatedAt: "2026-08-30T17:12:00.000Z",
+  day: "2026-08-30",
   commitSha: "0b35cb375f2a1c9d",
   branch: "main",
   coverageLines: 71.2,
@@ -42,7 +46,6 @@ const aRun: QualityRunResource = {
   testsFailed: 0,
   testsSkipped: 2,
   durationMs: 132_000,
-  hasReport: true,
 };
 
 describe("the Quality tab's two ingested-data states", () => {
@@ -137,6 +140,13 @@ describe("the Quality tab's two ingested-data states", () => {
       expect(text).toContain("0b35cb3");
       expect(text).not.toContain(aRun.commitSha);
       expect(text).toMatch(/2026/);
+
+      // ⚠️ The stamp is `updatedAt` (17:12), never `createdAt` (09:41): one
+      // row is one branch-day, so `createdAt` is that day's FIRST push and
+      // rendering it would date the figures hours before they were measured.
+      // Asserted on the minutes, which no timezone shifts.
+      expect(text).toContain(":12");
+      expect(text).not.toContain(":41");
     });
   });
 });

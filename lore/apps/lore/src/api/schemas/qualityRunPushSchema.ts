@@ -1,17 +1,18 @@
 import { type Infer, z } from "alepha";
 
 /**
- * What `alepha lore quality push` sends.
+ * What `alepha lore quality push` sends: totals, and nothing else.
  *
- * Totals and reports in ONE request. The alternative was an upload followed by
- * a register call, the way folio attachments work, and it was rejected: that
- * shape exists because a browser holds the bytes and the server does not, which
- * is not the case here. A CI job posting twice can also half-succeed, leaving
- * an uploaded report no row will ever point at.
+ * ~200 bytes. It used to also carry `reports`, the raw `json-summary` and
+ * vitest report inline, which made the request ~3.1 MB against a 100 KB body
+ * limit - so every push this endpoint ever received was refused with a 413 and
+ * the table stayed empty. The reports are gone rather than moved to a bigger
+ * transport: no endpoint served them back, so nothing was losing a reader. See
+ * the entity doc.
  *
- * `reports` is optional so a caller may push totals alone. Nothing does today,
- * and the field being optional is what keeps the read path's dangling-file
- * handling from being a special case.
+ * ⚠️ **No `day` here, on purpose.** The row's day bucket is stamped
+ * server-side. A caller that named its own bucket could overwrite any day it
+ * liked, and a CI runner's clock would decide which one its push landed in.
  */
 export const qualityRunPushSchema = z.object({
   commitSha: z.string().min(7).max(40),
@@ -37,11 +38,6 @@ export const qualityRunPushSchema = z.object({
    * `startTime`: the vitest JSON report has no top-level duration.
    */
   durationMs: z.integer().min(0),
-  /**
-   * The raw `json-summary` and vitest report, kept opaque. `z.any()` is not
-   * valid for a request body on its own, so this is the record form.
-   */
-  reports: z.record(z.text(), z.any()).optional(),
 });
 
 export type QualityRunPush = Infer<typeof qualityRunPushSchema>;

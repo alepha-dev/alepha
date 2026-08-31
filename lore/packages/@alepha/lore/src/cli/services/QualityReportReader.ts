@@ -8,6 +8,14 @@ import { FileSystemProvider } from "alepha/system";
  * Both inputs are JSON that vitest emits natively, so there is no XML parser
  * anywhere in this epic and nothing here ever parses a filename or the HTML
  * report.
+ *
+ * ## ⚠️ Totals leave this class, the reports do not
+ *
+ * Both files are read in full and both are thrown away: what the endpoint
+ * takes is eight numbers and a duration, ~200 bytes. It used to also take the
+ * two parsed reports inline, which put the request at ~3.1 MB against a 100 KB
+ * body limit and meant no push ever landed. Nothing read them on the other
+ * side either. See `qualityRunPushSchema`.
  */
 export class QualityReportReader {
   /**
@@ -46,7 +54,6 @@ export class QualityReportReader {
           this.count(tests, "numTodoTests"),
       },
       durationMs: this.durationOf(tests),
-      reports: { coverage, tests },
     };
   }
 
@@ -117,7 +124,7 @@ export class QualityReportReader {
 }
 
 /**
- * The totals a run measured, plus the reports they were read from.
+ * The totals a run measured.
  */
 export interface QualityReport {
   coverage: {
@@ -133,5 +140,4 @@ export interface QualityReport {
     skipped: number;
   };
   durationMs: number;
-  reports: Record<string, any>;
 }
