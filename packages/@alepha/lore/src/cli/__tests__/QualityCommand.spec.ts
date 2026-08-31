@@ -14,7 +14,9 @@ import { QualityCommand } from "../commands/QualityCommand.ts";
 
 /**
  * The command that closes the loop: read what `alepha test --coverage` wrote,
- * extract the totals, and post them with the raw reports behind them.
+ * extract the totals, and post them - the totals ALONE, ~200 bytes. The two
+ * reports they came from are read in full and thrown away; sending them made
+ * the request 31x the server's body limit, so no push ever landed.
  *
  * Two of the fields it sends are NOT in the payload it reads, and both were
  * verified against a real vitest 4.1.10 run rather than assumed:
@@ -177,14 +179,27 @@ describe("alepha lore quality push", () => {
       expect(ctx.link.pushes[0].body.durationMs).toBe(132_000);
     });
 
-    it("carries the raw reports so a later parse needs no CI re-run", async () => {
+    /**
+     * The reports are input, never payload. A regression here is not a
+     * slightly bigger request: it is a 413 on every push, which is exactly
+     * how this shipped the first time.
+     */
+    it("sends the totals alone, never the reports they came from", async () => {
       const ctx = await push({
         env: { GITHUB_SHA: "0b35cb3", GITHUB_REF_NAME: "main" },
       });
 
-      const reports = ctx.link.pushes[0].body.reports;
-      expect(reports.coverage.total.lines.pct).toBe(71.2);
-      expect(reports.tests.numTotalTests).toBe(8526);
+      const body = ctx.link.pushes[0].body;
+      expect(body.reports).toBeUndefined();
+      expect(Object.keys(body).sort()).toEqual([
+        "branch",
+        "commitSha",
+        "coverage",
+        "durationMs",
+        "tests",
+      ]);
+      // A day is not the caller's to name: the server stamps it.
+      expect(body.day).toBeUndefined();
     });
   });
 

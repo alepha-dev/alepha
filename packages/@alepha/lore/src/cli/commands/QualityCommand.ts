@@ -35,10 +35,10 @@ import { QualityReportReader } from "../services/QualityReportReader.ts";
  * ## Failing loudly is the design
  *
  * A push that cannot happen exits non-zero, and there is no opt-out flag in
- * v1. The safety is where the command runs rather than in a flag: the coverage
- * job is `main`-only and gates nothing, so a red push step is visible without
- * blocking a deploy or reddening a fork PR. A `--soft` flag can be added the
- * day a second caller needs one.
+ * v1. The safety is where the command runs rather than in a flag: the push
+ * step is `continue-on-error` and skipped on pull requests, so a red push is a
+ * warning annotation that blocks no deploy and reddens no fork PR. A `--soft`
+ * flag can be added the day a second caller needs one.
  */
 export class QualityCommand {
   protected readonly log = $logger();
@@ -85,7 +85,6 @@ export class QualityCommand {
           coverage: report.coverage,
           tests: report.tests,
           durationMs: report.durationMs,
-          reports: report.reports,
         },
       });
 

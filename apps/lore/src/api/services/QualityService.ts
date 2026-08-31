@@ -1,5 +1,5 @@
 import { $inject } from "alepha";
-import { $storage, FileService, files } from "alepha/api/files";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { type QualityRun, qualityRuns } from "../entities/qualityRuns.ts";
@@ -7,79 +7,54 @@ import { type QualityRun, qualityRuns } from "../entities/qualityRuns.ts";
 /**
  * Everything that writes or removes a quality run.
  *
- * It exists as a service rather than as three handler bodies for one reason:
- * `quality_runs.fileId` carries no foreign key, so the database will not take
- * the raw report with the row. A `deleteMany` issued anywhere else leaves
- * bytes in the bucket that nothing can reach and nothing will ever collect -
- * a bug `folio_blobs` has already shipped once and documents. {@link delete}
- * is the only legal way to remove a run, and {@link prune} goes through it.
- *
- * Deliberately NOT sharing a base with `FolioBlobService`, whose write rules
- * are the opposite of these: auto-suffix against siblings vs no naming at all,
- * renameable vs immutable, one blob per folio vs one report per run.
+ * It used to exist because `quality_runs.fileId` carried no foreign key, so a
+ * `deleteMany` issued anywhere else stranded bytes in a bucket forever. That
+ * hazard is gone with the bucket: a run is eleven columns and the database
+ * takes all of them. What is left here is the day-bucketing and the ordering,
+ * which are the two things every caller would otherwise have to get right on
+ * its own.
  */
 export class QualityService {
-  /**
-   * The storage the raw reports live in.
-   *
-   * ⚠️ No `ttl`, and that is a decision rather than an omission. A TTL would
-   * hand these files to `api:files:purgeFiles`, which deletes rows and blobs
-   * hourly once past `expirationDate` - destroying exactly the history that
-   * makes "per-file coverage later, without a CI re-run" possible. Retention
-   * is the 500-row cap in `ProjectLimits` instead, swept by `QualityJobs`.
-   */
-  public static readonly BUCKET = "quality-runs";
-
   protected readonly runs = $repository(qualityRuns);
-  protected readonly frameworkFiles = $repository(files);
-  protected readonly fileService = $inject(FileService);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
-   * Sized for JSON rather than for images. A `json-summary` for a repository
-   * this size is a few hundred kilobytes with one entry per file, and the
-   * vitest report adds one object per spec; 8 MB is far above both and still
-   * refuses anything that is not a report.
-   */
-  public readonly reports = $storage({
-    name: QualityService.BUCKET,
-    description: "Raw coverage and test reports, one file per quality run",
-    mimeTypes: ["application/json"],
-    maxSize: 8,
-  });
-
-  /**
-   * Write a run, with its raw reports beside it.
+   * Record a run, replacing the one already stored for its branch and day.
    *
-   * The bytes go first: the row needs the resulting file id, and an upload
-   * that succeeds with no row behind it is collected by the storage's own
-   * failure path, where a row pointing at a file that was never written is
-   * not collected by anything.
+   * The upsert target is the entity's unique index, named column for column:
+   * an `ON CONFLICT` target that does not match a real index is a runtime
+   * error rather than a wider match. Everything else is overwritten from the
+   * incoming row, which is what "the last push of the day wins" means, and
+   * `Repository.upsert` stamps `updatedAt` on the conflict path so the kept
+   * run carries the time it was actually pushed.
    */
   public async record(input: QualityRunInput): Promise<QualityRun> {
-    const fileId = input.reports ? await this.storeReports(input) : undefined;
-
-    return this.runs.create({
-      projectId: input.projectId,
-      commitSha: input.commitSha,
-      branch: input.branch,
-      coverageLines: input.coverage.lines,
-      coverageStatements: input.coverage.statements,
-      coverageFunctions: input.coverage.functions,
-      coverageBranches: input.coverage.branches,
-      testsTotal: input.tests.total,
-      testsPassed: input.tests.passed,
-      testsFailed: input.tests.failed,
-      testsSkipped: input.tests.skipped,
-      durationMs: input.durationMs,
-      fileId,
-    });
+    return this.runs.upsert(
+      {
+        projectId: input.projectId,
+        day: this.today(),
+        commitSha: input.commitSha,
+        branch: input.branch,
+        coverageLines: input.coverage.lines,
+        coverageStatements: input.coverage.statements,
+        coverageFunctions: input.coverage.functions,
+        coverageBranches: input.coverage.branches,
+        testsTotal: input.tests.total,
+        testsPassed: input.tests.passed,
+        testsFailed: input.tests.failed,
+        testsSkipped: input.tests.skipped,
+        durationMs: input.durationMs,
+      },
+      { target: ["projectId", "branch", "day"] },
+    );
   }
 
   /**
    * The newest run on a branch, or across the project when no branch is named.
    *
-   * "Newest row", never "the row for this sha": pushes append, so a commit can
-   * have several and the last one to arrive is the one that counts.
+   * Ordered by `day`, which is a `YYYY-MM-DD` string and therefore sorts
+   * lexicographically the way it sorts chronologically - the same reason
+   * `sigil_uniques_daily` can range over one.
    */
   public async findLatest(
     projectId: number,
@@ -91,7 +66,7 @@ export class QualityService {
       where: branch
         ? { projectId: { eq: projectId }, branch: { eq: branch } }
         : { projectId: { eq: projectId } },
-      orderBy: [{ column: "createdAt", direction: "desc" }],
+      orderBy: [{ column: "day", direction: "desc" }],
       limit: 1,
     });
     return latest;
@@ -106,31 +81,30 @@ export class QualityService {
   ): Promise<QualityRun[]> {
     return this.runs.findMany({
       where: { projectId: { eq: projectId } },
-      orderBy: [{ column: "createdAt", direction: "desc" }],
+      orderBy: [{ column: "day", direction: "desc" }],
       limit,
     });
   }
 
   /**
-   * Remove a run and the bytes behind it. The only legal way to do either.
+   * Remove a run.
    */
   public async delete(id: string): Promise<void> {
-    const run = await this.runs.findOne({ where: { id: { eq: id } } });
-    if (!run) return;
-
     await this.runs.deleteById(id);
-    await this.deleteReports([run]);
   }
 
   /**
-   * Keep the newest `cap` runs of a project and remove the rest, bytes
-   * included. Returns how many went, which is what makes the sweep
-   * assertable.
+   * Keep the newest `cap` days of a project and remove the rest. Returns how
+   * many went, which is what makes the sweep assertable.
+   *
+   * With one row per branch per day this is close to decorative on a project
+   * that only pushes from `main` - 500 rows is over a year - and stays useful
+   * for one pushing from many branches.
    */
   public async prune(projectId: number, cap: number): Promise<number> {
     const doomed = await this.runs.findMany({
       where: { projectId: { eq: projectId } },
-      orderBy: [{ column: "createdAt", direction: "desc" }],
+      orderBy: [{ column: "day", direction: "desc" }],
       offset: cap,
       // A cap is a steady-state target, not a backlog swallower: a project
       // that has never been swept catches up over several runs of the job
@@ -140,7 +114,6 @@ export class QualityService {
     if (doomed.length === 0) return 0;
 
     await this.runs.deleteMany({ id: { inArray: doomed.map((it) => it.id) } });
-    await this.deleteReports(doomed);
     return doomed.length;
   }
 
@@ -156,21 +129,6 @@ export class QualityService {
   }
 
   /**
-   * Whether a run's raw report is still there.
-   *
-   * There is no foreign key, so the file row can be gone while the run stays.
-   * The read path asks this instead of assuming, and renders the totals
-   * either way.
-   */
-  public async hasReport(run: QualityRun): Promise<boolean> {
-    if (!run.fileId) return false;
-    const file = await this.frameworkFiles.findOne({
-      where: { id: { eq: run.fileId } },
-    });
-    return file !== undefined;
-  }
-
-  /**
    * How many sweeps' worth of backlog one pass will chew through.
    *
    * Same reasoning as `SigilJobs.MAX_DAYS_PER_SWEEP`: the sweep is idempotent,
@@ -180,39 +138,21 @@ export class QualityService {
   protected static readonly MAX_PRUNE_PER_SWEEP = 200;
 
   /**
-   * Both reports in one file, so one run is one blob rather than two that can
-   * half-survive each other.
-   */
-  protected async storeReports(input: QualityRunInput): Promise<string> {
-    const body = JSON.stringify(input.reports);
-    const file = new File([body], `${input.commitSha}.json`, {
-      type: "application/json",
-    });
-
-    const stored = await this.reports.upload(file);
-    return stored.id;
-  }
-
-  /**
-   * Delete the bytes of runs whose rows have already gone.
+   * Today's UTC day, `YYYY-MM-DD`.
    *
-   * Ids with no file row are tolerated rather than refused: that orphan state
-   * is exactly what this table's missing foreign key allows, so hitting it is
-   * normal rather than exceptional.
+   * Sliced off an ISO string rather than formatted, the same way
+   * `SigilIngestService.dayBucket` does it: `nowISOString()` is UTC by
+   * construction, so the first ten characters are the bucket and no timezone
+   * can get between the two.
    */
-  protected async deleteReports(runs: QualityRun[]): Promise<void> {
-    const ids = runs
-      .map((it) => it.fileId)
-      .filter((it): it is string => it !== undefined);
-    if (ids.length === 0) return;
-
-    await this.fileService.deleteFiles(ids);
+  protected today(): string {
+    return this.dateTime.nowISOString().slice(0, 10);
   }
 }
 
 /**
  * What a caller hands {@link QualityService.record}: the totals a CI job
- * extracted, plus the reports it extracted them from.
+ * extracted.
  */
 export interface QualityRunInput {
   projectId: number;
@@ -231,5 +171,4 @@ export interface QualityRunInput {
     skipped: number;
   };
   durationMs: number;
-  reports?: Record<string, any>;
 }

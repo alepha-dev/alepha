@@ -39,13 +39,15 @@ export class QualityController {
   protected ownsProject = () => $ownsProject({ param: "projectId" });
 
   /**
-   * How much history one read hands the tab. A year of daily pushes fits, and
-   * the graphs stop being readable long before the limit bites.
+   * How much history one read hands the tab. With one row per branch per day,
+   * a year of daily pushes fits, and the graphs stop being readable long
+   * before the limit bites.
    */
   protected static readonly SERIES_LIMIT = 365;
 
   /**
-   * Record what a CI run measured.
+   * Record what a CI run measured, replacing whatever that branch already
+   * pushed today.
    *
    * ## ⚠️ Accepted while `features.quality` is off
    *
@@ -54,8 +56,9 @@ export class QualityController {
    * the UI turns a build red for a reason that has nothing to do with the
    * build, and the person who flipped it would never connect the two.
    *
-   * A failed push exits non-zero on the CLI side, which is safe because the
-   * coverage job is `main`-only and gates nothing.
+   * A failed push exits non-zero on the CLI side. The safety is where the
+   * command runs: the push step is `continue-on-error` and gates no deploy, so
+   * a red push shows as a warning annotation rather than blocking anything.
    */
   pushQualityRun = $action({
     use: [$secure(), this.ownsProject()],
@@ -75,12 +78,9 @@ export class QualityController {
         coverage: body.coverage,
         tests: body.tests,
         durationMs: body.durationMs,
-        reports: body.reports,
       });
 
-      // Freshly written, so the file is there by construction. Saying so
-      // rather than re-reading it keeps the push to one round trip.
-      return this.resource(run, run.fileId !== undefined);
+      return this.resource(run);
     },
   });
 
@@ -123,30 +123,22 @@ export class QualityController {
       const headline = latest ?? runs[0];
 
       return {
-        latest: headline ? await this.hydrate(headline) : undefined,
-        runs: await Promise.all(runs.map((run) => this.hydrate(run))),
+        latest: headline ? this.resource(headline) : undefined,
+        runs: runs.map((run) => this.resource(run)),
       };
     },
   });
 
   /**
-   * A run plus whether its raw report is still there.
-   *
-   * The lookup is the whole point: `fileId` is a logical reference with no
-   * foreign key, so a non-null value is not evidence the file exists.
-   */
-  protected async hydrate(run: QualityRun) {
-    return this.resource(run, await this.quality.hasReport(run));
-  }
-
-  /**
    * The row, flattened to what the API returns.
    */
-  protected resource(run: QualityRun, hasReport: boolean) {
+  protected resource(run: QualityRun) {
     return {
       id: run.id,
       projectId: run.projectId,
       createdAt: run.createdAt,
+      updatedAt: run.updatedAt,
+      day: run.day,
       commitSha: run.commitSha,
       branch: run.branch,
       coverageLines: run.coverageLines,
@@ -158,8 +150,6 @@ export class QualityController {
       testsFailed: run.testsFailed,
       testsSkipped: run.testsSkipped,
       durationMs: run.durationMs,
-      fileId: run.fileId,
-      hasReport,
     };
   }
 }

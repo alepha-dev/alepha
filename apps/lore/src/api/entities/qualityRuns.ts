@@ -4,61 +4,86 @@ import { $entity, db } from "alepha/orm";
 import { projects } from "./projects.ts";
 
 /**
- * One row per push: what a CI run measured about a project's test suite.
+ * What a CI run measured about a project's test suite: one row per project,
+ * per branch, per UTC day.
  *
  * Deliberately not an `artifact` (#1199). That table is deploy-shaped, unique
  * on `(projectId, app, tag, runtime)` and sha256-addressed, with `latest`
  * mutable in place. A coverage report has no runtime, and its "tag" is a
  * commit sha rather than a version. Bending a schema two other epics depend on
  * so it could also hold this was the wrong trade, so this module owns its own
- * table and its own storage instead.
+ * table instead.
  *
- * ## Totals here, the reports behind a fileId
+ * ## Totals, and nothing else
  *
  * The four percentages and the four counts are relational because the graphs
- * read them on every page load and a JSON parse per point is not free. The raw
- * `json-summary` and vitest test report stay opaque in `QualityService.BUCKET`,
- * which is what makes per-file coverage and PR diff annotations later a
- * server-side parse of history that already exists, with no CI re-run.
+ * read them on every page load and a JSON parse per point is not free.
  *
- * ## ⚠️ No unique index on `commitSha`, on purpose
+ * The raw `json-summary` and vitest report used to be stored beside them, in a
+ * bucket, behind a `fileId`. They are gone. A vitest report for a suite this
+ * size is ~2.5 MB of per-test records that are overwhelmingly
+ * `"status":"passed","failureMessages":[]`, the coverage summary another
+ * ~500 KB of per-file entries, and the push carrying both was 31x over the
+ * server's 100 KB body limit - so `quality_runs` never received a single row.
+ * Nothing read those bytes either: no endpoint ever served them back. What is
+ * left is the ~200 bytes the tab actually renders, which cannot hit a body
+ * limit at all.
  *
- * Two pushes for the same commit APPEND. A unique index would turn a
- * legitimate CI re-run into a 409, and a re-run of a flaky suite is
- * information rather than noise. `latest` is therefore the newest row on the
- * branch, ordered by `createdAt`, and never "the row for this sha".
+ * Per-file coverage, if it is ever wanted, is a CI re-run rather than a parse
+ * of history that was being paid for and never read.
  *
- * ## ⚠️ `fileId` is a logical reference, with no foreign key
+ * ## ⚠️ One row per day, and the last push wins
  *
- * Exactly the `folio_blobs.fileId` shape, and for the same reason: adding the
- * constraint means a table rebuild, and a rebuild on D1 is the cascade wipe
- * this app has already been bitten by once (see "Migration safety on D1" in
- * `apps/lore/CLAUDE.md`).
+ * `(projectId, branch, day)` is UNIQUE and {@link QualityService.record}
+ * upserts onto it. A branch pushing eleven times in a day leaves one row: the
+ * eleventh.
  *
- * Two consequences, both of which are `QualityService`'s job rather than the
- * database's:
+ * This reverses an earlier rule that said pushes APPEND, on the grounds that a
+ * re-run of a flaky suite is information rather than noise. That argument was
+ * about `commitSha`, and it is still true of one; it is not a reason to keep
+ * eleven rows to draw one point. The tab plots a daily timeline, so a day is
+ * what a row is for, and the newest measurement of a day is the one that
+ * describes it.
  *
- * 1. Deleting a row directly orphans its bytes in the bucket forever. Removal
- *    goes through `QualityService.delete`, and nothing else.
- * 2. The reference can dangle the other way too. The read path returns the run
- *    WITHOUT its raw report rather than throwing, because the totals are the
- *    part the tab renders.
+ * What that costs: intra-day variation is not recoverable. A suite that went
+ * red at noon and green at six reads as green.
  *
- * `projectId` IS physical and DOES cascade: wiping a project wipes its runs.
- * The bytes those rows pointed at are then orphaned, which is the accepted
- * cost of not rebuilding `projects`.
+ * `day` is stamped SERVER-side from `DateTimeProvider`, never sent by the
+ * caller: a CI runner's clock and timezone must not decide which bucket its
+ * push lands in, and a client able to name its own bucket could overwrite any
+ * other day at will.
+ *
+ * ## ⚠️ `createdAt` is the first push of the day, `updatedAt` the kept one
+ *
+ * An upsert leaves `createdAt` where the first write of the day put it, so it
+ * is the wrong column to render as "last measured" - the staleness line reads
+ * `updatedAt`, which `Repository.upsert` stamps on every conflict path.
+ *
+ * `projectId` cascades: wiping a project wipes its runs.
  */
 export const qualityRuns = $entity({
   name: "quality_runs",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
     createdAt: db.createdAt(),
+    /**
+     * When the run this row now describes was pushed. See the class doc: with
+     * one row per day, this is the honest "last measured" stamp and
+     * `createdAt` is not.
+     */
+    updatedAt: db.updatedAt(),
     projectId: db.ref(z.integer(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
     /**
-     * The commit the suite ran against. Not unique, and not a key: see the
-     * append rule above. Sized for a full sha with room for a short one.
+     * UTC day bucket, `YYYY-MM-DD`. Server-stamped, and half of what makes a
+     * row unique. Same shape as `sigil_uniques_daily.day`.
+     */
+    day: z.string().min(10).max(10),
+    /**
+     * The commit the kept run measured. Not a key: a day can hold several
+     * commits and only the last one survives, so this names which one that
+     * was rather than identifying the row.
      */
     commitSha: z.string().min(7).max(40),
     /**
@@ -85,18 +110,13 @@ export const qualityRuns = $entity({
      * minus the run's `startTime`.
      */
     durationMs: z.integer().min(0),
-    /**
-     * The `files` row holding the raw `json-summary` and test report, in
-     * `QualityService.BUCKET`. Optional because it can dangle, and because a
-     * caller is allowed to push totals without the reports behind them.
-     */
-    fileId: z.uuid().optional(),
   }),
   indexes: [
-    // The tab's two queries: the series for a project, and the newest row on
-    // one branch. Both are covered by ordering on `createdAt` within them.
-    { columns: ["projectId", "createdAt"] },
-    { columns: ["projectId", "branch", "createdAt"] },
+    // The upsert target. Also the index `findLatest` reads: one branch,
+    // newest day first.
+    { columns: ["projectId", "branch", "day"], unique: true },
+    // The series behind the tab's graphs, every branch, newest day first.
+    { columns: ["projectId", "day"] },
   ],
 });
 

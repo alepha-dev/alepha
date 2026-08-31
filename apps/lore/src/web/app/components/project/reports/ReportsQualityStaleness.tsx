@@ -20,6 +20,11 @@ export interface ReportsQualityStalenessProps {
  * Branch and commit are here for the same reason: a run pushed from a topic
  * branch is not the project's coverage, and saying which commit produced the
  * figure is what lets a reader check it.
+ *
+ * ⚠️ Reads `updatedAt`, never `createdAt`. One row is one branch-day and a
+ * later push upserts onto it, so `createdAt` is stuck at that day's FIRST
+ * push: rendering it would tell a reader the suite was last measured this
+ * morning while the figures above them came from a run ten minutes ago.
  */
 const ReportsQualityStaleness = (props: ReportsQualityStalenessProps) => {
   const { tr, l } = useI18n<I18n, "en">();
@@ -32,7 +37,7 @@ const ReportsQualityStaleness = (props: ReportsQualityStalenessProps) => {
           // `I18nLocalizeOptions` has `date` and `number` only: a
           // date-and-time reading is a dayjs format string passed to `date`,
           // not a `time` key.
-          String(l(latest.createdAt, { date: "lll" })),
+          String(l(latest.updatedAt, { date: "lll" })),
           latest.branch,
           latest.commitSha.slice(0, 7),
         ],

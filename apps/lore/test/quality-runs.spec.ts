@@ -1,6 +1,6 @@
 import { Alepha, z } from "alepha";
-import { files } from "alepha/api/files";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -25,13 +25,17 @@ import { QualityService } from "../src/api/services/QualityService.ts";
  * The Lore half of epic #15: a CI job pushes what a test run measured, and the
  * Reports tab reads it back.
  *
- * Two properties here are the ones that would be quietly wrong rather than
- * loudly broken, and both come from decisions taken on 2026-08-30:
+ * Three properties here are the ones that would be quietly wrong rather than
+ * loudly broken:
  *
  * - **A push is never refused because the UI switch is off.** A feature toggle
  *   that can turn someone's CI red is not a feature toggle.
- * - **A repeat commit sha appends.** A CI re-run on an unchanged commit is not
- *   a conflict, and a flaky suite re-run is information.
+ * - **A second push on the same branch and day REPLACES the first.** One row
+ *   is one branch-day; the tab plots a daily timeline and the newest
+ *   measurement of a day is the one that describes it.
+ * - **The day is stamped server-side.** A caller naming its own bucket could
+ *   overwrite any day it liked, and a CI runner's timezone would decide which
+ *   one its push landed in.
  */
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -42,7 +46,6 @@ const userDataSchema = z.object({
 
 class TestRows {
   public readonly runs = $repository(qualityRuns);
-  public readonly files = $repository(files);
 }
 
 interface TestContext {
@@ -96,8 +99,9 @@ const createTestUser = async (ctx: TestContext) => {
 };
 
 /**
- * What `alepha lore quality push` sends: totals extracted from the two vitest
- * reports, plus the reports themselves.
+ * What `alepha lore quality push` sends: the totals extracted from the two
+ * vitest reports, and nothing else. ~200 bytes - the reports themselves used
+ * to ride along and made the request 31x the server's body limit.
  */
 const aRun = (overrides: Partial<QualityRunPush> = {}): QualityRunPush => ({
   commitSha: "0b35cb375",
@@ -105,10 +109,6 @@ const aRun = (overrides: Partial<QualityRunPush> = {}): QualityRunPush => ({
   coverage: { lines: 71.2, statements: 70.9, functions: 64.4, branches: 82.1 },
   tests: { total: 8526, passed: 8524, failed: 0, skipped: 2 },
   durationMs: 132_000,
-  reports: {
-    coverage: { total: { lines: { total: 100, covered: 71, pct: 71.2 } } },
-    tests: { numTotalTests: 8526, numPassedTests: 8524 },
-  },
   ...overrides,
 });
 
@@ -143,6 +143,39 @@ describe("quality runs", () => {
       { params: { projectId }, body },
       { user },
     );
+
+  const today = () =>
+    ctx.alepha.inject(DateTimeProvider).nowISOString().slice(0, 10);
+
+  /**
+   * A row for a day that is not today.
+   *
+   * Written straight to the table rather than pushed, because the endpoint
+   * stamps `day` itself and the only other way to move it is `travel()` -
+   * which releases every cron in the container and would make each of Lore's
+   * other jobs a participant in these tests.
+   */
+  const seed = async (
+    projectId: number,
+    day: string,
+    overrides: Record<string, unknown> = {},
+  ) =>
+    ctx.rows.runs.create({
+      projectId,
+      day,
+      commitSha: day.replaceAll("-", ""),
+      branch: "main",
+      coverageLines: 71.2,
+      coverageStatements: 70.9,
+      coverageFunctions: 64.4,
+      coverageBranches: 82.1,
+      testsTotal: 8526,
+      testsPassed: 8524,
+      testsFailed: 0,
+      testsSkipped: 2,
+      durationMs: 132_000,
+      ...overrides,
+    });
 
   describe("the feature flag", () => {
     it("is optional, so an existing row decodes without it", ({ expect }) => {
@@ -179,38 +212,73 @@ describe("quality runs", () => {
       expect(rows[0].durationMs).toBe(132_000);
     });
 
-    it("keeps the raw reports behind a fileId", async ({ expect }) => {
+    /**
+     * The day is the server's, never the caller's: nothing in
+     * `qualityRunPushSchema` can name it.
+     */
+    it("stamps the UTC day itself", async ({ expect }) => {
       const { owner, projectId } = await aProject();
 
       const response = await push(projectId, owner);
 
-      const stored = await ctx.rows.files.findOne({
-        where: { id: { eq: response.data.fileId } },
-      });
-      expect(stored).toBeDefined();
-      expect(stored?.bucket).toBe(QualityService.BUCKET);
+      expect(response.data.day).toBe(today());
     });
 
     /**
-     * No unique index on `commitSha`. A CI re-run is not a conflict.
+     * Point 2 of the whole design. Eleven pushes in a day leave one row: the
+     * eleventh.
      */
-    it("appends on a repeated commit sha", async ({ expect }) => {
+    it("replaces the run already pushed today on that branch", async ({
+      expect,
+    }) => {
       const { owner, projectId } = await aProject();
 
-      await push(projectId, owner);
-      await push(
+      const first = await push(
         projectId,
         owner,
-        aRun({ tests: { total: 8526, passed: 8526, failed: 0, skipped: 0 } }),
+        aRun({ commitSha: "1111111" }),
+      );
+      const second = await push(
+        projectId,
+        owner,
+        aRun({
+          commitSha: "2222222",
+          tests: { total: 8526, passed: 8526, failed: 0, skipped: 0 },
+        }),
       );
 
       const rows = await ctx.rows.runs.findMany({
         where: { projectId: { eq: projectId } },
       });
-      expect(rows).toHaveLength(2);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].commitSha).toBe("2222222");
+      expect(rows[0].testsPassed).toBe(8526);
+      expect(rows[0].testsSkipped).toBe(0);
+
+      // Upserted onto the same row rather than deleted and rewritten, which is
+      // what keeps `createdAt` meaning "first push of this day".
+      expect(second.data.id).toBe(first.data.id);
+      expect(second.data.createdAt).toBe(first.data.createdAt);
     });
 
-    it("reports the newest row on the branch as latest", async ({ expect }) => {
+    it("keeps a row per day", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      await seed(projectId, "2026-08-29");
+      await seed(projectId, "2026-08-30");
+      await push(projectId, owner);
+
+      const rows = await ctx.rows.runs.findMany({
+        where: { projectId: { eq: projectId } },
+      });
+      expect(rows).toHaveLength(3);
+    });
+
+    /**
+     * `branch` is part of the key, so a topic branch pushing on the same day
+     * does not evict `main`'s row.
+     */
+    it("keeps a topic branch's run beside main's", async ({ expect }) => {
       const { owner, projectId } = await aProject();
 
       await push(projectId, owner, aRun({ branch: "main" }));
@@ -219,11 +287,20 @@ describe("quality runs", () => {
         owner,
         aRun({ branch: "topic", commitSha: "deadbee" }),
       );
-      await push(
-        projectId,
-        owner,
-        aRun({ branch: "main", commitSha: "cafebabe" }),
-      );
+
+      const rows = await ctx.rows.runs.findMany({
+        where: { projectId: { eq: projectId } },
+      });
+      expect(rows).toHaveLength(2);
+      expect(rows.map((it) => it.branch).sort()).toEqual(["main", "topic"]);
+    });
+
+    it("reports the newest row on the branch as latest", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      await seed(projectId, "2026-08-29", { commitSha: "olderone" });
+      await push(projectId, owner, aRun({ branch: "topic" }));
+      await push(projectId, owner, aRun({ commitSha: "cafebabe" }));
 
       const latest = await ctx.quality.findLatest(projectId, "main");
       expect(latest?.commitSha).toBe("cafebabe");
@@ -270,7 +347,7 @@ describe("quality runs", () => {
     }) => {
       const { owner, projectId } = await aProject({ quality: true });
 
-      await push(projectId, owner, aRun({ commitSha: "1111111" }));
+      await seed(projectId, "2026-08-29");
       await push(projectId, owner, aRun({ commitSha: "2222222" }));
 
       const response = await ctx.qualityController.getQualityRuns.fetch(
@@ -280,55 +357,46 @@ describe("quality runs", () => {
 
       expect(response.data.latest?.commitSha).toBe("2222222");
       expect(response.data.runs).toHaveLength(2);
+      // Newest day first, which is the order the tab reverses to plot.
+      expect(response.data.runs.map((it) => it.day)).toEqual([
+        today(),
+        "2026-08-29",
+      ]);
     });
 
     /**
-     * There is no physical foreign key between a run and its report file, so
-     * the file row can go while the run stays. Losing the raw report must not
-     * cost the totals, which are the part the tab actually renders.
+     * `updatedAt` is what the staleness line renders: with one row per day,
+     * `createdAt` is that day's first push and would date the figures hours
+     * before they were measured.
      */
-    it("survives a dangling fileId, without the raw report", async ({
-      expect,
-    }) => {
+    it("carries both stamps and the day", async ({ expect }) => {
       const { owner, projectId } = await aProject({ quality: true });
-      const pushed = await push(projectId, owner);
 
-      await ctx.rows.files.deleteMany({
-        id: { eq: pushed.data.fileId as string },
-      });
+      const response = await push(projectId, owner);
 
-      const response = await ctx.qualityController.getQualityRuns.fetch(
-        { params: { projectId } },
-        { user: owner },
-      );
-
-      expect(response.status).toBe(200);
-      expect(response.data.latest?.commitSha).toBe("0b35cb375");
-      expect(response.data.latest?.hasReport).toBe(false);
+      expect(response.data.day).toBe(today());
+      expect(typeof response.data.createdAt).toBe("string");
+      expect(typeof response.data.updatedAt).toBe("string");
     });
   });
 
   describe("QualityService owns removal", () => {
-    it("takes the bytes with the row", async ({ expect }) => {
+    it("removes the row", async ({ expect }) => {
       const { owner, projectId } = await aProject();
       const pushed = await push(projectId, owner);
-      const fileId = pushed.data.fileId as string;
 
       await ctx.quality.delete(pushed.data.id);
 
       expect(
         await ctx.rows.runs.findOne({ where: { id: { eq: pushed.data.id } } }),
       ).toBeUndefined();
-      expect(
-        await ctx.rows.files.findOne({ where: { id: { eq: fileId } } }),
-      ).toBeUndefined();
     });
 
-    it("prunes past the cap, oldest first", async ({ expect }) => {
-      const { owner, projectId } = await aProject();
+    it("prunes past the cap, oldest day first", async ({ expect }) => {
+      const { projectId } = await aProject();
 
-      for (const sha of ["1111111", "2222222", "3333333"]) {
-        await push(projectId, owner, aRun({ commitSha: sha }));
+      for (const day of ["2026-08-28", "2026-08-29", "2026-08-30"]) {
+        await seed(projectId, day);
       }
 
       const removed = await ctx.quality.prune(projectId, 2);
@@ -337,34 +405,10 @@ describe("quality runs", () => {
       const rows = await ctx.rows.runs.findMany({
         where: { projectId: { eq: projectId } },
       });
-      expect(rows.map((it) => it.commitSha).sort()).toEqual([
-        "2222222",
-        "3333333",
+      expect(rows.map((it) => it.day).sort()).toEqual([
+        "2026-08-29",
+        "2026-08-30",
       ]);
-    });
-
-    /**
-     * The reason the sweep has to go through the service rather than issue its
-     * own `deleteMany`: `quality_runs.fileId` has no physical foreign key, so
-     * a row deleted directly leaves its bytes in the bucket forever. That bug
-     * has already shipped once, in `folio_blobs`.
-     */
-    it("takes the bytes when it prunes too", async ({ expect }) => {
-      const { owner, projectId } = await aProject();
-      const doomed = await push(
-        projectId,
-        owner,
-        aRun({ commitSha: "1111111" }),
-      );
-      await push(projectId, owner, aRun({ commitSha: "2222222" }));
-
-      await ctx.quality.prune(projectId, 1);
-
-      expect(
-        await ctx.rows.files.findOne({
-          where: { id: { eq: doomed.data.fileId as string } },
-        }),
-      ).toBeUndefined();
     });
   });
 
@@ -377,9 +421,9 @@ describe("quality runs", () => {
     it("prunes every project past the cap", async ({ expect }) => {
       const first = await aProject();
       const second = await aProject();
-      for (const sha of ["1111111", "2222222", "3333333"]) {
-        await push(first.projectId, first.owner, aRun({ commitSha: sha }));
-        await push(second.projectId, second.owner, aRun({ commitSha: sha }));
+      for (const day of ["2026-08-28", "2026-08-29", "2026-08-30"]) {
+        await seed(first.projectId, day);
+        await seed(second.projectId, day);
       }
 
       const limits = ctx.alepha.inject(ProjectLimits);
@@ -395,7 +439,7 @@ describe("quality runs", () => {
           where: { projectId: { eq: projectId } },
         });
         expect(rows).toHaveLength(1);
-        expect(rows[0].commitSha).toBe("3333333");
+        expect(rows[0].day).toBe("2026-08-30");
       }
     });
   });
