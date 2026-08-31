@@ -192,7 +192,17 @@ export class ReleaseTools {
           completed: epic.completed,
           total: epic.total,
         })),
-        looseQuests: contents.looseQuests,
+        // Mapped field by field rather than passed through. The endpoint
+        // also carries `id`, `acceptedAt` and `shelvedAt` now, for the
+        // release page's own rows; an agent reading a release wants the
+        // reference and the title, and a tool result is a token budget.
+        looseQuests: contents.looseQuests.map((quest) => ({
+          shortId: quest.shortId,
+          title: quest.title,
+          area: quest.area,
+          priority: quest.priority,
+          completedAt: quest.completedAt,
+        })),
       };
     },
   });

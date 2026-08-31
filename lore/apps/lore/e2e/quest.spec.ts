@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 import { MAX_QUEST_OBJECTIVES } from "../src/api/schemas/questObjectivesLimit.ts";
 import {
@@ -11,26 +11,6 @@ import {
 } from "./_helpers.ts";
 
 /**
- * Reveal the quest form's ADVANCED section.
- *
- * Tags, Objectives, Due date, Depends on and Release moved behind a
- * collapsible block, open only when the quest already carries one of them. A
- * quest seeded by these tests carries none, so anything down there is hidden
- * until this runs — which is what took three tests down at once when the
- * section landed.
- *
- * Idempotent: `aria-expanded` is read first, so calling it on an already-open
- * section (a quest that does have tags) does not close it.
- */
-const openAdvanced = async (page: import("@playwright/test").Page) => {
-  const toggle = page.getByRole("button", { name: /advanced/i }).first();
-  await expect(toggle).toBeVisible({ timeout: 15_000 });
-  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
-    await toggle.click();
-  }
-};
-
-/**
  * Quest feature e2e: seeded via API to keep the setup cheap, then driven
  * through the real shadcn UI for open → accept → complete. Creating an area
  * from the Area combobox has its own test at the bottom of this file.
@@ -39,6 +19,27 @@ const openAdvanced = async (page: import("@playwright/test").Page) => {
  * Project create + auth are covered by the helpers — kept here as setup,
  * not as the focus of the test.
  */
+/**
+ * Expand the quest form's Advanced block.
+ *
+ * Tags, objectives, estimate, due date, dependency and release moved behind a
+ * collapsible, and it opens from the quest's INITIAL values - so a quest
+ * carrying none of them (which is every quest these specs seed) opens the form
+ * with all six hidden. A spec reaching straight for one of those fields finds
+ * nothing, with `element(s) not found` rather than anything naming the cause.
+ *
+ * Idempotent on purpose: it reads `aria-expanded` rather than clicking blind,
+ * so a quest that DOES carry an advanced value and opens expanded is left
+ * alone instead of being toggled shut.
+ */
+const openAdvanced = async (page: Page) => {
+  const toggle = page.getByTestId("collapsible-advanced");
+  await expect(toggle).toBeVisible({ timeout: 15_000 });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
+    await toggle.click();
+  }
+};
+
 test.describe("Quest", () => {
   test("accept → complete from quest view", async ({ page }) => {
     test.setTimeout(60_000);
@@ -1580,7 +1581,6 @@ test.describe("Quest", () => {
 
     await page.goto(`/${projectSlug}/quests/${shortId}`);
     await page.getByRole("button", { name: /edit/i }).first().click();
-
     await openAdvanced(page);
 
     await test.step("picking a day stores that day, ending at its end", async () => {

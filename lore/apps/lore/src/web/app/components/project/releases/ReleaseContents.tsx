@@ -11,34 +11,33 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleCheck, CircleDashed, Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Lock, Plus, X } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-interface EpicCard {
-  id: number;
-  number: number;
-  title: string;
-  status: string;
-  completed: number;
-  total: number;
-}
-
-interface LooseQuest {
-  id: number;
-  shortId: number;
-  title: string;
-  area?: string;
-  priority: string;
-  completedAt?: string;
-}
+import { AreaDotColor } from "../../shared/areaColor.ts";
+import {
+  type EpicStatus,
+  STATUS_ICONS,
+  STATUS_LABEL_KEYS,
+  STATUS_TONE,
+} from "../epics/epicStatus.ts";
+import {
+  BUCKET_ORDER,
+  type ReleaseBucket,
+  questBucket,
+} from "./releaseBuckets.ts";
+import ReleaseQuestRow from "./ReleaseQuestRow.tsx";
+import ReleaseTickBar from "./ReleaseTickBar.tsx";
+import { useCountLabel } from "./useCountLabel.ts";
 
 export interface ReleaseContentsProps {
   releaseId: number;
@@ -47,87 +46,70 @@ export interface ReleaseContentsProps {
    * what it shipped - but nothing offers to change them.
    */
   readOnly: boolean;
+  /**
+   * What is in the release, fetched by the shell.
+   *
+   * ⚠️ **This tab does not fetch it, and must not.** The plate's meta line
+   * counts these epics and the tab bar counts these rows, and both are on
+   * screen while another tab is open - so a fetch owned by this component
+   * left the header reading `0 epics` for anyone who deep-linked to
+   * `?tab=changelog`. The shell owns the data; this renders it.
+   *
+   * `null` means "not loaded yet" and renders nothing rather than an empty
+   * state: a failed load must not read as a release with nothing in it.
+   */
+  contents: ReleaseContentsData | null;
+  /**
+   * Fires after an attach or a detach, so the shell refetches the contents,
+   * the release rollup and the changelog together.
+   */
   onChanged: () => void;
 }
 
+export interface ReleaseContentsEpic {
+  id: number;
+  number: number;
+  title: string;
+  status: string;
+  quests: ReleaseContentQuest[];
+}
+
+export interface ReleaseContentsData {
+  epics: ReleaseContentsEpic[];
+  looseQuests: ReleaseContentQuest[];
+}
+
 /**
- * What is in the release: one card per attached epic with its own progress and
- * its quests, then the loose quests grouped by the area they were done in.
+ * What is in the release: one card per attached epic carrying its own quests,
+ * then the loose quests grouped by the area they were done in.
  *
- * This is the substance of the page. The owner's phrasing for what a release
- * page should show was "the changelog of epics and quests", and an epic is the
- * headline while a loose quest is a line item.
+ * ⚠️ **Every number here is counted from the rows beside it.** The card's
+ * ratio and its tick bar are derived from `epic.quests`, the same array the
+ * list below renders. This card used to print a server-side `4/7` above a
+ * list fetched separately per epic with `getQuests({ epic })` - which is
+ * blind to which release each quest names, so the ratio and the list were
+ * answering two different questions and disagreed whenever an epic carried a
+ * quest belonging elsewhere.
  */
 const ReleaseContents = (props: ReleaseContentsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
-  const releaseApi = useClient<ReleaseController>();
+  const [areas] = useStore(currentAreasAtom);
+  const count = useCountLabel();
   const epicApi = useClient<EpicController>();
   const questApi = useClient<QuestController>();
 
-  const [epics, setEpics] = useState<EpicCard[]>([]);
-  const [looseQuests, setLooseQuests] = useState<LooseQuest[]>([]);
-  const [epicQuests, setEpicQuests] = useState<Map<number, LooseQuest[]>>(
-    new Map(),
-  );
+  const epics = props.contents?.epics ?? [];
+  const looseQuests = props.contents?.looseQuests ?? [];
   const [attachableEpics, setAttachableEpics] = useState<EpicResource[]>([]);
-  const [attachableQuests, setAttachableQuests] = useState<LooseQuest[]>([]);
+  const [attachableQuests, setAttachableQuests] = useState<
+    Array<{ id: number; shortId: number; title: string }>
+  >([]);
   const [adding, setAdding] = useState<"epic" | "quest" | null>(null);
 
-  const fetchContents = useCallback(
-    () => releaseApi.getReleaseContents({ params: { id: props.releaseId } }),
-    [props.releaseId],
-  );
-
-  const load = useCallback(async () => {
-    const contents = await fetchContents();
-    setEpics(contents.epics);
-    setLooseQuests(contents.looseQuests);
-  }, [fetchContents]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchContents()
-      .then((contents) => {
-        if (cancelled) return;
-        setEpics(contents.epics);
-        setLooseQuests(contents.looseQuests);
-      })
-      // A panel on a page that already renders: a failed fetch leaves the
-      // section empty rather than breaking the release around it.
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [props.releaseId]);
-
-  // The epic's own quests, fetched per card rather than folded into
-  // `getReleaseContents`: the endpoint answers "what is in this release" and
-  // a card's quest list is a detail only an expanded card needs.
-  useEffect(() => {
-    if (!project || epics.length === 0) return;
-    let cancelled = false;
-    void (async () => {
-      const next = new Map<number, LooseQuest[]>();
-      for (const epic of epics) {
-        try {
-          const page = await questApi.getQuests({
-            params: { projectId: project.id },
-            query: { epic: epic.id, size: 50 } as never,
-          });
-          next.set(epic.id, page.content as never as LooseQuest[]);
-        } catch {
-          // One card without its quests beats no cards at all.
-        }
-      }
-      if (!cancelled) setEpicQuests(next);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [project?.id, epics.map((e) => e.id).join(",")]);
+  const areaColor = useMemo(() => new AreaDotColor(areas), [areas]);
 
   const openAddEpic = async () => {
     if (!project) return;
@@ -150,16 +132,20 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
     try {
       // Open quests only, and only ones not already in a release. A completed
       // quest can be attached from its own page, but offering it here would
-      // suggest a release is a place to file finished work - which is exactly
-      // the recorder this epic deleted.
+      // suggest a release is a place to file finished work.
       const page = await questApi.getQuests({
         params: { projectId: project.id },
         query: { status: "new", size: 50 } as never,
       });
       setAttachableQuests(
-        (page.content as never as Array<LooseQuest & { releaseId?: number }>)
-          .filter((quest) => quest.releaseId == null)
-          .map((quest) => quest as LooseQuest),
+        (
+          page.content as never as Array<{
+            id: number;
+            shortId: number;
+            title: string;
+            releaseId?: number;
+          }>
+        ).filter((quest) => quest.releaseId == null),
       );
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
@@ -174,7 +160,6 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
         body: { releaseId: props.releaseId },
       });
       setAdding(null);
-      await load();
       props.onChanged();
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
@@ -188,7 +173,6 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
         body: { releaseId: props.releaseId },
       });
       setAdding(null);
-      await load();
       props.onChanged();
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
@@ -201,50 +185,54 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
         params: { id: epicId },
         body: { releaseId: null },
       });
-      await load();
       props.onChanged();
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     }
   };
 
-  const byArea = new Map<string, LooseQuest[]>();
+  const byArea = new Map<string, ReleaseContentQuest[]>();
   for (const quest of looseQuests) {
-    const area = quest.area || tr("release.contents.uncategorized");
-    const list = byArea.get(String(area)) ?? [];
+    const area = quest.area || String(tr("release.contents.uncategorized"));
+    const list = byArea.get(area) ?? [];
     list.push(quest);
-    byArea.set(String(area), list);
+    byArea.set(area, list);
   }
 
-  const questRow = (quest: LooseQuest) => (
-    <Link
-      key={quest.id}
-      href={router.path("projectQuest", {
-        params: { shortId: String(quest.shortId) },
-      })}
-      className="hover:bg-muted/50 flex items-center gap-2 rounded px-2 py-1.5 text-[13px]"
-    >
-      {quest.completedAt ? (
-        <CircleCheck className="size-3.5 shrink-0 text-green-600" />
-      ) : (
-        <CircleDashed className="text-muted-foreground size-3.5 shrink-0" />
-      )}
-      <span className="text-muted-foreground w-9 shrink-0 font-mono text-[11px]">
-        #{quest.shortId}
-      </span>
-      <span className="min-w-0 flex-1 truncate">{quest.title}</span>
-    </Link>
-  );
-
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <h2 className="flex-1 text-[15px] font-semibold">
+    <div className="flex flex-col gap-4 px-6 pt-[22px] pb-8">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.09em] uppercase">
           {tr("release.contents.title")}
-        </h2>
+        </span>
+        <span className="text-muted-foreground text-[11.5px]">
+          {[
+            count(
+              epics.length,
+              "release.contents.note.epics.one",
+              "release.contents.note.epics.many",
+            ),
+            count(
+              looseQuests.length,
+              "release.contents.note.loose.one",
+              "release.contents.note.loose.many",
+            ),
+          ].join(", ")}
+        </span>
+        <div className="flex-1" />
+
+        {/* Published: say what happened, rather than hiding two buttons and
+            leaving the reader to notice their absence. */}
+        {props.readOnly && (
+          <span className="text-muted-foreground flex items-center gap-1.5 text-[11.5px]">
+            <Lock className="size-3.5" aria-hidden />
+            {tr("release.contents.frozen")}
+          </span>
+        )}
+
         {/* Attaching from the release side. The write path is the same one
-            the epic page and the quest rail use (#1552, #1553); this is a
-            second door to it, not a second path. */}
+            the epic page and the quest rail use; this is a second door to
+            it, not a second path. */}
         {!props.readOnly && adding === null && (
           <>
             <Button
@@ -304,60 +292,89 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
         )}
       </div>
 
-      {epics.length === 0 && looseQuests.length === 0 && (
+      {props.contents && epics.length === 0 && looseQuests.length === 0 && (
         <p className="text-muted-foreground text-[13px]">
           {tr("release.contents.empty")}
         </p>
       )}
 
-      {epics.map((epic) => (
-        <div key={epic.id} className="border-border rounded-lg border p-4">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="font-mono text-[11px]">
-              #{epic.number}
-            </Badge>
-            <Link
-              href={router.path("projectEpic", {
-                params: { epicNumber: String(epic.number) },
-              })}
-              className="min-w-0 flex-1 truncate text-[14px] font-medium"
-            >
-              {epic.title}
-            </Link>
-            <span className="bg-muted h-1.5 w-20 shrink-0 overflow-hidden rounded-full">
-              <span
-                className="block h-full rounded-full bg-green-600"
-                style={{
-                  width: `${
-                    epic.total > 0
-                      ? Math.round((epic.completed / epic.total) * 100)
-                      : 0
-                  }%`,
-                }}
-              />
-            </span>
-            <span className="text-muted-foreground shrink-0 font-mono text-[11px]">
-              {epic.completed}/{epic.total}
-            </span>
-            {!props.readOnly && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void detachEpic(epic.id)}
+      {epics.map((epic) => {
+        // Counted from the rows this card is about to render, sorted into
+        // the plate's own bucket order so the two bars read the same way.
+        const buckets: ReleaseBucket[] = epic.quests.map(questBucket);
+        const ordered = BUCKET_ORDER.flatMap((bucket) =>
+          buckets.filter((b) => b === bucket),
+        );
+        const completed = buckets.filter((b) => b === "completed").length;
+        // Shelved is outside the denominator here for the same reason it is
+        // on the release rollup: declined work is not work outstanding.
+        const total = buckets.filter((b) => b !== "shelved").length;
+        // `getReleaseContents` types this as a plain string; the three
+        // values it can hold are the epic status enum.
+        const status = epic.status as EpicStatus;
+        const StatusIcon = STATUS_ICONS[status];
+
+        return (
+          <div
+            key={epic.id}
+            className="bg-card border-border overflow-hidden rounded-xl border"
+          >
+            <div className="flex items-center gap-3 px-[15px] py-[13px]">
+              <Badge variant="tint" tone={STATUS_TONE[status]}>
+                {StatusIcon && <StatusIcon className="size-3" />}
+                {tr(STATUS_LABEL_KEYS[status])}
+              </Badge>
+              <Link
+                href={router.path("projectEpic", {
+                  params: { epicNumber: String(epic.number) },
+                })}
+                className="min-w-0 flex-1 truncate text-sm font-medium"
               >
-                {tr("release.contents.remove")}
-              </Button>
-            )}
+                {/* Only the separator is muted, so the ref and the title read
+                    as one name rather than two fields. */}
+                <span className="font-mono">#{epic.number}</span>
+                <span className="text-muted-foreground"> - </span>
+                {epic.title}
+              </Link>
+              <ReleaseTickBar buckets={ordered} />
+              <span className="text-muted-foreground shrink-0 font-mono text-[11.5px]">
+                {completed}/{total}
+              </span>
+              {!props.readOnly && (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={String(tr("release.contents.remove"))}
+                  onClick={() => void detachEpic(epic.id)}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              )}
+            </div>
+            <div className="border-border/60 border-t px-2 pt-1.5 pb-2">
+              {epic.quests.map((quest) => (
+                <ReleaseQuestRow key={quest.id} quest={quest} />
+              ))}
+            </div>
           </div>
-          <div className="mt-2">
-            {(epicQuests.get(epic.id) ?? []).map(questRow)}
-          </div>
-        </div>
-      ))}
+        );
+      })}
 
       {[...byArea].map(([area, quests]) => (
-        <div key={area} className="border-border rounded-lg border p-4">
+        <div
+          key={area}
+          className="bg-card border-border rounded-xl border px-[15px] py-[14px]"
+        >
           <div className="mb-1.5 flex items-center gap-2.5">
+            {/* The area's own colour as a dot, the way every other Lore
+                surface renders one. Deliberately not a filled chip: the
+                chip palette (`TAG_CHIP_CLASS`) belongs to project TAGS, and
+                a second one for areas is exactly the invented palette
+                `areaColor.ts` exists to prevent. */}
+            <span
+              className={`size-2 shrink-0 rounded-full ${areaColor.dotClass(area)}`}
+              aria-hidden
+            />
             <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-[0.06em] uppercase">
               {area}
             </span>
@@ -365,8 +382,13 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
               {quests.length}
             </span>
             <div className="bg-border h-px flex-1" />
+            <span className="text-muted-foreground text-[11px]">
+              {tr("release.contents.noEpic")}
+            </span>
           </div>
-          {quests.map(questRow)}
+          {quests.map((quest) => (
+            <ReleaseQuestRow key={quest.id} quest={quest} />
+          ))}
         </div>
       ))}
     </div>

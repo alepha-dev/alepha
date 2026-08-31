@@ -15,7 +15,7 @@ import { type Infer, z } from "alepha";
  * **`humans` means "did not declare itself a crawler", not "verified human".**
  * A scraper driving a real browser sends an ordinary user-agent and lands in
  * this bucket; what gives it away is that it never scrolls, which is what the
- * `engaged` measure records. See `sigilTrafficKind` in `@alepha/sigil`.
+ * `engaged` measure records. See `sigilTrafficKind` in `@alepha/lore`.
  */
 export const trafficFilterSchema = z.enum(["all", "humans", "bots"]);
 

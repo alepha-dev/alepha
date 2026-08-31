@@ -1,0 +1,93 @@
+{
+  "name": "@alepha/lore",
+  "version": "0.27.1",
+  "description": "The Lore client for Alepha apps: the sigil reporter, and the CLI that talks to a Lore instance.",
+  "keywords": [
+    "alepha",
+    "analytics",
+    "cli",
+    "errors",
+    "lore",
+    "observability",
+    "sigil",
+    "typescript"
+  ],
+  "homepage": "https://alepha.dev",
+  "license": "MIT",
+  "author": "Nicolas Foures",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alepha-dev/alepha.git"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "exports": {
+    "./sigil": {
+      "types": "./src/sigil/index.ts",
+      "browser": "./src/sigil/index.browser.ts",
+      "import": "./src/sigil/index.ts",
+      "default": "./src/sigil/index.ts"
+    },
+    "./cli": {
+      "types": "./src/cli/index.ts",
+      "import": "./src/cli/index.ts",
+      "default": "./src/cli/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      "./sigil": {
+        "types": "./dist/sigil/index.d.ts",
+        "browser": "./dist/sigil/index.browser.js",
+        "import": "./dist/sigil/index.js",
+        "default": "./dist/sigil/index.js"
+      },
+      "./cli": {
+        "types": "./dist/cli/index.d.ts",
+        "import": "./dist/cli/index.js",
+        "default": "./dist/cli/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "lint": "alepha lint",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "tsdown && node scripts/check-dts.mjs"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "alepha": "0.27.1",
+    "lore": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsdown": "^0.22.14",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "peerDependencies": {
+    "alepha": "^0.27.1",
+    "react": "*",
+    "react-dom": "*"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "llms": "https://alepha.dev/llms.txt"
+}

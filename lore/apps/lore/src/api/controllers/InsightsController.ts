@@ -2,7 +2,7 @@ import {
   VITALS_BUCKETS,
   VITALS_THRESHOLDS,
   type VitalMetric,
-} from "@alepha/sigil";
+} from "@alepha/lore/sigil";
 import { $inject, z } from "alepha";
 import type { AnalyticsDataset, AnalyticsFilter } from "alepha/api/analytics";
 import { DateTimeProvider } from "alepha/datetime";

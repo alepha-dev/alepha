@@ -1,4 +1,4 @@
-import { sigilScrubUrl } from "@alepha/sigil";
+import { sigilScrubUrl } from "@alepha/lore/sigil";
 import { $inject, z } from "alepha";
 import { $storage, FileService, files } from "alepha/api/files";
 import {

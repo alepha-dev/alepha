@@ -556,6 +556,26 @@ export default {
   "project.reports.nav.overview": "Vue d'ensemble",
   "project.reports.nav.quests": "Quêtes",
   "project.reports.nav.members": "Groupe",
+  "project.reports.nav.quality": "Qualité",
+  "reports.quality.section.coverage": "Couverture",
+  "reports.quality.section.tests": "Tests",
+  "reports.quality.section.coverageOverTime": "Couverture dans le temps",
+  "reports.quality.section.testsOverTime": "Tests dans le temps",
+  "reports.quality.lines": "Lignes",
+  "reports.quality.statements": "Instructions",
+  "reports.quality.functions": "Fonctions",
+  "reports.quality.branches": "Branches",
+  "reports.quality.total": "Total",
+  "reports.quality.passed": "Réussis",
+  "reports.quality.failed": "Échoués",
+  "reports.quality.duration": "Durée",
+  "reports.quality.skipped": "$1 ignorés",
+  "reports.quality.lastRun": "Dernière exécution $1 sur $2, commit $3",
+  "reports.quality.empty.title": "Rien n'a encore été envoyé",
+  "reports.quality.empty.description":
+    "Cet onglet affiche ce qu'une exécution de tests a mesuré. Lancez ces deux commandes dans votre CI, et les chiffres apparaîtront ici au prochain envoi.",
+  "reports.quality.empty.credential":
+    "L'envoi nécessite LORE_API_KEY, une clé d'API créée depuis la page des clés de votre compte.",
   "reports.overview.kpi.completion": "Avancement",
   "reports.overview.kpi.open": "En cours",
   "reports.overview.kpi.completedThisWeek": "Terminées cette semaine",
@@ -676,10 +696,6 @@ export default {
   "release.list.noTarget": "Aucune date visée",
   "release.list.releasedOn": "Publiée le $1",
   "release.detail.edit": "Modifier",
-  "release.retag.title": "Changer le tag de cette version ?",
-  "release.retag.description":
-    "Le tag est l'adresse de cette version : $1 devient $2 et tous les liens déjà partagés cessent de fonctionner. Il n'y a pas de redirection.",
-  "release.retag.confirm": "Changer le tag",
   "release.detail.notFound": "Aucune version taguée $1 dans ce projet.",
   "release.publish.action": "Publier",
   "release.publish.title": "Publier cette version ?",
@@ -700,7 +716,6 @@ export default {
   "release.detail.editTag": "Tag",
   "release.detail.editTitle": "Titre",
   "release.detail.editTargetDate": "Date visée",
-  "release.detail.editDescription": "Notes",
   "release.contents.title": "Contenu",
   "release.contents.addEpic": "Ajouter une épopée",
   "release.contents.pickEpic": "Choisir une épopée…",
@@ -713,12 +728,9 @@ export default {
   "release.detail.save": "Enregistrer",
   "release.detail.saved": "Version mise à jour",
   "release.hero.progress": "Avancement",
-  "release.hero.shelved": "$1 écartée(s)",
   "release.empty.title": "Aucune version ouverte",
   "release.empty.body":
     "Une version est un objectif nommé - 0.1.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
-  "release.status.active": "Ouverte",
-  "release.status.closed": "Close",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Enregistrer dans les Folios",
@@ -740,6 +752,94 @@ export default {
   "release.folio.error": "Impossible d'enregistrer le journal.",
   "release.folio.summary":
     "Journal de la version #$1 : $2 quête(s) enregistrée(s).",
+
+  "release.tab.overview": "Vue d'ensemble",
+  "release.tab.contents": "Contenu",
+  "release.tab.changelog": "Changelog",
+  "release.tab.artifacts": "Artefacts",
+
+  "release.plate.frozen": "Figé à la publication",
+  "release.meta.target": "visée le $1",
+  "release.meta.released": "publiée le $1",
+  "release.meta.epics.one": "1 épopée",
+  "release.meta.epics.many": "$1 épopées",
+  "release.meta.quests.one": "1 quête",
+  "release.meta.quests.many": "$1 quêtes",
+  "release.meta.artifacts.one": "1 artefact",
+  "release.meta.artifacts.many": "$1 artefacts",
+
+  "release.bucket.completed": "terminées",
+  "release.bucket.inProgress": "en cours",
+  "release.bucket.open": "non commencées",
+  "release.bucket.shelved": "écartées",
+  "release.bucket.share": "$1 % de $2",
+  "release.bucket.outside": "hors des $1",
+
+  "release.kpi.ready.label": "Prête à livrer",
+  "release.kpi.ready.remaining.one": "1 quête reste à livrer.",
+  "release.kpi.ready.remaining.many": "$1 quêtes restent à livrer.",
+  "release.kpi.ready.allLanded": "Tout ce qui est rattaché est livré.",
+  "release.kpi.ready.declined.one": "1 écartée comme hors périmètre.",
+  "release.kpi.ready.declined.many": "$1 écartées comme hors périmètre.",
+  "release.kpi.ready.frozen":
+    "Figé à la publication. Une quête terminée après cette date ne réécrit jamais ce qui a été livré.",
+  "release.kpi.target.label": "Date visée",
+  "release.kpi.target.today": "aujourd'hui",
+  "release.kpi.target.days": "$1 jours",
+  "release.kpi.target.late": "$1 jours de retard",
+  "release.kpi.target.note":
+    "$1. Une estimation : rien ne l'impose et aucun traitement ne la lit.",
+  "release.kpi.target.none":
+    "Aucune date visée. Ce ne serait de toute façon qu'une estimation : rien ne l'impose et aucun traitement ne la lit.",
+  "release.kpi.shipped.label": "Livrée",
+  "release.kpi.shipped.note":
+    "Publiée le $1. La rouvrir est le seul retour en arrière.",
+  "release.kpi.artifacts.label": "Artefacts",
+  "release.kpi.artifacts.preview":
+    "Exemples tagués $1. Le registre d'artefacts n'existe pas encore.",
+
+  "release.description.label": "Description",
+  "release.description.empty": "Pas encore de description.",
+
+  "release.contents.note.epics.one": "1 épopée",
+  "release.contents.note.epics.many": "$1 épopées",
+  "release.contents.note.loose.one": "1 quête isolée",
+  "release.contents.note.loose.many": "$1 quêtes isolées",
+  "release.contents.noEpic": "sans épopée",
+  "release.contents.frozen": "figé à la publication",
+
+  "release.artifacts.title": "Artefacts",
+  "release.artifacts.previewChip": "Aperçu",
+  "release.artifacts.matchedOn": "rapprochés sur",
+  "release.artifacts.column.app": "Application",
+  "release.artifacts.column.target": "Cible",
+  "release.artifacts.column.file": "Fichier",
+  "release.artifacts.column.digest": "Empreinte",
+  "release.artifacts.column.size": "Taille",
+  "release.artifacts.column.uploaded": "Déposé",
+  "release.artifacts.empty": "Rien n'a encore été construit pour $1.",
+  "release.artifacts.emptyShort": "Rien de construit pour $1.",
+  "release.artifacts.joinNote":
+    "Exemples : le registre d'artefacts n'existe pas encore. Le tag est la clé de rapprochement, et c'est pourquoi il est distinct du titre. Renommer le titre ne casse jamais cette liste ; changer le tag orpheline tous les artefacts construits pour l'ancien.",
+
+  "release.edit.title": "Modifier la version",
+  "release.edit.tagHint":
+    "La clé de rapprochement des artefacts, et l'adresse de cette version. La changer orpheline tous les artefacts construits pour l'ancien tag.",
+  "release.edit.tagWarning.artifacts.one":
+    "1 artefact est construit pour $1 et disparaîtra de cette version.",
+  "release.edit.tagWarning.artifacts.many":
+    "$1 artefacts sont construits pour $2 et disparaîtront de cette version.",
+  "release.edit.tagWarning.url":
+    "L'URL change aussi : les liens déjà partagés vers $1 cessent de fonctionner, et il n'y a pas de redirection.",
+  "release.edit.titleHint.empty":
+    "Vide signifie que le tag se suffit à lui-même, et aucun titre n'est affiché à côté.",
+  "release.edit.titleHint.set":
+    "Affiché à côté du tag. Renommable à tout moment ; rien ne s'y rattache.",
+  "release.edit.targetHint":
+    "Une estimation. Rien ne l'impose et aucun traitement ne la lit.",
+  "release.edit.description": "Description",
+  "release.edit.descriptionHint":
+    "Markdown. Affiché dans l'onglet Vue d'ensemble.",
 
   "kanban.column.new": "Nouvelles",
   "kanban.column.completed": "Terminées",

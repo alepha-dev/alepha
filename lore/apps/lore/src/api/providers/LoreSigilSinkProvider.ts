@@ -1,5 +1,5 @@
-import type { SigilForwarded, SigilStamp } from "@alepha/sigil";
-import { SigilSinkProvider } from "@alepha/sigil";
+import type { SigilForwarded, SigilStamp } from "@alepha/lore/sigil";
+import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { $inject, AlephaError } from "alepha";
 
 import type { Sigil } from "../entities/sigils.ts";
