@@ -67,4 +67,33 @@ export class MemoryDestinationProvider extends LogDestinationProvider {
   public clear(): void {
     this.entries = [];
   }
+
+  /**
+   * Whether anything was logged matching `pattern`, optionally at one level.
+   *
+   * @example
+   * ```typescript
+   * expect(logs.wasLogged(/Skipping KV initialization/)).toBe(true);
+   * expect(logs.wasLogged(/rate limit/, "ERROR")).toBe(true);
+   * ```
+   *
+   * Matches the MESSAGE, not the formatted line: the formatter is a
+   * presentation choice (`pretty` vs `json`) and a test that matched through
+   * it would go red when somebody changed the colours.
+   *
+   * ⚠️ Reads the ring, so a message evicted by `maxEntries` reads as never
+   * logged. `dropped` is how a spec tells "nothing" from "you missed some".
+   */
+  public wasLogged(
+    pattern: RegExp | string,
+    level?: LogEntry["level"],
+  ): boolean {
+    return this.entries.some(
+      (entry) =>
+        (level === undefined || entry.level === level) &&
+        (typeof pattern === "string"
+          ? entry.message.includes(pattern)
+          : pattern.test(entry.message)),
+    );
+  }
 }
