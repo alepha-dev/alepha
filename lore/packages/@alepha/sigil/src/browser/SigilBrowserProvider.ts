@@ -202,6 +202,34 @@ export class SigilBrowserProvider {
         this.queue!.addError(this.toError(ev.error, location.href));
       });
 
+      /*
+       * ⚠️ NOT covered by the `window.onerror` listener below, and it used to
+       * be. React's default recoverable-error handler calls `reportError`, so
+       * a hydration mismatch did reach that listener - as the minified `#418`
+       * with its arguments blanked, no route and no component. Passing
+       * `onRecoverableError` in `ReactBrowserRendererProvider` replaces that
+       * default, so this is now the ONLY way these arrive. Deleting it does
+       * not fall back to the old report; it loses them.
+       *
+       * The component stack is appended to the stack rather than sent beside
+       * it: the envelope has no field for it, and the sink fingerprints on the
+       * stack - so the subtree that mismatched is what separates one of these
+       * from another, which is exactly what a fingerprint should key on.
+       */
+      this.alepha.events.on("react:recoverable:error", (ev) => {
+        if (!this.wants("errors")) return;
+        if (!this.isCrash(ev.error)) return;
+        const error = this.toError(ev.error, location.href);
+        this.queue!.addError(
+          ev.componentStack
+            ? {
+                ...error,
+                stack: `${error.stack}\n${ev.componentStack}`.slice(0, 4096),
+              }
+            : error,
+        );
+      });
+
       window.addEventListener("error", (e) => {
         if (!this.wants("errors")) return;
         const error = e.error ?? e;
@@ -470,6 +498,10 @@ export class SigilBrowserProvider {
    */
   public debugPendingErrors(): string[] {
     return this.queue?.pendingErrorMessages() ?? [];
+  }
+
+  public debugPendingErrorStacks(): string[] {
+    return this.queue?.pendingErrorStacks() ?? [];
   }
 
   public debugPendingEngagements(): string[] {

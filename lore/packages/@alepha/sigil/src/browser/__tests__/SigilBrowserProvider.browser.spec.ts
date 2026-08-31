@@ -183,6 +183,61 @@ describe("SigilBrowserProvider", () => {
     });
   });
 
+  /**
+   * Quest #1328. `ReactBrowserRendererProvider` passes `onRecoverableError`,
+   * which REPLACES React's default `reportError` - so a hydration mismatch no
+   * longer reaches the `window.onerror` listener at all and this event is the
+   * only path left. The old report was a minified `#418` with blank arguments;
+   * the point of the new one is what it carries.
+   */
+  describe("a hydration mismatch is reported with its component stack", () => {
+    const startedProvider = async () => {
+      const alepha = prodAlepha();
+      const provider = alepha.inject(SigilBrowserProvider);
+      await alepha.start();
+      alepha.store.set(sigilClientAtom, {
+        enabled: { views: true, errors: true, vitals: true },
+        feedbackButtonExcludedPaths: [],
+        configAt: Date.now(),
+      });
+      return { alepha, provider };
+    };
+
+    it("appends the component stack to the stack the sink fingerprints on", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:recoverable:error", {
+        error: Object.assign(new Error("Hydration failed"), {
+          stack: "Error: Hydration failed\n    at hydrateRoot",
+        }),
+        componentStack: "\n    at StatusBar\n    at Layout",
+      });
+
+      expect(provider.debugPendingErrors()).toEqual(["Hydration failed"]);
+      // The subtree is what separates one mismatch from another, so it belongs
+      // in the field the fingerprint is taken over.
+      expect(provider.debugPendingErrorStacks()[0]).toContain("at StatusBar");
+    });
+
+    it("reports one with no component stack rather than dropping it", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:recoverable:error", {
+        error: new Error("Recovered, no stack"),
+      });
+      expect(provider.debugPendingErrors()).toEqual(["Recovered, no stack"]);
+    });
+
+    // The same `isCrash` gate as every other source: a recoverable error
+    // carrying a 4xx is the app working, and an inbox listing those is an
+    // inbox nobody opens.
+    it("drops a 4xx like every other source", async () => {
+      const { alepha, provider } = await startedProvider();
+      await (alepha.events as any).emit("react:recoverable:error", {
+        error: Object.assign(new Error("Forbidden"), { status: 403 }),
+      });
+      expect(provider.debugPendingErrors()).toEqual([]);
+    });
+  });
+
   it("attaches the referrer host to the landing pageview", async () => {
     const restore = withReferrer("https://news.ycombinator.com/item?id=42");
     try {
