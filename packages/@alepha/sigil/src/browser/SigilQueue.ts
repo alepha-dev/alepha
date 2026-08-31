@@ -299,6 +299,15 @@ export class SigilQueue {
   }
 
   /**
+   * The messages of the pending errors. For tests; nothing in the app reads
+   * it. Messages rather than the rows, because what a test asks is which
+   * errors were kept, not what an envelope looks like.
+   */
+  public pendingErrorMessages(): string[] {
+    return this.errors.map((e) => e.message);
+  }
+
+  /**
    * The referrer attached to each pending view, `undefined` where none was.
    *
    * Separate from {@link pendingViews} rather than folded into it: that one
