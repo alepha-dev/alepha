@@ -7,50 +7,62 @@
  * can write. A surface that forgets this line is a surface where diagrams
  * are dead on arrival, and eight hand-copied sentences would drift.
  *
- * It names what is NOT supported in the same breath on purpose: an agent
- * that writes a `classDiagram`, sees a grey code block and is told nothing
- * will keep trying.
+ * ## ⚠️ It rides on PARAMETER descriptions, never a tool description
  *
- * ⚠️ **This string is the ONLY documentation of the format an agent ever
- * sees**, and it is deliberately the only one. No `CLAUDE.md` carries it:
- * a repo instruction file reaches agents working in THIS checkout, while
- * every folio and quest is also written from other projects and from
- * claude.ai chat, where no such file is loaded. A tool description travels
- * with the tool, so it is the one surface that reaches all of them.
+ * Not a style preference. On 2026-08-21 this string reached an agent through
+ * `epic_create.description`, `epic_update.description` and
+ * `quest_create.description` - all parameter `.describe()` slots - and did
+ * NOT reach it through `folio_create`'s tool-level `description`, before or
+ * after a reconnect. Nothing in Lore or the framework truncates it
+ * (`$tool.ts` passes the value through untouched), so it is lost somewhere in
+ * transport or a client cache, in a layer this app neither controls nor can
+ * observe. Both folio tools were moved onto their `content` parameter, which
+ * had no `.describe()` at all. **Adding a new carrier means adding it to a
+ * parameter.**
  *
- * That is why the silent-failure traps are spelled out here rather than
- * merely linked. An agent cannot see that its label was cut - the diagram
- * still draws - so anything it is not told here, it will never learn.
+ * ## It is no longer the only channel, and that is why it can be short
  *
- * ## Two labelled sections, not one growing paragraph
+ * `DiagramCheckService` parses every ` ```mermaid ` fence an agent writes and
+ * returns `diagramWarnings` in the tool RESULT, which always arrives. So this
+ * string no longer has to be a complete grammar written defensively against
+ * failures nobody can see: it carries what is needed BEFORE writing, and the
+ * result carries what actually went wrong. Every trap listed here was found
+ * the hard way; the parser finds the rest.
  *
- * When `sequenceDiagram` was added it would have been natural to append its
- * subset to the end. That roughly doubles the length of a string already
- * embedded in eight descriptions, and buries the traps in the middle of it.
- * Each diagram type gets a short block of its own instead, with its own
- * warning line, and the shared degrade-to-a-code-block rule stays at the
- * bottom where it covers both. Keep it that way: this file grows once per
- * diagram type, and the budget is the whole string, not the new section.
+ * Keep it that way. This file grows once per diagram type, and the budget is
+ * the whole string, not the new section.
+ *
+ * ## Every claim here was measured, not read
+ *
+ * The rules below came from running `parseFlowchart` over each case, and two
+ * of them contradict what an earlier version of this string asserted. A bare
+ * `==` inside a label is SAFE (only `===` and `==>` cut it), and quoting DOES
+ * protect a label whose first character is a bracket, while it does NOT
+ * protect one containing a link operator. Do not edit these sentences from
+ * memory of mermaid's own documentation - this is a subset parser, and it is
+ * the subset that decides.
  */
 export const DIAGRAM_CAPABILITY =
-  "A ```mermaid fence renders as a real diagram:\n" +
-  "**flowchart** (TD/LR/BT/RL): nodes `[rect]` `(rounded)` `{diamond}` " +
+  "A ```mermaid fence draws ONLY `flowchart` and `sequenceDiagram`; anything " +
+  "else, or anything that fails to parse, becomes a plain code block " +
+  "silently. The write tool returns `diagramWarnings` when a diagram will " +
+  "not draw as meant - read the result.\n" +
+  "⚠️ **Labels.** A link operator inside `[...]` reads as an edge and cuts " +
+  "the label in half: `--`, `-.-`, `===`, `==>`. Quoting does NOT protect " +
+  "them, so reword. A single `-` and a bare `==` are safe. `{ ( [ >` are " +
+  "safe INSIDE a label, but a label STARTING with `( [ / \\` pairs with the " +
+  "opening bracket into another shape and loses both delimiters " +
+  '(`a[/api/users]` draws `api/user`) - quote those: `a["/api/users"]`.\n' +
+  "**Node ids** run to the first `[ ( { >`; `. / @ #` and a single `-` are " +
+  "fine, `--` is not. Anything else belongs in a quoted label.\n" +
+  "**flowchart** (TD/LR/BT/RL): `[rect]` `(rounded)` `{diamond}` " +
   "`((circle))` and every other bracket pair mapped onto those four; edges " +
-  "`-->` `---` `-.->` `==>` `<-->`, labels as `-->|text|` or `-- text -->`; " +
-  "chains, `&` fans, `<br/>`, nested `subgraph`. `--o` and `--x` draw the " +
-  "same arrowhead as `-->`. ⚠️ Never put a link operator in a node label: " +
-  "`--`, `==` or `-.` inside `[...]` reads as an edge, so `A[--o]` and even " +
-  'the quoted `A["-->"]` are silently cut in half - quoting does not ' +
-  "protect them and the diagram still draws, with the wrong text. A single " +
-  "hyphen is safe.\n" +
-  "**sequenceDiagram**: `participant`/`actor` with `as` aliases, arrows " +
-  "`->` `-->` `->>` `-->>` `-x` `--x` `-)` `--)` (all distinct), " +
-  "self-messages, `Note left of/right of/over A[,B]`, `autonumber`, nested " +
-  "`alt`/`else`/`opt`/`loop`. Activation bars are not drawn: `activate` and " +
-  "the `+`/`-` suffixes are ignored. ⚠️ `par`, `critical`, `break`, `create` " +
-  "and `destroy` refuse the WHOLE diagram rather than draw an ordering that " +
-  "is false; `rect`, `box` and `links` are skipped in silence.\n" +
-  "Everything else degrades silently to a plain code block: `classDiagram`, " +
-  "`gantt` and mindmaps are not drawn, `style`/`classDef` are ignored " +
-  "because the theme picks the colours, as is any diagram that fails to " +
-  "parse or is past its size cap.";
+  "`-->` `---` `-.->` `==>` `<-->` `--o` `--x`, labelled as `-->|text|` or " +
+  "`-- text -->`; chains, `&` fans, `<br/>`; nested `subgraph id[Label]`, " +
+  '`subgraph id["Label"]` or `subgraph Label` (title doubles as id).\n' +
+  "**sequenceDiagram**: `participant`/`actor` with `as`, arrows `->` `-->` " +
+  "`->>` `-->>` `-x` `--x` `-)` `--)` (all distinct), self-messages, `Note " +
+  "left of/right of/over A[,B]`, `autonumber`, nested " +
+  "`alt`/`else`/`opt`/`loop`. ⚠️ `par`, `critical`, `break`, `create` and " +
+  "`destroy` refuse the WHOLE diagram rather than draw a false ordering. " +
+  "`activate`, `rect`, `box`, `links`, `style` and `classDef` are ignored.";
