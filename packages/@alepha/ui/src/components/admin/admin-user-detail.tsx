@@ -454,13 +454,20 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
   const clearTotp = useAction<[IdentityResource]>(
     {
       handler: async (identity) => {
+        // Named, the same way `toggleEnabled` and `remove` name theirs. An
+        // admin can have several user pages open, and this is the one action
+        // whose confirmation must leave no doubt about whose account it is.
+        const label =
+          user?.email ||
+          user?.username ||
+          tr("admin.userDetail.thisUser", { default: "this user" });
         const ok = await dialog.confirm({
           title: tr("admin.userDetail.clearTotpTitle", {
             default: "Clear second factor",
           }),
           description: tr("admin.userDetail.clearTotpConfirm", {
-            default:
-              "This account will sign in with its password alone until the user enrolls an authenticator app again. Do this only when they have lost both the device and their recovery codes.",
+            default: `${label} will sign in with their password alone until they enroll an authenticator app again. Do this only when they have lost both the device and their recovery codes.`,
+            args: [String(label)],
           }),
           destructive: true,
         });

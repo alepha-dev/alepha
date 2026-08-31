@@ -517,7 +517,7 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.cancel": "Annuler",
   "admin.userDetail.changePassword": "Changer le mot de passe",
   "admin.userDetail.clearTotpConfirm":
-    "Ce compte se connectera avec son seul mot de passe jusqu'à ce que l'utilisateur enregistre à nouveau une application d'authentification. Ne le faites que s'il a perdu à la fois l'appareil et ses codes de secours.",
+    "$1 se connectera avec son seul mot de passe jusqu'à ce qu'une application d'authentification soit à nouveau enregistrée. Ne le faites que si l'appareil et les codes de secours sont tous deux perdus.",
   "admin.userDetail.clearTotpTitle": "Supprimer le second facteur",
   "admin.userDetail.colAction": "Action",
   "admin.userDetail.colAuditStatus": "Statut",
