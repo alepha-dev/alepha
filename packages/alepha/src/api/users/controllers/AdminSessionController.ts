@@ -36,6 +36,26 @@ export class AdminSessionController {
   });
 
   /**
+   * Distinct country codes present on sessions, feeding the admin filter.
+   */
+  public readonly getSessionCountries = $action({
+    path: `${this.url}/countries`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:session:read"] })],
+    description: "List distinct country codes present on sessions",
+    schema: {
+      query: z.object({
+        userRealmName: z.string().optional(),
+      }),
+      response: z.array(z.text()),
+    },
+    handler: ({ query, user }) =>
+      this.sessionService.getSessionCountries(
+        this.securityProvider.assertRealmScope(user, query.userRealmName),
+      ),
+  });
+
+  /**
    * Get a session by ID.
    */
   public readonly getSession = $action({
