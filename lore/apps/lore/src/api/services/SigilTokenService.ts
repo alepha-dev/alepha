@@ -1,4 +1,4 @@
-import { sigilKeyBuild, sigilKeyPrefix } from "@alepha/sigil";
+import { sigilKeyBuild, sigilKeyPrefix } from "@alepha/lore/sigil";
 import { $inject } from "alepha";
 import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";

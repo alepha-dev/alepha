@@ -1,11 +1,13 @@
 {
-  "name": "@alepha/sigil",
+  "name": "@alepha/lore",
   "version": "0.27.1",
-  "description": "Reports page views, vitals and errors from an Alepha app to a Sigil instance.",
+  "description": "The Lore client for Alepha apps: the sigil reporter, and the CLI that talks to a Lore instance.",
   "keywords": [
     "alepha",
     "analytics",
+    "cli",
     "errors",
+    "lore",
     "observability",
     "sigil",
     "typescript"
@@ -22,26 +24,32 @@
     "src"
   ],
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "browser": "./src/index.browser.ts",
-      "import": "./src/index.ts",
-      "default": "./src/index.ts"
+    "./sigil": {
+      "types": "./src/sigil/index.ts",
+      "browser": "./src/sigil/index.browser.ts",
+      "import": "./src/sigil/index.ts",
+      "default": "./src/sigil/index.ts"
+    },
+    "./cli": {
+      "types": "./src/cli/index.ts",
+      "import": "./src/cli/index.ts",
+      "default": "./src/cli/index.ts"
     },
     "./package.json": "./package.json"
   },
   "publishConfig": {
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "browser": "./dist/index.browser.js",
-        "import": "./dist/index.js",
-        "default": "./dist/index.js"
+      "./sigil": {
+        "types": "./dist/sigil/index.d.ts",
+        "browser": "./dist/sigil/index.browser.js",
+        "import": "./dist/sigil/index.js",
+        "default": "./dist/sigil/index.js"
+      },
+      "./cli": {
+        "types": "./dist/cli/index.d.ts",
+        "import": "./dist/cli/index.js",
+        "default": "./dist/cli/index.js"
       },
       "./package.json": "./package.json"
     }
@@ -50,7 +58,7 @@
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "tsdown"
+    "build": "tsdown && node scripts/check-dts.mjs"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -58,6 +66,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "alepha": "0.27.1",
+    "lore": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsdown": "^0.22.14",
@@ -68,6 +77,14 @@
     "alepha": "^0.27.1",
     "react": "*",
     "react-dom": "*"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=22.0.0"

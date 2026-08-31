@@ -1,4 +1,4 @@
-import { VITALS_BUCKETS } from "@alepha/sigil";
+import { VITALS_BUCKETS } from "@alepha/lore/sigil";
 import { $inject, Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";

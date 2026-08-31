@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 /**
  * The package has one public path, and that path is condition-split.
  *
- * `@alepha/sigil` resolves to `index.browser.ts` in a client bundle and to
+ * `@alepha/lore` resolves to `index.browser.ts` in a client bundle and to
  * `index.ts` everywhere else - a `tsc` pass, an SSR render, a plain `node`
  * import. Two files behind one specifier is the whole risk this file exists to
  * bound: a symbol exported by only one of them type-checks against `index.d.ts`
@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
  *
  * The regression it guards is real and already happened once. `SigilRoot` and
  * `SigilFeedbackButton` shipped for a while exported only from
- * `index.browser.ts`, so `import { SigilRoot } from "@alepha/sigil"` was
+ * `index.browser.ts`, so `import { SigilRoot } from "@alepha/lore/sigil"` was
  * `TS2305: has no exported member` in every host that was not a client bundle,
  * and an SSR host broke on the server pass of the component it was told to
  * render. That bought the package a `./react` subpath, which nothing ever
@@ -23,9 +23,9 @@ import { describe, expect, it } from "vitest";
  * Anything reachable in the browser must be reachable on the server, because
  * SSR renders the browser's own components; the reverse is allowed.
  */
-describe("@alepha/sigil entry conditions", () => {
+describe("@alepha/lore entry conditions", () => {
   it("exports the React surface outside the browser condition", async () => {
-    const entry = await import("@alepha/sigil");
+    const entry = await import("@alepha/lore/sigil");
 
     expect(typeof entry.SigilRoot).toBe("function");
     expect(typeof entry.SigilFeedbackButton).toBe("function");

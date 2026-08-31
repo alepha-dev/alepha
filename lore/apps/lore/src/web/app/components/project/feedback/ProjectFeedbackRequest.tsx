@@ -1,4 +1,4 @@
-import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "@alepha/sigil";
+import { SIGIL_FEEDBACK_SUBMITTED_MESSAGE } from "@alepha/lore/sigil";
 import { Control } from "@alepha/ui/components/control/control";
 import { FileImage } from "@alepha/ui/components/file-image/file-image";
 import { Button } from "@alepha/ui/components/ui/button";
@@ -95,7 +95,7 @@ const readDraftFromQuery = (query: URLSearchParams): DraftContext => {
   if (tags.length > 0) draft.tags = tags;
 
   // Page-context provenance forwarded by the sigil button via the
-  // `/sigil/request` popup (keys defined in `@alepha/sigil`). `url`
+  // `/sigil/request` popup (keys defined in `@alepha/lore`). `url`
   // is the signal that this feedback originated from an embedded button; the
   // server schema (`feedbackSourceSchema`) re-validates every field on submit.
   const url = query.get("url")?.trim();

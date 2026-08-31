@@ -1,4 +1,4 @@
-import type { SigilForwarded } from "@alepha/sigil";
+import type { SigilForwarded } from "@alepha/lore/sigil";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";

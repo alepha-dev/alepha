@@ -1,4 +1,4 @@
-import { SigilSinkProvider } from "@alepha/sigil";
+import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { CryptoProvider } from "alepha/crypto";

@@ -6,7 +6,7 @@
     "verbatimModuleSyntax": false,
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@alepha/sigil/*": ["./src/*"]
+      "@alepha/lore/*": ["./src/*"]
     }
   },
   "include": ["src"]
