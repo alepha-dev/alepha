@@ -71,7 +71,7 @@ export class CheckDocsCommand {
    *
    * `packages/alepha/README.md` was listed by hand above and every OTHER
    * package README was not, which is a distinction npm does not make: each of
-   * these is the page a package renders on the registry. `@alepha/sigil`'s
+   * these is the page a package renders on the registry. `@alepha/lore`'s
    * spent weeks documenting a `SIGIL_SINK` variable that had been folded into
    * a config field, while this command carried a rule banning that exact
    * string and never looked at the file.

@@ -7,6 +7,7 @@ import { FileSystemProvider } from "alepha/system";
 import type * as vite from "vite";
 import type { UserConfig } from "vite";
 
+import { MetaResolver } from "../services/MetaResolver.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -21,6 +22,7 @@ export class BuildServerTask extends BuildTask {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly viteUtils = $inject(ViteUtils);
+  protected readonly metaResolver = $inject(MetaResolver);
 
   /**
    * Whether the Durable Object class should be re-exported through the app's
@@ -71,6 +73,7 @@ export class BuildServerTask extends BuildTask {
           silent: !isCI,
           conditions,
           alepha: ctx.alepha,
+          meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
         });
 
         // Server will handle index.html if both client & server are built
@@ -90,6 +93,11 @@ export class BuildServerTask extends BuildTask {
     silent?: boolean;
     conditions?: string[];
     alepha: Alepha;
+    /**
+     * The build metadata token, already encoded as a `define` entry. The same
+     * one the client bundle gets.
+     */
+    meta?: Record<string, string>;
   }): Promise<void> {
     const { build: viteBuild, resolveConfig } =
       await this.viteUtils.importVite();
@@ -159,6 +167,10 @@ export class BuildServerTask extends BuildTask {
       logLevel: opts.silent ? "silent" : undefined,
       define: {
         "process.env.NODE_ENV": '"production"',
+        // The build metadata token. Baked into BOTH bundles from the one
+        // record on `ctx.meta`, so `alepha.meta` reads the same answer in the
+        // browser as it does on the server.
+        ...opts.meta,
       },
       resolve: {
         dedupe: [

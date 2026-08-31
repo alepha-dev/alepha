@@ -82,7 +82,7 @@ export class ReactBrowserRendererProvider {
    *
    * `react:recoverable:error` is what carries it. A crash reporter listens for
    * that event rather than for `window.onerror`, and gets the component stack
-   * with it — see `@alepha/sigil`'s `SigilBrowserProvider`.
+   * with it — see `@alepha/lore`'s `SigilBrowserProvider`.
    *
    * ## What it does NOT mean
    *

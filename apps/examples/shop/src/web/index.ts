@@ -1,4 +1,4 @@
-import { AlephaSigil } from "@alepha/sigil";
+import { AlephaSigil } from "@alepha/lore/sigil";
 import { AccountRouter } from "@alepha/ui/components/account/account-router";
 import { accountRouterOptionsAtom } from "@alepha/ui/components/account/account-router-options";
 import { AdminRouter } from "@alepha/ui/components/admin/admin-router";

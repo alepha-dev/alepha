@@ -21,17 +21,18 @@ import { KanbanController } from "./controllers/KanbanController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
+import { QualityController } from "./controllers/QualityController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
-import { VersionController } from "./controllers/VersionController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { InvitationJobs } from "./jobs/InvitationJobs.ts";
+import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
@@ -61,6 +62,7 @@ import { TrelloParser } from "./services/parsers/TrelloParser.ts";
 import { ProjectActivityService } from "./services/ProjectActivityService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
+import { QualityService } from "./services/QualityService.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
@@ -114,6 +116,7 @@ export const LoreApi = $module({
     QuestJobs,
     BlightJobs,
     SigilJobs,
+    QualityJobs,
     UserDeletionHook,
     QuestNotifications,
     InvitationNotifications,
@@ -124,6 +127,7 @@ export const LoreApi = $module({
     TrelloParser,
     QuestImportFormatProvider,
     QuestService,
+    QualityService,
     ProjectLimits,
     AreaService,
     ProjectActivityService,
@@ -164,6 +168,7 @@ export const LoreApi = $module({
     EpicController,
     AreaController,
     ProjectReportsController,
+    QualityController,
     ProjectQuestPortabilityController,
     InvitationController,
     AdminInvitationController,
@@ -179,6 +184,5 @@ export const LoreApi = $module({
     InsightsController,
     BlightController,
     DashboardController,
-    VersionController,
   ],
 });

@@ -10,7 +10,7 @@ import { sigils } from "./sigils.ts";
  * crash loop is one fact with a count, and storing it a thousand times would
  * cost a thousand times more to learn the same thing.
  *
- * `fingerprint` comes from `@alepha/sigil`, computed identically by
+ * `fingerprint` comes from `@alepha/lore`, computed identically by
  * the app that sends and by this table. It survives a deploy: bundle hashes
  * and line numbers are normalised away, so a bug that is not fixed keeps its
  * history instead of reappearing as new after every release.

@@ -188,6 +188,59 @@ Put your reverse proxy in front of it: `/health` describes your internals and be
 
 `AlephaServerHealth` has been removed - delete the import if you still have one; `/health` ships with `AlephaServer` itself.
 
+### Build Metadata
+
+`GET /version` is part of `AlephaServer` too, and answers a different question from `/health`: not "can this take traffic" but "what is running here".
+
+```json
+{
+  "name": "lore",
+  "version": "0.27.1",
+  "commit": "6faea71",
+  "build": {
+    "date": "2026-08-31T09:14:22.000Z",
+    "runtime": "workerd",
+    "dev": false
+  },
+  "framework": "0.27.1"
+}
+```
+
+The same record is readable anywhere in your app as `alepha.meta`, in the browser as well as on the server - it is resolved once at build time and baked into both bundles, so a footer showing the build date cannot disagree with what the server reports.
+
+```typescript
+alepha.meta.version; // "0.27.1", or "latest" on an untagged commit
+alepha.meta.commit; // "6faea71", absent when the build had no git
+alepha.meta.build.date; // ISO, absent when no build produced this code
+```
+
+`version` is the git tag on the built commit (a leading `v` is stripped), falling back to `"latest"`. Two absences carry information rather than being holes: no `commit` means there was no git at all, and no `build.date` means nothing built this code - a test run, a script, or the package imported outside a build.
+
+Declare a version yourself when the tag is not the answer you want. An app that deploys on every push resolves to `"latest"` on everything that is not a release:
+
+```typescript
+// alepha.config.ts
+export default defineConfig({
+  meta: { version: pkg.version },
+});
+```
+
+⚠️ In CI, the default `actions/checkout` fetches shallow and passes `--no-tags`, so `version` reports `"latest"` unless the job that builds your deployed artifact sets `fetch-tags: true`. `commit` is unaffected - resolving it needs no tags - so even a `"latest"` build says exactly which commit is running.
+
+Configure the route with `versionOptions`. `expose` trims the payload, most usefully to publish a version while withholding the commit; `enabled: false` makes the path answer 404 without touching `/health`:
+
+```typescript
+import { versionOptions } from "alepha/server";
+
+alepha.set(versionOptions, { expose: ["name", "version"] });
+```
+
+`path` is the one option that must be seeded at construction rather than written afterwards, because routes are registered before a later write would land:
+
+```typescript
+Alepha.create({ "alepha.server.version.options": { path: "/_version" } });
+```
+
 ### Metrics
 
 `AlephaServerMetrics` exposes a Prometheus-compatible metrics endpoint. Import from `alepha/server/metrics`.

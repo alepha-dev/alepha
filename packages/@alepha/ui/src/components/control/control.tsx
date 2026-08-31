@@ -434,6 +434,11 @@ export const Control = (props: ControlProps) => {
         clearLabel={merged.clearLabel}
         countLabel={merged.countLabel}
         triggerClassName={merged.triggerClassName}
+        // Used to be dropped here, silently: every `inputProps={{ "aria-label"
+        // }}` on a select-shaped Control (the epics and quests status filters
+        // among them) named nothing at all, because the trigger is a button
+        // with no visible label to borrow a name from.
+        triggerProps={merged.inputProps}
       />,
     );
   }

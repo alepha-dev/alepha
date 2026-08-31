@@ -6,6 +6,8 @@ import {
   buildOptions,
   type DevOptions,
   devOptions,
+  type MetaOptions,
+  metaOptions,
 } from "alepha/cli";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -35,6 +37,18 @@ export interface AlephaCliConfig {
    * Configure Alepha dev command.
    */
   dev?: DevOptions;
+
+  /**
+   * Override what `alepha.meta` reports about this build.
+   *
+   * The build resolves version, commit and name on its own, so most apps set
+   * nothing. Declare `version` when the git tag is not the answer you want to
+   * publish - typically a continuously deployed app, where tags exist only on
+   * releases and every other deploy would otherwise report `"latest"`.
+   *
+   * Baked into the server AND the client bundle at compile time.
+   */
+  meta?: MetaOptions;
 
   /**
    * Environment variables to set before running commands.
@@ -72,6 +86,10 @@ export const defineConfig = (config: AlephaCliConfig) => {
 
     if (config.dev) {
       alepha.set(devOptions, config.dev);
+    }
+
+    if (config.meta) {
+      alepha.set(metaOptions, config.meta);
     }
 
     if (config.entry) {

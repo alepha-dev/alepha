@@ -7,8 +7,10 @@ import {
   type BuildTarget,
   buildOptions,
 } from "../atoms/buildOptions.ts";
+import { metaOptions } from "../atoms/metaOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
+import { MetaResolver } from "../services/MetaResolver.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
@@ -31,6 +33,8 @@ export class BuildCommand {
   protected readonly boot = $inject(AppEntryProvider);
   protected readonly viteBuildProvider = $inject(ViteBuildProvider);
   protected readonly options = $store(buildOptions);
+  protected readonly metaResolver = $inject(MetaResolver);
+  protected readonly metaOverride = $store(metaOptions);
 
   /**
    * Build pipeline: tasks run sequentially in this order.
@@ -257,6 +261,22 @@ export class BuildCommand {
           | BuildTaskContext["platformOptions"]
           | undefined) ?? null;
 
+      // Resolved once, before the pipeline, so every task that bakes it into a
+      // bundle bakes the same record. `runtime` follows the manifest's rule:
+      // a static build names no interpreter.
+      const meta = await this.metaResolver.resolve({
+        root,
+        runtime:
+          options.target === "static" ? "static" : (options.runtime ?? "node"),
+        dev: false,
+        override: this.metaOverride,
+      });
+
+      // The prerender runs in THIS process, not in a bundle, so `define` never
+      // reaches it. Installed before the pipeline so anything the build renders
+      // in-process reads the same record the bundles carry.
+      this.metaResolver.install(meta);
+
       const ctx: BuildTaskContext = {
         // Cast: when manifest mode is active, BuildCloudflareTask reads
         // from ctx.manifest and never dereferences ctx.alepha. Bundle
@@ -268,6 +288,7 @@ export class BuildCommand {
         run,
         entry,
         hasClient,
+        meta,
         manifest,
         platformOptions,
         flags: { image: flags.image, prebuilt: flags.prebuilt },

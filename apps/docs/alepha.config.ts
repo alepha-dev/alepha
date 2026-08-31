@@ -14,9 +14,12 @@ export default defineConfig({
   // without a `dev.port` binds 5173.
   dev: { port: 3302 },
   services: [DocsCommand, TreeCommand, LlmsCommand, CheckDocsCommand],
+  // The build resolves commit and build date itself, and serves the lot on
+  // `GET /version`. `version` still has to be declared: the docs site deploys
+  // on every push to main, while tags exist only on releases, so the built-in
+  // git-tag chain would report "latest" on almost every deploy.
+  meta: { version: pkg.version },
   env: {
-    VITE_BUILD_DATE: new Date().toISOString(),
-    VITE_VERSION: pkg.version,
     // Here rather than in `.env.production` because the canonical URL is baked
     // into every page at prerender time, so it has to be set for a plain
     // `alepha build` too - and because it is the site's public address, not a
@@ -34,7 +37,7 @@ export default defineConfig({
   // fallback: the asset manifest is consulted first, and a match is served from
   // the edge without invoking the worker - free and unlimited on every plan.
   // The worker exists for `POST /api/sigil/ingest` and nothing else: docs
-  // registers no `$action` of its own, and `@alepha/sigil` needs a same-origin
+  // registers no `$action` of its own, and `@alepha/lore` needs a same-origin
   // endpoint to post to. That endpoint is the one thing a purely static host
   // cannot offer, and it is where the visitor IP becomes a salted hash and
   // where the sigil credential stays instead of shipping to every reader. It

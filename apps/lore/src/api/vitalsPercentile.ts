@@ -1,4 +1,4 @@
-import { VITALS_BUCKETS, type VitalMetric } from "@alepha/sigil";
+import { VITALS_BUCKETS, type VitalMetric } from "@alepha/lore/sigil";
 
 import type { VitalsMetricResource } from "./schemas/vitalsMetricSchema.ts";
 

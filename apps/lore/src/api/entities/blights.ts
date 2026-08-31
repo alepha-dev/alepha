@@ -42,7 +42,7 @@ export const blights = $entity({
     }),
     /**
      * `sha256(errorName + ":" + normalizedFirstFrame)`, computed by the
-     * client with the shared helper from `@alepha/sigil`.
+     * client with the shared helper from `@alepha/lore`.
      *
      * Survives a deploy: bundle hashes and line numbers are normalised away,
      * so a bug that is not fixed keeps its identity instead of reappearing as

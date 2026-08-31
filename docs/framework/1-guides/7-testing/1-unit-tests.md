@@ -20,6 +20,33 @@ alepha test auth               # Only specs matching "auth"
 alepha test test/user.spec.ts  # A single file
 ```
 
+### Coverage
+
+`--coverage` measures the run and leaves two machine-readable reports in
+`coverage/`, which is already gitignored:
+
+```bash
+alepha test --coverage
+```
+
+|                                  |                                                                                              |
+| -------------------------------- | -------------------------------------------------------------------------------------------- |
+| `coverage/coverage-summary.json` | totals plus one entry per file, each with `lines`, `statements`, `functions` and `branches`. |
+| `coverage/test-results.json`     | the run itself: how many tests passed, failed, were skipped, and per-file timings.           |
+
+The browsable HTML report is still written beside them, and the normal test
+output still prints. Both are easy to lose by hand: asking Vitest for the JSON
+coverage reporter replaces the HTML one rather than adding to it, and asking for
+the JSON test reporter replaces the default one, so a CI job that spelled this
+itself would trade every readable failure for a file nobody reads on a green run.
+
+The paths are fixed rather than configurable, because they are a convention that
+other tools read. `alepha lore quality push` finds both files without being told
+where they are.
+
+`VITEST_ARGS` is appended after everything above, so an explicit caller flag
+still lands last on the command line.
+
 ## Lifecycle Management
 
 `Alepha.create()` handles start and stop automatically in test environments. You do not need `beforeAll`/`afterAll` for lifecycle.

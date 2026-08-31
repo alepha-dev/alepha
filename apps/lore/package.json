@@ -2,6 +2,10 @@
   "name": "lore",
   "private": true,
   "type": "module",
+  "exports": {
+    "./api/controllers/*": "./src/api/controllers/*.ts",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "dev": "alepha dev",
     "lint": "alepha lint",
@@ -24,7 +28,7 @@
   },
   "dependencies": {
     "@alepha/devtools": "workspace:*",
-    "@alepha/sigil": "workspace:*",
+    "@alepha/lore": "workspace:*",
     "@alepha/ui": "workspace:*",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.11.0",

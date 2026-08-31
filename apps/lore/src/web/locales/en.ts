@@ -545,6 +545,26 @@ export default {
   "project.reports.nav.overview": "Overview",
   "project.reports.nav.quests": "Quests",
   "project.reports.nav.members": "Members",
+  "project.reports.nav.quality": "Quality",
+  "reports.quality.section.coverage": "Coverage",
+  "reports.quality.section.tests": "Tests",
+  "reports.quality.section.coverageOverTime": "Coverage over time",
+  "reports.quality.section.testsOverTime": "Tests over time",
+  "reports.quality.lines": "Lines",
+  "reports.quality.statements": "Statements",
+  "reports.quality.functions": "Functions",
+  "reports.quality.branches": "Branches",
+  "reports.quality.total": "Total",
+  "reports.quality.passed": "Passed",
+  "reports.quality.failed": "Failed",
+  "reports.quality.duration": "Duration",
+  "reports.quality.skipped": "$1 skipped",
+  "reports.quality.lastRun": "Last run $1 on $2, commit $3",
+  "reports.quality.empty.title": "Nothing pushed yet",
+  "reports.quality.empty.description":
+    "This tab shows what a test run measured. Run these two commands in CI, and the figures appear here on the next push.",
+  "reports.quality.empty.credential":
+    "The push needs LORE_API_KEY, an API key from your account's keys page.",
   "reports.overview.kpi.completion": "Completion",
   "reports.overview.kpi.open": "Open",
   "reports.overview.kpi.completedThisWeek": "Completed this week",
@@ -664,10 +684,6 @@ export default {
   "release.list.noTarget": "No target date",
   "release.list.releasedOn": "Released $1",
   "release.detail.edit": "Edit",
-  "release.retag.title": "Change this release's tag?",
-  "release.retag.description":
-    "The tag is this release's address, so $1 becomes $2 and every link already shared to it stops working. There is no redirect.",
-  "release.retag.confirm": "Change the tag",
   "release.detail.notFound": "No release tagged $1 in this project.",
   "release.publish.action": "Publish",
   "release.publish.title": "Publish this release?",
@@ -688,7 +704,6 @@ export default {
   "release.detail.editTag": "Tag",
   "release.detail.editTitle": "Title",
   "release.detail.editTargetDate": "Target date",
-  "release.detail.editDescription": "Notes",
   "release.contents.title": "Contents",
   "release.contents.addEpic": "Add epic",
   "release.contents.pickEpic": "Pick an epic…",
@@ -701,12 +716,9 @@ export default {
   "release.detail.save": "Save",
   "release.detail.saved": "Release updated",
   "release.hero.progress": "Progress",
-  "release.hero.shelved": "$1 shelved",
   "release.empty.title": "No release is open",
   "release.empty.body":
     "A release is a named goal - 0.1.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
-  "release.status.active": "Open",
-  "release.status.closed": "Closed",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Save to Folios",
@@ -727,6 +739,92 @@ export default {
   "release.folio.saved": "Changelog saved to Folios",
   "release.folio.error": "Could not save the changelog.",
   "release.folio.summary": "Changelog for release #$1: $2 quest(s) recorded.",
+
+  "release.tab.overview": "Overview",
+  "release.tab.contents": "Contents",
+  "release.tab.changelog": "Changelog",
+  "release.tab.artifacts": "Artifacts",
+
+  "release.plate.frozen": "Frozen at publish",
+  "release.meta.target": "target $1",
+  "release.meta.released": "released $1",
+  "release.meta.epics.one": "1 epic",
+  "release.meta.epics.many": "$1 epics",
+  "release.meta.quests.one": "1 quest",
+  "release.meta.quests.many": "$1 quests",
+  "release.meta.artifacts.one": "1 artifact",
+  "release.meta.artifacts.many": "$1 artifacts",
+
+  "release.bucket.completed": "done",
+  "release.bucket.inProgress": "in progress",
+  "release.bucket.open": "not started",
+  "release.bucket.shelved": "declined",
+  "release.bucket.share": "$1% of $2",
+  "release.bucket.outside": "outside the $1",
+
+  "release.kpi.ready.label": "Ready to ship",
+  "release.kpi.ready.remaining.one": "1 quest still to land.",
+  "release.kpi.ready.remaining.many": "$1 quests still to land.",
+  "release.kpi.ready.allLanded": "Everything attached has landed.",
+  "release.kpi.ready.declined.one": "1 declined as out of scope.",
+  "release.kpi.ready.declined.many": "$1 declined as out of scope.",
+  "release.kpi.ready.frozen":
+    "Frozen at publish. A quest completed after this date never rewrites what shipped.",
+  "release.kpi.target.label": "Target",
+  "release.kpi.target.today": "today",
+  "release.kpi.target.days": "$1 days",
+  "release.kpi.target.late": "$1 days late",
+  "release.kpi.target.note":
+    "$1. An estimate: nothing enforces it and no job reads it.",
+  "release.kpi.target.none":
+    "No target date. It would be an estimate anyway: nothing enforces it and no job reads it.",
+  "release.kpi.shipped.label": "Shipped",
+  "release.kpi.shipped.note": "Published $1. Reopening is the only way back.",
+  "release.kpi.artifacts.label": "Artifacts",
+  "release.kpi.artifacts.preview":
+    "Sample rows tagged $1. The artifact registry is not built yet.",
+
+  "release.description.label": "Description",
+  "release.description.empty": "No description yet.",
+
+  "release.contents.note.epics.one": "1 epic",
+  "release.contents.note.epics.many": "$1 epics",
+  "release.contents.note.loose.one": "1 loose quest",
+  "release.contents.note.loose.many": "$1 loose quests",
+  "release.contents.noEpic": "no epic",
+  "release.contents.frozen": "frozen at publish",
+
+  "release.artifacts.title": "Artifacts",
+  "release.artifacts.previewChip": "Preview",
+  "release.artifacts.matchedOn": "matched on",
+  "release.artifacts.column.app": "App",
+  "release.artifacts.column.target": "Target",
+  "release.artifacts.column.file": "File",
+  "release.artifacts.column.digest": "Digest",
+  "release.artifacts.column.size": "Size",
+  "release.artifacts.column.uploaded": "Uploaded",
+  "release.artifacts.empty": "Nothing has been built against $1 yet.",
+  "release.artifacts.emptyShort": "Nothing built against $1 yet.",
+  "release.artifacts.joinNote":
+    "Sample rows: the artifact registry is not built yet. The tag is the join key, which is why it is kept separate from the title. Renaming the title never breaks this list; renaming the tag orphans every artifact built against the old one.",
+
+  "release.edit.title": "Edit release",
+  "release.edit.tagHint":
+    "The join key for artifacts, and this release's address. Changing it orphans every artifact built against the old tag.",
+  "release.edit.tagWarning.artifacts.one":
+    "1 artifact is built against $1 and will drop off this release.",
+  "release.edit.tagWarning.artifacts.many":
+    "$1 artifacts are built against $2 and will drop off this release.",
+  "release.edit.tagWarning.url":
+    "The URL moves too: links already shared to $1 stop working, and there is no redirect.",
+  "release.edit.titleHint.empty":
+    "Empty means the tag stands alone, and no title is shown beside it.",
+  "release.edit.titleHint.set":
+    "Shown next to the tag. Safe to rename at any time; nothing joins on it.",
+  "release.edit.targetHint":
+    "An estimate. Nothing enforces it and no job reads it.",
+  "release.edit.description": "Description",
+  "release.edit.descriptionHint": "Markdown. Shown on the Overview tab.",
 
   "kanban.column.new": "New",
   "kanban.column.completed": "Completed",
