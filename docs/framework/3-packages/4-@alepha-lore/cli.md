@@ -26,6 +26,18 @@ export default defineConfig({
 });
 ```
 
+Config carries the project, env carries the secret (`LORE_API_KEY`), and
+`--project` overrides the config for one invocation. No credential ever
+lands in a committed file.
+
+## Why `AlephaServerLinksClient` and not `AlephaServer`
+
+`$client` resolves an action against a registry, and in a CLI that registry
+has to be fetched from the remote. `AlephaServerLinksClient` carries the
+primitive and the provider that fetches it, and nothing that serves:
+registering `AlephaServer` here would give a command-line tool an HTTP
+listener that binds a port.
+
 ⚠️ This subpath carries no `browser` export condition, on purpose. A bundler
 that resolves it has wandered somewhere it does not belong, and should fail
 on the first `node:` import rather than be handed a stub.
