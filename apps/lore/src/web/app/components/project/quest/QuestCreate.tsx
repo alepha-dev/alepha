@@ -8,7 +8,8 @@ import {
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { Separator } from "@alepha/ui/components/ui/separator";
 import { z } from "alepha";
-import { useAlepha, useClient, useStore } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -44,7 +45,6 @@ import { useLoreEditorControl } from "../../shared/element/useLoreEditorControl.
 import QuestAttachments from "./QuestAttachments.tsx";
 import QuestCreateObjectives from "./QuestCreateObjectives.tsx";
 import QuestDependencyPicker from "./QuestDependencyPicker.tsx";
-import QuestDueDateInput from "./QuestDueDateInput.tsx";
 import QuestEstimateInput from "./QuestEstimateInput.tsx";
 import { DEFAULT_QUEST_SIZE, QUEST_SIZE_OPTIONS } from "./questSize.ts";
 import QuestTagInput from "./QuestTagInput.tsx";
@@ -60,6 +60,7 @@ const QuestCreate = (props: QuestCreateProps) => {
   const questApi = useClient<QuestController>();
   const areaApi = useClient<AreaController>();
   const alepha = useAlepha();
+  const dt = useInject(DateTimeProvider);
   const router = useRouter<AppRouter>();
   const { tr } = useI18n<I18n, "en">();
   const [currentAreas] = useStore(currentAreasAtom);
@@ -90,13 +91,46 @@ const QuestCreate = (props: QuestCreateProps) => {
       // no basis for a value) but mandatory here, where a human is looking
       // straight at the control. `initialValues` seeds M, so it is never
       // actually empty; the override exists to draw the required marker.
-      .extend({ size: z.integer().min(1).max(5) }),
+      .extend({
+        size: z.integer().min(1).max(5),
+        // ⚠️ `YYYY-MM-DD` in the FORM, an instant on the WIRE.
+        //
+        // The column and `questCreateSchema` are both datetime, and the
+        // handler below converts. The field is date-only because nothing in
+        // Lore reads a time-of-day deadline, and because day-granularity has
+        // to be stored as the END of the chosen day or "due Friday" is
+        // overdue at 00:01 on Friday (quest #1521).
+        //
+        // Declaring it here rather than forcing `date` on the Control is what
+        // makes `ControlDate` parse and format it locally: given a datetime
+        // schema it would store the picked instant and lose the end-of-day
+        // rule silently.
+        dueAt: z.date().nullable().optional(),
+      }),
     initialValues: {
       ...(props.quest as QuestResource),
       priority: props.quest?.priority ?? "optional",
       size: props.quest?.size ?? DEFAULT_QUEST_SIZE,
+      // The stored instant, as the day it falls on in the reader's own
+      // timezone. Never `toISOString().slice(0, 10)`, which shifts the day
+      // backwards west of UTC - the classic way a deadline moves.
+      dueAt: props.quest?.dueAt
+        ? dt.of(props.quest.dueAt).format("YYYY-MM-DD")
+        : undefined,
     },
-    handler: async (data) => {
+    handler: async (input) => {
+      // The form's date-only `dueAt` becomes the instant the API stores: the
+      // END of the chosen day, in local time. `null` rather than `undefined`
+      // when it is cleared, because the ORM update layer drops an undefined
+      // key (`"dueAt" in body` reads false) and the old deadline would
+      // silently survive.
+      const data = {
+        ...input,
+        dueAt: input.dueAt
+          ? dt.of(input.dueAt).endOf("day").toDate().toISOString()
+          : null,
+      };
+
       if (props.quest?.id) {
         const resp = await questApi.updateQuestById({
           params: { id: props.quest.id },
@@ -282,17 +316,21 @@ const QuestCreate = (props: QuestCreateProps) => {
 
         <Separator />
 
-        {/* Tags and Estimate share the row below the divider: both are
-            optional trimmings rather than part of how the quest is framed.
+        {/* Tags, Estimate and Due date share the row below the divider: all
+            three are optional trimmings rather than part of how the quest is
+            framed.
 
-            The grid is applied only when Estimate actually renders. Left on
-            unconditionally, a project with estimation switched off would sit
-            Tags in a half-width column with dead space beside it. */}
+            The grid is always on, and the column count follows how many
+            fields actually render. It used to be applied only with Estimate
+            enabled, to avoid leaving Tags in a half-width column with dead
+            space beside it - but that put Due date alone on a second row in
+            both configurations, which is what was reported. With Due date
+            filling the second column there is no dead space to avoid. */}
         <div
           className={
             questEstimateEnabled
-              ? "grid grid-cols-1 gap-3 md:grid-cols-2"
-              : undefined
+              ? "grid grid-cols-1 gap-3 md:grid-cols-3"
+              : "grid grid-cols-1 gap-3 md:grid-cols-2"
           }
         >
           <Control
@@ -334,7 +372,7 @@ const QuestCreate = (props: QuestCreateProps) => {
             description={tr("quest.create.due.helper")}
             input={form.input.dueAt}
             icon={CalendarClock}
-            custom={QuestDueDateInput as never}
+            clearable
           />
         </div>
 

@@ -286,7 +286,6 @@ export default {
   "quest.create.due": "Due date",
   "quest.create.due.helper":
     "When this quest is meant to be finished. Separate from any release deadline.",
-  "quest.create.due.clear": "Clear due date",
   "quest.create.estimate": "Estimate",
   "quest.create.estimate.helper":
     "Roughly how long this might take. Shown in the questlog so you can grab one that fits the time you have.",

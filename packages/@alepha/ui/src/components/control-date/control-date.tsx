@@ -18,7 +18,7 @@ import {
   useFieldValue,
   useFormState,
 } from "alepha/react/form";
-import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, X } from "lucide-react";
 import { useState } from "react";
 
 export interface ControlDateProps {
@@ -50,6 +50,14 @@ export interface ControlDateProps {
    * Disable the picker.
    */
   disabled?: boolean;
+  /**
+   * Offer a way back to empty once a date is picked.
+   *
+   * A calendar has no "none" cell, so without this an optional date field is
+   * one-way: pick a day and there is no gesture that unsets it. Every other
+   * control in the kit spells this `clearable`, so this one does too.
+   */
+  clearable?: boolean;
 }
 
 export const ControlDate = (props: ControlDateProps) => {
@@ -105,6 +113,7 @@ export const ControlDate = (props: ControlDateProps) => {
         value={value}
         withTime={isDateTime}
         disabled={props.disabled}
+        clearable={props.clearable}
         onChange={(v) => setValue(v)}
       />
     </FormField>
@@ -116,6 +125,7 @@ interface DatePopoverProps {
   value?: string;
   withTime: boolean;
   disabled?: boolean;
+  clearable?: boolean;
   onChange: (value: string | undefined) => void;
 }
 
@@ -178,24 +188,42 @@ const DatePopover = (props: DatePopoverProps) => {
       ? `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
       : "";
 
+  const showClear = props.clearable && !!date && !props.disabled;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
+      {/* The clear button sits BESIDE the trigger, not inside it: a button
+          nested in a button is invalid, and Base UI's popover trigger would
+          swallow its click anyway. */}
+      <div className="flex w-full items-center gap-1">
+        <PopoverTrigger
+          render={
+            <Button
+              id={props.id}
+              variant="outline"
+              disabled={props.disabled}
+              className={cn(
+                "flex-1 justify-start text-left font-normal",
+                !date && "text-muted-foreground",
+              )}
+            />
+          }
+        >
+          <CalendarIcon className="mr-2 size-4" />
+          {formatted || "Pick a date"}
+        </PopoverTrigger>
+        {showClear && (
           <Button
-            id={props.id}
-            variant="outline"
-            disabled={props.disabled}
-            className={cn(
-              "w-full justify-start text-left font-normal",
-              !date && "text-muted-foreground",
-            )}
-          />
-        }
-      >
-        <CalendarIcon className="mr-2 size-4" />
-        {formatted || "Pick a date"}
-      </PopoverTrigger>
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Clear date"
+            onClick={() => props.onChange(undefined)}
+          >
+            <X className="size-4" />
+          </Button>
+        )}
+      </div>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar mode="single" selected={date} onSelect={handleDate} />
         {props.withTime && (

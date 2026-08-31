@@ -27,6 +27,27 @@ describe("QuestDueDate", () => {
       expect(rule.describe(inDays(1), dt).overdue).toBe(false);
     });
 
+    /**
+     * ⚠️ The reason the form stores the END of the chosen day rather than the
+     * instant the picker returns (quest #1521). "Due today" must not read as
+     * overdue at 00:01, and the only thing that makes that true is where the
+     * write lands - so this pins the contract the writer has to keep.
+     */
+    it("is false for a deadline at the end of today, read in the morning", () => {
+      const endOfToday = dt.now().endOf("day").toDate().toISOString();
+      expect(rule.describe(endOfToday, dt).overdue).toBe(false);
+    });
+
+    it("is true for a deadline at the end of yesterday", () => {
+      const endOfYesterday = dt
+        .now()
+        .subtract(1, "day")
+        .endOf("day")
+        .toDate()
+        .toISOString();
+      expect(rule.describe(endOfYesterday, dt).overdue).toBe(true);
+    });
+
     it("is true for a deadline in the past", () => {
       expect(rule.describe(inDays(-1), dt).overdue).toBe(true);
     });

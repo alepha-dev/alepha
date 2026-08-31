@@ -476,6 +476,7 @@ export const Control = (props: ControlProps) => {
         datetime={merged.datetime}
         time={merged.time}
         disabled={merged.disabled}
+        clearable={merged.clearable}
       />,
     );
   }
