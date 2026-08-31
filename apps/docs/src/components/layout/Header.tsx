@@ -12,6 +12,8 @@ import {
 import { Link, useRouter, useRouterState } from "alepha/react/router";
 import { useCallback, useEffect, useState } from "react";
 
+import { getInitialMode, MODE_KEY, type Mode } from "./docsTheme.ts";
+
 // =============================================================================
 // HEADER - IDE STYLE
 // =============================================================================
@@ -437,23 +439,6 @@ const HeaderButton = (props: {
 // =============================================================================
 // DARK MODE TOGGLE
 // =============================================================================
-
-const MODE_KEY = "alepha-docs-mode";
-
-type Mode = "dark" | "light";
-
-const getInitialMode = (): Mode => {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem(MODE_KEY);
-    if (stored === "light" || stored === "dark") {
-      return stored;
-    }
-    if (window.matchMedia?.("(prefers-color-scheme: light)").matches) {
-      return "light";
-    }
-  }
-  return "dark";
-};
 
 const DarkModeToggle = () => {
   const [mode, setMode] = useState<Mode>("dark");

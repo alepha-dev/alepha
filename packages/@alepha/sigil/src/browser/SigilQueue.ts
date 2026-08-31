@@ -308,6 +308,19 @@ export class SigilQueue {
   }
 
   /**
+   * The stacks of the pending errors. Also for tests, and separate from
+   * {@link pendingErrorMessages} rather than folded into it because several
+   * callers index into that one positionally.
+   *
+   * A stack is worth asking about on its own: the sink fingerprints on it, so
+   * what a caller appends to it - a React component stack, say - decides
+   * whether two reports are one row or two.
+   */
+  public pendingErrorStacks(): string[] {
+    return this.errors.map((e) => e.stack);
+  }
+
+  /**
    * The referrer attached to each pending view, `undefined` where none was.
    *
    * Separate from {@link pendingViews} rather than folded into it: that one

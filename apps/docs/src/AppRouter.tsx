@@ -7,6 +7,7 @@ import { HttpError, NotFoundError } from "alepha/server";
 import Changelog from "./components/Changelog.tsx";
 import Docs from "./components/Docs.tsx";
 import Home from "./components/Home.tsx";
+import { DOCS_THEME_BOOT_SCRIPT } from "./components/layout/docsTheme.ts";
 import Layout from "./components/layout/Layout.tsx";
 import BayHome from "./components/product/BayHome.tsx";
 import LoreHome from "./components/product/LoreHome.tsx";
@@ -56,13 +57,7 @@ export class AppRouter {
         card: "summary_large_image",
         title: ogTitle,
       },
-      script: [
-        `
-          var stored = localStorage.getItem('alepha-docs-mode');
-          var theme = stored === 'light' ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', theme);
-        `.trim(),
-      ],
+      script: [DOCS_THEME_BOOT_SCRIPT],
       link: [
         // No `rel="icon"` here on purpose: ReactServerProvider detects
         // `public/favicon.png` and emits the tag itself, into early head.
