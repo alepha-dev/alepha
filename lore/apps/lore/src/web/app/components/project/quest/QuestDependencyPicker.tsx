@@ -15,7 +15,7 @@ import {
 import { cn } from "@alepha/ui/lib/utils";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronDown, Link2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -89,10 +89,15 @@ const QuestDependencyPicker = (props: QuestDependencyPickerProps) => {
             />
           }
         >
+          {/* Leading glyph inside the trigger, the way a select trigger
+              carries its icon beside the value. It used to sit next to the
+              field's label in QuestCreate; every icon in that form lives
+              inside its input, so it moved here. */}
+          <Link2 className="text-muted-foreground mr-2 size-4 shrink-0" />
           <span className="truncate">
             {selected ? labelOf(selected) : tr("quest.create.dependsOn.none")}
           </span>
-          <ChevronsUpDown className="text-muted-foreground ml-2 size-4 shrink-0" />
+          <ChevronDown className="text-muted-foreground ml-auto size-4 shrink-0" />
         </PopoverTrigger>
         <PopoverContent
           // `--anchor-width` is what Base UI's positioner exposes for "as wide
