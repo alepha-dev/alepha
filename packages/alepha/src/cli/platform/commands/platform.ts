@@ -1,5 +1,11 @@
 import { $inject, AlephaError, z } from "alepha";
-import { type AppEntry, AppEntryProvider, ViteBuildProvider } from "alepha/cli";
+import {
+  type AppEntry,
+  AppEntryProvider,
+  type BuildManifest,
+  buildManifestSchema,
+  ViteBuildProvider,
+} from "alepha/cli";
 import {
   CloudflareAdapter,
   type DetectedResources,
@@ -974,14 +980,25 @@ export class PlatformCommand {
 
   /**
    * Read `dist/manifest.json` if present. Returns `null` when the file
-   * doesn't exist or isn't parseable — caller falls back to the
-   * Vite-introspection path.
+   * doesn't exist, isn't parseable, or doesn't satisfy `buildManifestSchema` —
+   * caller falls back to the Vite-introspection path.
+   *
+   * ⚠️ The schema check is the point, and the `try/catch` never was. A
+   * truncated or pre-`resources` manifest parses as JSON perfectly well, so
+   * the old `JSON.parse` returned an object, `if (manifest)` passed, and
+   * `manifest.resources` — `undefined` — flowed downstream typed as
+   * `DetectedResources`. Every `resources.hasX` then read `undefined`, and a
+   * deploy provisioned no database, no bucket and no queue while reporting
+   * success. `safeParse` turns that into the same `null` an absent file
+   * produces, which the caller already knows how to handle by introspecting
+   * the app for real.
+   *
+   * `safeParse`, not `parse`: a manifest this deployer cannot read is a reason
+   * to fall back, never a reason to fail the deploy. The schema is `.loose()`,
+   * so a NEWER manifest carrying fields this build has never heard of is read,
+   * not refused.
    */
-  protected async readManifest(root: string): Promise<{
-    version: number;
-    project: string;
-    resources: DetectedResources;
-  } | null> {
+  protected async readManifest(root: string): Promise<BuildManifest | null> {
     try {
       const fs = await import("node:fs/promises");
       const path = await import("node:path");
@@ -989,7 +1006,8 @@ export class PlatformCommand {
         path.join(root, "dist", "manifest.json"),
         "utf-8",
       );
-      return JSON.parse(raw);
+      const parsed = buildManifestSchema.safeParse(JSON.parse(raw));
+      return parsed.success ? parsed.data : null;
     } catch {
       return null;
     }

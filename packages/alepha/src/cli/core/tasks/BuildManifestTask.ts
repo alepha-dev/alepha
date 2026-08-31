@@ -4,7 +4,10 @@ import { $inject } from "alepha";
 import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
 import { FileSystemProvider } from "alepha/system";
 
-import type { BuildManifest } from "../schemas/buildManifest.ts";
+import {
+  type BuildManifest,
+  buildManifestSchema,
+} from "../schemas/buildManifest.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
@@ -351,6 +354,22 @@ export class BuildManifestTask extends BuildTask {
         | undefined,
     };
 
+    /*
+      Validated on the way out, not merely typed on the way in. `environments`
+      reaches this object through a cast (`as BuildManifest["environments"]`),
+      and every field here is read by a deployer that has no access to this
+      build: a wrong value is discovered in production, hours later, by
+      something that cannot say where it came from.
+
+      ⚠️ Parsing before a WRITE is only safe because the schema is `.loose()`.
+      A plain `z.object` strips unknown keys, so this line would silently
+      DELETE whatever the schema had not caught up with -- starting with
+      `EnvironmentConfig`'s own `host` / `socket` / `vars` / `services`, which
+      the cast above narrows away in the types and `JSON.stringify` writes
+      anyway. Validation that quietly edits the artifact is worse than none.
+    */
+    const validated = buildManifestSchema.parse(manifest);
+
     // `writeFile` does not create parent directories. This used to be safe by
     // accident — the manifest was written from the Cloudflare task, which only
     // ever ran after the bundle steps had created `dist/`. Running for every
@@ -358,7 +377,7 @@ export class BuildManifestTask extends BuildTask {
     await this.fs.mkdir(this.fs.join(root, distDir), { recursive: true });
     await this.fs.writeFile(
       this.fs.join(root, distDir, "manifest.json"),
-      JSON.stringify(manifest, null, 2),
+      JSON.stringify(validated, null, 2),
     );
   }
 }
