@@ -154,6 +154,90 @@ jobs:
         run: yarn test:bun
 
   # ──────────────────────────────────────────────────────────────────────
+  # Coverage — measure the suite and record what it measured in Lore.
+  #
+  # Its own job, on main only, gating nothing. Three independent constraints
+  # force that exact shape and any one of them alone would be enough:
+  #
+  #   1. The `test` job GATES `deploy-lore-production` and already runs at 11
+  #      to 12 minutes against a 20-minute hang detector. Istanbul
+  #      instrumentation is not free, and a coverage run inside that job puts
+  #      the Lore deploy behind it.
+  #   2. This repository is public and CI runs on `pull_request`. Fork PRs get
+  #      no secrets, so a push step there fails on a missing LORE_API_KEY by
+  #      construction rather than by accident. `if: github.event_name !=
+  #      'pull_request'` is the same guard `deploy-docs-production` uses.
+  #   3. The push records what landed. It is not meant to gate what lands.
+  #
+  # It runs the suite a SECOND time, which is the deliberate price of not
+  # touching the deploy gate. Public-repo minutes are free.
+  #
+  # ⚠️ Nothing else in this repository runs `alepha test`. The root script is
+  # `yarn vitest run`, and `verify` shells out to `yarn test` / `yarn test:bun`
+  # directly — so the report convention produces no files anywhere but here.
+  # ──────────────────────────────────────────────────────────────────────
+  coverage:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The same four the `test` job declares, copied rather than trimmed to
+    # "the ones coverage needs": without them a large slice of the suite fails
+    # and the published number is wrong rather than merely lower.
+    services:
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3mock:
+        image: adobe/s3mock
+        ports:
+          - 19090:9090
+
+      emqx:
+        image: emqx/emqx
+        ports:
+          - 11883:1883
+        env:
+          EMQX_ALLOW_ANONYMOUS: "true"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
+
+      # Writes coverage/coverage-summary.json and coverage/test-results.json.
+      # The paths are the convention the push step reads; neither is passed as
+      # an argument.
+      - name: Test With Coverage
+        run: yarn alepha test --coverage
+
+      # The credential is on THIS step only. A repository-wide `env:` would put
+      # a full-admin Lore key in the environment of the test run itself, which
+      # executes every spec in the repository.
+      - name: Push Coverage To Lore
+        run: yarn alepha lore quality push
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+  # ──────────────────────────────────────────────────────────────────────
   # Bay — the Go control plane. Nothing in the yarn pipeline compiles or
   # tests it, which is how a `.gitignore` pattern that swallowed the whole
   # `cmd/bay/` directory reached a commit unnoticed: the working tree built
