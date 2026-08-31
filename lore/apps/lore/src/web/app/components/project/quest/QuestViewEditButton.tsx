@@ -5,11 +5,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@alepha/ui/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@alepha/ui/components/ui/tooltip";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Pencil } from "lucide-react";
@@ -44,23 +39,22 @@ const QuestViewEditButton = (props: QuestViewEditButtonProps) => {
       {/* Labelled and full size, per the mockup. It was a 28px icon-only
           ghost button, which read as a hint next to the lifecycle button
           rather than its peer. The label hides on narrow screens, the same
-          way the lifecycle button's does, so the pair shrinks together. */}
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              type="button"
-              variant="outline"
-              aria-label={tr("quest.view.edit")}
-              onClick={() => setShowDialog(true)}
-            />
-          }
-        >
-          <Pencil className="size-4" />
-          <span className="hidden sm:inline">{tr("quest.view.edit")}</span>
-        </TooltipTrigger>
-        <TooltipContent>{tr("quest.view.edit")}</TooltipContent>
-      </Tooltip>
+          way the lifecycle button's does, so the pair shrinks together.
+
+          No tooltip. It said "Edit" beside a button that says "Edit", which
+          adds nothing and delays the click (feedback #2003). Below `sm` the
+          label is hidden, but that is a touch width, where a hover tooltip
+          never fires anyway - and `aria-label` is what names the button in
+          every case. */}
+      <Button
+        type="button"
+        variant="outline"
+        aria-label={tr("quest.view.edit")}
+        onClick={() => setShowDialog(true)}
+      >
+        <Pencil className="size-4" />
+        <span className="hidden sm:inline">{tr("quest.view.edit")}</span>
+      </Button>
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent
