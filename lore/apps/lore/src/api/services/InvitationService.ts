@@ -213,22 +213,52 @@ export class InvitationService {
     if (rows.length === 0) {
       return [];
     }
-    const enriched = await Promise.all(
-      rows.map(async (inv) => {
-        const project = await this.projects.findOne({
-          where: { id: { eq: Number(inv.resourceId) } },
-        });
-        const inviter = await this.users.findOne({
-          where: { id: { eq: inv.invitedBy } },
-        });
-        return {
-          ...inv,
-          projectTitle: project?.title ?? "Project",
-          inviterName: this.formatInviterName(inviter),
-        };
-      }),
-    );
-    return enriched;
+    // Two queries for the whole inbox rather than two per invitation, and
+    // the two per invitation were SEQUENTIAL — five pending invitations
+    // cost ten D1 round trips.
+    //
+    // The inviter ids are what the dedupe is really for: one person
+    // inviting someone to six projects is six rows and one user. Two rows
+    // cannot name the same project here, since `create` refuses a second
+    // pending invitation for the same `(resource, email)` and this list is
+    // one email — `new Set` on those is defence, not a saving.
+    const projectIds = [
+      ...new Set(
+        rows
+          .map((inv) => Number(inv.resourceId))
+          .filter((id) => Number.isFinite(id)),
+      ),
+    ];
+    const inviterIds = [
+      ...new Set(rows.map((inv) => inv.invitedBy).filter(Boolean)),
+    ];
+
+    // `inArray: []` throws. `rows.length === 0` already returned above, but
+    // neither list follows from that: `resourceId` is a string column and
+    // `invitedBy` an optional one, so either can filter down to nothing
+    // while rows remain.
+    const [projects, inviters] = await Promise.all([
+      projectIds.length
+        ? this.projects.findMany({
+            where: { id: { inArray: projectIds } },
+            columns: ["id", "title"],
+          })
+        : [],
+      inviterIds.length
+        ? this.users.findMany({ where: { id: { inArray: inviterIds } } })
+        : [],
+    ]);
+
+    const projectById = new Map(projects.map((it) => [it.id, it]));
+    const inviterById = new Map(inviters.map((it) => [it.id, it]));
+
+    // A missing row keeps the behaviour a per-row `findOne` gave it: the
+    // "Project" fallback, and `formatInviterName`'s own undefined handling.
+    return rows.map((inv) => ({
+      ...inv,
+      projectTitle: projectById.get(Number(inv.resourceId))?.title ?? "Project",
+      inviterName: this.formatInviterName(inviterById.get(inv.invitedBy)),
+    }));
   }
 
   /**
