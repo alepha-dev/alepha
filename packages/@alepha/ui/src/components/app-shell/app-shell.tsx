@@ -572,25 +572,47 @@ export const AppShell = (props: AppShellProps) => {
           : "bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4"
       }
     >
-      <StatefulSidebarTrigger />
-      <Separator orientation="vertical" className="mx-2" />
+      {/* This bar is one non-wrapping flex line, and on a Lore project page it
+          carries the trigger, a separator, the breadcrumbs, a split button,
+          the search button and four header icons: about 470px of content in
+          373px at phone width. Nothing here used to be marked as the one that
+          must survive, so the overflow fell off the RIGHT end and took the
+          theme, colour-mode and account controls with it — off-screen, with no
+          horizontal scroll to reach them and no menu they collapse into.
+
+          So everything on the row is `shrink-0` with exactly one exception:
+          the breadcrumbs, which are the one thing repeated in the page below
+          and can therefore afford to give way. They truncate while there is
+          still something to read, and below `sm` they are dropped outright
+          rather than left as an unreadable sliver. */}
+      <div className="flex shrink-0 items-center">
+        <StatefulSidebarTrigger />
+        <Separator orientation="vertical" className="mx-2" />
+      </div>
       {props.breadcrumbs && props.breadcrumbs.length > 0 && (
-        <Breadcrumb>
-          <BreadcrumbList>
+        <Breadcrumb className="min-w-0 overflow-hidden max-sm:hidden">
+          {/* `flex-nowrap`: the list wraps by default, and a second line in an
+              `h-14` bar is drawn outside it. */}
+          <BreadcrumbList className="flex-nowrap">
             {props.breadcrumbs.map((crumb, i) => {
               const last = i === props.breadcrumbs!.length - 1;
               return (
                 <Fragment key={i}>
-                  <BreadcrumbItem>
+                  <BreadcrumbItem className="min-w-0">
                     {last || !crumb.href ? (
-                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      <BreadcrumbPage className="truncate">
+                        {crumb.label}
+                      </BreadcrumbPage>
                     ) : (
-                      <BreadcrumbLink render={<Link href={crumb.href} />}>
+                      <BreadcrumbLink
+                        className="truncate"
+                        render={<Link href={crumb.href} />}
+                      >
                         {crumb.label}
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>
-                  {!last && <BreadcrumbSeparator />}
+                  {!last && <BreadcrumbSeparator className="shrink-0" />}
                 </Fragment>
               );
             })}
@@ -598,7 +620,12 @@ export const AppShell = (props: AppShellProps) => {
         </Breadcrumb>
       )}
       <div className="flex-1" />
-      {props.topbarActions}
+      {/* Wrapped rather than spread straight into the header: the actions have
+          to be one `shrink-0` unit, and they keep the `gap-2` the header was
+          giving them. */}
+      <div className="flex shrink-0 items-center gap-2">
+        {props.topbarActions}
+      </div>
     </header>
   );
 
