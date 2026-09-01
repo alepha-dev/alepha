@@ -1,7 +1,9 @@
 import { MarkdownView } from "@alepha/ui/components/markdown-view/markdown-view";
 import { useI18n } from "alepha/react/i18n";
+import { Link, useRouter } from "alepha/react/router";
 
 import type { RoadmapRelease } from "@/api/schemas/roadmapReleaseSchema.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { releaseBuckets } from "@/web/app/components/project/releases/releaseBuckets.ts";
 import ReleaseProgressBar from "@/web/app/components/project/releases/ReleaseProgressBar.tsx";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -10,6 +12,11 @@ import RoadmapEpicRow from "./RoadmapEpicRow.tsx";
 
 export interface RoadmapReleaseCardProps {
   release: RoadmapRelease;
+  /**
+   * Whether the viewer belongs to this project. Gates the link on the tag and
+   * nothing else - the card's content is identical for every audience.
+   */
+  member: boolean;
 }
 
 /**
@@ -29,6 +36,7 @@ export interface RoadmapReleaseCardProps {
 const RoadmapReleaseCard = (props: RoadmapReleaseCardProps) => {
   const i18n = useI18n<I18n, "en">();
   const { tr } = i18n;
+  const router = useRouter<AppRouter>();
   const { release } = props;
   const buckets = releaseBuckets(release.progress);
 
@@ -47,9 +55,24 @@ const RoadmapReleaseCard = (props: RoadmapReleaseCardProps) => {
       <header className="flex flex-col gap-1">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           {/* The tag is the release's identity, so it leads. `title` defaults
-              to the tag server-side, and repeating it would be noise. */}
+              to the tag server-side, and repeating it would be noise.
+
+              ⚠️ The link is member-only. The release detail page lives under
+              `/:projectSlug`, which carries `$secure()`, so offering it to a
+              stranger reading a public roadmap sends them to a login screen
+              they have no account for. */}
           <h3 className="font-mono text-base font-semibold">
-            {release.tag ?? release.title}
+            {props.member && release.tag ? (
+              <Link
+                href={router.path("projectRelease", {
+                  params: { releaseTag: release.tag },
+                })}
+              >
+                {release.tag}
+              </Link>
+            ) : (
+              (release.tag ?? release.title)
+            )}
           </h3>
           {release.title && release.title !== release.tag ? (
             <span className="text-muted-foreground text-sm">
