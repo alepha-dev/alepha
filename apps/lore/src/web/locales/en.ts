@@ -565,6 +565,7 @@ export default {
   "project.settings.nav.sigils": "Sigils",
   "project.settings.nav.releases": "Releases",
   "project.settings.nav.quests": "Quests",
+  "project.settings.nav.quality": "Quality",
   "project.reports.nav.overview": "Overview",
   "project.reports.nav.quests": "Quests",
   "project.reports.nav.members": "Members",
@@ -693,6 +694,8 @@ export default {
     "Let any signed-in user send this project a bug report or feature request, and give the owner an inbox to triage them in.",
   "project.settings.feature.epics.description":
     "Group quests and folios under a bounded initiative, kept out of the backlog until you begin it.",
+  "project.settings.feature.quality.description":
+    "Show a Quality tab on Reports with the coverage and test totals your CI pushes. Pushes are kept either way; this only decides whether the tab is offered.",
   "project.settings.delete.modal.title": "Delete Project",
   "project.settings.delete.modal.description":
     "This action cannot be undone. This will permanently destroy the project and all its quests.",

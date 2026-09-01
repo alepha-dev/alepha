@@ -18,7 +18,8 @@ type ModuleFeatureKey =
   | "milestones"
   | "sigils"
   | "feedback"
-  | "epics";
+  | "epics"
+  | "quality";
 
 // Compile-time guarantee that ModuleFeatureKey stays a subset of
 // ProjectFeatures keys: if a key gets renamed in the entity, this
@@ -41,6 +42,7 @@ const DESCRIPTION_KEYS: Record<
   | "project.settings.feature.sigils.description"
   | "project.settings.feature.feedback.description"
   | "project.settings.feature.epics.description"
+  | "project.settings.feature.quality.description"
 > = {
   kanban: "project.settings.feature.kanban.description",
   folios: "project.settings.feature.folios.description",
@@ -48,6 +50,7 @@ const DESCRIPTION_KEYS: Record<
   sigils: "project.settings.feature.sigils.description",
   feedback: "project.settings.feature.feedback.description",
   epics: "project.settings.feature.epics.description",
+  quality: "project.settings.feature.quality.description",
 };
 
 const NAV_KEYS: Record<
@@ -58,6 +61,7 @@ const NAV_KEYS: Record<
   | "project.settings.nav.sigils"
   | "project.settings.nav.feedback"
   | "project.menu.epics"
+  | "project.settings.nav.quality"
 > = {
   kanban: "project.settings.nav.kanban",
   folios: "project.settings.nav.folios",
@@ -65,6 +69,7 @@ const NAV_KEYS: Record<
   sigils: "project.settings.nav.sigils",
   feedback: "project.settings.nav.feedback",
   epics: "project.menu.epics",
+  quality: "project.settings.nav.quality",
 };
 
 const ProjectSettingsFeatureSection = (

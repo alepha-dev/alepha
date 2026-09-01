@@ -69,6 +69,7 @@ const NAV_ROUTE_NAMES = [
   "projectSettingsFolios",
   "projectSettingsFeedback",
   "projectSettingsReleases",
+  "projectSettingsQuality",
   "projectSettingsQuests",
   // Reports tab bar — ReportsLayout.tsx
   "reportsOverview",

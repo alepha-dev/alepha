@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { registerAndVerify } from "./_helpers.ts";
+import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 test.describe("Project settings — feature toggles", () => {
   test("toggle a feature ON, sidebar updates, persists on reload", async ({
@@ -93,5 +93,68 @@ test.describe("Project settings — feature toggles", () => {
       { timeout: 5_000 },
     );
     await expect(sidebarReleases).toBeVisible();
+  });
+
+  /**
+   * Quality is the one module that ships OFF and has to be turned on by hand:
+   * its data is pushed by a foreign CI job, so the flag is deliberately absent
+   * from every project's defaults and the Reports tab hides until it is set.
+   * This page is the only switch there is. Before it existed, the Alepha
+   * project received a run a day and showed none of them.
+   */
+  test("Quality is off until its settings page turns it on, then Reports grows the tab", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const ts = Date.now();
+    await registerAndVerify(page, `qual${ts}@example.com`, "GoodPassw0rd");
+    const { slug } = await createProjectViaWizard(
+      page,
+      `Qual${ts}`.slice(0, 20),
+    );
+
+    const qualityTab = page.locator(`a[href="/${slug}/reports/quality"]`);
+
+    await test.step("a new project has no Quality tab", async () => {
+      await page.goto(`/${slug}/reports`);
+      await page.waitForLoadState("networkidle");
+      // A sibling tab proves Reports rendered at all: a missing Quality tab
+      // on a blank page would prove nothing.
+      await expect(
+        page.locator(`a[href="/${slug}/reports/quests"]`),
+      ).toBeVisible();
+      await expect(qualityTab).toHaveCount(0);
+    });
+
+    await test.step("its settings page reads off, and turns it on", async () => {
+      await page.goto(`/${slug}/settings/quality`);
+      await page.waitForLoadState("networkidle");
+      const qualitySwitch = page.getByRole("switch", { name: /enable/i });
+      await expect(qualitySwitch).toHaveAttribute("aria-checked", "false");
+      // Armed BEFORE the click and awaited before leaving the page. The
+      // switch flips optimistically, so `aria-checked` proves nothing about
+      // the save, and the client batches calls in a 10ms window: a navigation
+      // right after the click cancels a request that has not been sent yet.
+      // Same trap as the folio tree drag.
+      const saved = page.waitForResponse((res) =>
+        (res.request().postData() ?? "").includes('"quality"'),
+      );
+      await qualitySwitch.click();
+      expect((await saved).ok()).toBe(true);
+      await expect(qualitySwitch).toHaveAttribute("aria-checked", "true", {
+        timeout: 5_000,
+      });
+    });
+
+    await test.step("Reports offers the tab, and it opens on the nothing-pushed-yet panel", async () => {
+      await page.goto(`/${slug}/reports`);
+      await page.waitForLoadState("networkidle");
+      await expect(qualityTab).toBeVisible();
+      await qualityTab.click();
+      await expect(page).toHaveURL(new RegExp(`/${slug}/reports/quality$`));
+      // The panel prints the push command with THIS project's slug in it.
+      await expect(page.locator("pre code")).toContainText(`--project ${slug}`);
+    });
   });
 });
