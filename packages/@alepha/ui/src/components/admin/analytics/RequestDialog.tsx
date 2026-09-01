@@ -15,7 +15,14 @@ import { useState } from "react";
 export interface RequestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  dataset: string;
+  /**
+   * The endpoint that answers, from the transport.
+   *
+   * Not derived from the dataset name here: on a scoped surface the URL is
+   * where the scope is stated, and this dialog is the design's honesty check.
+   * A hardcoded admin path would quietly claim the wrong thing.
+   */
+  path: string;
   body: AdminAnalyticsQuery;
 }
 
@@ -46,7 +53,7 @@ export const RequestDialog = (props: RequestDialogProps) => {
             {tr("admin.analytics.requestTitle", { default: "Request body" })}
           </DialogTitle>
           <DialogDescription className="font-mono text-[11px]">
-            POST /api/admin/analytics/datasets/{props.dataset}/query
+            POST {props.path}
           </DialogDescription>
         </DialogHeader>
         <pre className="bg-background ring-border min-h-0 flex-1 overflow-auto rounded-lg p-3.5 font-mono text-[12px] leading-relaxed ring-1 ring-inset">

@@ -28,6 +28,7 @@ import { QuestController } from "./controllers/QuestController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
 import { RoadmapController } from "./controllers/RoadmapController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
+import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
@@ -198,6 +199,7 @@ export const LoreApi = $module({
     FeedbackController,
     SigilController,
     SigilIngestController,
+    SigilAnalyticsController,
     InsightsController,
     BlightController,
     DashboardController,

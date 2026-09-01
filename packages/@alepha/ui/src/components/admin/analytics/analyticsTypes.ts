@@ -1,4 +1,40 @@
-import type { AdminAnalyticsQuery } from "alepha/api/analytics";
+import type {
+  AdminAnalyticsQuery,
+  AdminAnalyticsResult,
+  AdminDatasetDescriptor,
+} from "alepha/api/analytics";
+
+/**
+ * How the explorer reaches an analytics API.
+ *
+ * The panel is generic over any `$analytics()` dataset because it reads the
+ * dimensions and measures out of the descriptors it is handed. This is the
+ * second half of that: it is generic over *which* endpoint answers, so the
+ * same builder serves the unrestricted admin surface and an app's own scoped
+ * one with no branch anywhere inside it.
+ *
+ * There is deliberately no `scope` or `pinned` member. A scoped endpoint
+ * publishes descriptors with its pinned dimensions already removed, so the
+ * whole UI hides them by knowing nothing about them — the group-by chips,
+ * the filter editor and the value probes all read the same descriptor and
+ * none of them can offer a key it does not list. A pin the UI had to
+ * remember to honour would be a pin some future control forgets.
+ */
+export interface AnalyticsTransport {
+  listDatasets: () => Promise<AdminDatasetDescriptor[]>;
+  queryDataset: (
+    dataset: string,
+    body: AdminAnalyticsQuery,
+  ) => Promise<AdminAnalyticsResult>;
+  /**
+   * The endpoint the request dialog names, for one dataset.
+   *
+   * Part of the transport rather than a constant, because the dialog is the
+   * design's honesty check: it must show the URL that actually answered, and
+   * on a scoped surface that URL is where the scope is visible.
+   */
+  path: (dataset: string) => string;
+}
 
 /**
  * Where the window ends. `yesterday` is the last complete UTC day; `today`
