@@ -781,8 +781,7 @@ export default {
   "release.kpi.shipped.label": "Shipped",
   "release.kpi.shipped.note": "Published $1. Reopening is the only way back.",
   "release.kpi.artifacts.label": "Artifacts",
-  "release.kpi.artifacts.preview":
-    "Sample rows tagged $1. The artifact registry is not built yet.",
+  "release.kpi.artifacts.built": "Built and kept against $1.",
 
   "release.description.label": "Description",
   "release.description.empty": "No description yet.",
@@ -795,18 +794,17 @@ export default {
   "release.contents.frozen": "frozen at publish",
 
   "release.artifacts.title": "Artifacts",
-  "release.artifacts.previewChip": "Preview",
   "release.artifacts.matchedOn": "matched on",
   "release.artifacts.column.app": "App",
   "release.artifacts.column.target": "Target",
-  "release.artifacts.column.file": "File",
   "release.artifacts.column.digest": "Digest",
   "release.artifacts.column.size": "Size",
   "release.artifacts.column.uploaded": "Uploaded",
   "release.artifacts.empty": "Nothing has been built against $1 yet.",
   "release.artifacts.emptyShort": "Nothing built against $1 yet.",
+  "release.artifacts.loading": "Reading what was built against this tag…",
   "release.artifacts.joinNote":
-    "Sample rows: the artifact registry is not built yet. The tag is the join key, which is why it is kept separate from the title. Renaming the title never breaks this list; renaming the tag orphans every artifact built against the old one.",
+    "Matched on the tag, with no link to maintain: a release and an artifact of the same name are the same fact stated twice. That is why the tag is kept separate from the title. Renaming the title never breaks this list; renaming the tag orphans every artifact built against the old one.",
 
   "release.edit.title": "Edit release",
   "release.edit.tagHint":

@@ -6,12 +6,13 @@ import {
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { useClient, useStore } from "alepha/react";
+import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import { Gauge, ListTree, Package, ScrollText } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { ReleaseChangelogGroup } from "@/api/schemas/releaseChangelogGroupSchema.ts";
@@ -20,7 +21,6 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { releaseArtifactsPreview } from "./releaseArtifactsPreview.ts";
 import ReleaseArtifactsTab from "./ReleaseArtifactsTab.tsx";
 import ReleaseChangelogPanel from "./ReleaseChangelogPanel.tsx";
 import ReleaseContents, {
@@ -172,18 +172,37 @@ const ProjectRelease = () => {
     // now-frozen copy rather than showing the live one it replaced.
   }, [release?.id, release?.releasedAt]);
 
-  // ⚠️ Sample rows - there is no artifact registry yet. Every artifact
-  // surface on this page reads this one list, so the meta line, the KPI and
-  // the tab count cannot disagree; swapping in a real client is one call.
-  // `updatedAt` rather than a clock, so the server and the browser render the
-  // same timestamps.
-  const artifacts = useMemo(
-    () =>
-      release?.tag
-        ? releaseArtifactsPreview(release.tag, release.updatedAt)
-        : [],
-    [release?.tag, release?.updatedAt],
+  /*
+    Real rows since epic #18. Every artifact surface on this page reads this
+    one list, so the tab count, the KPI and the edit sheet's warning cannot
+    disagree with the table.
+
+    ⚠️ Keyed on the TAG, which is the join: `artifacts.tag = releases.tag`,
+    with no join table and no foreign key. Retagging a release therefore
+    changes what this returns, which is exactly what the edit sheet warns
+    about.
+
+    A release with no tag asks for nothing: the query would be unanswerable,
+    and `enabled: false` is the honest way to say so rather than a request for
+    the empty string.
+  */
+  const artifactApi = useClient<ArtifactController>();
+  const { data: artifactData, loading: artifactsLoading } = useQuery(
+    {
+      enabled: Boolean(project && release?.tag),
+      key: ["release-artifacts", project?.id, release?.tag],
+      handler: async () => {
+        if (!project || !release?.tag) return undefined;
+        return await artifactApi.listArtifacts({
+          params: { projectId: project.id },
+          query: { tag: release.tag },
+        });
+      },
+    },
+    [project?.id, release?.tag],
   );
+
+  const artifacts = artifactData?.groups ?? [];
 
   const handleCopy = async () => {
     if (!changelog) return;
@@ -331,6 +350,7 @@ const ProjectRelease = () => {
             <ReleaseArtifactsTab
               tag={release.tag ?? String(release.number)}
               artifacts={artifacts}
+              loading={artifactsLoading}
             />
           )}
           {tab === "contents" && (
