@@ -43,6 +43,7 @@ import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
+import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
@@ -315,7 +316,22 @@ export class AppRouter {
      * is the QuestGraph incident (folio #1057).
      */
     loader: async ({ user }) => {
-      if (!user) return;
+      if (!user) {
+        // An anonymous visitor gets the hero, whose primary button is the
+        // only thing on the page. Which button that should be depends on
+        // whether signups are open, so the answer has to be here rather than
+        // in a client fetch that lands after the first paint and swaps the
+        // CTA under the cursor. `getRealmConfig` carries an `$etag`, so a
+        // returning visitor pays a 304.
+        const realmConfig = await this.realmApi
+          .getRealmConfig()
+          .catch(() => undefined);
+        this.alepha.store.set(realmSettingsAtom, {
+          registrationAllowed:
+            realmConfig?.settings.registrationAllowed !== false,
+        });
+        return;
+      }
       const dashboard = await this.dashboardApi
         .listCards({})
         .catch(() => undefined);

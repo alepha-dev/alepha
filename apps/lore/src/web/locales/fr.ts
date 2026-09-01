@@ -37,6 +37,9 @@ export default {
   "home.create-project.max": "Limite atteinte ($1)",
   "home.start-first-project": "Lancer votre premier projet",
   "home.already-registered": "Déjà inscrit ? Se connecter",
+  "home.sign-in": "Se connecter",
+  "home.registration-closed":
+    "Les inscriptions se font uniquement sur invitation pour le moment. Si vous avez été invité, ouvrez le lien reçu par e-mail.",
   "auth.register.intent.createProject":
     "Avant de créer un projet, créez un compte.",
 
