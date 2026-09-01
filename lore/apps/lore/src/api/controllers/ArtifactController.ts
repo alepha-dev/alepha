@@ -157,6 +157,14 @@ export class ArtifactController {
          * to a release is tag equality, with no join table and no foreign key.
          */
         tag: releaseTagSchema.optional(),
+        /**
+         * How many ROWS to read before grouping, not how many groups to
+         * return: a tag with two runtimes is two rows and one group. The
+         * response says `truncated` when this bit, which is the honest thing
+         * a caller can act on - narrowing by `app` or `tag` is the answer,
+         * never a second page.
+         */
+        limit: z.integer().min(1).max(500).optional(),
       }),
       response: artifactListSchema,
     },
@@ -165,6 +173,7 @@ export class ArtifactController {
         projectId: params.projectId,
         app: query.app,
         tag: query.tag,
+        limit: query.limit,
       });
 
       return {
