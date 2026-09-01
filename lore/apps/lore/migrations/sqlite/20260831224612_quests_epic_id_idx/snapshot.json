@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "65cb2388-ba68-423f-9851-0b9b5b73a057",
-  "prevIds": ["d5d0a629-b05a-43d4-b1fb-da533a44ea3e"],
+  "id": "3453938c-3ee3-49d5-a40b-4263c76ed453",
+  "prevIds": ["b98cedfa-da14-4cc6-9da5-009e3a1ca0ca"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -2571,16 +2571,6 @@
       "default": "(unixepoch('subsec') * 1000)",
       "generated": null,
       "name": "updated_at",
-      "entityType": "columns",
-      "table": "invitations"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
       "entityType": "columns",
       "table": "invitations"
     },
@@ -5386,16 +5376,6 @@
     },
     {
       "type": "integer",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "expires_at",
-      "entityType": "columns",
-      "table": "verification"
-    },
-    {
-      "type": "integer",
       "notNull": true,
       "autoincrement": false,
       "default": "0",
@@ -5711,6 +5691,17 @@
       "name": "fk_identities_user_id_users_id_fk",
       "entityType": "fks",
       "table": "identities"
+    },
+    {
+      "columns": ["invited_by"],
+      "tableTo": "users",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_invitations_invited_by_users_id_fk",
+      "entityType": "fks",
+      "table": "invitations"
     },
     {
       "columns": ["user_id"],
@@ -7736,6 +7727,20 @@
       "where": null,
       "origin": "manual",
       "name": "quests_release_id_idx",
+      "entityType": "indexes",
+      "table": "quests"
+    },
+    {
+      "columns": [
+        {
+          "value": "epic_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "quests_epic_id_idx",
       "entityType": "indexes",
       "table": "quests"
     },

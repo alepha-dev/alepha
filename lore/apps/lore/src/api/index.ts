@@ -25,6 +25,7 @@ import { QualityController } from "./controllers/QualityController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
+import { RoadmapController } from "./controllers/RoadmapController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
@@ -46,6 +47,7 @@ import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
+import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -68,6 +70,7 @@ import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.
 import { QuestService } from "./services/QuestService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
+import { RoadmapService } from "./services/RoadmapService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
@@ -103,6 +106,8 @@ export const LoreApi = $module({
     ProjectSecurityService,
     ReleaseAttachmentService,
     ReleaseContentService,
+    RoadmapService,
+    EpicDependencyService,
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,
@@ -171,6 +176,7 @@ export const LoreApi = $module({
     FeedbackCommentController,
     ProjectController,
     ReleaseController,
+    RoadmapController,
     EpicController,
     AreaController,
     ProjectReportsController,

@@ -40,6 +40,22 @@ export class ActiveQuestsMetric implements DashboardMetricResolver {
   protected readonly openQuests = $inject(OpenQuestScope);
   protected readonly catalog = $inject(DashboardMetricCatalog);
 
+  /**
+   * ONE statement for every card on this metric, partitioned in memory.
+   *
+   * `resolveAll` is a batching seam and it used to loop, so the registry's
+   * grouping bought nothing: N cards cost N sequential rounds of queries at
+   * a D1 round trip each. Reading the union of the scopes and narrowing per
+   * card afterwards costs the same one statement whether the reader pinned
+   * one tile or six.
+   *
+   * ⚠️ The backlog gate survives the union, and that is the load-bearing
+   * detail. `applyBacklogGateAcross` excludes quests whose `epicId` is in
+   * the planned set of the projects it was given; an epic belongs to
+   * exactly one project, so the union's planned set is precisely the union
+   * of each project's own. Intersecting the rows with a card's scope
+   * afterwards therefore gives the same answer as gating that scope alone.
+   */
   async resolveAll(
     cards: DashboardResolvable[],
   ): Promise<
@@ -50,16 +66,34 @@ export class ActiveQuestsMetric implements DashboardMetricResolver {
       Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames">
     >();
 
+    // `inArray: []` throws, so a board whose every card resolved to an
+    // empty scope must not reach the query. Each card still answers zero
+    // below, on its own `projectIds.length === 0` branch.
+    const union = [
+      ...new Set(cards.flatMap((entry) => entry.scope.projectIds)),
+    ];
+
+    // Read the rows rather than counting twice: the footer needs the
+    // new/accepted split and the link needs to know which project holds the
+    // most, and both come out of the columns this one statement returns.
+    const rows = union.length
+      ? await this.quests.findMany({
+          where: await this.openQuests.where(union),
+          columns: ["projectId", "acceptedAt"],
+        })
+      : [];
+
     for (const entry of cards) {
-      out.set(entry.card.id, await this.resolveOne(entry));
+      out.set(entry.card.id, this.resolveOne(entry, rows));
     }
 
     return out;
   }
 
-  protected async resolveOne(
+  protected resolveOne(
     entry: DashboardResolvable,
-  ): Promise<Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames">> {
+    rows: Array<{ projectId: number; acceptedAt?: string }>,
+  ): Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames"> {
     const { statuses } = entry.filters as ActiveQuestsFilters;
     const projectIds = entry.scope.projectIds;
 
@@ -67,19 +101,12 @@ export class ActiveQuestsMetric implements DashboardMetricResolver {
       return { value: 0, detail: { newCount: 0, acceptedCount: 0 } };
     }
 
-    const where = await this.openQuests.where(projectIds);
-
-    // Read the rows rather than counting twice: the footer needs the
-    // new/accepted split and the link needs to know which project holds the
-    // most, and both come out of the columns this one statement returns.
-    const rows = await this.quests.findMany({
-      where,
-      columns: ["projectId", "acceptedAt"],
-    });
-
+    const scoped = new Set(projectIds);
     const wanted = new Set(statuses);
-    const counted = rows.filter((row) =>
-      wanted.has(row.acceptedAt ? "accepted" : "new"),
+    const counted = rows.filter(
+      (row) =>
+        scoped.has(row.projectId) &&
+        wanted.has(row.acceptedAt ? "accepted" : "new"),
     );
 
     const newCount = counted.filter((row) => !row.acceptedAt).length;

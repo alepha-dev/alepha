@@ -116,6 +116,17 @@ export class KanbanController {
       // Rank the whole column on first use. Doing it here rather than in a
       // migration is what let `board_rank` ship as a bare ADD COLUMN on
       // `quests` — the CASCADE parent a rebuild would empty.
+      //
+      // ⚠️ This loop is one D1 round trip per quest and is DELIBERATELY
+      // left that way. Every row takes a different rank, so it cannot
+      // collapse into an `updateMany` the way the column rename and the
+      // dependents clear did; `Repository` exposes no way to send N
+      // statements in one round trip, and `Promise.all` does not overlap
+      // D1 round trips on this stack. Deferring it to a job is not open
+      // either: the move computes its own rank from `rankOf`, which reads
+      // the ranks this loop has just written, so the backfill has to be
+      // visible to the request that triggered it. It runs once per column,
+      // on the first drag. Revisit if the ORM ever grows a batch API.
       if (column.some((row) => !row.boardRank)) {
         const ranks = this.rank.sequence(column.length);
         for (const [index, row] of column.entries()) {

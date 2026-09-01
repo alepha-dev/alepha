@@ -678,6 +678,23 @@ export default {
     "Affiche le court résumé que chaque folio conserve pour les agents IA. Il est toujours enregistré et toujours lisible via MCP. Ceci décide seulement si le champ apparaît à la lecture ou à l’édition.",
   "project.settings.feature.releases.description":
     "Regroupez épopées et quêtes dans des versions nommées, avec leur avancement et leur journal.",
+  "project.settings.roadmap.title": "Feuille de route",
+  "project.settings.roadmap.description":
+    "Une page en lecture seule listant vos versions ouvertes et les épopées qu’elles contiennent. Ni quêtes, ni noms, ni backlog.",
+  "project.settings.roadmap.visibility.label": "Qui peut la voir",
+  "project.settings.roadmap.delay":
+    "Un changement peut mettre jusqu’à une minute à atteindre les visiteurs.",
+  "project.settings.roadmap.level.off": "Désactivée",
+  "project.settings.roadmap.level.members": "Membres seulement",
+  "project.settings.roadmap.level.public": "Publique",
+  "project.settings.roadmap.url.label": "Lien",
+  "project.settings.roadmap.url.copy": "Copier le lien de la feuille de route",
+  "project.settings.roadmap.url.copied": "Lien copié.",
+  "project.settings.roadmap.publicConfirm.title":
+    "Publier cette feuille de route ?",
+  "project.settings.roadmap.publicConfirm.description":
+    "Toute personne disposant du lien verra vos étiquettes de version, leurs dates cibles et les titres des épopées qu’elles contiennent, y compris les épopées que vous n’avez pas encore commencées.",
+  "project.settings.roadmap.publicConfirm.confirm": "Rendre publique",
   "project.settings.feature.sigils.description":
     "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals, un jeton par application.",
   "project.settings.feature.feedback.description":
@@ -792,6 +809,18 @@ export default {
   "release.bucket.shelved": "écartées",
   "release.bucket.share": "$1 % de $2",
   "release.bucket.outside": "hors des $1",
+
+  "roadmap.subtitle": "Ce qui est en cours, et ce qui arrive ensuite.",
+  "roadmap.empty": "Rien sur la feuille de route pour l’instant.",
+  "roadmap.section.upcoming": "À venir",
+  "roadmap.section.shipped": "Livré",
+  "roadmap.release.estimated": "Estimée au $1",
+  "roadmap.release.released": "Livrée le $1",
+  "roadmap.release.noDate": "Pas encore de date estimée",
+  "roadmap.epic.ref": "Épopée $1",
+  "roadmap.epic.ratio": "$1/$2",
+  "roadmap.epic.after": "Après l’épopée $1",
+  "roadmap.poweredBy": "Feuille de route publiée avec Alepha Lore.",
 
   "release.kpi.ready.label": "Prête à livrer",
   "release.kpi.ready.remaining.one": "1 quête reste à livrer.",
