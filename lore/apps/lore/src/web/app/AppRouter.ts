@@ -1212,6 +1212,7 @@ export class AppRouter {
       this.projectSettingsFeedback,
       this.projectSettingsSigils,
       this.projectSettingsReleases,
+      this.projectSettingsQuality,
       this.projectSettingsQuests,
     ],
     head: (_props, previous) => ({
@@ -1352,6 +1353,21 @@ export class AppRouter {
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsEpicsPage.tsx"),
+  });
+
+  /**
+   * The `features.quality` switch. The Reports Quality tab is gated on it and
+   * the flag is absent from every project's defaults, so until this page
+   * existed nothing in the UI could ever show a run CI had pushed.
+   */
+  projectSettingsQuality = $page({
+    name: "projectSettingsQuality",
+    path: "/quality",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Quality`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsQualityPage.tsx"),
   });
 
   projectSettingsFeedback = $page({

@@ -10,6 +10,7 @@ import {
   BookMarked,
   BookOpen,
   Flag,
+  Gauge,
   Inbox,
   KanbanSquare,
   Layers,
@@ -35,6 +36,7 @@ type RouteName =
   | "projectSettingsFeedback"
   | "projectSettingsSigils"
   | "projectSettingsReleases"
+  | "projectSettingsQuality"
   | "projectSettingsQuests";
 
 type NavLabelKey =
@@ -47,6 +49,7 @@ type NavLabelKey =
   | "project.settings.nav.feedback"
   | "project.settings.nav.sigils"
   | "project.settings.nav.releases"
+  | "project.settings.nav.quality"
   | "project.settings.nav.quests";
 
 type NavGroupLabelKey = "project.settings.nav.group.features";
@@ -119,6 +122,11 @@ const NAV_GROUPS: NavGroup[] = [
         route: "projectSettingsReleases",
         labelKey: "project.settings.nav.releases",
         icon: BookMarked,
+      },
+      {
+        route: "projectSettingsQuality",
+        labelKey: "project.settings.nav.quality",
+        icon: Gauge,
       },
     ],
   },

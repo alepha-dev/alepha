@@ -572,6 +572,7 @@ export default {
   "project.settings.nav.sigils": "Sigils",
   "project.settings.nav.releases": "Versions",
   "project.settings.nav.quests": "Quêtes",
+  "project.settings.nav.quality": "Qualité",
   "project.reports.nav.overview": "Vue d'ensemble",
   "project.reports.nav.quests": "Quêtes",
   "project.reports.nav.members": "Groupe",
@@ -702,6 +703,8 @@ export default {
     "Autorisez tout utilisateur connecté à envoyer un rapport de bug ou une demande de fonctionnalité à ce projet, et donnez au propriétaire une boîte de réception pour les trier.",
   "project.settings.feature.epics.description":
     "Regroupez quêtes et folios sous une initiative bornée, tenue hors du backlog tant qu'elle n'est pas commencée.",
+  "project.settings.feature.quality.description":
+    "Affiche un onglet Qualité dans les rapports, avec la couverture et le total des tests envoyés par votre CI. Les envois sont conservés dans tous les cas ; ce réglage décide seulement si l'onglet est proposé.",
   "project.settings.delete.modal.title": "Détruire le projet",
   "project.settings.delete.modal.description":
     "Cette action est irréversible. Le projet et toutes ses quêtes seront définitivement perdus.",

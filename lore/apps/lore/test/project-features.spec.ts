@@ -173,4 +173,43 @@ describe("ProjectController feature flags", () => {
       milestones: false,
     });
   });
+
+  /**
+   * The Reports Quality tab reads `features.quality` off the project the
+   * `project` route loader fetched BY SLUG, not by id, and that read serves
+   * the project row from a 30s cache. The order below is the settings page's:
+   * load the project (cache filled), flip the flag, navigate (read again).
+   * The flag is optional and outside the defaults, so nothing else pins that
+   * it comes back through this path.
+   */
+  it("hands an optional flag back on the by-slug read the app boots from", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const created = await ctx.projectController.createProject.fetch(
+      { body: { title: "Test Project" } },
+      { user },
+    );
+    const slug = created.data.slug;
+
+    const before = await ctx.projectController.getProjectBySlug.fetch(
+      { params: { slug } },
+      { user },
+    );
+    expect(before.data.features.quality).toBeUndefined();
+
+    await ctx.projectController.updateProjectById.fetch(
+      {
+        params: { id: created.data.id },
+        body: { features: { quality: true } },
+      },
+      { user },
+    );
+
+    const after = await ctx.projectController.getProjectBySlug.fetch(
+      { params: { slug } },
+      { user },
+    );
+    expect(after.data.features.quality).toBe(true);
+  });
 });
