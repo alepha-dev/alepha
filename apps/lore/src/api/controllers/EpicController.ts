@@ -506,7 +506,6 @@ export class EpicController {
     return { ...epic, progress, questCount: progress.total, dependsOnNumber };
   }
 
-
   /**
    * What an epic with no quests reports. `aggregate()` returns no row at
    * all for an empty group, so the caller supplies the zeros rather than
