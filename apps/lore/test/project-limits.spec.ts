@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { InvitationService } from "alepha/api/invitations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
@@ -12,7 +13,6 @@ import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { InvitationService } from "../src/api/services/InvitationService.ts";
 import { ProjectLimits } from "../src/api/services/ProjectLimits.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -258,6 +258,12 @@ describe("ProjectLimits enforcement", () => {
       { ...owner, email: `${owner.id}@example.com` },
     );
     const accepted = await ctx.invitationService.accept(invitation.id, guest);
-    expect(accepted.projectId).toBe(String(p.id));
+    // `accept` names the resource generically now: the module does not know
+    // a project from a booking, and Lore's controller is what maps
+    // `resourceId` back onto `projectId` for the HTTP response.
+    expect(accepted).toEqual({
+      resourceType: "project",
+      resourceId: String(p.id),
+    });
   });
 });

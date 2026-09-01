@@ -1,5 +1,6 @@
 import { AccountRouter } from "@alepha/ui/components/account/account-router";
 import { $hook, $inject, Alepha, z } from "alepha";
+import type { AdminInvitationController } from "alepha/api/invitations";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { ReactAuth } from "alepha/react/auth";
@@ -10,7 +11,6 @@ import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
-import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
 import type { AreaController } from "../../api/controllers/AreaController.ts";
 import type { BlightController } from "../../api/controllers/BlightController.ts";
 import type { DashboardController } from "../../api/controllers/DashboardController.ts";

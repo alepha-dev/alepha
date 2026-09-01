@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { InvitationService } from "alepha/api/invitations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
@@ -10,7 +11,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { InvitationController } from "../src/api/controllers/InvitationController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { InvitationService } from "../src/api/services/InvitationService.ts";
 
 /**
  * `revokeProjectInvitation` — the owner's way to take back an invitation

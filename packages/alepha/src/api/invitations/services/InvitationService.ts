@@ -1,19 +1,16 @@
 import { $inject, Alepha } from "alepha";
-import { type UserEntity, users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, type Page } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
+import { invitationConfigAtom } from "../atoms/invitationConfigAtom.ts";
 import { type InvitationEntity, invitations } from "../entities/invitations.ts";
-import { members } from "../entities/members.ts";
-import { projects } from "../entities/projects.ts";
+import type { InvitationPrincipal } from "../primitives/$invitationResource.ts";
+import { InvitationResourceProvider } from "../providers/InvitationResourceProvider.ts";
 import type { CreateInvitation } from "../schemas/createInvitationSchema.ts";
-import { invitationConfigAtom } from "../schemas/invitationConfigAtom.ts";
 import type { InvitationQuery } from "../schemas/invitationQuerySchema.ts";
-import { ProjectLimits } from "../services/ProjectLimits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 declare module "alepha" {
   interface Hooks {
@@ -39,16 +36,19 @@ declare module "alepha" {
   }
 }
 
+/**
+ * The invitation lifecycle, for any kind of resource.
+ *
+ * What is generic lives here: the status machine, the expiry, the caps, the
+ * email binding, the events, the sweeps. What is not is asked of the
+ * `$invitationResource` registered for the row's `resourceType`.
+ */
 export class InvitationService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly repo = $repository(invitations);
-  protected readonly users = $repository(users);
-  protected readonly projects = $repository(projects);
-  protected readonly members = $repository(members);
   protected readonly dateTime = $inject(DateTimeProvider);
-  protected readonly security = $inject(ProjectSecurityService);
-  protected readonly limits = $inject(ProjectLimits);
+  protected readonly resources = $inject(InvitationResourceProvider);
 
   public async getById(id: string): Promise<InvitationEntity> {
     return this.repo.getById(id);
@@ -64,21 +64,22 @@ export class InvitationService {
       throw new BadRequestError("Cannot invite yourself");
     }
 
-    await this.security.assertOwner(Number(data.resourceId), inviter);
+    const resource = this.resources.get(data.resourceType);
 
-    const existingUser = await this.users.findOne({
-      where: { email: { eq: email } },
-    });
+    // The authorization gate. First, so nothing below it leaks whether a
+    // resource exists or who is already on it to someone with no business
+    // inviting anyone to it.
+    await resource.options.assertCanInvite(data.resourceId, inviter);
 
-    if (existingUser) {
-      const alreadyMember = await this.isProjectMember(
-        data.resourceId,
-        existingUser.id,
-      );
-
-      if (alreadyMember) {
-        throw new BadRequestError("User is already a member of this resource");
-      }
+    // Asked by address, not by user id: the invitee may have no account yet,
+    // and resolving one is the application's job precisely because only it
+    // knows what being a principal means.
+    const alreadyPrincipal = await resource.options.isPrincipal(
+      data.resourceId,
+      { email },
+    );
+    if (alreadyPrincipal) {
+      throw new BadRequestError("User is already a member of this resource");
     }
 
     const pendingForSameTarget = await this.repo.findOne({
@@ -96,7 +97,7 @@ export class InvitationService {
       );
     }
 
-    await this.assertRoomForOneMore(data.resourceId);
+    await resource.options.assertRoom?.(data.resourceId);
 
     const config = this.alepha.store.get(invitationConfigAtom);
 
@@ -191,14 +192,12 @@ export class InvitationService {
 
   /**
    * Inbox: pending invitations addressed to the caller's email (case-
-   * insensitive). The user surfaces these on /account/invitations.
+   * insensitive), each described by the resolver for its own type.
    */
   public async listForUser(user: {
     id: string;
     email?: string;
-  }): Promise<
-    Array<InvitationEntity & { projectTitle: string; inviterName?: string }>
-  > {
+  }): Promise<InvitationInboxItem[]> {
     if (!user.email) {
       return [];
     }
@@ -213,22 +212,20 @@ export class InvitationService {
     if (rows.length === 0) {
       return [];
     }
-    const enriched = await Promise.all(
-      rows.map(async (inv) => {
-        const project = await this.projects.findOne({
-          where: { id: { eq: Number(inv.resourceId) } },
-        });
-        const inviter = await this.users.findOne({
-          where: { id: { eq: inv.invitedBy } },
-        });
+    return Promise.all(
+      rows.map(async (invitation) => {
+        // `find`, not `get`: a row whose type the application has since
+        // stopped registering must still be listed, so its owner can decline
+        // it. Failing the whole inbox over one such row would be worse.
+        const resource = this.resources.find(invitation.resourceType);
+        const described = await resource?.options.describe?.(invitation);
         return {
-          ...inv,
-          projectTitle: project?.title ?? "Project",
-          inviterName: this.formatInviterName(inviter),
+          ...invitation,
+          resourceTitle: described?.resourceTitle,
+          inviterName: described?.inviterName,
         };
       }),
     );
-    return enriched;
   }
 
   /**
@@ -238,7 +235,7 @@ export class InvitationService {
   public async accept(
     invitationId: string,
     acceptedBy: { id: string; email?: string },
-  ): Promise<{ projectId: string }> {
+  ): Promise<{ resourceType: string; resourceId: string }> {
     const invitation = await this.repo.getById(invitationId);
     this.assertOwnedByEmail(invitation, acceptedBy);
     if (invitation.status !== "pending") {
@@ -255,21 +252,23 @@ export class InvitationService {
       throw new BadRequestError("Invitation has expired");
     }
 
-    const alreadyMember = await this.isProjectMember(
+    const resource = this.resources.get(invitation.resourceType);
+    const principal: InvitationPrincipal = {
+      email: invitation.email,
+      userId: acceptedBy.id,
+    };
+
+    const alreadyPrincipal = await resource.options.isPrincipal(
       invitation.resourceId,
-      acceptedBy.id,
+      principal,
     );
-    if (!alreadyMember) {
+    if (!alreadyPrincipal) {
       // Checked again here, not only at invite time: pending invitations
-      // are capped separately and independently, so a project one seat
+      // are capped separately and independently, so a resource one seat
       // short of the limit can still hold several of them, and whichever
       // arrives second must be the one refused.
-      await this.assertRoomForOneMore(invitation.resourceId);
-      await this.members.create({
-        projectId: Number(invitation.resourceId),
-        userId: acceptedBy.id,
-        owner: false,
-      });
+      await resource.options.assertRoom?.(invitation.resourceId);
+      await resource.options.grant(acceptedBy.id, invitation);
     }
 
     await this.repo.updateById(invitation.id, {
@@ -280,6 +279,7 @@ export class InvitationService {
 
     this.log.info("Invitation accepted", {
       id: invitation.id,
+      resourceType: invitation.resourceType,
       resourceId: invitation.resourceId,
       acceptedBy: acceptedBy.id,
     });
@@ -289,27 +289,10 @@ export class InvitationService {
       acceptedBy,
     });
 
-    return { projectId: invitation.resourceId };
-  }
-
-  /**
-   * Refuse when the project already holds every member it is allowed.
-   *
-   * Called on both sides of an invitation: at create so the owner is told
-   * before anyone is emailed, and at accept because that is where the
-   * member row is actually written and where two invitations racing for
-   * the last seat have to be separated.
-   */
-  protected async assertRoomForOneMore(resourceId: string): Promise<void> {
-    const maxMembersPerProject = await this.limits.maxMembersPerProject();
-    const memberCount = await this.members.count({
-      projectId: { eq: Number(resourceId) },
-    });
-    if (memberCount >= maxMembersPerProject) {
-      throw new ForbiddenError(
-        `This project has reached the maximum number of members allowed (${maxMembersPerProject}).`,
-      );
-    }
+    return {
+      resourceType: invitation.resourceType,
+      resourceId: invitation.resourceId,
+    };
   }
 
   /**
@@ -464,19 +447,6 @@ export class InvitationService {
     return ids.length;
   }
 
-  protected async isProjectMember(
-    projectId: string,
-    userId: string,
-  ): Promise<boolean> {
-    const member = await this.members.findOne({
-      where: {
-        projectId: { eq: Number(projectId) },
-        userId: { eq: userId },
-      },
-    });
-    return !!member;
-  }
-
   protected assertOwnedByEmail(
     invitation: InvitationEntity,
     user: { email?: string },
@@ -485,12 +455,14 @@ export class InvitationService {
       throw new ForbiddenError("This invitation is not addressed to you");
     }
   }
-
-  protected formatInviterName(user?: UserEntity): string | undefined {
-    if (!user?.email) {
-      return undefined;
-    }
-    const at = user.email.indexOf("@");
-    return at > 0 ? user.email.slice(0, at) : user.email;
-  }
 }
+
+/**
+ * A pending invitation as its recipient sees it: the row, plus whatever the
+ * resolver for its type could say about it. Both descriptive fields are
+ * optional because a row whose resolver is gone must still be listable.
+ */
+export type InvitationInboxItem = InvitationEntity & {
+  resourceTitle?: string;
+  inviterName?: string;
+};
