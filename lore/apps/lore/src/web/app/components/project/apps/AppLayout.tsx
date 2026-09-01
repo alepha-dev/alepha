@@ -16,12 +16,18 @@ import type { I18n } from "../../../services/I18n.ts";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
 import { APP_INSIGHTS_FILTER_KEYS } from "./useAppInsights.ts";
 
-type RouteName = "app" | "appAnalytics" | "appVitals" | "appSettings";
+type RouteName =
+  | "app"
+  | "appAnalytics"
+  | "appVitals"
+  | "appExplore"
+  | "appSettings";
 
 type TabLabelKey =
   | "app.tab.dashboard"
   | "app.tab.analytics"
   | "app.tab.vitals"
+  | "app.tab.explore"
   | "app.tab.settings";
 
 interface AppTab {
@@ -39,6 +45,10 @@ const TABS: AppTab[] = [
   { route: "app", labelKey: "app.tab.dashboard" },
   { route: "appAnalytics", labelKey: "app.tab.analytics", needsBeacon: true },
   { route: "appVitals", labelKey: "app.tab.vitals", needsBeacon: true },
+  // Last before Settings on purpose. Analytics and Vitals answer the questions
+  // worth putting on a page; this one answers the ones nobody anticipated, so
+  // it belongs after the curated pair rather than in place of them.
+  { route: "appExplore", labelKey: "app.tab.explore", needsBeacon: true },
   { route: "appSettings", labelKey: "app.tab.settings" },
 ];
 

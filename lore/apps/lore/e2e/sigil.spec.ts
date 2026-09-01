@@ -526,7 +526,13 @@ test.describe("Sigils", () => {
       // Every tab exists. Scoped to the tab bar: "Settings" is also a
       // project-level sidebar entry, so a page-wide match proves nothing.
       const tabs = page.getByTestId("app-tabs");
-      for (const label of ["Dashboard", "Analytics", "Vitals", "Settings"]) {
+      for (const label of [
+        "Dashboard",
+        "Analytics",
+        "Vitals",
+        "Explore",
+        "Settings",
+      ]) {
         await expect(
           tabs.getByRole("link", { name: label, exact: true }),
         ).toBeVisible();
@@ -833,6 +839,59 @@ test.describe("Sigils", () => {
 
       // Back to Analytics on the default window, so the steps below see the
       // numbers they pin.
+      await page.goto(`/${projectSlug}/apps/${appName}/analytics`);
+      await page.waitForLoadState("networkidle");
+    });
+
+    await test.step("the Explore tab offers the query builder without the scope", async () => {
+      await page
+        .getByTestId("app-tabs")
+        .getByRole("link", { name: "Explore", exact: true })
+        .click();
+      await expect(page).toHaveURL(/\/explore$/, { timeout: 15_000 });
+
+      // The scoped endpoint answered: `from` lists a dataset, so the
+      // descriptors arrived and the member gate let them through.
+      const from = page.getByRole("combobox", { name: /pick a dataset/i });
+      await expect(from).toContainText("sigil_views", { timeout: 15_000 });
+
+      // The real assertion of the whole feature. `sigilId` is ABSENT from the
+      // published descriptor, not hidden by this page, so the group-by chips
+      // cannot offer it — while every other dimension is still there. If the
+      // pin ever stops stripping the descriptor, this is what goes red, and
+      // it goes red before anyone can group a chart by a constant.
+      await expect(page.getByTitle("group by path")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByTitle("group by country")).toBeVisible();
+      await expect(page.getByTitle("group by sigilId")).toHaveCount(0);
+
+      // ⚠️ The default window ends YESTERDAY (the last complete UTC day), and
+      // everything this run reported was stamped today — so the panel opens on
+      // "No data for this query" and that is correct, not a failure. Reaching
+      // this run's own rows means moving `until` to today, which lives behind
+      // `advanced`.
+      await expect(page.getByText(/no data for this query/i)).toBeVisible({
+        timeout: 15_000,
+      });
+      await page.getByRole("button", { name: /^advanced/ }).click();
+      await page.getByRole("radio", { name: "today", exact: true }).click();
+
+      // Group by path so the rows name something assertable. `day` stays
+      // selected, so this is a second key rather than a replacement.
+      await page.getByTitle("group by path").click();
+
+      // The pin reached the QUERY, not just the descriptor: `/crawled` was
+      // reported by this sigil earlier in the run. The unit spec proves the
+      // arithmetic (2 rows, not 11); this proves it survives the real HTTP
+      // surface, `$secure` and serialization, which that spec bypasses.
+      await expect(page.getByText("/crawled").first()).toBeVisible({
+        timeout: 15_000,
+      });
+
+      // Back to Analytics on the default window: the step above this one
+      // ended there deliberately, so the leaderboard steps below can pin the
+      // numbers they expect.
       await page.goto(`/${projectSlug}/apps/${appName}/analytics`);
       await page.waitForLoadState("networkidle");
     });

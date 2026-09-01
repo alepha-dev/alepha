@@ -1024,6 +1024,7 @@ export default {
   "app.tab.dashboard": "Vue d'ensemble",
   "app.tab.analytics": "Audience",
   "app.tab.vitals": "Vitals",
+  "app.tab.explore": "Explorer",
   "app.tab.settings": "Paramètres",
   "app.dashboard.token": "Jeton",
   "app.dashboard.enrolled": "Enrôlée le",
