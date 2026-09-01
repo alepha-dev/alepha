@@ -648,7 +648,7 @@ const GroupBlock = (props: GroupBlockProps) => {
   if (props.layout === "row") {
     const hasHeading = !!(group.title || group.description);
     return (
-      <div>
+      <div className="shrink-0">
         {hasHeading && (
           // `SettingsHeading` rather than a local span pair: this is the same
           // heading `SettingsSection` renders, and the whole reason that
@@ -684,8 +684,18 @@ const GroupBlock = (props: GroupBlockProps) => {
     );
   }
 
-  const wrapperCls =
-    props.multiGroup && !isNaked ? "border rounded-md overflow-hidden" : "";
+  // `shrink-0` on every group root, titled or naked. Under `fill` the groups
+  // are flex items of a `CardContent` that has a definite height, and per the
+  // flexbox automatic-minimum-size rule an item whose computed `overflow` is
+  // not `visible` gets an auto min size of 0. The titled group is the only one
+  // carrying `overflow-hidden`, so it was the only child that could give way:
+  // once the expanded object groups overflowed the card it absorbed all of it
+  // and collapsed to nothing. `CardContent` already asked for `overflow-y-auto`
+  // and now gets to do the scrolling itself.
+  const wrapperCls = cn(
+    "shrink-0",
+    props.multiGroup && !isNaked && "overflow-hidden rounded-md border",
+  );
 
   return (
     <div className={wrapperCls}>
