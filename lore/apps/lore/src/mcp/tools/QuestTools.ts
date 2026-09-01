@@ -51,6 +51,7 @@ import {
 import { AttachmentContentService } from "../services/AttachmentContentService.ts";
 import { DiagramCheckService } from "../services/DiagramCheckService.ts";
 import { EpicRefService } from "../services/EpicRefService.ts";
+import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for quest operations.
@@ -66,6 +67,7 @@ export class QuestTools {
   protected readonly questMapper = $inject(QuestResourceMapper);
   protected readonly attachmentContent = $inject(AttachmentContentService);
   protected readonly diagrams = $inject(DiagramCheckService);
+  protected readonly projectTools = $inject(ProjectTools);
 
   /**
    * What `quest_attachment_add` accepts.
@@ -236,29 +238,8 @@ export class QuestTools {
     project?: number,
     projectName?: string,
   ): Promise<number> {
-    const projects = await this.projectController.getMyProjects();
-
-    if (project) {
-      const found = projects.find((p) => p.id === project);
-      if (!found) {
-        throw new NotFoundError(`Project with ID ${project} not found`);
-      }
-      return found.id;
-    }
-
-    if (projectName) {
-      const found = projects.find(
-        (p) => p.title.toLowerCase() === projectName.toLowerCase(),
-      );
-      if (!found) {
-        throw new NotFoundError(`Project "${projectName}" not found`);
-      }
-      return found.id;
-    }
-
-    throw new BadRequestError(
-      "Project is required. Specify project ID or project_name.",
-    );
+    // One implementation, in `ProjectTools`. See the note there.
+    return await this.projectTools.resolveProjectId(project, projectName);
   }
 
   /**

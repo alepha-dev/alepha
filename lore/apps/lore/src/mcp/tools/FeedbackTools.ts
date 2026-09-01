@@ -18,6 +18,7 @@ import {
   feedbackTriageResultSchema,
 } from "../schemas/index.ts";
 import { AttachmentContentService } from "../services/AttachmentContentService.ts";
+import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for feedback — user-submitted bug/feature requests that the
@@ -30,6 +31,7 @@ export class FeedbackTools {
   protected readonly projectController = $inject(ProjectController);
   protected readonly attachmentContent = $inject(AttachmentContentService);
   protected readonly commentController = $inject(FeedbackCommentController);
+  protected readonly projectTools = $inject(ProjectTools);
 
   /**
    * How many comments `feedback_get` inlines. Same cap and same reasoning
@@ -76,29 +78,11 @@ export class FeedbackTools {
     project?: number,
     projectName?: string,
   ): Promise<number> {
-    const projects = await this.projectController.getMyProjects();
-
-    if (project) {
-      const found = projects.find((p) => p.id === project);
-      if (!found) {
-        throw new NotFoundError(`Project with ID ${project} not found`);
-      }
-      return found.id;
-    }
-
-    if (projectName) {
-      const found = projects.find(
-        (p) => p.title.toLowerCase() === projectName.toLowerCase(),
-      );
-      if (!found) {
-        throw new NotFoundError(`Project "${projectName}" not found`);
-      }
-      return found.id;
-    }
-
-    throw new BadRequestError(
-      "Project is required. Specify project ID or project_name.",
-    );
+    // One implementation, in `ProjectTools`. This was six identical copies of
+    // an authorization check - five chances for the gate to drift, and five
+    // places to fix when it turned out to be reading the caller's whole
+    // project list to hand back the id it was given.
+    return await this.projectTools.resolveProjectId(project, projectName);
   }
 
   protected reporterName(feedback: FeedbackResource): string | undefined {

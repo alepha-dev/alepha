@@ -1,7 +1,7 @@
 import { $inject, Alepha, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { currentUserAtom } from "alepha/security";
-import { BadRequestError, NotFoundError } from "alepha/server";
+import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 
 import { pinnedContentAtom } from "../../api/atoms/pinnedContentAtom.ts";
 import { EpicController } from "../../api/controllers/EpicController.ts";
@@ -10,6 +10,7 @@ import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
 import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
+import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
 import {
   projectActivityParamsSchema,
   projectActivityResultSchema,
@@ -54,6 +55,7 @@ export class ProjectTools {
   protected readonly epicController = $inject(EpicController);
   protected readonly releaseController = $inject(ReleaseController);
   protected readonly areaService = $inject(AreaService);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly pinnedFolder = $inject(PinnedFolioFolder);
   protected readonly alepha = $inject(Alepha);
 
@@ -69,17 +71,47 @@ export class ProjectTools {
     project?: number,
     projectName?: string,
   ): Promise<number> {
-    const projects = await this.projectController.getMyProjects();
-
     if (project) {
-      const found = projects.find((p) => p.id === project);
-      if (!found) {
+      // A numeric id needs the membership check that authorizes the call, and
+      // nothing else. Reading every project the caller belongs to, mapping
+      // each one through `projectMapper.toResource`, and then handing back the
+      // id we were given was three of `feedback_list`'s five reads - spent
+      // before the tool did any of its own work. An MCP call is one operation
+      // per HTTP request, so unlike `POST /api/_batch` there is no sibling to
+      // amortize that against: it was paid in full on every tool call.
+      //
+      // `assertMember` is the same gate `$ownsProject` applies on the HTTP
+      // side, and it reads the project row through the ORM's keyed cache.
+      //
+      // ⚠️ The refusal is deliberately re-thrown as `NotFoundError`.
+      // `assertMember` answers `ForbiddenError`, which confirms the project
+      // EXISTS; this surface has never distinguished "no such project" from
+      // "not yours", and `EpicTools.spec.ts` pins that on the most
+      // destructive tool here. Same reasoning as the public roadmap's
+      // 404-never-403. Keeping the read cheap must not widen what a
+      // non-member can learn, so both refusals collapse into the message
+      // this resolver has always returned. Anything else is a real failure
+      // and propagates untouched.
+      const me = this.alepha.store.get(currentUserAtom);
+      if (!me) {
         throw new NotFoundError(`Project with ID ${project} not found`);
       }
-      return found.id;
+      try {
+        await this.projectSecurity.assertMember(project, me);
+      } catch (error) {
+        if (error instanceof ForbiddenError || error instanceof NotFoundError) {
+          throw new NotFoundError(`Project with ID ${project} not found`);
+        }
+        throw error;
+      }
+      return project;
     }
 
     if (projectName) {
+      // A name has to be compared against the titles, so this path still
+      // reads the list. It is the rarer of the two: an agent that has called
+      // any tool once is holding ids.
+      const projects = await this.projectController.getMyProjects();
       const found = projects.find(
         (p) => p.title.toLowerCase() === projectName.toLowerCase(),
       );
