@@ -548,6 +548,148 @@ describe("artifacts", () => {
     });
   });
 
+  describe("listing", () => {
+    const list = async (
+      projectId: number,
+      user: { id: string },
+      query: { app?: string; tag?: string } = {},
+    ) =>
+      ctx.artifactController.listArtifacts.fetch(
+        { params: { projectId }, query },
+        { user },
+      );
+
+    /**
+     * The property the whole `(app, tag, runtime)` key exists for. A flat list
+     * would render one release as two, on the first screen anyone sees.
+     */
+    it("folds every runtime of a tag into one group", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      await push(projectId, owner, {
+        tag: "1.2.3",
+        file: await packedArtifact({
+          manifest: { version: 1, runtime: "workerd" },
+        }),
+      });
+      await push(projectId, owner, {
+        tag: "1.2.3",
+        file: await packedArtifact({
+          manifest: { version: 1, runtime: "node" },
+        }),
+      });
+
+      const { groups } = (await list(projectId, owner)).data;
+
+      expect(groups).toHaveLength(1);
+      expect(groups[0].tag).toBe("1.2.3");
+      // Sorted by runtime, so the group does not reshuffle between two reads
+      // that pushed nothing.
+      expect(groups[0].variants.map((v) => v.runtime)).toEqual([
+        "node",
+        "workerd",
+      ]);
+    });
+
+    it("keeps two apps on the same tag apart", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      await push(projectId, owner, {
+        app: "my-app",
+        tag: "1.2.3",
+        file: await packedArtifact(),
+      });
+      await push(projectId, owner, {
+        app: "my-docs",
+        tag: "1.2.3",
+        file: await packedArtifact({ filler: "// the docs build" }),
+      });
+
+      const { groups } = (await list(projectId, owner)).data;
+
+      expect(groups).toHaveLength(2);
+      expect(groups.map((g) => g.app).sort()).toEqual(["my-app", "my-docs"]);
+    });
+
+    it("narrows to one app, and to one tag", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      await push(projectId, owner, {
+        app: "my-app",
+        tag: "1.2.3",
+        file: await packedArtifact(),
+      });
+      await push(projectId, owner, {
+        app: "my-docs",
+        tag: "2.0.0",
+        file: await packedArtifact({ filler: "// the docs build" }),
+      });
+
+      const byApp = (await list(projectId, owner, { app: "my-app" })).data;
+      expect(byApp.groups.map((g) => g.app)).toEqual(["my-app"]);
+
+      // The release page's whole query: the join to a release is tag equality.
+      const byTag = (await list(projectId, owner, { tag: "2.0.0" })).data;
+      expect(byTag.groups.map((g) => g.app)).toEqual(["my-docs"]);
+    });
+
+    /**
+     * ⚠️ Ordering by `createdAt` would bury a `latest` that moves daily under
+     * every pinned version pushed since it first appeared.
+     */
+    it("puts the most recently pushed bytes first", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact(),
+      });
+      await push(projectId, owner, {
+        tag: "1.2.3",
+        file: await packedArtifact({ filler: "// a pinned build" }),
+      });
+      // `latest` moves, which makes it the newest push again even though its
+      // row is the oldest.
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact({ filler: "// today's build" }),
+      });
+
+      const { groups } = (await list(projectId, owner)).data;
+
+      expect(groups.map((g) => g.tag)).toEqual(["latest", "1.2.3"]);
+    });
+
+    it("reports an empty project as empty rather than as an error", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+
+      const { groups, truncated } = (await list(projectId, owner)).data;
+
+      expect(groups).toEqual([]);
+      expect(truncated).toBe(false);
+    });
+
+    it("never publishes the framework file id", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, { file: await packedArtifact() });
+
+      const { groups } = (await list(projectId, owner)).data;
+
+      expect("fileId" in groups[0].variants[0]).toBe(false);
+    });
+
+    it("refuses a caller who is not a member of the project", async ({
+      expect,
+    }) => {
+      const { projectId } = await aProject();
+      const stranger = await createTestUser(ctx);
+
+      expect(await statusOf(list(projectId, stranger))).toBe(403);
+    });
+  });
+
   describe("the gate", () => {
     it("refuses a caller who is not a member of the project", async ({
       expect,
