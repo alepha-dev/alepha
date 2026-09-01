@@ -187,6 +187,61 @@ const results = await this.repo.query(
 Grouped aggregations (`sum`, `avg`, `min`, `max`, count) without writing raw SQL -
 see [Joins](/docs/guides-persistence-joins) for the aggregation pipeline it powers.
 
+A select key is normally a column, and `true` selects it as-is (which is what a
+`groupBy` key wants):
+
+```typescript
+await this.repo.aggregate({
+  select: { category: true, amount: { sum: true, avg: true } },
+  groupBy: ["category"],
+});
+// -> [{ category: "books", amount: { sum: 500, avg: 25 } }]
+```
+
+**Conditional buckets.** An operation can instead take `{ column, where }`,
+which compiles to `COUNT(CASE WHEN <where> THEN <column> END)`. Supplying
+`column` turns the key into an alias, so several differently-conditioned
+aggregates over the same column can sit side by side in one pass:
+
+```typescript
+await this.repo.aggregate({
+  select: {
+    epicId: true,
+    id: { count: true },
+    completed: {
+      count: { column: "id", where: { completedAt: { isNotNull: true } } },
+    },
+    open: {
+      count: {
+        column: "id",
+        where: {
+          acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+        },
+      },
+    },
+  },
+  where: { epicId: { inArray: epicIds } },
+  groupBy: ["epicId"],
+});
+```
+
+Four things to know about that form:
+
+- The per-aggregate `where` **narrows**, never widens. It is ANDed inside the
+  `CASE`, while the query's own `where` - carrying tenant scoping and the
+  soft-delete filter - still decides which rows the aggregate sees at all.
+- A key is **either** a column name **or** an alias: a column key may not carry
+  `column`, an alias key must carry it on every operation, and an alias may not
+  be spelled like one of the entity's columns. Anything else is refused with the
+  key named, because a misspelt column and an intended alias are indistinguishable.
+- `COUNT(CASE WHEN c THEN col END)` skips NULLs of `col` as well as rows failing
+  `c`. For "how many rows match", point `column` at a column that is never null,
+  such as the primary key. Pointing it at a nullable one asks a different (also
+  useful) question.
+- A bucket that matches nothing is `0` for `count` / `sum` / `avg`, and `null`
+  for `min` / `max` - the same empty-set answers as an unconditioned aggregate.
+
 ## Create Methods
 
 ### create

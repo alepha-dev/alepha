@@ -1625,6 +1625,16 @@ export abstract class Repository<T extends ZObject> {
     where: PgQueryWhereOrSQL<T> = {},
     opts: StatementOptions = {},
   ): Promise<number> {
+    // Announced like `findMany`, and for the reason that matters to a
+    // listener: a count is a full round trip to the database. A counter
+    // wired to this event was blind to every `count()` in the app, so the
+    // shape it exists to catch — one count per row of a page — read as zero
+    // reads.
+    await this.alepha.events.emit("repository:read:before", {
+      tableName: this.tableName,
+      query: { where },
+    });
+
     where = this.withOrganization(this.withDeletedAt(where, opts));
     const db = opts.tx === null ? this.provider.db : (opts.tx ?? this.db);
     try {
@@ -1662,12 +1672,42 @@ export abstract class Repository<T extends ZObject> {
    * });
    * // result: Array<{ category: string; amount: { sum: number; avg: number } }>
    * ```
+   *
+   * An operation may instead take `{ column, where }`, which compiles to
+   * `COUNT(CASE WHEN <where> THEN <column> END)`. `column` turns the key into
+   * an alias, so several differently-conditioned aggregates over one column
+   * can share a single pass:
+   *
+   * @example
+   * ```ts
+   * await repo.aggregate({
+   *   select: {
+   *     category: true,
+   *     id: { count: true },
+   *     paid: { count: { column: "id", where: { paidAt: { isNotNull: true } } } },
+   *   },
+   *   groupBy: ["category"],
+   * });
+   * ```
+   *
+   * ⚠️ The per-aggregate `where` NARROWS: it is ANDed inside the CASE while
+   * this query's own `where` — carrying the tenant scoping and the
+   * soft-delete filter — still governs which rows are seen at all. A key is
+   * either a column or an alias, never both and never neither; see
+   * {@link AggregateOpSelect} and `assertAggregateKey`.
    */
   public async aggregate<S extends AggregateSelect<T>>(
     query: AggregateQuery<T, S>,
     opts: StatementOptions = {},
   ): Promise<AggregateResult<T, S>[]> {
     const AGG_SEPARATOR = "___";
+
+    // Same reasoning as `count()`: one aggregate is one round trip, and a
+    // listener counting reads must see it.
+    await this.alepha.events.emit("repository:read:before", {
+      tableName: this.tableName,
+      query,
+    });
 
     // Build flat select fields
     const flatFields: Record<string, any> = {};
@@ -1686,18 +1726,56 @@ export abstract class Repository<T extends ZObject> {
       }
     };
 
+    /**
+     * The expression one operation aggregates over.
+     *
+     * `column` re-points it; `where` wraps it in a CASE so only the matching
+     * rows contribute. ⚠️ The condition is ANDed INSIDE the CASE and never
+     * touches the statement's own WHERE, which is where `withOrganization`
+     * and `withDeletedAt` live — a per-aggregate condition that replaced or
+     * short-circuited that clause would count across tenants and resurrect
+     * soft-deleted rows.
+     */
+    const aggExpr = (key: string, op: AggregateOp, spec: any) => {
+      const columnName =
+        spec && typeof spec === "object" && spec.column ? spec.column : key;
+      const column = this.col(columnName);
+      const condition =
+        spec && typeof spec === "object" && spec.where
+          ? this.toSQL(spec.where)
+          : undefined;
+      // No condition means no CASE at all: `{ count: { column: "id" } }` is
+      // just a renamed plain aggregate.
+      if (!condition) {
+        return aggFn(op, column as any);
+      }
+
+      const expr = aggFn(op, sql`CASE WHEN ${condition} THEN ${column} END`);
+
+      // ⚠️ Re-attach the column's decoder. drizzle's `min` / `max` map with
+      // the column only when the expression IS a column, and fall back to
+      // `String` otherwise — so wrapping in a CASE turned an integer max into
+      // "30" and a timestamp into whatever the driver printed. `count` /
+      // `sum` / `avg` are unaffected: they are coerced with Number() when the
+      // row is re-nested, the way they always were.
+      return op === "min" || op === "max"
+        ? (expr as SQL).mapWith(column as any)
+        : expr;
+    };
+
     for (const [key, select] of Object.entries(query.select)) {
       if (select === true) {
         flatFields[key] = this.col(key);
-      } else if (typeof select === "object" && select !== null) {
-        for (const op of Object.keys(select) as AggregateOp[]) {
-          if ((select as Record<string, boolean>)[op]) {
-            flatFields[`${key}${AGG_SEPARATOR}${op}`] = aggFn(
-              op,
-              this.col(key),
-            );
-          }
-        }
+        continue;
+      }
+      if (typeof select !== "object" || select === null) {
+        continue;
+      }
+      this.assertAggregateKey(key, select);
+      for (const op of Object.keys(select) as AggregateOp[]) {
+        const spec = (select as Record<string, unknown>)[op];
+        if (!spec) continue;
+        flatFields[`${key}${AGG_SEPARATOR}${op}`] = aggExpr(key, op, spec);
       }
     }
 
@@ -1728,28 +1806,36 @@ export abstract class Repository<T extends ZObject> {
         if (!ops || typeof ops !== "object") continue;
         for (const [op, comparisons] of Object.entries(ops)) {
           if (!comparisons || typeof comparisons !== "object") continue;
-          const aggExpr = aggFn(op as AggregateOp, this.col(key));
+          // Rebuilt from the SELECT's own spec, not from the key: a HAVING on
+          // a conditioned alias has to compare the same CASE expression the
+          // select computed, or it filters on a different number entirely.
+          const selected = (query.select as Record<string, any>)[key];
+          const spec =
+            selected && typeof selected === "object"
+              ? selected[op as AggregateOp]
+              : undefined;
+          const expr = aggExpr(key, op as AggregateOp, spec);
           for (const [cmp, val] of Object.entries(
             comparisons as Record<string, number>,
           )) {
             switch (cmp) {
               case "gt":
-                havingConditions.push(gt(aggExpr, val));
+                havingConditions.push(gt(expr, val));
                 break;
               case "gte":
-                havingConditions.push(gte(aggExpr, val));
+                havingConditions.push(gte(expr, val));
                 break;
               case "lt":
-                havingConditions.push(lt(aggExpr, val));
+                havingConditions.push(lt(expr, val));
                 break;
               case "lte":
-                havingConditions.push(lte(aggExpr, val));
+                havingConditions.push(lte(expr, val));
                 break;
               case "eq":
-                havingConditions.push(drizzleEq(aggExpr, val));
+                havingConditions.push(drizzleEq(expr, val));
                 break;
               case "ne":
-                havingConditions.push(ne(aggExpr, val));
+                havingConditions.push(ne(expr, val));
                 break;
             }
           }
@@ -1824,6 +1910,53 @@ export abstract class Repository<T extends ZObject> {
       });
     } catch (error) {
       throw this.handleError(error, "Aggregate query has failed");
+    }
+  }
+
+  /**
+   * A select key is EITHER a column name or a fresh alias, never both and
+   * never neither.
+   *
+   * The distinction cannot be inferred, and guessing it turns two different
+   * mistakes into silence. A misspelt column with no `column` beside it would
+   * become an alias over a column that does not exist; an alias spelled like
+   * a real column would shadow that column in the result, so a caller reading
+   * `row.status` would get a count instead of the status. Both are refused
+   * here, with the key named.
+   */
+  protected assertAggregateKey(key: string, select: object): void {
+    const isColumn = (this.table as any)[key] != null;
+    const withColumn: string[] = [];
+    const withoutColumn: string[] = [];
+
+    for (const [op, spec] of Object.entries(select)) {
+      if (!spec) continue;
+      (spec && typeof spec === "object" && spec.column
+        ? withColumn
+        : withoutColumn
+      ).push(op);
+    }
+
+    if (isColumn && withColumn.length > 0) {
+      throw new AlephaError(
+        `Aggregate select key '${key}' on '${this.tableName}' is a real column, so it cannot also carry 'column' ` +
+          `(on: ${withColumn.join(", ")}). Rename the key to a free-form alias, or drop 'column' to aggregate '${key}' itself.`,
+      );
+    }
+
+    if (!isColumn && withoutColumn.length > 0) {
+      throw new AlephaError(
+        `Aggregate select key '${key}' is not a column of '${this.tableName}', so it is an alias and every operation ` +
+          `under it must name the column it reads (missing on: ${withoutColumn.join(", ")}). ` +
+          "If you meant a column, check the spelling.",
+      );
+    }
+
+    if (!isColumn && key.includes("___")) {
+      throw new AlephaError(
+        `Aggregate select alias '${key}' contains '___', which separates the key from the operation in the flat ` +
+          "result and would make the row impossible to re-nest. Pick a name without it.",
+      );
     }
   }
 

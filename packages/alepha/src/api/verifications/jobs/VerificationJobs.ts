@@ -25,10 +25,24 @@ export class VerificationJobs {
       const purgeThreshold =
         this.dateTimeProvider.nowMillis() - purgeDays * dayMs;
 
+      // A row carrying its own `expiresAt` is kept until that date passes,
+      // whatever its age. `purgeDays` defaults to 1, so without this clause a
+      // seven-day invitation link would be deleted on its second day and stop
+      // resolving with no trace of why.
       await this.verificationRepository.deleteMany({
-        createdAt: {
-          lt: this.dateTimeProvider.of(purgeThreshold).toISOString(),
-        },
+        and: [
+          {
+            createdAt: {
+              lt: this.dateTimeProvider.of(purgeThreshold).toISOString(),
+            },
+          },
+          {
+            or: [
+              { expiresAt: { isNull: true } },
+              { expiresAt: { lt: this.dateTimeProvider.nowISOString() } },
+            ],
+          },
+        ],
       });
     },
   });

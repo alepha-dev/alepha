@@ -46,7 +46,10 @@ import type { sessions } from "../entities/sessions.ts";
 import { DEFAULT_USER_REALM_NAME, type users } from "../entities/users.ts";
 import { UserJobs } from "../jobs/UserJobs.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
-import { RealmProvider } from "../providers/RealmProvider.ts";
+import {
+  RealmProvider,
+  type RegistrationPreAuthorizationFn,
+} from "../providers/RealmProvider.ts";
 import { MfaService } from "../services/MfaService.ts";
 import { SessionService } from "../services/SessionService.ts";
 import { UserStorage } from "../storage/UserStorage.ts";
@@ -482,6 +485,30 @@ export interface RealmOptions {
   };
 
   settings?: Partial<RealmAuthSettings>;
+
+  /**
+   * Let SPECIFIC addresses register while `settings.registrationAllowed` is
+   * `false`, instead of the realm being open to everyone or to nobody.
+   *
+   * Consulted only when registration is closed, at both entry points that
+   * can create an account: credentials registration and OAuth first login.
+   * An app that invites by email fills this with "was this address invited";
+   * an app that does not leaves it unset and nothing changes.
+   *
+   * ```ts
+   * $realm({
+   *   settings: { registrationAllowed: false },
+   *   isPreAuthorized: async ({ email, method, token }) =>
+   *     method === "oauth"
+   *       ? invitations.hasPendingFor(email)
+   *       : invitations.redeemToken(email, token),
+   * });
+   * ```
+   *
+   * @see RegistrationPreAuthorizationFn for what it is handed and what it
+   * may answer, and for the three bypasses it deliberately is not.
+   */
+  isPreAuthorized?: RegistrationPreAuthorizationFn;
 
   identities?: {
     credentials?: true;

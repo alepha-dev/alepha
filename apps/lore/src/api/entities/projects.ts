@@ -3,6 +3,7 @@ import { $entity, db } from "alepha/orm";
 
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
+import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 
 export const projectFeaturesSchema = z.object({
   kanban: z.boolean(),
@@ -283,6 +284,22 @@ export const projects = $entity({
      * route, not in the column.
      */
     defaultSurface: z.enum(["list", "kanban"]).optional(),
+    /**
+     * Who may read this project's roadmap at `/:projectSlug/roadmap`.
+     * Absent means `off`.
+     *
+     * A dedicated column rather than a key in `features` on purpose. A
+     * tri-state does not fit a boolean bag, and `projectFeaturesSchema`'s
+     * required keys cannot be renamed while adding one to
+     * `defaultProjectFeatures` changes the column DEFAULT - which is the D1
+     * `projects` rebuild that cascade-wipes children. A separate column is
+     * both cheaper and safer.
+     *
+     * NB: `z.optional` with NO `db.default(...)`, for the same reason as
+     * `retentionDays` and `defaultSurface` above. The `off` fallback lives in
+     * `ProjectSecurityService.roadmapVisibilityOf`, not in the column.
+     */
+    roadmapVisibility: roadmapVisibilitySchema.optional(),
     /**
      * Colour token per quest tag, e.g. `{ "bug": "red", "chore": "slate" }`.
      * A tag with no entry renders neutral.

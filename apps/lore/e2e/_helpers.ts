@@ -52,6 +52,19 @@ export const extractCode = (json: string): string | null => {
 };
 
 /**
+ * Pull the invite link out of the HTML body of a dev invitation email.
+ *
+ * Returns the PATH, not the absolute URL: `PUBLIC_URL` is unset under
+ * `yarn start`, so the mail builds a root-relative address and the spec has
+ * to navigate against `baseURL` anyway.
+ */
+export const extractInviteUrl = (json: string): string | null => {
+  const body = JSON.parse(json).body as string;
+  const m = body.match(/href="([^"]*\/auth\/register\?invitation=[^"]+)"/i);
+  return m ? m[1].replace(/&amp;/g, "&") : null;
+};
+
+/**
  * Resolve an Alepha API endpoint by inspecting the SSR-injected `apiLinks`
  * map embedded in the HTML. Avoids hard-coding paths the framework derives
  * from action names.

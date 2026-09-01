@@ -15,7 +15,10 @@ import { $client } from "alepha/server/links";
 import { UserAudits } from "../audits/UserAudits.ts";
 import type { UserEntity } from "../entities/users.ts";
 import { UserNotifications } from "../notifications/UserNotifications.ts";
-import { RealmProvider } from "../providers/RealmProvider.ts";
+import {
+  RealmProvider,
+  type RegistrationPreAuthorization,
+} from "../providers/RealmProvider.ts";
 import type { CompleteRegistrationRequest } from "../schemas/completeRegistrationRequestSchema.ts";
 import type { RegisterRequest } from "../schemas/registerRequestSchema.ts";
 import type { RegistrationIntentResponse } from "../schemas/registrationIntentResponseSchema.ts";
@@ -40,6 +43,17 @@ interface RegistrationIntent {
     phone: boolean;
     captcha: boolean;
   };
+  /**
+   * Land the account with a verified email even though no code was checked.
+   *
+   * Set only when the realm's `isPreAuthorized` closure said the
+   * pre-authorization itself proves the address, which is what lets an
+   * invitation link skip a second round-trip mail the person has no reason
+   * to expect. Kept beside `requirements.email` rather than folded into it:
+   * they answer different questions, and `completeRegistration` needs both
+   * ("was a code checked" and "is the address verified").
+   */
+  emailVerified?: boolean;
   realmName?: string;
   expiresAt: string;
 }
@@ -145,10 +159,33 @@ export class RegistrationService {
       }
     }
 
-    // Check if registration is allowed
+    // Registration closed, unless the app vouches for THIS address.
+    //
+    // Consulted here and nowhere else, which is what keeps the seam from
+    // becoming three separate holes: the per-IP cap above already ran, the
+    // captcha gate below still runs, and a refusal falls through to the
+    // message a closed realm has always returned, so a prober cannot tell a
+    // pre-authorized address from any other. `RealmProvider` returns
+    // `undefined` for a realm that filled no closure, so an app that does
+    // not use this is unchanged.
+    let preAuthorized: RegistrationPreAuthorization | undefined;
     if (realmSettings?.registrationAllowed === false) {
-      this.log.warn("Registration not allowed for realm", { userRealmName });
-      throw new BadRequestError("Registration is not allowed");
+      // No address, nothing to vouch for. Refused without asking the app, so
+      // a closure cannot accidentally answer about an empty string.
+      preAuthorized = body.email
+        ? await this.realmProvider.preAuthorizeRegistration(userRealmName, {
+            email: body.email,
+            method: "credentials",
+            token: body.preAuthToken,
+          })
+        : undefined;
+      if (!preAuthorized) {
+        this.log.warn("Registration not allowed for realm", { userRealmName });
+        throw new BadRequestError("Registration is not allowed");
+      }
+      this.log.debug("Registration pre-authorized for a closed realm", {
+        userRealmName,
+      });
     }
 
     // Validate required fields based on settings
@@ -279,9 +316,18 @@ export class RegistrationService {
     // Hash the password
     const passwordHash = await this.cryptoProvider.hashPassword(body.password);
 
-    // Determine requirements based on realm settings
+    // Determine requirements based on realm settings.
+    //
+    // A pre-authorization that carries `emailVerified` stands in for the
+    // code: the app is asserting the address, so no mail is sent and none is
+    // asked for at complete time. The account still lands verified, through
+    // `intent.emailVerified` below, because the two are not the same fact.
+    const preAuthorizedEmail = preAuthorized?.emailVerified === true;
     const requirements = {
-      email: realmSettings?.verifyEmailRequired === true && !!body.email,
+      email:
+        realmSettings?.verifyEmailRequired === true &&
+        !!body.email &&
+        !preAuthorizedEmail,
       phone: realmSettings?.verifyPhoneRequired === true && !!body.phoneNumber,
       captcha: false, // validated above, single-use — no gate at complete time
     };
@@ -325,6 +371,7 @@ export class RegistrationService {
         passwordHash,
       },
       requirements,
+      emailVerified: preAuthorizedEmail || undefined,
       realmName: userRealmName,
       expiresAt,
     };
@@ -440,7 +487,9 @@ export class RegistrationService {
       picture: intent.data.picture,
       roles: realmSettings.defaultRoles,
       enabled: true,
-      emailVerified: intent.requirements.email, // Marked as verified if we verified during registration
+      // Verified if we checked a code here, or if the app pre-authorized the
+      // address and said the pre-authorization itself proved it.
+      emailVerified: intent.requirements.email || intent.emailVerified === true,
     });
 
     // Create credentials identity

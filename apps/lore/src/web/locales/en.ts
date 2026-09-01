@@ -40,8 +40,30 @@ export default {
   "home.create-project.max": "Limit reached ($1)",
   "home.start-first-project": "Start your first project",
   "home.already-registered": "Already registered? Sign in",
+  "home.sign-in": "Sign in",
+  "home.registration-closed":
+    "New accounts are invitation-only right now. If you were invited, open the link in your email.",
   "auth.register.intent.createProject":
     "Before creating a project, create an account.",
+  "auth.register.intent.invitation":
+    "You were invited to $1. Create your account to join.",
+  // Six ways an invite link can fail to open the form, each with its own
+  // sentence. None of them is the realm's generic "Registration is not
+  // available": it is true, useless, and reads as a rejection to somebody who
+  // was invited.
+  "auth.invitation.accountExists":
+    "You already have an account with this address. Sign in and the invitation will be waiting in your inbox.",
+  "auth.invitation.invalid":
+    "This invitation link is not valid. Ask whoever invited you to send a new one.",
+  "auth.invitation.expired":
+    "This invitation has expired. Ask whoever invited you to send a new one.",
+  "auth.invitation.accepted":
+    "This invitation has already been accepted. Sign in to open the project.",
+  "auth.invitation.declined":
+    "This invitation was declined. Ask whoever invited you to send a new one.",
+  "auth.invitation.revoked":
+    "This invitation was withdrawn by the project owner.",
+  "auth.invitation.signIn": "Go to sign in",
 
   "folios.title-placeholder": "Untitled",
   "folios.content-placeholder": "Start writing markdown…",
@@ -648,6 +670,22 @@ export default {
     "Reveal the short summary each folio carries for AI agents. It is always written and always readable over MCP. This only decides whether the field shows while you read or edit.",
   "project.settings.feature.releases.description":
     "Group epics and quests into named releases, each with its own progress and changelog.",
+  "project.settings.roadmap.title": "Roadmap",
+  "project.settings.roadmap.description":
+    "A read-only page listing your open releases and the epics inside them. No quests, no names, no backlog.",
+  "project.settings.roadmap.visibility.label": "Who can see it",
+  "project.settings.roadmap.delay":
+    "Changes can take up to a minute to reach visitors.",
+  "project.settings.roadmap.level.off": "Off",
+  "project.settings.roadmap.level.members": "Members only",
+  "project.settings.roadmap.level.public": "Public",
+  "project.settings.roadmap.url.label": "Link",
+  "project.settings.roadmap.url.copy": "Copy the roadmap link",
+  "project.settings.roadmap.url.copied": "Link copied.",
+  "project.settings.roadmap.publicConfirm.title": "Publish this roadmap?",
+  "project.settings.roadmap.publicConfirm.description":
+    "Anyone with the link will see your release tags, their target dates, and the titles of the epics inside them, including epics you have not started yet.",
+  "project.settings.roadmap.publicConfirm.confirm": "Make it public",
   "project.settings.feature.sigils.description":
     "Enroll your applications so they can report crashes, page views and web vitals here, one token per app.",
   "project.settings.feature.feedback.description":
@@ -761,6 +799,20 @@ export default {
   "release.bucket.shelved": "declined",
   "release.bucket.share": "$1% of $2",
   "release.bucket.outside": "outside the $1",
+
+  "roadmap.subtitle": "What is being worked on, and what is coming next.",
+  "roadmap.empty": "Nothing on the roadmap yet.",
+  "roadmap.section.upcoming": "Upcoming",
+  "roadmap.section.shipped": "Shipped",
+  // "Estimated", never "due". Nothing enforces a target date and no cron
+  // reads it, and this wording is what keeps it from reading as a promise.
+  "roadmap.release.estimated": "Estimated $1",
+  "roadmap.release.released": "Released $1",
+  "roadmap.release.noDate": "No estimated date yet",
+  "roadmap.epic.ref": "Epic $1",
+  "roadmap.epic.ratio": "$1/$2",
+  "roadmap.epic.after": "After Epic $1",
+  "roadmap.poweredBy": "Roadmap published with Alepha Lore.",
 
   "release.kpi.ready.label": "Ready to ship",
   "release.kpi.ready.remaining.one": "1 quest still to land.",

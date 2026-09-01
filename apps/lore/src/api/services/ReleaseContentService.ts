@@ -168,6 +168,62 @@ export class ReleaseContentService {
   }
 
   /**
+   * The four progress buckets over a release's quests, from the ONE source
+   * that is correct for this release's state.
+   *
+   * A released release reads its four FROZEN columns and is never recomputed;
+   * an open one is counted live from its contents. One method branching on
+   * `releasedAt`, so no caller can accidentally recompute a released one.
+   *
+   * That is not an optimisation. Completing a quest a month after `0.28.0`
+   * shipped must not silently rewrite what `0.28.0` shipped: a released
+   * release renders entirely from its own row, frozen changelog and frozen
+   * counts, with no live query at all.
+   *
+   * ⚠️ `shelved` is counted OUTSIDE `total` - see `releases.total`. The
+   * untouched remainder is `total - completed - inProgress`, and this is NOT
+   * the same denominator as `EpicController.computeProgress`, which counts
+   * every quest of the epic including the shelved ones.
+   *
+   * The three in-total buckets are disjoint, so no fifth count is needed:
+   * `shelvedAt` is only ever set on a quest still in `new` status, so it
+   * never coexists with `acceptedAt` or `completedAt`, and `inProgress`
+   * excludes both of the others.
+   *
+   * ⚠️ It lives on this service rather than on `ReleaseController` (where it
+   * was written) because the roadmap needs the same answer and a second copy
+   * of it is exactly the silent disagreement this service exists to prevent:
+   * two surfaces counting different things with nothing going red.
+   */
+  progressOf(
+    release: Release,
+    contents?: ReleaseContents,
+  ): { completed: number; inProgress: number; shelved: number; total: number } {
+    if (release.releasedAt) {
+      return {
+        completed: release.completed ?? 0,
+        inProgress: release.inProgress ?? 0,
+        shelved: release.shelved ?? 0,
+        total: release.total ?? 0,
+      };
+    }
+
+    // An open release with no contents supplied reads as empty rather than
+    // throwing: the batched caller only looks up the open ones, so a missing
+    // entry means "nothing in it", not "not fetched".
+    const quests = contents?.quests ?? [];
+
+    return {
+      completed: quests.filter((quest) => quest.completedAt != null).length,
+      inProgress: quests.filter(
+        (quest) => quest.acceptedAt != null && quest.completedAt == null,
+      ).length,
+      shelved: contents?.shelvedQuests.length ?? 0,
+      total: quests.length,
+    };
+  }
+
+  /**
    * Shared by both forms above, so the single-release and batched paths can
    * never sort the same rows differently.
    */

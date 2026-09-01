@@ -1,5 +1,6 @@
 import { Alepha } from "alepha";
 import { AlephaApiVerification } from "alepha/api/verifications";
+import { CaptchaProvider } from "alepha/captcha";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail, MemoryEmailProvider } from "alepha/email";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
@@ -138,6 +139,244 @@ describe("alepha/api/users - RegistrationService", () => {
           "no-registration-realm",
         ),
       ).rejects.toThrowError(BadRequestError);
+    });
+
+    /**
+     * The pre-authorization seam (`isPreAuthorized`), which lets an app open
+     * a closed realm for ONE address without opening it for everyone.
+     *
+     * The suite above is the "absent seam" half and is left exactly as it
+     * was on purpose: a realm that fills no closure must behave the way it
+     * did before the seam existed, and the way to assert that is to leave
+     * its tests alone.
+     */
+    it("should still reject a closed realm when the seam refuses", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider } = await setup();
+
+      const asked: string[] = [];
+      realmProvider.register("closed-refusing", {
+        settings: { registrationAllowed: false } as never,
+        isPreAuthorized: ({ email }) => {
+          asked.push(email);
+          return false;
+        },
+      });
+
+      await expect(
+        registrationService.createRegistrationIntent(
+          {
+            email: "stranger@example.com",
+            password: "SecurePassword123!",
+          },
+          "closed-refusing",
+        ),
+        // The same message a closed realm has always thrown. A refusal that
+        // read differently would tell a prober which addresses were invited.
+      ).rejects.toThrowError("Registration is not allowed");
+
+      expect(asked).toEqual(["stranger@example.com"]);
+    });
+
+    it("should let a pre-authorized address register into a closed realm", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider } = await setup();
+
+      realmProvider.register("closed-inviting", {
+        settings: { registrationAllowed: false } as never,
+        isPreAuthorized: ({ email }) => email === "invited@example.com",
+      });
+
+      const intent = await registrationService.createRegistrationIntent(
+        {
+          email: "invited@example.com",
+          password: "SecurePassword123!",
+        },
+        "closed-inviting",
+      );
+
+      expect(intent.intentId).toBeDefined();
+
+      // ...and only that address.
+      await expect(
+        registrationService.createRegistrationIntent(
+          {
+            email: "someone-else@example.com",
+            password: "SecurePassword123!",
+          },
+          "closed-inviting",
+        ),
+      ).rejects.toThrowError("Registration is not allowed");
+    });
+
+    it("should not consult the seam while the realm is open", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider } = await setup();
+
+      let consulted = 0;
+      realmProvider.register("open-with-seam", {
+        settings: { registrationAllowed: true } as never,
+        isPreAuthorized: () => {
+          consulted++;
+          return false;
+        },
+      });
+
+      const intent = await registrationService.createRegistrationIntent(
+        {
+          email: "anyone@example.com",
+          password: "SecurePassword123!",
+        },
+        "open-with-seam",
+      );
+
+      expect(intent.intentId).toBeDefined();
+      // A closure that refuses everything must not be able to close an open
+      // realm by accident.
+      expect(consulted).toBe(0);
+    });
+
+    it("should refuse a closed realm when the request carries no address", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider } = await setup();
+
+      let consulted = 0;
+      realmProvider.register("closed-no-email", {
+        settings: { registrationAllowed: false } as never,
+        isPreAuthorized: () => {
+          consulted++;
+          return true;
+        },
+      });
+
+      await expect(
+        registrationService.createRegistrationIntent(
+          {
+            username: "nomail",
+            password: "SecurePassword123!",
+          },
+          "closed-no-email",
+        ),
+      ).rejects.toThrowError("Registration is not allowed");
+
+      // There is nothing to vouch for, so the app is never asked and cannot
+      // answer about an empty address.
+      expect(consulted).toBe(0);
+    });
+
+    it("should still apply the captcha gate to a pre-authorized caller", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider, alepha } = await setup();
+
+      // A provider that accepts nothing: reaching the captcha check at all
+      // is the assertion, and any answer other than "captcha required" would
+      // mean the seam had skipped past it.
+      alepha.inject(CaptchaProvider);
+      realmProvider.register("closed-captcha", {
+        settings: {
+          registrationAllowed: false,
+          captchaRequired: true,
+        } as never,
+        isPreAuthorized: () => true,
+      });
+
+      await expect(
+        registrationService.createRegistrationIntent(
+          {
+            email: "invited@example.com",
+            password: "SecurePassword123!",
+          },
+          "closed-captcha",
+        ),
+      ).rejects.toThrowError("Captcha verification is required");
+    });
+
+    it("should hand the seam the token the caller supplied", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider } = await setup();
+
+      const seen: Array<Record<string, unknown>> = [];
+      realmProvider.register("closed-token", {
+        settings: { registrationAllowed: false } as never,
+        isPreAuthorized: (context) => {
+          seen.push({ ...context });
+          return context.token === "the-secret";
+        },
+      });
+
+      await expect(
+        registrationService.createRegistrationIntent(
+          {
+            email: "invited@example.com",
+            password: "SecurePassword123!",
+            preAuthToken: "wrong",
+          },
+          "closed-token",
+        ),
+      ).rejects.toThrowError("Registration is not allowed");
+
+      const intent = await registrationService.createRegistrationIntent(
+        {
+          email: "invited@example.com",
+          password: "SecurePassword123!",
+          preAuthToken: "the-secret",
+        },
+        "closed-token",
+      );
+      expect(intent.intentId).toBeDefined();
+
+      expect(seen[0]).toMatchObject({
+        email: "invited@example.com",
+        realm: "closed-token",
+        method: "credentials",
+        token: "wrong",
+      });
+    });
+
+    it("should skip the verification mail when the seam vouches for the address", async ({
+      expect,
+    }) => {
+      const { registrationService, realmProvider, emailProvider } =
+        await setup();
+
+      realmProvider.register("closed-verified", {
+        // `notifications` because `verifyEmailRequired` needs something able
+        // to send the code it is skipping. The realm has to be able to send
+        // one for "no mail was sent" to mean anything.
+        features: { notifications: true },
+        settings: {
+          registrationAllowed: false,
+          verifyEmailRequired: true,
+        } as never,
+        isPreAuthorized: () => ({ emailVerified: true }),
+      });
+
+      const intent = await registrationService.createRegistrationIntent(
+        {
+          email: "invited@example.com",
+          password: "SecurePassword123!",
+        },
+        "closed-verified",
+      );
+
+      // No code asked for, no mail sent: the invitation reached that mailbox
+      // already, and a second round trip is one the person did not ask for.
+      expect(intent.expectEmailVerification).toBe(false);
+      expect(emailProvider.records).toHaveLength(0);
+
+      const user = await registrationService.completeRegistration({
+        intentId: intent.intentId,
+      });
+
+      // Still verified, though. `requirements.email` says "a code was
+      // checked" and is the wrong fact to read here.
+      expect(user.emailVerified).toBe(true);
     });
 
     it("should reject when required username is missing", async ({
@@ -782,6 +1021,43 @@ describe("alepha/api/users - RegistrationService", () => {
             password: "SecurePassword123!",
           }),
         ).rejects.toThrowError(BadRequestError);
+      });
+    });
+
+    it("should rate limit a pre-authorized caller too", async ({ expect }) => {
+      const { alepha, registrationService, realmProvider } = await setup();
+
+      // A closure that says yes to everything: if the seam were a way past
+      // the limiter, this realm would have no limiter at all.
+      realmProvider.register("closed-ratelimited", {
+        settings: { registrationAllowed: false } as never,
+        isPreAuthorized: () => true,
+      });
+
+      await alepha.fork(async () => {
+        alepha.store.set("alepha.http.request", { ip: "10.0.0.7" } as never);
+
+        for (let i = 0; i < 10; i++) {
+          await registrationService
+            .createRegistrationIntent(
+              {
+                email: `preauth-${i}@example.com`,
+                password: "SecurePassword123!",
+              },
+              "closed-ratelimited",
+            )
+            .catch(() => {});
+        }
+
+        await expect(
+          registrationService.createRegistrationIntent(
+            {
+              email: "preauth-overflow@example.com",
+              password: "SecurePassword123!",
+            },
+            "closed-ratelimited",
+          ),
+        ).rejects.toThrowError("Too many registration attempts");
       });
     });
   });

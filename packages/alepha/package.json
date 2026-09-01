@@ -59,6 +59,13 @@
       "import": "./src/api/files/index.ts",
       "default": "./src/api/files/index.ts"
     },
+    "./api/invitations": {
+      "types": "./src/api/invitations/index.ts",
+      "react-native": "./src/api/invitations/index.browser.ts",
+      "browser": "./src/api/invitations/index.browser.ts",
+      "import": "./src/api/invitations/index.ts",
+      "default": "./src/api/invitations/index.ts"
+    },
     "./api/jobs": {
       "types": "./src/api/jobs/index.ts",
       "react-native": "./src/api/jobs/index.browser.ts",
@@ -515,6 +522,13 @@
         "browser": "./dist/api/files/index.browser.js",
         "import": "./dist/api/files/index.js",
         "default": "./dist/api/files/index.js"
+      },
+      "./api/invitations": {
+        "types": "./dist/api/invitations/index.d.ts",
+        "react-native": "./dist/api/invitations/index.browser.js",
+        "browser": "./dist/api/invitations/index.browser.js",
+        "import": "./dist/api/invitations/index.js",
+        "default": "./dist/api/invitations/index.js"
       },
       "./api/jobs": {
         "types": "./dist/api/jobs/index.d.ts",

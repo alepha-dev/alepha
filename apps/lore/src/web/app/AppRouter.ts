@@ -1,5 +1,6 @@
 import { AccountRouter } from "@alepha/ui/components/account/account-router";
 import { $hook, $inject, Alepha, z } from "alepha";
+import type { AdminInvitationController } from "alepha/api/invitations";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { ReactAuth } from "alepha/react/auth";
@@ -10,7 +11,6 @@ import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
-import type { AdminInvitationController } from "../../api/controllers/AdminInvitationController.ts";
 import type { AreaController } from "../../api/controllers/AreaController.ts";
 import type { BlightController } from "../../api/controllers/BlightController.ts";
 import type { DashboardController } from "../../api/controllers/DashboardController.ts";
@@ -24,6 +24,7 @@ import type { ProjectReportsController } from "../../api/controllers/ProjectRepo
 import type { QualityController } from "../../api/controllers/QualityController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
 import type { ReleaseController } from "../../api/controllers/ReleaseController.ts";
+import type { RoadmapController } from "../../api/controllers/RoadmapController.ts";
 import type { SigilController } from "../../api/controllers/SigilController.ts";
 import { currentAreasAtom } from "./atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
@@ -43,6 +44,8 @@ import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
+import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
+import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
@@ -82,6 +85,7 @@ export class AppRouter {
   areaApi = $client<AreaController>();
   blightApi = $client<BlightController>();
   releaseApi = $client<ReleaseController>();
+  roadmapApi = $client<RoadmapController>();
   sigilApi = $client<SigilController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
@@ -175,6 +179,7 @@ export class AppRouter {
       this.project,
       this.projectCreate,
       this.projectFeedbackRequest,
+      this.projectRoadmap,
       this.account.layout,
       this.notFound,
     ],
@@ -269,9 +274,42 @@ export class AppRouter {
     name: "register",
     head: { title: "Sign up › Alepha Lore" },
     lazy: () => import("./components/auth/AuthRegisterPage.tsx"),
-    loader: async () => {
-      const realmConfig = await this.realmApi.getRealmConfig();
-      return { realmConfig };
+    /**
+     * ⚠️ A loader's `query` holds ONLY what this schema declares, and is `{}`
+     * otherwise. Nothing says so: an undeclared param reads as `undefined`,
+     * the loader takes its no-token branch, and the page renders the ordinary
+     * register form as if the link had carried nothing. It cost an hour here.
+     * (`useRouter().query` inside the component is the raw URL query and is
+     * unaffected, which is exactly what makes the difference invisible.)
+     */
+    schema: {
+      query: z.object({
+        invitation: z.text({ maxLength: 512 }).optional(),
+      }),
+    },
+    /**
+     * `?invitation=` carries the secret from the invite mail, and it is read
+     * HERE rather than in the component because the answer decides what the
+     * page is: a form for a stranger the realm would otherwise refuse, a
+     * "sign in instead" for somebody who already has an account, or one of
+     * four dead-end explanations. Resolving it after mount would render the
+     * wrong one of those first.
+     *
+     * Behind a `catch`: an unreadable preview leaves `invitation` undefined
+     * and the page falls back to the ordinary register form, which is the
+     * behaviour that existed before the token did.
+     */
+    loader: async ({ query }) => {
+      const token = query.invitation;
+      const [realmConfig, invitation] = await Promise.all([
+        this.realmApi.getRealmConfig(),
+        token
+          ? this.invitationApi
+              .previewInvitationToken({ body: { token } })
+              .catch(() => undefined)
+          : undefined,
+      ]);
+      return { realmConfig, invitation, invitationToken: token };
     },
   });
 
@@ -315,7 +353,22 @@ export class AppRouter {
      * is the QuestGraph incident (folio #1057).
      */
     loader: async ({ user }) => {
-      if (!user) return;
+      if (!user) {
+        // An anonymous visitor gets the hero, whose primary button is the
+        // only thing on the page. Which button that should be depends on
+        // whether signups are open, so the answer has to be here rather than
+        // in a client fetch that lands after the first paint and swaps the
+        // CTA under the cursor. `getRealmConfig` carries an `$etag`, so a
+        // returning visitor pays a 304.
+        const realmConfig = await this.realmApi
+          .getRealmConfig()
+          .catch(() => undefined);
+        this.alepha.store.set(realmSettingsAtom, {
+          registrationAllowed:
+            realmConfig?.settings.registrationAllowed !== false,
+        });
+        return;
+      }
       const dashboard = await this.dashboardApi
         .listCards({})
         .catch(() => undefined);
@@ -1638,6 +1691,111 @@ export class AppRouter {
     // mount is `useEffect`-only and survives hydration.
     lazy: () =>
       import("./components/project/feedback/ProjectFeedbackRequest.tsx"),
+  });
+
+  /**
+   * The roadmap: a project's open releases and the epics inside them, read
+   * only, for an audience the project owner chooses.
+   *
+   * ⚠️ **Top-level, and unguarded, and both are load-bearing.**
+   *
+   * `/:projectSlug` carries `use: [$secure()]`, which member-gates its whole
+   * subtree AND puts it in CSR - so a child route there would render no HTML
+   * a crawler could ever read, which is most of what this page is for. Two
+   * routes cannot own one path either, so there is exactly ONE route here and
+   * the members view (#1561) renders into it rather than beside it.
+   *
+   * `projectFeedbackRequest` escapes the same guard the same way, and this
+   * route shares its tree position. The param MUST therefore be named
+   * `projectSlug`: `RouterProvider.push` keeps one param name per position,
+   * and two routes naming it differently collapse onto one, the outer wins,
+   * and the inner value arrives missing.
+   *
+   * Being unguarded is also what makes it server-render, since Lore derives
+   * the mode from the guard rather than setting it (`test/app-ssr-mode.spec.ts`
+   * pins that, and pins this route as public).
+   *
+   * The gate is `projects.roadmapVisibility`, applied by the endpoint: `off`
+   * and a project whose slug does not exist both 404 with the same message,
+   * because a 403 would confirm the project exists.
+   */
+  projectRoadmap = $page({
+    name: "projectRoadmap",
+    path: "/:projectSlug/roadmap",
+    schema: {
+      params: z.object({ projectSlug: z.string() }),
+    },
+    head: (props) => {
+      const roadmap = (
+        props as { roadmap?: { project?: { title?: string } } } | undefined
+      )?.roadmap;
+      return {
+        title: `${roadmap?.project?.title ?? "Roadmap"} › Roadmap`,
+      };
+    },
+    lazy: () => import("./components/project/roadmap/ProjectRoadmap.tsx"),
+    /*
+     * ⚠️ Buffered, so the page can answer a real 404.
+     *
+     * A streamed page flushes its `<head>` before the loader runs, which
+     * commits the status. This route can legitimately not exist - the slug
+     * may be nobody's, or the roadmap may be off - and it is the ONE page in
+     * Lore a crawler reaches, so a 200 carrying an error would be indexed as
+     * a real page. `/:projectSlug/roadmap` matches any root segment, so that
+     * would be an unbounded surface of soft 404s rather than one.
+     *
+     * The cost is the first byte waiting for the whole render, which for a
+     * page this small is what the correct status is worth.
+     */
+    stream: false,
+    onServerResponse: ({ reply }) => {
+      if (this.alepha.store.get(roadmapNotFoundAtom)?.missing) {
+        reply.status = 404;
+      }
+    },
+    errorHandler: (error) => {
+      // Same shape as the `project` route's: a 404 renders the real
+      // not-found page rather than the layout's generic ErrorPage.
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+    loader: async ({ params, user }) => {
+      try {
+        /*
+         * Which endpoint answers is decided by whether there is a session,
+         * and NOT by the project's visibility - which the client has no way
+         * to know before asking, and must not be told.
+         *
+         * The member action also serves a `public` roadmap, so a signed-in
+         * stranger takes that path and gets `member: false` rather than a
+         * refusal. Only a visitor with no session at all reaches the
+         * anonymous one, which is what keeps its guarantee - a body that
+         * cannot depend on who is asking - intact.
+         */
+        if (user) {
+          const { member, ...roadmap } = await this.roadmapApi.getMemberRoadmap(
+            { params: { slug: params.projectSlug } },
+          );
+          return { roadmap, member };
+        }
+
+        const roadmap = await this.roadmapApi.getPublicRoadmap({
+          params: { slug: params.projectSlug },
+        });
+        // A visitor with no session is never a member, so the page offers no
+        // links into the member-gated release pages.
+        return { roadmap, member: false };
+      } catch (error) {
+        if (HttpError.is(error, 404)) {
+          // The only way to tell `onServerResponse` what happened: it gets
+          // the request and nothing about the loader. See
+          // `roadmapNotFoundAtom`.
+          this.alepha.store.set(roadmapNotFoundAtom, { missing: true });
+        }
+        throw error;
+      }
+    },
   });
 
   notFound = $page({

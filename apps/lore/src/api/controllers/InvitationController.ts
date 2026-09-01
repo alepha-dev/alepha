@@ -1,18 +1,28 @@
 import { $inject, z } from "alepha";
+import {
+  createInvitationSchema,
+  invitationResourceSchema,
+  InvitationService,
+  InvitationTokenService,
+} from "alepha/api/invitations";
+import { users } from "alepha/api/users";
+import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
-import { createInvitationSchema } from "../schemas/createInvitationSchema.ts";
+import { projects } from "../entities/projects.ts";
 import { invitationInboxItemSchema } from "../schemas/invitationInboxItemSchema.ts";
-import { invitationResourceSchema } from "../schemas/invitationResourceSchema.ts";
-import { InvitationService } from "../services/InvitationService.ts";
+import { invitationTokenPreviewSchema } from "../schemas/invitationTokenPreviewSchema.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class InvitationController {
   protected readonly url = "/invitations";
   protected readonly group = "invitations";
   protected readonly invitationService = $inject(InvitationService);
+  protected readonly invitationTokens = $inject(InvitationTokenService);
   protected readonly security = $inject(ProjectSecurityService);
+  protected readonly users = $repository(users);
+  protected readonly projects = $repository(projects);
 
   /**
    * Create a new invitation.
@@ -124,6 +134,59 @@ export class InvitationController {
   });
 
   /**
+   * What the register page needs before it renders anything, for a visitor
+   * who arrived on an invite link and has no session at all.
+   *
+   * **Unauthenticated on purpose**, and that is the whole design constraint:
+   * the caller is a stranger holding a secret from a mailbox. The token is
+   * the credential, so it goes in the BODY rather than a path or query
+   * segment - a secret in a URL ends up in an access log, a Referer header
+   * and the browser history.
+   *
+   * ⚠️ `accountExists` is why this exists rather than letting the form find
+   * out. Lore runs `verifyEmailRequired`, and `createRegistrationIntent`
+   * answers a taken address with a DECOY intent and "check your inbox", so an
+   * invited person who already has an account would submit the form and wait
+   * forever for a code that was never minted. The page has to know first.
+   *
+   * It also takes precedence over `ok`: whether they can register is moot
+   * once they have an account, and the answer for them is to sign in and
+   * accept from the inbox.
+   */
+  public readonly previewInvitationToken = $action({
+    method: "POST",
+    path: `${this.url}/preview`,
+    group: this.group,
+    description: "Describe an invitation link to the visitor holding it",
+    schema: {
+      body: z.object({ token: z.text({ minLength: 1, maxLength: 512 }) }),
+      response: invitationTokenPreviewSchema,
+    },
+    handler: async ({ body }) => {
+      const found = await this.invitationTokens.inspect(body.token);
+      if (found.status !== "ok") {
+        // Nothing else is disclosed on a failure: the copy for each of these
+        // is about the invitation's fate, and naming the address or the
+        // project would say more than the status already does.
+        return { status: found.status };
+      }
+
+      const project = await this.projects.findOne({
+        where: { id: { eq: Number(found.invitation.resourceId) } },
+      });
+      const existing = await this.users.findOne({
+        where: { email: { eq: found.invitation.email } },
+      });
+
+      return {
+        status: existing ? ("accountExists" as const) : ("ok" as const),
+        email: found.invitation.email,
+        projectTitle: project?.title,
+      };
+    },
+  });
+
+  /**
    * Inbox: pending invitations addressed to the current user's email.
    * Rendered at /account/invitations.
    */
@@ -135,7 +198,17 @@ export class InvitationController {
     schema: {
       response: z.array(invitationInboxItemSchema),
     },
-    handler: ({ user }) => this.invitationService.listForUser(user),
+    // The module answers `resourceTitle`, because it does not know a project
+    // from a booking. Lore's inbox has always called it `projectTitle` and
+    // still does: renaming a field the UI reads is not part of moving the
+    // code that produces it.
+    handler: async ({ user }) => {
+      const rows = await this.invitationService.listForUser(user);
+      return rows.map((row) => ({
+        ...row,
+        projectTitle: row.resourceTitle ?? "Project",
+      }));
+    },
   });
 
   /**
@@ -157,7 +230,7 @@ export class InvitationController {
     },
     handler: async ({ params, user }) => {
       const result = await this.invitationService.accept(params.id, user);
-      return { ok: true, projectId: result.projectId };
+      return { ok: true, projectId: result.resourceId };
     },
   });
 

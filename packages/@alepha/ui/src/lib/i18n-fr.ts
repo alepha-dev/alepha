@@ -150,6 +150,8 @@ export const uiFr: Record<string, string> = {
   "auth.register.disabled":
     "Les inscriptions ne sont pas ouvertes. Contactez votre administrateur.",
   "auth.register.email": "Adresse e-mail",
+  "auth.register.email.locked":
+    "C'est l'adresse à laquelle vous avez été invité.",
   "auth.register.email.verify":
     "Nous vous enverrons un code pour confirmer votre adresse.",
   "auth.register.emailCode": "Code reçu par e-mail",

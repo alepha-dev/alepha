@@ -72,6 +72,41 @@ export interface AuthRegisterProps {
    * them back to this page.
    */
   cancelPath?: string;
+  /**
+   * Render the form even though `settings.registrationAllowed` is `false`.
+   *
+   * For a visitor the application has already vouched for out of band - an
+   * invitation link, a signup code - who would otherwise meet the closed
+   * alert and stop. Presentation only: the server decides, through the
+   * realm's `isPreAuthorized` seam, and refuses this submit like any other if
+   * {@link preAuthToken} does not hold up.
+   */
+  preAuthorized?: boolean;
+  /**
+   * Pre-fill the email field and stop it being edited.
+   *
+   * Set it alongside {@link preAuthToken}, which is bound to one address:
+   * letting the field be typed over only produces a server-side refusal the
+   * visitor cannot act on.
+   */
+  lockedEmail?: string;
+  /**
+   * The application's opaque proof that this address may register into a
+   * closed realm. Passed through to the register request untouched.
+   */
+  preAuthToken?: string;
+  /**
+   * Where a successful registration lands, overriding `?redirect=`.
+   *
+   * A prop rather than a URL param because the submit handler is built ONCE,
+   * at mount, and closes over whatever `redirect` was then: a page that
+   * decides the destination and seeds the query afterwards has already
+   * missed it, and the user lands on the default with nothing to explain
+   * why. A prop is read on the render that builds the handler.
+   *
+   * Sanitised like the query value, since the two are the same kind of thing.
+   */
+  redirect?: string;
 }
 
 type Phase = "form" | "verification";
@@ -87,7 +122,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
   const userCtrl = useClient<UserController>();
   const router = useRouter();
   const { tr } = useI18n();
-  const redirect = safeRedirect(router.query.redirect);
+  const redirect = safeRedirect(props.redirect ?? router.query.redirect);
   // Surface upstream auth errors (e.g. failed OAuth callback redirects with
   // `?error=...`) — same pattern as AuthLogin. Without this the user lands on
   // a fresh-looking registration page with no clue why.
@@ -114,7 +149,12 @@ export const AuthRegister = (props: AuthRegisterProps) => {
     (it) => it.type === "CREDENTIALS",
   );
   const settings = props.realmConfig.settings;
-  const allowed = settings.registrationAllowed !== false;
+  // The realm decides, unless the application has already vouched for this
+  // particular visitor. Both halves are presentation: the gate is
+  // `RegistrationService`, which refuses a submit that the seam does not
+  // recognise however the form got rendered.
+  const allowed =
+    props.preAuthorized === true || settings.registrationAllowed !== false;
 
   const schema = useMemo(() => {
     // Optionality is decided as each field is built, because that is the only
@@ -156,6 +196,12 @@ export const AuthRegister = (props: AuthRegisterProps) => {
 
   const form = useForm({
     schema,
+    // A locked address is the form's starting value, not a field the visitor
+    // fills. It arrives before mount (the page resolves the token in its
+    // loader), which is what lets `useForm` anchor it here.
+    initialValues: props.lockedEmail
+      ? ({ email: props.lockedEmail } as never)
+      : undefined,
     handler: async (data) => {
       try {
         const intent = await userCtrl.createRegistrationIntent({
@@ -164,13 +210,18 @@ export const AuthRegister = (props: AuthRegisterProps) => {
             firstName: data.firstName,
             lastName: data.lastName,
             username: data.username,
-            email: data.email,
+            // The locked address wins over whatever the field holds: it is
+            // the one the token is bound to, and a disabled input is a
+            // presentation fact rather than a guarantee.
+            email: props.lockedEmail ?? data.email,
             phoneNumber: data.phoneNumber,
             password: data.password,
             captchaToken: captchaSiteKey ? captchaTokenRef.current : undefined,
+            preAuthToken: props.preAuthToken,
           },
         });
-        const identifier = data.username ?? data.email ?? data.phoneNumber;
+        const identifier =
+          data.username ?? props.lockedEmail ?? data.email ?? data.phoneNumber;
         if (
           intent.expectEmailVerification ||
           intent.expectPhoneVerification ||
@@ -444,6 +495,7 @@ export const AuthRegister = (props: AuthRegisterProps) => {
                   captchaRef={captchaRef}
                   onCaptchaToken={setCaptchaToken}
                   message={props.message}
+                  lockedEmail={props.lockedEmail}
                 />
               )}
             </div>
@@ -483,6 +535,7 @@ const FormPhase = (props: {
   captchaRef: React.RefObject<TurnstileWidgetHandle | null>;
   onCaptchaToken: (token: string | undefined) => void;
   message?: ReactNode;
+  lockedEmail?: string;
 }) => {
   const { tr } = useI18n();
   const [passwordFieldFocused, setPasswordFieldFocused] = useState(false);
@@ -572,15 +625,25 @@ const FormPhase = (props: {
                 <Control
                   label={tr("auth.register.email", { default: "Email" })}
                   description={
-                    settings.verifyEmailRequired
-                      ? tr("auth.register.email.verify", {
-                          default:
-                            "We'll send a verification code to confirm your email.",
+                    props.lockedEmail
+                      ? tr("auth.register.email.locked", {
+                          default: "This is the address you were invited with.",
                         })
-                      : undefined
+                      : settings.verifyEmailRequired
+                        ? tr("auth.register.email.verify", {
+                            default:
+                              "We'll send a verification code to confirm your email.",
+                          })
+                        : undefined
                   }
                   input={form.input.email}
                   icon={iconFor("email")}
+                  // Locked, not hidden: the visitor has to be able to see
+                  // which address they are about to create an account for,
+                  // and it is often not the one they would have typed. The
+                  // value lives in the form model rather than the DOM, so
+                  // disabling the input does not drop it from the submit.
+                  disabled={!!props.lockedEmail}
                 />
               )}
               {settings.phoneNumber !== "none" && form.input.phoneNumber && (
