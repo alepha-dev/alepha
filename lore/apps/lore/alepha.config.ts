@@ -1,3 +1,4 @@
+import { lore } from "@alepha/lore/cli";
 import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
 import { i18n } from "alepha/cli/i18n";
@@ -25,6 +26,19 @@ export default defineConfig({
   meta: { version: pkg.version },
   plugins: [
     devtools(),
+    // `alepha lore artifacts push`, which CI runs from THIS directory - the
+    // command packs the workspace it is run in, so it cannot run from the
+    // repo root the way `quality push` does, and a CLI plugin is opt-in per
+    // config rather than reachable by default.
+    //
+    // ⚠️ **No `project` on purpose**, unlike the root config's
+    // `lore({ project: "alepha" })`. Quality has been reporting into that
+    // project for a while; the artifact destination is still being proven, and
+    // a default baked into a committed file is a `push` with no flag landing
+    // somewhere real by accident. The CI step names it with `--project`, from
+    // a repository variable, so the destination is chosen where it can be
+    // changed without a commit.
+    lore(),
     platform({
       // Worker secrets are auto-detected from the build manifest's `env`
       // list (every `$env`-declared key), so no `secrets.keys` is needed —
