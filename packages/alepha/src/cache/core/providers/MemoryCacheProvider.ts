@@ -197,9 +197,17 @@ export class MemoryCacheProvider extends CacheProvider {
     }
 
     if (ttl) {
+      // ⚠️ `unref`, and it is not an optimisation. An eviction timer exists to
+      // free memory in a process that is still running; it has no reason to
+      // keep one alive that has finished. Refed, it did exactly that: a CLI
+      // command whose GET carried an `etag` was cached with the 300s default
+      // TTL, and the process sat idle for the rest of those 5 minutes before
+      // exiting, evicting into a store nothing would read again.
       this.store[name][key].timeout = this.dateTimeProvider.createTimeout(
         () => this.del(name, key),
         ttl,
+        undefined,
+        { unref: true },
       );
     }
 
@@ -317,9 +325,16 @@ export class MemoryCacheProvider extends CacheProvider {
       if (entry.timeout) {
         this.dateTimeProvider.clearTimeout(entry.timeout);
       }
-      entry.timeout = this.dateTimeProvider.createTimeout(() => {
-        delete this.store[name][key];
-      }, ttl);
+      // Unrefed for the same reason as `set()`: closing a counter's window is
+      // housekeeping, not work the process owes anyone before it exits.
+      entry.timeout = this.dateTimeProvider.createTimeout(
+        () => {
+          delete this.store[name][key];
+        },
+        ttl,
+        undefined,
+        { unref: true },
+      );
     }
 
     return newValue;

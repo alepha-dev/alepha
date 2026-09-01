@@ -484,11 +484,20 @@ export class DateTimeProvider {
 
   /**
    * Run a callback after a certain duration.
+   *
+   * `options.unref` arms the timer without holding the event loop open, for a
+   * callback that only tidies up: a cache eviction, a lock expiry. Refed is
+   * the right default — a timeout carrying real work must keep the process
+   * alive until it has run — but a housekeeping timer that does is a process
+   * that will not exit, and the wait is as long as the TTL. A 5-minute cache
+   * TTL kept `alepha lore quality push` alive for 5 minutes after its work,
+   * once per CI run, delaying every deploy gated on it.
    */
   public createTimeout(
     callback: () => void,
     duration: DurationLike,
     now?: number,
+    options?: TimeoutOptions,
   ): Timeout {
     if (now) {
       // `now` anchors the duration at an earlier instant: the expiry is
@@ -517,13 +526,17 @@ export class DateTimeProvider {
       // a paused clock, so `travel()` past the expiry never fired it and
       // `wait(d, { now })` hung forever — stalling any paused-clock cron
       // chain. Register it against the REMAINING time instead.
-      return this.createTimeout(callback, remaining);
+      return this.createTimeout(callback, remaining, undefined, options);
     }
 
     const timeout: Timeout = {
       now: now ?? this.now().valueOf(),
       duration: this.duration(duration).asMilliseconds(),
       callback,
+      // ⚠️ Carried on the timeout, not held in this call: `travel()` re-arms a
+      // not-yet-due timer through `registerTimer`, and a flag that lived only
+      // in the argument would silently ref it again on the way through.
+      unref: options?.unref,
       clear: () => this.clearTimeout(timeout),
     };
 
@@ -555,12 +568,31 @@ export class DateTimeProvider {
   ): void {
     if (remaining <= this.maxTimerMs) {
       timeout.timer = setTimeout(fire, remaining);
+      this.applyUnref(timeout);
       return;
     }
 
     timeout.timer = setTimeout(() => {
       this.registerTimer(timeout, remaining - this.maxTimerMs, fire);
     }, this.maxTimerMs);
+    this.applyUnref(timeout);
+  }
+
+  /**
+   * Drop the event-loop reference of `timeout.timer` when the timeout asked
+   * for it.
+   *
+   * Every hop of a chained far-future timer goes through here: unref is a
+   * property of the handle, so a new hop is refed again unless it is reapplied.
+   *
+   * Both optional calls are load-bearing rather than defensive. `setTimeout`
+   * returns a plain number in the browser and in workerd, where there is no
+   * handle to unref and nothing to keep alive either.
+   */
+  protected applyUnref(timeout: Timeout): void {
+    if (timeout.unref) {
+      timeout.timer?.unref?.();
+    }
   }
 
   public clearTimeout(timeout: Timeout): void {
@@ -746,5 +778,19 @@ export interface Timeout {
   timer?: any;
   duration: number;
   callback: () => void;
+  unref?: boolean;
   clear: () => void;
+}
+
+/**
+ * Options for {@link DateTimeProvider.createTimeout}.
+ */
+export interface TimeoutOptions {
+  /**
+   * Arm the timer without holding the event loop open.
+   *
+   * For housekeeping only — an eviction, an expiry — never for a callback
+   * whose work must happen before the process may exit.
+   */
+  unref?: boolean;
 }
