@@ -106,15 +106,25 @@ export class WorkflowProvider {
 
   /**
    * When set, step dispatches go through the `$job` queue.
-   * Set by WorkflowJobs on start. `delayMs` defers delivery (durable —
-   * it becomes a scheduled outbox row, not just a timer).
+   * Set by WorkflowJobs on start. `scheduledAt` is the step's persisted
+   * not-before instant, and defers delivery durably (a scheduled outbox
+   * row, not just a timer).
+   *
+   * An instant, not a delay, on purpose. The step row is stamped first and
+   * the dispatch pushed second, and a delay recomputed from the clock at
+   * push time disagrees with the stamp by however far the clock moved in
+   * between. On the wall clock that is milliseconds; under `travel()` it is
+   * the whole jump, and a test that saw the stamp and travelled before the
+   * push landed was left with an outbox row due minutes AFTER the clock it
+   * had just moved. The row parked in `running` forever, at roughly one CI
+   * run in five.
    */
   public stepDispatch:
     | ((
         workflowId: string,
         stepName: string,
         priority: number,
-        delayMs?: number,
+        scheduledAt?: string,
       ) => Promise<void>)
     | null = null;
 
@@ -181,6 +191,8 @@ export class WorkflowProvider {
       ? this.dt.duration(opts.steps[0].delay).as("milliseconds")
       : 0;
     const firstDispatchDelayMs = delayMs + firstStepDelayMs;
+    // The stamp below is ALSO what the dispatch is scheduled from, so the
+    // two cannot disagree.
     const firstStepScheduledAt =
       firstDispatchDelayMs > 0
         ? this.dt.now().add(firstDispatchDelayMs, "millisecond").toISOString()
@@ -287,7 +299,7 @@ export class WorkflowProvider {
           execution.id,
           firstStep.name,
           priority,
-          firstDispatchDelayMs,
+          firstStepScheduledAt,
         );
       } else {
         await this.executions.updateById(execution.id, {
@@ -329,103 +341,89 @@ export class WorkflowProvider {
     workflowId: string,
     stepName: string,
   ): Promise<void> {
-    // Per-workflow lock: two dispatches for the same execution must not
-    // interleave (a retry timer racing a sweep, or two queue deliveries).
+    // No per-workflow lock here, on purpose. There used to be one, taken
+    // before the reads below and released after the handler, and a dispatch
+    // that found it held returned without doing anything. It was sold as an
+    // optimisation over the compare-and-set claim in `executeHandlerStep`
+    // (the loser is spared the read work), but the loser's outbox row was
+    // consumed all the same, so the step it carried stayed `pending` with no
+    // stamp until the next recovery sweep. The holder was routinely a late
+    // duplicate dispatch for the PREVIOUS step that only read and returned:
+    // a real delivery was dropped for a no-op that would have released the
+    // lock a few milliseconds later. The repeat-steps test parked on its
+    // last step this way whenever a sweep nudge crossed the completion chain.
     //
-    // This is an OPTIMISATION, not the guarantee. `LockProvider` resolves to
-    // the per-isolate `MemoryLockProvider` on Cloudflare Workers, and on Node
-    // unless `alepha/lock/redis` is registered, so it excludes nothing across
-    // processes. What actually serialises a step is the compare-and-set claim
-    // in `executeHandlerStep`; the lock only spares the loser the read work.
-    const lockKey = `workflow:${workflowId}`;
-    const lockValue = `${this.crypto.randomUUID()},${this.dt.nowISOString()}`;
-    const lockResult = await this.lockProvider.set(
-      lockKey,
-      lockValue,
-      true,
-      600_000,
-    );
-    if (lockResult.split(",")[0] !== lockValue.split(",")[0]) {
-      this.log.debug(
-        `Workflow ${workflowId} locked by another worker, skipping`,
+    // Two dispatches for one step now both read, and the claim decides; the
+    // loser costs three reads instead of a lost delivery. Across processes
+    // nothing changes: `LockProvider` is per-isolate on Workers and on Node
+    // without `alepha/lock/redis`, so the lock never excluded anything there.
+    const workflow = await this.executions.findById(workflowId);
+    if (!workflow) return;
+
+    if (workflow.status !== "running" && workflow.status !== "pending") {
+      return;
+    }
+
+    const registration = this.getRegistration(workflow.workflowName);
+    const stepDef = registration.options.steps.find((s) => s.name === stepName);
+    if (!stepDef) return;
+
+    const stepExec = await this.findStepExecution(workflowId, stepName);
+    if (!stepExec) return;
+
+    if (stepExec.status !== "pending") return;
+
+    // Early arrival (an optimistic timer or a duplicate dispatch racing
+    // a scheduled delay/retry): put it back until its own stamp.
+    if (
+      stepExec.scheduledAt &&
+      new Date(stepExec.scheduledAt).getTime() > this.dt.nowMillis()
+    ) {
+      await this.dispatchStep(
+        workflowId,
+        stepName,
+        workflow.priority,
+        stepExec.scheduledAt,
       );
       return;
     }
 
-    try {
-      const workflow = await this.executions.findById(workflowId);
-      if (!workflow) return;
+    if (workflow.status === "pending") {
+      await this.executions.updateById(workflowId, {
+        status: "running",
+        startedAt: this.dt.nowISOString(),
+      });
+    }
 
-      if (workflow.status !== "running" && workflow.status !== "pending") {
-        return;
-      }
-
-      const registration = this.getRegistration(workflow.workflowName);
-      const stepDef = registration.options.steps.find(
-        (s) => s.name === stepName,
-      );
-      if (!stepDef) return;
-
-      const stepExec = await this.findStepExecution(workflowId, stepName);
-      if (!stepExec) return;
-
-      if (stepExec.status !== "pending") return;
-
-      // Early arrival (an optimistic timer or a duplicate dispatch racing
-      // a scheduled delay/retry): put it back with the remaining delay.
-      if (stepExec.scheduledAt) {
-        const remainingMs =
-          new Date(stepExec.scheduledAt).getTime() - this.dt.nowMillis();
-        if (remainingMs > 0) {
-          await this.dispatchStep(
+    if (stepDef.when) {
+      const results = await this.assembleResults(workflowId);
+      const shouldRun = await this.alepha.context.run(async () => {
+        this.restoreContext(workflow);
+        return stepDef.when?.({
+          payload: workflow.payload as Infer<ZType>,
+          results,
+        });
+      });
+      if (!shouldRun) {
+        await this.stepExecutions.updateById(stepExec.id, {
+          status: "skipped",
+          completedAt: this.dt.nowISOString(),
+        });
+        await this.alepha.events.emit(
+          "workflow:step:skipped",
+          {
+            workflowName: workflow.workflowName,
             workflowId,
             stepName,
-            workflow.priority,
-            remainingMs,
-          );
-          return;
-        }
+          },
+          { catch: true },
+        );
+        await this.advance(workflowId);
+        return;
       }
-
-      if (workflow.status === "pending") {
-        await this.executions.updateById(workflowId, {
-          status: "running",
-          startedAt: this.dt.nowISOString(),
-        });
-      }
-
-      if (stepDef.when) {
-        const results = await this.assembleResults(workflowId);
-        const shouldRun = await this.alepha.context.run(async () => {
-          this.restoreContext(workflow);
-          return stepDef.when?.({
-            payload: workflow.payload as Infer<ZType>,
-            results,
-          });
-        });
-        if (!shouldRun) {
-          await this.stepExecutions.updateById(stepExec.id, {
-            status: "skipped",
-            completedAt: this.dt.nowISOString(),
-          });
-          await this.alepha.events.emit(
-            "workflow:step:skipped",
-            {
-              workflowName: workflow.workflowName,
-              workflowId,
-              stepName,
-            },
-            { catch: true },
-          );
-          await this.advance(workflowId);
-          return;
-        }
-      }
-
-      await this.executeHandlerStep(workflow, stepExec, stepDef);
-    } finally {
-      await this.lockProvider.del(lockKey);
     }
+
+    await this.executeHandlerStep(workflow, stepExec, stepDef);
   }
 
   protected async executeHandlerStep(
@@ -458,16 +456,12 @@ export class WorkflowProvider {
     try {
       // Compare-and-set, not a plain write: this is the step's claim, and it
       // is the ONLY thing that makes two dispatches for one step mutually
-      // exclusive on every runtime. The per-workflow `LockProvider` lock in
-      // processStepInner does not do it — on Cloudflare Workers, and on Node
-      // without `alepha/lock/redis`, it resolves to `MemoryLockProvider`,
-      // which is per-isolate. Two isolates therefore both read `pending`,
-      // both pass their own local lock, and without this guard both run the
-      // handler concurrently — a stronger requirement than the "idempotent
-      // under replay" handlers are documented to satisfy.
-      //
-      // With it, the lock is demoted to what it should be: a latency
-      // optimisation that avoids doing the read work twice.
+      // exclusive, on every runtime and in one process alike. There is no
+      // lock in front of it any more (see processStepInner): two dispatches
+      // both read `pending`, both get here, and exactly one row update wins.
+      // Without this guard both would run the handler concurrently, a
+      // stronger requirement than the "idempotent under replay" handlers are
+      // documented to satisfy.
       const claimed = await this.stepExecutions.updateMany(
         { id: { eq: stepExec.id }, status: { eq: "pending" } },
         {
@@ -694,7 +688,7 @@ export class WorkflowProvider {
       workflow.id,
       stepExec.stepName,
       workflow.priority,
-      delayMs,
+      scheduledAt,
     );
   }
 
@@ -727,19 +721,15 @@ export class WorkflowProvider {
         scheduledAt: nextScheduledAt,
       });
 
-      // Durable retry: the delay rides the job outbox (a scheduled row
+      // Durable retry: the wait rides the job outbox (a scheduled row
       // plus an optimistic timer). If the process dies before delivery,
       // the jobs sweep or the workflow recovery sweep re-dispatches from
       // the persisted `scheduledAt`.
-      const delayMs = Math.max(
-        0,
-        new Date(nextScheduledAt).getTime() - this.dt.nowMillis(),
-      );
       await this.dispatchStep(
         workflow.id,
         stepExec.stepName,
         workflow.priority,
-        delayMs,
+        nextScheduledAt,
       );
     } else {
       this.log.info(`Workflow step '${stepExec.stepName}' failed permanently`, {
@@ -837,24 +827,20 @@ export class WorkflowProvider {
       const stepDef = registration.options.steps.find(
         (s) => s.name === nextStep.stepName,
       );
-      let delayMs = 0;
-      if (stepDef?.delay && !nextStep.scheduledAt) {
-        delayMs = this.dt.duration(stepDef.delay).as("milliseconds");
-        await this.stepExecutions.updateById(nextStep.id, {
-          scheduledAt: this.dt.now().add(delayMs, "millisecond").toISOString(),
-        });
-      } else if (nextStep.scheduledAt) {
-        delayMs = Math.max(
-          0,
-          new Date(nextStep.scheduledAt).getTime() - this.dt.nowMillis(),
-        );
+      let scheduledAt = nextStep.scheduledAt ?? undefined;
+      if (stepDef?.delay && !scheduledAt) {
+        scheduledAt = this.dt
+          .now()
+          .add(this.dt.duration(stepDef.delay))
+          .toISOString();
+        await this.stepExecutions.updateById(nextStep.id, { scheduledAt });
       }
 
       await this.dispatchStep(
         workflowId,
         nextStep.stepName,
         workflow.priority,
-        delayMs,
+        scheduledAt,
       );
     } else {
       // Guarded, like every other execution transition. The `running` check
@@ -1484,23 +1470,39 @@ export class WorkflowProvider {
 
   // --- Internal dispatch ------------------------------------------------------------------------------------------
 
+  /**
+   * Deliver a step, now or at `scheduledAt`.
+   *
+   * `scheduledAt` is the instant already persisted on the step row, never a
+   * delay recomputed here: see {@link stepDispatch} for what a second clock
+   * read cost. A stamp that has already passed is delivered immediately.
+   */
   protected async dispatchStep(
     workflowId: string,
     stepName: string,
     priority: number,
-    delayMs = 0,
+    scheduledAt?: string,
   ): Promise<void> {
     if (this.stopping) return;
 
+    const remainingMs = scheduledAt
+      ? new Date(scheduledAt).getTime() - this.dt.nowMillis()
+      : 0;
+
     if (this.stepDispatch) {
-      await this.stepDispatch(workflowId, stepName, priority, delayMs);
-    } else if (delayMs > 0) {
+      await this.stepDispatch(
+        workflowId,
+        stepName,
+        priority,
+        remainingMs > 0 ? scheduledAt : undefined,
+      );
+    } else if (remainingMs > 0) {
       // Inline fallback (no job queue wired): a local timer is the only
       // delivery; the step's persisted `scheduledAt` plus the recovery
       // sweep remain the durable truth.
       this.dt.createTimeout(
         () => void this.processStep(workflowId, stepName),
-        delayMs,
+        remainingMs,
       );
     } else {
       await this.processStep(workflowId, stepName);

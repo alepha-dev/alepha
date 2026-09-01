@@ -1,7 +1,7 @@
 import { Alepha, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
-import { describe, it } from "vitest";
+import { describe, it, vi } from "vitest";
 
 import {
   $workflow,
@@ -12,22 +12,33 @@ import {
 
 // -----------------------------------------------------------------------------------------------------------------
 
+// Raised so `waitFor`'s 10_000ms budget expires FIRST and its diagnostic (the
+// actual execution row) reaches the reporter. With both at 10_000 vitest won
+// every race and reported a bare timeout, which is why the delayed-step
+// flakes in this module were characterised by hand twice over.
+vi.setConfig({ testTimeout: 30_000 });
+
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
  * Use this instead of `setTimeout(r, fixedMs)` — fixed sleeps race the
  * step dispatch under CI load and produce flaky failures.
  *
- * The budget is deliberately UNDER vitest's `testTimeout` (10_000). They
- * used to be equal, so vitest's timeout won every race and killed the test
- * before this threw — which meant the message below, the one carrying the
- * actual row, was never printed. Two sessions characterised a parked
- * workflow by hand before anyone noticed that the diagnostic existed and
- * was simply unreachable. Keep the gap.
+ * The budget must stay UNDER this file's `testTimeout`, which the
+ * `vi.setConfig` above raises to 30_000 for exactly that reason. Both used
+ * to be 10_000, so vitest's timeout won every race and killed the test
+ * before this threw, which meant the message below (the one carrying the
+ * actual row) was never printed. Two sessions characterised a parked
+ * workflow by hand before anyone noticed the diagnostic existed and was
+ * simply unreachable.
+ *
+ * Raise the ceiling, never lower this floor. Lowering it to 8_000 opened
+ * the same gap but also cut every workflow test's tolerance by two seconds,
+ * and CI went red on a delayed-step test that had been green at 10_000.
  */
 async function waitFor<T>(
   fn: () => Promise<T> | T,
   predicate: (v: T) => boolean,
-  { timeout = 8_000, interval = 10, label = "condition" } = {},
+  { timeout = 10_000, interval = 10, label = "condition" } = {},
 ): Promise<T> {
   const deadline = Date.now() + timeout;
   let last: T = await fn();
@@ -294,11 +305,12 @@ describe("$workflow", () => {
 
   describe("retry", () => {
     /**
-     * Parked 2026-08-18 at roughly 1 in 3, briefly re-enabled by the audit
-     * commit `b9c057f40` and parked again the same day; un-parked
-     * 2026-09-01. It never leaves `running` when a retry falls due and is
-     * not picked up, and `backoff: [10, "millisecond"]` puts the retry far
-     * enough inside the dispatch window to provoke that.
+     * Parked 2026-08-18 at roughly 1 in 3, un-parked 2026-09-01. Two engine
+     * bugs stood behind it, both fixed: a promotion timer that fired a
+     * millisecond early left the outbox row `scheduled` for the sweep (the
+     * re-arm in `JobProvider.dispatchScheduled`), and a retry's dispatch was
+     * scheduled from a second clock read rather than from the stamp on the
+     * step row (`$workflow-travel-race.spec.ts`).
      *
      * The backoff is deliberately still 10ms. Lengthening it would make the
      * test pass without proving anything, and a real workflow retrying on a

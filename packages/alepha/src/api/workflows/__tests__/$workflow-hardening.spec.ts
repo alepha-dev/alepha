@@ -3,7 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
-import { describe, it } from "vitest";
+import { describe, it, vi } from "vitest";
 
 import {
   $workflow,
@@ -19,20 +19,31 @@ import {
 
 // -----------------------------------------------------------------------------------------------------------------
 
+// Raised so `waitFor`'s 10_000ms budget expires FIRST and its diagnostic (the
+// actual execution row) reaches the reporter. With both at 10_000 vitest won
+// every race and reported a bare timeout, which is why the delayed-step
+// flakes in this module were characterised by hand twice over.
+vi.setConfig({ testTimeout: 30_000 });
+
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
  *
- * The budget is deliberately UNDER vitest's `testTimeout` (10_000). They
- * used to be equal, so vitest's timeout won every race and killed the test
- * before this threw — which meant the message below, the one carrying the
- * actual row, was never printed. Two sessions characterised a parked
- * workflow by hand before anyone noticed that the diagnostic existed and
- * was simply unreachable. Keep the gap.
+ * The budget must stay UNDER this file's `testTimeout`, which the
+ * `vi.setConfig` above raises to 30_000 for exactly that reason. Both used
+ * to be 10_000, so vitest's timeout won every race and killed the test
+ * before this threw, which meant the message below (the one carrying the
+ * actual row) was never printed. Two sessions characterised a parked
+ * workflow by hand before anyone noticed the diagnostic existed and was
+ * simply unreachable.
+ *
+ * Raise the ceiling, never lower this floor. Lowering it to 8_000 opened
+ * the same gap but also cut every workflow test's tolerance by two seconds,
+ * and CI went red on a delayed-step test that had been green at 10_000.
  */
 async function waitFor<T>(
   fn: () => Promise<T> | T,
   predicate: (v: T) => boolean,
-  { timeout = 8_000, interval = 10, label = "condition" } = {},
+  { timeout = 10_000, interval = 10, label = "condition" } = {},
 ): Promise<T> {
   const deadline = Date.now() + timeout;
   let last: T = await fn();
@@ -1105,21 +1116,21 @@ describe("$workflow — context propagation", () => {
 describe("$workflow — repeat steps", () => {
   /**
    * Parked 2026-08-18 with the retry test in `$workflow.spec.ts` (same
-   * shape: a step falls due and is never picked up), briefly re-enabled by
-   * the audit commit `b9c057f40` and parked again the same day; un-parked
-   * 2026-09-01 with its sibling.
+   * shape: a step falls due and is never picked up), un-parked 2026-09-01.
    *
-   * Two traps, both learned the hard way, both still true:
+   * The shape had a cause, and it is fixed: the re-park stamped the step row
+   * and then pushed a dispatch scheduled from a SECOND clock read, so a
+   * `travel()` landing between the two (this loop polls for the stamp, then
+   * travels) left the outbox row due ten minutes past the travelled clock.
+   * The recovery sweep rescued it whenever the travel happened to cross a
+   * quarter-hour sweep tick, which is why it failed only some of the time and why
+   * probes seemed to hide it. `$workflow-travel-race.spec.ts` pins that
+   * window deterministically.
    *
-   * - It is load-dependent AND probe-sensitive. `LOG_LEVEL=debug` hides it,
-   *   and so does instrumentation inside `WorkflowProvider` as cheap as
-   *   pushing a string onto an array. Reproduce by loading the machine, not
-   *   by adding probes — and never soak it with debug logging on, which
-   *   makes a green run meaningless.
-   * - Park before you travel: a `travel()` issued before the next step's
-   *   `scheduledAt` has been written moves the clock past a timer that does
-   *   not exist yet, and the workflow then waits forever. Wait for the
-   *   stamp, then travel.
+   * Park before you travel still holds: a `travel()` issued before the next
+   * step's `scheduledAt` has been written moves the clock past a timer that
+   * does not exist yet, and the workflow then waits forever. Wait for the
+   * stamp, then travel.
    */
   it("repeats durably until the handler stops asking, then falls through", async ({
     expect,
