@@ -59,7 +59,7 @@ const schema = z.object({
   fruit: z
     .enum(["apple", "banana", "cherry"])
     .meta({ title: "Fruit (enum)", $control: { width: 50 } })
-    .describe("Schema enum → native <select>."),
+    .describe("Schema enum → select, with no $control at all."),
   // 2. List of strings via $control.items
   size: z
     .string()

@@ -175,7 +175,9 @@ export interface ControlProps {
    */
   autoComplete?: string;
   /**
-   * HTML `placeholder` passed to the underlying input.
+   * Placeholder text. On a text-shaped control this is the HTML
+   * `placeholder`; on a select it is the trigger text shown while nothing is
+   * picked.
    */
   placeholder?: string;
   /**
@@ -379,6 +381,17 @@ export const Control = (props: ControlProps) => {
     );
   }
 
+  // ── Items provided → select / multi / combobox ───────────────────
+  // Read before the numeric branch, because that branch owns every numeric
+  // schema by default and `ControlNumber` has nowhere to put an option list:
+  // a `z.number()` field handed `items` used to render a bare spinner and drop
+  // the rows on the floor, silently. An explicit list is an explicit request
+  // for a select, so it wins - `slider` / `number` still override it below.
+  const items = (merged as Record<string, unknown>).items as
+    | undefined
+    | unknown[]
+    | ((q: string) => unknown);
+
   // ── Number / slider ──────────────────────────────────────────────
   if (
     merged.slider ||
@@ -386,6 +399,7 @@ export const Control = (props: ControlProps) => {
     (!merged.select &&
       !merged.segmented &&
       !merged.combobox &&
+      items == null &&
       (meta.type === "number" || meta.type === "integer"))
   ) {
     return wrapWithSlots(
@@ -402,11 +416,6 @@ export const Control = (props: ControlProps) => {
     );
   }
 
-  // ── Items provided → select / multi / combobox ───────────────────
-  const items = (merged as Record<string, unknown>).items as
-    | undefined
-    | unknown[]
-    | ((q: string) => unknown);
   if (
     merged.select ||
     merged.combobox ||
@@ -433,6 +442,9 @@ export const Control = (props: ControlProps) => {
         clearable={merged.clearable}
         clearLabel={merged.clearLabel}
         countLabel={merged.countLabel}
+        // Dropped here until now, so a picker that needed to name its own
+        // empty state ("Pick an epic…") could not be a `Control` at all.
+        placeholder={merged.placeholder}
         triggerClassName={merged.triggerClassName}
         // Used to be dropped here, silently: every `inputProps={{ "aria-label"
         // }}` on a select-shaped Control (the epics and quests status filters

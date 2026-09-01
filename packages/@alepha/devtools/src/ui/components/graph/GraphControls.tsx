@@ -1,3 +1,8 @@
+import { Control } from "@alepha/ui/components/control/control";
+import { z } from "alepha";
+import { useForm } from "alepha/react/form";
+
+import { DT_TRIGGER } from "../shared/dtTrigger.ts";
 import type { GraphFilters, LayoutType, ViewMode } from "./types.ts";
 
 interface GraphControlsProps {
@@ -28,6 +33,33 @@ export const GraphControls = (props: GraphControlsProps) => {
 
   const setView = (viewMode: ViewMode) =>
     props.onFiltersChange({ ...props.filters, viewMode });
+
+  // Both forms are declared unconditionally: the module picker only renders in
+  // the service view, and a hook behind that condition would change hook order
+  // the moment the reader switches tabs.
+  //
+  // `keepDirty: false` on both, because the parent owns the value: these are
+  // props, and a kept "edit" would let the trigger disagree with the graph it
+  // is filtering.
+  const moduleForm = useForm({
+    schema: z.object({ module: z.text() }),
+    initialValues: { module: props.filters.module },
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, next) =>
+      props.onFiltersChange({
+        ...props.filters,
+        module: (next as string) || "all",
+      }),
+  });
+
+  const layoutForm = useForm({
+    schema: z.object({ layout: z.text() }),
+    initialValues: { layout: props.layout },
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, next) => props.onLayoutChange(next as LayoutType),
+  });
 
   return (
     <div className="dt-toolbar">
@@ -81,40 +113,30 @@ export const GraphControls = (props: GraphControlsProps) => {
       />
 
       {!isModuleView && (
-        <select
-          className="dt-input"
-          style={{ width: 160 }}
-          value={props.filters.module}
-          onChange={(e) =>
-            props.onFiltersChange({
-              ...props.filters,
-              module: e.currentTarget.value || "all",
-            })
-          }
-        >
-          <option value="all">All modules</option>
-          {props.modules.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
+        // Width on the wrapper, never on the trigger — see `DT_TRIGGER`.
+        <div style={{ width: 160 }}>
+          <Control
+            input={moduleForm.input.module}
+            label=""
+            inputProps={{ "aria-label": "Filter by module" }}
+            triggerClassName={DT_TRIGGER}
+            items={[
+              { value: "all", label: "All modules" },
+              ...props.modules.map((m) => ({ value: m, label: m })),
+            ]}
+          />
+        </div>
       )}
 
-      <select
-        className="dt-input"
-        style={{ width: 130 }}
-        value={props.layout}
-        onChange={(e) =>
-          props.onLayoutChange(e.currentTarget.value as LayoutType)
-        }
-      >
-        {LAYOUTS.map((l) => (
-          <option key={l.value} value={l.value}>
-            {l.label}
-          </option>
-        ))}
-      </select>
+      <div style={{ width: 130 }}>
+        <Control
+          input={layoutForm.input.layout}
+          label=""
+          inputProps={{ "aria-label": "Graph layout" }}
+          triggerClassName={DT_TRIGGER}
+          items={LAYOUTS.map((l) => ({ value: l.value, label: l.label }))}
+        />
+      </div>
 
       <span
         style={{

@@ -2,6 +2,7 @@ import * as React from "react";
 
 void React;
 
+import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Checkbox } from "@alepha/ui/components/ui/checkbox";
 import {
@@ -23,13 +24,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@alepha/ui/components/ui/pagination";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
 import { Skeleton } from "@alepha/ui/components/ui/skeleton";
 import {
   Table,
@@ -608,6 +602,26 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
       writePersisted(props.persistenceKey, "size", next);
     }
   };
+
+  /**
+   * The footer's page-size picker, as a form of one field.
+   *
+   * `Control` is form-bound and this picker is not part of any form, which is
+   * why the footer stayed on a raw `<Select>` long after everything else here
+   * moved. One field is the whole cost of joining, and it buys the picker the
+   * same trigger, popup and keyboard handling as every other select in the
+   * table. `keepDirty: false` so the re-seed below actually re-seeds: `size`
+   * can move without the picker (a persisted value on mount), and a kept
+   * "edit" would pin the trigger to a page size the table is not using.
+   */
+  const sizeForm = useForm({
+    schema: z.object({ size: z.number() }),
+    initialValues: { size },
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, next) => changeSize(next as number),
+  });
+
   const [sort, setSort] = useState<SortState | null>(() => {
     if (props.persistenceKey) {
       const persisted = readPersisted<SortState>(props.persistenceKey, "sort");
@@ -1396,38 +1410,34 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
               into a junk drawer. */}
           <div className="flex items-center gap-2">
             {pageSizes.length > 0 && (
-              // The same Select the filter bar's controls are built on, not
-              // a bare `<select>`: a native control renders in the OS widget
-              // set and sat visibly apart from every other trigger in this
-              // table. `Control` itself is form-bound, so the picker uses the
-              // component underneath it.
-              <Select
-                value={String(size)}
-                onValueChange={(value) => changeSize(Number(value))}
-              >
-                <SelectTrigger
-                  // `bg-background`, because this bar is `bg-muted` and the
-                  // trigger is `bg-transparent` by default: on a plain form
-                  // surface that blending is right, on a tinted bar it made
-                  // the picker read as part of the bar while the pagination
-                  // buttons beside it sat on their own plane. Overridden here
-                  // rather than in `SelectTrigger`, which every form still
-                  // wants transparent.
-                  className="bg-background h-7 w-auto gap-1 text-xs"
-                  aria-label={String(
+              // The same `Control` the filter bar is built on, so the picker
+              // is one component with every other select in this table. It
+              // used to be the raw `Select` underneath it, because `Control`
+              // is form-bound and this is not a form — `sizeForm` above is
+              // what closes that gap.
+              <Control
+                input={sizeForm.input.size}
+                // The count line beside it is not a label, so the trigger has
+                // to name itself.
+                label=""
+                inputProps={{
+                  "aria-label": String(
                     tr("table.pageSize", { default: "Rows per page" }),
-                  )}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {pageSizes.map((n) => (
-                    <SelectItem key={n} value={String(n)}>
-                      {n}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  ),
+                }}
+                // `bg-background`, because this bar is `bg-muted` and the
+                // trigger is `bg-transparent` by default: on a plain form
+                // surface that blending is right, on a tinted bar it made the
+                // picker read as part of the bar while the pagination buttons
+                // beside it sat on their own plane. Set here rather than on
+                // the trigger itself, which every form still wants
+                // transparent.
+                triggerClassName="bg-background h-7 w-auto gap-1 text-xs"
+                items={pageSizes.map((n) => ({
+                  value: String(n),
+                  label: String(n),
+                }))}
+              />
             )}
             <p className="text-muted-foreground text-xs">
               {meta

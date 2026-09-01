@@ -320,6 +320,7 @@ export default {
     "Roughly how long this might take. Shown in the questlog so you can grab one that fits the time you have.",
   "quest.create.estimate.custom": "Custom…",
   "quest.create.estimate.count": "Amount",
+  "quest.create.estimate.unit": "Unit",
   "quest.create.estimate.unit.minutes": "minutes",
   "quest.create.estimate.unit.minutes.one": "minute",
   "quest.create.estimate.unit.hours": "hours",
