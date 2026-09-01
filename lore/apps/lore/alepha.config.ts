@@ -59,6 +59,11 @@ export default defineConfig({
         "insights.vitals.",
         // tr(`insights.device.${d.device}`) — mobile/tablet/desktop.
         "insights.device.",
+        // tr(`auth.invitation.${status}`): the six ways an invite link can
+        // fail to open the register form (accountExists / invalid / expired /
+        // accepted / declined / revoked). `auth.invitation.signIn` is written
+        // out in full and so is not hidden by this prefix.
+        "auth.invitation.",
         // tr(`blights.origin.${origin}`) — client/server crash provenance badge.
         "blights.origin.",
         // tr(`language.${code}`) — @alepha/ui button-language picker labels.

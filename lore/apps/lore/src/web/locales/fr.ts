@@ -42,6 +42,21 @@ export default {
     "Les inscriptions se font uniquement sur invitation pour le moment. Si vous avez été invité, ouvrez le lien reçu par e-mail.",
   "auth.register.intent.createProject":
     "Avant de créer un projet, créez un compte.",
+  "auth.register.intent.invitation":
+    "Vous avez été invité à rejoindre $1. Créez votre compte pour y accéder.",
+  "auth.invitation.accountExists":
+    "Vous avez déjà un compte avec cette adresse. Connectez-vous : l'invitation vous attend dans votre boîte de réception.",
+  "auth.invitation.invalid":
+    "Ce lien d'invitation n'est pas valide. Demandez à la personne qui vous a invité de vous en envoyer un nouveau.",
+  "auth.invitation.expired":
+    "Cette invitation a expiré. Demandez à la personne qui vous a invité de vous en envoyer une nouvelle.",
+  "auth.invitation.accepted":
+    "Cette invitation a déjà été acceptée. Connectez-vous pour ouvrir le projet.",
+  "auth.invitation.declined":
+    "Cette invitation a été refusée. Demandez à la personne qui vous a invité de vous en envoyer une nouvelle.",
+  "auth.invitation.revoked":
+    "Cette invitation a été retirée par le propriétaire du projet.",
+  "auth.invitation.signIn": "Aller à la connexion",
 
   "folios.title-placeholder": "Sans titre",
   "folios.content-placeholder": "Commencez à écrire en markdown…",
