@@ -423,6 +423,103 @@ export class LoreAnalytics {
 }
 ```
 
+## Scoping the query builder to one tenant
+
+`AlephaApiAnalyticsAdmin` serves every dataset in the container to anyone holding
+`admin:analytics:read`. To offer the same query builder to a non-admin over their
+own slice of the data, keep the service and write your own controller around it:
+both of its methods take an optional scope.
+
+```typescript
+import { $inject, z } from "alepha";
+import {
+  adminAnalyticsQuerySchema,
+  adminAnalyticsResultSchema,
+  AdminAnalyticsService,
+  adminDatasetSchema,
+} from "alepha/api/analytics";
+import { $secure } from "alepha/security";
+import { $action } from "alepha/server";
+
+export class TenantAnalyticsController {
+  protected service = $inject(AdminAnalyticsService);
+
+  listTenantDatasets = $action({
+    use: [$secure({ permissions: ["tenant:read"] })],
+    method: "GET",
+    path: "/tenants/:tenantId/analytics/datasets",
+    schema: {
+      params: z.object({ tenantId: z.uuid() }),
+      response: z.array(adminDatasetSchema),
+    },
+    handler: async ({ params }) => {
+      // Prove the caller may read THIS tenant before anything else. That check
+      // is the one thing the framework cannot write for you.
+      return this.service.listDatasets({ pin: { tenantId: params.tenantId } });
+    },
+  });
+
+  queryTenantDataset = $action({
+    use: [$secure({ permissions: ["tenant:read"] })],
+    method: "POST",
+    path: "/tenants/:tenantId/analytics/datasets/:name/query",
+    schema: {
+      params: z.object({ tenantId: z.uuid(), name: z.text() }),
+      body: adminAnalyticsQuerySchema,
+      response: adminAnalyticsResultSchema,
+    },
+    handler: async ({ params, body }) => {
+      return this.service.queryDataset(params.name, body, {
+        pin: { tenantId: params.tenantId },
+      });
+    },
+  });
+}
+```
+
+`pin` does three things, and the first is what makes a generic UI safe on a
+scoped surface:
+
+- **It removes the pinned dimensions from the published descriptors.** A scoped
+  caller is never told `tenantId` exists, so a query builder driven by those
+  descriptors cannot offer it as a group-by key, as a filter, or as a filter
+  value - without a single line of that UI knowing a scope is in play.
+- **It refuses a query that names a pinned key**, in `where` or in `groupBy`,
+  with a `BadRequestError`. The pin is a vocabulary restriction, not a default
+  the caller may override. Silently overwriting would be worse than refusing:
+  the caller believes it filtered, and it did not.
+- **It hides datasets it cannot narrow.** A dataset that does not declare every
+  pinned dimension is absent from `listDatasets` and answers `NotFoundError`
+  from `queryDataset`, because the alternative is serving it whole to a scoped
+  caller - exactly the moment the scope mattered most.
+
+That last point makes the allowlist derived rather than written: a new dataset
+carrying `tenantId` appears with no change to the controller, and one without it
+can never appear at all.
+
+> **The scope is not a UI concern.** Anyone can post the request body
+> themselves, so a control the page hides protects nothing. `pin` is enforced in
+> the service, behind your own authorization check, which is why the two live
+> together in the handler above.
+
+On the client, `@alepha/ui`'s `AdminAnalytics` takes an optional `transport`
+so the same panel can point at this controller instead of the admin one:
+
+```tsx
+<AdminAnalytics
+  transport={{
+    listDatasets: () => client.listTenantDatasets({ params }),
+    queryDataset: (dataset, body) =>
+      client.queryTenantDataset({ params: { ...params, name: dataset }, body }),
+    path: (dataset) =>
+      `/api/tenants/${tenantId}/analytics/datasets/${dataset}/query`,
+  }}
+/>
+```
+
+Memoise that object: it is an effect dependency inside the panel, so a fresh one
+per render re-fires every query forever.
+
 ## Testing
 
 `MemoryAnalyticsProvider` is bound automatically under `alepha.isTest()` - no substitution

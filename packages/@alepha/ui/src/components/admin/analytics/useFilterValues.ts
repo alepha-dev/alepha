@@ -1,12 +1,12 @@
-import type {
-  AdminAnalyticsController,
-  AdminAnalyticsQuery,
-} from "alepha/api/analytics";
-import { useClient } from "alepha/react";
+import type { AdminAnalyticsQuery } from "alepha/api/analytics";
 import { useEffect, useState } from "react";
 
 import { ANALYTICS_MAX_LIMIT, analyticsWhere } from "./analyticsModel.ts";
-import type { AnalyticsFilterChip, AnalyticsWindow } from "./analyticsTypes.ts";
+import type {
+  AnalyticsFilterChip,
+  AnalyticsTransport,
+  AnalyticsWindow,
+} from "./analyticsTypes.ts";
 
 export interface FilterValue {
   value: string;
@@ -23,6 +23,7 @@ export interface FilterValuesApi {
 }
 
 export interface FilterValuesInput {
+  transport: AnalyticsTransport;
   dataset?: string;
   dimensions: string[];
   window: AnalyticsWindow;
@@ -45,7 +46,7 @@ export interface FilterValuesInput {
  * not only the one it is currently pinned to.
  */
 export const useFilterValues = (input: FilterValuesInput): FilterValuesApi => {
-  const client = useClient<AdminAnalyticsController>();
+  const transport = input.transport;
   // Keyed by the query it answers, so "still loading" is derived from a
   // mismatch rather than written by the effect that starts the fetch, and a
   // stale window's counts are never rendered as if they were current.
@@ -83,10 +84,7 @@ export const useFilterValues = (input: FilterValuesInput): FilterValuesApi => {
         orderBy: { key: measure, direction: "desc" },
         limit: ANALYTICS_MAX_LIMIT,
       };
-      const result = await client.queryDataset({
-        params: { name: dataset },
-        body,
-      });
+      const result = await transport.queryDataset(dataset, body);
       return [
         dim,
         result.rows.map((row) => ({
@@ -108,7 +106,7 @@ export const useFilterValues = (input: FilterValuesInput): FilterValuesApi => {
     return () => {
       cancelled = true;
     };
-  }, [client, input.open, input.dataset, input.measure, key]);
+  }, [transport, input.open, input.dataset, input.measure, key]);
 
   const ready = probe.key === key;
   return { values: ready ? probe.values : {}, loading: !ready };

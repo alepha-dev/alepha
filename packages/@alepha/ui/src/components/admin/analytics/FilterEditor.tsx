@@ -4,7 +4,11 @@ import { Pencil, Plus, X } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { analyticsFilterLabel, analyticsNumber } from "./analyticsModel.ts";
-import type { AnalyticsFilterChip, AnalyticsWindow } from "./analyticsTypes.ts";
+import type {
+  AnalyticsFilterChip,
+  AnalyticsTransport,
+  AnalyticsWindow,
+} from "./analyticsTypes.ts";
 import { ClauseLabel } from "./ClauseLabel.tsx";
 import { FilterValuePicker } from "./FilterValuePicker.tsx";
 import { useDismissable } from "./useDismissable.ts";
@@ -12,6 +16,7 @@ import { useFilterValues } from "./useFilterValues.ts";
 
 export interface FilterEditorProps {
   dataset: string;
+  transport: AnalyticsTransport;
   dimensions: string[];
   filters: AnalyticsFilterChip[];
   window: AnalyticsWindow;
@@ -43,6 +48,7 @@ export const FilterEditor = (props: FilterEditorProps) => {
   useDismissable({ open, onClose: close, selector: "[data-filter-picker]" });
 
   const { values, loading } = useFilterValues({
+    transport: props.transport,
     dataset: props.dataset,
     dimensions: props.dimensions,
     window: props.window,

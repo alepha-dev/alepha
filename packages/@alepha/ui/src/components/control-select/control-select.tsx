@@ -153,6 +153,16 @@ export interface ControlSelectProps {
    */
   countLabel?: (count: number) => string;
   /**
+   * Trigger text when nothing is selected, e.g. "Pick an epic…". Defaults to
+   * the `clearLabel` on a `clearable` or multi field (where empty IS a
+   * meaningful state to name), and to "Select…" otherwise.
+   *
+   * Set it when the empty trigger has a job to do - a picker whose whole
+   * purpose is the choice it prompts for reads as a dead "Select…" without
+   * it, which is why the surfaces that needed one stayed on the raw `Select`.
+   */
+  placeholder?: string;
+  /**
    * Extra className applied to the visible trigger: the combobox button or
    * the segmented control, whichever this field renders. Useful for sizing
    * filter chips (`"w-40"`, `"w-72"`, etc.) without wrapping the whole
@@ -400,7 +410,10 @@ export const ControlSelect = (props: ControlSelectProps) => {
         // trigger whether or not the field is `clearable` — a multi-select
         // has no clear ROW (it clears by deselecting), and without this its
         // empty trigger fell back to a bare "Select…".
-        placeholder={props.clearable || isArray ? clearLabel : undefined}
+        placeholder={
+          props.placeholder ??
+          (props.clearable || isArray ? clearLabel : undefined)
+        }
       />
     </FormField>
   );

@@ -1,10 +1,9 @@
 import type {
-  AdminAnalyticsController,
   AdminAnalyticsQuery,
   AdminDatasetDescriptor,
 } from "alepha/api/analytics";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient } from "alepha/react";
+import { useAlepha } from "alepha/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -26,6 +25,7 @@ import type {
   AnalyticsQueryState,
   AnalyticsRow,
   AnalyticsRunResult,
+  AnalyticsTransport,
   AnalyticsUntilMode,
   AnalyticsView,
   AnalyticsWindow,
@@ -116,8 +116,8 @@ const emptyView: AnalyticsViewState = {
  */
 export const useAnalyticsQuery = (
   datasets: AdminDatasetDescriptor[] | undefined,
+  transport: AnalyticsTransport,
 ): AnalyticsQueryApi => {
-  const client = useClient<AdminAnalyticsController>();
   const alepha = useAlepha();
   const dateTime = alepha.inject(DateTimeProvider);
 
@@ -195,7 +195,7 @@ export const useAnalyticsQuery = (
     const id = ++runId.current;
 
     const query = (payload: AdminAnalyticsQuery) =>
-      client.queryDataset({ params: { name }, body: payload });
+      transport.queryDataset(name, payload);
 
     const execute = async () => {
       setRunning(true);
@@ -267,7 +267,7 @@ export const useAnalyticsQuery = (
     // Debounced: toggling three measures is one query, not three.
     const timer = setTimeout(() => void execute(), 220);
     return () => clearTimeout(timer);
-  }, [client, dataset, bodyKey, baselineKey, nonce]);
+  }, [transport, dataset, bodyKey, baselineKey, nonce]);
 
   const patch = useCallback((next: Partial<AnalyticsQueryState>) => {
     setState((current) => ({ ...current, ...next }));

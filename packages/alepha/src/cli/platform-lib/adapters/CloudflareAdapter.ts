@@ -883,13 +883,31 @@ export class CloudflareAdapter extends PlatformAdapter {
       alias: `export D1 ${dbName} → ${sqlPath}`,
     });
 
+    const escaped = await this.escapeNulBytes(sqlPath);
+    if (escaped) {
+      this.log.warn(
+        `Escaped ${escaped} raw NUL byte(s) in the dump — sqlite3 would have refused it.`,
+      );
+    }
+
     // `sqlite3 '<db>' < dump.sql` aborts if the target already holds a
     // conflicting schema — start from a clean file. run() bypasses the
     // shell, so wrap the `<` redirection in `sh -c`.
-    await this.fs.rm(dbPath, { force: true });
-    await run(`sh -c "sqlite3 '${dbPath}' < '${sqlPath}'"`, {
-      alias: `import dump → ${dbPath}`,
-    });
+    //
+    // The clean file is a scratch one, NOT `dbPath`: sqlite3 commits every
+    // statement it parsed before an error, so importing straight into the dev
+    // DB meant a single failed export replaced a working database with a
+    // silently partial one, and anyone who skimmed the error kept it.
+    const stagingPath = `${dbPath}.import`;
+    await this.fs.rm(stagingPath, { force: true });
+    try {
+      await run(`sh -c "sqlite3 '${stagingPath}' < '${sqlPath}'"`, {
+        alias: `import dump → ${dbPath}`,
+      });
+      await this.fs.cp(stagingPath, dbPath);
+    } finally {
+      await this.fs.rm(stagingPath, { force: true });
+    }
 
     if (!options.keepSql) {
       await this.fs.rm(sqlPath, { force: true });
@@ -902,6 +920,44 @@ export class CloudflareAdapter extends PlatformAdapter {
     if (options.placeholders !== false && !options.output) {
       await this.placeholders.fill({ dbPath, root: ctx.root });
     }
+  }
+
+  /**
+   * Replace every raw NUL byte in a SQL dump with the two-character escape
+   * `\0`, and report how many there were.
+   *
+   * The `sqlite3` CLI reads its input as C strings, so a `0x00` anywhere in
+   * the dump ends that line early: the `INSERT` is never terminated, the
+   * parser runs on into the next line looking for a closing quote, and the
+   * syntax error is reported against the FOLLOWING row. One such byte makes a
+   * whole export unimportable, and every D1 app is exposed to it, since D1
+   * itself stores the byte happily.
+   *
+   * Escaping rather than stripping: a backslash is not special inside a SQLite
+   * string literal, so `\0` is valid SQL and stores the two visible characters
+   * that prose carrying a stray NUL almost always meant to carry in the first
+   * place. Stripping would lose that silently.
+   *
+   * Rewrites nothing when the dump is clean, which is the normal case and
+   * saves a round trip through tens of megabytes.
+   */
+  protected async escapeNulBytes(sqlPath: string): Promise<number> {
+    const dump = await this.fs.readFile(sqlPath);
+    // `latin1`, not the default utf8: this is spliced back into a byte buffer,
+    // and the two characters have to stay two bytes.
+    const escape = Buffer.from("\\0", "latin1");
+    const parts: Array<Uint8Array> = [];
+    let start = 0;
+    let at = dump.indexOf(0, start);
+    while (at !== -1) {
+      parts.push(dump.subarray(start, at), escape);
+      start = at + 1;
+      at = dump.indexOf(0, start);
+    }
+    if (!parts.length) return 0;
+    parts.push(dump.subarray(start));
+    await this.fs.writeFile(sqlPath, Buffer.concat(parts));
+    return parts.length >> 1;
   }
 
   protected async migrateD1(

@@ -1,14 +1,10 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Lock, Plus, X } from "lucide-react";
@@ -38,6 +34,15 @@ import {
 import ReleaseQuestRow from "./ReleaseQuestRow.tsx";
 import ReleaseTickBar from "./ReleaseTickBar.tsx";
 import { useCountLabel } from "./useCountLabel.ts";
+
+/**
+ * The attach picker's one-field form. It holds an id and is emptied again the
+ * moment the attach lands, so it is a gesture rather than a value: the field
+ * is reset every time the picker opens.
+ */
+const attachFormSchema = z.object({
+  target: z.number().optional(),
+});
 
 export interface ReleaseContentsProps {
   releaseId: number;
@@ -111,8 +116,28 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
 
   const areaColor = useMemo(() => new AreaDotColor(areas), [areas]);
 
+  const attachForm = useForm({
+    schema: attachFormSchema,
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, value) => {
+      const id = value as number | undefined;
+      if (id == null) return;
+      void (adding === "epic" ? attachEpic(id) : attachQuest(id));
+    },
+  });
+
+  // The picker is one control serving two lists, and it outlives both: the
+  // form lives on this component while the `<Control>` only renders while
+  // `adding` is set. Without this it reopens still showing the last thing
+  // attached.
+  const resetAttachForm = () => {
+    attachForm.setInitialValues({ target: undefined }, { keepDirty: false });
+  };
+
   const openAddEpic = async () => {
     if (!project) return;
+    resetAttachForm();
     setAdding("epic");
     try {
       const all = await epicApi.getEpics({ params: { projectId: project.id } });
@@ -128,6 +153,7 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
 
   const openAddQuest = async () => {
     if (!project) return;
+    resetAttachForm();
     setAdding("quest");
     try {
       // Open quests only, and only ones not already in a release. A completed
@@ -255,36 +281,38 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
         )}
         {!props.readOnly && adding !== null && (
           <div className="flex items-center gap-2">
-            <Select
-              onValueChange={(v) =>
-                void (adding === "epic"
-                  ? attachEpic(Number(v))
-                  : attachQuest(Number(v)))
-              }
-            >
-              <SelectTrigger size="sm" className="w-56">
-                <SelectValue
-                  placeholder={tr(
+            <Control
+              input={attachForm.input.target}
+              label=""
+              placeholder={String(
+                tr(
+                  adding === "epic"
+                    ? "release.contents.pickEpic"
+                    : "release.contents.pickQuest",
+                ),
+              )}
+              inputProps={{
+                "aria-label": String(
+                  tr(
                     adding === "epic"
-                      ? "release.contents.pickEpic"
-                      : "release.contents.pickQuest",
-                  )}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {adding === "epic"
-                  ? attachableEpics.map((epic) => (
-                      <SelectItem key={epic.id} value={String(epic.id)}>
-                        #{epic.number} {epic.title}
-                      </SelectItem>
-                    ))
-                  : attachableQuests.map((quest) => (
-                      <SelectItem key={quest.id} value={String(quest.id)}>
-                        #{quest.shortId} {quest.title}
-                      </SelectItem>
-                    ))}
-              </SelectContent>
-            </Select>
+                      ? "release.contents.addEpic"
+                      : "release.contents.addQuest",
+                  ),
+                ),
+              }}
+              triggerClassName="h-8 w-56"
+              items={
+                adding === "epic"
+                  ? attachableEpics.map((epic) => ({
+                      value: String(epic.id),
+                      label: `#${epic.number} ${epic.title}`,
+                    }))
+                  : attachableQuests.map((quest) => ({
+                      value: String(quest.id),
+                      label: `#${quest.shortId} ${quest.title}`,
+                    }))
+              }
+            />
             <Button variant="ghost" size="sm" onClick={() => setAdding(null)}>
               {tr("common.cancel")}
             </Button>
