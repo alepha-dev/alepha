@@ -32,8 +32,13 @@ import { DatabaseProvider, type SQLLike } from "./DatabaseProvider.ts";
 (() => {
   if (process?.emit) {
     // Captured to be restored, never called through this binding.
+    // The signature is widened because process.emit is overloaded per event
+    // name, and a spread apply() cannot select an overload.
     // oxlint-disable-next-line typescript/unbound-method
-    const originalEmit = process.emit;
+    const originalEmit = process.emit as (
+      event: string,
+      ...args: any[]
+    ) => boolean;
     process.emit = (event: any, warning: any, ...args: any[]) => {
       if (
         event === "warning" &&

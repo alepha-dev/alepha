@@ -48,12 +48,12 @@
     "build:check": "node ../../alepha/scripts/build.ts --check"
   },
   "dependencies": {
-    "stripe": "^22.5.0"
+    "stripe": "^22.6.0"
   },
   "devDependencies": {
     "alepha": "0.27.1",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "alepha": "^0.27.1"

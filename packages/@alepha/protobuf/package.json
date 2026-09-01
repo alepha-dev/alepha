@@ -50,13 +50,13 @@
     "build": "tsdown"
   },
   "dependencies": {
-    "protobufjs": "^8.7.2"
+    "protobufjs": "^8.8.0"
   },
   "devDependencies": {
     "alepha": "0.27.1",
     "tsdown": "^0.22.14",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "dependenciesMeta": {
     "protobufjs": {

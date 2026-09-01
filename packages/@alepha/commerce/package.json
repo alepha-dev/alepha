@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@alepha/ui": "workspace:*",
-    "lucide-react": "^1.31.0"
+    "lucide-react": "^1.38.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
@@ -62,7 +62,7 @@
     "react": "^19.2.8",
     "tsdown": "^0.22.14",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "alepha": "^0.27.1",

@@ -16,8 +16,8 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
-    "@vitejs/plugin-react": "^6.0.5",
+    "@vitejs/plugin-react": "^6.1.1",
     "drizzle-kit": "1.0.0-rc.4",
-    "vite": "^8.2.1"
+    "vite": "^8.2.2"
   }
 }
