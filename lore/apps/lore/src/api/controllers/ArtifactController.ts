@@ -5,6 +5,7 @@ import { $action } from "alepha/server";
 
 import type { Artifact } from "../entities/artifacts.ts";
 import { appNameSchema } from "../schemas/appNameSchema.ts";
+import { artifactListSchema } from "../schemas/artifactListSchema.ts";
 import { artifactPushResultSchema } from "../schemas/artifactPushResultSchema.ts";
 import { releaseTagSchema } from "../schemas/releaseTagSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
@@ -120,6 +121,62 @@ export class ArtifactController {
       });
 
       return { artifact: this.resource(artifact), stored };
+    },
+  });
+
+  /**
+   * What this project has built, newest first, with every runtime of a tag in
+   * one entry.
+   *
+   * ⚠️ **Grouped, never flat.** `(app, tag, runtime)` is the unique key
+   * precisely so `1.2.3` names one release that may carry two builds; a flat
+   * list of rows contradicts that on the first screen anyone sees. Three
+   * surfaces read this - the app page, the release page and MCP - and the
+   * grouping is done once, here, rather than three times.
+   *
+   * Member-gated like every other project read, with no feature check of its
+   * own. `features.sigils` hides the app page and `features.milestones` the
+   * release page; the endpoint under both is the same one, and gating it a
+   * third time would only mean a 404 in a place the router already handles.
+   */
+  listArtifacts = $action({
+    use: [$secure(), this.ownsProject()],
+    method: "GET",
+    path: "/projects/:projectId/artifacts",
+    description: "What this project has built, grouped by tag.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: z.object({
+        /**
+         * Narrow to one app. The app page passes this; the release page does
+         * not, because a release spans every app that tagged a build with it.
+         */
+        app: appNameSchema.optional(),
+        /**
+         * Narrow to one tag. This is the release page's whole query: the join
+         * to a release is tag equality, with no join table and no foreign key.
+         */
+        tag: releaseTagSchema.optional(),
+      }),
+      response: artifactListSchema,
+    },
+    handler: async ({ params, query }) => {
+      const listing = await this.artifacts.listGrouped({
+        projectId: params.projectId,
+        app: query.app,
+        tag: query.tag,
+      });
+
+      return {
+        groups: listing.groups.map((group) => ({
+          app: group.app,
+          tag: group.tag,
+          pushedAt: group.pushedAt,
+          commitSha: group.commitSha,
+          variants: group.variants.map((variant) => this.resource(variant)),
+        })),
+        truncated: listing.truncated,
+      };
     },
   });
 

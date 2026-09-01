@@ -195,9 +195,17 @@ export class ArtifactService {
    * Every artifact of one project, newest first, optionally narrowed to one
    * app or one tag.
    *
-   * ⚠️ Ordered by `createdAt`, never by `tag`. A tag is a text column and SQL
-   * would sort `1.10.0` above `1.9.0`; the registry has no opinion about
-   * version ordering and must not pretend to one.
+   * ⚠️ Ordered by `updatedAt`, and by neither of the two columns that look
+   * more obvious.
+   *
+   * Not `tag`: a tag is a text column, so SQL would sort `1.10.0` above
+   * `1.9.0`. The registry has no opinion about version ordering and must not
+   * pretend to one - the same trap that put `optional` above `high` on Lore's
+   * own board for its whole life.
+   *
+   * Not `createdAt` either: `latest` is replaced in place, so its `createdAt`
+   * is the day that tag first existed. For a tag that moves daily, ordering by
+   * it buries today's build under every pinned version pushed since.
    */
   public async list(query: ArtifactQuery): Promise<Artifact[]> {
     return this.rows.findMany({
@@ -206,10 +214,59 @@ export class ArtifactService {
         ...(query.app ? { app: { eq: this.normalizeApp(query.app) } } : {}),
         ...(query.tag ? { tag: { eq: query.tag } } : {}),
       },
-      orderBy: [{ column: "createdAt", direction: "desc" }],
+      orderBy: [{ column: "updatedAt", direction: "desc" }],
       limit: query.limit ?? ArtifactService.DEFAULT_LIMIT,
       offset: query.offset,
     });
+  }
+
+  /**
+   * The same listing, with every runtime of a tag folded into one entry.
+   *
+   * This is what every read surface renders, and it is grouped here rather
+   * than in each of them: `(app, tag, runtime)` being the key is what makes
+   * `1.2.3` one release with two variants, and three components each
+   * reassembling that from a flat list is three chances to render it as two
+   * releases.
+   *
+   * Groups keep the row order, so the newest push is first; variants inside a
+   * group are sorted by runtime name, so a group does not reshuffle between
+   * two reads that pushed nothing.
+   */
+  public async listGrouped(query: ArtifactQuery): Promise<ArtifactListing> {
+    const limit = query.limit ?? ArtifactService.DEFAULT_LIMIT;
+    const rows = await this.list({ ...query, limit });
+
+    const groups: ArtifactGrouping[] = [];
+    const byKey = new Map<string, ArtifactGrouping>();
+    for (const row of rows) {
+      // NUL rather than a printable separator: `app` cannot contain one and a
+      // tag cannot either, so two different pairs can never collide into one
+      // key the way `my-app:1.2` and `my:app:1.2` would.
+      const key = `${row.app}\u0000${row.tag}`;
+      let group = byKey.get(key);
+      if (!group) {
+        // The first row of a group is the newest of its variants, since the
+        // rows arrive newest first. That is what makes `pushedAt` and
+        // `commitSha` below the newest variant's without a second pass.
+        group = {
+          app: row.app,
+          tag: row.tag,
+          pushedAt: row.updatedAt,
+          commitSha: row.commitSha,
+          variants: [],
+        };
+        byKey.set(key, group);
+        groups.push(group);
+      }
+      group.variants.push(row);
+    }
+
+    for (const group of groups) {
+      group.variants.sort((a, b) => a.runtime.localeCompare(b.runtime));
+    }
+
+    return { groups, truncated: rows.length >= limit };
   }
 
   /**
@@ -325,6 +382,24 @@ export interface ArtifactKey {
   app: string;
   tag: string;
   runtime: string;
+}
+
+/**
+ * One `(app, tag)` and its variants, as the service builds it. The wire shape
+ * is `artifactGroupSchema`; this carries whole rows, because the controller is
+ * what decides which columns leave the server.
+ */
+export interface ArtifactGrouping {
+  app: string;
+  tag: string;
+  pushedAt: string;
+  commitSha?: string;
+  variants: Artifact[];
+}
+
+export interface ArtifactListing {
+  groups: ArtifactGrouping[];
+  truncated: boolean;
 }
 
 export interface ArtifactQuery {
