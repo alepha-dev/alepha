@@ -45,6 +45,25 @@ export default {
     "New accounts are invitation-only right now. If you were invited, open the link in your email.",
   "auth.register.intent.createProject":
     "Before creating a project, create an account.",
+  "auth.register.intent.invitation":
+    "You were invited to $1. Create your account to join.",
+  // Six ways an invite link can fail to open the form, each with its own
+  // sentence. None of them is the realm's generic "Registration is not
+  // available": it is true, useless, and reads as a rejection to somebody who
+  // was invited.
+  "auth.invitation.accountExists":
+    "You already have an account with this address. Sign in and the invitation will be waiting in your inbox.",
+  "auth.invitation.invalid":
+    "This invitation link is not valid. Ask whoever invited you to send a new one.",
+  "auth.invitation.expired":
+    "This invitation has expired. Ask whoever invited you to send a new one.",
+  "auth.invitation.accepted":
+    "This invitation has already been accepted. Sign in to open the project.",
+  "auth.invitation.declined":
+    "This invitation was declined. Ask whoever invited you to send a new one.",
+  "auth.invitation.revoked":
+    "This invitation was withdrawn by the project owner.",
+  "auth.invitation.signIn": "Go to sign in",
 
   "folios.title-placeholder": "Untitled",
   "folios.content-placeholder": "Start writing markdown…",

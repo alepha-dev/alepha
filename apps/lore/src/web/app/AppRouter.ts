@@ -270,9 +270,42 @@ export class AppRouter {
     name: "register",
     head: { title: "Sign up › Alepha Lore" },
     lazy: () => import("./components/auth/AuthRegisterPage.tsx"),
-    loader: async () => {
-      const realmConfig = await this.realmApi.getRealmConfig();
-      return { realmConfig };
+    /**
+     * ⚠️ A loader's `query` holds ONLY what this schema declares, and is `{}`
+     * otherwise. Nothing says so: an undeclared param reads as `undefined`,
+     * the loader takes its no-token branch, and the page renders the ordinary
+     * register form as if the link had carried nothing. It cost an hour here.
+     * (`useRouter().query` inside the component is the raw URL query and is
+     * unaffected, which is exactly what makes the difference invisible.)
+     */
+    schema: {
+      query: z.object({
+        invitation: z.text({ maxLength: 512 }).optional(),
+      }),
+    },
+    /**
+     * `?invitation=` carries the secret from the invite mail, and it is read
+     * HERE rather than in the component because the answer decides what the
+     * page is: a form for a stranger the realm would otherwise refuse, a
+     * "sign in instead" for somebody who already has an account, or one of
+     * four dead-end explanations. Resolving it after mount would render the
+     * wrong one of those first.
+     *
+     * Behind a `catch`: an unreadable preview leaves `invitation` undefined
+     * and the page falls back to the ordinary register form, which is the
+     * behaviour that existed before the token did.
+     */
+    loader: async ({ query }) => {
+      const token = query.invitation;
+      const [realmConfig, invitation] = await Promise.all([
+        this.realmApi.getRealmConfig(),
+        token
+          ? this.invitationApi
+              .previewInvitationToken({ body: { token } })
+              .catch(() => undefined)
+          : undefined,
+      ]);
+      return { realmConfig, invitation, invitationToken: token };
     },
   });
 

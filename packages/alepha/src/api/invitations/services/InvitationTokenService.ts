@@ -59,18 +59,11 @@ export class InvitationTokenService {
   public async resolve(
     rawToken: string | undefined,
   ): Promise<InvitationEntity | undefined> {
-    if (!rawToken) {
+    const parsed = this.parse(rawToken);
+    if (!parsed) {
       return undefined;
     }
-    const separator = rawToken.indexOf(".");
-    if (separator <= 0) {
-      return undefined;
-    }
-    const id = rawToken.slice(0, separator);
-    const secret = rawToken.slice(separator + 1);
-    if (!secret) {
-      return undefined;
-    }
+    const { id, secret } = parsed;
 
     const invitation = await this.repo.findOne({ where: { id: { eq: id } } });
     if (!invitation) {
@@ -113,6 +106,87 @@ export class InvitationTokenService {
   }
 
   /**
+   * The same lookup as {@link resolve}, but SAYING which way it failed.
+   *
+   * The two exist apart on purpose, and the difference is who is asking.
+   * `resolve` answers a registration attempt, where a distinguishable refusal
+   * would let a stranger probe which addresses had been invited, so it gives
+   * one answer to every kind of wrong. This one answers the page the
+   * recipient landed on, where "this invitation was withdrawn" and "this link
+   * is not valid" are different things a person needs to be told apart, and
+   * where being unhelpful just leaves them stuck.
+   *
+   * What makes that safe is that every status past `invalid` requires the
+   * invitation's own id, which is a uuid nobody guesses. A caller with a made
+   * up token gets `invalid` and learns nothing; a caller holding the real
+   * link already read the mailbox.
+   */
+  public async inspect(
+    rawToken: string | undefined,
+  ): Promise<InvitationTokenInspection> {
+    const parsed = this.parse(rawToken);
+    if (!parsed) {
+      return { status: "invalid" };
+    }
+
+    const invitation = await this.repo.findOne({
+      where: { id: { eq: parsed.id } },
+    });
+    if (!invitation) {
+      return { status: "invalid" };
+    }
+
+    // Read before the status, because the hourly sweep runs behind: a row
+    // that is past its date but still says `pending` has expired, and telling
+    // its holder "not valid" would send them to ask for a new link they
+    // cannot be told they need.
+    if (this.dateTime.now().isAfter(invitation.expiresAt)) {
+      return { status: "expired", invitation };
+    }
+
+    if (invitation.status !== "pending") {
+      return { status: invitation.status, invitation };
+    }
+
+    try {
+      await this.verifications.verifyCode(
+        {
+          type: "link",
+          target: invitation.email,
+          purpose: this.purposeFor(invitation.id),
+        },
+        parsed.secret,
+      );
+    } catch {
+      // A wrong secret for a real invitation. Still `invalid`: the id was
+      // guessed or copied, and the holder has proven nothing.
+      return { status: "invalid" };
+    }
+
+    return { status: "ok", invitation };
+  }
+
+  /**
+   * Split `<invitationId>.<secret>`, or nothing.
+   */
+  protected parse(
+    rawToken: string | undefined,
+  ): { id: string; secret: string } | undefined {
+    if (!rawToken) {
+      return undefined;
+    }
+    const separator = rawToken.indexOf(".");
+    if (separator <= 0) {
+      return undefined;
+    }
+    const secret = rawToken.slice(separator + 1);
+    if (!secret) {
+      return undefined;
+    }
+    return { id: rawToken.slice(0, separator), secret };
+  }
+
+  /**
    * The verification purpose for one invitation.
    *
    * Per invitation rather than per address, so two invitations to the same
@@ -124,3 +198,15 @@ export class InvitationTokenService {
     return `invitation:${invitationId}`;
   }
 }
+
+/**
+ * What {@link InvitationTokenService.inspect} found. `invitation` is present
+ * for everything except `invalid`, where by construction there is nothing to
+ * report.
+ */
+export type InvitationTokenInspection =
+  | { status: "invalid"; invitation?: undefined }
+  | {
+      status: "ok" | "expired" | "accepted" | "declined" | "revoked";
+      invitation: InvitationEntity;
+    };

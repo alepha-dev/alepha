@@ -178,6 +178,23 @@ navigating in from Home or Spotlight. Renaming a param is therefore a grep job,
 not a compile error. The same trap, from the other side, as the `$page`-rename
 one below.
 
+### ⚠️ A loader's `query` holds only what `schema.query` declares
+
+`$page`'s loader context carries `query`, and it is **empty** unless the route
+declares the param in `schema: { query: z.object({ … }) }`. Nothing says so:
+an undeclared param simply reads `undefined`, the loader takes whichever
+branch that implies, and the page renders as if the URL had carried nothing.
+
+What makes it hard to see is that `useRouter().query` **inside the component**
+is the raw URL query and is unaffected, so the same param is readable three
+lines away, in a file the author is also editing. It cost an hour on the
+invitation link (`?invitation=`), where the loader has to resolve the token
+before the page can decide what it even is.
+
+`login`'s `query.redirect_uri` read (the OAuth bridge) is the same shape and
+declares no schema. Left alone here rather than fixed in passing, but it is
+worth knowing about before trusting that branch.
+
 ### ⚠️ Deleting or renaming a `$page` is not typecheck-protected
 
 `router.path("someRouteName", ...)` / `router.push("someRouteName", ...)` are typed against the live route table — but only while the name exists. The moment a route is renamed or removed, any call site still passing the old name silently widens to the plain `string` overload instead of erroring. The build stays green; the call throws at render time, in production, the first time a user hits that code path. This bit the 2026-08 rename directly (`campaignQuest` → `projectQuest` etc., and the whole `Kanban` board route disappearing in favour of `?view=kanban`). **Deleting or renaming a route name requires grepping the whole `src/` tree for the old string**, including nav arrays like `ProjectSettings.tsx`'s sidebar list and `ProjectView.tsx`'s `ROUTES_APP` set, which reference route names as plain strings with nothing in the type system tying them to the routes they name (see the comment on `projectSettingsSigils` in `AppRouter.ts`).
