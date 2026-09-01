@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "6d12f0f3-62a9-48c7-99c9-2b6729f286c2",
+  "id": "3453938c-3ee3-49d5-a40b-4263c76ed453",
   "prevIds": ["b98cedfa-da14-4cc6-9da5-009e3a1ca0ca"],
   "ddl": [
     {
@@ -3701,16 +3701,6 @@
       "default": null,
       "generated": null,
       "name": "default_surface",
-      "entityType": "columns",
-      "table": "projects"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "roadmap_visibility",
       "entityType": "columns",
       "table": "projects"
     },
@@ -7737,6 +7727,20 @@
       "where": null,
       "origin": "manual",
       "name": "quests_release_id_idx",
+      "entityType": "indexes",
+      "table": "quests"
+    },
+    {
+      "columns": [
+        {
+          "value": "epic_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "quests_epic_id_idx",
       "entityType": "indexes",
       "table": "quests"
     },

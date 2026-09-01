@@ -1,4 +1,5 @@
 import { Alepha } from "alepha";
+import { FileService } from "alepha/api/files";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake } from "alepha/fake";
@@ -13,6 +14,7 @@ import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
+import { ReadCounter } from "./fixtures/ReadCounter.ts";
 
 /**
  * The incident this closes: the owner attached a screenshot to a quest and the
@@ -40,7 +42,9 @@ const setup = async () => {
   alepha.with(AlephaMcp);
   alepha.with(LoreApi);
   alepha.with(LoreMcp);
+  alepha.with(ReadCounter);
 
+  const counter = alepha.inject(ReadCounter);
   const questTools = alepha.inject(QuestTools);
   const questApi = alepha.inject(QuestController);
   const projectApi = alepha.inject(ProjectController);
@@ -98,7 +102,18 @@ const setup = async () => {
     return uploaded.fileId;
   };
 
-  return { questTools, questApi, project, quest, call, asUser, attach, OWNER };
+  return {
+    alepha,
+    counter,
+    questTools,
+    questApi,
+    project,
+    quest,
+    call,
+    asUser,
+    attach,
+    OWNER,
+  };
 };
 
 describe("Lore MCP: quest attachments", () => {
@@ -258,5 +273,73 @@ describe("Lore MCP: quest attachments", () => {
         attachmentId: fileId,
       }),
     ).rejects.toThrowError(/not found on this quest/i);
+  });
+});
+
+/**
+ * The HTTP list behind `QuestAttachments.tsx`, which used to resolve one
+ * file per `getFileById` — a D1 round trip each.
+ *
+ * Two properties of that loop had to survive the batching, and neither is
+ * visible in the value it returns on the happy path: the ORDER is the
+ * owner's attach order, and a row that outlived its blob is skipped rather
+ * than taking the list down with it.
+ */
+describe("listQuestAttachments", () => {
+  it("lists every attachment in attach order, in one read", async () => {
+    const { questApi, quest, asUser, attach, counter, OWNER } = await setup();
+
+    await attach("first.png", "image/png", PNG_BYTES);
+    await attach("second.txt", "text/plain", Buffer.from("hello", "utf8"));
+    await attach("third.png", "image/png", PNG_BYTES);
+
+    counter.reset();
+    const listed = await asUser(OWNER, () =>
+      questApi.listQuestAttachments({ params: { id: quest.id } } as any),
+    );
+
+    expect(listed.map((it) => it.name)).toEqual([
+      "first.png",
+      "second.txt",
+      "third.png",
+    ]);
+    expect(listed[1]).toMatchObject({ mimeType: "text/plain", size: 5 });
+
+    // Three attachments, ONE read of `files`. It was one per attachment.
+    expect(counter.of("files")).toBe(1);
+  });
+
+  it("skips an attachment whose file row is gone, and keeps the rest", async () => {
+    const { alepha, questApi, quest, asUser, attach, OWNER } = await setup();
+
+    await attach("kept.png", "image/png", PNG_BYTES);
+    const doomed = await attach("gone.png", "image/png", PNG_BYTES);
+    await attach("also-kept.txt", "text/plain", Buffer.from("x", "utf8"));
+
+    // A row can outlive its blob, and vice versa — a purge job or a manual
+    // delete. The id stays on the quest either way.
+    await alepha.inject(FileService).fileRepository.deleteById(doomed);
+
+    const listed = await asUser(OWNER, () =>
+      questApi.listQuestAttachments({ params: { id: quest.id } } as any),
+    );
+
+    // Absent from the batched result set has to mean exactly what the old
+    // per-file `catch` meant: drop that one, keep the order of the others.
+    expect(listed.map((it) => it.name)).toEqual(["kept.png", "also-kept.txt"]);
+  });
+
+  it("answers an empty list without reading anything", async () => {
+    const { questApi, quest, asUser, counter, OWNER } = await setup();
+
+    counter.reset();
+    const listed = await asUser(OWNER, () =>
+      questApi.listQuestAttachments({ params: { id: quest.id } } as any),
+    );
+
+    // `inArray: []` throws, so a quest with no attachments must return
+    // before the query rather than passing it an empty list.
+    expect(listed).toEqual([]);
+    expect(counter.of("files")).toBe(0);
   });
 });

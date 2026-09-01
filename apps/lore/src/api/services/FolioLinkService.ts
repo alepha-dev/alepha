@@ -1,11 +1,11 @@
 import { $repository } from "alepha/orm";
 
-import { epics } from "../entities/epics.ts";
+import { type Epic, epics } from "../entities/epics.ts";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { type FolioLink, folioLinks } from "../entities/folioLinks.ts";
-import { folios } from "../entities/folios.ts";
-import { quests } from "../entities/quests.ts";
+import { type Folio, folios } from "../entities/folios.ts";
+import { type Quest, quests } from "../entities/quests.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 
@@ -575,16 +575,22 @@ export class FolioLinkService {
 
     if (targets.length === 0) return;
 
-    // One insert per target. Repository doesn't expose bulk insert in
-    // a single call, and the per-source cap keeps this loop small.
-    for (const target of targets) {
-      await this.links.create({
+    // One multi-row INSERT, not one per target. This runs on EVERY folio
+    // and quest write, and on D1 an insert is a round trip: a folio with
+    // 20 wiki links used to pay 20 of them per save, and now pays one.
+    //
+    // ⚠️ `createMany` chunks at 1000 and its batches are not atomic on
+    // their own. That costs nothing here — `FolioController` wraps
+    // create/update in `$transactional()`, and this delete-then-insert was
+    // never atomic without it.
+    await this.links.createMany(
+      targets.map((target) => ({
         fromType: source.kind,
         fromId,
         toId: target.toId,
         targetType: target.targetType,
-      });
-    }
+      })),
+    );
   }
 
   /**
@@ -726,10 +732,12 @@ export class FolioLinkService {
     const inbound = await this.findInbound(target.id);
     if (inbound.length === 0) return 0;
 
+    const sources = await this.readRewriteSources(inbound);
+
     let rewritten = 0;
     for (const link of inbound) {
       if (link.fromType === "folio") {
-        const folio = await this.folios.findById(link.fromId);
+        const folio = sources.folios.get(link.fromId);
         if (!folio) continue;
         // See the note above: never touch a protected folio's ciphertext.
         if ((folio as unknown as { protected?: boolean }).protected) continue;
@@ -747,7 +755,7 @@ export class FolioLinkService {
       if (link.fromType === "quest") {
         const id = Number.parseInt(link.fromId, 10);
         if (!Number.isFinite(id)) continue;
-        const quest = await this.quests.findById(id);
+        const quest = sources.quests.get(id);
         if (!quest) continue;
         // All three markdown fields, because any of them could carry the
         // reference and `syncQuestLinks` scans all three.
@@ -777,7 +785,7 @@ export class FolioLinkService {
       if (link.fromType === "epic") {
         const id = Number.parseInt(link.fromId, 10);
         if (!Number.isFinite(id)) continue;
-        const epic = await this.epics.findById(id);
+        const epic = sources.epics.get(id);
         if (!epic) continue;
         const next = this.replaceTitleToken(epic.description ?? "", from, to);
         if (next === (epic.description ?? "")) continue;
@@ -792,6 +800,61 @@ export class FolioLinkService {
       // this is the one place that has to learn about them.
     }
     return rewritten;
+  }
+
+  /**
+   * Every source a rename has to touch, in ONE query per source kind
+   * rather than one per link.
+   *
+   * `rewriteTitleRefs` used to `findById` inside its loop, so renaming a
+   * folio that 30 others link to was 30 reads before a single rewrite
+   * happened. On D1 each of those is a full round trip, and the loop's
+   * body then calls `syncLinks` — which is itself a delete plus an insert
+   * per link. `DATABASE_TIMEOUT` defaults to 5000 ms on serverless, so
+   * the reads were a real share of a budget the writes also have to fit
+   * inside.
+   *
+   * ⚠️ `inArray: []` throws, so each partition is queried only when it has
+   * ids. Ids are deduped: several links from the same source to the same
+   * target are one row to read, not two.
+   */
+  protected async readRewriteSources(inbound: FolioLink[]): Promise<{
+    folios: Map<string, Folio>;
+    quests: Map<number, Quest>;
+    epics: Map<number, Epic>;
+  }> {
+    const folioIds = new Set<string>();
+    const questIds = new Set<number>();
+    const epicIds = new Set<number>();
+
+    for (const link of inbound) {
+      if (link.fromType === "folio") {
+        folioIds.add(link.fromId);
+        continue;
+      }
+      const id = Number.parseInt(link.fromId, 10);
+      if (!Number.isFinite(id)) continue;
+      if (link.fromType === "quest") questIds.add(id);
+      if (link.fromType === "epic") epicIds.add(id);
+    }
+
+    const [folioRows, questRows, epicRows] = await Promise.all([
+      folioIds.size
+        ? this.folios.findMany({ where: { id: { inArray: [...folioIds] } } })
+        : [],
+      questIds.size
+        ? this.quests.findMany({ where: { id: { inArray: [...questIds] } } })
+        : [],
+      epicIds.size
+        ? this.epics.findMany({ where: { id: { inArray: [...epicIds] } } })
+        : [],
+    ]);
+
+    return {
+      folios: new Map(folioRows.map((row) => [row.id, row])),
+      quests: new Map(questRows.map((row) => [row.id, row])),
+      epics: new Map(epicRows.map((row) => [row.id, row])),
+    };
   }
 
   /**

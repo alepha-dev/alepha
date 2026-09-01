@@ -27,6 +27,7 @@ import {
   createTestQuest,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
+import { ReadCounter } from "./fixtures/ReadCounter.ts";
 
 class ResolveTestRepositories {
   sigils = $repository(sigils);
@@ -43,6 +44,7 @@ interface TestContext {
   controller: DashboardController;
   repos: ResolveTestRepositories;
   dateTime: DateTimeProvider;
+  counter: ReadCounter;
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -56,6 +58,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
   alepha.with(LoreApi);
+  alepha.with(ReadCounter);
 
   alepha.inject(TestEntityRepositories);
   const repos = alepha.inject(ResolveTestRepositories);
@@ -67,6 +70,7 @@ const setup = async (): Promise<TestContext> => {
     controller: alepha.inject(DashboardController),
     repos,
     dateTime: alepha.inject(DateTimeProvider),
+    counter: alepha.inject(ReadCounter),
   };
 };
 
@@ -86,7 +90,11 @@ const memberOf = async (
 const only = async (
   ctx: TestContext,
   user: UserAccountToken,
-  cards: Array<{ metric: string; scope: DashboardScope }>,
+  cards: Array<{
+    metric: string;
+    scope: DashboardScope;
+    filters?: Record<string, unknown>;
+  }>,
 ): Promise<number[]> => {
   const seeded = await ctx.controller.listCards({}, { user });
   for (const card of seeded.cards) {
@@ -643,6 +651,216 @@ describe("dashboard resolve", () => {
       );
 
       expect(res.values).toEqual([]);
+    });
+  });
+
+  /**
+   * The number `resolveAll` exists for.
+   *
+   * `DashboardMetricRegistry` groups cards by metric precisely so a
+   * resolver can answer for many at once — and every resolver used to
+   * implement that seam as a sequential loop, so the grouping bought
+   * nothing at all and the cost grew with the number of tiles a reader
+   * pinned. Nothing else in the pipeline measures that: a looping resolver
+   * and a batched one return identical values.
+   */
+  describe("query count", () => {
+    /**
+     * Three projects the caller belongs to, so a `projects` scope and an
+     * `all` scope are genuinely different narrowings of one union.
+     */
+    const threeProjects = async () => {
+      const mine = await memberOf(ctx);
+      const second = await createTestProject(ctx.alepha, {
+        createdBy: mine.project.createdBy,
+      });
+      const third = await createTestProject(ctx.alepha, {
+        createdBy: mine.project.createdBy,
+      });
+      await createTestMember(ctx.alepha, second, mine.user.id);
+      await createTestMember(ctx.alepha, third, mine.user.id);
+      return { ...mine, second, third };
+    };
+
+    it("reads each table once per metric, not once per card", async ({
+      expect,
+    }) => {
+      const { user, project, second, third } = await threeProjects();
+      await createTestQuest(ctx.alepha, project);
+      await createTestQuest(ctx.alepha, second);
+      await ctx.repos.feedback.create({
+        projectId: project.id,
+        shortId: 1,
+        title: "one",
+        description: "",
+        status: "pending",
+      });
+
+      const measure = async (
+        cards: Array<{
+          metric: string;
+          scope: DashboardScope;
+          filters?: Record<string, unknown>;
+        }>,
+      ) => {
+        await only(ctx, user, cards);
+        ctx.counter.reset();
+        await ctx.controller.resolveCards({ body: {} }, { user });
+        return {
+          quests: ctx.counter.of("quests"),
+          feedback: ctx.counter.of("feedback"),
+          epics: ctx.counter.of("epics"),
+        };
+      };
+
+      const one = await measure([
+        { metric: "activeQuests", scope: { kind: "all" } },
+        { metric: "untriagedFeedback", scope: { kind: "all" } },
+      ]);
+
+      const many = await measure([
+        { metric: "activeQuests", scope: { kind: "all" } },
+        {
+          metric: "activeQuests",
+          scope: { kind: "projects", projectIds: [project.id] },
+        },
+        {
+          metric: "activeQuests",
+          scope: { kind: "projects", projectIds: [second.id, third.id] },
+        },
+        { metric: "untriagedFeedback", scope: { kind: "all" } },
+        {
+          metric: "untriagedFeedback",
+          scope: { kind: "projects", projectIds: [project.id] },
+          filters: { status: "all" },
+        },
+      ]);
+
+      // Two cards or five, the same three statements: one `quests`, one
+      // `feedback`, and the one `epics` read the backlog gate needs.
+      //
+      // Exact, never `toBeLessThan`: an upper bound stays green if a later
+      // change stops reading anything at all.
+      expect({ one, many }).toEqual({
+        one: { quests: 1, feedback: 1, epics: 1 },
+        many: { quests: 1, feedback: 1, epics: 1 },
+      });
+    });
+
+    it("still narrows each card to its own scope off the shared read", async ({
+      expect,
+    }) => {
+      const { user, project, second, third } = await threeProjects();
+      await createTestQuest(ctx.alepha, project);
+      await createTestQuest(ctx.alepha, second);
+      await createTestQuest(ctx.alepha, second);
+      await createTestQuest(ctx.alepha, third);
+
+      const ids = await only(ctx, user, [
+        { metric: "activeQuests", scope: { kind: "all" } },
+        {
+          metric: "activeQuests",
+          scope: { kind: "projects", projectIds: [project.id] },
+        },
+        {
+          metric: "activeQuests",
+          scope: { kind: "projects", projectIds: [second.id, third.id] },
+        },
+      ]);
+
+      const { values } = await ctx.controller.resolveCards(
+        { body: {} },
+        { user },
+      );
+      const valueOf = (id: number) =>
+        values.find((v) => v.cardId === id)?.value;
+
+      // The partition, which is where a batched resolver goes wrong: one
+      // read for the union, three different answers out of it. A resolver
+      // that forgot to intersect would report 4 three times.
+      expect(ids.map(valueOf)).toEqual([4, 1, 3]);
+    });
+
+    it("applies each project's own backlog gate through the shared read", async ({
+      expect,
+    }) => {
+      const { user, project, second } = await threeProjects();
+      const plannedHere = await createTestEpic(ctx.alepha, project, {
+        status: "planned",
+      });
+      const activeThere = await createTestEpic(ctx.alepha, second, {
+        status: "active",
+      });
+      await createTestQuest(ctx.alepha, project, { epicId: plannedHere.id });
+      await createTestQuest(ctx.alepha, project);
+      await createTestQuest(ctx.alepha, second, { epicId: activeThere.id });
+
+      const ids = await only(ctx, user, [
+        {
+          metric: "activeQuests",
+          scope: { kind: "projects", projectIds: [project.id] },
+        },
+        {
+          metric: "activeQuests",
+          scope: { kind: "projects", projectIds: [second.id] },
+        },
+      ]);
+
+      const { values } = await ctx.controller.resolveCards(
+        { body: {} },
+        { user },
+      );
+      const valueOf = (id: number) =>
+        values.find((v) => v.cardId === id)?.value;
+
+      // The claim the batched read rests on: the gate computed over the
+      // UNION is the same gate each project would have got on its own,
+      // because an epic belongs to exactly one project. The first card
+      // loses its planned-epic quest, the second keeps its active-epic one,
+      // and neither is affected by the other's epics.
+      expect(ids.map(valueOf)).toEqual([1, 1]);
+    });
+
+    it("keeps the feedback status filter working now that it is in memory", async ({
+      expect,
+    }) => {
+      const { user, project } = await threeProjects();
+      await ctx.repos.feedback.create({
+        projectId: project.id,
+        shortId: 1,
+        title: "waiting",
+        description: "",
+        status: "pending",
+      });
+      await ctx.repos.feedback.create({
+        projectId: project.id,
+        shortId: 2,
+        title: "handled",
+        description: "",
+        status: "accepted",
+      });
+
+      const ids = await only(ctx, user, [
+        { metric: "untriagedFeedback", scope: { kind: "all" } },
+        {
+          metric: "untriagedFeedback",
+          scope: { kind: "all" },
+          filters: { status: "all" },
+        },
+      ]);
+
+      const { values } = await ctx.controller.resolveCards(
+        { body: {} },
+        { user },
+      );
+      const valueOf = (id: number) =>
+        values.find((v) => v.cardId === id)?.value;
+
+      // `status` moved out of SQL so two cards asking for different
+      // statuses could share one read. Both readings still have to come
+      // out right, and they are the reason it could not stay in the
+      // statement.
+      expect(ids.map(valueOf)).toEqual([1, 2]);
     });
   });
 });

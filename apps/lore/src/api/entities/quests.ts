@@ -372,6 +372,14 @@ export const quests = $entity({
     {
       columns: ["releaseId"],
     },
+    /**
+     * The epic rollup groups by this column and `ReleaseContentService`
+     * filters on it through `inArray`; without an index both are a full
+     * scan of `quests`.
+     */
+    {
+      columns: ["epicId"],
+    },
   ],
 });
 
