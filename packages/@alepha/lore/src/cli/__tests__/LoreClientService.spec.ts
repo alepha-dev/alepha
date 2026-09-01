@@ -24,7 +24,11 @@ describe("LoreClientService", () => {
     // Actions sets `GITHUB_SHA`, so the git-fallback cases there silently
     // asserted nothing.
     const alepha = Alepha.create({
-      env: { LORE_API_KEY: "", LORE_URL: "", ...env },
+      // `HOME` too, and pointed at a directory that does not exist: the
+      // credential lookup now falls back to a device-flow token cached under
+      // it, and a spec reading the real home directory would pass or fail by
+      // whether the person running it had ever typed `alepha lore login`.
+      env: { LORE_API_KEY: "", LORE_URL: "", HOME: "/nonexistent", ...env },
     });
     if (options) {
       alepha.set(loreOptions, options);
@@ -73,13 +77,19 @@ describe("LoreClientService", () => {
     /**
      * The error a CI job hits first, so it names the variable rather than
      * describing the problem.
+     *
+     * ⚠️ It now names BOTH fixes, and rejects rather than throwing: since the
+     * device flow landed, the lookup reads a cached token before giving up, so
+     * it is async. What it must never do is start a login - there is nobody on
+     * a runner to approve a code, and a poll loop there hangs the job. See
+     * `LoreCredentials.spec.ts` for the precedence in full.
      */
-    it("names LORE_API_KEY when it is unset", () => {
+    it("names both fixes when there is no credential at all", async () => {
       const scope = create().scope();
 
-      expect(() => (scope.authorization as () => string)()).toThrowError(
-        /LORE_API_KEY/,
-      );
+      await expect(
+        (scope.authorization as () => Promise<string>)(),
+      ).rejects.toThrowError(/LORE_API_KEY/);
     });
 
     /**

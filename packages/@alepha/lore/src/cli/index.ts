@@ -3,12 +3,14 @@ import { AlephaServerLinksClient } from "alepha/server/links";
 
 import { type LoreOptions, loreOptions } from "./atoms/loreOptions.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
+import { LoginCommand } from "./commands/LoginCommand.ts";
 import { LoreCommand } from "./commands/LoreCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
 import { ArtifactUploader } from "./services/ArtifactUploader.ts";
 import { GitContextService } from "./services/GitContextService.ts";
 import { LoreClientService } from "./services/LoreClientService.ts";
 import { LoreProjectResolver } from "./services/LoreProjectResolver.ts";
+import { LoreTokenStore } from "./services/LoreTokenStore.ts";
 import { QualityReportReader } from "./services/QualityReportReader.ts";
 
 // ---------------------------------------------------------------------------
@@ -59,6 +61,7 @@ export const AlephaLoreCliPlugin = $module({
     QualityReportReader,
     GitContextService,
     ArtifactUploader,
+    LoreTokenStore,
     // ⚠️ None of the four below is re-exported. Each names, directly or
     // through what it injects, a type from the private `lore` workspace, and
     // an exported signature carrying one would put that workspace in the
@@ -66,6 +69,7 @@ export const AlephaLoreCliPlugin = $module({
     LoreProjectResolver,
     QualityCommand,
     ArtifactCommand,
+    LoginCommand,
     // The `lore` root, and the only declaration of it. Two classes declaring
     // it would not collide - `findCommand` resolves by `findLast`, so the
     // second would silently shadow the first and take its subtree with it.
@@ -85,4 +89,5 @@ export const lore = (options: LoreOptions = {}) => {
 export * from "./atoms/loreOptions.ts";
 export * from "./services/GitContextService.ts";
 export * from "./services/LoreClientService.ts";
+export * from "./services/LoreTokenStore.ts";
 export * from "./services/QualityReportReader.ts";

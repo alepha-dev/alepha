@@ -2,6 +2,7 @@ import { $inject } from "alepha";
 import { $command } from "alepha/command";
 
 import { ArtifactCommand } from "./ArtifactCommand.ts";
+import { LoginCommand } from "./LoginCommand.ts";
 import { QualityCommand } from "./QualityCommand.ts";
 
 /**
@@ -27,6 +28,7 @@ import { QualityCommand } from "./QualityCommand.ts";
 export class LoreCommand {
   protected readonly quality = $inject(QualityCommand);
   protected readonly artifacts = $inject(ArtifactCommand);
+  protected readonly auth = $inject(LoginCommand);
 
   /**
    * ⚠️ Declared after both injections. A `children: [...]` entry reading
@@ -36,7 +38,16 @@ export class LoreCommand {
   public readonly lore = $command({
     name: "lore",
     description: "Talk to a Lore instance",
-    children: [this.quality.quality, this.artifacts.artifacts],
+    // `login` and `logout` sit directly under `lore` rather than under a verb
+    // of their own: they are about the connection to an instance, not about a
+    // subject within it, and `alepha lore auth login` would be a noun invented
+    // to hold two commands.
+    children: [
+      this.quality.quality,
+      this.artifacts.artifacts,
+      this.auth.login,
+      this.auth.logout,
+    ],
     handler: async ({ help }) => {
       help();
     },

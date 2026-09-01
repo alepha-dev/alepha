@@ -166,9 +166,42 @@ overrides the config for one invocation. No credential ever lands in a committed
 file.
 
 ```bash
+alepha lore login                          # sign this machine in
 alepha lore quality push                   # coverage and test totals
 alepha lore artifacts push --tag 1.2.3     # the build itself
 ```
+
+### Which credential, in which order
+
+1. `LORE_API_KEY`, which is what CI has.
+2. A device-flow token cached for this hostname, which is what a laptop has
+   after `alepha lore login`.
+3. An error naming both.
+
+⚠️ **Nothing ever starts a login on its own.** There is no human on a CI runner
+to approve a device code, so a job that fell into that flow would poll until it
+timed out and then fail for a reason its log does not explain. A missing
+credential is a fast error instead, and `alepha lore login` refuses to run in CI
+at all.
+
+The key wins over a cached token on purpose: a machine holding both is a laptop
+with a key exported for a one-off, and the explicit thing somebody just typed
+should be the one that is used.
+
+### `login` and `logout`
+
+`login` runs the OAuth 2.0 device flow (RFC 8628): it prints a code and a URL,
+you approve it in a browser, and the token is cached under
+`~/.alepha/credentials.json`.
+
+Tokens are kept **per hostname**, so a self-hosted instance named by `LORE_URL`
+gets its own entry - a token minted by one is worthless to the other, and
+sending it would hand a credential to a host that was never meant to see it.
+`logout` forgets one hostname, and says so when there was nothing to forget.
+
+⚠️ The credentials **directory** is created `0700`. The file itself takes
+whatever the umask allows, so the directory is what protects it, the same way
+`~/.ssh` does.
 
 ### `artifacts push`
 

@@ -86,7 +86,7 @@ export class ArtifactUploader {
       {
         method: "POST",
         headers: {
-          authorization: this.client.authorization(),
+          authorization: await this.client.authorization(),
           "content-type": `multipart/form-data; boundary=${boundary}`,
         },
         // A stream body needs `duplex: "half"` on undici, and the DOM lib's

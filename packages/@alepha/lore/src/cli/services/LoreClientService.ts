@@ -1,7 +1,8 @@
-import { $env, $store, AlephaError, z } from "alepha";
+import { $env, $inject, $store, AlephaError, z } from "alepha";
 import type { ClientScope } from "alepha/server/links";
 
 import { loreOptions } from "../atoms/loreOptions.ts";
+import { LoreTokenStore } from "./LoreTokenStore.ts";
 
 /**
  * The one place that answers "where is Lore, and how do I authenticate to it".
@@ -20,6 +21,7 @@ export class LoreClientService {
   public static readonly DEFAULT_HOSTNAME = "https://lore.alepha.dev";
 
   protected readonly options = $store(loreOptions);
+  protected readonly tokens = $inject(LoreTokenStore);
 
   protected readonly env = $env(
     z.object({
@@ -66,7 +68,7 @@ export class LoreClientService {
    * `LORE_URL=` in a `.env` file or a CI environment is present and empty -
    * which would otherwise resolve to an empty hostname and send the request
    * nowhere, with nothing saying why. Empty reads as "unset", which is how
-   * `requireKey` already reads an empty key.
+   * {@link authorization} already reads an empty key.
    */
   public hostname(): string {
     return String(this.env.LORE_URL || LoreClientService.DEFAULT_HOSTNAME);
@@ -77,9 +79,38 @@ export class LoreClientService {
    *
    * Never cached by a caller: see {@link scope} for why the credential is a
    * thunk everywhere it is used.
+   *
+   * ## ⚠️ The order is load-bearing, not cosmetic
+   *
+   * 1. `LORE_API_KEY`, which is what CI has.
+   * 2. A device-flow token cached for this hostname, which is what a laptop
+   *    has after `alepha lore login`.
+   * 3. An error naming both fixes.
+   *
+   * **Nothing here ever starts a login.** There is no human in CI to approve a
+   * device code, so a runner that fell into that flow would poll until it
+   * timed out - a job that hangs and then fails for a reason its log does not
+   * explain. A missing credential is a fast, legible error instead, and
+   * `alepha lore login` refuses to run in CI at all.
+   *
+   * The key wins over the cached token deliberately. A machine that has both
+   * is a developer's laptop with a key exported for a one-off, and the
+   * explicit thing they just typed should be the one that is used.
    */
-  public authorization(): string {
-    return `Bearer ${this.requireKey()}`;
+  public async authorization(): Promise<string> {
+    const key = String(this.env.LORE_API_KEY ?? "");
+    if (key) {
+      return `Bearer ${key}`;
+    }
+
+    const token = await this.tokens.read(this.hostname());
+    if (token) {
+      return `Bearer ${token}`;
+    }
+
+    throw new AlephaError(
+      `Not authenticated to ${this.hostname()}. Run \`alepha lore login\` on a machine with a browser, or set LORE_API_KEY (which is what CI does).`,
+    );
   }
 
   /**
@@ -96,22 +127,5 @@ export class LoreClientService {
       );
     }
     return project;
-  }
-
-  /**
-   * The credential, or an error that names the variable.
-   *
-   * This is the single most-hit failure surface of the whole plugin: a CI job
-   * whose secret is missing, or a developer running the command on a laptop
-   * for the first time. It says what to set, not that something went wrong.
-   */
-  protected requireKey(): string {
-    const key = String(this.env.LORE_API_KEY ?? "");
-    if (!key) {
-      throw new AlephaError(
-        "LORE_API_KEY is not set. Create an API key on your Lore account's keys page and export it as LORE_API_KEY.",
-      );
-    }
-    return key;
   }
 }
