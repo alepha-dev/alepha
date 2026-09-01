@@ -158,6 +158,14 @@ export abstract class TopicProvider {
       // Armed BEFORE subscribing. It used to be created only after
       // `subscribe` resolved, so a slow or hanging broker left the caller
       // with no deadline at all.
+      //
+      // Refed, deliberately, unlike the eviction and lock-expiry timers that
+      // were unrefed for holding the process open. This callback is not
+      // housekeeping: it is how a caller awaiting this promise learns that no
+      // message came, and it is usually the only handle keeping the loop
+      // alive (a memory subscription is a map insert and refs nothing).
+      // Unrefed, a process whose last act is `await topic.wait(...)` would
+      // exit at the await with no rejection and status 0.
       ref.timeout = this.dateTimeProvider.createTimeout(() => {
         settle(() =>
           reject(

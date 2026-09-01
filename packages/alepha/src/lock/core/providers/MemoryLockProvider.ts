@@ -95,9 +95,22 @@ export class MemoryLockProvider extends LockProvider {
       delete this.storeTimeout[key];
     }
 
-    this.storeTimeout[key] = this.dateTimeProvider.createTimeout(() => {
-      delete this.store[key];
-      delete this.storeTimeout[key];
-    }, ms);
+    // ⚠️ `unref`: this callback only drops an in-memory key, and the store it
+    // drops it from does not outlive the process. Nothing awaits the expiry -
+    // a contended caller polls or waits on its own timer - so it has no claim
+    // on the event loop. Refed it had one, for the whole lease: `$lock`
+    // defaults to a 5-minute `maxDuration`, and a `gracePeriod` re-arms this
+    // for a window deliberately longer than the run, which is how a CLI
+    // command that finished in seconds sat idle waiting to expire a lock
+    // nothing would ever read again.
+    this.storeTimeout[key] = this.dateTimeProvider.createTimeout(
+      () => {
+        delete this.store[key];
+        delete this.storeTimeout[key];
+      },
+      ms,
+      undefined,
+      { unref: true },
+    );
   }
 }
