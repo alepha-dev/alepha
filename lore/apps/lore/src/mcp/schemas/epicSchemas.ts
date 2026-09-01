@@ -45,6 +45,12 @@ export const epicListResultSchema = z.object({
       createdAt: z.datetime(),
       activatedAt: z.datetime().optional(),
       completedAt: z.datetime().optional(),
+      dependsOn_number: z
+        .integer()
+        .describe(
+          "Per-project number of the epic that has to come first, if any. ADVISORY: nothing refuses a status change because of it. It is what the roadmap draws the order from - see `epics.dependsOn`.",
+        )
+        .optional(),
     }),
   ),
 });
@@ -69,6 +75,12 @@ export const epicGetResultSchema = z.object({
   createdAt: z.datetime(),
   activatedAt: z.datetime().optional(),
   completedAt: z.datetime().optional(),
+  dependsOn_number: z
+    .integer()
+    .describe(
+      "Per-project number of the epic that has to come first, if any. ADVISORY: nothing refuses a status change because of it - it is what the roadmap draws the order from.",
+    )
+    .optional(),
   /**
    * The folios filed under this epic (pinned first, then newest-updated), capped at 100.
    * Bodies are not inlined: `folio_get` by `shortId`. An epic "owns quests
@@ -97,6 +109,12 @@ export const epicCreateParamsSchema = projectParamsSchema.extend({
       `Epic description in Markdown. Plain text also works. HTML is not supported. ${DIAGRAM_CAPABILITY}`,
     )
     .optional(),
+  dependsOn_number: z
+    .integer()
+    .describe(
+      "Per-project number of an epic that has to come first. ADVISORY - unlike a quest's `dependsOn_shortId`, this refuses nothing: epics overlap by design, and the roadmap draws the order rather than enforcing it. Cycles ARE refused. Write the order here instead of in the description; prose cannot be rendered or sorted.",
+    )
+    .optional(),
 });
 
 export const epicCreateResultSchema = z.object({
@@ -118,6 +136,12 @@ export const epicUpdateParamsSchema = epicRefSchema.extend({
   description: z
     .string()
     .describe(`New epic description in Markdown. ${DIAGRAM_CAPABILITY}`)
+    .optional(),
+  dependsOn_number: z
+    .integer()
+    .describe(
+      "Reparent the epic's predecessor to the epic with this per-project number. Pass 0 to clear it. ADVISORY: nothing is refused because of it, but cycles are.",
+    )
     .optional(),
 });
 

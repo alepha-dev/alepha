@@ -127,17 +127,43 @@ describe("RoadmapController.getPublicRoadmap", () => {
       )
     ).data;
 
-    // Left `planned` on purpose: a planned epic must appear, and its status
-    // must travel with it so an empty bar reads as "not begun" rather than
-    // "stalled".
+    // ⚠️ The DEPENDENT is created first, so it gets the LOWER `number`.
+    //
+    // That inversion is the whole point of the fixture: with the predecessor
+    // numbered first, `number` order and dependency order agree and the
+    // ordering assertion below would pass whether `EpicDependencyService.order`
+    // ran or not. Numbered this way, only the dependency sort produces
+    // "Draw the map" before "Name the roads".
+    //
+    // Both are left `planned`: a planned epic must appear on the roadmap, and
+    // its status must travel with it so an empty bar reads as "not begun"
+    // rather than "stalled".
+    const follower = (
+      await ctx.epicController.createEpic.fetch(
+        {
+          params: { projectId: project.id },
+          body: { title: "Name the roads" },
+        },
+        { user: owner },
+      )
+    ).data;
+
     const epic = (
       await ctx.epicController.createEpic.fetch(
         { params: { projectId: project.id }, body: { title: "Draw the map" } },
         { user: owner },
       )
     ).data;
+
     await ctx.epicController.updateEpic.fetch(
       { params: { id: epic.id }, body: { releaseId: release.id } },
+      { user: owner },
+    );
+    await ctx.epicController.updateEpic.fetch(
+      {
+        params: { id: follower.id },
+        body: { releaseId: release.id, dependsOn: epic.id },
+      },
       { user: owner },
     );
 
@@ -188,7 +214,7 @@ describe("RoadmapController.getPublicRoadmap", () => {
       { user: owner },
     );
 
-    return { owner, project, release, shippedRelease, epic, quest };
+    return { owner, project, release, shippedRelease, epic, follower, quest };
   };
 
   const read = (slug: string) =>
@@ -299,14 +325,24 @@ describe("RoadmapController.getPublicRoadmap", () => {
 
     const release = open;
 
-    const epic = release.epics[0];
-    expect(Object.keys(epic).sort()).toEqual([
+    // The independent epic carries no `dependsOnNumber` (an absent optional
+    // field does not serialize); the one that depends on it does. Both are
+    // pinned, so neither shape can grow a key unnoticed.
+    const [first, second] = release.epics;
+    expect(Object.keys(first).sort()).toEqual([
       "number",
       "progress",
       "status",
       "title",
     ]);
-    expect(Object.keys(epic.progress).sort()).toEqual([
+    expect(Object.keys(second).sort()).toEqual([
+      "dependsOnNumber",
+      "number",
+      "progress",
+      "status",
+      "title",
+    ]);
+    expect(Object.keys(first.progress).sort()).toEqual([
       "completed",
       "inProgress",
       "shelved",
@@ -337,9 +373,14 @@ describe("RoadmapController.getPublicRoadmap", () => {
     const res = await read(project.slug);
 
     const epics = res.data.releases[0].epics;
+    // Predecessor first, and the dependent naming it - the order DRAWN
+    // rather than described, which is the whole point of `epics.dependsOn`.
     expect(epics.map((epic) => [epic.title, epic.status])).toEqual([
       ["Draw the map", "planned"],
+      ["Name the roads", "planned"],
     ]);
+    expect(epics[0].dependsOnNumber).toBeUndefined();
+    expect(epics[1].dependsOnNumber).toBe(epics[0].number);
     // The quest inside it counts, even though `EpicVisibilityService` keeps a
     // planned epic's quests out of the project's own backlog. An epic
     // reporting 0/0 because its work is gated out of a listing surface is not

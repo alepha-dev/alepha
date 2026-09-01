@@ -25,6 +25,21 @@ export const roadmapEpicSchema = epicResourceSchema.pick({
   title: true,
   status: true,
   progress: true,
+  /**
+   * The epic that comes first, as its per-project `number` - never the id
+   * `epics.dependsOn` actually stores.
+   *
+   * This is the field the whole column exists for: the roadmap DRAWS the
+   * order rather than asking the reader to parse "depends on epic #14
+   * landing first" out of a paragraph. It is also why `dependsOnNumber` is
+   * resolved in `EpicController.buildEpicResource` rather than here - a
+   * public payload must not learn to translate ids.
+   *
+   * It discloses no more than the epic titles beside it already do: a
+   * per-project ordinal identifies nothing outside the project whose roadmap
+   * this is.
+   */
+  dependsOnNumber: true,
 });
 
 export type RoadmapEpic = Infer<typeof roadmapEpicSchema>;

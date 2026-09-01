@@ -1,5 +1,6 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
+import { ArrowUp } from "lucide-react";
 
 import type { RoadmapEpic } from "@/api/schemas/roadmapEpicSchema.ts";
 import {
@@ -36,7 +37,7 @@ export interface RoadmapEpicRowProps {
  */
 const RoadmapEpicRow = (props: RoadmapEpicRowProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const { number, title, status, progress } = props.epic;
+  const { number, title, status, progress, dependsOnNumber } = props.epic;
   const { completed, inProgress, shelved, total } = progress;
   const open = Math.max(0, total - completed - inProgress - shelved);
   const Icon = STATUS_ICONS[status];
@@ -52,6 +53,21 @@ const RoadmapEpicRow = (props: RoadmapEpicRowProps) => {
           <Icon className="size-3" />
           {tr(STATUS_LABEL_KEYS[status])}
         </Badge>
+        {/* ⚠️ The order DRAWN, which is the whole reason `epics.dependsOn`
+            exists: it used to live in prose ("depends on epic #14 landing
+            first") that could not be rendered, sorted or checked.
+
+            Advisory, and the wording says so. "After Epic 7" states an
+            intended order; "Blocked by Epic 7" would claim an enforcement
+            that does not exist - nothing refuses a status change because of
+            this field, by decision recorded on the column. The rows are also
+            sorted so the predecessor is already above this one. */}
+        {dependsOnNumber !== undefined ? (
+          <Badge variant="tint" tone="neutral">
+            <ArrowUp className="size-3" />
+            {tr("roadmap.epic.after", { args: [String(dependsOnNumber)] })}
+          </Badge>
+        ) : null}
       </div>
 
       {total === 0 ? (
