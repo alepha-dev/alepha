@@ -45,6 +45,7 @@ import {
 } from "../schemas/projectResourceSchema.ts";
 import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
+import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectActivityService } from "../services/ProjectActivityService.ts";
@@ -441,6 +442,9 @@ export class ProjectController {
         // Which surface bare `/:projectSlug` lands on. `null` clears the
         // override → the index route falls back to the quest table.
         defaultSurface: z.enum(["list", "kanban"]).nullable().optional(),
+        // Who may read `/:projectSlug/roadmap`. `null` clears the override →
+        // `ProjectSecurityService.roadmapVisibilityOf` reads it as `off`.
+        roadmapVisibility: roadmapVisibilitySchema.nullable().optional(),
         // Colour token per quest tag. Sent whole, not merged: the settings
         // picker holds the full map, and a partial merge gives no way to
         // clear one tag's colour without inventing a "none" token.
@@ -487,6 +491,10 @@ export class ProjectController {
 
       if ("defaultSurface" in body) {
         project.defaultSurface = body.defaultSurface ?? undefined;
+      }
+
+      if ("roadmapVisibility" in body) {
+        project.roadmapVisibility = body.roadmapVisibility ?? undefined;
       }
 
       if ("tagColors" in body) {
@@ -847,16 +855,18 @@ export class ProjectController {
         throw new BadRequestError("A column with this name already exists.");
       }
 
-      // Cascade-rename onto every quest that lives in that column.
-      const affected = await this.quests.findMany({
-        where: {
+      // Cascade-rename onto every quest that lives in that column, in ONE
+      // statement. It used to read the column and then update row by row,
+      // which is unbounded in the size of the column: on D1 each update is
+      // a round trip, so a column holding 400 quests was several seconds of
+      // them against a 5000 ms `DATABASE_TIMEOUT`.
+      await this.quests.updateMany(
+        {
           projectId: { eq: params.id },
           kanbanColumn: { eq: body.oldName },
         },
-      });
-      for (const quest of affected) {
-        await this.quests.updateById(quest.id, { kanbanColumn: newName });
-      }
+        { kanbanColumn: newName },
+      );
 
       const updated = current.map((c) => (c === body.oldName ? newName : c));
       // The settings map is keyed by name, so a rename has to carry the

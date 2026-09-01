@@ -36,6 +36,11 @@ const PUBLIC_ROUTES = [
   // Third-party "report a bug" buttons link straight here, and an anonymous
   // visitor gets a sign-in CTA rather than a redirect.
   "projectFeedbackRequest",
+  // The roadmap. Real HTML for a crawler and for a stakeholder with no
+  // account is most of what the page is FOR, and the only thing making it
+  // render is the ABSENCE of a guard - so a `$secure()` added here would take
+  // the feature away silently, and this line is what makes that red.
+  "projectRoadmap",
   "notFound",
 ];
 

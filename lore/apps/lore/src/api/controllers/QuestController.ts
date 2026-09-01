@@ -784,26 +784,42 @@ export class QuestController {
     },
     handler: async () => {
       const quest = this.owned.get<Quest>();
+      const attachments = quest.attachments ?? [];
+      if (attachments.length === 0) {
+        return [];
+      }
 
-      const files = await Promise.all(
-        (quest.attachments ?? []).map(async (fileId) => {
-          try {
-            const file = await this.fileService.getFileById(fileId);
-            return {
-              fileId,
-              name: file.name,
-              mimeType: file.mimeType,
-              size: file.size,
-            };
-          } catch {
-            // A row can outlive its blob (purge job, manual delete). One
-            // missing file must not take the whole row down with it.
-            return undefined;
-          }
-        }),
-      );
+      // One lookup for the whole list, the same shape `attachmentNames`
+      // above already uses. It replaces a `getFileById` per attachment,
+      // which on D1 was a round trip each.
+      const rows = await this.fileService.fileRepository.findMany({
+        where: { id: { inArray: [...new Set(attachments)] } },
+        columns: ["id", "name", "mimeType", "size"],
+      });
+      const byId = new Map(rows.map((row) => [row.id, row]));
 
-      return files.filter((it) => it !== undefined);
+      // A row can outlive its blob (purge job, manual delete), and one
+      // missing file must not take the whole list down with it — absent
+      // from the result set is exactly the old per-file catch. What it no
+      // longer swallows is a FAILING lookup: that used to drop the files it
+      // could not read and answer 200 with a short list, which reads as
+      // "the attachment is gone".
+      //
+      // Driven by `attachments` rather than by `rows` so the order the
+      // owner attached them in is preserved.
+      return attachments.flatMap((fileId) => {
+        const file = byId.get(fileId);
+        return file
+          ? [
+              {
+                fileId,
+                name: file.name,
+                mimeType: file.mimeType,
+                size: file.size,
+              },
+            ]
+          : [];
+      });
     },
   });
 
@@ -2422,13 +2438,14 @@ export class QuestController {
       // Clear dependents' `dependsOn` so the dependency graph does not keep
       // edges to a deleted quest. `null`, not `undefined`: the repository
       // strips undefined keys from an update, which made this a no-op.
-      const dependents = await this.quests.findMany({
-        where: { dependsOn: { eq: params.id } },
-        columns: ["id"],
-      });
-      for (const dep of dependents) {
-        await this.quests.updateById(dep.id, { dependsOn: null });
-      }
+      //
+      // One statement rather than a read plus an update per dependent: on
+      // D1 each of those was a round trip, inside a delete that is already
+      // transactional.
+      await this.quests.updateMany(
+        { dependsOn: { eq: params.id } },
+        { dependsOn: null },
+      );
 
       // Hand the blight back to the inbox before its quest disappears.
       //

@@ -3,8 +3,8 @@ import {
   AlephaApiAnalyticsAdmin,
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
+import { AlephaApiInvitations } from "alepha/api/invitations";
 
-import { AdminInvitationController } from "./controllers/AdminInvitationController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
@@ -26,13 +26,13 @@ import { QualityController } from "./controllers/QualityController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
+import { RoadmapController } from "./controllers/RoadmapController.ts";
 import { SearchController } from "./controllers/SearchController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
 import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
-import { InvitationJobs } from "./jobs/InvitationJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
@@ -40,6 +40,7 @@ import { InvitationNotifications } from "./notifications/InvitationNotifications
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
+import { ProjectInvitationResource } from "./providers/ProjectInvitationResource.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AreaService } from "./services/AreaService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
@@ -49,6 +50,7 @@ import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
+import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -56,7 +58,6 @@ import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
-import { InvitationService } from "./services/InvitationService.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
@@ -72,6 +73,7 @@ import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.
 import { QuestService } from "./services/QuestService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
+import { RoadmapService } from "./services/RoadmapService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
@@ -90,9 +92,14 @@ export const LoreApi = $module({
   // forever with no error (see `AnalyticsRetentionGuard`'s boot warning).
   // `AlephaApiAnalyticsAdmin` is the opt-in admin query surface behind
   // `admin:analytics:read` — it feeds the /admin/analytics page.
+  //
+  // `AlephaApiInvitations` brings the invitation lifecycle, its hourly expiry
+  // and purge jobs, and the `admin:invitation:*` surface. What a project IS
+  // stays here, in `ProjectInvitationResource`.
   imports: [
     AlephaApiAnalyticsRollup,
     AlephaApiAnalyticsAdmin,
+    AlephaApiInvitations,
     LoreDashboardCatalog,
   ],
   services: [
@@ -102,6 +109,8 @@ export const LoreApi = $module({
     ProjectSecurityService,
     ReleaseAttachmentService,
     ReleaseContentService,
+    RoadmapService,
+    EpicDependencyService,
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,
@@ -114,8 +123,10 @@ export const LoreApi = $module({
     FolioBlobService,
     FolioHistoryService,
     FolioLinkService,
-    InvitationService,
-    InvitationJobs,
+    // Declares the `$invitationResource` for `resourceType: "project"`.
+    // Nothing injects it, so like `AppSecurityProvider` it has to be listed
+    // or the resolver is never registered and every invitation 404s.
+    ProjectInvitationResource,
     QuestJobs,
     BlightJobs,
     SigilJobs,
@@ -170,6 +181,7 @@ export const LoreApi = $module({
     FeedbackCommentController,
     ProjectController,
     ReleaseController,
+    RoadmapController,
     EpicController,
     AreaController,
     ProjectReportsController,
@@ -177,7 +189,6 @@ export const LoreApi = $module({
     ArtifactController,
     ProjectQuestPortabilityController,
     InvitationController,
-    AdminInvitationController,
     AdminProjectController,
     KanbanController,
     FolioController,
