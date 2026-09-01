@@ -1,12 +1,8 @@
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
+import { Control } from "@alepha/ui/components/control/control";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
@@ -16,11 +12,13 @@ import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
- * The sentinel for "no release". A `SelectItem` cannot carry an empty value,
- * and the API distinguishes `null` (detach) from an absent key (leave alone),
- * so the two have to stay tellable apart all the way down.
+ * One optional number. "No release" is the field being empty, which is what
+ * `Control`'s `clearable` row sets it to - the `"none"` string sentinel the
+ * raw `<Select>` needed is gone with it.
  */
-const NONE = "none";
+const releaseFormSchema = z.object({
+  releaseId: z.number().optional(),
+});
 
 export interface EpicReleaseControlProps {
   epic: EpicResource;
@@ -51,54 +49,55 @@ const EpicReleaseControl = (props: EpicReleaseControlProps) => {
     (r) => !r.releasedAt || r.id === props.epic.releaseId,
   );
 
-  const change = async (value: string) => {
+  const change = async (value?: number) => {
     if (submitting) return;
     setSubmitting(true);
     try {
       const updated = await epicApi.updateEpic({
         params: { id: props.epic.id },
-        body: { releaseId: value === NONE ? null : Number(value) },
+        // `null` detaches; an absent key would leave the attachment alone.
+        body: { releaseId: value ?? null },
       });
       props.onChange(updated);
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
+      // The write is the only thing that moves this field, so a failed one has
+      // to put the trigger back: the `<Select>` this replaced was driven
+      // straight off `props.epic` and reverted by re-rendering.
+      form.setInitialValues(
+        { releaseId: props.epic.releaseId ?? undefined },
+        { keepDirty: false },
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
+  const form = useForm({
+    schema: releaseFormSchema,
+    initialValues: { releaseId: props.epic.releaseId ?? undefined },
+    // Nothing is submitted: picking a row IS the write.
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, value) => void change(value as number | undefined),
+  });
+
   return (
-    <Select
-      value={props.epic.releaseId ? String(props.epic.releaseId) : NONE}
-      // ⚠️ Without `items` the trigger prints the release ID. Base UI's
-      // `Select.Value` renders the VALUE, not the selected row's label, and
-      // the rows live in a popup that is unmounted until first opened, so
-      // there is nothing for it to resolve a label from. The epic aside read
-      // `11` where it should have read `0.28.0`.
-      //
-      // Same fix, and the same reasoning, as `AreaMergeDialog`.
-      items={[
-        { value: NONE, label: String(tr("epic.aside.release.none")) },
-        ...options.map((release) => ({
-          value: String(release.id),
-          label: release.tag ?? release.title,
-        })),
-      ]}
-      onValueChange={(value) => void change(String(value))}
+    <Control
+      input={form.input.releaseId}
+      // The aside row beside it carries the label, so the trigger names itself
+      // to assistive tech instead.
+      label=""
+      inputProps={{ "aria-label": String(tr("epic.aside.release")) }}
+      clearable
+      clearLabel={String(tr("epic.aside.release.none"))}
+      triggerClassName="w-full"
       disabled={submitting || !!current?.releasedAt}
-    >
-      <SelectTrigger size="sm" className="w-full">
-        <SelectValue placeholder={tr("epic.aside.release.none")} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={NONE}>{tr("epic.aside.release.none")}</SelectItem>
-        {options.map((release) => (
-          <SelectItem key={release.id} value={String(release.id)}>
-            {release.tag ?? release.title}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      items={options.map((release) => ({
+        value: String(release.id),
+        label: release.tag ?? release.title,
+      }))}
+    />
   );
 };
 

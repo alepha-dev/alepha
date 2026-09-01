@@ -1090,7 +1090,38 @@ test.describe("Epics — the release control", () => {
     const control = page.locator("aside").getByRole("combobox");
     await expect(control).toBeVisible({ timeout: 15_000 });
 
+    /**
+     * The write behind a pick, armed BEFORE the click that causes it.
+     *
+     * The trigger is optimistic: `EpicReleaseControl` keeps the picked value
+     * in its own `useForm` field and paints the label from there, so it reads
+     * "0.28.0" a few milliseconds BEFORE `updateEpic` is even dispatched.
+     * Reloading on the strength of the label alone therefore aborts the
+     * request mid-flight and the epic comes back detached - the label
+     * assertion is not a barrier the way it was when this control was a raw
+     * `<Select>` driven straight off `props.epic`.
+     *
+     * Awaiting the write is not a weaker assertion than reloading blind. It
+     * is the only thing that makes the reload below mean anything: without
+     * it, "No release" after a reload is what a LOST write and a genuine
+     * detach both look like, so the detach step asserted nothing at all.
+     *
+     * Matched on the BODY rather than the URL. `roadmap.spec.ts` warns that
+     * action calls are multiplexed through `POST /api/_batch`, where a
+     * per-action URL never fires; one pick is one call in its own tick so it
+     * does reach `/api/updateEpic` today, but `releaseId` is in the payload
+     * either way and nothing else in this window writes that key.
+     */
+    const written = () =>
+      page.waitForResponse(
+        (res) =>
+          res.request().method() === "POST" &&
+          (res.request().postData() ?? "").includes("releaseId"),
+        { timeout: 15_000 },
+      );
+
     await test.step("attaching shows the tag and never the id", async () => {
+      const saved = written();
       await control.click();
       await page.getByRole("option", { name: "0.28.0" }).click();
 
@@ -1099,6 +1130,7 @@ test.describe("Epics — the release control", () => {
       // asserted as a whole word to keep it from matching inside a date or
       // another number that happens to share the digits.
       await expect(control).not.toContainText(new RegExp(`\\b${open.id}\\b`));
+      expect((await saved).status()).toBe(200);
     });
 
     await test.step("and it survives a reload, from the server", async () => {
@@ -1111,10 +1143,12 @@ test.describe("Epics — the release control", () => {
     });
 
     await test.step("detaching goes back to the none label", async () => {
+      const saved = written();
       await control.click();
       await page.getByRole("option", { name: /^No release$/ }).click();
 
       await expect(control).toContainText("No release", { timeout: 15_000 });
+      expect((await saved).status()).toBe(200);
       await page.reload();
       await expect(control).toContainText("No release", { timeout: 15_000 });
     });
@@ -1124,9 +1158,13 @@ test.describe("Epics — the release control", () => {
       // filtered out of the options, and stays visible only because it is
       // this epic's current one. Falling back to "none" here would read as
       // though the attachment had been lost.
+      const saved = written();
       await control.click();
       await page.getByRole("option", { name: "0.29.0" }).click();
       await expect(control).toContainText("0.29.0", { timeout: 15_000 });
+      // Publishing below reads the attachment back out of the database, so
+      // the attachment has to BE there first.
+      expect((await saved).status()).toBe(200);
 
       await post(`/api/publishRelease/${later.id}`, {});
       await page.reload();
