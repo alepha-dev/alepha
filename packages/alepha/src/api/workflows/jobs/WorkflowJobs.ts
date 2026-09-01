@@ -88,13 +88,17 @@ export class WorkflowJobs {
         workflowId,
         stepName,
         priority,
-        delayMs,
+        scheduledAt,
       ) => {
+        // The step's own stamp, handed over as an instant rather than
+        // re-derived as a delay: `push()` would otherwise read the clock a
+        // second time and schedule the row against a `now` the stamp never
+        // saw. See `WorkflowProvider.stepDispatch`.
         await this.dispatchStep.push(
           { workflowId, stepName },
           {
             priority: this.priorityReverse[priority] ?? "normal",
-            delay: delayMs ? [delayMs, "millisecond"] : undefined,
+            scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
           },
         );
       };

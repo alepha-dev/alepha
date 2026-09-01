@@ -1,7 +1,7 @@
 import { Alepha, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
-import { describe, it } from "vitest";
+import { describe, it, vi } from "vitest";
 
 import {
   $workflow,
@@ -12,10 +12,28 @@ import {
 
 // -----------------------------------------------------------------------------------------------------------------
 
+// Raised so `waitFor`'s 10_000ms budget expires FIRST and its diagnostic (the
+// actual execution row) reaches the reporter. With both at 10_000 vitest won
+// every race and reported a bare timeout, which is why the delayed-step
+// flakes in this module were characterised by hand twice over.
+vi.setConfig({ testTimeout: 30_000 });
+
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
  * Use this instead of `setTimeout(r, fixedMs)` — fixed sleeps race the
  * step dispatch under CI load and produce flaky failures.
+ *
+ * The budget must stay UNDER this file's `testTimeout`, which the
+ * `vi.setConfig` above raises to 30_000 for exactly that reason. Both used
+ * to be 10_000, so vitest's timeout won every race and killed the test
+ * before this threw, which meant the message below (the one carrying the
+ * actual row) was never printed. Two sessions characterised a parked
+ * workflow by hand before anyone noticed the diagnostic existed and was
+ * simply unreachable.
+ *
+ * Raise the ceiling, never lower this floor. Lowering it to 8_000 opened
+ * the same gap but also cut every workflow test's tolerance by two seconds,
+ * and CI went red on a delayed-step test that had been green at 10_000.
  */
 async function waitFor<T>(
   fn: () => Promise<T> | T,
@@ -287,49 +305,18 @@ describe("$workflow", () => {
 
   describe("retry", () => {
     /**
-     * TODO: fix and re-enable — skipped 2026-08-18, re-enabled 2026-08-23 by
-     * the audit commit `b9c057f40`, skipped again the same day.
+     * Parked 2026-08-18 at roughly 1 in 3, un-parked 2026-09-01. Two engine
+     * bugs stood behind it, both fixed: a promotion timer that fired a
+     * millisecond early left the outbox row `scheduled` for the sweep (the
+     * re-arm in `JobProvider.dispatchScheduled`), and a retry's dispatch was
+     * scheduled from a second clock read rather than from the stamp on the
+     * step row (`$workflow-travel-race.spec.ts`).
      *
-     * The audit's fix (`dispatchScheduled` re-arming when its timer fires a
-     * millisecond early) is real and stays in, but it did not close this. The
-     * sibling repeat test in `$workflow-hardening.spec.ts` still failed 1 in 6
-     * under load after it; this one passed 16 in 16 on the same sweep, which
-     * is not enough to call it fixed given its history. The two share a root
-     * cause, so they go back to being skipped together and should return
-     * together.
-     *
-     * Flaky at roughly 1 in 3, in isolation as well as under full-suite load
-     * (2/6 and 2/6 across two characterisation sweeps). It is not cosmetic: a
-     * red `test` job blocks the docs and Lore deploys, so this fails the whole
-     * pipeline a third of the time.
-     *
-     * **Symptom.** The execution never leaves `running`. Both `waitFor` and
-     * vitest budget 10_000ms, so vitest's timeout wins and `waitFor`'s
-     * diagnostic is normally never printed. Raising vitest's above it
-     * (`--testTimeout=30000`) surfaces the real state:
-     *
-     * ```
-     * status: "running", currentStep: "flaky",
-     * createdAt 16:33:09.224Z, updatedAt 16:33:09.235Z
-     * ```
-     *
-     * The step throws, the retry is scheduled, `updatedAt` stops 11ms in, and
-     * nothing fires for the remaining ten seconds. The logs show `fail #1` and
-     * `fail #2` and no third call, so `callCount` stays at 2 and the workflow
-     * never completes.
-     *
-     * **Where to look.** Whatever wakes a step whose `scheduledAt` is in the
-     * near future. `backoff: [10, "millisecond"]` puts the retry ~10ms out,
-     * short enough to fall due before the dispatcher is listening for it — a
-     * race between writing the retry and the poller that claims due steps.
-     *
-     * Lengthening the backoff in this test would make it pass without fixing
-     * anything, and the same race would still be there for any real workflow
-     * retrying on a short delay. That is why this is skipped rather than
-     * tuned.
+     * The backoff is deliberately still 10ms. Lengthening it would make the
+     * test pass without proving anything, and a real workflow retrying on a
+     * short delay would keep the race.
      */
-    // oxlint-disable-next-line vitest/no-disabled-tests -- deliberately parked, see the TODO above
-    it.skip("should retry a step on failure with retries configured", async ({
+    it("should retry a step on failure with retries configured", async ({
       expect,
     }) => {
       let callCount = 0;
