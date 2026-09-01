@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "d5d0a629-b05a-43d4-b1fb-da533a44ea3e",
-  "prevIds": ["b98cedfa-da14-4cc6-9da5-009e3a1ca0ca"],
+  "id": "3a40c145-c4e2-4cbf-a321-68fe0f12c040",
+  "prevIds": ["3453938c-3ee3-49d5-a40b-4263c76ed453"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -1557,6 +1557,16 @@
     {
       "type": "integer",
       "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "depends_on",
+      "entityType": "columns",
+      "table": "epics"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
       "autoincrement": true,
       "default": null,
       "generated": null,
@@ -2571,16 +2581,6 @@
       "default": "(unixepoch('subsec') * 1000)",
       "generated": null,
       "name": "updated_at",
-      "entityType": "columns",
-      "table": "invitations"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
       "entityType": "columns",
       "table": "invitations"
     },
@@ -3711,6 +3711,16 @@
       "default": null,
       "generated": null,
       "name": "default_surface",
+      "entityType": "columns",
+      "table": "projects"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "roadmap_visibility",
       "entityType": "columns",
       "table": "projects"
     },
@@ -5538,6 +5548,17 @@
       "table": "epics"
     },
     {
+      "columns": ["depends_on"],
+      "tableTo": "epics",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "SET NULL",
+      "nameExplicit": false,
+      "name": "fk_epics_depends_on_epics_id_fk",
+      "entityType": "fks",
+      "table": "epics"
+    },
+    {
       "columns": ["project_id"],
       "tableTo": "projects",
       "columnsTo": ["id"],
@@ -5701,6 +5722,17 @@
       "name": "fk_identities_user_id_users_id_fk",
       "entityType": "fks",
       "table": "identities"
+    },
+    {
+      "columns": ["invited_by"],
+      "tableTo": "users",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_invitations_invited_by_users_id_fk",
+      "entityType": "fks",
+      "table": "invitations"
     },
     {
       "columns": ["user_id"],
@@ -7726,6 +7758,20 @@
       "where": null,
       "origin": "manual",
       "name": "quests_release_id_idx",
+      "entityType": "indexes",
+      "table": "quests"
+    },
+    {
+      "columns": [
+        {
+          "value": "epic_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "quests_epic_id_idx",
       "entityType": "indexes",
       "table": "quests"
     },

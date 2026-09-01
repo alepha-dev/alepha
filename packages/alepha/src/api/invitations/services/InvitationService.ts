@@ -7,7 +7,10 @@ import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import { invitationConfigAtom } from "../atoms/invitationConfigAtom.ts";
 import { type InvitationEntity, invitations } from "../entities/invitations.ts";
-import type { InvitationPrincipal } from "../primitives/$invitationResource.ts";
+import type {
+  InvitationDescription,
+  InvitationPrincipal,
+} from "../primitives/$invitationResource.ts";
 import { InvitationResourceProvider } from "../providers/InvitationResourceProvider.ts";
 import type { CreateInvitation } from "../schemas/createInvitationSchema.ts";
 import type { InvitationQuery } from "../schemas/invitationQuerySchema.ts";
@@ -230,20 +233,47 @@ export class InvitationService {
     if (rows.length === 0) {
       return [];
     }
-    return Promise.all(
-      rows.map(async (invitation) => {
+    // Grouped by `resourceType` and described one GROUP at a time, never one
+    // row at a time. Lore's inbox was two sequential queries per invitation
+    // until it was collapsed to two queries total, and a per-row seam would
+    // have handed that N+1 straight back the moment the code moved here.
+    const byType = new Map<string, number[]>();
+    rows.forEach((invitation, index) => {
+      const bucket = byType.get(invitation.resourceType);
+      if (bucket) {
+        bucket.push(index);
+      } else {
+        byType.set(invitation.resourceType, [index]);
+      }
+    });
+
+    const described: Array<InvitationDescription | undefined> = new Array(
+      rows.length,
+    );
+
+    await Promise.all(
+      [...byType.entries()].map(async ([resourceType, indexes]) => {
         // `find`, not `get`: a row whose type the application has since
         // stopped registering must still be listed, so its owner can decline
         // it. Failing the whole inbox over one such row would be worse.
-        const resource = this.resources.find(invitation.resourceType);
-        const described = await resource?.options.describe?.(invitation);
-        return {
-          ...invitation,
-          resourceTitle: described?.resourceTitle,
-          inviterName: described?.inviterName,
-        };
+        const resource = this.resources.find(resourceType);
+        if (!resource?.options.describe) {
+          return;
+        }
+        const answers = await resource.options.describe(
+          indexes.map((index) => rows[index]),
+        );
+        indexes.forEach((index, position) => {
+          described[index] = answers[position];
+        });
       }),
     );
+
+    return rows.map((invitation, index) => ({
+      ...invitation,
+      resourceTitle: described[index]?.resourceTitle,
+      inviterName: described[index]?.inviterName,
+    }));
   }
 
   /**

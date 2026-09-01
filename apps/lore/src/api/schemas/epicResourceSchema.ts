@@ -37,6 +37,20 @@ export const epicResourceSchema = epics.schema.extend({
     total: z.integer(),
   }),
   questCount: z.integer(),
+  /**
+   * `dependsOn` restated as the predecessor's per-project `number`.
+   *
+   * The column stores an id, because that is what a foreign key is; every
+   * surface that names an epic to a human names it `#7`. Resolving it once
+   * here, rather than at each call site, is what lets the roadmap, the MCP
+   * tools and the epic page all say "after Epic 7" without any of them
+   * holding the epic list to translate with.
+   *
+   * Absent when the epic has no predecessor, and also when the predecessor
+   * row has gone - the FK is `ON DELETE SET NULL`, so that second case does
+   * not survive a delete, but a soft-deleted one would.
+   */
+  dependsOnNumber: z.integer().optional(),
 });
 
 export type EpicResource = Infer<typeof epicResourceSchema>;
