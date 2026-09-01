@@ -1,4 +1,5 @@
-import { $env, z } from "alepha";
+import { $env, $inject, Alepha, z } from "alepha";
+import { InvitationRegistrationService } from "alepha/api/invitations";
 import { $realm } from "alepha/api/users";
 
 /**
@@ -14,6 +15,8 @@ import { $realm } from "alepha/api/users";
  * back into this class's own construction.
  */
 export class AppSecurityProvider {
+  protected readonly alepha = $inject(Alepha);
+
   env = $env(
     z.object({
       ADMIN_EMAIL: z.email().optional(),
@@ -108,5 +111,23 @@ export class AppSecurityProvider {
       google: true,
       credentials: true,
     },
+    /**
+     * What makes the switch above usable rather than merely present.
+     *
+     * With registration closed, an invited stranger would otherwise have no
+     * way in at all: Lore invites by email, and accepting needs an account.
+     * The seam lets exactly the invited address through, on the strength of
+     * the token in its own invitation mail (or, on OAuth, of a provider that
+     * has verified the address).
+     *
+     * Resolved lazily inside the closure rather than injected as a field.
+     * `$realm` registers services from inside a field initializer, so a class
+     * that declares it and also injects a service becomes a hub in the
+     * dependency graph - the same shape that closed a cycle through
+     * `LoreFileAccessProvider` and put `ProjectSecurityService` in its own
+     * file.
+     */
+    isPreAuthorized: (context) =>
+      this.alepha.inject(InvitationRegistrationService).preAuthorize(context),
   });
 }
