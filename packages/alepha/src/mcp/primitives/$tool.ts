@@ -186,6 +186,8 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
 
   protected outputSchemaCache?: { schema: McpJsonSchema; wrapped: boolean };
 
+  protected inputSchemaCache?: McpJsonSchema;
+
   protected onInit(): void {
     this.mcpServer.registerTool(this);
   }
@@ -249,9 +251,7 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
    * can populate `structuredContent` on call results.
    */
   public toDescriptor(): McpToolDescriptor {
-    const inputSchema: McpJsonSchema = this.options.schema?.params
-      ? this.schemaToJsonSchema(this.options.schema.params)
-      : { type: "object", properties: {}, required: [] };
+    const inputSchema = this.inputSchema();
 
     const descriptor: McpToolDescriptor = {
       name: this.name,
@@ -295,6 +295,25 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       return undefined;
     }
     return output.wrapped ? { result } : (result as Record<string, unknown>);
+  }
+
+  /**
+   * The advertised input schema: what the descriptor tells a client to send.
+   *
+   * Memoized for the same reason as `outputSchema`, and it is the heavier of
+   * the two in practice. `tools/list` maps `toDescriptor` over every
+   * registered tool, so an uncached conversion is paid once per tool per
+   * request and grows with the size of the tool set. On Lore's server that
+   * made `tools/list` the most CPU-expensive method the server has despite
+   * touching no database at all.
+   */
+  protected inputSchema(): McpJsonSchema {
+    if (!this.inputSchemaCache) {
+      this.inputSchemaCache = this.options.schema?.params
+        ? this.schemaToJsonSchema(this.options.schema.params)
+        : { type: "object", properties: {}, required: [] };
+    }
+    return this.inputSchemaCache;
   }
 
   /**

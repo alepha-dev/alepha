@@ -42,6 +42,37 @@ describe("$tool descriptor", () => {
     await alepha.stop();
   });
 
+  it("converts the params schema once, however many descriptors it is asked for", async () => {
+    const alepha = Alepha.create();
+
+    class Tools {
+      search = $tool({
+        description: "search",
+        schema: {
+          params: z.object({ query: z.string(), limit: z.number() }),
+          result: z.object({ hits: z.array(z.string()) }),
+        },
+        handler: async () => ({ hits: [] }),
+      });
+    }
+
+    const tools = alepha.inject(Tools);
+    await alepha.start();
+
+    const first = tools.search.toDescriptor();
+    const second = tools.search.toDescriptor();
+
+    // `tools/list` maps `toDescriptor` over every registered tool, so a
+    // conversion per call is a per-request cost that scales with the size of
+    // the tool set - and `z.toJSONSchema` walks the whole schema. The result
+    // schema has been memoized since it was written; the params schema, two
+    // lines above it in the same method, was not.
+    expect(second.inputSchema).toBe(first.inputSchema);
+    expect(second.outputSchema).toBe(first.outputSchema);
+
+    await alepha.stop();
+  });
+
   it("refuses two tools registered under one name", () => {
     const alepha = Alepha.create();
 
