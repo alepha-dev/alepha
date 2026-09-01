@@ -1,4 +1,4 @@
-import { $hook, Alepha } from "alepha";
+import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
@@ -18,6 +18,7 @@ import {
   createTestProject,
   TestEntityRepositories,
 } from "./fixtures/entities.ts";
+import { ReadCounter } from "./fixtures/ReadCounter.ts";
 
 /**
  * The number the epic exists for.
@@ -34,34 +35,11 @@ import {
  */
 
 /**
- * Counts reads that actually reach the database.
- *
- * `repository:read:before` fires **after** the ORM's cache check, so a read
- * served from the 30s project cache is not counted - which is what makes
- * this a query counter and not a call counter. It also fires per repository
- * read rather than per guard, and that distinction is the whole point: seven
- * guards each finding a memoized promise is the PASS condition, so a counter
- * wired to the guard reads seven whether the memo works or not.
+ * `ReadCounter` fires per repository read rather than per guard, and that
+ * distinction is the whole point here: seven guards each finding a memoized
+ * promise is the PASS condition, so a counter wired to the guard reads seven
+ * whether the memo works or not.
  */
-class ReadCounter {
-  public readonly byTable = new Map<string, number>();
-
-  protected readonly onRead = $hook({
-    on: "repository:read:before",
-    handler: ({ tableName }) => {
-      this.byTable.set(tableName, (this.byTable.get(tableName) ?? 0) + 1);
-    },
-  });
-
-  public reset(): void {
-    this.byTable.clear();
-  }
-
-  public of(tableName: string): number {
-    return this.byTable.get(tableName) ?? 0;
-  }
-}
-
 interface TestContext {
   alepha: Alepha;
   repos: TestEntityRepositories;

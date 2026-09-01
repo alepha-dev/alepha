@@ -93,6 +93,38 @@ describe("EpicDependencyService", () => {
       expect(updated.dependsOnNumber).toBe(first.number);
     });
 
+    /**
+     * ⚠️ `getEpics` builds its resources through a BATCHED path
+     * (`toEpicResource` with a rollup and a number resolved over the whole
+     * list), while `getEpicByNumber` builds one row at a time. The case above
+     * covers the single path only, and the two silently disagreeing is
+     * exactly what `toEpicResource` was extracted to prevent - so the list
+     * gets its own assertion rather than being assumed to follow.
+     */
+    it("carries dependsOnNumber on the batched list path too", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const first = await createTestEpic(ctx.alepha, project);
+      const second = await createTestEpic(ctx.alepha, project);
+      const user = ownerToken(project);
+
+      await ctx.controller.updateEpic(
+        { params: { id: second.id }, body: { dependsOn: first.id } },
+        { user },
+      );
+
+      const listed = await ctx.controller.getEpics(
+        { params: { projectId: project.id } },
+        { user },
+      );
+
+      const predecessor = listed.find((epic) => epic.id === first.id);
+      const dependent = listed.find((epic) => epic.id === second.id);
+      expect(predecessor?.dependsOnNumber).toBeUndefined();
+      expect(dependent?.dependsOnNumber).toBe(first.number);
+    });
+
     it("refuses an epic in another project", async ({ expect }) => {
       const project = await createTestProject(ctx.alepha);
       const elsewhere = await createTestProject(ctx.alepha);
