@@ -1,6 +1,8 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { z } from "alepha";
 import { useInject } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useQueryParams, useRouter } from "alepha/react/router";
 import { HttpClient } from "alepha/server";
 import {
@@ -18,6 +20,7 @@ import type { AppRouter } from "../../AppRouter.tsx";
 import { useMetadata } from "../../hooks/useMetadata.ts";
 import { DevEmpty } from "../shared/DevEmpty.tsx";
 import { DevError } from "../shared/DevError.tsx";
+import { DT_TRIGGER } from "../shared/dtTrigger.ts";
 import { toText } from "../shared/toText.ts";
 import { RecordForm } from "./RecordForm.tsx";
 import { RowCell } from "./RowCell.tsx";
@@ -68,6 +71,19 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
 
   const page = Math.max(0, Number(params.page ?? "0") || 0);
   const size = Math.max(1, Number(params.size ?? "50") || 50);
+
+  // The page size lives in the URL, so the picker's own value is derived and
+  // `keepDirty: false` is what keeps the trigger honest: a Back button or a
+  // shared link moves `size` without touching the picker, and a kept "edit"
+  // would leave the trigger naming a page size the table is not using.
+  const sizeForm = useForm({
+    schema: z.object({ size: z.number() }),
+    initialValues: { size },
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, next) =>
+      setParams({ ...params, page: "0", size: String(next as number) }),
+  });
   const sort = params.sort ?? "";
   const search = (params.q ?? "").trim().toLowerCase();
 
@@ -527,24 +543,20 @@ export const DatabaseEditor = (props: DatabaseEditorProps) => {
               >
                 <ChevronRight size={11} />
               </button>
-              <select
-                className="dt-input"
-                style={{ width: 90 }}
-                value={String(size)}
-                onChange={(e) =>
-                  setParams({
-                    ...params,
-                    page: "0",
-                    size: e.currentTarget.value,
-                  })
-                }
-              >
-                {[10, 25, 50, 100].map((n) => (
-                  <option key={n} value={String(n)}>
-                    {n} / page
-                  </option>
-                ))}
-              </select>
+              {/* Width on the wrapper, never on the trigger — see
+                  `DT_TRIGGER`. */}
+              <div style={{ width: 90 }}>
+                <Control
+                  input={sizeForm.input.size}
+                  label=""
+                  inputProps={{ "aria-label": "Rows per page" }}
+                  triggerClassName={DT_TRIGGER}
+                  items={[10, 25, 50, 100].map((n) => ({
+                    value: String(n),
+                    label: `${n} / page`,
+                  }))}
+                />
+              </div>
               <span style={{ marginLeft: "auto" }} />
               <span
                 className="dt-mono"

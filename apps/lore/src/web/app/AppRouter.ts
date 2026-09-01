@@ -704,6 +704,7 @@ export class AppRouter {
       this.appAnalytics,
       this.appAnalyticsDimension,
       this.appVitals,
+      this.appExplore,
       this.appSettings,
     ],
     schema: {
@@ -831,6 +832,28 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Vitals`,
     }),
     lazy: () => import("./components/project/apps/AppVitals.tsx"),
+    loader: async () => {
+      this.assertBeacon();
+    },
+  });
+
+  /**
+   * The query explorer: the framework's analytics query builder, scoped to
+   * this app.
+   *
+   * Gated on Beacon like the two tabs above it, and for the same reason — it
+   * reads the same two datasets. Deliberately carries NO `?range=` / filter
+   * query params: `useAppInsights`'s selection is a curated page's controls,
+   * and this panel owns its own window, grouping and filters. Threading the
+   * two together would mean one of them silently losing.
+   */
+  appExplore = $page({
+    name: "appExplore",
+    path: "/explore",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Explore`,
+    }),
+    lazy: () => import("./components/project/apps/AppExplore.tsx"),
     loader: async () => {
       this.assertBeacon();
     },

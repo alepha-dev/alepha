@@ -4,17 +4,33 @@ import type {
 } from "alepha/api/analytics";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // Relative, like `markdown-view/diagram`: the package's export map appends
 // `.tsx` to a bare `@alepha/ui/components/...` specifier, so a `.ts` hook
 // under it resolves to a file that does not exist. Same package, same folder,
 // no export map involved.
+import type { AnalyticsTransport } from "./analytics/analyticsTypes.ts";
 import { QueryPanel } from "./analytics/QueryPanel.tsx";
 import { RequestDialog } from "./analytics/RequestDialog.tsx";
 import { ResultsPane } from "./analytics/ResultsPane.tsx";
 import { useAnalyticsQuery } from "./analytics/useAnalyticsQuery.ts";
 import { usePanelWidth } from "./analytics/usePanelWidth.ts";
+
+export type { AnalyticsTransport };
+
+export interface AdminAnalyticsProps {
+  /**
+   * Which analytics API answers. Defaults to the unrestricted admin surface
+   * at `/api/admin/analytics/*`, behind `admin:analytics:read`.
+   *
+   * An app passes its own to expose the builder to a non-admin over a
+   * narrower slice of the same datasets. Nothing below this line changes:
+   * a scoped endpoint publishes descriptors with its pinned dimensions
+   * already removed, so the panel hides them by never being told they exist.
+   */
+  transport?: AnalyticsTransport;
+}
 
 /**
  * A query builder over every `$analytics()` dataset the application declares.
@@ -37,18 +53,31 @@ import { usePanelWidth } from "./analytics/usePanelWidth.ts";
  * intermediate column below carries `min-h-0`: without it a nested `flex-1
  * min-h-0` is inert and the page grows a second scrollbar.
  */
-export const AdminAnalytics = () => {
+export const AdminAnalytics = (props: AdminAnalyticsProps) => {
   const client = useClient<AdminAnalyticsController>();
   const { tr } = useI18n();
   const [datasets, setDatasets] = useState<AdminDatasetDescriptor[]>();
   const [requestOpen, setRequestOpen] = useState(false);
 
-  const query = useAnalyticsQuery(datasets);
+  // Memoised because it is an effect dependency in both hooks below: a fresh
+  // object each render would re-fire every query forever.
+  const adminTransport = useMemo<AnalyticsTransport>(
+    () => ({
+      listDatasets: () => client.listDatasets(),
+      queryDataset: (dataset, body) =>
+        client.queryDataset({ params: { name: dataset }, body }),
+      path: (dataset) => `/api/admin/analytics/datasets/${dataset}/query`,
+    }),
+    [client],
+  );
+  const transport = props.transport ?? adminTransport;
+
+  const query = useAnalyticsQuery(datasets, transport);
   const panel = usePanelWidth();
 
   useEffect(() => {
-    void client.listDatasets().then(setDatasets);
-  }, [client]);
+    void transport.listDatasets().then(setDatasets);
+  }, [transport]);
 
   if (datasets?.length === 0) {
     return (
@@ -70,6 +99,7 @@ export const AdminAnalytics = () => {
         datasets={datasets}
         dataset={query.dataset}
         query={query}
+        transport={transport}
         width={panel.width}
         onStartResize={panel.startResize}
         onRequest={() => setRequestOpen(true)}
@@ -78,7 +108,7 @@ export const AdminAnalytics = () => {
       <RequestDialog
         open={requestOpen}
         onOpenChange={setRequestOpen}
-        dataset={query.dataset.name}
+        path={transport.path(query.dataset.name)}
         body={query.body}
       />
     </div>

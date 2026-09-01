@@ -1,3 +1,4 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   Dialog,
@@ -7,16 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
-import { Label } from "@alepha/ui/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
@@ -24,6 +19,15 @@ import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaResource } from "@/api/schemas/areaResourceSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
+/**
+ * The picker's own one-field form. `targetId` stays in React state as well,
+ * because two things outside the control read it: the confirmation sentence
+ * and the disabled Submit button.
+ */
+const mergeFormSchema = z.object({
+  targetId: z.number().optional(),
+});
 
 export interface AreaMergeDialogProps {
   open: boolean;
@@ -50,6 +54,17 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
   const [project] = useStore(currentProjectAtom);
   const [targetId, setTargetId] = useState<number | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
+
+  // `keepDirty: false` so `close()`'s reset actually reaches the trigger:
+  // with the default the picked value is treated as an unsaved edit and kept
+  // across the re-seed, and the dialog reopens still showing it.
+  const form = useForm({
+    schema: mergeFormSchema,
+    initialValues: { targetId },
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, value) => setTargetId(value as number | undefined),
+  });
 
   const target = props.candidates.find((c) => c.id === targetId);
   const movingQuests = props.sources.reduce((n, a) => n + a.questCount, 0);
@@ -92,38 +107,15 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
         <DialogHeader>
           <DialogTitle>{tr("project.settings.areas.merge.title")}</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="area-merge-target">
-            {tr("project.settings.areas.merge.target")}
-          </Label>
-          <Select
-            // `?? null`, never `undefined`: an initial `undefined` mounts
-            // the root uncontrolled, so a later programmatic reset (on
-            // close) would no longer drive the trigger.
-            value={targetId != null ? String(targetId) : null}
-            // Base UI resolves the trigger label from `items` rather than
-            // from the rendered `SelectItem`s: without it, a
-            // programmatically selected value shows the placeholder until
-            // the popup has been opened once, because the item list lives
-            // in an unmounted popup until then.
-            items={props.candidates.map((c) => ({
-              value: String(c.id),
-              label: c.name,
-            }))}
-            onValueChange={(v) => setTargetId(v ? Number(v) : undefined)}
-          >
-            <SelectTrigger id="area-merge-target" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {props.candidates.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Control
+          input={form.input.targetId}
+          label={String(tr("project.settings.areas.merge.target"))}
+          triggerClassName="w-full"
+          items={props.candidates.map((c) => ({
+            value: String(c.id),
+            label: c.name,
+          }))}
+        />
         {target && (
           <DialogDescription>
             {String(

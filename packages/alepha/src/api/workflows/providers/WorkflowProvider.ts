@@ -106,15 +106,25 @@ export class WorkflowProvider {
 
   /**
    * When set, step dispatches go through the `$job` queue.
-   * Set by WorkflowJobs on start. `delayMs` defers delivery (durable —
-   * it becomes a scheduled outbox row, not just a timer).
+   * Set by WorkflowJobs on start. `scheduledAt` is the step's persisted
+   * not-before instant, and defers delivery durably (a scheduled outbox
+   * row, not just a timer).
+   *
+   * An instant, not a delay, on purpose. The step row is stamped first and
+   * the dispatch pushed second, and a delay recomputed from the clock at
+   * push time disagrees with the stamp by however far the clock moved in
+   * between. On the wall clock that is milliseconds; under `travel()` it is
+   * the whole jump, and a test that saw the stamp and travelled before the
+   * push landed was left with an outbox row due minutes AFTER the clock it
+   * had just moved. The row parked in `running` forever, at roughly one CI
+   * run in five.
    */
   public stepDispatch:
     | ((
         workflowId: string,
         stepName: string,
         priority: number,
-        delayMs?: number,
+        scheduledAt?: string,
       ) => Promise<void>)
     | null = null;
 
@@ -181,6 +191,8 @@ export class WorkflowProvider {
       ? this.dt.duration(opts.steps[0].delay).as("milliseconds")
       : 0;
     const firstDispatchDelayMs = delayMs + firstStepDelayMs;
+    // The stamp below is ALSO what the dispatch is scheduled from, so the
+    // two cannot disagree.
     const firstStepScheduledAt =
       firstDispatchDelayMs > 0
         ? this.dt.now().add(firstDispatchDelayMs, "millisecond").toISOString()
@@ -287,7 +299,7 @@ export class WorkflowProvider {
           execution.id,
           firstStep.name,
           priority,
-          firstDispatchDelayMs,
+          firstStepScheduledAt,
         );
       } else {
         await this.executions.updateById(execution.id, {
@@ -329,103 +341,89 @@ export class WorkflowProvider {
     workflowId: string,
     stepName: string,
   ): Promise<void> {
-    // Per-workflow lock: two dispatches for the same execution must not
-    // interleave (a retry timer racing a sweep, or two queue deliveries).
+    // No per-workflow lock here, on purpose. There used to be one, taken
+    // before the reads below and released after the handler, and a dispatch
+    // that found it held returned without doing anything. It was sold as an
+    // optimisation over the compare-and-set claim in `executeHandlerStep`
+    // (the loser is spared the read work), but the loser's outbox row was
+    // consumed all the same, so the step it carried stayed `pending` with no
+    // stamp until the next recovery sweep. The holder was routinely a late
+    // duplicate dispatch for the PREVIOUS step that only read and returned:
+    // a real delivery was dropped for a no-op that would have released the
+    // lock a few milliseconds later. The repeat-steps test parked on its
+    // last step this way whenever a sweep nudge crossed the completion chain.
     //
-    // This is an OPTIMISATION, not the guarantee. `LockProvider` resolves to
-    // the per-isolate `MemoryLockProvider` on Cloudflare Workers, and on Node
-    // unless `alepha/lock/redis` is registered, so it excludes nothing across
-    // processes. What actually serialises a step is the compare-and-set claim
-    // in `executeHandlerStep`; the lock only spares the loser the read work.
-    const lockKey = `workflow:${workflowId}`;
-    const lockValue = `${this.crypto.randomUUID()},${this.dt.nowISOString()}`;
-    const lockResult = await this.lockProvider.set(
-      lockKey,
-      lockValue,
-      true,
-      600_000,
-    );
-    if (lockResult.split(",")[0] !== lockValue.split(",")[0]) {
-      this.log.debug(
-        `Workflow ${workflowId} locked by another worker, skipping`,
+    // Two dispatches for one step now both read, and the claim decides; the
+    // loser costs three reads instead of a lost delivery. Across processes
+    // nothing changes: `LockProvider` is per-isolate on Workers and on Node
+    // without `alepha/lock/redis`, so the lock never excluded anything there.
+    const workflow = await this.executions.findById(workflowId);
+    if (!workflow) return;
+
+    if (workflow.status !== "running" && workflow.status !== "pending") {
+      return;
+    }
+
+    const registration = this.getRegistration(workflow.workflowName);
+    const stepDef = registration.options.steps.find((s) => s.name === stepName);
+    if (!stepDef) return;
+
+    const stepExec = await this.findStepExecution(workflowId, stepName);
+    if (!stepExec) return;
+
+    if (stepExec.status !== "pending") return;
+
+    // Early arrival (an optimistic timer or a duplicate dispatch racing
+    // a scheduled delay/retry): put it back until its own stamp.
+    if (
+      stepExec.scheduledAt &&
+      new Date(stepExec.scheduledAt).getTime() > this.dt.nowMillis()
+    ) {
+      await this.dispatchStep(
+        workflowId,
+        stepName,
+        workflow.priority,
+        stepExec.scheduledAt,
       );
       return;
     }
 
-    try {
-      const workflow = await this.executions.findById(workflowId);
-      if (!workflow) return;
+    if (workflow.status === "pending") {
+      await this.executions.updateById(workflowId, {
+        status: "running",
+        startedAt: this.dt.nowISOString(),
+      });
+    }
 
-      if (workflow.status !== "running" && workflow.status !== "pending") {
-        return;
-      }
-
-      const registration = this.getRegistration(workflow.workflowName);
-      const stepDef = registration.options.steps.find(
-        (s) => s.name === stepName,
-      );
-      if (!stepDef) return;
-
-      const stepExec = await this.findStepExecution(workflowId, stepName);
-      if (!stepExec) return;
-
-      if (stepExec.status !== "pending") return;
-
-      // Early arrival (an optimistic timer or a duplicate dispatch racing
-      // a scheduled delay/retry): put it back with the remaining delay.
-      if (stepExec.scheduledAt) {
-        const remainingMs =
-          new Date(stepExec.scheduledAt).getTime() - this.dt.nowMillis();
-        if (remainingMs > 0) {
-          await this.dispatchStep(
+    if (stepDef.when) {
+      const results = await this.assembleResults(workflowId);
+      const shouldRun = await this.alepha.context.run(async () => {
+        this.restoreContext(workflow);
+        return stepDef.when?.({
+          payload: workflow.payload as Infer<ZType>,
+          results,
+        });
+      });
+      if (!shouldRun) {
+        await this.stepExecutions.updateById(stepExec.id, {
+          status: "skipped",
+          completedAt: this.dt.nowISOString(),
+        });
+        await this.alepha.events.emit(
+          "workflow:step:skipped",
+          {
+            workflowName: workflow.workflowName,
             workflowId,
             stepName,
-            workflow.priority,
-            remainingMs,
-          );
-          return;
-        }
+          },
+          { catch: true },
+        );
+        await this.advance(workflowId);
+        return;
       }
-
-      if (workflow.status === "pending") {
-        await this.executions.updateById(workflowId, {
-          status: "running",
-          startedAt: this.dt.nowISOString(),
-        });
-      }
-
-      if (stepDef.when) {
-        const results = await this.assembleResults(workflowId);
-        const shouldRun = await this.alepha.context.run(async () => {
-          this.restoreContext(workflow);
-          return stepDef.when?.({
-            payload: workflow.payload as Infer<ZType>,
-            results,
-          });
-        });
-        if (!shouldRun) {
-          await this.stepExecutions.updateById(stepExec.id, {
-            status: "skipped",
-            completedAt: this.dt.nowISOString(),
-          });
-          await this.alepha.events.emit(
-            "workflow:step:skipped",
-            {
-              workflowName: workflow.workflowName,
-              workflowId,
-              stepName,
-            },
-            { catch: true },
-          );
-          await this.advance(workflowId);
-          return;
-        }
-      }
-
-      await this.executeHandlerStep(workflow, stepExec, stepDef);
-    } finally {
-      await this.lockProvider.del(lockKey);
     }
+
+    await this.executeHandlerStep(workflow, stepExec, stepDef);
   }
 
   protected async executeHandlerStep(
@@ -458,16 +456,12 @@ export class WorkflowProvider {
     try {
       // Compare-and-set, not a plain write: this is the step's claim, and it
       // is the ONLY thing that makes two dispatches for one step mutually
-      // exclusive on every runtime. The per-workflow `LockProvider` lock in
-      // processStepInner does not do it — on Cloudflare Workers, and on Node
-      // without `alepha/lock/redis`, it resolves to `MemoryLockProvider`,
-      // which is per-isolate. Two isolates therefore both read `pending`,
-      // both pass their own local lock, and without this guard both run the
-      // handler concurrently — a stronger requirement than the "idempotent
-      // under replay" handlers are documented to satisfy.
-      //
-      // With it, the lock is demoted to what it should be: a latency
-      // optimisation that avoids doing the read work twice.
+      // exclusive, on every runtime and in one process alike. There is no
+      // lock in front of it any more (see processStepInner): two dispatches
+      // both read `pending`, both get here, and exactly one row update wins.
+      // Without this guard both would run the handler concurrently, a
+      // stronger requirement than the "idempotent under replay" handlers are
+      // documented to satisfy.
       const claimed = await this.stepExecutions.updateMany(
         { id: { eq: stepExec.id }, status: { eq: "pending" } },
         {
@@ -694,7 +688,7 @@ export class WorkflowProvider {
       workflow.id,
       stepExec.stepName,
       workflow.priority,
-      delayMs,
+      scheduledAt,
     );
   }
 
@@ -727,19 +721,15 @@ export class WorkflowProvider {
         scheduledAt: nextScheduledAt,
       });
 
-      // Durable retry: the delay rides the job outbox (a scheduled row
+      // Durable retry: the wait rides the job outbox (a scheduled row
       // plus an optimistic timer). If the process dies before delivery,
       // the jobs sweep or the workflow recovery sweep re-dispatches from
       // the persisted `scheduledAt`.
-      const delayMs = Math.max(
-        0,
-        new Date(nextScheduledAt).getTime() - this.dt.nowMillis(),
-      );
       await this.dispatchStep(
         workflow.id,
         stepExec.stepName,
         workflow.priority,
-        delayMs,
+        nextScheduledAt,
       );
     } else {
       this.log.info(`Workflow step '${stepExec.stepName}' failed permanently`, {
@@ -773,12 +763,22 @@ export class WorkflowProvider {
           error,
         });
       } else {
-        await this.executions.updateById(workflow.id, {
-          status: "failed",
-          error: error.message,
-          errorStep: stepExec.stepName,
-          completedAt: this.dt.nowISOString(),
-        });
+        // Guarded for the same reason as the completion write in
+        // `advance()`, which is the other half of this race: the step is
+        // already `failed` here, so a sweep tick that lands now sees no
+        // active step and tries to complete the execution.
+        const failed = await this.claimExecution(
+          workflow.id,
+          ["running", "pending"],
+          {
+            status: "failed",
+            error: error.message,
+            errorStep: stepExec.stepName,
+            completedAt: this.dt.nowISOString(),
+          },
+        );
+
+        if (!failed) return;
 
         await this.alepha.events.emit(
           "workflow:failed",
@@ -827,31 +827,40 @@ export class WorkflowProvider {
       const stepDef = registration.options.steps.find(
         (s) => s.name === nextStep.stepName,
       );
-      let delayMs = 0;
-      if (stepDef?.delay && !nextStep.scheduledAt) {
-        delayMs = this.dt.duration(stepDef.delay).as("milliseconds");
-        await this.stepExecutions.updateById(nextStep.id, {
-          scheduledAt: this.dt.now().add(delayMs, "millisecond").toISOString(),
-        });
-      } else if (nextStep.scheduledAt) {
-        delayMs = Math.max(
-          0,
-          new Date(nextStep.scheduledAt).getTime() - this.dt.nowMillis(),
-        );
+      let scheduledAt = nextStep.scheduledAt ?? undefined;
+      if (stepDef?.delay && !scheduledAt) {
+        scheduledAt = this.dt
+          .now()
+          .add(this.dt.duration(stepDef.delay))
+          .toISOString();
+        await this.stepExecutions.updateById(nextStep.id, { scheduledAt });
       }
 
       await this.dispatchStep(
         workflowId,
         nextStep.stepName,
         workflow.priority,
-        delayMs,
+        scheduledAt,
       );
     } else {
-      await this.executions.updateById(workflowId, {
+      // Guarded, like every other execution transition. The `running` check
+      // at the top of this method is a read, and a sweep tick reaches here
+      // through it: a step that has just been marked `failed` is neither
+      // pending nor running, so `advance()` falls through to completion
+      // while `handleStepFailure` is concurrently writing `failed`. An
+      // unguarded write then stamps `completed` over a failed execution —
+      // observed under load as a `completed` row carrying an `error` and an
+      // `errorStep`, which is a state nothing downstream can read sensibly.
+      const completed = await this.claimExecution(workflowId, ["running"], {
         status: "completed",
         currentStep: undefined,
         completedAt: this.dt.nowISOString(),
       });
+
+      // Someone else settled it (failed, cancelled, timed out). Their
+      // verdict stands, and `workflow:completed` must not be announced for
+      // an execution that did not complete.
+      if (!completed) return;
 
       this.log.info(`Workflow '${workflow.workflowName}' completed`, {
         workflowId,
@@ -868,36 +877,143 @@ export class WorkflowProvider {
     }
   }
 
+  // --- Execution claim --------------------------------------------------------------------------------------------
+
+  /**
+   * Move an execution from one of `from` into `patch`, in one guarded write.
+   *
+   * The execution-level transitions used to read the status, compare it and
+   * only then write, which is three steps a concurrent caller can land in
+   * the middle of. `compensate()` alone is reachable from four places at
+   * once — a step failure, `cancel({ compensate })`, the recovery sweep and
+   * the admin endpoint — so two of them arriving together both read
+   * `failed`, both passed the comparison, and both ran every compensation
+   * handler. Tightening the comparison into a throw only moved the coin
+   * flip: whichever caller read second saw `compensating` and threw.
+   *
+   * This is the same claim the step transitions already use, and the same
+   * one `JobProvider.cancel` uses on job executions — the execution rows
+   * were simply never migrated with them.
+   *
+   * Returns true to the single winner and false to everyone else;
+   * {@link settleLostClaim} decides what losing meant.
+   *
+   * Deliberately does NOT re-read and return the claimed row, even though
+   * `updateMany` hands back ids rather than rows. A re-read here put a
+   * whole database round trip between the write and the `workflow:*` event
+   * that follows it, and a test polling the row every 10ms then saw
+   * `completed` and asserted on the events before the emit had run — green
+   * on an idle machine, 2 in 19 under load. Every caller already holds the
+   * row from its own read; none of them reads `status` off it, which is the
+   * only field this call supersedes.
+   */
+  protected async claimExecution(
+    workflowId: string,
+    from: WorkflowStatus[],
+    patch: Partial<WorkflowExecutionEntity>,
+  ): Promise<boolean> {
+    const claimed = await this.executions.updateMany(
+      { id: { eq: workflowId }, status: { inArray: from } },
+      patch,
+    );
+    return claimed.length > 0;
+  }
+
+  /**
+   * Decide what a lost claim meant, and either return quietly or throw.
+   *
+   * A guarded UPDATE that matched nothing is two situations wearing one
+   * face: another caller got there first (benign — the transition the
+   * caller asked for has happened, just not by their hand), or the
+   * execution was never in a status this transition is legal from (an
+   * error the caller has to see). Only a re-read tells them apart, and
+   * only the second one deserves a throw.
+   */
+  protected async settleLostClaim(
+    workflowId: string,
+    verb: string,
+    benign: WorkflowStatus[],
+    hint = "",
+  ): Promise<void> {
+    const current = await this.executions.findById(workflowId);
+    if (!current) throw new AlephaError(`Workflow not found: ${workflowId}`);
+
+    if (benign.includes(current.status)) {
+      this.log.debug(
+        `Workflow is already '${current.status}', skipping ${verb}`,
+        { workflowId },
+      );
+      return;
+    }
+
+    throw new AlephaError(
+      `Cannot ${verb} workflow in '${current.status}' status.${hint}`,
+    );
+  }
+
   // --- Compensate -------------------------------------------------------------------------------------------------
 
   public async compensate(
     workflowId: string,
     context?: { failedStep?: string; error?: Error },
   ): Promise<void> {
-    const workflow = await this.executions.findById(workflowId);
-    if (!workflow) throw new AlephaError(`Workflow not found: ${workflowId}`);
+    // Advisory: it names the workflow so an unregistered name still throws
+    // before anything is written, and it gives "not found" its own message.
+    // The claim below, not this read, is what decides the transition.
+    const existing = await this.executions.findById(workflowId);
+    if (!existing) throw new AlephaError(`Workflow not found: ${workflowId}`);
+    this.getRegistration(existing.workflowName);
 
     // Without a failure context this is the public/admin entry point, which
     // has to be as strict as cancel()/retry(): compensating a completed or a
     // running execution re-runs every compensation handler against work
-    // that was never undone.
-    if (
-      !context &&
-      workflow.status !== "failed" &&
-      workflow.status !== "timed_out"
-    ) {
-      throw new AlephaError(
-        `Cannot compensate workflow in '${workflow.status}' status`,
-      );
-    }
+    // that was never undone. With one, the caller has already established
+    // the failure and comes from wherever that failure was noticed.
+    const from: WorkflowStatus[] = context
+      ? ["pending", "running", "failed", "timed_out"]
+      : ["failed", "timed_out"];
 
-    const registration = this.getRegistration(workflow.workflowName);
-
-    await this.executions.updateById(workflowId, {
+    const claimed = await this.claimExecution(workflowId, from, {
       status: "compensating",
       error: context?.error?.message,
       errorStep: context?.failedStep,
     });
+
+    if (!claimed) {
+      // An internal caller (a step failure, a sweep) losing to a `cancel()`
+      // must not throw: `executeHandlerStep` already declines to fight a
+      // cancellation it finds in progress, and this is the same decision one
+      // frame further out. The admin entry point does throw on `cancelled` —
+      // there, "compensate a cancelled execution" is a request to refuse,
+      // not a race to absorb.
+      const benign: WorkflowStatus[] = [
+        "compensating",
+        "compensated",
+        "compensation_failed",
+      ];
+      if (context) benign.push("cancelled");
+
+      await this.settleLostClaim(workflowId, "compensate", benign);
+      return;
+    }
+
+    await this.runCompensation(existing, context);
+  }
+
+  /**
+   * Run every compensation handler, newest completed step first.
+   *
+   * Split out of {@link compensate} so the caller that has ALREADY claimed
+   * the execution does not have to claim it twice: `cancel({ compensate })`
+   * parks the row in `compensating` itself, because the loop has to finish
+   * before the row is allowed to say `cancelled`.
+   */
+  protected async runCompensation(
+    workflow: WorkflowExecutionEntity,
+    context?: { failedStep?: string; error?: Error },
+  ): Promise<void> {
+    const workflowId = workflow.id;
+    const registration = this.getRegistration(workflow.workflowName);
 
     await this.alepha.events.emit(
       "workflow:compensating",
@@ -1074,13 +1190,36 @@ export class WorkflowProvider {
     workflowId: string,
     options?: CancelOptions,
   ): Promise<void> {
-    const workflow = await this.executions.findById(workflowId);
-    if (!workflow) throw new AlephaError(`Workflow not found: ${workflowId}`);
+    const existing = await this.executions.findById(workflowId);
+    if (!existing) throw new AlephaError(`Workflow not found: ${workflowId}`);
 
-    if (workflow.status !== "pending" && workflow.status !== "running") {
-      throw new AlephaError(
-        `Cannot cancel workflow in '${workflow.status}' status`,
-      );
+    // Claimed BEFORE the abort, for the reason `JobProvider.cancel` claims
+    // before its abort: the abort makes the running handler throw, and its
+    // failure path writes a status of its own. Claiming second lets a
+    // legitimate cancellation lose to the failure it just caused.
+    //
+    // With `compensate` the claim parks the row in `compensating` rather
+    // than `cancelled`, because the compensation loop has to finish before
+    // the execution is allowed to call itself cancelled.
+    const cancellation = new Error("Cancelled with compensation");
+    const claimed = await this.claimExecution(
+      workflowId,
+      ["pending", "running"],
+      options?.compensate
+        ? { status: "compensating", error: cancellation.message }
+        : {
+            status: "cancelled",
+            cancelledBy: options?.cancelledBy,
+            cancelledByName: options?.cancelledByName,
+            completedAt: this.dt.nowISOString(),
+          },
+    );
+
+    if (!claimed) {
+      // Only an already-cancelled execution is a benign loss. Cancelling one
+      // that is compensating or terminal stays an error, as it always was.
+      await this.settleLostClaim(workflowId, "cancel", ["cancelled"]);
+      return;
     }
 
     for (const [key, controller] of this.abortControllers) {
@@ -1100,20 +1239,11 @@ export class WorkflowProvider {
     }
 
     if (options?.compensate) {
-      await this.compensate(workflowId, {
-        error: new Error("Cancelled with compensation"),
-      });
+      await this.runCompensation(existing, { error: cancellation });
       await this.executions.updateById(workflowId, {
         status: "cancelled",
         cancelledBy: options?.cancelledBy,
         cancelledByName: options?.cancelledByName,
-      });
-    } else {
-      await this.executions.updateById(workflowId, {
-        status: "cancelled",
-        cancelledBy: options?.cancelledBy,
-        cancelledByName: options?.cancelledByName,
-        completedAt: this.dt.nowISOString(),
       });
     }
 
@@ -1122,7 +1252,7 @@ export class WorkflowProvider {
     await this.alepha.events.emit(
       "workflow:cancelled",
       {
-        workflowName: workflow.workflowName,
+        workflowName: existing.workflowName,
         workflowId,
       },
       { catch: true },
@@ -1174,12 +1304,16 @@ export class WorkflowProvider {
   // --- Retry ------------------------------------------------------------------------------------------------------
 
   public async retry(workflowId: string): Promise<void> {
-    const workflow = await this.executions.findById(workflowId);
-    if (!workflow) throw new AlephaError(`Workflow not found: ${workflowId}`);
+    const existing = await this.executions.findById(workflowId);
+    if (!existing) throw new AlephaError(`Workflow not found: ${workflowId}`);
 
-    if (workflow.status !== "failed" && workflow.status !== "timed_out") {
+    // Advisory, exactly as in `JobProvider.cancel`: it keeps the useful
+    // message for the ordinary case (retrying a `completed` execution says
+    // so, rather than "no failed step"). The claim below is what actually
+    // decides, so this read being stale costs nothing.
+    if (existing.status !== "failed" && existing.status !== "timed_out") {
       throw new AlephaError(
-        `Cannot retry workflow in '${workflow.status}' status. Use restart() for compensated workflows.`,
+        `Cannot retry workflow in '${existing.status}' status. Use restart() for compensated workflows.`,
       );
     }
 
@@ -1195,6 +1329,44 @@ export class WorkflowProvider {
       throw new AlephaError("No failed step found to retry");
     }
 
+    // Recomputed from the retry instant, exactly as `start()` computes it.
+    // Carried over, a `timed_out` execution went back to `running` with a
+    // deadline already in the past, and the very next sweep killed it before
+    // the retried step could run: retrying a timeout was a no-op that looked
+    // like a failure of the handler.
+    let deadlineAt: string | undefined;
+    const { timeout } = this.getRegistration(existing.workflowName).options;
+    if (timeout) {
+      deadlineAt = this.dt.now().add(this.dt.duration(timeout)).toISOString();
+    }
+
+    // The execution is claimed before the step is reset, so a second caller
+    // cannot rewind a step the winner has already re-dispatched.
+    const retried = await this.claimExecution(
+      workflowId,
+      ["failed", "timed_out"],
+      {
+        status: "running",
+        error: undefined,
+        errorStep: undefined,
+        completedAt: undefined,
+        // Cleared when the workflow declares no timeout, which is the state
+        // `start()` would have left it in.
+        deadlineAt,
+      },
+    );
+
+    if (!retried) {
+      // Someone else retried it; it is already on its way.
+      await this.settleLostClaim(
+        workflowId,
+        "retry",
+        ["running", "pending"],
+        " Use restart() for compensated workflows.",
+      );
+      return;
+    }
+
     await this.stepExecutions.updateById(failedStep[0].id, {
       status: "pending",
       error: undefined,
@@ -1203,31 +1375,10 @@ export class WorkflowProvider {
       scheduledAt: undefined,
     });
 
-    // Recomputed from the retry instant, exactly as `start()` computes it.
-    // Carried over, a `timed_out` execution went back to `running` with a
-    // deadline already in the past, and the very next sweep killed it before
-    // the retried step could run: retrying a timeout was a no-op that looked
-    // like a failure of the handler.
-    let deadlineAt: string | undefined;
-    const { timeout } = this.getRegistration(workflow.workflowName).options;
-    if (timeout) {
-      deadlineAt = this.dt.now().add(this.dt.duration(timeout)).toISOString();
-    }
-
-    await this.executions.updateById(workflowId, {
-      status: "running",
-      error: undefined,
-      errorStep: undefined,
-      completedAt: undefined,
-      // Cleared when the workflow declares no timeout, which is the state
-      // `start()` would have left it in.
-      deadlineAt,
-    });
-
     await this.dispatchStep(
       workflowId,
       failedStep[0].stepName,
-      workflow.priority,
+      existing.priority,
     );
   }
 
@@ -1237,6 +1388,14 @@ export class WorkflowProvider {
     const workflow = await this.executions.findById(workflowId);
     if (!workflow) throw new AlephaError(`Workflow not found: ${workflowId}`);
 
+    // Deliberately still a plain read-then-check, unlike compensate/cancel/
+    // retry: restart does not transition this row at all, it creates a new
+    // execution from it, so there is no status to claim. Two concurrent
+    // restarts therefore both pass and both start one — a duplicate rather
+    // than a spurious throw. A `key` closes it (the dedup check in
+    // `startExecution` collapses the second onto the first); closing it for
+    // keyless restarts needs a marker column on the source row, which is a
+    // migration, not a rewrite of this guard.
     if (
       workflow.status !== "compensated" &&
       workflow.status !== "compensation_failed" &&
@@ -1311,23 +1470,39 @@ export class WorkflowProvider {
 
   // --- Internal dispatch ------------------------------------------------------------------------------------------
 
+  /**
+   * Deliver a step, now or at `scheduledAt`.
+   *
+   * `scheduledAt` is the instant already persisted on the step row, never a
+   * delay recomputed here: see {@link stepDispatch} for what a second clock
+   * read cost. A stamp that has already passed is delivered immediately.
+   */
   protected async dispatchStep(
     workflowId: string,
     stepName: string,
     priority: number,
-    delayMs = 0,
+    scheduledAt?: string,
   ): Promise<void> {
     if (this.stopping) return;
 
+    const remainingMs = scheduledAt
+      ? new Date(scheduledAt).getTime() - this.dt.nowMillis()
+      : 0;
+
     if (this.stepDispatch) {
-      await this.stepDispatch(workflowId, stepName, priority, delayMs);
-    } else if (delayMs > 0) {
+      await this.stepDispatch(
+        workflowId,
+        stepName,
+        priority,
+        remainingMs > 0 ? scheduledAt : undefined,
+      );
+    } else if (remainingMs > 0) {
       // Inline fallback (no job queue wired): a local timer is the only
       // delivery; the step's persisted `scheduledAt` plus the recovery
       // sweep remain the durable truth.
       this.dt.createTimeout(
         () => void this.processStep(workflowId, stepName),
-        delayMs,
+        remainingMs,
       );
     } else {
       await this.processStep(workflowId, stepName);
@@ -1630,10 +1805,16 @@ export class WorkflowProvider {
           },
         );
 
-        await this.executions.updateById(wf.id, {
+        // Guarded like the other terminal writes: the deadline scan and
+        // this write are two statements, and a step can complete the
+        // execution in between. Timing out a workflow that finished on its
+        // own is a false alarm, and a compensation of work that succeeded.
+        const timedOut = await this.claimExecution(wf.id, ["running"], {
           status: "timed_out",
           completedAt: now,
         });
+
+        if (!timedOut) continue;
 
         await this.alepha.events.emit(
           "workflow:timed_out",

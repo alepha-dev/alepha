@@ -3,6 +3,7 @@ import { useI18n } from "alepha/react/i18n";
 import type { PointerEvent } from "react";
 
 import { AdvancedSection } from "./AdvancedSection.tsx";
+import type { AnalyticsTransport } from "./analyticsTypes.ts";
 import { DatasetSelect } from "./DatasetSelect.tsx";
 import { FilterEditor } from "./FilterEditor.tsx";
 import { GroupByChips } from "./GroupByChips.tsx";
@@ -15,6 +16,11 @@ export interface QueryPanelProps {
   datasets: AdminDatasetDescriptor[];
   dataset: AdminDatasetDescriptor;
   query: AnalyticsQueryApi;
+  /**
+   * Passed through to `FilterEditor`, the one clause that queries on its own
+   * (it probes each dimension for the values it actually takes).
+   */
+  transport: AnalyticsTransport;
   width: number;
   onStartResize: (event: PointerEvent) => void;
   onRequest: () => void;
@@ -77,6 +83,7 @@ export const QueryPanel = (props: QueryPanelProps) => {
         />
         <FilterEditor
           dataset={props.dataset.name}
+          transport={props.transport}
           dimensions={query.dimensions}
           filters={query.state.filters}
           window={query.window}
