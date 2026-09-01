@@ -1,9 +1,11 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
+import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
 import { projects } from "../entities/projects.ts";
+import { memberRoadmapResourceSchema } from "../schemas/memberRoadmapResourceSchema.ts";
 import { roadmapResourceSchema } from "../schemas/roadmapResourceSchema.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { RoadmapService } from "../services/RoadmapService.ts";
@@ -25,10 +27,18 @@ import { RoadmapService } from "../services/RoadmapService.ts";
  * > with its own response schema, never a relaxation of `assertMember` - the
  * > deprecated `public` column is a warning, not a template.
  *
+ * **Two actions, one page.** `/:projectSlug/roadmap` is a single route; which
+ * of these it calls is decided by whether the visitor has a session, and the
+ * visibility gate then decides whether either answers. They compute the same
+ * payload through the same service and differ in who may call - the member
+ * one adds `member` on its OWN schema, never as a conditional field on the
+ * shared one, because a response whose shape depends on the caller is how a
+ * leak survives a green test.
+ *
  * Four rules follow, and each one is load-bearing:
  *
- * 1. **A dedicated action.** Not a flag threaded through `getReleases`. This
- *    serves `roadmapResourceSchema` and nothing else.
+ * 1. **A dedicated action.** Not a flag threaded through `getReleases`. The
+ *    anonymous one serves `roadmapResourceSchema` and nothing else.
  * 2. **The membership gate is untouched.** Nothing here widens
  *    `assertMember`, gives it a bypass or makes it conditional. Any change to
  *    that method in this file's diff would be the wrong design.
@@ -107,6 +117,58 @@ export class RoadmapController {
       }
 
       return await this.roadmaps.roadmapOf(project);
+    },
+  });
+
+  /**
+   * The signed-in half, and the `members` branch of the gate.
+   *
+   * It serves the SAME payload the public action does, computed by the same
+   * service, plus `member`. The two actions differ in **who may call**, never
+   * in what is computed: a response that quietly grows a field for one
+   * audience is how a leak survives a green test.
+   *
+   * It also answers for a `public` roadmap, so a signed-in stranger reading
+   * someone's public roadmap takes this path and simply gets `member: false`.
+   * That is why `member` is a returned fact rather than "the member endpoint
+   * answered".
+   *
+   * ⚠️ `noCache` rather than the public action's freshness window, and
+   * `private` rather than `public`. This body can name a `members`-only
+   * roadmap, so a shared cache must never hold it - and the caller is very
+   * likely the person who just created or published the release they are
+   * looking for, which is the exact case `test/etag-cache-control.spec.ts`
+   * exists to pin. The ETag still answers 304, so revalidation stays cheap.
+   */
+  getMemberRoadmap = $action({
+    method: "GET",
+    path: "/projects/by-slug/:slug/roadmap/member",
+    use: [$secure(), $etag({ control: { private: true, noCache: true } })],
+    schema: {
+      params: z.object({
+        slug: z.string(),
+      }),
+      response: memberRoadmapResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const project = await this.projects.findOne({
+        where: { slug: { eq: params.slug } },
+      });
+
+      // Same single message as the anonymous action, for the same reason: a
+      // caller who may not read this roadmap must not learn whether it
+      // exists. A signed-in one is no more entitled to that than a stranger.
+      if (!project || !(await this.security.isRoadmapVisible(project, user))) {
+        throw new NotFoundError("Roadmap not found");
+      }
+
+      return {
+        ...(await this.roadmaps.roadmapOf(project)),
+        // Not "the gate let me through": that is also true of a signed-in
+        // stranger on a public roadmap, and the links this gates are all
+        // member-only.
+        member: await this.security.isMember(project.id, user),
+      };
     },
   });
 }

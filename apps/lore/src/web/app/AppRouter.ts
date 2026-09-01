@@ -1711,16 +1711,32 @@ export class AppRouter {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
-    loader: async ({ params }) => {
+    loader: async ({ params, user }) => {
       try {
-        // The anonymous endpoint, called with no session on purpose. A
-        // signed-in member reading a `members` roadmap is #1561's branch and
-        // gets its own action; this one answers only while the roadmap is
-        // `public`, so the guarantee it carries cannot depend on who asks.
+        /*
+         * Which endpoint answers is decided by whether there is a session,
+         * and NOT by the project's visibility - which the client has no way
+         * to know before asking, and must not be told.
+         *
+         * The member action also serves a `public` roadmap, so a signed-in
+         * stranger takes that path and gets `member: false` rather than a
+         * refusal. Only a visitor with no session at all reaches the
+         * anonymous one, which is what keeps its guarantee - a body that
+         * cannot depend on who is asking - intact.
+         */
+        if (user) {
+          const { member, ...roadmap } = await this.roadmapApi.getMemberRoadmap(
+            { params: { slug: params.projectSlug } },
+          );
+          return { roadmap, member };
+        }
+
         const roadmap = await this.roadmapApi.getPublicRoadmap({
           params: { slug: params.projectSlug },
         });
-        return { roadmap };
+        // A visitor with no session is never a member, so the page offers no
+        // links into the member-gated release pages.
+        return { roadmap, member: false };
       } catch (error) {
         if (HttpError.is(error, 404)) {
           // The only way to tell `onServerResponse` what happened: it gets
