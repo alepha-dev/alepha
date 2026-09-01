@@ -1,6 +1,5 @@
 import { z } from "alepha";
-
-import { invitationResourceSchema } from "./invitationResourceSchema.ts";
+import { invitationResourceSchema } from "alepha/api/invitations";
 
 /**
  * A pending invitation as the invitee sees it in their own inbox: the

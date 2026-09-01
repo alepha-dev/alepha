@@ -12,13 +12,13 @@ import {
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
 import { cn } from "@alepha/ui/lib/utils";
+import type { InvitationEntity } from "alepha/api/invitations";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Mail, Plus, Users, X } from "lucide-react";
 import { useState } from "react";
 
-import type { InvitationEntity } from "@/api/entities/invitations.ts";
 import type { Member } from "@/api/entities/members.ts";
 import type { Project } from "@/api/entities/projects.ts";
 import type { User } from "@/api/entities/users.ts";

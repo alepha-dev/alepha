@@ -36,8 +36,8 @@ apps/lore/                # This app
 │   ├── api/              # Backend
 │   │   ├── controllers/  # 20 controllers — see list below
 │   │   ├── entities/     # 23 entities — see list below
-│   │   ├── providers/    # AppSecurityProvider (the `$realm`; the membership/owner gates are `services/ProjectSecurityService`), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report — a Worker can't fetch its own hostname)
-│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), InvitationJobs, QuestJobs (reminder sweep), QualityJobs (quality-run cap sweep)
+│   │   ├── providers/    # AppSecurityProvider (the `$realm`; the membership/owner gates are `services/ProjectSecurityService`), ProjectInvitationResource (the `$invitationResource` for `type: "project"`), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report — a Worker can't fetch its own hostname)
+│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), QuestJobs (reminder sweep), QualityJobs (quality-run cap sweep)
 │   │   ├── schemas/      # Request/response schemas
 │   │   └── services/     # 18 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
@@ -56,7 +56,23 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (24)** — `AdminInvitation`, `Blight`, `Blob`, `Directory`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
+**Controllers (23)** — `Blight`, `Blob`, `Directory`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
+
+> **Invitations moved out of Lore entirely** (epic #23, quest #1663). The
+> entity, `InvitationService`, `InvitationJobs` and `AdminInvitationController`
+> now live in `alepha/api/invitations`; what a _project_ is lives in
+> `src/api/providers/ProjectInvitationResource.ts`, the one
+> `$invitationResource` Lore declares. `InvitationController` (the
+> owner/inbox routes) and `InvitationNotifications` (the mail) stay here,
+> because both are Lore's own surface. `accept` now answers
+> `{ resourceType, resourceId }` and `listForUser` answers `resourceTitle`;
+> `InvitationController` maps both back onto `projectId` / `projectTitle` so
+> the HTTP contract and the UI are unchanged.
+>
+> ⚠️ The `invitations` table kept its two foreign keys into `users` on disk
+> while the entity stopped declaring them, deliberately. See
+> `migrations/sqlite/20260831234441_minor_mister_sinister/migration.sql` and
+> "Migration safety on D1" below.
 
 > `User`, `Session` and `Identity` were **deleted** when Lore moved onto the shared
 > `/account` area: they duplicated the framework's `MyProfileController`,
@@ -65,9 +81,9 @@ apps/lore/                # This app
 > `MySessionController`'s actions verbatim. Reach for the `alepha/api/users` and
 > `alepha/api/oauth` controllers instead of re-adding an app-local one.
 
-**Entities (31)** — `blightIgnoreRules`, `blights`, `feedback`, `feedbackComments`, `files`, `folioBlobs`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `invitations`, `members`, `releases`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
+**Entities (30)** — `blightIgnoreRules`, `blights`, `feedback`, `feedbackComments`, `files`, `folioBlobs`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `members`, `releases`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
 
-**Services (40)** — `BlightRuleService`, `FeedbackRateLimiter`, `FolioBlobService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `InvitationService`, `PinnedFolioFolder`, `ProjectActivityService`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
+**Services (39)** — `BlightRuleService`, `FeedbackRateLimiter`, `FolioBlobService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `PinnedFolioFolder`, `ProjectActivityService`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
 
 **MCP tools (9)** — `BlightTools`, `EpicTools`, `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `blob_*` live here now), `InsightsTools` , `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `ProjectTools` (including `project_activity`, the one call for everything that moved since a timestamp), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`), `SigilTools`.
 

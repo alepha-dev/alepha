@@ -1,11 +1,13 @@
 import { $inject, z } from "alepha";
+import {
+  createInvitationSchema,
+  invitationResourceSchema,
+  InvitationService,
+} from "alepha/api/invitations";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
-import { createInvitationSchema } from "../schemas/createInvitationSchema.ts";
 import { invitationInboxItemSchema } from "../schemas/invitationInboxItemSchema.ts";
-import { invitationResourceSchema } from "../schemas/invitationResourceSchema.ts";
-import { InvitationService } from "../services/InvitationService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class InvitationController {
@@ -135,7 +137,17 @@ export class InvitationController {
     schema: {
       response: z.array(invitationInboxItemSchema),
     },
-    handler: ({ user }) => this.invitationService.listForUser(user),
+    // The module answers `resourceTitle`, because it does not know a project
+    // from a booking. Lore's inbox has always called it `projectTitle` and
+    // still does: renaming a field the UI reads is not part of moving the
+    // code that produces it.
+    handler: async ({ user }) => {
+      const rows = await this.invitationService.listForUser(user);
+      return rows.map((row) => ({
+        ...row,
+        projectTitle: row.resourceTitle ?? "Project",
+      }));
+    },
   });
 
   /**
@@ -157,7 +169,7 @@ export class InvitationController {
     },
     handler: async ({ params, user }) => {
       const result = await this.invitationService.accept(params.id, user);
-      return { ok: true, projectId: result.projectId };
+      return { ok: true, projectId: result.resourceId };
     },
   });
 
