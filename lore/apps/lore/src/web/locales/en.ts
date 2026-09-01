@@ -40,6 +40,9 @@ export default {
   "home.create-project.max": "Limit reached ($1)",
   "home.start-first-project": "Start your first project",
   "home.already-registered": "Already registered? Sign in",
+  "home.sign-in": "Sign in",
+  "home.registration-closed":
+    "New accounts are invitation-only right now. If you were invited, open the link in your email.",
   "auth.register.intent.createProject":
     "Before creating a project, create an account.",
 

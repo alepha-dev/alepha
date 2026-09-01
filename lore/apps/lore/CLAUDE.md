@@ -43,7 +43,7 @@ apps/lore/                # This app
 │   ├── mcp/              # MCP protocol integration (tools, resources)
 │   ├── web/
 │   │   ├── app/          # Main SPA
-│   │   │   ├── atoms/    # 28 state atoms — see "State Atoms" section
+│   │   │   ├── atoms/    # 29 state atoms — see "State Atoms" section
 │   │   │   ├── components/  # 194 .tsx files
 │   │   │   ├── services/ # I18n (EN + FR), ThemesProvider, 3 formatters
 │   │   │   └── AppRouter.ts  # All routes
@@ -188,7 +188,7 @@ one below.
 
 ### State Atoms
 
-Live in `src/web/app/atoms/` (28 files). The project route loader fills the `current*` atoms on enter and clears them on leave — components inside the layout can read them without re-fetching. Three more atoms live in `src/api/atoms/` (`feedbackOptionsAtom`, `folioHistoryAtom`, `pinnedContentAtom`) — server-only tunables read by the backend, not route-driven.
+Live in `src/web/app/atoms/` (29 files). The project route loader fills the `current*` atoms on enter and clears them on leave — components inside the layout can read them without re-fetching. Three more atoms live in `src/api/atoms/` (`feedbackOptionsAtom`, `folioHistoryAtom`, `pinnedContentAtom`) — server-only tunables read by the backend, not route-driven.
 
 ⚠️ **This list and the route table below are generated.** Run `yarn w lore inventory` to print the real route table (booted from the router, not grepped), the real atom names and the real component count, then fold the result in by hand — the prose against each entry is the part no generator can produce. Both had rotted badly before that script existed.
 
@@ -228,6 +228,7 @@ Live in `src/web/app/atoms/` (28 files). The project route loader fills the `cur
 - `dashboardAtom` — the signed-in landing page's cards and their resolved values, in one atom because they are read together and written at different times. ⚠️ Nothing polls it: ten auto-refreshing tiles is the exact shape of the QuestGraph incident (folio #1057), 4,009 identical `/api/_batch` calls from one tab in 51 minutes
 - `spotlightOpenAtom` — whether the ⌘K palette is open. An atom because the two openers and the palette sit in different parts of the tree
 - `projectNavAtom` — the destinations the palette can offer, published by the sidebar. Strings only: an icon is a React element and cannot live in a schema-validated atom, so `kind` carries enough for the palette to pick its own
+- `realmSettingsAtom` — whether self-registration is open. Filled by the `home` loader for an ANONYMOUS visitor only, because the hero's single button is a signup CTA that dead-ends at "Registration is not available" once the switch is off, and the right button has to be in the first paint. Defaults open, so a realm config that could not be read costs a stranger one dead-end page and a legitimate visitor nothing. The gate itself is server-side; this is presentation
 
 **Cookie-persisted UI preferences**
 
