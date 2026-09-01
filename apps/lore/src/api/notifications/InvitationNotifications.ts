@@ -20,34 +20,46 @@ export class InvitationNotifications {
   }
 
   /**
-   * Ping email: tells the invited address that they've been invited and
-   * to find the invitation in their profile inbox. No token, no magic
-   * link — the email simply nudges. If the recipient has no account yet,
-   * they must register with the invited address first; the inbox is
-   * gated on (case-insensitive) email match.
+   * The invitation mail. One link, and the link does the work.
+   *
+   * It used to carry no token and tell the recipient to go and create an
+   * account first, then find the invitation in their profile inbox. That is
+   * two manual steps in the best case, and in a realm with registration
+   * closed the first of them is impossible - which made the switch unusable
+   * rather than merely strict.
+   *
+   * The link now carries the invitation's own token (`#1655`). It lands on
+   * the register page, which pre-fills the address, renders the form even
+   * when the realm is closed, and sends somebody who already has an account
+   * to sign in instead. So the same single link serves both cases, and the
+   * profile inbox remains what it always was: where the invitation waits if
+   * the link is never clicked.
+   *
+   * ⚠️ `acceptUrl` carries a secret. It is built here and nowhere else, it is
+   * not logged, and it must never be put in a subject line, an analytics
+   * event or a redirect that leaves the app.
    */
   public readonly invitationInvite = $notification({
     category: "tasks",
     description:
-      "Email sent to the invited address when a project owner sends a new invitation. Points the recipient to their profile invitations page where they can accept or decline.",
+      "Email sent to the invited address when a project owner sends a new invitation. Carries a one-time link that lets the recipient join, whether or not they already have an account.",
     email: {
       subject: "You have been invited to a project",
       body: (it) => {
         const projectTitle = this.escapeHtml(it.projectTitle);
         const inviterName = this.escapeHtml(it.inviterName);
         const invitedEmail = this.escapeHtml(it.invitedEmail);
-        const inboxUrl = encodeURI(it.inboxUrl);
+        const acceptUrl = encodeURI(it.acceptUrl);
         return `
         <h1>${projectTitle}</h1>
         <p>Hi,</p>
         <p><strong>${inviterName}</strong> has invited you to join the project <strong>${projectTitle}</strong> on Lore.</p>
-        <p>The invitation is waiting in your profile inbox. To accept or decline, sign in to Lore with <strong>${invitedEmail}</strong> and open the invitations page:</p>
         <p>
-          <a href="${inboxUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
-            Open my invitations
+          <a href="${acceptUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
+            Join ${projectTitle}
           </a>
         </p>
-        <p>If you don't have a Lore account yet, please create one with <strong>${invitedEmail}</strong> first — the invitation is bound to that address.</p>
+        <p>The invitation is bound to <strong>${invitedEmail}</strong>. If you already have a Lore account with that address, the link will take you to sign in.</p>
         <p>This invitation will expire in ${it.expiresInDays} days.</p>
       `;
       },
@@ -56,14 +68,14 @@ export class InvitationNotifications {
       projectTitle: z.string(),
       inviterName: z.string(),
       invitedEmail: z.string(),
-      inboxUrl: z.string(),
+      acceptUrl: z.string(),
       expiresInDays: z.number(),
     }),
   });
 
   protected onInvitationCreated = $hook({
     on: "invitation:created",
-    handler: async ({ invitation, inviter }) => {
+    handler: async ({ invitation, inviter, token }) => {
       try {
         const project = await this.projects.findOne({
           where: { id: { eq: Number(invitation.resourceId) } },
@@ -84,7 +96,11 @@ export class InvitationNotifications {
         );
 
         const baseUrl = this.alepha.env.PUBLIC_URL ?? "";
-        const inboxUrl = `${baseUrl}/account/invitations`;
+        // The register page reads `?invitation=`; see `AuthRegisterPage`.
+        // `encodeURIComponent` because the token is `<uuid>.<uuid>` and a
+        // future format change must not be able to smuggle a `&` into the
+        // query string.
+        const acceptUrl = `${baseUrl}/auth/register?invitation=${encodeURIComponent(token)}`;
 
         const inviterName = inviter.email
           ? inviter.email.includes("@")
@@ -98,7 +114,7 @@ export class InvitationNotifications {
             projectTitle: project.title,
             inviterName,
             invitedEmail: invitation.email,
-            inboxUrl,
+            acceptUrl,
             expiresInDays,
           },
         });

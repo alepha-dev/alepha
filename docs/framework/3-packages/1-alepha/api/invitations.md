@@ -16,6 +16,7 @@ Invite people to something by email, before they have an account.
 
 - Invitations addressed to an email, so a stranger can be invited
 - A status machine: pending to accepted / declined / expired / revoked
+- A signup token, so an invited stranger can register into a CLOSED realm
 - Expiry and purge sweeps, on an hourly job
 - Caps per resource and per inviter
 - An admin surface behind `admin:invitation:*`

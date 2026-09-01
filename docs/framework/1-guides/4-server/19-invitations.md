@@ -93,6 +93,71 @@ the whole inbox over one such row would be worse.
 application that speaks a single language to its own clients maps that back at
 the controller.
 
+## The signup token
+
+An invitation is only useful while somebody can act on it, and a realm with
+`registrationAllowed: false` has no path in for a stranger at all. So every
+invitation is minted with a one-time secret, handed to you once on the
+`invitation:created` event:
+
+```typescript
+$hook({
+  on: "invitation:created",
+  handler: async ({ invitation, token }) => {
+    await this.mail.push({
+      contact: invitation.email,
+      variables: {
+        url: `${base}/auth/register?invitation=${encodeURIComponent(token)}`,
+      },
+    });
+  },
+});
+```
+
+The token is on the event because the mail is yours: only your app knows its
+own register URL, and this is the only moment the secret exists. Put it in a
+link and nowhere else.
+
+Wire the other end onto the realm:
+
+```typescript
+realm = $realm({
+  settings: { registrationAllowed: false },
+  isPreAuthorized: (context) =>
+    this.alepha.inject(InvitationRegistrationService).preAuthorize(context),
+});
+```
+
+`preAuthorize` answers `{ emailVerified: true }` for a valid token, which is
+what makes the registration skip the verification mail: the token was
+delivered to that mailbox, so a second round trip would prove a thing the
+click already proved. On the OAuth path no token survives the provider round
+trip, so a pending invitation for the address is enough on its own, and only
+when the provider says `email_verified` outright.
+
+**What kills a token**, all of it structural rather than remembered:
+
+- the invitation stops being `pending`, whether it was accepted, declined or
+  revoked;
+- the invitation's `expiresAt` passes;
+- a different address presents it.
+
+That last one is the point of `describe`-free binding: the verification is
+keyed on the invited address, and `preAuthorize` compares it to the address
+being registered. Redeeming a token for someone else registers the wrong
+person into the resource.
+
+**It is single-use in the way that matters**, and deliberately not in the
+other way. The invitation can only be spent once, so the token can only ever
+produce one account and one membership. It is _not_ burned by merely being
+read: a registration that fails on the captcha, or that the person abandons
+half way, must not cost them their only link.
+
+Every wrong token gets the same answer, whatever kind of wrong it was. A
+caller that told a bad secret apart from an expired invitation would let a
+stranger probe which addresses had been invited, which is the thing a closed
+realm exists to prevent.
+
 ## Caps and sweeps
 
 `invitationConfigAtom` (`alepha.api.invitations.config`) carries four numbers:

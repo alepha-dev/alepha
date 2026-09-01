@@ -11,12 +11,22 @@ import type { InvitationPrincipal } from "../primitives/$invitationResource.ts";
 import { InvitationResourceProvider } from "../providers/InvitationResourceProvider.ts";
 import type { CreateInvitation } from "../schemas/createInvitationSchema.ts";
 import type { InvitationQuery } from "../schemas/invitationQuerySchema.ts";
+import { InvitationTokenService } from "./InvitationTokenService.ts";
 
 declare module "alepha" {
   interface Hooks {
     "invitation:created": {
       invitation: InvitationEntity;
       inviter: { id: string; email?: string };
+      /**
+       * The one-time secret that lets this address register into a closed
+       * realm, minted with the row and never recoverable afterwards.
+       *
+       * It is on the event because the mail is the application's: only the
+       * application knows its own register URL, and only this moment holds
+       * the secret. Put it in a link; do not log it.
+       */
+      token: string;
     };
     "invitation:accepted": {
       invitation: InvitationEntity;
@@ -49,6 +59,7 @@ export class InvitationService {
   protected readonly repo = $repository(invitations);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly resources = $inject(InvitationResourceProvider);
+  protected readonly tokens = $inject(InvitationTokenService);
 
   public async getById(id: string): Promise<InvitationEntity> {
     return this.repo.getById(id);
@@ -140,6 +151,12 @@ export class InvitationService {
       expiresAt,
     });
 
+    // Minted for every invitation, including one addressed to somebody who
+    // already has an account: this module has no users table and cannot know
+    // which case it is in. A token nobody needs costs one row and is simply
+    // never redeemed.
+    const token = await this.tokens.mint(entity);
+
     this.log.info("Invitation created", {
       id: entity.id,
       email,
@@ -151,6 +168,7 @@ export class InvitationService {
     await this.alepha.events.emit("invitation:created", {
       invitation: entity,
       inviter,
+      token,
     });
 
     return entity;

@@ -38,6 +38,17 @@ export const verifications = $entity({
       .describe("When it was successfully verified")
       .optional(),
 
+    expiresAt: z
+      .datetime()
+      .describe(
+        "Per-entry expiry, overriding the type's `codeExpiration` setting. " +
+          "Set when a link must live exactly as long as the thing it unlocks " +
+          "(an invitation, say) rather than as long as a code a human is " +
+          "about to type. Absent means the setting decides, which is the " +
+          "case for every code and for a plain reset link.",
+      )
+      .optional(),
+
     attempts: db.default(
       z
         .integer()

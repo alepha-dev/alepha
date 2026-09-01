@@ -142,6 +142,7 @@ export class VerificationService {
       purpose: entry.purpose ?? "default",
       code: this.hashCode(token),
       createdAt: this.dateTimeProvider.nowISOString(),
+      expiresAt: entry.expiresAt,
     });
 
     this.log.info("Verification created", {
@@ -213,9 +214,14 @@ export class VerificationService {
     // or we won't be able to cooldown the verification
 
     const now = this.dateTimeProvider.now();
-    const expirationDate = this.dateTimeProvider
-      .of(verification.createdAt)
-      .add(settings.codeExpiration, "seconds");
+    // The row's own expiry wins when it has one: the caller said this entry
+    // lives as long as something else, and the type-wide `codeExpiration` is
+    // not that something else.
+    const expirationDate = verification.expiresAt
+      ? this.dateTimeProvider.of(verification.expiresAt)
+      : this.dateTimeProvider
+          .of(verification.createdAt)
+          .add(settings.codeExpiration, "seconds");
 
     if (now > expirationDate) {
       this.log.warn("Verification code expired", {
@@ -303,4 +309,20 @@ export interface VerificationEntry {
    * rows that predate this field).
    */
   purpose?: string;
+
+  /**
+   * When this entry stops being valid, overriding the type's
+   * `codeExpiration`.
+   *
+   * `codeExpiration` is capped at two hours, because it exists for a code a
+   * human is reading out of an inbox right now. A link that unlocks something
+   * with its OWN lifetime needs to match that lifetime instead: an invitation
+   * good for seven days whose link dies after two hours is a link that has
+   * never worked by the time anyone clicks it.
+   *
+   * Only honoured on creation; `verifyCode` reads it back off the stored row.
+   * Absent means the setting decides, which is what every existing caller
+   * wants.
+   */
+  expiresAt?: string;
 }

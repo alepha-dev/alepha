@@ -1,0 +1,1 @@
+ALTER TABLE `verification` ADD `expires_at` integer;
