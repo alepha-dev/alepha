@@ -1,3 +1,4 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Input } from "@alepha/ui/components/ui/input";
 import {
@@ -5,13 +6,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@alepha/ui/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
+import { z } from "alepha";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { X } from "lucide-react";
 import { useState } from "react";
@@ -25,6 +21,18 @@ import {
   formatEstimate,
   splitEstimate,
 } from "./questEstimate.ts";
+
+/**
+ * The unit half of the custom picker.
+ *
+ * Deliberately `z.text()` and not an enum: the rows are handed to the control
+ * as `items`, because their labels are localized and pluralized, so an enum
+ * here would restate `ESTIMATE_UNITS` without being the list that renders.
+ * Required, so the control offers no way back to "no unit".
+ */
+const unitFormSchema = z.object({
+  unit: z.text(),
+});
 
 export interface QuestEstimateInputProps {
   value?: number | null;
@@ -66,6 +74,17 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
         : null,
     );
   };
+
+  const unitForm = useForm({
+    schema: unitFormSchema,
+    initialValues: { unit },
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, next) => {
+      setUnit(next as EstimateUnit);
+      commit(count, next as EstimateUnit);
+    },
+  });
 
   const unitLabel = (u: EstimateUnit, n: number) =>
     String(
@@ -116,32 +135,22 @@ const QuestEstimateInput = (props: QuestEstimateInputProps) => {
                 commit(e.target.value, unit);
               }}
             />
-            <Select
-              value={unit}
-              // Base UI resolves the trigger label from `items`, not from
-              // the rendered `SelectItem`s, so without this the trigger
-              // printed the raw enum key: "hours" in every language,
-              // including French, where the dropdown row beside it read
-              // "heures".
-              items={(Object.keys(ESTIMATE_UNITS) as EstimateUnit[]).map(
-                (u) => ({ value: u, label: unitLabel(u, 2) }),
-              )}
-              onValueChange={(next) => {
-                setUnit(next as EstimateUnit);
-                commit(count, next as EstimateUnit);
-              }}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(ESTIMATE_UNITS) as EstimateUnit[]).map((u) => (
-                  <SelectItem key={u} value={u}>
-                    {unitLabel(u, 2)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex-1">
+              <Control
+                input={unitForm.input.unit}
+                label=""
+                inputProps={{
+                  "aria-label": String(tr("quest.create.estimate.unit")),
+                }}
+                triggerClassName="w-full"
+                // The labels are localized and pluralized, so they are handed
+                // in rather than titlecased off the enum keys - which printed
+                // "Hours" in French next to a row reading "heures".
+                items={(Object.keys(ESTIMATE_UNITS) as EstimateUnit[]).map(
+                  (u) => ({ value: u, label: unitLabel(u, 2) }),
+                )}
+              />
+            </div>
           </div>
         </PopoverContent>
       </Popover>

@@ -1,3 +1,4 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
@@ -15,7 +16,9 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { z } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
@@ -31,6 +34,18 @@ import ProjectSettingsTagColors from "./ProjectSettingsTagColors.tsx";
 import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
 const MAX_COLUMNS = 5;
+
+/**
+ * The status picker's own one-field form.
+ *
+ * `z.text()` rather than the lifecycle enum, because the rows are handed to
+ * the control as `items`: the three labels are localized, so an enum here
+ * would restate the triple without being the list that renders. Required, so
+ * a column always maps onto a state.
+ */
+const columnStatusSchema = z.object({
+  status: z.text(),
+});
 
 /**
  * Stateless, so one instance serves every mount.
@@ -334,6 +349,18 @@ const ColumnRow = (props: ColumnRowProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [value, setValue] = useState(props.name);
 
+  // `keepDirty: false` so the row follows the saved column: a refused or
+  // rolled-back patch leaves `props.status` where it was, and the trigger
+  // has to go back with it.
+  const statusForm = useForm({
+    schema: columnStatusSchema,
+    initialValues: { status: props.status },
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, next) =>
+      props.onSettings({ status: next as ColumnRowProps["status"] }),
+  });
+
   // The name is the identity the reorder endpoint speaks in, and it is
   // unique by construction — `addKanbanColumn` / `renameKanbanColumn`
   // refuse a duplicate.
@@ -412,28 +439,34 @@ const ColumnRow = (props: ColumnRowProps) => {
         placeholder={tr("project.settings.kanban.columns.placeholder")}
         className="h-8 flex-1 text-sm"
       />
-      <select
-        value={props.status}
+      <Control
+        input={statusForm.input.status}
+        label=""
         disabled={props.disabled}
-        data-testid="kanban-column-status"
-        aria-label={String(tr("project.settings.kanban.columns.status"))}
-        className="border-border bg-background h-8 rounded-md border px-1 text-xs"
-        onChange={(e) =>
-          props.onSettings({
-            status: e.currentTarget.value as ColumnRowProps["status"],
-          })
-        }
-      >
-        <option value="new">
-          {tr("project.settings.kanban.columns.status.new")}
-        </option>
-        <option value="accepted">
-          {tr("project.settings.kanban.columns.status.accepted")}
-        </option>
-        <option value="completed">
-          {tr("project.settings.kanban.columns.status.completed")}
-        </option>
-      </select>
+        inputProps={{
+          "data-testid": "kanban-column-status",
+          "aria-label": String(tr("project.settings.kanban.columns.status")),
+        }}
+        triggerClassName="h-8 text-xs"
+        items={[
+          {
+            value: "new",
+            label: String(tr("project.settings.kanban.columns.status.new")),
+          },
+          {
+            value: "accepted",
+            label: String(
+              tr("project.settings.kanban.columns.status.accepted"),
+            ),
+          },
+          {
+            value: "completed",
+            label: String(
+              tr("project.settings.kanban.columns.status.completed"),
+            ),
+          },
+        ]}
+      />
       <Input
         type="number"
         min={1}

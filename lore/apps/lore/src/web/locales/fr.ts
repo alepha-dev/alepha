@@ -322,6 +322,7 @@ export default {
     "Combien de temps cela pourrait prendre. Affiché dans le journal pour choisir une quête qui rentre dans le temps dont vous disposez.",
   "quest.create.estimate.custom": "Personnalisé…",
   "quest.create.estimate.count": "Quantité",
+  "quest.create.estimate.unit": "Unité",
   "quest.create.estimate.unit.minutes": "minutes",
   "quest.create.estimate.unit.minutes.one": "minute",
   "quest.create.estimate.unit.hours": "heures",
