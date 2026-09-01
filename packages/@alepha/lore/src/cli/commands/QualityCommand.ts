@@ -1,12 +1,12 @@
-import { $inject, AlephaError, z } from "alepha";
+import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { $client } from "alepha/server/links";
-import type { ProjectController } from "lore/api/controllers/ProjectController";
 import type { QualityController } from "lore/api/controllers/QualityController";
 
 import { GitContextService } from "../services/GitContextService.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
+import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 import { QualityReportReader } from "../services/QualityReportReader.ts";
 
 /**
@@ -45,6 +45,7 @@ export class QualityCommand {
   protected readonly client = $inject(LoreClientService);
   protected readonly reader = $inject(QualityReportReader);
   protected readonly git = $inject(GitContextService);
+  protected readonly projects = $inject(LoreProjectResolver);
 
   /**
    * ⚠️ Declared after `client`, and it has to be: a field initializer reading
@@ -55,7 +56,6 @@ export class QualityCommand {
    * - `--help` has to work there.
    */
   protected readonly api = $client<QualityController>(this.client.scope());
-  protected readonly projects = $client<ProjectController>(this.client.scope());
 
   public readonly push = $command({
     name: "push",
@@ -73,7 +73,7 @@ export class QualityCommand {
       const project = this.client.resolveProject(flags.project);
       const report = await this.reader.read(root);
       const [projectId, git] = await Promise.all([
-        this.resolveProjectId(project),
+        this.projects.resolve(project),
         this.git.resolve(root),
       ]);
 
@@ -95,6 +95,15 @@ export class QualityCommand {
     },
   });
 
+  /**
+   * ⚠️ The `lore` root lives on `LoreCommand`, not here.
+   *
+   * It used to be declared below this, because `quality` was the only verb.
+   * `CliProvider.findCommand` resolves by `findLast`, so a second class
+   * declaring `lore` would have shadowed this one silently rather than
+   * colliding - the whole `quality` subtree would simply have stopped
+   * existing.
+   */
   public readonly quality = $command({
     name: "quality",
     description: "Coverage and test totals",
@@ -103,43 +112,4 @@ export class QualityCommand {
       help();
     },
   });
-
-  public readonly lore = $command({
-    name: "lore",
-    description: "Talk to a Lore instance",
-    children: [this.quality],
-    handler: async ({ help }) => {
-      help();
-    },
-  });
-
-  /**
-   * `--project` names a project the way a person does: by its slug, which is
-   * what Lore's own URLs carry. Every project-scoped endpoint takes an integer
-   * id, so one of the two has to translate.
-   *
-   * It happens here rather than on the endpoint because `$ownsProject` gates
-   * by primary key from a path param, and a slug is not the key -
-   * `getProjectBySlug` has to check membership by hand for exactly that
-   * reason. Pushing the translation into the endpoint would mean a second gate
-   * shape in Lore for the benefit of one caller.
-   *
-   * A numeric value is taken as an id directly, so a caller that already has
-   * one pays no round trip.
-   */
-  protected async resolveProjectId(project: string): Promise<number> {
-    if (/^\d+$/.test(project)) {
-      return Number(project);
-    }
-
-    const found = await this.projects.getProjectBySlug({
-      params: { slug: project },
-    });
-    if (!found?.id) {
-      throw new AlephaError(
-        `No Lore project named "${project}". Check the slug in its URL, or pass --project <slug>.`,
-      );
-    }
-    return found.id;
-  }
 }

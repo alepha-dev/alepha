@@ -2,9 +2,13 @@ import { $context, $module } from "alepha";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
 import { type LoreOptions, loreOptions } from "./atoms/loreOptions.ts";
+import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
+import { LoreCommand } from "./commands/LoreCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
+import { ArtifactUploader } from "./services/ArtifactUploader.ts";
 import { GitContextService } from "./services/GitContextService.ts";
 import { LoreClientService } from "./services/LoreClientService.ts";
+import { LoreProjectResolver } from "./services/LoreProjectResolver.ts";
 import { QualityReportReader } from "./services/QualityReportReader.ts";
 
 // ---------------------------------------------------------------------------
@@ -54,11 +58,18 @@ export const AlephaLoreCliPlugin = $module({
     LoreClientService,
     QualityReportReader,
     GitContextService,
-    // ⚠️ NOT re-exported below. It names `QualityController` and
-    // `ProjectController`, both types from the private `lore` workspace, and
-    // an exported signature carrying either would put that workspace in the
+    ArtifactUploader,
+    // ⚠️ None of the four below is re-exported. Each names, directly or
+    // through what it injects, a type from the private `lore` workspace, and
+    // an exported signature carrying one would put that workspace in the
     // published `.d.ts`. `scripts/check-dts.mjs` fails the build if it does.
+    LoreProjectResolver,
     QualityCommand,
+    ArtifactCommand,
+    // The `lore` root, and the only declaration of it. Two classes declaring
+    // it would not collide - `findCommand` resolves by `findLast`, so the
+    // second would silently shadow the first and take its subtree with it.
+    LoreCommand,
   ],
 });
 

@@ -49,14 +49,37 @@ export class LoreClientService {
    */
   public scope(): ClientScope {
     return {
-      // `||`, not `??`. A schema default only fills an ABSENT variable, and
-      // `LORE_URL=` in a `.env` file or a CI environment is present and empty
-      // - which would otherwise resolve to an empty hostname and send the
-      // request nowhere, with nothing saying why. Empty reads as "unset",
-      // which is how `requireKey` already reads an empty key.
-      hostname: String(this.env.LORE_URL || LoreClientService.DEFAULT_HOSTNAME),
-      authorization: () => `Bearer ${this.requireKey()}`,
+      hostname: this.hostname(),
+      authorization: () => this.authorization(),
     };
+  }
+
+  /**
+   * Where this invocation is talking to.
+   *
+   * Public because one caller cannot use a `ClientScope`: `ArtifactUploader`
+   * composes its own request, since the typed client would materialise the
+   * whole tarball to send it. Both still come through here, which is what
+   * keeps "where is Lore" one answer rather than two.
+   *
+   * `||`, not `??`. A schema default only fills an ABSENT variable, and
+   * `LORE_URL=` in a `.env` file or a CI environment is present and empty -
+   * which would otherwise resolve to an empty hostname and send the request
+   * nowhere, with nothing saying why. Empty reads as "unset", which is how
+   * `requireKey` already reads an empty key.
+   */
+  public hostname(): string {
+    return String(this.env.LORE_URL || LoreClientService.DEFAULT_HOSTNAME);
+  }
+
+  /**
+   * The `Authorization` header value, resolved now.
+   *
+   * Never cached by a caller: see {@link scope} for why the credential is a
+   * thunk everywhere it is used.
+   */
+  public authorization(): string {
+    return `Bearer ${this.requireKey()}`;
   }
 
   /**
