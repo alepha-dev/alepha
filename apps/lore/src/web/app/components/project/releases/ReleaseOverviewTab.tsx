@@ -134,11 +134,12 @@ const ReleaseOverviewTab = (props: ReleaseOverviewTabProps) => {
       icon: Package,
       label: String(tr("release.kpi.artifacts.label")),
       value: String(props.artifactCount),
-      // Names the preview here as well as on the tab: a reader who never
-      // opens Artifacts would otherwise take this number for a fact.
+      // Zero is a normal state, not a gap: an artifact with no release and a
+      // release with no artifact are both ordinary, since the two are matched
+      // on tag equality rather than linked.
       note: String(
         props.artifactCount > 0
-          ? tr("release.kpi.artifacts.preview", {
+          ? tr("release.kpi.artifacts.built", {
               args: [release.tag ?? String(release.number)],
             })
           : tr("release.artifacts.emptyShort", {

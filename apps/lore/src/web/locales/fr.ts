@@ -795,8 +795,7 @@ export default {
   "release.kpi.shipped.note":
     "Publiée le $1. La rouvrir est le seul retour en arrière.",
   "release.kpi.artifacts.label": "Artefacts",
-  "release.kpi.artifacts.preview":
-    "Exemples tagués $1. Le registre d'artefacts n'existe pas encore.",
+  "release.kpi.artifacts.built": "Construits et conservés pour $1.",
 
   "release.description.label": "Description",
   "release.description.empty": "Pas encore de description.",
@@ -809,18 +808,17 @@ export default {
   "release.contents.frozen": "figé à la publication",
 
   "release.artifacts.title": "Artefacts",
-  "release.artifacts.previewChip": "Aperçu",
   "release.artifacts.matchedOn": "rapprochés sur",
   "release.artifacts.column.app": "Application",
   "release.artifacts.column.target": "Cible",
-  "release.artifacts.column.file": "Fichier",
   "release.artifacts.column.digest": "Empreinte",
   "release.artifacts.column.size": "Taille",
   "release.artifacts.column.uploaded": "Déposé",
   "release.artifacts.empty": "Rien n'a encore été construit pour $1.",
   "release.artifacts.emptyShort": "Rien de construit pour $1.",
+  "release.artifacts.loading": "Lecture de ce qui a été construit pour ce tag…",
   "release.artifacts.joinNote":
-    "Exemples : le registre d'artefacts n'existe pas encore. Le tag est la clé de rapprochement, et c'est pourquoi il est distinct du titre. Renommer le titre ne casse jamais cette liste ; changer le tag orpheline tous les artefacts construits pour l'ancien.",
+    "Rapprochés sur le tag, sans lien à maintenir : une version et un artefact du même nom sont le même fait énoncé deux fois. C'est pourquoi le tag est distinct du titre. Renommer le titre ne casse jamais cette liste ; changer le tag orpheline tous les artefacts construits pour l'ancien.",
 
   "release.edit.title": "Modifier la version",
   "release.edit.tagHint":
