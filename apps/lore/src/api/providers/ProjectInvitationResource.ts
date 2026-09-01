@@ -1,5 +1,9 @@
 import { $inject } from "alepha";
-import { $invitationResource } from "alepha/api/invitations";
+import {
+  $invitationResource,
+  type InvitationDescription,
+  type InvitationEntity,
+} from "alepha/api/invitations";
 import { type UserEntity, users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { ForbiddenError } from "alepha/server";
@@ -76,19 +80,60 @@ export class ProjectInvitationResource {
       });
     },
 
-    describe: async (invitation) => {
-      const project = await this.projects.findOne({
-        where: { id: { eq: Number(invitation.resourceId) } },
-      });
-      const inviter = await this.users.findOne({
-        where: { id: { eq: invitation.invitedBy } },
-      });
-      return {
-        resourceTitle: project?.title,
-        inviterName: this.formatInviterName(inviter),
-      };
-    },
+    describe: (invitations) => this.describeAll(invitations),
   });
+
+  /**
+   * Two queries for the whole inbox rather than two per invitation, and the
+   * two per invitation were SEQUENTIAL: five pending invitations cost ten D1
+   * round trips.
+   *
+   * The inviter ids are what the dedupe is really for: one person inviting
+   * someone to six projects is six rows and one user. Two rows cannot name
+   * the same project here, since `create` refuses a second pending
+   * invitation for the same `(resource, email)` and this list is one email,
+   * so the `new Set` on those is defence rather than a saving.
+   */
+  protected async describeAll(
+    invitations: InvitationEntity[],
+  ): Promise<Array<InvitationDescription | undefined>> {
+    const projectIds = [
+      ...new Set(
+        invitations
+          .map((inv) => Number(inv.resourceId))
+          .filter((id) => Number.isFinite(id)),
+      ),
+    ];
+    const inviterIds = [
+      ...new Set(invitations.map((inv) => inv.invitedBy).filter(Boolean)),
+    ];
+
+    // `inArray: []` throws, and neither list follows from a non-empty input:
+    // `resourceId` is a string column and `invitedBy` an optional one, so
+    // either can filter down to nothing while rows remain.
+    const [projects, inviters] = await Promise.all([
+      projectIds.length
+        ? this.projects.findMany({
+            where: { id: { inArray: projectIds } },
+            columns: ["id", "title"],
+          })
+        : [],
+      inviterIds.length
+        ? this.users.findMany({ where: { id: { inArray: inviterIds } } })
+        : [],
+    ]);
+
+    const projectById = new Map(projects.map((it) => [it.id, it]));
+    const inviterById = new Map(inviters.map((it) => [it.id, it]));
+
+    // A missing row keeps the behaviour a per-row `findOne` gave it: an
+    // absent title (the controller supplies the "Project" fallback) and
+    // `formatInviterName`'s own undefined handling.
+    return invitations.map((inv) => ({
+      resourceTitle: projectById.get(Number(inv.resourceId))?.title,
+      inviterName: this.formatInviterName(inviterById.get(inv.invitedBy)),
+    }));
+  }
 
   /**
    * Refuse when the project already holds every member it is allowed.

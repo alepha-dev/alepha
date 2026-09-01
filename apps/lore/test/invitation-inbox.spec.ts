@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { InvitationService } from "alepha/api/invitations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
@@ -10,7 +11,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { InvitationController } from "../src/api/controllers/InvitationController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { InvitationService } from "../src/api/services/InvitationService.ts";
 import { ReadCounter } from "./fixtures/ReadCounter.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -28,6 +28,21 @@ interface TestContext {
   service: InvitationService;
   counter: ReadCounter;
   fake: FakeProvider;
+  /**
+   * The inbox as the client sees it.
+   *
+   * Read through the CONTROLLER rather than the service since the extraction
+   * (#1663): `InvitationService` lives in `alepha/api/invitations` now and
+   * answers the generic `resourceTitle`, while `projectTitle` and its
+   * "Project" fallback are Lore's, applied here. The batched read itself
+   * moved to `ProjectInvitationResource.describeAll`, so the query counts
+   * below still measure the thing they were written for.
+   */
+  inbox: (user: {
+    id: string;
+    roles: string[];
+    email: string;
+  }) => Promise<Array<{ projectTitle: string; inviterName?: string }>>;
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -46,14 +61,19 @@ const setup = async (): Promise<TestContext> => {
 
   await alepha.start();
 
+  const invitations = alepha.inject(InvitationController);
+
   return {
     alepha,
     admin: alepha.inject(AdminUserController),
     projects: alepha.inject(ProjectController),
-    invitations: alepha.inject(InvitationController),
+    invitations,
     service: alepha.inject(InvitationService),
     counter: alepha.inject(ReadCounter),
     fake: alepha.inject(FakeProvider),
+    // `run`, not `fetch`: the inbox is resolved from the caller's EMAIL, and
+    // only the direct path hands the token through untouched.
+    inbox: (user) => invitations.listMyInvitations.run({}, { user }),
   };
 };
 
@@ -117,7 +137,7 @@ describe("the pending-invitation inbox", () => {
       await invite(owner, project.data.id, invitee.email);
     }
 
-    const inbox = await ctx.service.listForUser(invitee);
+    const inbox = await ctx.inbox(invitee);
 
     expect(inbox.map((it) => it.projectTitle).sort()).toEqual([
       "Alpha",
@@ -149,7 +169,7 @@ describe("the pending-invitation inbox", () => {
         await invite(owner, project.data.id, invitee.email);
       }
       ctx.counter.reset();
-      const inbox = await ctx.service.listForUser(invitee);
+      const inbox = await ctx.inbox(invitee);
       return {
         size: inbox.length,
         projects: ctx.counter.of("projects"),
@@ -188,7 +208,7 @@ describe("the pending-invitation inbox", () => {
     }
 
     ctx.counter.reset();
-    const inbox = await ctx.service.listForUser(invitee);
+    const inbox = await ctx.inbox(invitee);
 
     const local = (email: string) => email.slice(0, email.indexOf("@"));
     const tally = new Map<string | undefined, number>();
@@ -224,7 +244,7 @@ describe("the pending-invitation inbox", () => {
     // An id absent from the batched result set has to land on the same
     // fallback the per-row `findOne` gave it. Without it the inbox renders
     // an entry with no name at all.
-    const inbox = await ctx.service.listForUser(invitee);
+    const inbox = await ctx.inbox(invitee);
     expect(inbox.map((it) => it.projectTitle)).toEqual(["Project"]);
   });
 });
