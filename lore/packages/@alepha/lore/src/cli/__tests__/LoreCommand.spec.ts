@@ -52,16 +52,29 @@ describe("alepha lore", () => {
 
     expect(lore.children.map((child) => child.name).sort()).toEqual([
       "artifacts",
+      "login",
+      "logout",
       "quality",
     ]);
   });
 
-  it("keeps each verb's own subcommand reachable", async () => {
+  /**
+   * `quality` and `artifacts` are nouns holding a verb; `login` and `logout`
+   * are verbs in their own right and sit directly under `lore`, because
+   * `alepha lore auth login` would be a noun invented to hold two commands.
+   */
+  it("keeps each subject's own subcommand reachable", async () => {
     const alepha = await setup();
 
     const lore = alepha.inject(LoreCommand).lore;
-    for (const verb of lore.children) {
-      expect(verb.children.map((child) => child.name)).toEqual(["push"]);
+    const subjects = lore.children.filter((child) => child.hasChildren);
+
+    expect(subjects.map((child) => child.name).sort()).toEqual([
+      "artifacts",
+      "quality",
+    ]);
+    for (const subject of subjects) {
+      expect(subject.children.map((child) => child.name)).toEqual(["push"]);
     }
   });
 });
