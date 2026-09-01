@@ -255,14 +255,14 @@ describe("EpicController", () => {
     const resources = await ctx.controller.getEpics(params, { user });
     const eight = ctx.counter.of("quests");
 
-    // Eight epics, still two reads: one grouped aggregate for total /
-    // completed / shelved, one more for the accepted-and-not-completed
-    // conjunction. The per-epic form was four counts EACH, which is where
-    // `GET /api/getEpics/1` got its 89 D1 round trips.
+    // Eight epics, ONE read: a single grouped aggregate carrying total,
+    // completed and shelved as plain counts and `inProgress` as a
+    // conditioned one. The per-epic form was four counts EACH, which is
+    // where `GET /api/getEpics/1` got its 89 D1 round trips.
     //
     // Exact, never `toBeLessThan`: an upper bound passes just as happily
     // when a later change stops counting anything at all.
-    expect({ one, eight }).toEqual({ one: 2, eight: 2 });
+    expect({ one, eight }).toEqual({ one: 1, eight: 1 });
     expect(resources).toHaveLength(8);
     expect(resources.map((r) => r.questCount)).toEqual([
       1, 1, 1, 1, 1, 1, 1, 1,
