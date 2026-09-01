@@ -1,3 +1,4 @@
+import { Control } from "@alepha/ui/components/control/control";
 import {
   type Edge,
   type Node,
@@ -7,12 +8,15 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
+import { z } from "alepha";
+import { useForm } from "alepha/react/form";
 
 import "@xyflow/react/dist/style.css";
 import { Maximize2, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DevEmpty } from "../shared/DevEmpty.tsx";
+import { DT_TRIGGER } from "../shared/dtTrigger.ts";
 import { EntityNode } from "./EntityNode.tsx";
 import { type ErdLayout, layoutEntities } from "./layoutEntities.ts";
 import { SchemaDetail } from "./SchemaDetail.tsx";
@@ -159,6 +163,16 @@ const ErdCanvas = (props: ErdCanvasProps) => {
 
 export const DatabaseErd = (props: DatabaseErdProps) => {
   const [layout, setLayout] = useState<ErdLayout>("hierarchical");
+
+  // One field, so the picker can be the shared `Control` rather than the only
+  // native `<select>` left on this screen.
+  const layoutForm = useForm({
+    schema: z.object({ layout: z.text() }),
+    initialValues: { layout },
+    keepDirty: false,
+    handler: async () => {},
+    onChange: (_key, next) => setLayout(next as ErdLayout),
+  });
   /**
    * Compact by default on a real schema. Full column lists are readable for
    * the handful of tables a demo has; at 30+ they fit-zoom into illegibility,
@@ -229,16 +243,20 @@ export const DatabaseErd = (props: DatabaseErdProps) => {
           />
         </span>
 
-        <select
-          className="dt-input"
-          style={{ width: 130 }}
-          value={layout}
-          onChange={(e) => setLayout(e.currentTarget.value as ErdLayout)}
-        >
-          <option value="hierarchical">hierarchical</option>
-          <option value="grid">grid</option>
-          <option value="circular">circular</option>
-        </select>
+        {/* Width on the wrapper, never on the trigger — see `DT_TRIGGER`. */}
+        <div style={{ width: 130 }}>
+          <Control
+            input={layoutForm.input.layout}
+            label=""
+            inputProps={{ "aria-label": "Diagram layout" }}
+            triggerClassName={DT_TRIGGER}
+            items={[
+              { value: "hierarchical", label: "hierarchical" },
+              { value: "grid", label: "grid" },
+              { value: "circular", label: "circular" },
+            ]}
+          />
+        </div>
 
         <button
           type="button"

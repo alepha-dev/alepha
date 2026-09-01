@@ -3,7 +3,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { LockProvider } from "alepha/lock";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
-import { describe, it } from "vitest";
+import { describe, it, vi } from "vitest";
 
 import {
   $workflow,
@@ -19,8 +19,26 @@ import {
 
 // -----------------------------------------------------------------------------------------------------------------
 
+// Raised so `waitFor`'s 10_000ms budget expires FIRST and its diagnostic (the
+// actual execution row) reaches the reporter. With both at 10_000 vitest won
+// every race and reported a bare timeout, which is why the delayed-step
+// flakes in this module were characterised by hand twice over.
+vi.setConfig({ testTimeout: 30_000 });
+
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
+ *
+ * The budget must stay UNDER this file's `testTimeout`, which the
+ * `vi.setConfig` above raises to 30_000 for exactly that reason. Both used
+ * to be 10_000, so vitest's timeout won every race and killed the test
+ * before this threw, which meant the message below (the one carrying the
+ * actual row) was never printed. Two sessions characterised a parked
+ * workflow by hand before anyone noticed the diagnostic existed and was
+ * simply unreachable.
+ *
+ * Raise the ceiling, never lower this floor. Lowering it to 8_000 opened
+ * the same gap but also cut every workflow test's tolerance by two seconds,
+ * and CI went red on a delayed-step test that had been green at 10_000.
  */
 async function waitFor<T>(
   fn: () => Promise<T> | T,
@@ -1097,44 +1115,24 @@ describe("$workflow — context propagation", () => {
 
 describe("$workflow — repeat steps", () => {
   /**
-   * TODO: fix and re-enable — skipped 2026-08-18, re-enabled 2026-08-23 by the
-   * audit commit `b9c057f40`, skipped again the same day. Goes with the retry
-   * test in `$workflow.spec.ts`: same race, so the two come back together.
+   * Parked 2026-08-18 with the retry test in `$workflow.spec.ts` (same
+   * shape: a step falls due and is never picked up), un-parked 2026-09-01.
    *
-   * Still fails after the audit's `dispatchScheduled` re-arm fix: 1 in 6 with
-   * the machine loaded, 0 in 20 with it quiet. Load-dependent, and a red
-   * `test` job blocks the docs and Lore deploys.
+   * The shape had a cause, and it is fixed: the re-park stamped the step row
+   * and then pushed a dispatch scheduled from a SECOND clock read, so a
+   * `travel()` landing between the two (this loop polls for the stamp, then
+   * travels) left the outbox row due ten minutes past the travelled clock.
+   * The recovery sweep rescued it whenever the travel happened to cross a
+   * quarter-hour sweep tick, which is why it failed only some of the time and why
+   * probes seemed to hide it. `$workflow-travel-race.spec.ts` pins that
+   * window deterministically.
    *
-   * It is also a Heisenbug — `LOG_LEVEL=debug` hides it, and so does any
-   * instrumentation inside `WorkflowProvider` as cheap as pushing a string
-   * onto an array (0 in 12 with probes in, 4 in 6 without, same commit).
-   * Reproduce by loading the machine, not by adding probes.
-   *
-   * **Symptom.** The execution parks on a step and never resumes. Captured by
-   * raising vitest's timeout above `waitFor`'s (both are 10_000, so vitest
-   * wins and hides the diagnostic):
-   *
-   * ```
-   * status: "running", currentStep: "after",
-   * createdAt 16:36:51.828Z, updatedAt 16:58:51.852Z
-   * ```
-   *
-   * Note `updatedAt` is 22 minutes past `createdAt` — that is `travel()`
-   * moving the clock, not wall time. So the loop did advance; what never
-   * happened is the step falling due being picked up.
-   *
-   * **Where to look.** The same place as the retry flake: whatever claims a
-   * step whose `scheduledAt` has arrived. The two failures differ only in how
-   * the step becomes due — a 10ms backoff there, a clock jump here — which is
-   * the argument that one fix serves both.
-   *
-   * Watch the ordering trap while fixing: a `travel()` issued before the next
+   * Park before you travel still holds: a `travel()` issued before the next
    * step's `scheduledAt` has been written moves the clock past a timer that
-   * does not exist yet, and the workflow then waits forever. Park on the
+   * does not exist yet, and the workflow then waits forever. Wait for the
    * stamp, then travel.
    */
-  // oxlint-disable-next-line vitest/no-disabled-tests -- deliberately parked, see the TODO above
-  it.skip("repeats durably until the handler stops asking, then falls through", async ({
+  it("repeats durably until the handler stops asking, then falls through", async ({
     expect,
   }) => {
     const runs: number[] = [];
@@ -1529,23 +1527,101 @@ describe("$workflow — the step claim is atomic", () => {
     expect(steps[0].attempt).toBe(1);
   });
 
-  it("compensates each step exactly once when two compensations race", async ({
+  /**
+   * Both orderings, in one test, on purpose.
+   *
+   * `compensate()` takes no lock of its own and is reachable from four
+   * places at once (a step failure, `cancel({ compensate })`, the recovery
+   * sweep, the admin endpoint), so the two callers can arrive in either
+   * order — and the outcome must not depend on which:
+   *
+   * - `simultaneous`: both have read the execution, neither has claimed it.
+   *   The claim must let exactly one through, or both run every
+   *   compensation handler.
+   * - `staggered`: the second arrives after the first has already written
+   *   `compensating`. The loser must return quietly, not throw.
+   *
+   * `staggered` is the case that broke CI. The old guard read the status,
+   * compared it and only then wrote, so the second caller's read landed
+   * after the first caller's write and it threw `Cannot compensate workflow
+   * in 'compensating' status`. It passed locally because two `compensate()`
+   * calls awaiting the same database do not naturally interleave across
+   * that window; on a loaded runner they do. A 25ms stagger reproduced it
+   * every time.
+   */
+  for (const arrival of ["simultaneous", "staggered"] as const) {
+    it(`compensates each step exactly once when two compensations arrive ${arrival}`, async ({
+      expect,
+    }) => {
+      let compensations = 0;
+
+      class App {
+        repo = $repository(workflowExecutions);
+        stepRepo = $repository(workflowStepExecutions);
+        undoable = $workflow({
+          schema: z.object({ id: z.text() }),
+          steps: [
+            {
+              name: "charge",
+              handler: async () => ({ ok: true }),
+              compensate: async () => {
+                compensations++;
+                await new Promise((r) => setTimeout(r, 20));
+              },
+            },
+          ],
+        });
+      }
+
+      const alepha = Alepha.create()
+        .with({ provide: LockProvider, use: UncontendedLockProvider })
+        .with(AlephaOrmPostgres)
+        .with(AlephaApiWorkflows)
+        .with(App);
+      await alepha.start();
+
+      const app = alepha.inject(App);
+      const provider = alepha.inject(WorkflowProvider);
+
+      const workflowId = await app.undoable.start({ id: "a" });
+      await waitFor(
+        () => app.repo.findById(workflowId),
+        (row) => row?.status === "completed",
+        { label: "workflow completed" },
+      );
+
+      await app.repo.updateById(workflowId, { status: "failed" });
+
+      const first = provider.compensate(workflowId);
+      if (arrival === "staggered") {
+        // Long enough for the winner to have claimed the execution and be
+        // inside its compensation handler.
+        await new Promise((r) => setTimeout(r, 25));
+      }
+      await Promise.all([first, provider.compensate(workflowId)]);
+
+      expect(compensations).toBe(1);
+      const steps = await app.stepRepo.findMany({
+        where: { workflowExecutionId: { eq: workflowId } },
+      });
+      expect(steps[0].status).toBe("compensated");
+      expect((await app.repo.findById(workflowId))?.status).toBe("compensated");
+    });
+  }
+
+  it("lets the loser of a cancel race return quietly, not throw", async ({
     expect,
   }) => {
-    let compensations = 0;
-
     class App {
       repo = $repository(workflowExecutions);
-      stepRepo = $repository(workflowStepExecutions);
-      undoable = $workflow({
+      slow = $workflow({
         schema: z.object({ id: z.text() }),
         steps: [
           {
-            name: "charge",
-            handler: async () => ({ ok: true }),
-            compensate: async () => {
-              compensations++;
-              await new Promise((r) => setTimeout(r, 20));
+            name: "wait",
+            handler: async () => {
+              await new Promise((r) => setTimeout(r, 200));
+              return { ok: true };
             },
           },
         ],
@@ -1562,26 +1638,20 @@ describe("$workflow — the step claim is atomic", () => {
     const app = alepha.inject(App);
     const provider = alepha.inject(WorkflowProvider);
 
-    const workflowId = await app.undoable.start({ id: "a" });
+    const workflowId = await app.slow.start({ id: "a" });
     await waitFor(
       () => app.repo.findById(workflowId),
-      (row) => row?.status === "completed",
-      { label: "workflow completed" },
+      (row) => row?.status === "running",
+      { label: "workflow running" },
     );
 
-    // `compensate()` takes no lock of its own, and is reachable from four
-    // places at once (failure, cancel, sweep, admin). Only the per-step
-    // compare-and-set stops the handler running twice.
-    await app.repo.updateById(workflowId, { status: "failed" });
-    await Promise.all([
-      provider.compensate(workflowId),
-      provider.compensate(workflowId),
-    ]);
+    // Two admins clicking Cancel, or a listener racing an admin. The second
+    // one used to get `Cannot cancel workflow in 'cancelled' status` — which
+    // is why `cancelByKey` carries a try/catch that re-reads the row.
+    const first = provider.cancel(workflowId);
+    await new Promise((r) => setTimeout(r, 25));
+    await Promise.all([first, provider.cancel(workflowId)]);
 
-    expect(compensations).toBe(1);
-    const steps = await app.stepRepo.findMany({
-      where: { workflowExecutionId: { eq: workflowId } },
-    });
-    expect(steps[0].status).toBe("compensated");
+    expect((await app.repo.findById(workflowId))?.status).toBe("cancelled");
   });
 });
