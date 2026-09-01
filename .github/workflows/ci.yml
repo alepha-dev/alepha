@@ -219,6 +219,65 @@ jobs:
         timeout-minutes: 10
         run: yarn e2e-cli
 
+      # ────────────────────────────────────────────────────────────────
+      # Build in, artifact out. `yarn build` above already produced
+      # `apps/lore/dist`, so this packs it and stores it in the project's
+      # registry: `alepha lore artifacts push` calls `alepha pack` itself
+      # rather than requiring a separate step, because a tarball on disk and
+      # the build in `dist/` can differ and the push would happily ship the
+      # older one.
+      #
+      # ⚠️ **Lore does not build.** The registry is a place to keep an
+      # artifact, not a builder: no git clone, no install, no build step on
+      # the far side. GitHub Actions already does that well and for free, and
+      # duplicating it would mean per-project repo credentials, dependency
+      # caching and an unbounded cost surface. See folio #73.
+      #
+      # ⚠️ **This is deliberately NOT in `deploy-lore-production`.** That job's
+      # value is its `needs: [verify, e2e]` gate on an app that ships to
+      # production with no human in the loop, and Lore deploying itself
+      # THROUGH Lore is circular: a release that boots broken takes out the
+      # only way to repair it. This runs alongside and places nothing.
+      #
+      # The artifact is therefore the `node` build this job already made, not
+      # the workerd bundle `platform up` produces. Its manifest says so, which
+      # is the whole reason the runtime is read from the manifest and never
+      # from a flag or a filename.
+      #
+      # ⚠️ `vars.LORE_ARTIFACT_PROJECT` gates it, and the gate is the point.
+      # The step ships INERT: set the variable to a throwaway project, watch a
+      # run land, and only then point it at a real one. That is quest #1202's
+      # "prove it on a throwaway project before any real one" expressed as a
+      # property of the workflow rather than as a note somebody has to
+      # remember.
+      #
+      # `continue-on-error` and skipped on pull requests, like the coverage
+      # push above and for the same reason: a red push is a warning annotation
+      # that blocks no deploy and reddens no fork PR. The secret is passed
+      # through `env` and never echoed - the command prints the digest, not
+      # the credential.
+      #
+      # Tagged `latest`, which replaces in place and IS the retention policy:
+      # one row and one stored object per app, with no sweep job. A per-commit
+      # tag is deliberately absent - every tag but `latest` is write-once, so
+      # tagging each commit would keep every build ever made, which is exactly
+      # the "keep everything" degeneration quest #1518 was written to end. The
+      # commit is recorded ON the row instead, and the push writes the sha256
+      # to `$GITHUB_OUTPUT` for a later step that means to pin these exact
+      # bytes. A version tag belongs on a release, not on a commit.
+      - name: Push Artifact To Lore
+        if: github.event_name != 'pull_request' && vars.LORE_ARTIFACT_PROJECT != ''
+        continue-on-error: true
+        working-directory: apps/lore
+        run: >-
+          yarn alepha lore artifacts push
+          --project "$LORE_ARTIFACT_PROJECT"
+          --app lore
+          --tag latest
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          LORE_ARTIFACT_PROJECT: ${{ vars.LORE_ARTIFACT_PROJECT }}
+
   # ──────────────────────────────────────────────────────────────────────
   # Bay - the Go control plane. Nothing in the yarn pipeline compiles or tests
   # it, which is how a `.gitignore` pattern that swallowed the whole
