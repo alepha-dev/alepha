@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   FileSystemProvider,
@@ -1343,11 +1343,8 @@ describe("CloudflareAdapter", () => {
   });
 
   describe("exportDb", () => {
-    test("dumps remote D1 and imports it into a local SQLite snapshot", async ({
-      expect,
-    }) => {
-      const { adapter, naming } = createTestEnv();
-      const ctx = makeCtx(naming, {
+    const withDatabase = (naming: NamingService) =>
+      makeCtx(naming, {
         resources: {
           hasDatabase: true,
           hasBucket: false,
@@ -1358,12 +1355,49 @@ describe("CloudflareAdapter", () => {
         },
       });
 
-      // Record the raw shell strings exportDb issues via run().
+    /**
+     * A `run()` that plays the two shell steps for real enough to test the
+     * code between them: `wrangler d1 export` writes `dump` to the `--output`
+     * path, and `sqlite3 '<db>' < '<sql>'` copies whatever is in the dump at
+     * that moment into the target file. `failImport` makes the import throw
+     * AFTER writing a partial file, which is exactly what sqlite3 does: it
+     * commits every statement it parsed before the error.
+     */
+    const shellRun = (
+      fs: MemoryFileSystemProvider,
+      opts: { dump: Buffer | string; failImport?: boolean } = {
+        dump: "-- empty\n",
+      },
+    ) => {
       const commands: string[] = [];
       const run: any = async (cmd: any) => {
-        if (typeof cmd === "string") commands.push(cmd);
+        if (typeof cmd !== "string") return;
+        commands.push(cmd);
+        const exported = /--output="([^"]+)"/.exec(cmd);
+        if (exported) {
+          await fs.writeFile(exported[1], opts.dump);
+          return;
+        }
+        const imported = /sqlite3 '([^']+)' < '([^']+)'/.exec(cmd);
+        if (imported) {
+          const sql = await fs.readFile(imported[2]);
+          if (opts.failImport) {
+            await fs.writeFile(imported[1], "PARTIAL");
+            throw new AlephaError("Parse error near line 2134");
+          }
+          await fs.writeFile(imported[1], sql);
+        }
       };
       run.end = () => {};
+      return { run, commands };
+    };
+
+    test("dumps remote D1 and imports it into a local SQLite snapshot", async ({
+      expect,
+    }) => {
+      const { adapter, naming, fs } = createTestEnv();
+      const ctx = withDatabase(naming);
+      const { run, commands } = shellRun(fs, { dump: "-- rows\n" });
 
       await adapter.exportDb(ctx, run, {
         output: "/tmp/snap.db",
@@ -1373,9 +1407,78 @@ describe("CloudflareAdapter", () => {
       expect(
         commands.some((c) => /^wrangler d1 export .+ --remote /.test(c)),
       ).toBe(true);
-      expect(commands.some((c) => /sqlite3 '\/tmp\/snap\.db' < /.test(c))).toBe(
-        true,
-      );
+      // Staged, not written straight into the snapshot — see below.
+      expect(
+        commands.some((c) => /sqlite3 '\/tmp\/snap\.db\.import' < /.test(c)),
+      ).toBe(true);
+      expect(fs.files.get("/tmp/snap.db")?.toString()).toBe("-- rows\n");
+      // The scratch file never survives a run.
+      expect(fs.files.has("/tmp/snap.db.import")).toBe(false);
+    });
+
+    test("escapes a raw NUL byte in the dump before the import", async ({
+      expect,
+    }) => {
+      const { adapter, naming, fs } = createTestEnv();
+      const ctx = withDatabase(naming);
+      // The shape that broke the lore export: a raw 0x00 inside a text
+      // literal, with a following row for the parser to misblame.
+      const dump = Buffer.concat([
+        Buffer.from("INSERT INTO t VALUES('a"),
+        Buffer.from([0x00]),
+        Buffer.from("b');\nINSERT INTO t VALUES('next');\n"),
+      ]);
+      const { run } = shellRun(fs, { dump });
+
+      await adapter.exportDb(ctx, run, {
+        output: "/tmp/snap.db",
+        keepSql: true,
+      });
+
+      const imported = fs.files.get("/tmp/snap.db")!;
+      // sqlite3 reads its input as C strings, so one of these ends the
+      // INSERT early and the syntax error lands on the FOLLOWING row.
+      expect(imported.includes(0x00)).toBe(false);
+      // Escaped, not stripped: a backslash is not special inside a SQLite
+      // string literal, so the two characters survive into the data.
+      expect(imported.toString()).toContain("VALUES('a\\0b')");
+      expect(imported.toString()).toContain("VALUES('next')");
+    });
+
+    test("leaves a clean dump alone", async ({ expect }) => {
+      const { adapter, naming, fs } = createTestEnv();
+      const ctx = withDatabase(naming);
+      const { run } = shellRun(fs, { dump: "INSERT INTO t VALUES('ok');\n" });
+
+      await adapter.exportDb(ctx, run, {
+        output: "/tmp/snap.db",
+        keepSql: true,
+      });
+
+      // These dumps run to tens of megabytes, so a clean one must not be
+      // read back out and rewritten. `wrangler d1 export` wrote it once.
+      expect(
+        fs.writeFileCalls.filter((c) => c.path.endsWith(".sql")),
+      ).toHaveLength(1);
+    });
+
+    test("keeps the existing snapshot when the import fails", async ({
+      expect,
+    }) => {
+      const { adapter, naming, fs } = createTestEnv();
+      const ctx = withDatabase(naming);
+      await fs.writeFile("/tmp/snap.db", "WORKING DEV DB");
+      const { run } = shellRun(fs, { dump: "-- rows\n", failImport: true });
+
+      await expect(
+        adapter.exportDb(ctx, run, { output: "/tmp/snap.db", keepSql: true }),
+      ).rejects.toThrow(/Parse error/);
+
+      // The whole point: a failed import used to leave a silently partial
+      // database where a working one had been, because `dbPath` was removed
+      // up front and sqlite3 commits what it parsed before the error.
+      expect(fs.files.get("/tmp/snap.db")?.toString()).toBe("WORKING DEV DB");
+      expect(fs.files.has("/tmp/snap.db.import")).toBe(false);
     });
 
     test("refuses when no database is detected", async ({ expect }) => {
