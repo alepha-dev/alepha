@@ -1,6 +1,7 @@
 import { useStore } from "alepha/react";
 
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
+import AppArtifacts from "./AppArtifacts.tsx";
 import AppDashboardCapabilities from "./AppDashboardCapabilities.tsx";
 import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
 
@@ -20,8 +21,10 @@ import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
  * comparison neither page could make before: a disagreement was invisible in
  * both directions, and it is the failure mode that wastes the most time.
  *
- * Deliberately roomy. Artifacts, the current deployment and a run log all want
- * this page once the deploy chain lands.
+ * Deliberately roomy. Artifacts landed with epic #18 and take the full width
+ * below the pair, because a build list is a table and a table wants the frame.
+ * The current deployment and a run log still want this page once the rest of
+ * the deploy chain lands.
  */
 const AppDashboard = () => {
   const [sigil] = useStore(currentSigilAtom);
@@ -31,9 +34,12 @@ const AppDashboard = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <AppDashboardIdentity sigil={sigil} />
-      <AppDashboardCapabilities sigil={sigil} />
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AppDashboardIdentity sigil={sigil} />
+        <AppDashboardCapabilities sigil={sigil} />
+      </div>
+      <AppArtifacts sigil={sigil} />
     </div>
   );
 };

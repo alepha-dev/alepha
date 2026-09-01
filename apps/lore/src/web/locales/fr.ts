@@ -1008,6 +1008,14 @@ export default {
   "app.dashboard.configHint":
     "Ce que l'app envoie est décidé par SIGIL_CONFIG dans son propre déploiement, pas ici. Ce que Lore accepte se règle dans l'onglet Paramètres.",
   "app.dashboard.acceptsNothing": "Lore n'accepte rien de cette app",
+  "app.artifacts": "Artefacts",
+  "app.artifacts.loading": "Lecture de ce que cette app a construit…",
+  "app.artifacts.error": "Impossible de lire les artefacts de cette app.",
+  "app.artifacts.commit": "Construit depuis le commit $1",
+  "app.artifacts.empty.description":
+    "Aucun artefact publié pour l'instant. Tout le reste de cette page vient de l'app elle-même ; les artefacts viennent de la CI, donc une app sans pipeline n'en montre aucun.",
+  "app.artifacts.empty.credential":
+    "Nécessite LORE_API_KEY dans l'environnement qui l'exécute. `latest` peut être remplacé ; tout autre tag est écrit une seule fois.",
   "insights.errors.note":
     "Défaillances distinctes encore actives dans cette app",
   "app.settings.general": "Général",

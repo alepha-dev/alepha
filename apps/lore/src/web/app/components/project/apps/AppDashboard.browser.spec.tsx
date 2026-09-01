@@ -1,4 +1,4 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime, DateTimeProvider } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -7,8 +7,10 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
+import { defaultProjectFeatures } from "@/api/entities/projects.ts";
 import type { SigilResource } from "@/api/schemas/sigilResourceSchema.ts";
 
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import AppDashboard from "./AppDashboard.tsx";
@@ -24,6 +26,12 @@ import AppDashboard from "./AppDashboard.tsx";
 class RecordingLinkProvider extends LinkProvider {
   public calls: string[] = [];
 
+  /**
+   * What a named action answers, when a case cares. Everything else answers
+   * `{}`, which is what most of them want.
+   */
+  public responses: Record<string, unknown> = {};
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return new Proxy(
@@ -31,7 +39,7 @@ class RecordingLinkProvider extends LinkProvider {
       {
         get: (_target, prop: string) => async () => {
           this.calls.push(prop);
-          return {};
+          return this.responses[prop] ?? {};
         },
       },
     );
@@ -65,15 +73,36 @@ describe("AppDashboard", () => {
     return alepha;
   };
 
-  const show = async (sigil: SigilResource) => {
+  const show = async (
+    sigil: SigilResource,
+    responses: Record<string, unknown> = {},
+  ) => {
     // Testing Library binds its queries to `document.body`, so a second render
     // in one test would search the first one's DOM as well. Several cases here
     // deliberately render twice to compare two states.
     cleanup();
     const alepha = await mount();
     alepha.store.set(currentSigilAtom, sigil as never);
+    // The Artifacts card reads the project for its id and its slug, so without
+    // this it would stay disabled and every case below would pass by not
+    // running the code they are about.
+    alepha.store.set(currentProjectAtom, {
+      id: 1,
+      createdAt: "2026-08-26T10:00:00.000Z",
+      updatedAt: "2026-08-26T10:00:00.000Z",
+      title: "Alepha",
+      slug: "alepha",
+      createdBy: "00000000-0000-4000-8000-000000000001",
+      areas: [],
+      features: defaultProjectFeatures,
+      kanbanColumns: ["In Progress"],
+      unlockedFeatures: [],
+      unlockHistory: [],
+    } as never);
+    const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
+    links.responses = responses;
     return {
-      links: alepha.inject(LinkProvider) as RecordingLinkProvider,
+      links,
       dateTime: alepha.inject(DateTimeProvider),
       ...render(
         <AlephaContext.Provider value={alepha}>
@@ -87,12 +116,133 @@ describe("AppDashboard", () => {
    * The property the rebuild exists for. This page used to render three
    * counters out of an insights payload, so opening the front page of an app
    * cost ten aggregate queries against Analytics Engine.
+   *
+   * ⚠️ This used to read "asks the server for nothing at all", and epic #18
+   * made that literally false: the Artifacts card issues one listing. The
+   * invariant was never "no request" though - it was **no analytics**. One
+   * indexed read of a small table is a different cost class from ten aggregate
+   * queries, and the assertion is written as a whitelist so a future insights
+   * call cannot creep back in unnoticed.
    */
-  it("asks the server for nothing at all", async ({ expect }) => {
+  it("issues one artifact listing and no analytics query", async ({
+    expect,
+  }) => {
     const { links, getByTestId } = await show(sigilOf());
 
     expect(getByTestId("app-identity")).toBeTruthy();
-    expect(links.calls).toEqual([]);
+    // Awaited: the listing is an effect, so asserting synchronously would
+    // read an empty array and pass for the wrong reason.
+    await waitFor(() => expect(links.calls).toEqual(["listArtifacts"]));
+  });
+
+  describe("the artifacts card", () => {
+    const listing = (groups: unknown[]) => ({
+      listArtifacts: { groups, truncated: false },
+    });
+
+    /**
+     * ⚠️ Empty is a normal, and often permanent, state here. Everything else
+     * on this page is derived from telemetry the app itself pushes; artifacts
+     * come from CI, a second foreign system that can be absent entirely. An
+     * error or an ominous blank would report a fault where there is none.
+     */
+    it("tells a project with no pipeline how to start", async ({ expect }) => {
+      const { findByText, getByTestId } = await show(sigilOf(), listing([]));
+
+      expect(await findByText(/No artifacts pushed yet/)).toBeTruthy();
+      expect(getByTestId("app-artifacts").textContent).toContain(
+        "alepha lore artifacts push --project alepha --app docs-production",
+      );
+    });
+
+    /**
+     * The property the whole `(app, tag, runtime)` key exists for: `1.2.3` is
+     * ONE release with two builds, and a flat list would render it as two.
+     */
+    it("draws one row per tag, with its runtimes beside it", async ({
+      expect,
+    }) => {
+      const { findByText, getByTestId } = await show(
+        sigilOf(),
+        listing([
+          {
+            app: "docs-production",
+            tag: "1.2.3",
+            pushedAt: "2026-08-30T10:00:00.000Z",
+            commitSha: "0b35cb375ff",
+            variants: [
+              {
+                id: "00000000-0000-4000-8000-000000000010",
+                projectId: 1,
+                app: "docs-production",
+                tag: "1.2.3",
+                runtime: "node",
+                sha256: "a".repeat(64),
+                size: 4_400_000,
+                createdAt: "2026-08-30T10:00:00.000Z",
+                updatedAt: "2026-08-30T10:00:00.000Z",
+              },
+              {
+                id: "00000000-0000-4000-8000-000000000011",
+                projectId: 1,
+                app: "docs-production",
+                tag: "1.2.3",
+                runtime: "workerd",
+                sha256: "b".repeat(64),
+                size: 8_800_000,
+                createdAt: "2026-08-30T10:00:00.000Z",
+                updatedAt: "2026-08-30T10:00:00.000Z",
+              },
+            ],
+          },
+        ]),
+      );
+
+      expect(await findByText("1.2.3")).toBeTruthy();
+      const card = getByTestId("app-artifacts").textContent ?? "";
+      expect(card).toContain("node");
+      expect(card).toContain("workerd");
+      // The digest is short on the row; the whole value lives on the title.
+      expect(card).toContain("a".repeat(12));
+      expect(card).not.toContain("a".repeat(64));
+      // The heaviest variant, since only one of the two is ever deployed.
+      expect(card).toContain("8.8 MB");
+      // Short, and only because CI sent one.
+      expect(card).toContain("0b35cb3");
+    });
+
+    it("shows no commit when the push named none", async ({ expect }) => {
+      const { findByText, getByTestId } = await show(
+        sigilOf(),
+        listing([
+          {
+            app: "docs-production",
+            tag: "latest",
+            pushedAt: "2026-08-30T10:00:00.000Z",
+            variants: [
+              {
+                id: "00000000-0000-4000-8000-000000000012",
+                projectId: 1,
+                app: "docs-production",
+                tag: "latest",
+                runtime: "workerd",
+                sha256: "c".repeat(64),
+                size: 1_000_000,
+                createdAt: "2026-08-30T10:00:00.000Z",
+                updatedAt: "2026-08-30T10:00:00.000Z",
+              },
+            ],
+          },
+        ]),
+      );
+
+      expect(await findByText("latest")).toBeTruthy();
+      expect(
+        getByTestId("app-artifacts").querySelector(
+          "svg.lucide-git-commit-horizontal",
+        ),
+      ).toBeNull();
+    });
   });
 
   /**

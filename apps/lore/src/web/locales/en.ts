@@ -990,6 +990,14 @@ export default {
   "app.dashboard.configHint":
     "What the app sends is decided by SIGIL_CONFIG in its own deploy, not here. What Lore accepts is on the Settings tab.",
   "app.dashboard.acceptsNothing": "Lore accepts nothing from this app",
+  "app.artifacts": "Artifacts",
+  "app.artifacts.loading": "Reading what this app has built…",
+  "app.artifacts.error": "Couldn't read this app's artifacts.",
+  "app.artifacts.commit": "Built from commit $1",
+  "app.artifacts.empty.description":
+    "No artifacts pushed yet. Everything else on this page comes from the app itself; artifacts come from CI, so an app with no pipeline wired up shows none.",
+  "app.artifacts.empty.credential":
+    "Needs LORE_API_KEY in the environment that runs it. `latest` may be replaced; any other tag is written once.",
   "insights.errors.note": "Distinct failures still happening in this app",
   "app.settings.general": "General",
   "app.settings.credential": "Credential",
