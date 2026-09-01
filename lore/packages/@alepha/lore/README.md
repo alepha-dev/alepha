@@ -147,3 +147,60 @@ frames normalized so that bundle hashes and `:line:column` do not split one
 fault into a new group on every deploy. What reaches the sink is a count per
 fingerprint, not one payload per occurrence, which is what keeps storage bound
 by how many distinct faults exist rather than by how much traffic you have.
+
+## The CLI half
+
+`@alepha/lore/cli` is what a pipeline runs, and it registers from
+`alepha.config.ts` the way any other CLI plugin does:
+
+```ts
+import { lore } from "@alepha/lore/cli";
+
+export default defineConfig({
+  plugins: [lore({ project: "alepha" })],
+});
+```
+
+Config carries the project, `LORE_API_KEY` carries the secret, and `--project`
+overrides the config for one invocation. No credential ever lands in a committed
+file.
+
+```bash
+alepha lore quality push                   # coverage and test totals
+alepha lore artifacts push --tag 1.2.3     # the build itself
+```
+
+### `artifacts push`
+
+Packs the current build and stores it in the project's registry, addressed by
+sha256.
+
+It packs for you. `alepha pack` stays for anyone who wants the file, but
+requiring it as a separate step means the tarball on disk and the build in
+`dist/` can differ, and the push would happily ship the older one - a stale
+artifact that deploys cleanly and runs the wrong code.
+
+| flag        |                                                                           |
+| ----------- | ------------------------------------------------------------------------- |
+| `--tag`     | Version this build is named by. Defaults to `latest`.                     |
+| `--app`     | What it is filed under. Defaults to the slugified `name` in package.json. |
+| `--force`   | Move a pinned tag that already holds different bytes.                     |
+| `--project` | Override the project for this invocation.                                 |
+
+⚠️ **There is no `--runtime`, and there never will be.** Lore reads it from the
+artifact's own `dist/manifest.json`. A flag would eventually disagree with the
+manifest, and the manifest is the artifact's own claim about itself. It is also
+why nothing parses the filename: `1.2.3` names one release that may carry a
+workerd build and a node build, and both land under that one tag.
+
+`latest` is the only tag whose bytes may change. Pushing it replaces it in
+place, which is the whole retention policy - one row and one stored object, no
+sweep job. Every other tag is write-once; `--force` exists for "tagged the wrong
+commit".
+
+The digest is printed on success, and written to `$GITHUB_OUTPUT` when GitHub
+Actions provides one. A tag can be moved by another job and a digest cannot, so
+a later step meaning to deploy exactly these bytes should read the second.
+
+A push that cannot happen exits non-zero. There is no `--soft`: the safety
+belongs where the command runs, and the CI step that runs it gates no deploy.
