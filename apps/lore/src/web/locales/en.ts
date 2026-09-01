@@ -789,6 +789,7 @@ export default {
   "roadmap.release.noDate": "No estimated date yet",
   "roadmap.epic.ref": "Epic $1",
   "roadmap.epic.ratio": "$1/$2",
+  "roadmap.epic.after": "After Epic $1",
   "roadmap.poweredBy": "Roadmap published with Alepha Lore.",
 
   "release.kpi.ready.label": "Ready to ship",

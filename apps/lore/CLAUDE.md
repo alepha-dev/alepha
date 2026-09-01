@@ -300,6 +300,23 @@ second `$ownsProject` window. The settings card says so
 visitors"), and the cache directives are pinned to that promise by a test -
 raising either means changing that string in both locales first.
 
+**The order between epics is drawn, not described.** `epics.dependsOn` is a
+self-reference (`ON DELETE SET NULL`, optional, no column default), and the
+roadmap sorts each release's epics so a predecessor comes above what depends
+on it and renders an "After Epic N" chip. It replaced prose: "Depends on epic
+#14 landing first" in a description cannot be rendered, sorted or checked.
+
+⚠️ **It is ADVISORY, and `quests.dependsOn` is not.** A quest's predecessor
+gates `acceptQuest`; an epic's gates nothing - `setEpicStatus` still has no
+forbidden edge. Epics overlap by design, and a refusal there would make people
+stop setting the field rather than start respecting it. The reasoning is
+written up on the column itself, and `EpicDependencyService.spec.ts` has a
+test whose whole job is to go red if somebody adds the gate without reading it.
+**Cycles ARE refused**, which is a different question: `A → B → A` is a graph
+the roadmap cannot draw. MCP speaks in per-project numbers
+(`dependsOn_number`, `0` clears), the HTTP API in ids, the same split
+`quest_*` makes.
+
 ⚠️ **Publishing a roadmap publishes the titles of epics nobody has
 announced.** Planned epics are shown on purpose: an epic that is specified and
 not started is exactly what a roadmap is for, and hiding it would make the

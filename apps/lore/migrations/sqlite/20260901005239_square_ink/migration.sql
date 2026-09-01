@@ -1,0 +1,1 @@
+ALTER TABLE `epics` ADD `depends_on` integer REFERENCES epics(id) ON DELETE SET NULL;

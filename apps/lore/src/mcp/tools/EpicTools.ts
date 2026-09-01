@@ -101,6 +101,10 @@ export class EpicTools {
           createdAt: epic.createdAt,
           activatedAt: epic.activatedAt,
           completedAt: epic.completedAt,
+          // The column stores an id; this surface speaks in per-project
+          // numbers, the same split `quest_*` makes with `dependsOn_shortId`.
+          // `buildEpicResource` is what resolves it.
+          dependsOn_number: epic.dependsOnNumber,
         })),
       };
     },
@@ -146,6 +150,7 @@ export class EpicTools {
         createdAt: epic.createdAt,
         activatedAt: epic.activatedAt,
         completedAt: epic.completedAt,
+        dependsOn_number: epic.dependsOnNumber,
         folios: folios.map((folio) => ({
           shortId: folio.shortId,
           title: folio.title,
@@ -156,6 +161,28 @@ export class EpicTools {
       };
     },
   });
+
+  /**
+   * Turn a per-project epic `number` into the id `epics.dependsOn` stores.
+   *
+   * Three states, and they are not the same thing: `undefined` means the
+   * caller did not mention the field and the column is left alone, `0` means
+   * clear it, and anything else is a number to resolve. Same sentinel
+   * `quest_update`'s `dependsOn_shortId` uses, and for the same reason: a
+   * tool schema has no way to send a null.
+   */
+  protected async resolveDependsOn(
+    projectId: number,
+    number?: number,
+  ): Promise<number | null | undefined> {
+    if (number === undefined) return undefined;
+    if (number === 0) return null;
+
+    const predecessor = await this.epicController.getEpicByNumber({
+      params: { projectId, number },
+    });
+    return predecessor.id;
+  }
 
   /**
    * Create a new epic.
@@ -180,6 +207,10 @@ export class EpicTools {
         body: {
           title: params.title,
           description: params.description,
+          dependsOn: await this.resolveDependsOn(
+            projectId,
+            params.dependsOn_number,
+          ),
         },
       });
 
@@ -220,6 +251,10 @@ export class EpicTools {
         body: {
           title: params.title,
           description: params.description,
+          dependsOn: await this.resolveDependsOn(
+            projectId,
+            params.dependsOn_number,
+          ),
         },
       });
 

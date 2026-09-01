@@ -72,6 +72,56 @@ export const epics = $entity({
     releaseId: db.ref(z.integer().optional(), () => releases.cols.id, {
       onDelete: "set null",
     }),
+    /**
+     * The epic that has to come first. At most one.
+     *
+     * It exists so the ordering between epics can be **drawn** rather than
+     * described. Before it, that order lived in prose - this epic's own
+     * description opened with "Depends on epic #14 landing first", and folio
+     * #1154's six-epic chain was a mermaid diagram pasted into a description.
+     * Neither can be rendered, sorted or checked.
+     *
+     * ## ⚠️ ADVISORY, not a gate. Decided deliberately, 2026-09-01.
+     *
+     * `quests.dependsOn` is a real gate: while the predecessor is incomplete,
+     * `acceptQuest` refuses to assign the quest. Consistency argued for the
+     * same here - `setEpicStatus` refusing `active` while the predecessor is
+     * not `done` - and it was rejected, for three reasons:
+     *
+     * 1. **The units are not comparable.** A quest gate refuses ONE person
+     *    starting ONE task, and is worked around by finishing the predecessor.
+     *    Epics overlap by design: starting B while A is finishing is normal
+     *    planning, not a mistake, and a refusal there would make people stop
+     *    setting the field rather than start respecting it.
+     * 2. **`setEpicStatus` has no forbidden edge today**, on purpose - all
+     *    nine transitions are legal and its own doc says so. This would be the
+     *    first refusal on that surface, with no force flag to get past it.
+     * 3. **The direction is reversible one way only.** Adding the gate later
+     *    is additive; removing one people have built round is a behaviour
+     *    change to undo. Advisory first is the cheaper mistake.
+     *
+     * So the roadmap draws "after Epic N" and nothing is refused. If the gate
+     * is ever wanted, it goes on `setEpicStatus`, and this comment is the
+     * record of what was weighed.
+     *
+     * **Cycles ARE rejected on write**, which is not the same decision.
+     * `A → B → A` is not a workflow preference, it is a graph the renderer
+     * cannot terminate on, and nothing else in a self-reference prevents it.
+     * `EpicDependencyService` walks the chain on every write.
+     *
+     * ⚠️ `SET NULL` and not `CASCADE`: deleting a predecessor unblocks its
+     * dependents, it never deletes them. Doubly so once `epic_delete` exists.
+     *
+     * ⚠️ Declared optional with NO `db.default(...)`, so the migration is a
+     * plain additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a
+     * table rebuild, and a `DROP TABLE epics` in a generated migration would
+     * fire SET NULL against the copied rows in both `quests` and `folios`,
+     * detaching every quest and folio from its epic silently. Precedent, and
+     * the same warning: `quests.epicId`.
+     */
+    dependsOn: db.ref(z.integer().optional(), () => epics.cols.id, {
+      onDelete: "set null",
+    }),
   }),
   indexes: [
     { columns: ["projectId", "number"], unique: true },

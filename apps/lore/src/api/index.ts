@@ -47,6 +47,7 @@ import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
+import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -102,6 +103,7 @@ export const LoreApi = $module({
     ReleaseAttachmentService,
     ReleaseContentService,
     RoadmapService,
+    EpicDependencyService,
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,

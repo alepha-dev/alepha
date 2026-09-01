@@ -12,6 +12,7 @@ import {
   epicResourceSchema,
 } from "../schemas/epicResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { EpicDependencyService } from "../services/EpicDependencyService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 
@@ -54,6 +55,7 @@ export class EpicController {
   dt = $inject(DateTimeProvider);
   linkService = $inject(FolioLinkService);
   attachment = $inject(ReleaseAttachmentService);
+  dependencies = $inject(EpicDependencyService);
   owned = $inject(OwnedResourceProvider);
 
   /**
@@ -175,10 +177,24 @@ export class EpicController {
       body: z.object({
         title: z.string().min(3).max(80),
         description: z.string().meta({ size: "rich" }).optional(),
+        /**
+         * The epic that has to come first. Advisory: nothing is refused
+         * because of it - see the column's own comment for why. `null` is
+         * the same as omitting it.
+         */
+        dependsOn: z.integer().nullable().optional(),
       }),
       response: epicResourceSchema,
     },
     handler: async ({ params, body }) => {
+      // No `epicId` yet, so neither a self-reference nor a cycle is possible
+      // and only the "same project" half of the check can run.
+      const dependsOn = await this.dependencies.resolve(
+        params.projectId,
+        undefined,
+        body.dependsOn ?? null,
+      );
+
       const number = await this.epicNumber.next(String(params.projectId));
       const epic = await this.epics.create({
         projectId: params.projectId,
@@ -186,6 +202,7 @@ export class EpicController {
         title: body.title,
         description: body.description ?? "",
         status: "planned",
+        ...(dependsOn !== null ? { dependsOn } : {}),
       });
       await this.syncEpicLinks(epic);
 
@@ -208,6 +225,14 @@ export class EpicController {
          * two, and both directions need the same refusal anyway.
          */
         releaseId: z.integer().nullable().optional(),
+        /**
+         * The epic that has to come first. `null` clears it.
+         *
+         * Advisory - no status transition is refused because of it. Cycles
+         * are refused, which is a different question; both are settled on the
+         * column, in `epics.ts`.
+         */
+        dependsOn: z.integer().nullable().optional(),
       }),
       response: epicResourceSchema,
     },
@@ -223,12 +248,24 @@ export class EpicController {
             )
           : undefined;
 
+      const dependsOn =
+        body.dependsOn !== undefined
+          ? await this.dependencies.resolve(
+              epic.projectId,
+              epic.id,
+              body.dependsOn,
+            )
+          : undefined;
+
       const updated = await this.epics.updateById(params.id, {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined
           ? { description: body.description }
           : {}),
         ...(releaseId !== undefined ? { releaseId } : {}),
+        // `null` rather than `undefined` so the column is actually cleared -
+        // an undefined patch value reads as "leave unchanged".
+        ...(dependsOn !== undefined ? { dependsOn } : {}),
       });
       await this.syncEpicLinks(updated);
 
@@ -418,7 +455,20 @@ export class EpicController {
    */
   protected async buildEpicResource(epic: Epic): Promise<EpicResource> {
     const progress = await this.computeProgress(epic);
-    return { ...epic, progress, questCount: progress.total };
+    // One extra read, and only for an epic that HAS a predecessor. Cheap next
+    // to `computeProgress`'s four counts, and it is what stops every consumer
+    // holding the epic list purely to turn an id into a `#7`.
+    const predecessor =
+      epic.dependsOn != null
+        ? await this.epics.findOne({ where: { id: { eq: epic.dependsOn } } })
+        : undefined;
+
+    return {
+      ...epic,
+      progress,
+      questCount: progress.total,
+      dependsOnNumber: predecessor?.number,
+    };
   }
 
   /**

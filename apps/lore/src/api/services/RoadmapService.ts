@@ -1,12 +1,14 @@
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
+import { epics } from "../entities/epics.ts";
 import type { Project } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 import type { RoadmapEpic } from "../schemas/roadmapEpicSchema.ts";
 import type { RoadmapRelease } from "../schemas/roadmapReleaseSchema.ts";
 import type { RoadmapResource } from "../schemas/roadmapResourceSchema.ts";
+import { EpicDependencyService } from "./EpicDependencyService.ts";
 import { ReleaseContentService } from "./ReleaseContentService.ts";
 
 /**
@@ -23,13 +25,16 @@ import { ReleaseContentService } from "./ReleaseContentService.ts";
  */
 export class RoadmapService {
   releases = $repository(releases);
+  epics = $repository(epics);
   quests = $repository(quests);
   contents = $inject(ReleaseContentService);
+  dependencies = $inject(EpicDependencyService);
 
   /**
-   * Four queries for the whole page, whatever the project's size: the
-   * releases, then `contentsOfMany`'s two, then one pass over the quests of
-   * every epic on it.
+   * Five queries for the whole page, whatever the project's size: the
+   * releases, `contentsOfMany`'s two, one pass over the quests of every epic
+   * on it, and one over the project's epics to turn a `dependsOn` id into
+   * the `#7` a reader recognises. None of them grows with the project.
    */
   async roadmapOf(project: Project): Promise<RoadmapResource> {
     const rows = await this.releases.findMany({
@@ -47,6 +52,19 @@ export class RoadmapService {
       [...contents.values()].flatMap((entry) => entry.epics.map((e) => e.id)),
     );
 
+    // id → per-project number, for `dependsOnNumber`. Built over the whole
+    // project rather than over the epics on the roadmap: a predecessor can
+    // sit in a release that is not open, or in none at all, and the card
+    // still has to be able to name it.
+    const numberById = new Map(
+      (
+        await this.epics.findMany({
+          where: { projectId: { eq: project.id } },
+          columns: ["id", "number"],
+        })
+      ).map((epic) => [epic.id, epic.number]),
+    );
+
     const toRelease = (release: (typeof rows)[number]): RoadmapRelease => ({
       tag: release.tag,
       title: release.title,
@@ -59,17 +77,29 @@ export class RoadmapService {
       // `EpicVisibilityService`'s backlog gate is about the project's own
       // lists rather than about intent. Empty for a released release; see
       // `roadmapReleaseSchema`.
-      epics: (contents.get(release.id)?.epics ?? []).map((epic) => ({
-        number: epic.number,
-        title: epic.title,
-        status: epic.status,
-        progress: epicProgress.get(epic.id) ?? {
-          completed: 0,
-          inProgress: 0,
-          shelved: 0,
-          total: 0,
-        },
-      })),
+      //
+      // Ordered so a predecessor precedes what depends on it, rather than by
+      // `number`: a card that lists "Epic 9, after Epic 7" above "Epic 7" is
+      // asking the reader to sort it themselves, which is the whole thing
+      // `epics.dependsOn` exists to stop.
+      epics: this.dependencies
+        .order(contents.get(release.id)?.epics ?? [])
+        .map((epic) => ({
+          number: epic.number,
+          title: epic.title,
+          status: epic.status,
+          // The predecessor's per-project number, never its id. `undefined`
+          // for an epic whose predecessor is not in this project's epic set
+          // at all, which cannot happen through `EpicDependencyService`.
+          dependsOnNumber:
+            epic.dependsOn != null ? numberById.get(epic.dependsOn) : undefined,
+          progress: epicProgress.get(epic.id) ?? {
+            completed: 0,
+            inProgress: 0,
+            shelved: 0,
+            total: 0,
+          },
+        })),
     });
 
     return {

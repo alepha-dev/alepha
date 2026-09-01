@@ -801,6 +801,7 @@ export default {
   "roadmap.release.noDate": "Pas encore de date estimée",
   "roadmap.epic.ref": "Épopée $1",
   "roadmap.epic.ratio": "$1/$2",
+  "roadmap.epic.after": "Après l’épopée $1",
   "roadmap.poweredBy": "Feuille de route publiée avec Alepha Lore.",
 
   "release.kpi.ready.label": "Prête à livrer",
