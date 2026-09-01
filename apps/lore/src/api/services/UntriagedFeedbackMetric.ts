@@ -41,6 +41,17 @@ export class UntriagedFeedbackMetric implements DashboardMetricResolver {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly catalog = $inject(DashboardMetricCatalog);
 
+  /**
+   * ONE statement for every card on this metric, partitioned in memory —
+   * see `ActiveQuestsMetric.resolveAll` for why the seam existed and did
+   * nothing.
+   *
+   * The `status` filter moves out of SQL to make that possible: two cards
+   * on this metric may ask for different statuses, so the batched read
+   * selects the column and each card narrows on it. That is the only
+   * behavioural difference; `deletedAt IS NULL` stays in the statement
+   * because every card wants it.
+   */
   async resolveAll(
     cards: DashboardResolvable[],
   ): Promise<
@@ -51,16 +62,35 @@ export class UntriagedFeedbackMetric implements DashboardMetricResolver {
       Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames">
     >();
 
+    // `inArray: []` throws, so an all-empty board must not reach the query.
+    const union = [
+      ...new Set(cards.flatMap((entry) => entry.scope.projectIds)),
+    ];
+
+    const rows = union.length
+      ? await this.feedback.findMany({
+          where: {
+            projectId: { inArray: union },
+            // A soft-deleted item is not waiting for anyone. The repository
+            // applies this itself for `deletedAt` entities, but the inbox
+            // and this count must agree and saying so costs nothing.
+            deletedAt: { isNull: true },
+          },
+          columns: ["projectId", "createdAt", "status"],
+        })
+      : [];
+
     for (const entry of cards) {
-      out.set(entry.card.id, await this.resolveOne(entry));
+      out.set(entry.card.id, this.resolveOne(entry, rows));
     }
 
     return out;
   }
 
-  protected async resolveOne(
+  protected resolveOne(
     entry: DashboardResolvable,
-  ): Promise<Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames">> {
+    all: Array<{ projectId: number; createdAt: string; status: string }>,
+  ): Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames"> {
     const { status } = entry.filters as UntriagedFeedbackFilters;
     const projectIds = entry.scope.projectIds;
 
@@ -68,17 +98,12 @@ export class UntriagedFeedbackMetric implements DashboardMetricResolver {
       return { value: 0, detail: {} };
     }
 
-    const rows = await this.feedback.findMany({
-      where: {
-        projectId: { inArray: projectIds },
-        // A soft-deleted item is not waiting for anyone. The repository
-        // applies this itself for `deletedAt` entities, but the inbox and
-        // this count must agree and saying so costs nothing.
-        deletedAt: { isNull: true },
-        ...(status === "pending" ? { status: { eq: "pending" } } : {}),
-      },
-      columns: ["projectId", "createdAt"],
-    });
+    const scoped = new Set(projectIds);
+    const rows = all.filter(
+      (row) =>
+        scoped.has(row.projectId) &&
+        (status === "pending" ? row.status === "pending" : true),
+    );
 
     if (rows.length === 0) {
       return { value: 0, detail: {} };
