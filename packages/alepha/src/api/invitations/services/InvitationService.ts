@@ -247,9 +247,9 @@ export class InvitationService {
       }
     });
 
-    const described: Array<InvitationDescription | undefined> = new Array(
-      rows.length,
-    );
+    const described: Array<InvitationDescription | undefined> = Array.from({
+      length: rows.length,
+    });
 
     await Promise.all(
       [...byType.entries()].map(async ([resourceType, indexes]) => {

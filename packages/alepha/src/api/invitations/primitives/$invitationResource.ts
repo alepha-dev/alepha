@@ -70,20 +70,27 @@ export interface InvitationResourcePrimitiveOptions {
   grant: (userId: string, invitation: InvitationEntity) => Async<void>;
 
   /**
-   * How a human sees this invitation: what they are being invited to, and by
-   * whom.
+   * How a human sees these invitations: what each one is for, and who sent
+   * it.
    *
    * Both are the application's to answer. The resource's title is obviously
    * its own, and the inviter's name is too, because this module holds a user
    * id and deliberately no foreign key to a users table it does not own.
    *
-   * Returning `undefined` (or omitting the closure) leaves the row
-   * undescribed rather than failing the read: an inbox that cannot name one
-   * resource should still list the others.
+   * ⚠️ **Takes a LIST and answers one entry per input, in order.** The only
+   * caller is an inbox, and describing a row at a time is two queries per
+   * invitation: Lore's inbox was exactly that until it was collapsed to two
+   * queries for the whole list, and a per-row signature here would have
+   * handed that N+1 back the moment the code moved into this module. Batch is
+   * the shape, so the slow version is not expressible.
+   *
+   * A `undefined` entry (or no closure at all) leaves that row undescribed
+   * rather than failing the read: an inbox that cannot name one resource
+   * should still list the others.
    */
   describe?: (
-    invitation: InvitationEntity,
-  ) => Async<InvitationDescription | undefined>;
+    invitations: InvitationEntity[],
+  ) => Async<Array<InvitationDescription | undefined>>;
 }
 
 /**

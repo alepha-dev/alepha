@@ -26,6 +26,12 @@ class TestResource {
   public readonly asked: string[] = [];
   public seats = 10;
   public inviterAllowed = true;
+  /**
+   * How many rows each `describe` call was handed. One entry per call, so a
+   * seam that quietly went back to one row at a time shows up as a list of
+   * ones rather than as a slower test nobody notices.
+   */
+  public readonly described: number[] = [];
   public readonly emails = new Map<string, string>();
 
   public readonly widget = $invitationResource({
@@ -58,10 +64,13 @@ class TestResource {
       set.add(userId);
       this.principals.set(invitation.resourceId, set);
     },
-    describe: (invitation: InvitationEntity) => ({
-      resourceTitle: `Widget ${invitation.resourceId}`,
-      inviterName: "Someone",
-    }),
+    describe: (invitations: InvitationEntity[]) => {
+      this.described.push(invitations.length);
+      return invitations.map((invitation) => ({
+        resourceTitle: `Widget ${invitation.resourceId}`,
+        inviterName: "Someone",
+      }));
+    },
   });
 }
 
@@ -329,6 +338,39 @@ describe("alepha/api/invitations - InvitationService", () => {
     expect(inbox).toHaveLength(1);
     expect(inbox[0].resourceTitle).toBe("Widget 7");
     expect(inbox[0].inviterName).toBe("Someone");
+  });
+
+  /**
+   * The seam is asked ONCE for the whole inbox, not once per row.
+   *
+   * Lore's inbox read two rows per invitation, sequentially, until that was
+   * collapsed to two queries for the whole list. A per-row `describe` would
+   * have handed the N+1 straight back when the code moved into this module,
+   * silently and with every test still green, so the call shape is the
+   * assertion.
+   */
+  it("asks the resolver once for the whole inbox, not once per row", async ({
+    expect,
+  }) => {
+    const { service, resource } = await setup();
+    const guest = { id: crypto.randomUUID(), email: "guest@example.com" };
+
+    for (const resourceId of ["7", "8", "9"]) {
+      await service.create(
+        { email: guest.email, resourceType: "widget", resourceId },
+        owner(),
+      );
+    }
+
+    const inbox = await service.listForUser(guest);
+    expect(inbox).toHaveLength(3);
+    expect(
+      inbox
+        .map((row) => row.resourceTitle)
+        .sort((a, b) => String(a).localeCompare(String(b))),
+    ).toEqual(["Widget 7", "Widget 8", "Widget 9"]);
+    // One call, carrying all three.
+    expect(resource.described).toEqual([3]);
   });
 
   it("still lists a row whose resourceType has no resolver left", async ({
