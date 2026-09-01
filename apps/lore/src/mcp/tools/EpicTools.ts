@@ -1,6 +1,5 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
-import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
@@ -20,6 +19,7 @@ import {
   epicUpdateResultSchema,
 } from "../schemas/index.ts";
 import { DiagramCheckService } from "../services/DiagramCheckService.ts";
+import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * MCP tools for epic operations.
@@ -34,6 +34,7 @@ export class EpicTools {
   protected readonly folioController = $inject(FolioController);
   protected readonly projectController = $inject(ProjectController);
   protected readonly diagrams = $inject(DiagramCheckService);
+  protected readonly projectTools = $inject(ProjectTools);
 
   /**
    * Resolve project ID from params (by ID or name).
@@ -42,29 +43,8 @@ export class EpicTools {
     project?: number,
     projectName?: string,
   ): Promise<number> {
-    const projects = await this.projectController.getMyProjects();
-
-    if (project) {
-      const found = projects.find((p) => p.id === project);
-      if (!found) {
-        throw new NotFoundError(`Project with ID ${project} not found`);
-      }
-      return found.id;
-    }
-
-    if (projectName) {
-      const found = projects.find(
-        (p) => p.title.toLowerCase() === projectName.toLowerCase(),
-      );
-      if (!found) {
-        throw new NotFoundError(`Project "${projectName}" not found`);
-      }
-      return found.id;
-    }
-
-    throw new BadRequestError(
-      "Project is required. Specify project ID or project_name.",
-    );
+    // One implementation, in `ProjectTools`. See the note there.
+    return await this.projectTools.resolveProjectId(project, projectName);
   }
 
   /**
