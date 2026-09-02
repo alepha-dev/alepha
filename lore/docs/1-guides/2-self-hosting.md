@@ -34,7 +34,7 @@ Once your account exists:
 
 Lore stores its realm settings in the database so the owner can change them without a redeploy. The environment variables below that map onto those settings are **boot-time defaults**: the first time an administrator opens the Parameters page, the whole settings object is written to a row, and from that moment the row wins.
 
-That covers `REGISTRATION_ALLOWED`, `ADMIN_EMAIL`, `TURNSTILE_SITE_KEY` and the two settings `EMAIL_HOST` derives (`verifyEmailRequired`, `resetPasswordAllowed`).
+That covers `REGISTRATION_ALLOWED`, `ADMIN_EMAIL`, `TURNSTILE_SITE_KEY` and the two settings the email configuration derives (`verifyEmailRequired`, `resetPasswordAllowed`).
 
 **Adding one of them to a running instance does nothing.** Adding SMTP a week after setup means setting `EMAIL_HOST` _and_ turning email verification and password reset back on in admin. Without knowing this, an operator concludes the container ignores its environment.
 
@@ -56,6 +56,8 @@ Nothing is required. Each group buys one capability, and stays off until it is s
 | `EMAIL_SECURE` | `false` | Use TLS on connect                             |
 
 With no `EMAIL_HOST` there is no email verification and no password reset: both complete by sending a code, so both stay off rather than parking a new account on a "check your inbox" screen forever.
+
+`EMAIL_ENABLED` overrides that judgement in either direction. It is for a setup whose transport the container cannot see for itself: mail relayed by a sidecar, or read straight out of `/data/emails` by an operator who is happy to do that. Setting it does **not** configure a transport; it only says one exists.
 
 Mail that would have been sent is still written to disk, one JSON file per recipient under `/data/emails`. That is the escape hatch when something needs a link and there is no mail server:
 
@@ -94,13 +96,14 @@ Set **both**. The site key alone is what turns the requirement on and renders th
 
 ### Overrides
 
-| Variable               | Default                  | Description                                       |
-| ---------------------- | ------------------------ | ------------------------------------------------- |
-| `APP_SECRET`           | generated into `/data`   | Signing secret. Set it to manage the key yourself |
-| `DATABASE_URL`         | `sqlite:///data/lore.db` | Database location                                 |
-| `SERVER_PORT`          | `3000`                   | Port inside the container                         |
-| `ADMIN_EMAIL`          | -                        | An address always granted admin                   |
-| `REGISTRATION_ALLOWED` | `true`                   | Whether strangers may register                    |
+| Variable               | Default                   | Description                                       |
+| ---------------------- | ------------------------- | ------------------------------------------------- |
+| `APP_SECRET`           | generated into `/data`    | Signing secret. Set it to manage the key yourself |
+| `DATABASE_URL`         | `sqlite:///data/lore.db`  | Database location                                 |
+| `SERVER_PORT`          | `3000`                    | Port inside the container                         |
+| `ADMIN_EMAIL`          | -                         | An address always granted admin                   |
+| `REGISTRATION_ALLOWED` | `true`                    | Whether strangers may register                    |
+| `EMAIL_ENABLED`        | derived from `EMAIL_HOST` | Whether mail can leave this instance              |
 
 > **`REGISTRATION_ALLOWED=false` is honoured from first boot, except while no account exists.**
 >

@@ -43,8 +43,36 @@ export class AppSecurityProvider {
       // transport's own variables live in `NodemailerEmailProvider`, and
       // `main.server.ts` registers that module on the same condition.
       EMAIL_HOST: z.text({ secret: false }).optional(),
+      // Override for {@link emailEnabled}, for a deployment whose transport
+      // this class cannot see.
+      EMAIL_ENABLED: z.boolean().meta({ secret: false }).optional(),
     }),
   );
+
+  /**
+   * Whether mail can actually leave this instance.
+   *
+   * Two transports satisfy it, and neither looks like the other: SMTP, which
+   * announces itself with `EMAIL_HOST`, and the Cloudflare `send_email`
+   * binding, which `AlephaEmailCloudflare` substitutes on Workers and which
+   * carries no environment variable at all. Reading `EMAIL_HOST` alone would
+   * have declared the DEPLOYED instance mail-less.
+   *
+   * `EMAIL_ENABLED` overrides both. It exists for a transport neither test
+   * can see - a sidecar relay, a provider substituted in code - and it is
+   * what the e2e suite sets: mail there is delivered to
+   * `${DATA_DIR}/emails`, which the suite reads, so the instance genuinely
+   * can deliver even though no SMTP host exists.
+   *
+   * Everything gated on this is frozen into the settings row on first read,
+   * like the rest of the block below.
+   */
+  protected get emailEnabled(): boolean {
+    return (
+      this.env.EMAIL_ENABLED ??
+      (!!this.env.EMAIL_HOST || this.alepha.isServerless())
+    );
+  }
 
   realm = $realm({
     features: {
@@ -78,16 +106,16 @@ export class AppSecurityProvider {
     settings: {
       username: "email",
       usernameBlocklist: ["admin", "root", "me", "api", "support", "system"],
-      // Both complete only by delivering a code, so both stay off until
-      // there is a mail server. A fresh container with no SMTP would
+      // Both complete only by delivering a code, so both stay off until mail
+      // can leave the box. A fresh container with no mail server would
       // otherwise register an account and then park the operator on a
       // "check your inbox" screen, for a mail written to a file on disk.
       //
       // Same env-derived shape as `registrationAllowed` below, and frozen
-      // the same way: adding SMTP to a running instance also means turning
-      // these two on from the admin Parameters page.
-      resetPasswordAllowed: !!this.env.EMAIL_HOST,
-      verifyEmailRequired: !!this.env.EMAIL_HOST,
+      // the same way: adding a transport to a running instance also means
+      // turning these two on from the admin Parameters page.
+      resetPasswordAllowed: this.emailEnabled,
+      verifyEmailRequired: this.emailEnabled,
       captchaRequired: !!this.env.TURNSTILE_SITE_KEY,
       // Open by default, on lore.alepha.dev and in the self-hosted image
       // alike. The image bakes no `REGISTRATION_ALLOWED` at all: the
