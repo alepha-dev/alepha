@@ -1,4 +1,8 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import {
+  AlephaTable,
+  type BulkAction,
+  type BulkMenuAction,
+} from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
@@ -53,7 +57,10 @@ import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import FilterSlot from "../shared/FilterSlot.tsx";
-import { useQuestMutations } from "../shared/useQuestMutations.ts";
+import {
+  type BulkOutcome,
+  useQuestMutations,
+} from "../shared/useQuestMutations.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
 import { QUEST_PRIORITY_TONE } from "./quest/questChips.ts";
 import QuestCreate from "./quest/QuestCreate.tsx";
@@ -187,6 +194,170 @@ const ProjectQuestsTable = () => {
     label: r.tag ?? r.title,
   }));
 
+  /**
+   * One toast per bulk action, and never a green one over a refusal: nine
+   * shelved and one refused reads as "9 shelved" only if the refusal is
+   * said out loud, so a failure makes the whole toast red and still names
+   * what did land.
+   */
+  const reportBulk = (
+    outcome: BulkOutcome,
+    done: string,
+    skipped?: string,
+  ): void => {
+    const parts = [outcome.done.length > 0 ? done : undefined, skipped].filter(
+      (it): it is string => Boolean(it),
+    );
+    if (outcome.failed.length > 0) {
+      toaster.error(
+        [
+          String(
+            tr("board.bulk.failed", {
+              args: [String(outcome.failed.length)],
+            }),
+          ),
+          ...parts,
+        ].join(" "),
+      );
+      return;
+    }
+    toaster.success(parts.join(" "));
+  };
+
+  const count = (ids: number[]) => String(ids.length);
+
+  // Triage in bulk: the checkbox column exists because this array is not
+  // empty. Every action refreshes and then clears, in that order, since a
+  // selection surviving a delete points at rows that no longer exist.
+  const bulkActions: Array<
+    BulkAction<QuestResource> | BulkMenuAction<QuestResource>
+  > = [];
+
+  if (questApi.shelveQuest.can()) {
+    bulkActions.push({
+      icon: Archive,
+      label: tr("board.bulk.shelve"),
+      onClick: async (selected, ctx) => {
+        // Only a `new` quest can be shelved, and the server refuses the
+        // rest one by one. They are counted here and never sent, so an
+        // accepted row in the selection costs a note, not the batch.
+        const eligible = selected.filter(
+          (quest) =>
+            !quest.acceptedAt && !quest.completedAt && !quest.shelvedAt,
+        );
+        const skipped = selected.length - eligible.length;
+        if (eligible.length === 0) {
+          toaster.error(tr("board.bulk.shelve.none"));
+          return;
+        }
+        const outcome = await questMutations.shelveMany(
+          eligible.map((quest) => quest.id),
+        );
+        reportBulk(
+          outcome,
+          String(tr("board.bulk.shelved", { args: [count(outcome.done)] })),
+          skipped > 0
+            ? String(
+                tr("board.bulk.shelve.skipped", { args: [String(skipped)] }),
+              )
+            : undefined,
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    });
+  }
+
+  if (questApi.unshelveQuest.can()) {
+    bulkActions.push({
+      icon: ArchiveRestore,
+      label: tr("board.bulk.unshelve"),
+      onClick: async (selected, ctx) => {
+        const eligible = selected.filter((quest) => quest.shelvedAt);
+        const skipped = selected.length - eligible.length;
+        if (eligible.length === 0) {
+          toaster.error(tr("board.bulk.unshelve.none"));
+          return;
+        }
+        const outcome = await questMutations.unshelveMany(
+          eligible.map((quest) => quest.id),
+        );
+        reportBulk(
+          outcome,
+          String(tr("board.bulk.unshelved", { args: [count(outcome.done)] })),
+          skipped > 0
+            ? String(
+                tr("board.bulk.unshelve.skipped", { args: [String(skipped)] }),
+              )
+            : undefined,
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    });
+  }
+
+  if (questApi.updateQuestById.can()) {
+    bulkActions.push({
+      icon: Flag,
+      label: tr("board.bulk.release"),
+      // The filter column above lists EVERY release, published included,
+      // because it filters over history. This must not: attaching to a
+      // published release is refused server-side, so a published entry
+      // here would be a menu item that can only fail.
+      items: () =>
+        (releases ?? [])
+          .filter((release) => !release.releasedAt)
+          .map((release) => ({
+            label: release.tag ?? release.title,
+            onClick: async (selected, ctx) => {
+              const outcome = await questMutations.attachToRelease(
+                selected.map((quest) => quest.id),
+                release.id,
+              );
+              reportBulk(
+                outcome,
+                String(
+                  tr("board.bulk.released", {
+                    args: [count(outcome.done), release.tag ?? release.title],
+                  }),
+                ),
+              );
+              ctx.refresh();
+              ctx.clearSelection();
+            },
+          })),
+    });
+  }
+
+  if (questApi.deleteQuest.can()) {
+    bulkActions.push({
+      icon: Trash,
+      label: tr("board.bulk.delete"),
+      destructive: true,
+      onClick: async (selected, ctx) => {
+        const n = String(selected.length);
+        const confirmed = await dialog.confirm({
+          title: tr("board.bulk.delete.title", { args: [n] }),
+          description: tr("board.confirm-delete-message"),
+          confirmLabel: tr("board.bulk.delete.confirm", { args: [n] }),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        const outcome = await questMutations.removeMany(
+          selected.map((quest) => quest.id),
+        );
+        reportBulk(
+          outcome,
+          String(tr("board.bulk.deleted", { args: [count(outcome.done)] })),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    });
+  }
+
   return (
     <div
       data-testid="quests-table"
@@ -205,6 +376,7 @@ const ProjectQuestsTable = () => {
         // hand-rolled toolbar + localStorage that used to live here).
         persistenceKey={`lor.board.${project.id}`}
         refreshSignal={reload}
+        bulkActions={bulkActions}
         filters={{
           schema: boardFiltersSchema,
           seedValues: seededStatus ? { status: [seededStatus] } : undefined,
