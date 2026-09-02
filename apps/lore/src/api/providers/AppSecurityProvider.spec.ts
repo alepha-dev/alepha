@@ -114,6 +114,16 @@ describe("AppSecurityProvider", () => {
     });
     expect(intent.intentId).toBeDefined();
 
+    // `bootstrapFirstUser` keeps a closed realm reachable while it holds NO
+    // account, so the flip only bites once one exists. Seeded directly:
+    // Lore requires email verification, and the code round trip is not what
+    // this test is about.
+    await realm.repositories.users.create({
+      realm: realm.name,
+      email: "owner@example.com",
+      roles: ["admin"],
+    });
+
     const open = await realm.getSettings();
     await realm.settingsParameter!.set({
       ...open,
@@ -126,6 +136,44 @@ describe("AppSecurityProvider", () => {
         password: "SecurePassword123!",
       }),
     ).rejects.toThrowError("Registration is not allowed");
+
+    await alepha.stop();
+  });
+
+  /**
+   * The self-hosted bootstrap, from Lore's side. The framework's own rules
+   * are proven in `bootstrapFirstUser.spec.ts`; what belongs here is that
+   * Lore's realm actually asks for the behaviour, and that an operator who
+   * closes a FRESH instance can still create the account that could reopen
+   * it.
+   */
+  it("keeps a closed instance reachable until its first account exists", async ({
+    expect,
+  }) => {
+    const { alepha, realm } = await boot({ REGISTRATION_ALLOWED: "false" });
+    const registration = alepha.inject(RegistrationService);
+
+    expect(realm.bootstrapFirstUser).toBe(true);
+    expect((await realm.getSettings()).registrationAllowed).toBe(false);
+
+    const intent = await registration.createRegistrationIntent({
+      email: "owner@example.com",
+      password: "SecurePassword123!",
+    });
+    expect(intent.intentId).toBeDefined();
+
+    await alepha.stop();
+  });
+
+  /**
+   * The reason `bootstrapFirstUser` is an expression rather than `true`:
+   * the framework refuses it on serverless, so an unconditional `true` here
+   * would stop lore.alepha.dev from booting.
+   */
+  it("does not ask for the bootstrap on Workers", async ({ expect }) => {
+    const { alepha, realm } = await boot({ ALEPHA_SERVERLESS: "true" });
+
+    expect(realm.bootstrapFirstUser).toBe(false);
 
     await alepha.stop();
   });

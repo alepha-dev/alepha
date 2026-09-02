@@ -202,6 +202,56 @@ provider is the authority.
 Leave `isPreAuthorized` unset and a closed realm behaves exactly as it did
 before this existed.
 
+### The First Account Owns a Self-Hosted Instance
+
+An app distributed as an image has a bootstrap problem: someone runs the
+container, and there is no administrator yet. `bootstrapFirstUser` answers it
+without a seed command, an `ADMIN_PASSWORD` in shell history, or a password
+sitting in `docker inspect`.
+
+```typescript check
+import { $realm } from "alepha/api/users";
+
+class Security {
+  realm = $realm({
+    bootstrapFirstUser: true,
+  });
+}
+```
+
+The operator runs the container, registers, and owns the instance from that
+moment. Two behaviours, and the second is a guard rather than the main path:
+
+- **The first account lands `admin`.** `isPreAuthorized` cannot do this:
+  `admin` is a persisted role, granted only from `adminEmails` /
+  `adminUsernames`. Both entry points are covered.
+- **A closed realm stays reachable while it holds no account.** So an
+  operator who sets `registrationAllowed: false` on a fresh instance does not
+  brick it, with the only account that could reopen it now uncreatable. It
+  logs at warn whenever it fires, because it loosens a setting that was asked
+  for explicitly.
+
+The account promoted is the **oldest row in the realm**, which is what makes
+two concurrent registrations produce exactly one administrator. Promoting on
+"the table was empty when I looked" produces two; re-counting afterwards and
+promoting on a count of one produces none, which is worse.
+
+The framework warns at boot while no account exists:
+
+```txt
+No accounts exist. Registration is open and the first account will become the administrator.
+```
+
+That line is the answer to the window between starting an instance and
+finishing setup, and it is what Gitea, Grafana and Jellyfin all do. Finish
+setup before the instance is publicly reachable.
+
+> **Refused on serverless.** A freshly deployed Worker with an empty users
+> table would hand admin to whoever registered first, and the lookup would
+> run on every isolate forever. An app that ships both a Worker and a
+> container gates the option on `!alepha.isServerless()` and grants its
+> administrator through `adminEmails` on the Worker.
+
 ### Identity Providers
 
 Enable login methods through the `identities` option:

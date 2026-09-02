@@ -1,12 +1,14 @@
-import { $inject, Alepha, AlephaError, type Async } from "alepha";
+import { $hook, $inject, Alepha, AlephaError, type Async } from "alepha";
 import type { ParameterPrimitive } from "alepha/api/parameters";
 import { CaptchaProvider } from "alepha/captcha";
+import { $logger } from "alepha/logger";
 import { $repository, type Repository } from "alepha/orm";
 
 import {
   type RealmAuthSettings,
   realmAuthSettingsAtom,
 } from "../atoms/realmAuthSettingsAtom.ts";
+import { UserAudits } from "../audits/UserAudits.ts";
 import { identities } from "../entities/identities.ts";
 import { sessions } from "../entities/sessions.ts";
 import { DEFAULT_USER_REALM_NAME, users } from "../entities/users.ts";
@@ -26,6 +28,7 @@ export interface Realm {
   settingsParameter?: ParameterPrimitive<typeof realmAuthSettingsAtom.schema>;
   getSettings(): Promise<RealmAuthSettings>;
   isPreAuthorized?: RegistrationPreAuthorizationFn;
+  bootstrapFirstUser?: boolean;
 }
 
 /**
@@ -121,6 +124,7 @@ export type RegistrationPreAuthorizationFn = (
 
 export class RealmProvider {
   protected readonly alepha = $inject(Alepha);
+  protected readonly log = $logger();
   // Default repositories using $repository() for eager initialization
   protected readonly defaultIdentities = $repository(identities);
   protected readonly defaultSessions = $repository(sessions);
@@ -128,6 +132,47 @@ export class RealmProvider {
   protected readonly captcha = $inject(CaptchaProvider);
 
   protected realms = new Map<string, Realm>();
+
+  /**
+   * Realms already observed to hold at least one account.
+   *
+   * A table with a user in it can never go back to empty in a way that
+   * should reopen anything, so the lookup runs once per realm and then
+   * never again.
+   */
+  protected realmsWithUsers = new Set<string>();
+
+  /**
+   * Tells the operator, once the app is up, that the instance is still
+   * waiting for its first account.
+   *
+   * This is what actually answers the takeover window that shipping closed
+   * would have bought: someone who starts the container on a host that
+   * already resolves publicly, and then walks away. Gitea, Grafana and
+   * Jellyfin all say the same thing at the same moment.
+   */
+  protected readonly warnWhileEmpty = $hook({
+    on: "ready",
+    handler: async () => {
+      for (const realm of this.realms.values()) {
+        if (!realm.bootstrapFirstUser) {
+          continue;
+        }
+        try {
+          if (await this.isAwaitingFirstUser(realm.name)) {
+            this.log.warn(
+              "No accounts exist. Registration is open and the first account will become the administrator.",
+              { realm: realm.name },
+            );
+          }
+        } catch (error) {
+          // A warning is not worth failing a boot over — and the table may
+          // not exist yet on a runtime that migrates elsewhere.
+          this.log.debug("Could not check for existing accounts", error);
+        }
+      }
+    },
+  });
 
   public register(realmName: string, realmOptions: RealmOptions = {}) {
     if (realmName.includes(".")) {
@@ -149,6 +194,7 @@ export class RealmProvider {
 
     this.assertNotificationsCoverSettings(realmName, features, realmOptions);
     this.assertCaptchaProviderRegistered(realmName, realmOptions);
+    this.assertBootstrapNotServerless(realmName, realmOptions);
 
     const realm: Realm = {
       name: realmName,
@@ -186,6 +232,7 @@ export class RealmProvider {
         return this.settings;
       },
       isPreAuthorized: realmOptions.isPreAuthorized,
+      bootstrapFirstUser: realmOptions.bootstrapFirstUser,
     };
     this.realms.set(realmName, realm);
     return this.getRealm(realmName);
@@ -233,6 +280,157 @@ export class RealmProvider {
       return undefined;
     }
     return result === true ? {} : result;
+  }
+
+  /**
+   * Whether the realm still holds no account at all.
+   *
+   * Answers `false` without touching the database for a realm that did not
+   * ask for `bootstrapFirstUser`, and for one already observed to hold a
+   * user, so nothing pays for a behaviour it did not turn on.
+   *
+   * A `LIMIT 1` lookup rather than a `COUNT`: the question is "any row at
+   * all", and the answer is cached the moment it is yes.
+   */
+  public async isAwaitingFirstUser(realmName?: string): Promise<boolean> {
+    const realm = this.getRealm(realmName);
+    if (!realm.bootstrapFirstUser) {
+      return false;
+    }
+    if (this.realmsWithUsers.has(realm.name)) {
+      return false;
+    }
+
+    const existing = await realm.repositories.users.findOne({
+      where: { realm: realm.name },
+    });
+    if (existing) {
+      this.realmsWithUsers.add(realm.name);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * The lockout guard: a CLOSED realm still accepts a registration while it
+   * holds no account at all.
+   *
+   * A second consult next to {@link preAuthorizeRegistration}, so both entry
+   * points get it from one place. It is not the main path — the self-hosted
+   * image ships with registration open — and exists so that an operator who
+   * sets `REGISTRATION_ALLOWED=false` on a fresh volume does not brick an
+   * instance whose own setting has made the only account that could reopen
+   * it unreachable.
+   *
+   * ⚠️ This loosens a setting the operator explicitly asked for, which is
+   * exactly the shape that must never be quiet, so it logs at warn every
+   * time it fires.
+   */
+  public async allowsBootstrapRegistration(
+    realmName?: string,
+  ): Promise<boolean> {
+    if (!(await this.isAwaitingFirstUser(realmName))) {
+      return false;
+    }
+    this.log.warn(
+      "REGISTRATION_ALLOWED=false, but no accounts exist yet, so registration stays open until the first account is created.",
+      { realm: this.getRealm(realmName).name },
+    );
+    return true;
+  }
+
+  /**
+   * Promote a freshly created account to `admin` when it is the first in its
+   * realm, so the operator who started the instance ends up owning it.
+   *
+   * The `isPreAuthorized` seam cannot do this: `admin` is a persisted role on
+   * the user row, granted only by `ensureAdminRole` from `adminEmails` /
+   * `adminUsernames`. That is why the option lives in the framework at all.
+   *
+   * ⚠️ **The rule is "oldest row in the realm", and it is what survives the
+   * race.** Two concurrent registrations against an empty table both observe
+   * zero before their inserts. Promoting on "it was empty when I looked"
+   * yields two admins. Re-counting afterwards and promoting on `count === 1`
+   * yields NONE, which is worse and is the easier one to write by accident.
+   * Both racers agree on which row is oldest, so exactly one is promoted and
+   * no transaction is needed.
+   *
+   * @returns whether the account was promoted.
+   */
+  public async promoteFirstUserToAdmin(
+    user: { id: string; email?: string | null; roles: string[] },
+    realmName?: string,
+  ): Promise<boolean> {
+    const realm = this.getRealm(realmName);
+    if (!realm.bootstrapFirstUser || user.roles.includes("admin")) {
+      return false;
+    }
+
+    const [oldest] = await realm.repositories.users.findMany({
+      where: { realm: realm.name },
+      // `id` breaks a tie: two rows inserted in the same millisecond would
+      // otherwise order arbitrarily, and the two racers could disagree.
+      orderBy: [
+        { column: "createdAt", direction: "asc" },
+        { column: "id", direction: "asc" },
+      ],
+      limit: 1,
+    });
+
+    // Whichever way this goes, the realm now holds a user.
+    this.realmsWithUsers.add(realm.name);
+
+    if (!oldest || oldest.id !== user.id) {
+      return false;
+    }
+
+    user.roles = [...user.roles.filter((role) => role !== "admin"), "admin"];
+    await realm.repositories.users.updateById(user.id, { roles: user.roles });
+
+    this.log.info(
+      "First account in the realm promoted to admin via bootstrapFirstUser",
+      { userId: user.id, realm: realm.name },
+    );
+
+    if (realm.features.audits) {
+      await this.alepha.inject(UserAudits).user.log("role_change", {
+        resourceType: "user",
+        userId: user.id,
+        userEmail: user.email ?? undefined,
+        userRealm: realm.name,
+        resourceId: user.id,
+        description:
+          "First account in the realm promoted to admin via bootstrapFirstUser",
+        metadata: { addedRole: "admin", reason: "bootstrapFirstUser" },
+      });
+    }
+
+    return true;
+  }
+
+  /**
+   * Rejects `bootstrapFirstUser` on a serverless runtime.
+   *
+   * The behaviour is for a long-lived process an operator just started on
+   * their own machine. On Workers it would cost a lookup over the users
+   * table per registration attempt, on every isolate, forever — and a
+   * freshly deployed Worker whose table happens to be empty would hand admin
+   * to whoever registered first. Refused rather than ignored, the same way
+   * `APP_SECRET_FILE` is.
+   */
+  protected assertBootstrapNotServerless(
+    realmName: string,
+    realmOptions: RealmOptions,
+  ): void {
+    if (!realmOptions.bootstrapFirstUser || !this.alepha.isServerless()) {
+      return;
+    }
+
+    throw new AlephaError(
+      `Realm "${realmName}" sets bootstrapFirstUser, which is refused on serverless runtimes: ` +
+        `a freshly deployed instance with an empty users table would hand admin to whoever registers first. ` +
+        `Grant the first administrator with settings.adminEmails instead.`,
+    );
   }
 
   /**

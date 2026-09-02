@@ -75,9 +75,18 @@ export class AppSecurityProvider {
       resetPasswordAllowed: true,
       verifyEmailRequired: true,
       captchaRequired: !!this.env.TURNSTILE_SITE_KEY,
-      // Open by default, so lore.alepha.dev keeps accepting signups. A
-      // self-hosted image ships `REGISTRATION_ALLOWED=false` instead and
-      // opens itself through the empty-users-table bootstrap exception.
+      // Open by default, on lore.alepha.dev and in the self-hosted image
+      // alike. The image bakes no `REGISTRATION_ALLOWED` at all: the
+      // operator registers, `bootstrapFirstUser` below makes that first
+      // account the administrator, and they close registration in one click
+      // from admin.
+      //
+      // Shipping closed was tried on paper and reversed. Its failure mode is
+      // unrecoverable: if the empty-table exception ever failed to apply (a
+      // restored volume, a leftover row, a bug), the operator would meet
+      // "Registration is not available. Please contact your administrator"
+      // on their own machine while BEING the administrator, with no route
+      // out through the UI at all.
       //
       // This is a default and not a gate: once the parameter row exists the
       // env var is inert, and the switch lives in admin. Setting it after
@@ -111,6 +120,18 @@ export class AppSecurityProvider {
       google: true,
       credentials: true,
     },
+    /**
+     * The self-hosted story: whoever registers first on a fresh instance
+     * owns it. No seed command, no `ADMIN_PASSWORD` in shell history.
+     *
+     * ⚠️ **Off on Workers, and the framework refuses it there rather than
+     * ignoring it**, so this expression is what keeps lore.alepha.dev
+     * booting. On a Worker the lookup would run on every isolate forever,
+     * and a freshly deployed instance with an empty table would hand admin
+     * to whoever registered first. The deployed instance grants its
+     * administrator through `adminEmails` (`ADMIN_EMAIL`) instead.
+     */
+    bootstrapFirstUser: !this.alepha.isServerless(),
     /**
      * What makes the switch above usable rather than merely present.
      *

@@ -510,6 +510,39 @@ export interface RealmOptions {
    */
   isPreAuthorized?: RegistrationPreAuthorizationFn;
 
+  /**
+   * Make the FIRST account created in this realm an administrator, and keep
+   * registration reachable until that account exists.
+   *
+   * For a self-hosted instance an operator just started on their own
+   * machine: they run the container, they register, and from that moment
+   * they own it. There is no seed command, no `ADMIN_PASSWORD` in shell
+   * history, and no password in `docker inspect`.
+   *
+   * Two behaviours, and the second is a guard rather than the main path:
+   *
+   * - **The first account lands `admin`.** {@link isPreAuthorized} cannot do
+   *   this: `admin` is a persisted role granted only from `adminEmails` /
+   *   `adminUsernames`. The account promoted is the OLDEST row in the realm,
+   *   which is what makes two concurrent registrations produce exactly one
+   *   administrator rather than two or none.
+   * - **A closed realm stays reachable while empty.** So an operator who
+   *   sets `registrationAllowed: false` on a fresh instance does not brick
+   *   it, with the only account that could reopen it now uncreatable. It
+   *   logs at warn whenever it fires, because it loosens a setting that was
+   *   explicitly asked for.
+   *
+   * The framework also warns at boot while no account exists, which is what
+   * answers the window between starting the instance and finishing setup.
+   *
+   * ⚠️ **Refused on serverless.** A freshly deployed Worker with an empty
+   * users table would hand admin to whoever registered first, and the lookup
+   * would run on every isolate forever.
+   *
+   * @default undefined (nothing changes)
+   */
+  bootstrapFirstUser?: boolean;
+
   identities?: {
     credentials?: true;
     google?: true;

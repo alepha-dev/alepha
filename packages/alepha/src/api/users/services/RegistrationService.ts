@@ -169,7 +169,13 @@ export class RegistrationService {
     // `undefined` for a realm that filled no closure, so an app that does
     // not use this is unchanged.
     let preAuthorized: RegistrationPreAuthorization | undefined;
-    if (realmSettings?.registrationAllowed === false) {
+    if (
+      realmSettings?.registrationAllowed === false &&
+      // Consulted first, and it warns when it fires: a realm still holding
+      // no account has no administrator who could reopen it, so closing it
+      // would brick the instance rather than protect it.
+      !(await this.realmProvider.allowsBootstrapRegistration(userRealmName))
+    ) {
       // No address, nothing to vouch for. Refused without asking the app, so
       // a closure cannot accidentally answer about an empty string.
       preAuthorized = body.email
@@ -491,6 +497,10 @@ export class RegistrationService {
       // address and said the pre-authorization itself proved it.
       emailVerified: intent.requirements.email || intent.emailVerified === true,
     });
+
+    // The first account in the realm owns the instance. A no-op unless the
+    // realm set `bootstrapFirstUser`, and it mutates `user.roles` in place.
+    await this.realmProvider.promoteFirstUserToAdmin(user, userRealmName);
 
     // Create credentials identity
     await identityRepository.create({

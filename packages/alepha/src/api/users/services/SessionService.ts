@@ -833,7 +833,13 @@ export class SessionService {
     const adminEmails = realmSettings?.adminEmails ?? [];
     const isAdmin = profile.email && adminEmails.includes(profile.email);
 
-    if (realmSettings?.registrationAllowed === false && !isAdmin) {
+    if (
+      realmSettings?.registrationAllowed === false &&
+      !isAdmin &&
+      // Same lockout guard as the credentials path: a realm still holding no
+      // account has no administrator who could reopen it.
+      !(await this.realmProvider.allowsBootstrapRegistration(userRealmName))
+    ) {
       // Same seam as the credentials path, so a closed realm is not open on
       // one entry point and shut on the other. `profile.email_verified` goes
       // with it: an app may well want to refuse a provider that has asserted
@@ -963,6 +969,11 @@ export class SessionService {
       description: `First login via OAuth2 (${provider})`,
       metadata: { provider, providerUserId: profile.sub, firstLogin: true },
     });
+
+    // The first account in the realm owns the instance. A no-op unless the
+    // realm set `bootstrapFirstUser`; runs before `ensureAdminRole`, which
+    // then finds the role already there and does nothing.
+    await this.realmProvider.promoteFirstUserToAdmin(user, userRealmName);
 
     // Auto-promote to admin if configured
     await this.ensureAdminRole(user, userRealmName);
