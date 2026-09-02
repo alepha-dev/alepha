@@ -129,6 +129,54 @@ export const buildOptions = $atom({
         install: z.array(z.string()).optional(),
 
         /**
+         * Environment variables baked into the generated image.
+         *
+         * Each entry becomes an `ENV key="value"` line emitted **after**
+         * the built-in `SERVER_HOST=0.0.0.0`, so an app that sets
+         * `SERVER_HOST` itself wins. Values are escaped, so a space or a
+         * quote cannot produce a Dockerfile that builds fine and sets the
+         * wrong thing.
+         *
+         * These are defaults, not secrets: anything passed with
+         * `docker run -e` overrides them, and everything here is readable
+         * with `docker inspect`.
+         *
+         * @example env: { DATA_DIR: "/data", DATABASE_URL: "sqlite:///data/app.db" }
+         */
+        env: z.record(z.string(), z.string()).optional(),
+
+        /**
+         * Mount points declared as `VOLUME` in the generated image.
+         *
+         * In the standard variant each directory is created and chowned to
+         * the container user before its `VOLUME` line, so a **named** volume
+         * inherits a writable directory. A **bind mount** does not follow
+         * this: the host directory's ownership wins, and the host has to
+         * grant access itself.
+         *
+         * @example volumes: ["/data"]
+         */
+        volumes: z.array(z.string()).optional(),
+
+        /**
+         * User the container process runs as (`USER` instruction).
+         *
+         * The standard variant defaults to uid `1000`, which exists in both
+         * official bases (`node` and `bun`). A numeric id is emitted rather
+         * than a name because a custom `from` may not carry that user, and
+         * `USER node` fails the build outright on a base that lacks it.
+         *
+         * Pass `"root"` to opt back into running as root.
+         *
+         * Compile mode has no default: the distroless base has no shell, so
+         * a declared volume cannot be prepared at build time. Set this
+         * explicitly there if the image needs a non-root user.
+         *
+         * @default "1000" (standard variant only)
+         */
+        user: z.string().optional(),
+
+        /**
          * Docker build options (used when --image flag is passed).
          */
         image: z

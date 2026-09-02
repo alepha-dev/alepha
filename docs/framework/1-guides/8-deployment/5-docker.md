@@ -23,12 +23,76 @@ The generated Dockerfile is minimal because the app is already bundled:
 ```dockerfile
 FROM node:24-alpine
 WORKDIR /app
-COPY . .
+COPY --chown=1000:1000 . .
 ENV SERVER_HOST=0.0.0.0
+USER 1000
 CMD ["node", "index.js"]
 ```
 
 With `--runtime=bun`, the base image becomes `oven/bun:alpine` and the command `bun`. An `npm install` / `bun install` layer is added only when `dist/package.json` declares runtime dependencies - Alepha apps normally bundle everything via Vite, so there's usually nothing to install.
+
+## Baking Defaults Into the Image
+
+`docker.env` and `docker.volumes` let the app decide what its image looks like out of the box, so `docker run` needs no flags:
+
+```typescript filename=alepha.config.ts
+import { defineConfig } from "alepha/cli/config";
+
+export default defineConfig({
+  build: {
+    target: "docker",
+    docker: {
+      env: {
+        DATA_DIR: "/data",
+        DATABASE_URL: "sqlite:///data/app.db",
+      },
+      volumes: ["/data"],
+    },
+  },
+});
+```
+
+```dockerfile
+FROM node:24-alpine
+WORKDIR /app
+
+COPY --chown=1000:1000 . .
+
+RUN mkdir -p "/data" && chown 1000:1000 "/data"
+
+ENV SERVER_HOST=0.0.0.0
+ENV DATA_DIR="/data"
+ENV DATABASE_URL="sqlite:///data/app.db"
+
+VOLUME ["/data"]
+
+USER 1000
+
+CMD ["node", "index.js"]
+```
+
+`env` entries are emitted **after** `SERVER_HOST`, so an app that sets `SERVER_HOST` itself wins. Values are escaped, and anything passed with `docker run -e` still overrides them. These are defaults, not secrets: everything here is readable with `docker inspect`.
+
+## The Container User
+
+The standard variant runs as **uid 1000**, which exists in both official bases (`node` and `bun`). A numeric id is emitted rather than a name because `docker.from` is a supported override and `USER node` fails the build outright on a base without that user.
+
+`COPY --chown` matches it, because the default `DATA_DIR` is `node_modules/.alepha` - inside `/app` - so an app that has not moved it needs a writable `/app`. Each declared volume is created and chowned _before_ its `VOLUME` line: a **named** volume inherits ownership from the image directory at that path.
+
+> **Bind mounts do not follow this.** `-v ./data:/data` keeps the host directory's ownership, so the host has to make it writable by uid 1000 itself. Named volumes (`-v app-data:/data`) need nothing.
+
+Override with `docker.user`, including back to root:
+
+```typescript filename=alepha.config.ts
+export default defineConfig({
+  build: {
+    target: "docker",
+    docker: { user: "root" },
+  },
+});
+```
+
+Compile mode has no default and stays root, because the distroless base has no shell and a declared volume cannot be prepared at build time. Set `docker.user` explicitly there if the image needs a non-root user.
 
 ## Build the Image Too
 
@@ -66,6 +130,9 @@ export default defineConfig({
 | `docker.from`    | `node:24-alpine` / `oven/bun:alpine` | Base image for the `FROM` instruction                                                             |
 | `docker.command` | `node` / `bun`                       | Command that runs the server                                                                      |
 | `docker.install` | `[]`                                 | Extra packages installed into the image (e.g. `["wrangler"]` for an app that shells out to a CLI) |
+| `docker.env`     | `{}`                                 | `ENV` defaults baked into the image, emitted after `SERVER_HOST`                                  |
+| `docker.volumes` | `[]`                                 | `VOLUME` mount points, created and chowned to the container user first                            |
+| `docker.user`    | `1000` (root in compile mode)        | `USER` the server runs as                                                                         |
 | `docker.image`   | -                                    | Image tag, extra `docker build` args, OCI labels (used with `--image`)                            |
 | `docker.compile` | -                                    | Single-binary compile mode, see below                                                             |
 
@@ -86,6 +153,7 @@ ENTRYPOINT ["/app/app"]
 ```
 
 - The binary lands at `dist/app`; `dist/index.js` and `dist/package.json` are removed.
+- The image runs as root unless `docker.user` says otherwise - distroless has no shell, so a declared volume cannot be created and chowned at build time. The generated file carries a comment saying so.
 - No package manager runs inside the image (distroless has no `npm`), so `docker.install` is ignored and any non-empty runtime `dependencies` fail the build loudly - compile requires fully-bundled output.
 - `compile` accepts an object to override the Bun target triple (`bun-linux-arm64-musl`, ...), the base image, and minification.
 

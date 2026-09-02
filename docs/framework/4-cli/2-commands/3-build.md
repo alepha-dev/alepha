@@ -89,7 +89,9 @@ alepha build --target=docker --image           # tag:latest
 alepha build --target=docker --image=1.3.4     # tag:1.3.4
 ```
 
-With `--runtime=bun --compile`, the server is compiled to a single static binary via `bun build --compile` and packaged in a minimal distroless base image.
+The generated image runs as uid `1000`, not root (`docker.user` overrides it). `docker.env` and `docker.volumes` bake `ENV` defaults and `VOLUME` declarations into it, so a self-contained image needs no `docker run` flags - see the [Docker deployment guide](/docs/guides-deployment-docker).
+
+With `--runtime=bun --compile`, the server is compiled to a single static binary via `bun build --compile` and packaged in a minimal distroless base image. That variant stays root: distroless has no shell to prepare a volume with.
 
 ### Cloudflare Workers
 
@@ -230,7 +232,7 @@ Available options mirror the flags (`stats`, `target`, `runtime`) plus per-targe
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `output`     | Override `dist` and `public` directory names                                                                                   |
 | `cloudflare` | Extra `wrangler.jsonc` config merged into the generated file                                                                   |
-| `docker`     | Base image, run command, global installs, image tag/args/OCI labels, `compile` mode                                            |
+| `docker`     | Base image, run command, global installs, baked `env`/`volumes`/`user`, image tag/args/OCI labels, `compile` mode              |
 | `static`     | Surge domain for the `CNAME` file; `source` to adopt a client directory the workspace built itself (must live outside `dist/`) |
 | `pwa`        | Web app manifest: name, short name, colors, display mode                                                                       |
 

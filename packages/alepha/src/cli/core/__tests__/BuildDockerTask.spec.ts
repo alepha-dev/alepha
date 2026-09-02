@@ -26,6 +26,13 @@ describe("BuildDockerTask", () => {
   };
 
   /**
+   * The generated Dockerfile, for the assertions about instruction ORDER
+   * that a per-line regex cannot express.
+   */
+  const readDockerfile = (fs: MemoryFileSystemProvider): string =>
+    fs.getFileContent("/project/dist/Dockerfile") ?? "";
+
+  /**
    * Minimal RunnerMethod stand-in. Strings are forwarded to the shell so
    * MemoryShellProvider records them; task objects have their handler invoked.
    */
@@ -170,6 +177,136 @@ describe("BuildDockerTask", () => {
       const { fs, shell, task } = createTestEnv();
       await task.run(createCtx(fs, shell, { target: "bare", runtime: "node" }));
       expect(fs.wasWritten("/project/dist/Dockerfile")).toBe(false);
+    });
+
+    it("runs as uid 1000 and copies with a matching --chown", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, { target: "docker", runtime: "node" }),
+      );
+
+      expect(
+        fs.wasWrittenMatching(
+          "/project/dist/Dockerfile",
+          /^COPY --chown=1000:1000 \. \.$/m,
+        ),
+      ).toBe(true);
+      expect(
+        fs.wasWrittenMatching("/project/dist/Dockerfile", /^USER 1000$/m),
+      ).toBe(true);
+      // `USER` lands after the install lines, which need root.
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile.indexOf("USER 1000")).toBeLessThan(
+        dockerfile.indexOf("CMD ["),
+      );
+    });
+
+    it("honors an explicit user, and drops --chown when it is root", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, {
+          target: "docker",
+          runtime: "node",
+          docker: { user: "root" },
+        }),
+      );
+
+      expect(
+        fs.wasWrittenMatching("/project/dist/Dockerfile", /^USER root$/m),
+      ).toBe(true);
+      expect(fs.wasWrittenMatching("/project/dist/Dockerfile", /--chown/)).toBe(
+        false,
+      );
+    });
+
+    it("emits ENV lines after SERVER_HOST so an app override wins", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, {
+          target: "docker",
+          runtime: "node",
+          docker: {
+            env: { DATA_DIR: "/data", SERVER_HOST: "127.0.0.1" },
+          },
+        }),
+      );
+
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toContain('ENV DATA_DIR="/data"');
+      expect(dockerfile.indexOf("ENV SERVER_HOST=0.0.0.0")).toBeLessThan(
+        dockerfile.indexOf('ENV SERVER_HOST="127.0.0.1"'),
+      );
+    });
+
+    it("escapes ENV values so a space or quote cannot change the meaning", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, {
+          target: "docker",
+          runtime: "node",
+          docker: {
+            env: {
+              WITH_SPACE: "a b",
+              WITH_QUOTE: 'a"b',
+              WITH_BACKSLASH: "a\\b",
+            },
+          },
+        }),
+      );
+
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toContain('ENV WITH_SPACE="a b"');
+      expect(dockerfile).toContain('ENV WITH_QUOTE="a\\"b"');
+      expect(dockerfile).toContain('ENV WITH_BACKSLASH="a\\\\b"');
+    });
+
+    it("creates and chowns a declared volume before its VOLUME line", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, {
+          target: "docker",
+          runtime: "node",
+          docker: { volumes: ["/data"] },
+        }),
+      );
+
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toContain(
+        'RUN mkdir -p "/data" && chown 1000:1000 "/data"',
+      );
+      expect(dockerfile).toContain('VOLUME ["/data"]');
+      // A named volume inherits ownership from the image at the VOLUME
+      // line, so anything done after it is discarded.
+      expect(dockerfile.indexOf("RUN mkdir -p")).toBeLessThan(
+        dockerfile.indexOf("VOLUME ["),
+      );
+    });
+
+    it("skips the volume chown when running as root", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, {
+          target: "docker",
+          runtime: "node",
+          docker: { volumes: ["/data"], user: "root" },
+        }),
+      );
+
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toContain('VOLUME ["/data"]');
+      expect(dockerfile).not.toContain("chown");
     });
 
     it("copies migrations directory when present", async () => {
@@ -332,6 +469,55 @@ describe("BuildDockerTask", () => {
       expect(
         fs.wasWrittenMatching("/project/dist/Dockerfile", /COPY migrations/),
       ).toBe(false);
+    });
+
+    it("stays root, and says why in the generated file", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(createCtx(fs, shell, compileOptions));
+
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).not.toMatch(/^USER /m);
+      expect(dockerfile).toContain("# Runs as root:");
+    });
+
+    it("emits ENV and VOLUME, but no chown, when a volume is declared", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, {
+          ...compileOptions,
+          docker: {
+            compile: true,
+            env: { DATA_DIR: "/data" },
+            volumes: ["/data"],
+          },
+        }),
+      );
+
+      const dockerfile = readDockerfile(fs);
+      expect(dockerfile).toContain('ENV DATA_DIR="/data"');
+      expect(dockerfile).toContain('VOLUME ["/data"]');
+      // No shell in distroless: nothing can prepare the directory.
+      expect(dockerfile).not.toMatch(/^RUN /m);
+    });
+
+    it("emits USER in compile mode when one is set explicitly", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, {
+          ...compileOptions,
+          docker: { compile: true, user: "65532" },
+        }),
+      );
+
+      expect(
+        fs.wasWrittenMatching("/project/dist/Dockerfile", /^USER 65532$/m),
+      ).toBe(true);
     });
 
     it("includes the migrations COPY line when migrations exist", async () => {

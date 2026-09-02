@@ -83,6 +83,9 @@ export class BuildDockerTask extends BuildTask {
           hasMigrations: migrationsCopied,
           hasDeps,
           install: ctx.options.docker?.install ?? [],
+          env: ctx.options.docker?.env ?? {},
+          volumes: ctx.options.docker?.volumes ?? [],
+          user: this.resolveUser(ctx, compile),
         });
       },
     });
@@ -115,6 +118,94 @@ export class BuildDockerTask extends BuildTask {
       base: config.base ?? "gcr.io/distroless/static-debian12",
       minify: config.minify ?? true,
     };
+  }
+
+  /**
+   * The user the container process runs as.
+   *
+   * The standard variant defaults to uid 1000 — present in both official
+   * bases (`node:x:1000:1000`, `bun:x:1000:1000`) — so a public image does
+   * not serve HTTP as root. Emitted numerically rather than by name because
+   * `build.docker.from` is a supported override and `USER node` fails the
+   * build outright on a base without that user.
+   *
+   * Compile mode has no default: distroless has no shell, so a declared
+   * volume cannot be created and chowned at build time. An explicit `user`
+   * is still honoured there.
+   */
+  protected resolveUser(
+    ctx: BuildTaskContext,
+    compile: ResolvedCompile | null,
+  ): string | null {
+    const configured = ctx.options.docker?.user;
+    if (configured) {
+      return configured;
+    }
+    return compile ? null : "1000";
+  }
+
+  /**
+   * Whether a resolved user is root, in which case the ownership dance
+   * (`COPY --chown`, chowning volume directories) is pointless.
+   */
+  protected isRootUser(user: string | null): boolean {
+    return user === null || user === "root" || user === "0";
+  }
+
+  /**
+   * `--chown` / `chown` argument for a user. A value already carrying a
+   * group (`1000:1000`, `node:node`) is taken verbatim; otherwise the user
+   * doubles as the group, which is how both official bases are set up.
+   */
+  protected chownSpec(user: string): string {
+    return user.includes(":") ? user : `${user}:${user}`;
+  }
+
+  /**
+   * Escape a value for a Dockerfile `ENV key="value"` line.
+   *
+   * An unescaped space, quote or backslash produces a Dockerfile that
+   * builds fine and sets the wrong thing, which is worse than a build
+   * failure. JSON string syntax is a subset of what the Dockerfile parser
+   * accepts for a double-quoted word.
+   */
+  protected escapeEnvValue(value: string): string {
+    return JSON.stringify(value);
+  }
+
+  /**
+   * `ENV` lines for the configured environment, one per key, in insertion
+   * order. Emitted after the built-in `SERVER_HOST` so an app that sets it
+   * wins.
+   */
+  protected renderEnv(env: Record<string, string>): string {
+    return Object.entries(env)
+      .map(([key, value]) => `ENV ${key}=${this.escapeEnvValue(value)}\n`)
+      .join("");
+  }
+
+  /**
+   * A single `VOLUME` instruction in exec form, which needs no escaping
+   * rules of its own for paths carrying spaces.
+   */
+  protected renderVolumes(volumes: string[]): string {
+    if (!volumes.length) {
+      return "";
+    }
+    return `VOLUME ${JSON.stringify(volumes)}\n`;
+  }
+
+  /**
+   * Create and chown every declared volume directory *before* its `VOLUME`
+   * line: a named volume inherits ownership from the image directory at
+   * that path, and anything done after the declaration is discarded.
+   */
+  protected renderVolumePrep(volumes: string[], user: string | null): string {
+    if (!volumes.length || this.isRootUser(user)) {
+      return "";
+    }
+    const paths = volumes.map((it) => JSON.stringify(it)).join(" ");
+    return `RUN mkdir -p ${paths} && chown ${this.chownSpec(user as string)} ${paths}\n`;
   }
 
   /**
@@ -247,6 +338,9 @@ export class BuildDockerTask extends BuildTask {
       hasMigrations: boolean;
       hasDeps: boolean;
       install: string[];
+      env: Record<string, string>;
+      volumes: string[];
+      user: string | null;
     },
   ): Promise<void> {
     const header =
@@ -257,9 +351,19 @@ export class BuildDockerTask extends BuildTask {
       ? "COPY migrations ./migrations\n"
       : "";
 
+    const envLines = this.renderEnv(opts.env);
+    const volumeLines = this.renderVolumes(opts.volumes);
+
     let dockerfile: string;
 
     if (opts.compile) {
+      // Root unless `build.docker.user` says otherwise, and the generated
+      // file says so itself so it does not read as an oversight.
+      const userLine = opts.user
+        ? `USER ${opts.user}\n\n`
+        : "# Runs as root: the distroless base has no shell, so a declared volume\n" +
+          "# cannot be created and chowned at build time. Set `build.docker.user`\n" +
+          "# to run as someone else.\n";
       // `install` is ignored in compile mode — distroless has no npm.
       dockerfile = `${header}FROM ${opts.compile.base}
 WORKDIR /app
@@ -267,11 +371,16 @@ WORKDIR /app
 COPY app .
 ${migrationsLine}
 ENV SERVER_HOST=0.0.0.0
-
-ENTRYPOINT ["/app/app"]
+${envLines}${volumeLines ? `\n${volumeLines}` : ""}
+${userLine}ENTRYPOINT ["/app/app"]
 `;
     } else {
       const { image, command } = opts.standard;
+      // The default `DATA_DIR` sits inside `/app`, so a non-root process
+      // needs to own what was copied there.
+      const chownFlag = this.isRootUser(opts.user)
+        ? ""
+        : ` --chown=${this.chownSpec(opts.user as string)}`;
       // Skip `RUN <pm> install` when `dist/package.json` declares no
       // runtime deps — Alepha apps normally bundle everything via Vite,
       // making the install a no-op that just emits deprecation noise.
@@ -286,15 +395,19 @@ ENTRYPOINT ["/app/app"]
       const extraInstallLine = opts.install.length
         ? `RUN npm install --no-save --no-fund --no-audit ${opts.install.join(" ")}\n`
         : "";
+      // Both install lines and the volume prep need root, so `USER` lands
+      // last, just above the command.
+      const volumePrepLine = this.renderVolumePrep(opts.volumes, opts.user);
+      const userLine = opts.user ? `USER ${opts.user}\n\n` : "";
       dockerfile = `${header}FROM ${image}
 WORKDIR /app
 
-COPY . .
+COPY${chownFlag} . .
 
-${baseInstallLine}${extraInstallLine}
+${baseInstallLine}${extraInstallLine}${volumePrepLine}
 ENV SERVER_HOST=0.0.0.0
-
-CMD ["${command}", "index.js"]
+${envLines}${volumeLines ? `\n${volumeLines}` : ""}
+${userLine}CMD ["${command}", "index.js"]
 `;
     }
 
