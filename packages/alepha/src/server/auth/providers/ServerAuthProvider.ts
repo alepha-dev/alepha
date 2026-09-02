@@ -226,6 +226,9 @@ export class ServerAuthProvider {
     schema: {
       query: z.object({
         provider: z.text(),
+        realm: z
+          .text({ description: "Realm name for multi-realm setups" })
+          .optional(),
       }),
       body: z.object({
         refresh_token: z.text({
@@ -242,10 +245,14 @@ export class ServerAuthProvider {
       response: tokensSchema,
     },
     handler: async ({ query, body, cookies }) => {
-      const provider = this.provider(query);
+      const provider = this.provider({
+        provider: query.provider,
+        realm: query.realm,
+      });
 
       const tokens = {
         provider: query.provider,
+        realm: query.realm,
         ...(await provider.refresh(body.refresh_token, body.access_token)),
       };
 
@@ -328,6 +335,7 @@ export class ServerAuthProvider {
 
       const tokens = {
         provider: query.provider,
+        realm: query.realm,
         ...(await issuer.createToken(user)),
       };
 
@@ -400,6 +408,7 @@ export class ServerAuthProvider {
 
       const tokens = {
         provider: challenge.provider,
+        realm: challenge.realm,
         ...(await issuer.createToken(challenge.user)),
       };
 
@@ -855,6 +864,7 @@ export class ServerAuthProvider {
       .then((tokens) => ({
         issued_at: this.dateTimeProvider.now().unix(),
         provider: provider.name,
+        realm: authorizationCode.realm,
         ...tokens,
       }))
       .catch((e) => {
@@ -892,7 +902,13 @@ export class ServerAuthProvider {
       return;
     }
 
-    await this.establishSession(user, issuer, provider.name, cookies);
+    await this.establishSession(
+      user,
+      issuer,
+      provider.name,
+      cookies,
+      authorizationCode.realm,
+    );
 
     reply.redirect(redirectUri, 302);
   }
@@ -901,12 +917,17 @@ export class ServerAuthProvider {
    * Establish a local session for an already-resolved user: mint realm tokens
    * and write the `tokens` cookie. Used by the OAuth callback and by federated
    * (broker) login. `issuer` is the realm issuer (provider.issuer / realm).
+   *
+   * `realm` is written into the cookie so the refresh path resolves the same
+   * provider the login did: every realm registers a provider under the same
+   * name, and a lookup by name alone lands on the first one.
    */
   public async establishSession(
     user: UserAccount,
     issuer: IssuerPrimitive,
     providerName: string,
     cookies: Cookies,
+    realm?: string,
   ): Promise<void> {
     const tokens = await issuer.createToken(user);
     this.setTokens(
@@ -914,6 +935,7 @@ export class ServerAuthProvider {
         ...tokens,
         issued_at: this.dateTimeProvider.now().unix(),
         provider: providerName,
+        realm,
       },
       cookies,
     );
@@ -963,7 +985,7 @@ export class ServerAuthProvider {
         return;
       }
 
-      const provider = this.provider(tokens.provider);
+      const provider = this.provider(tokens);
 
       this.tokens.del({ cookies });
 
@@ -1185,7 +1207,7 @@ export class ServerAuthProvider {
   }
 
   protected extractAccessToken(tokens: Tokens) {
-    const idp = this.provider(tokens.provider);
+    const idp = this.provider(tokens);
 
     if (
       "oidc" in idp.options &&
@@ -1222,9 +1244,13 @@ export class ServerAuthProvider {
               tokens.refresh_token,
               tokens.access_token,
             );
+            // The realm rides along: the refreshed tokens are written back
+            // to the cookie, and dropping it here would make only the first
+            // refresh land on the right issuer.
             const newTokens = {
               ...result,
               provider: tokens.provider,
+              realm: tokens.realm,
               issued_at: this.dateTimeProvider.now().unix(),
             };
 
