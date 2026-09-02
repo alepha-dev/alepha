@@ -16,7 +16,7 @@
     "check:i18n": "alepha i18n check",
     "check:migrations": "alepha db migrations check",
     "db:generate": "alepha db migrations create",
-    "build:docker": "alepha build --target=docker && cd dist && docker build -t alepha/lore .",
+    "build:docker": "alepha build --target=docker --image",
     "deploy": "alepha platform up -e production",
     "studio": "alepha db studio",
     "fonts": "node scripts/fetch-fonts.ts",

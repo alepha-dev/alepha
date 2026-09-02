@@ -24,6 +24,57 @@ export default defineConfig({
   // on releases, so the built-in git-tag chain would report "latest" on almost
   // every deploy.
   meta: { version: pkg.version },
+  // The self-hosted image. `docker run -p 3000:3000 -v lore:/data <image>`
+  // and nothing else: everything an operator would otherwise have to pass is
+  // baked below, and everything optional stays off until its env var appears.
+  //
+  // ⚠️ Safe next to the Cloudflare deploy, and checked rather than assumed:
+  // `CloudflareAdapter` runs `alepha build -t cloudflare` explicitly, and
+  // `BuildDockerTask` returns early on any target but `docker`. It is also
+  // purely additive on top of the ordinary build (copy migrations, write a
+  // Dockerfile, build an image only with `--image`), so the root `yarn build`
+  // now leaves `dist/` Dockerfile-ready with no second build anywhere.
+  build: {
+    target: "docker",
+    docker: {
+      // ⚠️ Not the framework's `node:24-alpine` default. `.nvmrc` is v26 and
+      // the release workflow runs 26.x, so the default would ship the
+      // container on a Node major nothing in CI exercises, with `node:sqlite`
+      // still moving between majors. Lore pins its own; the framework default
+      // is left alone.
+      from: "node:26-alpine",
+      image: {
+        tag: "ghcr.io/alepha-dev/lore",
+        oci: true,
+        // All four are config because none can be derived: `package.json` is
+        // `private: true` with no description and no license, and `source`
+        // must never come from the git remote (a fork would publish the
+        // wrong URL, permanently, on a public artifact).
+        source: "https://github.com/alepha-dev/alepha",
+        title: "Lore",
+        description:
+          "Project management and telemetry for Alepha applications.",
+        licenses: "MIT",
+      },
+      volumes: ["/data"],
+      env: {
+        DATA_DIR: "/data",
+        // The driver strips the `sqlite://` prefix, so this resolves to
+        // `/data/lore.db`, and `NodeSqliteProvider.onStart` migrates it on
+        // boot. That is what removes the operator step.
+        DATABASE_URL: "sqlite:///data/lore.db",
+        // Generated and persisted on first boot. A baked constant would be
+        // one token-forgery key shared by every install of a public image.
+        APP_SECRET_FILE: "/data/.app_secret",
+        SERVER_PORT: "3000",
+      },
+      // ⚠️ No REGISTRATION_ALLOWED, on purpose. The image ships OPEN, like
+      // the deployed instance: `bootstrapFirstUser` makes the first account
+      // the administrator, and they close registration from admin in one
+      // click. Shipping closed was reversed because its failure mode is
+      // unrecoverable - see the comment in `AppSecurityProvider`.
+    },
+  },
   plugins: [
     devtools(),
     // `alepha lore artifacts push`, which CI runs from THIS directory - the
