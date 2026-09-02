@@ -216,6 +216,7 @@ const ProjectEpics = () => {
           {
             icon: Plus,
             label: tr("epic.create"),
+            primary: true,
             onClick: () => setCreateOpen(true),
           },
         ]}

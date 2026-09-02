@@ -139,6 +139,8 @@ export const AdminKeys = () => {
           {
             icon: Plus,
             label: tr("admin.keys.create", { default: "Add API key" }),
+            // The page's one create control.
+            primary: true,
             disabled: createKey.loading,
             onClick: () => createKey.run(),
           },

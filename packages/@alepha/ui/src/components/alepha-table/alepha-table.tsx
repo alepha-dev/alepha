@@ -136,17 +136,34 @@ export interface BulkAction<T> {
 }
 
 /**
- * A standalone toolbar icon-button, rendered in the right-hand icon group
- * next to the column picker and separated from the filter area by a divider.
- * Use for table-scoped actions (e.g. "Upload", "New") that aren't tied to a
- * row or a selection. The table renders the ghost icon button + tooltip so it
- * matches the built-in column-picker / refresh controls.
+ * A standalone toolbar action, rendered in the right-hand icon group next to
+ * the column picker and separated from the filter area by a divider. Use for
+ * table-scoped actions (e.g. "Upload", "New") that aren't tied to a row or a
+ * selection.
+ *
+ * Two forms, chosen per action:
+ *
+ * - **secondary** (the default): a ghost icon button with the label as its
+ *   tooltip, matching the built-in column-picker / refresh controls.
+ * - **primary** (`primary: true`): a solid `default` button carrying the icon
+ *   AND the visible label. For the page's one main action, typically its
+ *   create control: a bare `+` at the same weight as two utility toggles
+ *   disappears, and the create button is what a reader looks for first.
+ *   No tooltip, since the label is already on screen. Below the `sm`
+ *   breakpoint the label collapses to the icon and the button keeps its
+ *   primary colour, so it still reads as the action.
  */
 export interface TableAction {
   icon: IconType;
   label: string;
   onClick: () => void;
   disabled?: boolean;
+  /**
+   * Render as the table's primary action: a solid labelled button rather
+   * than a ghost icon. One per table is the intent; a toolbar with two
+   * primary buttons has no primary action.
+   */
+  primary?: boolean;
 }
 
 /**
@@ -261,9 +278,10 @@ export type AlephaTableProps<T> = AlephaTableBaseProps<T> &
  *
  * Three slots, and which one is a question about the control, not the action:
  *
- * - `actions` - an icon button that does something on click. Rendered in the
- *   right-hand icon group beside the column picker, with a tooltip from its
- *   own `label`.
+ * - `actions` - a button that does something on click. Rendered in the
+ *   right-hand icon group beside the column picker: a ghost icon with a
+ *   tooltip from its own `label`, or, with `primary: true`, a solid button
+ *   showing the label. The page's create action is the `primary` one.
  * - `toolbar` - anything else: a labelled button, a popover trigger, a
  *   segmented control, a group of them. Rendered to the right of the filter
  *   inputs and vertically centred, so it does not have to match their height.
@@ -276,8 +294,11 @@ export type AlephaTableProps<T> = AlephaTableBaseProps<T> &
  *   columns={columns}
  *   // A popover trigger: `toolbar`, because it is not an icon button.
  *   toolbar={<QuestPicker onAttach={attach} />}
- *   // An icon button that acts on click: `actions`.
- *   actions={[{ icon: Download, label: "Export", onClick: exportAll }]}
+ *   // Buttons that act on click: `actions`. The create control is `primary`.
+ *   actions={[
+ *     { icon: Plus, label: "New quest", primary: true, onClick: create },
+ *     { icon: Download, label: "Export", onClick: exportAll },
+ *   ]}
  * />
  * ```
  *
@@ -384,10 +405,11 @@ export interface AlephaTableBaseProps<T> {
    */
   toolbar?: ReactNode;
   /**
-   * Standalone icon-button actions rendered in the toolbar's right-hand
-   * icon group, before the column picker and separated from the filter
-   * area by a divider. The table renders the ghost icon button + tooltip
-   * itself, so callers only supply the icon/label/handler.
+   * Standalone actions rendered in the toolbar's right-hand icon group,
+   * before the column picker and separated from the filter area by a
+   * divider. The table renders the button itself, so callers only supply
+   * the icon/label/handler: a ghost icon with a tooltip by default, or a
+   * solid labelled button when the action is marked `primary`.
    */
   actions?: TableAction[];
   /**
@@ -1068,6 +1090,28 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                   <>
                     {props.actions.map((action) => {
                       const ActionIcon = action.icon;
+                      if (action.primary) {
+                        // The visible label is the tooltip, so there is
+                        // none. `aria-label` keeps the accessible name once
+                        // the label collapses below `sm`; `h-9` lines the
+                        // button up with the ghost icons beside it.
+                        return (
+                          <Button
+                            key={action.label}
+                            type="button"
+                            size="sm"
+                            className="h-9 px-3"
+                            aria-label={action.label}
+                            disabled={action.disabled}
+                            onClick={action.onClick}
+                          >
+                            <ActionIcon className="size-4" />
+                            <span className="hidden sm:inline">
+                              {action.label}
+                            </span>
+                          </Button>
+                        );
+                      }
                       return (
                         <Tooltip key={action.label}>
                           <TooltipTrigger

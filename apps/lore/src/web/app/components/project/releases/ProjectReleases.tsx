@@ -231,6 +231,7 @@ const ProjectReleases = () => {
           {
             icon: Plus,
             label: tr("release.start"),
+            primary: true,
             onClick: () => setCreating(true),
           },
         ]}

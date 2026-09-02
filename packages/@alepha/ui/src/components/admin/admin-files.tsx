@@ -196,6 +196,9 @@ export const AdminFiles = () => {
             label: upload.loading
               ? tr("admin.files.uploading", { default: "Uploading…" })
               : tr("admin.files.upload", { default: "Upload" }),
+            // Upload is what this page is for; the label doubles as the
+            // progress line while a file is in flight.
+            primary: true,
             disabled: upload.loading,
             onClick: () => fileInputRef.current?.click(),
           },
