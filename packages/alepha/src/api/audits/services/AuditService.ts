@@ -8,6 +8,7 @@ import {
   type AuditSeverity,
   audits,
 } from "../entities/audits.ts";
+import type { AuditActionPair } from "../schemas/auditActionPairSchema.ts";
 import type { AuditQuery } from "../schemas/auditQuerySchema.ts";
 import type { CreateAudit } from "../schemas/createAuditSchema.ts";
 
@@ -66,17 +67,35 @@ export class AuditService {
   }
 
   /**
-   * Distinct action names across all registered audit types, sorted.
+   * Every `(type, action)` pair the registered audit types declare, sorted by
+   * type then action.
+   *
+   * Pairs rather than bare action names: an action only means something
+   * inside its type. `create` is a user in one row and a parameter version in
+   * another, and a filter offering the bare name selected every type's
+   * `create` at once while collapsing them into one entry (feedback #2049).
+   * The pair is what an audit row is identified by, so it is what the filter
+   * offers.
    *
    * Sourced from the `$audit` type registry. Audit types register lazily —
    * when their holder (e.g. `SessionAudits`, `ParameterAudits`) is first
    * injected — so the admin filter only lists actions for audit domains that
    * are actually in use, which is the intended behaviour.
    */
-  public getDistinctActions(): string[] {
-    return [
-      ...new Set(this.getRegisteredTypes().flatMap((type) => type.actions)),
-    ].sort();
+  public getDistinctActions(): AuditActionPair[] {
+    const pairs = new Map<string, AuditActionPair>();
+    for (const type of this.getRegisteredTypes()) {
+      for (const action of type.actions) {
+        pairs.set(JSON.stringify([type.type, action]), {
+          type: type.type,
+          action,
+        });
+      }
+    }
+    return [...pairs.values()].sort(
+      (a, b) =>
+        a.type.localeCompare(b.type) || a.action.localeCompare(b.action),
+    );
   }
 
   /**

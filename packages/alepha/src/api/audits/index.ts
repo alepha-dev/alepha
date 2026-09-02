@@ -13,6 +13,7 @@ export * from "./entities/audits.ts";
 export * from "./jobs/AuditJobs.ts";
 export * from "./parameters/AuditParameters.ts";
 export * from "./primitives/$audit.ts";
+export * from "./schemas/auditActionPairSchema.ts";
 export * from "./schemas/auditQuerySchema.ts";
 export * from "./schemas/auditResourceSchema.ts";
 export * from "./schemas/createAuditSchema.ts";

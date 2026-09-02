@@ -10,7 +10,11 @@ import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Infer, z } from "alepha";
-import type { AdminAuditController, AuditEntity } from "alepha/api/audits";
+import type {
+  AdminAuditController,
+  AuditActionPair,
+  AuditEntity,
+} from "alepha/api/audits";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -29,7 +33,7 @@ export const AdminAudits = () => {
   const router = useRouter();
   const { l, tr } = useI18n();
 
-  const [actions, setActions] = useState<string[]>([]);
+  const [actions, setActions] = useState<AuditActionPair[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -53,17 +57,24 @@ export const AdminAudits = () => {
       filters?: AuditFilters;
     }) => {
       const f = params.filters;
+      // The picked value is a `type:action` key, the shape the Action column
+      // prints, and the query takes it apart. `action` alone selected every
+      // type's `create` at once (feedback #2049).
+      const pair = f?.action
+        ? auditActionFromKey(f.action, actions)
+        : undefined;
       return client.findAudits({
         query: {
           page: params.page,
           size: params.size,
           sort: params.sort,
-          action: f?.action || undefined,
+          type: pair?.type,
+          action: pair?.action,
           success: f?.status ? f.status === "ok" : undefined,
         },
       });
     },
-    [client],
+    [client, actions],
   );
 
   const bulkDelete = useConfirmedAction<
@@ -161,10 +172,15 @@ export const AdminAudits = () => {
                 clearLabel={String(
                   tr("admin.audits.actionAll", { default: "All actions" }),
                 )}
-                triggerClassName="w-48"
-                items={actions.map((action) => ({
-                  value: action,
-                  label: action,
+                triggerClassName="w-56"
+                // Sorted by type then action on the server, so the list reads
+                // grouped: every `parameter:*` row, then every `user:*` row.
+                // The label is the column's own `type:action`, and the type
+                // rides along as the tag so the group is visible at a glance.
+                items={actions.map((pair) => ({
+                  value: auditActionKey(pair),
+                  label: auditActionKey(pair),
+                  tag: pair.type,
                 }))}
               />
             </div>
@@ -242,3 +258,29 @@ export const AdminAudits = () => {
 };
 
 export default AdminAudits;
+
+/**
+ * The filter's value for a pair: what the Action column prints.
+ */
+export const auditActionKey = (pair: AuditActionPair): string =>
+  `${pair.type}:${pair.action}`;
+
+/**
+ * The pair behind a picked key.
+ *
+ * Looked up in the fetched list rather than split on the colon, so a type
+ * that happens to carry one is never cut in the wrong place. The split is
+ * only the fallback for a key the list no longer holds (a stale persisted
+ * filter), where guessing at the first colon beats sending nothing.
+ */
+export const auditActionFromKey = (
+  key: string,
+  pairs: AuditActionPair[],
+): AuditActionPair => {
+  const known = pairs.find((pair) => auditActionKey(pair) === key);
+  if (known) return known;
+  const at = key.indexOf(":");
+  return at < 0
+    ? { type: key, action: "" }
+    : { type: key.slice(0, at), action: key.slice(at + 1) };
+};
