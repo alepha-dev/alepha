@@ -4,6 +4,7 @@ import { $command } from "alepha/command";
 import { ArtifactCommand } from "./ArtifactCommand.ts";
 import { LoginCommand } from "./LoginCommand.ts";
 import { QualityCommand } from "./QualityCommand.ts";
+import { ReleaseCommand } from "./ReleaseCommand.ts";
 
 /**
  * `alepha lore` - the root, and the only place it may be declared.
@@ -22,12 +23,13 @@ import { QualityCommand } from "./QualityCommand.ts";
  *
  * ## ⚠️ NOT re-exported from `index.ts`
  *
- * It names two classes that name types from the private `lore` workspace. Same
- * rule as `QualityCommand`, enforced by `scripts/check-dts.mjs`.
+ * It names three classes that name types from the private `lore` workspace.
+ * Same rule as `QualityCommand`, enforced by `scripts/check-dts.mjs`.
  */
 export class LoreCommand {
   protected readonly quality = $inject(QualityCommand);
   protected readonly artifacts = $inject(ArtifactCommand);
+  protected readonly releases = $inject(ReleaseCommand);
   protected readonly auth = $inject(LoginCommand);
 
   /**
@@ -45,6 +47,7 @@ export class LoreCommand {
     children: [
       this.quality.quality,
       this.artifacts.artifacts,
+      this.releases.releases,
       this.auth.login,
       this.auth.logout,
     ],

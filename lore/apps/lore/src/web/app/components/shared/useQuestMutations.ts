@@ -75,6 +75,29 @@ export const useQuestMutations = (): QuestMutations => {
       .catch(() => null);
   };
 
+  /**
+   * Run one call per id, all at once, and sort the outcomes. Concurrent calls
+   * go out as one `POST /api/_batch`, so a selection of twenty costs one
+   * round trip; `allSettled` is what keeps one refusal from hiding the
+   * nineteen that landed.
+   */
+  const settle = async (
+    ids: number[],
+    call: (id: number) => Promise<unknown>,
+  ): Promise<BulkOutcome> => {
+    const results = await Promise.allSettled(ids.map((id) => call(id)));
+    const outcome: BulkOutcome = { done: [], failed: [] };
+    results.forEach((result, index) => {
+      const id = ids[index];
+      if (result.status === "fulfilled") {
+        outcome.done.push(id);
+      } else {
+        outcome.failed.push({ id, error: result.reason });
+      }
+    });
+    return outcome;
+  };
+
   return {
     accept: async (id) => {
       const quest = await questApi.acceptQuest({ params: { id } });
@@ -111,6 +134,38 @@ export const useQuestMutations = (): QuestMutations => {
       dropFromAssigned(id);
       await refreshCount();
     },
+    shelveMany: async (ids) => {
+      const outcome = await settle(ids, (id) =>
+        questApi.shelveQuest({ params: { id } }),
+      );
+      await refreshCount();
+      return outcome;
+    },
+    unshelveMany: async (ids) => {
+      const outcome = await settle(ids, (id) =>
+        questApi.unshelveQuest({ params: { id } }),
+      );
+      await refreshCount();
+      return outcome;
+    },
+    removeMany: async (ids) => {
+      const outcome = await settle(ids, (id) =>
+        questApi.deleteQuest({ params: { id } }),
+      );
+      for (const id of outcome.done) {
+        dropFromAssigned(id);
+      }
+      await refreshCount();
+      return outcome;
+    },
+    attachToRelease: async (ids, releaseId) => {
+      // A quest update carrying `releaseId`, the same write the quest rail
+      // and the epic page make. No atom moves: membership in a release is
+      // not part of the open count or the assigned list.
+      return settle(ids, (id) =>
+        questApi.updateQuestById({ params: { id }, body: { releaseId } }),
+      );
+    },
     refreshCount,
   };
 };
@@ -123,11 +178,36 @@ export interface QuestMutations {
   unshelve: (id: number) => Promise<QuestResource>;
   remove: (id: number) => Promise<void>;
   /**
+   * The bulk forms of shelve, unshelve and delete: one call per id, all at
+   * once, the atoms moved once for the whole batch, and every refusal
+   * reported rather than thrown. The caller decides what to do with a
+   * selection that mixes eligible and ineligible rows; these send what they
+   * are given.
+   */
+  shelveMany: (ids: number[]) => Promise<BulkOutcome>;
+  unshelveMany: (ids: number[]) => Promise<BulkOutcome>;
+  removeMany: (ids: number[]) => Promise<BulkOutcome>;
+  /**
+   * Attach every id to one release. Refused server-side for a published
+   * release, which is why the caller only ever offers open ones.
+   */
+  attachToRelease: (ids: number[], releaseId: number) => Promise<BulkOutcome>;
+  /**
    * Re-derive the open-quest badge. Exposed for the one caller that changes
    * the number without going through a transition here - the table's own
    * bulk paths.
    */
   refreshCount: () => Promise<void>;
+}
+
+/**
+ * What a bulk call answers: the ids the server took, and the ones it
+ * refused with the reason it gave. Nine shelved and one refused is not a
+ * success, and this is the shape that keeps a caller from saying it is.
+ */
+export interface BulkOutcome {
+  done: number[];
+  failed: Array<{ id: number; error: unknown }>;
 }
 
 /**
