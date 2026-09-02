@@ -247,11 +247,9 @@ const TabBar = () => {
   const router = useRouter();
   const state = useRouterState();
   const currentPath = state.url?.pathname || "";
+  const layer = state.layers.slice(-1)[0];
   const currentName =
-    state.layers.slice(-1)[0]?.props?.name ||
-    state.layers.slice(-1)[0]?.name ||
-    currentPath.split("/").pop() ||
-    "docs";
+    layer?.props?.name || layer?.name || currentPath.split("/").pop() || "docs";
 
   // Store recently visited tabs
   const [tabs, setTabs] = useState<{ path: string; name: string }[]>([]);
@@ -259,8 +257,18 @@ const TabBar = () => {
   // Recorded during render rather than from an effect: the tab strip is
   // derived from where the router already is, so waiting for a commit only
   // renders the strip once without the page you just opened.
+  //
+  // Only a document that LOADED earns a tab: a layer carrying an error is
+  // NotFound rendered by the route's errorHandler, and a tab for it would
+  // name a page that does not exist. `Layout` keeps such a layer out of the
+  // IDE layout altogether (quest #1675); this is the same rule, one level
+  // down, for a header that ever shows tabs beside one.
   const [recordedPath, setRecordedPath] = useState<string | undefined>();
-  if (currentPath?.startsWith("/docs/") && currentPath !== recordedPath) {
+  if (
+    currentPath?.startsWith("/docs/") &&
+    !layer?.error &&
+    currentPath !== recordedPath
+  ) {
     setRecordedPath(currentPath);
     setTabs((prev) => {
       // Remove if already exists

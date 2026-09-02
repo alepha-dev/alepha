@@ -186,7 +186,15 @@ export default Layout;
 
 const LayoutContent = () => {
   const state = useRouterState();
-  const hasSidebar = state.layers.slice(-1)[0]?.route?.sidebar === true;
+  // A layer whose loader failed renders NotFound through the route's
+  // errorHandler and is not that route's page: it takes the plain layout the
+  // `/404` route has, which is also the shell the edge serves for EVERY
+  // unknown path (`not_found_handling: "404-page"`). Wrapping it in the IDE
+  // layout instead, tabs, explorer and status bar around a 404, is what
+  // broke hydration on every missing docs URL in production (blight #521,
+  // quest #1675): the prerendered shell had none of it.
+  const layer = state.layers.slice(-1)[0];
+  const hasSidebar = layer?.route?.sidebar === true && !layer?.error;
   const [focusMode, setFocusMode] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);

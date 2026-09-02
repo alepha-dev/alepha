@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Sidebar", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
   });
 
@@ -41,7 +41,7 @@ test.describe("Sidebar", () => {
 
 test.describe("Table of Contents", () => {
   test("TOC highlights current section on scroll", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     // Find TOC
@@ -60,7 +60,7 @@ test.describe("Table of Contents", () => {
   });
 
   test("clicking TOC item scrolls to section", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     const toc = page.locator(
@@ -72,15 +72,24 @@ test.describe("Table of Contents", () => {
       const tocLink = toc.locator("a, button").nth(1);
 
       if (await tocLink.isVisible()) {
-        const initialScroll = await page.evaluate(() => window.scrollY);
+        // The content pane is the scroller, not the window, so the thing to
+        // measure is where the target heading sits in the viewport. Items
+        // are built from the headings in document order, so the second item
+        // names the second heading.
+        const heading = page.locator("#html-content [data-heading]").nth(1);
+        const before = await heading.evaluate(
+          (el) => el.getBoundingClientRect().top,
+        );
 
         await tocLink.click();
         await page.waitForTimeout(500);
 
-        const newScroll = await page.evaluate(() => window.scrollY);
+        const after = await heading.evaluate(
+          (el) => el.getBoundingClientRect().top,
+        );
 
-        // Scroll position should have changed
-        expect(newScroll).not.toBe(initialScroll);
+        // The heading moved: the pane scrolled to it.
+        expect(after).not.toBe(before);
       }
     }
   });
@@ -88,7 +97,7 @@ test.describe("Table of Contents", () => {
 
 test.describe("Status Bar", () => {
   test("status bar shows file information", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     const statusBar = page.locator('[class*="status"], [class*="StatusBar"]');
@@ -101,7 +110,7 @@ test.describe("Status Bar", () => {
   });
 
   test("status bar shows live clock", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     const statusBar = page.locator('[class*="status"], [class*="StatusBar"]');

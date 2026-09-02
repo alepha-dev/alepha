@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Keyboard Shortcuts", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
   });
 
@@ -105,7 +105,7 @@ test.describe("Keyboard Shortcuts", () => {
 
 test.describe("Theme Toggle", () => {
   test("theme toggle changes color scheme", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     // Get initial theme
@@ -134,7 +134,7 @@ test.describe("Theme Toggle", () => {
   });
 
   test("theme persists after page reload", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     // Toggle theme
