@@ -1,12 +1,8 @@
-import { cn } from "@alepha/ui/lib/utils";
+import { PlateLayout } from "@alepha/ui/components/plate-layout/plate-layout";
+import type { PlateTab } from "@alepha/ui/components/plate-layout/plate-tab-bar";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import {
-  Link,
-  NestedView,
-  useRouter,
-  useRouterState,
-} from "alepha/react/router";
+import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { ExternalLink } from "lucide-react";
 
 import type { AppRouter } from "../../../AppRouter.ts";
@@ -113,11 +109,31 @@ const AppLayout = () => {
     }
   }
 
+  const plateTabs: PlateTab[] = tabs.map((tab) => {
+    const carriesFilters =
+      tab.route === "appAnalytics" || tab.route === "appVitals";
+    return {
+      key: tab.route,
+      label: String(tr(tab.labelKey)),
+      // Each tab is its own route, so each is a link.
+      href: router.path(tab.route, {
+        params,
+        query: carriesFilters ? filters : undefined,
+      }),
+    };
+  });
+
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col gap-4 overflow-y-auto p-4 md:pt-10">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h1 className="text-xl font-semibold">{sigil.name}</h1>
-        {/*
+    <PlateLayout
+      // Marks the tab bar. "Settings" is also a project-level nav entry, so a
+      // page-wide `getByRole("link", { name })` cannot say which one it found.
+      tabsTestId="app-tabs"
+      tabs={plateTabs}
+      active={activeRoute}
+      plate={
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-6 pt-6 pb-4">
+          <h1 className="text-xl font-semibold">{sigil.name}</h1>
+          {/*
           The app's own address, beside its name. A plain `<a>` rather than the
           router's `Link`: this is the one link on the page that leaves Lore.
           `noopener` because `_blank` otherwise hands `window.opener` to a page
@@ -132,59 +148,34 @@ const AppLayout = () => {
           no address to show, and an empty slot says that better than a
           placeholder would.
         */}
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs transition-colors"
-          >
-            {appUrlLabel(url)}
-            <ExternalLink className="size-3" aria-hidden />
-          </a>
-        )}
-        <span className="text-muted-foreground text-xs">
-          {sigil.lastSeenAt
-            ? tr("sigils.lastSeen", {
-                args: [String(l(sigil.lastSeenAt, { date: "lll" }))],
-              })
-            : tr("sigils.neverSeen")}
-        </span>
-      </div>
-
-      <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b">
-        {/*
-          Marks the tab bar. "Settings" is also a project-level nav entry, so a
-          page-wide `getByRole("link", { name })` cannot say which one it found.
-        */}
-        <div data-testid="app-tabs" className="flex gap-1">
-          {tabs.map((tab) => {
-            const isActive = activeRoute === tab.route;
-            const carriesFilters =
-              tab.route === "appAnalytics" || tab.route === "appVitals";
-            return (
-              <Link
-                key={tab.route}
-                href={router.path(tab.route, {
-                  params,
-                  query: carriesFilters ? filters : undefined,
-                })}
-                className={cn(
-                  "px-3 py-2 text-sm whitespace-nowrap transition-colors",
-                  isActive
-                    ? "border-primary text-foreground border-b-2"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {tr(tab.labelKey)}
-              </Link>
-            );
-          })}
+          {url && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs transition-colors"
+            >
+              {appUrlLabel(url)}
+              <ExternalLink className="size-3" aria-hidden />
+            </a>
+          )}
+          <span className="text-muted-foreground text-xs">
+            {sigil.lastSeenAt
+              ? tr("sigils.lastSeen", {
+                  args: [String(l(sigil.lastSeenAt, { date: "lll" }))],
+                })
+              : tr("sigils.neverSeen")}
+          </span>
         </div>
+      }
+    >
+      {/* Per-tab width rules stay inside the tabs, where they moved when the
+          shell stopped capping them: Settings keeps `max-w-3xl`, the rest run
+          full width. */}
+      <div className="p-4">
+        <NestedView />
       </div>
-
-      <NestedView />
-    </div>
+    </PlateLayout>
   );
 };
 
