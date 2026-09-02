@@ -279,6 +279,49 @@ jobs:
           LORE_ARTIFACT_PROJECT: ${{ vars.LORE_ARTIFACT_PROJECT }}
 
   # ──────────────────────────────────────────────────────────────────────
+  # The self-hosted Lore image. `docker run -p 3000:3000 -v lore:/data <image>`
+  # is the whole promise of that image, and nothing in `yarn v` exercises it:
+  # a build producing an image that cannot boot is exactly as green as one
+  # that works.
+  #
+  # Here rather than in the Release workflow, because the release only builds
+  # the image when someone dispatches it and the push step sits AFTER
+  # `npm publish` - so a broken Dockerfile would be found on release day, past
+  # the irreversible half of the pipeline. Here rather than in `e2e-cli`,
+  # because that runs inside `yarn v` and a docker build does not fit the
+  # 10-minute budget. The runners already have a docker daemon (the `verify`
+  # job's `services:` need one) and public-repo minutes are free.
+  #
+  # ⚠️ **`deploy-lore-production` deliberately does NOT gate on this job.**
+  # That job ships a Cloudflare Worker and touches nothing this one builds, so
+  # adding it to `needs` would let a docker flake or a slow image build block a
+  # production deploy with no relationship to the image. "The deploys gate on
+  # everything else" is the obvious assumption; this is the exception, on
+  # purpose.
+  # ──────────────────────────────────────────────────────────────────────
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Prepare
+        run: yarn copy
+
+      # `alepha build --target=docker --image`: the bundle, the generated
+      # Dockerfile and `docker build` in one step, with the tag and the OCI
+      # labels coming from `apps/lore/alepha.config.ts`.
+      - name: Build the image
+        run: yarn w lore build:docker
+
+      - name: Smoke test the image
+        run: bash scripts/docker-smoke.sh
+
+  # ──────────────────────────────────────────────────────────────────────
   # Bay - the Go control plane. Nothing in the yarn pipeline compiles or tests
   # it, which is how a `.gitignore` pattern that swallowed the whole
   # `cmd/bay/` directory reached a commit unnoticed.
