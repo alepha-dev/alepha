@@ -1089,6 +1089,10 @@ test.describe("Epics — the release control", () => {
     await page.goto(`/${slug}/epics/${epic.number}`);
     const control = page.locator("aside").getByRole("combobox");
     await expect(control).toBeVisible({ timeout: 15_000 });
+    // The release glyph on the trigger (feedback #2061). Lucide names the
+    // svg after the icon, so this is the flag and not the status chip's
+    // glyph two rows up.
+    await expect(page.locator("aside svg.lucide-flag")).toBeVisible();
 
     /**
      * The write behind a pick, armed BEFORE the click that causes it.

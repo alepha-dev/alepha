@@ -4,6 +4,7 @@ import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { Flag } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
@@ -90,6 +91,10 @@ const EpicReleaseControl = (props: EpicReleaseControlProps) => {
       label=""
       inputProps={{ "aria-label": String(tr("epic.aside.release")) }}
       clearable
+      // The release glyph, the one every other release surface carries
+      // (feedback #2061): the status row above decorates its value the same
+      // way, and this row was the one place a release was named bare.
+      icon={Flag}
       clearLabel={String(tr("epic.aside.release.none"))}
       triggerClassName="w-full"
       disabled={submitting || !!current?.releasedAt}
