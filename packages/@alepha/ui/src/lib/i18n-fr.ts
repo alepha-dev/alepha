@@ -49,6 +49,9 @@ export const uiFr: Record<string, string> = {
   "useDialog.ok": "OK",
 
   // The data table: toolbar, selection, empty state.
+  "alephaTable.bulkMenu.empty": "Rien à choisir",
+  "alephaTable.bulkMenu.failed": "Impossible de charger les choix",
+  "alephaTable.bulkMenu.loading": "Chargement…",
   "alephaTable.clearSelection": "Annuler la sélection",
   "alephaTable.columns": "Colonnes",
   "alephaTable.empty": "Aucun résultat.",

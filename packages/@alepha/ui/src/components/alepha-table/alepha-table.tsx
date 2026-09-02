@@ -66,6 +66,7 @@ import {
   useState,
 } from "react";
 
+import { AlephaTableBulkMenu } from "./alepha-table-bulk-menu.tsx";
 import { paginateLocal } from "./paginate-local.ts";
 import { useTableSelection } from "./use-table-selection.ts";
 
@@ -128,11 +129,66 @@ export interface BulkActionContext {
   clearSelection: () => void;
 }
 
+/**
+ * A bulk action that is a button: one click, one handler over the selection.
+ */
 export interface BulkAction<T> {
   label: string;
   icon?: IconType;
   onClick: (selected: T[], ctx: BulkActionContext) => void | Promise<void>;
   destructive?: boolean;
+}
+
+/**
+ * A bulk action that is a MENU: the trigger opens a list of choices, each of
+ * them a {@link BulkAction} in its own right, and picking one runs its
+ * `onClick` over the selection. For "add to release", "move to column",
+ * "assign to": one button cannot carry N targets, and the targets are not
+ * known when the table renders.
+ *
+ * `items` produces the choices, synchronously or not. It is called on open
+ * intent (pointer enter, focus, or the menu opening, so keyboard and touch
+ * are covered) and its result is kept for the life of the selection: a new
+ * selection asks again. Both the pending and the failed state are shown
+ * inside the menu, and an empty result renders a disabled "nothing to pick"
+ * row rather than an empty popup.
+ *
+ * A union with {@link BulkAction} rather than an optional `items` on it, so
+ * a button cannot also be a menu and a menu cannot also be clicked: the two
+ * are told apart by `items` being present.
+ *
+ * ```tsx
+ * const addToRelease: BulkMenuAction<Quest> = {
+ *   label: "Add to release",
+ *   icon: Flag,
+ *   // The closure carries the target, so no item type needs a payload.
+ *   items: () =>
+ *     releases
+ *       .filter((release) => !release.releasedAt)
+ *       .map((release) => ({
+ *         label: release.tag,
+ *         onClick: async (quests, ctx) => {
+ *           await Promise.all(
+ *             quests.map((quest) => attach(quest.id, release.id)),
+ *           );
+ *           ctx.refresh();
+ *           ctx.clearSelection();
+ *         },
+ *       })),
+ * };
+ *
+ * <AlephaTable<Quest> bulkActions={[shelve, addToRelease]} />
+ * ```
+ */
+export interface BulkMenuAction<T> {
+  label: string;
+  icon?: IconType;
+  /**
+   * The choices, produced when the menu is about to open. An async producer
+   * shows a loading row until it settles; a rejection shows a failure row and
+   * the next open tries again.
+   */
+  items: () => BulkAction<T>[] | Promise<BulkAction<T>[]>;
 }
 
 /**
@@ -286,7 +342,8 @@ export type AlephaTableProps<T> = AlephaTableBaseProps<T> &
  *   segmented control, a group of them. Rendered to the right of the filter
  *   inputs and vertically centred, so it does not have to match their height.
  * - `bulkActions` - operates on the checkbox selection, and only appears
- *   while something is selected.
+ *   while something is selected. A button, or a menu of them resolved on
+ *   demand (`BulkMenuAction`, for "add to release" and its kind).
  *
  * ```tsx
  * <AlephaTable<Quest>
@@ -318,10 +375,12 @@ export interface AlephaTableBaseProps<T> {
    */
   rowActions?: (item: T) => RowAction<T>[];
   /**
-   * Actions applied to selected rows (enables checkbox column). Each
-   * `onClick` receives `(items, { refresh, clearSelection })`.
+   * Actions applied to selected rows (enables checkbox column). A
+   * {@link BulkAction} is a button whose `onClick` receives
+   * `(items, { refresh, clearSelection })`; a {@link BulkMenuAction} is a
+   * button that opens a menu of such actions, produced on demand.
    */
-  bulkActions?: BulkAction<T>[];
+  bulkActions?: Array<BulkAction<T> | BulkMenuAction<T>>;
   /**
    * Page size the table opens on. The reader can change it from the footer;
    * with `persistenceKey` set, their choice is remembered and wins over this.
@@ -1221,6 +1280,16 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                 </span>
                 <span className="mx-1 h-4 w-px bg-white/20" />
                 {props.bulkActions?.map((action) => {
+                  if ("items" in action) {
+                    return (
+                      <AlephaTableBulkMenu<T>
+                        key={action.label}
+                        action={action}
+                        selected={selectedItems}
+                        ctx={bulkCtx}
+                      />
+                    );
+                  }
                   const ActionIcon = action.icon;
                   return (
                     <Button
