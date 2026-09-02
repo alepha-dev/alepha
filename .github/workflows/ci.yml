@@ -321,6 +321,24 @@ jobs:
       - name: Smoke test the image
         run: bash scripts/docker-smoke.sh
 
+      # ⚠️ Both are needed by the size check below, and by nothing else here.
+      # The generated Dockerfile is not RUN-free: `mkdir -p /data && chown`
+      # prepares the volume, so building for the other architecture executes
+      # a shell command under emulation and needs the binfmt handlers.
+      # `setup-buildx` is separately required because the default `docker`
+      # driver refuses a multi-platform build outright.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      # Builds BOTH architectures, which is the only place outside a
+      # dispatched Release where the multi-arch build the release performs is
+      # exercised at all. The size gate rides along on the result.
+      - name: Check the image size budget
+        run: node scripts/docker-size.mjs
+
   # ──────────────────────────────────────────────────────────────────────
   # Bay - the Go control plane. Nothing in the yarn pipeline compiles or tests
   # it, which is how a `.gitignore` pattern that swallowed the whole
