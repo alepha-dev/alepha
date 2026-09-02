@@ -1791,6 +1791,17 @@ export interface Env {
   APP_SECRET?: string;
 
   /**
+   * Path to a file holding {@link APP_SECRET}, read on boot and generated on
+   * first boot when the file does not exist.
+   *
+   * For self-hosted images, which cannot ship a baked secret: a constant in a
+   * public image would be one token-forgery key shared by every install.
+   * An explicit `APP_SECRET` always wins, and the path is refused on
+   * serverless runtimes, which have no writable filesystem.
+   */
+  APP_SECRET_FILE?: string;
+
+  /**
    * Public-facing base URL of the deployed app (e.g. "https://lore.alepha.dev").
    *
    * Used to render absolute links — emails, OAuth callbacks, sitemap. On the

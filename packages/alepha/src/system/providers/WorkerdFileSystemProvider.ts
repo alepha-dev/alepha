@@ -16,6 +16,7 @@ import type {
   LsOptions,
   MkdirOptions,
   RmOptions,
+  WriteFileOptions,
 } from "./FileSystemProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -337,6 +338,7 @@ export class WorkerdFileSystemProvider implements FileSystemProvider {
   public async writeFile(
     _path: string,
     _data: Uint8Array | Buffer | string | FileLike,
+    _options?: WriteFileOptions,
   ): Promise<void> {
     throw new AlephaError(
       "WorkerdFileSystemProvider: writeFile() is not available in edge runtimes.",

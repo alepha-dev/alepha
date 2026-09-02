@@ -190,6 +190,21 @@ export interface LsOptions {
 }
 
 /**
+ * Options for writeFile operation
+ */
+export interface WriteFileOptions {
+  /**
+   * Permission bits applied when the file is CREATED, e.g. `0o600` for a
+   * secret only its owner may read.
+   *
+   * Creation-time only: writing over an existing file leaves that file's
+   * mode alone, which is what the underlying `fs.writeFile` does. A caller
+   * that needs a guarantee has to write to a path it knows is new.
+   */
+  mode?: number;
+}
+
+/**
  * Metadata about a file or directory, as returned by {@link FileSystemProvider.stat}.
  */
 export interface FileStat {
@@ -197,6 +212,11 @@ export interface FileStat {
    * Size in bytes. 0 for directories on backends that do not track it.
    */
   size: number;
+  /**
+   * Permission bits, masked to `0o777`. What makes a `writeFile` mode
+   * assertable rather than merely recorded.
+   */
+  mode: number;
   /**
    * Last modification time in milliseconds since epoch.
    */
@@ -320,10 +340,12 @@ export abstract class FileSystemProvider {
    *
    * @param path - The file path to write to
    * @param data - The data to write (Buffer or string)
+   * @param options - Creation options, currently the file `mode`
    */
   abstract writeFile(
     path: string,
     data: Uint8Array | Buffer | string | FileLike,
+    options?: WriteFileOptions,
   ): Promise<void>;
 
   /**

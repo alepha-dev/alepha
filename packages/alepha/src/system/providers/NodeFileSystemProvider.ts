@@ -34,6 +34,7 @@ import type {
   LsOptions,
   MkdirOptions,
   RmOptions,
+  WriteFileOptions,
 } from "./FileSystemProvider.ts";
 
 /**
@@ -380,6 +381,7 @@ export class NodeFileSystemProvider implements FileSystemProvider {
     const stats = await fsStat(path);
     return {
       size: stats.size,
+      mode: stats.mode & 0o777,
       mtimeMs: stats.mtimeMs,
       isDirectory: stats.isDirectory(),
       isFile: stats.isFile(),
@@ -448,12 +450,16 @@ export class NodeFileSystemProvider implements FileSystemProvider {
   async writeFile(
     path: string,
     data: Uint8Array | Buffer | string | FileLike,
+    options?: WriteFileOptions,
   ): Promise<void> {
+    // `mode` applies at creation only, which is Node's own behaviour: an
+    // existing file keeps the mode it has.
+    const fsOptions = options?.mode === undefined ? undefined : options;
     if (isFileLike(data)) {
-      await fsWriteFile(path, Readable.from(data.stream()));
+      await fsWriteFile(path, Readable.from(data.stream()), fsOptions);
       return;
     }
-    await fsWriteFile(path, data);
+    await fsWriteFile(path, data, fsOptions);
   }
 
   /**

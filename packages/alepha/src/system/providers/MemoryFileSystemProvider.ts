@@ -16,6 +16,7 @@ import type {
   LsOptions,
   MkdirOptions,
   RmOptions,
+  WriteFileOptions,
 } from "./FileSystemProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -69,6 +70,24 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   public mtimes = new Map<string, number>();
 
   /**
+   * Permission bits (path -> mode) for {@link stat}, recorded only where a
+   * caller asked for one. Paths with no entry report the platform defaults
+   * below, the same way an unremarkable file on disk does.
+   */
+  public modes = new Map<string, number>();
+
+  /**
+   * Mode reported for a file nobody set one on: 0644 before umask, which is
+   * what `fs.writeFile` produces on a default Linux or macOS host.
+   */
+  public static readonly DEFAULT_FILE_MODE = 0o644;
+
+  /**
+   * Mode reported for a directory nobody set one on.
+   */
+  public static readonly DEFAULT_DIRECTORY_MODE = 0o755;
+
+  /**
    * Track mkdir calls for test assertions
    */
   public mkdirCalls: Array<{ path: string; options?: MkdirOptions }> = [];
@@ -76,7 +95,11 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   /**
    * Track writeFile calls for test assertions
    */
-  public writeFileCalls: Array<{ path: string; data: string }> = [];
+  public writeFileCalls: Array<{
+    path: string;
+    data: string;
+    mode?: number;
+  }> = [];
 
   /**
    * Track appendFile calls for test assertions.
@@ -461,6 +484,10 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     const recursive = options?.recursive ?? true;
     const force = options?.force ?? true;
 
+    if (options?.mode !== undefined && !this.isExistingDirectory(normalized)) {
+      this.modes.set(normalized, options.mode);
+    }
+
     if (recursive) {
       this.registerDirectoryTree(normalized);
       this.mtimes.set(normalized, this.dateTime.nowMillis());
@@ -567,6 +594,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     if (content) {
       return {
         size: content.byteLength,
+        mode:
+          this.modes.get(normalized) ??
+          MemoryFileSystemProvider.DEFAULT_FILE_MODE,
         mtimeMs: this.mtimes.get(normalized) ?? 0,
         isDirectory: false,
         isFile: true,
@@ -576,6 +606,9 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     if (this.isExistingDirectory(normalized)) {
       return {
         size: 0,
+        mode:
+          this.modes.get(normalized) ??
+          MemoryFileSystemProvider.DEFAULT_DIRECTORY_MODE,
         mtimeMs: this.mtimes.get(normalized) ?? 0,
         isDirectory: true,
         isFile: false,
@@ -639,6 +672,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
   public async writeFile(
     path: string,
     data: Uint8Array | Buffer | string | FileLike,
+    options?: WriteFileOptions,
   ): Promise<void> {
     // Materialise ONCE — FileLike sources may be single-shot streams, so
     // consuming them twice (once for the assertion log, once for storage)
@@ -652,9 +686,21 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
             ? Buffer.from(data)
             : Buffer.from(await data.arrayBuffer());
 
+    // `mode` applies at creation only, matching `fs.writeFile`: writing over
+    // an existing file leaves the mode it already has.
+    const isNew = !this.files.has(this.normalizePath(path));
+
     await this.storeFile(path, buffer);
+
+    if (isNew && options?.mode !== undefined) {
+      this.modes.set(this.normalizePath(path), options.mode);
+    }
     // Recorded on success only — see `rm`.
-    this.writeFileCalls.push({ path, data: buffer.toString("utf-8") });
+    this.writeFileCalls.push({
+      path,
+      data: buffer.toString("utf-8"),
+      mode: options?.mode,
+    });
   }
 
   protected async storeFile(path: string, buffer: Buffer): Promise<void> {
@@ -704,6 +750,7 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     this.files.clear();
     this.directories.clear();
     this.mtimes.clear();
+    this.modes.clear();
     this.mkdirCalls = [];
     this.writeFileCalls = [];
     this.appendFileCalls = [];
@@ -777,6 +824,22 @@ export class MemoryFileSystemProvider implements FileSystemProvider {
     return this.writeFileCalls.some(
       (c) => c.path === path && pattern.test(c.data),
     );
+  }
+
+  /**
+   * Check that the file's FINAL write asked for a given mode.
+   *
+   * The mode a permission-sensitive write asks for is worth asserting on its
+   * own: a secret written 0644 is a hole that no content assertion sees.
+   *
+   * @example
+   * ```typescript
+   * expect(fs.wasWrittenWithMode("/data/.app_secret", 0o600)).toBe(true);
+   * ```
+   */
+  public wasWrittenWithMode(path: string, mode: number): boolean {
+    const call = this.writeFileCalls.findLast((c) => c.path === path);
+    return call ? call.mode === mode : false;
   }
 
   /**

@@ -280,6 +280,27 @@ for (const impl of implementations) {
         expect([...(await fs.readFile(path))]).toEqual([1, 2, 3]);
       });
 
+      it("applies a mode when creating a file", async () => {
+        const { fs, base } = await setup();
+        const path = join(base, "secret");
+
+        await fs.writeFile(path, "s3cr3t", { mode: 0o600 });
+
+        expect((await fs.stat(path)).mode).toBe(0o600);
+      });
+
+      it("leaves an existing file's mode alone on rewrite", async () => {
+        const { fs, base } = await setup();
+        const path = join(base, "secret");
+
+        await fs.writeFile(path, "first", { mode: 0o600 });
+        await fs.writeFile(path, "second", { mode: 0o644 });
+
+        // `fs.writeFile`'s own semantics: mode is a creation flag.
+        expect((await fs.stat(path)).mode).toBe(0o600);
+        expect(await fs.readTextFile(path)).toBe("second");
+      });
+
       it("round-trips JSON through writeJsonFile/readJsonFile", async () => {
         const { fs, base } = await setup();
         const value = { name: "alepha", nested: { n: 1 } };
