@@ -5,6 +5,7 @@ import { FileAccessProvider } from "alepha/api/files";
 import { oauthOptions } from "alepha/api/oauth";
 import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
+import { AlephaEmailSmtp } from "alepha/email/smtp";
 
 import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
@@ -28,6 +29,21 @@ const alepha = Alepha.create({
 // dev` to avoid the provider's "not running on Workers" inert-boot warning.
 if (alepha.isProduction()) {
   alepha.with(AlephaEmailCloudflare);
+}
+
+// SMTP, for a self-hosted instance that has a mail server. Registered only
+// when EMAIL_HOST is set, because `AlephaEmailSmtp` substitutes
+// `EmailProvider` unconditionally and a transport pointed at nothing would
+// fail every send. Without it the container falls through to
+// `LocalEmailProvider`, which writes mail to `${DATA_DIR}/emails` — a useful
+// escape hatch for an operator with no SMTP, and the reason
+// `verifyEmailRequired` and `resetPasswordAllowed` are off until this is
+// configured (see `AppSecurityProvider`).
+//
+// ⚠️ Behind an `if`, but still a STATIC import: nodemailer is in the bundle
+// whether or not SMTP is configured.
+if (alepha.env.EMAIL_HOST) {
+  alepha.with(AlephaEmailSmtp);
 }
 
 // Register the captcha provider BEFORE any module that depends on `alepha/captcha`

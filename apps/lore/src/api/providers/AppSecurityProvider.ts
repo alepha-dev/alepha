@@ -38,6 +38,11 @@ export class AppSecurityProvider {
       // `registrationAllowed` below for why this is a boot-time default and
       // not a live switch.
       REGISTRATION_ALLOWED: z.boolean().meta({ secret: false }).optional(),
+      // The SMTP host, read here only as a yes/no: everything that completes
+      // by sending mail is off until there is somewhere to send it. The
+      // transport's own variables live in `NodemailerEmailProvider`, and
+      // `main.server.ts` registers that module on the same condition.
+      EMAIL_HOST: z.text({ secret: false }).optional(),
     }),
   );
 
@@ -64,16 +69,25 @@ export class AppSecurityProvider {
       // `getCurrentWithDefault`). From that moment, editing anything in this
       // block changes nothing on a deployed instance: the stored row wins.
       // Env-derived keys (`captchaRequired`, `registrationIpMaxAttempts`,
-      // `adminEmails`, `registrationAllowed`) are frozen the same way, so
-      // adding `TURNSTILE_SITE_KEY` or `ADMIN_EMAIL` to a running instance
-      // also means flipping the matching field in admin.
+      // `adminEmails`, `registrationAllowed`, `verifyEmailRequired`,
+      // `resetPasswordAllowed`) are frozen the same way, so adding
+      // `TURNSTILE_SITE_KEY`, `ADMIN_EMAIL` or `EMAIL_HOST` to a running
+      // instance also means flipping the matching field in admin.
       parameters: true,
     },
     settings: {
       username: "email",
       usernameBlocklist: ["admin", "root", "me", "api", "support", "system"],
-      resetPasswordAllowed: true,
-      verifyEmailRequired: true,
+      // Both complete only by delivering a code, so both stay off until
+      // there is a mail server. A fresh container with no SMTP would
+      // otherwise register an account and then park the operator on a
+      // "check your inbox" screen, for a mail written to a file on disk.
+      //
+      // Same env-derived shape as `registrationAllowed` below, and frozen
+      // the same way: adding SMTP to a running instance also means turning
+      // these two on from the admin Parameters page.
+      resetPasswordAllowed: !!this.env.EMAIL_HOST,
+      verifyEmailRequired: !!this.env.EMAIL_HOST,
       captchaRequired: !!this.env.TURNSTILE_SITE_KEY,
       // Open by default, on lore.alepha.dev and in the self-hosted image
       // alike. The image bakes no `REGISTRATION_ALLOWED` at all: the
