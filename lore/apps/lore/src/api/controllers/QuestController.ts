@@ -2121,14 +2121,22 @@ export class QuestController {
         throw new BadRequestError(objectiveCapMessage(body.objectives.length));
       }
 
-      // On completed quests the only field that can be revised is the
-      // completion summary — project memory is curatable, but the quest
-      // body (title/description/objectives/…) stays frozen as an audit
-      // record of what was closed.
+      // On a completed quest the quest BODY - title, description, objectives -
+      // stays frozen as an audit record of what was closed. Two things are
+      // not the body and are therefore still editable:
+      //
+      // - `completionMessage`, because project memory is curatable;
+      // - `releaseId`, because which release a finished quest ships in is
+      //   planning metadata decided after completion at least as often as
+      //   before it. A release HOLDS quests by assignment (folio "Lore
+      //   vocabulary"), so the assignment has to stay editable until the
+      //   release is published - and the published-release refusal in
+      //   `ReleaseAttachmentService` is what enforces that end, unchanged.
       if (quest.completedAt) {
         const otherEdits = Object.entries(body).filter(
           ([key, value]) =>
             key !== "completionMessage" &&
+            key !== "releaseId" &&
             // A concurrency token is not an edit: passing it alongside a
             // completionMessage rewrite must not read as trying to change
             // the frozen body.
@@ -2137,7 +2145,7 @@ export class QuestController {
         );
         if (otherEdits.length > 0) {
           throw new BadRequestError(
-            "Only completionMessage can be edited on a completed quest",
+            "Only completionMessage and releaseId can be edited on a completed quest",
           );
         }
       }
@@ -2267,16 +2275,25 @@ export class QuestController {
         ),
         user,
       );
-      // Don't append a "updated" history entry on a completed quest — we
-      // only allow the summary edit, the rest of the quest is frozen.
-      if (!quest.completedAt) {
+      // On a completed quest most of what could be edited is frozen, so an
+      // "updated" entry usually says nothing and used to be skipped outright.
+      // Since #1702 the release can still move, and that IS history: which
+      // release something shipped in is exactly the kind of thing somebody
+      // reconstructs months later. So the entry is written when the diff
+      // found something - which keeps a summary-only edit silent, as before,
+      // and records the release change.
+      //
+      // An open quest keeps appending unconditionally: "somebody touched
+      // this" is itself worth a line while the quest is live.
+      const changes = await this.diffQuest(quest, patch);
+      if (!quest.completedAt || changes.length > 0) {
         patch.history = [
           ...quest.history,
           {
             at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
-            changes: await this.diffQuest(quest, patch),
+            changes,
           },
         ];
       }
