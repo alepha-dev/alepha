@@ -127,15 +127,20 @@ export class ServerSecurityProvider {
         const sub = user?.id ?? test.id;
         const roles = user?.roles ?? test.roles;
 
+        const realm = user?.realm ?? this.securityProvider.getRealms()[0]?.name;
+
         const token = await this.jwtProvider.create(
           {
             sub,
             roles,
+            // Stands in for a real access token, so it carries the same
+            // audience `createToken` sets — otherwise the helper mints a
+            // token no realm will claim (see JwtProvider.matchesRealmAudience).
+            aud: realm,
           },
-          user?.realm ?? this.securityProvider.getRealms()[0]?.name,
-          // Stands in for a real access token, so it must carry the same `typ`
-          // the resolvers require — otherwise the helper mints a token the
-          // server refuses (see JwtProvider.isAccessToken).
+          realm,
+          // Same reasoning for `typ`: a helper token the server refuses is
+          // worse than no helper at all (see JwtProvider.isAccessToken).
           { header: { typ: this.jwtProvider.accessTokenTyp } },
         );
 

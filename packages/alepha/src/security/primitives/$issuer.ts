@@ -255,6 +255,13 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
           return null;
         }
 
+        // Anti-replay: a token minted by realm B must not authenticate on
+        // realm A. Every realm signs with the same key by default, so the
+        // signature alone decides nothing.
+        if (!this.jwt.matchesRealmAudience(this.name, result.payload)) {
+          return null;
+        }
+
         // Anti-replay: a token minted on tenant A must not authenticate on
         // tenant B. This is the primary auth path for `$realm`-based apps —
         // skipping the check here would make it dead code.

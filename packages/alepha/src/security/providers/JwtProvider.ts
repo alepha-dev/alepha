@@ -73,6 +73,68 @@ export class JwtProvider {
   }
 
   /**
+   * Anti-replay across realms. A token minted by realm B must not
+   * authenticate on realm A.
+   *
+   * Nothing else stops it. Every realm in an application signs with the same
+   * key by default, so B's signature verifies under A; the resolvers then run
+   * in priority order and the FIRST one to verify claims the request, which
+   * resolves the caller as A and substitutes A's roles for their own. Measured
+   * with two realms: a token minted `aud=staff roles=["pending","admin"]`
+   * resolved as `realm=citizens roles=["user"]`. It happened to fail closed
+   * there only because the wrong realm granted less, and which realm is
+   * declared first is an accident.
+   *
+   * `createToken` sets `aud` to the issuing realm's name, so comparing it
+   * against the resolving realm is the whole check. This is the same idea as
+   * {@link SecurityProvider.matchesTenantClaim} one level up, whose comment
+   * already says "a token minted on tenant A must not authenticate on tenant
+   * B"; realms had no equivalent.
+   *
+   * Enforced only for realms whose key we hold, exactly like
+   * {@link JwtProvider.isAccessToken}: an external IdP sets `aud` to its own
+   * client id, so requiring ours would reject every federated token. A
+   * federated realm is protected by its own JWKS instead - another IdP's
+   * token does not verify against it.
+   */
+  public matchesRealmAudience(
+    name: string,
+    payload: { aud?: string | string[] },
+  ): boolean {
+    if (!this.isTokenIssuer(name)) {
+      return true;
+    }
+    const { aud } = payload;
+
+    // A token carrying no audience names no realm. That is unambiguous only
+    // while there is one realm to name: `JwtProvider.create` is public API and
+    // an application minting its own token has no reason to set `aud` in a
+    // single-realm app, so refusing it there would be a break with nothing
+    // bought. With two realms the same token is claimed by whichever resolver
+    // runs first, which is the fault this method exists to close.
+    if (aud === undefined) {
+      return this.signedRealmNames().size <= 1;
+    }
+
+    return Array.isArray(aud) ? aud.includes(name) : aud === name;
+  }
+
+  /**
+   * The realms this process signs for - the ones whose tokens it mints, and
+   * therefore the ones an `aud` claim can disambiguate. A federated issuer is
+   * not among them: it holds a JWKS, not a key of ours.
+   */
+  protected signedRealmNames(): Set<string> {
+    const names = new Set<string>(this.signers.keys());
+    for (const it of this.keystore) {
+      if (it.secretKey) {
+        names.add(it.name);
+      }
+    }
+    return names;
+  }
+
+  /**
    * Adds a key loader to the embedded keystore.
    *
    * @param name

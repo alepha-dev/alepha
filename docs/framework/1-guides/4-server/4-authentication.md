@@ -94,6 +94,27 @@ class App {
 - **admin**: Full access to all resources and permissions.
 - **user**: Access to owned resources only.
 
+### Several realms: a token belongs to the one that minted it
+
+Realms share a signing key by default, so a signature alone does not say which
+realm a token came from. What does is its `aud` claim, which `createToken`
+sets to the issuing realm's name; a resolver refuses a token whose audience
+names a different realm, the way the tenant check already refuses a token
+minted on another tenant.
+
+That matters when you mint a token by hand. `JwtProvider.create`'s second
+argument picks a signing key, not a realm, so in a multi-realm app a token
+minted without an audience names nothing and is refused. Set one:
+
+```typescript
+await jwt.create({ sub: user.id, roles, aud: "staff" }, "staff", {
+  header: { typ: jwt.accessTokenTyp },
+});
+```
+
+A single-realm app is unaffected, and so is a federated issuer: its `aud` is
+its IdP's client id, and it is protected by holding its own JWKS instead.
+
 ### Settings That Send a Code Need `features.notifications`
 
 `verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed` each

@@ -163,6 +163,13 @@ export class SecurityProvider {
           return null;
         }
 
+        // A token minted by another realm must not authenticate here: every
+        // realm signs with the same key by default, so the signature check
+        // passing says nothing about which realm minted it.
+        if (!this.jwt.matchesRealmAudience(realmName, result.payload)) {
+          return null;
+        }
+
         if (!this.matchesTenantClaim(result.payload)) {
           return null;
         }
