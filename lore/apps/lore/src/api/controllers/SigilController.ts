@@ -17,6 +17,7 @@ import {
   type SigilResource,
   sigilResourceSchema,
 } from "../schemas/sigilResourceSchema.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { SigilTokenService } from "../services/SigilTokenService.ts";
 
@@ -34,6 +35,7 @@ export type { MintedSigil, SigilResource };
 export class SigilController {
   protected sigils = $repository(sigils);
   protected security = $inject(ProjectSecurityService);
+  protected audits = $inject(LoreAudits);
   protected tokens = $inject(SigilTokenService);
 
   /**
@@ -88,6 +90,16 @@ export class SigilController {
           tokenPrefix: minted.prefix,
           kinds: body.kinds ?? [...SIGIL_KINDS],
           createdBy: user.id,
+        });
+
+        // A sigil is a credential, so its whole life is audited and kept
+        // longer than the rest — see `LoreAudits`.
+        await this.audits.sigil.logSuccess("create", {
+          ...this.audits.actor(user),
+          resourceType: "sigil",
+          resourceId: created.id,
+          description: created.name,
+          metadata: { projectId: params.projectId },
         });
 
         return { ...this.toResource(created), token: minted.token };
@@ -158,6 +170,19 @@ export class SigilController {
       });
 
       const rotated = await this.loadSigil(params.projectId, params.sigilId);
+
+      // The one UPDATE in the audit set: rotating is what revoking a leaked
+      // token looks like, and "when was this rotated" is the question asked
+      // after the leak is found.
+      await this.audits.sigil.logSuccess("rotate", {
+        ...this.audits.actor(user),
+        severity: "warning",
+        resourceType: "sigil",
+        resourceId: sigil.id,
+        description: sigil.name,
+        metadata: { projectId: params.projectId },
+      });
+
       return { ...this.toResource(rotated), token: minted.token };
     },
   });
@@ -263,6 +288,18 @@ export class SigilController {
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
       await this.sigils.deleteById(sigil.id);
+
+      // Deleting takes every analytics row with it (all four tables cascade
+      // on `sigilId`), which is why rotate exists and why this is a warning.
+      await this.audits.sigil.logSuccess("delete", {
+        ...this.audits.actor(user),
+        severity: "warning",
+        resourceType: "sigil",
+        resourceId: sigil.id,
+        description: sigil.name,
+        metadata: { projectId: params.projectId },
+      });
+
       return { ok: true };
     },
   });

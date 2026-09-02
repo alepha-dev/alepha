@@ -36,6 +36,7 @@ import {
 } from "../schemas/myFeedbackResourceSchema.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
@@ -91,6 +92,7 @@ export class FeedbackController {
 
   protected rateLimiter = $inject(FeedbackRateLimiter);
   protected bound = $inject(BoundParameters);
+  protected audits = $inject(LoreAudits);
   protected security = $inject(ProjectSecurityService);
   protected fileService = $inject(FileService);
   protected fileSystem = $inject(FileSystemProvider);
@@ -501,6 +503,18 @@ export class FeedbackController {
       }
 
       await this.feedback.updateById(feedback.id, { status: "accepted" });
+
+      // A triage decision, which is the owner's judgement rather than a data
+      // change: the row survives either way, and what is worth recording is
+      // who decided and when.
+      await this.audits.feedback.logSuccess("accept", {
+        ...this.audits.actor(user),
+        resourceType: "feedback",
+        resourceId: String(feedback.id),
+        description: feedback.title,
+        metadata: { projectId: params.projectId, shortId: feedback.shortId },
+      });
+
       return { ok: true };
     },
   });
@@ -528,6 +542,15 @@ export class FeedbackController {
       );
 
       await this.feedback.updateById(feedback.id, { status: "rejected" });
+
+      await this.audits.feedback.logSuccess("reject", {
+        ...this.audits.actor(user),
+        resourceType: "feedback",
+        resourceId: String(feedback.id),
+        description: feedback.title,
+        metadata: { projectId: params.projectId, shortId: feedback.shortId },
+      });
+
       return { ok: true };
     },
   });

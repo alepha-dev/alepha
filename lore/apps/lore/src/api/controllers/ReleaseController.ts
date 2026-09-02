@@ -23,6 +23,7 @@ import {
   releaseTagSchema,
 } from "../schemas/releaseTagSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import {
   type ReleaseContents,
@@ -33,6 +34,7 @@ export class ReleaseController {
   releases = $repository(releases);
   quests = $repository(quests);
   dt = $inject(DateTimeProvider);
+  audits = $inject(LoreAudits);
   limits = $inject(ProjectLimits);
   contents = $inject(ReleaseContentService);
   owned = $inject(OwnedResourceProvider);
@@ -210,7 +212,7 @@ export class ReleaseController {
       }),
       response: releases.schema,
     },
-    handler: async ({ body }) => {
+    handler: async ({ body, user }) => {
       const release = this.owned.get<Release>();
       this.assertOpen(release);
 
@@ -223,7 +225,7 @@ export class ReleaseController {
       const { markdown, groups } = this.renderChangelog(withTitle, contents);
       const progress = this.contents.progressOf(release, contents);
 
-      return await this.releases.updateById(release.id, {
+      const published = await this.releases.updateById(release.id, {
         releasedAt: this.dt.nowISOString(),
         changelog: markdown,
         // Frozen TOGETHER with the markdown. See `releaseChangelogGroupSchema`
@@ -232,6 +234,18 @@ export class ReleaseController {
         ...progress,
         ...(body.title ? { title: body.title } : {}),
       });
+
+      // Publishing is one-way and freezes the record, which is exactly what
+      // makes it worth a row.
+      await this.audits.release.logSuccess("publish", {
+        ...this.audits.actor(user),
+        resourceType: "release",
+        resourceId: String(release.id),
+        description: release.tag ?? release.title,
+        metadata: { projectId: release.projectId },
+      });
+
+      return published;
     },
   });
 
@@ -254,14 +268,14 @@ export class ReleaseController {
       }),
       response: releases.schema,
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, user }) => {
       const release = this.owned.get<Release>();
 
       if (!release.releasedAt) {
         throw new BadRequestError("Release is already open.");
       }
 
-      return await this.releases.updateById(params.id, {
+      const reopened = await this.releases.updateById(params.id, {
         releasedAt: null,
         changelog: null,
         changelogGroups: null,
@@ -270,6 +284,19 @@ export class ReleaseController {
         shelved: null,
         total: null,
       });
+
+      // Beside `publish` rather than left out: a release published, reopened
+      // and published again reads as one event without this row.
+      await this.audits.release.logSuccess("reopen", {
+        ...this.audits.actor(user),
+        severity: "warning",
+        resourceType: "release",
+        resourceId: String(release.id),
+        description: release.tag ?? release.title,
+        metadata: { projectId: release.projectId },
+      });
+
+      return reopened;
     },
   });
 

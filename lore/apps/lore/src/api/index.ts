@@ -59,6 +59,7 @@ import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
+import { LoreAudits } from "./services/LoreAudits.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
@@ -107,6 +108,10 @@ export const LoreApi = $module({
     // Declares the `$realm`. Nothing injects it — it must be listed here
     // explicitly or the realm (and every permission) is never registered.
     AppSecurityProvider,
+    // Declares the $audit types. Nothing but the controllers inject it, and
+    // they inject it lazily - listed here so the types are registered at
+    // boot and the admin filter offers them before any row exists.
+    LoreAudits,
     ProjectSecurityService,
     ReleaseAttachmentService,
     ReleaseContentService,

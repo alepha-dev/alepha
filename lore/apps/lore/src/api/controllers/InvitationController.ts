@@ -13,12 +13,14 @@ import { $action, BadRequestError, okSchema } from "alepha/server";
 import { projects } from "../entities/projects.ts";
 import { invitationInboxItemSchema } from "../schemas/invitationInboxItemSchema.ts";
 import { invitationTokenPreviewSchema } from "../schemas/invitationTokenPreviewSchema.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class InvitationController {
   protected readonly url = "/invitations";
   protected readonly group = "invitations";
   protected readonly invitationService = $inject(InvitationService);
+  protected readonly audits = $inject(LoreAudits);
   protected readonly invitationTokens = $inject(InvitationTokenService);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly users = $repository(users);
@@ -230,6 +232,16 @@ export class InvitationController {
     },
     handler: async ({ params, user }) => {
       const result = await this.invitationService.accept(params.id, user);
+
+      // The other half of `member:leave`. Both sides of a membership are
+      // recorded, because "when did they join" and "when did they go" are
+      // the same question asked from either end.
+      await this.audits.member.logSuccess("join", {
+        ...this.audits.actor(user),
+        resourceType: "project",
+        resourceId: String(result.resourceId),
+      });
+
       return { ok: true, projectId: result.resourceId };
     },
   });
