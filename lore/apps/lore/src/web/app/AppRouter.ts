@@ -915,23 +915,11 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Quests`,
     }),
     lazy: () => import("./components/project/ProjectQuestsPage.tsx"),
-    loader: async () => {
-      // The index of a project. `defaultSurface` decides which surface it
-      // lands on, so a kanban-first team gets the board from every machine
-      // and an invited member inherits it — which a per-browser cookie
-      // (`questsViewAtom`, retired with this) could never do.
-      //
-      // ⚠️ This is NOT the shape that broke #156. That was a `useEffect`
-      // seeding `?view=` from `localStorage` during render, which also ran
-      // on the way OUT of the page, saw the next route's empty query and
-      // bounced the user back — every sidebar link was dead. A loader
-      // redirect runs once, on entry, resolves before anything paints, and
-      // has no outgoing render to misread. Nothing here writes the URL back.
-      const project = this.alepha.store.get(currentProjectAtom);
-      if (project?.defaultSurface === "kanban" && project.features?.kanban) {
-        throw new Redirection(`/${project.slug}/kanban`);
-      }
-    },
+    // No loader. This used to redirect to `/kanban` when the project's
+    // `defaultSurface` said so; the setting is gone (feedback #2066), and a
+    // bare `/:projectSlug` always lands on the list. The board is reached
+    // from its sidebar entry, and nothing else may send a bare project URL
+    // anywhere: a redirect here is the shape #156 was about.
   });
 
   /**

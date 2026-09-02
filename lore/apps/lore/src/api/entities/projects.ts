@@ -267,21 +267,18 @@ export const projects = $entity({
      */
     kanbanColumnConfig: kanbanColumnConfigSchema.optional(),
     /**
-     * Which surface bare `/:projectSlug` lands on: the grouped quest table
-     * or the Kanban board. Absent means the table.
+     * @deprecated Frozen dead column since 2026-09-02 (feedback #2066).
      *
-     * Per-project rather than per-browser on purpose. This replaced
-     * `questsViewAtom`, a cookie: a team that works kanban-first had to
-     * rediscover the toggle on every machine, and an invited member
-     * inherited nothing. The board being a real route (`/kanban`) is what
-     * made a stored preference a redirect target rather than a rendering
-     * mode.
+     * It held which surface a bare `/:projectSlug` landed on, the list or
+     * the Kanban board, and drove a redirect in the index route's loader.
+     * The "Open on the board" setting and that redirect are gone; nothing
+     * reads or writes this any more, and a bare project URL always lands
+     * on the list.
      *
-     * NB: `z.optional` with NO `db.default(...)`, for the same reason as
-     * `retentionDays` above — a column DEFAULT triggers a `projects` table
-     * rebuild on D1, and `projects` is the CASCADE parent that wiped
-     * production on 2026-05-13. The "list" fallback lives in the index
-     * route, not in the column.
+     * Kept declared, still `z.optional` with no `db.default(...)`, because
+     * dropping a column on `projects` is the D1 table rebuild that
+     * cascade-wipes its children (2026-05-13). Same treatment as
+     * `unlockedFeatures` and `milestoneDuration`.
      */
     defaultSurface: z.enum(["list", "kanban"]).optional(),
     /**

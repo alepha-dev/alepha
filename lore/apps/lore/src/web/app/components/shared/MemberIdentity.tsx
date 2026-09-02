@@ -1,9 +1,4 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@alepha/ui/components/ui/hover-card";
 import { useI18n } from "alepha/react/i18n";
 import { Crown, User as UserIcon } from "lucide-react";
 
@@ -40,6 +35,11 @@ export interface MemberIdentityProps {
  * Single shared way to render a project member anywhere in the app.
  * Identity always comes from the user account — there is no per-project
  * alias or avatar.
+ *
+ * No hover card. It used to open one showing the same picture and the same
+ * name as the row it sat on, plus the Owner badge; a surface that repeats
+ * what is under it is noise (feedback #2067). The one thing it alone showed,
+ * the badge, is on the row now, wherever the name is.
  */
 export const MemberIdentity = (props: MemberIdentityProps) => {
   const { member, variant = "compact" } = props;
@@ -50,37 +50,21 @@ export const MemberIdentity = (props: MemberIdentityProps) => {
   const name = displayName(member.user, "") || String(tr("members.unknown"));
 
   return (
-    <HoverCard>
-      <HoverCardTrigger
-        render={
-          <span
-            data-testid="member-identity"
-            className="inline-flex items-center gap-2"
-          />
-        }
-      >
-        <Avatar src={src} alt={name} size={variant === "card" ? 10 : 6} />
-        {variant !== "compact" && (
-          <span className="text-sm font-medium">{name}</span>
-        )}
-      </HoverCardTrigger>
-      <HoverCardContent align="start">
-        <div className="flex items-start gap-3">
-          <Avatar src={src} alt={name} size={10} />
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-medium">{name}</span>
-              {member.owner && (
-                <Badge variant="secondary" className="gap-1 py-0">
-                  <Crown className="size-3" />
-                  {tr("members.owner")}
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-      </HoverCardContent>
-    </HoverCard>
+    <span
+      data-testid="member-identity"
+      className="inline-flex items-center gap-2"
+    >
+      <Avatar src={src} alt={name} size={variant === "card" ? 10 : 6} />
+      {variant !== "compact" && (
+        <span className="text-sm font-medium">{name}</span>
+      )}
+      {variant !== "compact" && member.owner && (
+        <Badge variant="secondary" className="gap-1 py-0">
+          <Crown className="size-3" />
+          {tr("members.owner")}
+        </Badge>
+      )}
+    </span>
   );
 };
 

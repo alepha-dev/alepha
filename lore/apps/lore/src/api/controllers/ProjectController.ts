@@ -441,7 +441,6 @@ export class ProjectController {
         retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
         // Which surface bare `/:projectSlug` lands on. `null` clears the
         // override → the index route falls back to the quest table.
-        defaultSurface: z.enum(["list", "kanban"]).nullable().optional(),
         // Who may read `/:projectSlug/roadmap`. `null` clears the override →
         // `ProjectSecurityService.roadmapVisibilityOf` reads it as `off`.
         roadmapVisibility: roadmapVisibilitySchema.nullable().optional(),
@@ -487,10 +486,6 @@ export class ProjectController {
 
       if ("retentionDays" in body) {
         project.retentionDays = body.retentionDays ?? undefined;
-      }
-
-      if ("defaultSurface" in body) {
-        project.defaultSurface = body.defaultSurface ?? undefined;
       }
 
       if ("roadmapVisibility" in body) {

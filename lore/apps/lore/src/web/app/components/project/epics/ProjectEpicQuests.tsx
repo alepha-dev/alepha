@@ -1,14 +1,23 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@alepha/ui/components/ui/sheet";
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject } from "alepha/react";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { useState } from "react";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import {
@@ -17,6 +26,7 @@ import {
   QUEST_PRIORITY_TONE,
   QUEST_STATUS_TONE,
 } from "../quest/questChips.ts";
+import QuestCreate from "../quest/QuestCreate.tsx";
 import EpicQuestPicker from "./EpicQuestPicker.tsx";
 
 export interface ProjectEpicQuestsProps {
@@ -29,6 +39,12 @@ export interface ProjectEpicQuestsProps {
   quests: QuestResource[] | null;
   onAttach: (questId: number) => void;
   onDetach: (quest: QuestResource) => void;
+  /**
+   * A quest the create sheet just made, for the owner of this list to file
+   * under the epic and reload. The sheet is told to stay put (`onCreated`),
+   * so the reader keeps the epic's page rather than landing on the quest's.
+   */
+  onCreated: (quest: QuestResource) => void | Promise<void>;
 }
 
 /**
@@ -56,8 +72,11 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const dateFormatter = useInject(DateTimeProvider);
+  const [project] = useStore(currentProjectAtom);
   const quests = props.quests;
   const attachedIds = new Set((quests ?? []).map((q) => q.id));
+  // The create sheet, opened from the toolbar beside Attach (feedback #2057).
+  const [creating, setCreating] = useState(false);
 
   return (
     <div className="min-h-0 flex-1 overflow-auto p-4">
@@ -82,11 +101,25 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
               // popover of its own: `actions` is for icon buttons that do
               // something on click.
               toolbar={
-                <EpicQuestPicker
-                  projectId={props.projectId}
-                  attachedIds={attachedIds}
-                  onAttach={props.onAttach}
-                />
+                <>
+                  {/* The page's primary action (quest #1682's form): a new
+                      quest filed straight under this epic. Attach stays
+                      outline beside it, for a quest that already exists. */}
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!project}
+                    onClick={() => setCreating(true)}
+                  >
+                    <Plus className="size-4" />
+                    {tr("epic.quests.create")}
+                  </Button>
+                  <EpicQuestPicker
+                    projectId={props.projectId}
+                    attachedIds={attachedIds}
+                    onAttach={props.onAttach}
+                  />
+                </>
               }
               // Per project, not per epic: how the reader likes this table
               // sorted is a preference about quests, not about one epic.
@@ -194,6 +227,29 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
           )}
         </CardContent>
       </Card>
+
+      {/* The same `QuestCreate` the header and the Quests list open. The
+          epic is context, not a field: the sheet knows nothing of it, and
+          `onCreated` hands the new quest to the page, which attaches it. */}
+      {project && (
+        <Sheet open={creating} onOpenChange={setCreating}>
+          <SheetContent
+            side="right"
+            className="flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-[50vw]"
+          >
+            <SheetHeader className="shrink-0">
+              <SheetTitle>{tr("epic.quests.create")}</SheetTitle>
+            </SheetHeader>
+            {creating ? (
+              <QuestCreate
+                project={project}
+                onSubmit={() => setCreating(false)}
+                onCreated={(quest) => void props.onCreated(quest)}
+              />
+            ) : null}
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 };
