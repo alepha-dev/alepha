@@ -596,11 +596,14 @@ describe("BuildDockerTask", () => {
         ),
       );
 
-      return shell.calls.map((it) => it.command).join("\n");
+      return {
+        cmd: shell.calls.map((it) => it.command).join("\n"),
+        dockerfile: readDockerfile(fs),
+      };
     };
 
-    it("emits the three derived labels when oci is on", async () => {
-      const cmd = await buildWithImage({
+    it("passes the build-describing labels on the docker build", async () => {
+      const { cmd } = await buildWithImage({
         image: { tag: "ghcr.io/myorg/app", oci: true },
       });
 
@@ -611,8 +614,8 @@ describe("BuildDockerTask", () => {
       expect(cmd).toContain("--label 'org.opencontainers.image.version=1.2.3'");
     });
 
-    it("emits source, title, description and licenses when configured", async () => {
-      const cmd = await buildWithImage({
+    it("writes source, title, description and licenses into the Dockerfile", async () => {
+      const { cmd, dockerfile } = await buildWithImage({
         image: {
           tag: "ghcr.io/myorg/app",
           oci: true,
@@ -623,32 +626,41 @@ describe("BuildDockerTask", () => {
         },
       });
 
-      // `source` is what links the package to its repository on GHCR.
-      expect(cmd).toContain(
-        "--label 'org.opencontainers.image.source=https://github.com/myorg/app'",
+      // In the FILE, not on the command: a build the CLI did not run - the
+      // release workflow drives `docker buildx build` on this file - must
+      // still carry them, and `source` is what links the published package
+      // to its repository on GHCR.
+      expect(dockerfile).toContain(
+        'LABEL "org.opencontainers.image.source"="https://github.com/myorg/app"',
       );
-      expect(cmd).toContain("--label 'org.opencontainers.image.title=App'");
-      expect(cmd).toContain(
-        "--label 'org.opencontainers.image.description=Self-hosted app'",
+      expect(dockerfile).toContain(
+        'LABEL "org.opencontainers.image.title"="App"',
       );
-      expect(cmd).toContain(
-        "--label 'org.opencontainers.image.licenses=Apache-2.0'",
+      expect(dockerfile).toContain(
+        'LABEL "org.opencontainers.image.description"="Self-hosted app"',
       );
+      expect(dockerfile).toContain(
+        'LABEL "org.opencontainers.image.licenses"="Apache-2.0"',
+      );
+      // Not duplicated onto the command line.
+      expect(cmd).not.toContain("org.opencontainers.image.source");
     });
 
     it("omits a label entirely rather than emitting an empty one", async () => {
-      const cmd = await buildWithImage({
+      const { dockerfile } = await buildWithImage({
         image: { tag: "ghcr.io/myorg/app", oci: true, title: "App" },
       });
 
-      expect(cmd).toContain("--label 'org.opencontainers.image.title=App'");
-      expect(cmd).not.toContain("org.opencontainers.image.source");
-      expect(cmd).not.toContain("org.opencontainers.image.description");
-      expect(cmd).not.toContain("org.opencontainers.image.licenses");
+      expect(dockerfile).toContain(
+        'LABEL "org.opencontainers.image.title"="App"',
+      );
+      expect(dockerfile).not.toContain("org.opencontainers.image.source");
+      expect(dockerfile).not.toContain("org.opencontainers.image.description");
+      expect(dockerfile).not.toContain("org.opencontainers.image.licenses");
     });
 
     it("escapes a label value carrying a quote", async () => {
-      const cmd = await buildWithImage({
+      const { dockerfile } = await buildWithImage({
         image: {
           tag: "ghcr.io/myorg/app",
           oci: true,
@@ -656,13 +668,13 @@ describe("BuildDockerTask", () => {
         },
       });
 
-      expect(cmd).toContain(
-        `--label 'org.opencontainers.image.description=It'\\''s a "self-hosted" app'`,
+      expect(dockerfile).toContain(
+        'LABEL "org.opencontainers.image.description"="It\'s a \\"self-hosted\\" app"',
       );
     });
 
     it("emits no labels at all when oci is off", async () => {
-      const cmd = await buildWithImage({
+      const { cmd, dockerfile } = await buildWithImage({
         image: {
           tag: "ghcr.io/myorg/app",
           source: "https://github.com/myorg/app",
@@ -670,6 +682,31 @@ describe("BuildDockerTask", () => {
       });
 
       expect(cmd).not.toContain("--label");
+      expect(dockerfile).not.toContain("LABEL");
+    });
+
+    it("writes the labels into the compile variant too", async () => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+
+      await task.run(
+        createCtx(fs, shell, {
+          target: "docker",
+          runtime: "bun",
+          docker: {
+            compile: true,
+            image: {
+              tag: "ghcr.io/myorg/app",
+              oci: true,
+              source: "https://github.com/myorg/app",
+            },
+          },
+        }),
+      );
+
+      expect(readDockerfile(fs)).toContain(
+        'LABEL "org.opencontainers.image.source"="https://github.com/myorg/app"',
+      );
     });
   });
 });

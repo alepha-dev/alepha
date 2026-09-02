@@ -86,6 +86,7 @@ export class BuildDockerTask extends BuildTask {
           env: ctx.options.docker?.env ?? {},
           volumes: ctx.options.docker?.volumes ?? [],
           user: this.resolveUser(ctx, compile),
+          labels: this.staticOciLabels(ctx),
         });
       },
     });
@@ -341,6 +342,7 @@ export class BuildDockerTask extends BuildTask {
       env: Record<string, string>;
       volumes: string[];
       user: string | null;
+      labels: Record<string, string>;
     },
   ): Promise<void> {
     const header =
@@ -353,6 +355,7 @@ export class BuildDockerTask extends BuildTask {
 
     const envLines = this.renderEnv(opts.env);
     const volumeLines = this.renderVolumes(opts.volumes);
+    const labelLines = this.renderLabels(opts.labels);
 
     let dockerfile: string;
 
@@ -367,7 +370,7 @@ export class BuildDockerTask extends BuildTask {
       // `install` is ignored in compile mode — distroless has no npm.
       dockerfile = `${header}FROM ${opts.compile.base}
 WORKDIR /app
-
+${labelLines ? `\n${labelLines}` : ""}
 COPY app .
 ${migrationsLine}
 ENV SERVER_HOST=0.0.0.0
@@ -401,7 +404,7 @@ ${userLine}ENTRYPOINT ["/app/app"]
       const userLine = opts.user ? `USER ${opts.user}\n\n` : "";
       dockerfile = `${header}FROM ${image}
 WORKDIR /app
-
+${labelLines ? `\n${labelLines}` : ""}
 COPY${chownFlag} . .
 
 ${baseInstallLine}${extraInstallLine}${volumePrepLine}
@@ -418,31 +421,48 @@ ${userLine}CMD ["${command}", "index.js"]
   }
 
   /**
-   * `--label` arguments for the `org.opencontainers.image.*` annotations.
+   * The `org.opencontainers.image.*` annotations that do not depend on the
+   * build invocation, written into the Dockerfile as `LABEL` lines.
    *
-   * Three are always derived (revision, created, version); the other four
-   * are config, and a field left unset emits no label rather than an empty
-   * one. `source` in particular is what links a package to its repository
-   * on GHCR, and is deliberately never read from the git remote — see
-   * `build.docker.image.source`.
+   * They belong in the file rather than on the `docker build` command,
+   * because they describe the image the Dockerfile defines and must survive
+   * a build the CLI did not run — the release workflow drives
+   * `docker buildx build` on this file directly, and `source` is what links
+   * the published package to its repository on a registry like GHCR.
+   *
+   * A field left unset emits no label, never an empty one.
    */
-  protected async buildOciLabelArgs(
-    imageConfig: {
-      source?: string;
-      title?: string;
-      description?: string;
-      licenses?: string;
-    },
-    version: string,
-  ): Promise<string[]> {
+  protected staticOciLabels(ctx: BuildTaskContext): Record<string, string> {
+    const imageConfig = ctx.options.docker?.image;
+    if (!imageConfig?.oci) {
+      return {};
+    }
+
     const labels: Record<string, string | undefined> = {
-      revision: await this.utils.getGitRevision(),
-      created: this.dateTime.nowISOString(),
-      version,
       source: imageConfig.source,
       title: imageConfig.title,
       description: imageConfig.description,
       licenses: imageConfig.licenses,
+    };
+
+    return Object.fromEntries(
+      Object.entries(labels).filter(
+        ([, value]) => value !== undefined && value !== "",
+      ),
+    ) as Record<string, string>;
+  }
+
+  /**
+   * `--label` arguments for the annotations that describe THIS build rather
+   * than the source: the git revision, the build timestamp, and the version
+   * taken from the resolved image tag. The config-driven ones are in the
+   * Dockerfile — see {@link staticOciLabels}.
+   */
+  protected async buildOciLabelArgs(version: string): Promise<string[]> {
+    const labels: Record<string, string | undefined> = {
+      revision: await this.utils.getGitRevision(),
+      created: this.dateTime.nowISOString(),
+      version,
     };
 
     return Object.entries(labels)
@@ -451,6 +471,19 @@ ${userLine}CMD ["${command}", "index.js"]
         ([name, value]) =>
           `--label ${this.escapeShellArg(`org.opencontainers.image.${name}=${value}`)}`,
       );
+  }
+
+  /**
+   * `LABEL` lines in exec form, which needs no escaping rules of its own for
+   * a description carrying a quote or a space.
+   */
+  protected renderLabels(labels: Record<string, string>): string {
+    return Object.entries(labels)
+      .map(
+        ([name, value]) =>
+          `LABEL ${JSON.stringify(`org.opencontainers.image.${name}`)}=${JSON.stringify(value)}\n`,
+      )
+      .join("");
   }
 
   /**
@@ -514,7 +547,7 @@ ${userLine}CMD ["${command}", "index.js"]
     }
 
     if (imageConfig?.oci) {
-      args.push(...(await this.buildOciLabelArgs(imageConfig, version)));
+      args.push(...(await this.buildOciLabelArgs(version)));
     }
 
     const argsStr = args.length > 0 ? `${args.join(" ")} ` : "";

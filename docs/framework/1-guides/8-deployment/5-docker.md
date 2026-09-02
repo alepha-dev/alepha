@@ -127,7 +127,14 @@ export default defineConfig({
 });
 ```
 
-`oci: true` derives three labels - `revision` (git commit SHA), `created` and `version`. The four fields beside it are config, emitted only when set: a field left unset produces no label rather than an empty one.
+`oci: true` derives three labels - `revision` (git commit SHA), `created` and `version` - and passes them to `docker build`, because each describes that particular build. The four config fields beside it go into the **generated Dockerfile** as `LABEL` lines instead, so they survive a build Alepha did not run:
+
+```dockerfile
+LABEL "org.opencontainers.image.source"="https://github.com/myorg/myapp"
+LABEL "org.opencontainers.image.title"="My App"
+```
+
+That matters as soon as something other than `--image` builds the image - a release pipeline running `docker buildx build` on `dist/` for two architectures, say. A field left unset produces no label rather than an empty one.
 
 `source` is the one that matters for a published package: it is what links a GHCR package to its repository, and without it the package page stands alone, with no README and no repo link. It is **never derived from the git remote** - an SSH remote is not a URL, a CI checkout may have no remote at all, and a fork would publish either the upstream's URL or its own with nothing inside the build able to tell which is meant. A wrong `source` on a published image is worse than a missing one.
 

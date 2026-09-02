@@ -3,6 +3,10 @@ name: Release
 permissions:
   contents: write
   id-token: write
+  # ⚠️ Required for the ghcr push below, and it has to be spelled out:
+  # naming ANY permission drops every unnamed scope to `none`, so a token that
+  # otherwise looks fully privileged 403s on the registry without this line.
+  packages: write
 
 # One release at a time, and never cancel one.
 #
@@ -243,6 +247,62 @@ jobs:
       - name: Push Changes and Tags
         run: |
           git push --follow-tags
+
+      # ──────────────────────────────────────────────────────────────────
+      # The self-hosted Lore image, `docker pull ghcr.io/alepha-dev/lore`.
+      #
+      # After the git push rather than between it and `npm publish`: a pushed
+      # image tag is irreversible in the same way a published version is, and
+      # slotting it into the npm/git window would widen the one tear this
+      # ordering exists to keep narrow.
+      #
+      # It reuses the `yarn build` above. With `target: "docker"` in Lore's
+      # config that step already leaves `apps/lore/dist` complete with its
+      # generated Dockerfile, so there is no second build anywhere. The
+      # config-driven OCI labels — `source` above all, which is what links the
+      # published package to this repository — are `LABEL` lines inside that
+      # file, so they survive a build the Alepha CLI did not run. Only the
+      # three that describe THIS build are passed here.
+      # ──────────────────────────────────────────────────────────────────
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ⚠️ Not optional. The default builder on a GitHub runner uses the
+      # `docker` driver, which REFUSES a multi-platform build — and fails with
+      # a message about the driver rather than about platforms, which reads
+      # like an unrelated problem.
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      # One buildx invocation for both architectures rather than two native
+      # runners. Lore's generated Dockerfile has NO `RUN` line at all (Vite
+      # bundles everything, so there are no runtime deps to install), so a
+      # multi-platform build executes nothing under emulation and the two
+      # images differ only in their base layer. Two native jobs would also be
+      # the harder build here: the version commit is only pushed at the very
+      # end, so a second job would have nothing to check out and `dist` would
+      # have to travel as an artifact.
+      #
+      # Two tags, both fixed. Nothing floating: Lore's version IS the
+      # framework's, so a `:0` tag would move across unrelated framework
+      # majors.
+      - name: Build and Push the Lore Image
+        working-directory: apps/lore/dist
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --label "org.opencontainers.image.version=${VERSION}" \
+            --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --tag "ghcr.io/alepha-dev/lore:${VERSION}" \
+            --tag "ghcr.io/alepha-dev/lore:latest" \
+            --push .
 
       # One step, not two: the release used to be created before the build and
       # have its assets bolted on afterwards, because that avoided reordering a
