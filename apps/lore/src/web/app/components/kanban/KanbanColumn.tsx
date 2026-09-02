@@ -11,6 +11,7 @@ import type { I18n } from "../../services/I18n.ts";
 import type { ProjectUser } from "../shared/useProjectUsers.ts";
 import KanbanCard from "./KanbanCard.tsx";
 import KanbanColumnComposer from "./KanbanColumnComposer.tsx";
+import KanbanColumnMenu from "./KanbanColumnMenu.tsx";
 
 const PAGE_SIZE = 20;
 
@@ -43,6 +44,19 @@ export interface ColumnDescriptor {
    * it; it never refuses.
    */
   wipLimit?: number;
+  /**
+   * The operator's chosen dot colour, when they chose one. Carried beside
+   * `dotClass` rather than folded into it because the header's menu has to
+   * show WHICH token is selected, and a resolved class cannot be compared
+   * back to a token.
+   */
+  color?: PaletteColor;
+  /**
+   * `false` for the ends the board synthesizes. A synthesized lane has no
+   * entry in `kanbanColumns`, so there is nothing to rename, recolour or
+   * delete - which is what decides whether the header carries a menu.
+   */
+  editable?: boolean;
 }
 
 export interface KanbanColumnProps {
@@ -80,12 +94,25 @@ export interface KanbanColumnProps {
   agingOf: (quest: QuestResource) => "fresh" | "aging" | "stale";
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  /**
+   * Column management from the board itself (#1511). Absent for a reader
+   * who cannot manage columns, which is what keeps the header from offering
+   * an action the server would refuse.
+   */
+  onRename?: (name: string) => void;
+  onColor?: (color: PaletteColor | undefined) => void;
+  onDelete?: () => void;
+  /**
+   * True while one of the three is in flight, for this column only.
+   */
+  busy?: boolean;
 }
 
 const KanbanColumn = (props: KanbanColumnProps) => {
   const { descriptor, quests, last, onSelect } = props;
   const { tr } = useI18n<I18n, "en">();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [renaming, setRenaming] = useState(false);
   const { setNodeRef, isOver } = useDroppable({
     id: descriptor.key,
     data: {
@@ -145,9 +172,39 @@ const KanbanColumn = (props: KanbanColumnProps) => {
         <span
           className={`size-2 shrink-0 rounded-full ${descriptor.dotClass}`}
         />
-        <span className="truncate text-sm font-semibold">
-          {descriptor.label}
-        </span>
+        {renaming ? (
+          // Renamed in place rather than in a dialog: the field IS the
+          // header, so there is nothing to read the old name off while
+          // typing the new one.
+          <input
+            // Focused through a ref rather than `autoFocus`, which
+            // `jsx-a11y/no-autofocus` refuses: the field only exists because
+            // the operator just asked to rename, so landing in it is the
+            // point, but the attribute would also steal focus on any
+            // re-render that remounts the input.
+            ref={(el) => el?.focus()}
+            data-testid="kanban-column-rename-input"
+            aria-label={String(tr("kanban.column.rename"))}
+            defaultValue={descriptor.label}
+            maxLength={24}
+            className="border-input focus-visible:border-ring min-w-0 flex-1 rounded border bg-transparent px-1 text-sm font-semibold outline-none"
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                props.onRename?.(event.currentTarget.value);
+                setRenaming(false);
+              }
+              if (event.key === "Escape") setRenaming(false);
+            }}
+            onBlur={(event) => {
+              props.onRename?.(event.currentTarget.value);
+              setRenaming(false);
+            }}
+          />
+        ) : (
+          <span className="truncate text-sm font-semibold">
+            {descriptor.label}
+          </span>
+        )}
         <span
           data-testid="kanban-column-count"
           data-over-limit={
@@ -163,17 +220,32 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             ? `${quests.length}/${descriptor.wipLimit}`
             : quests.length}
         </span>
-        {props.onToggleCollapsed && (
-          <button
-            type="button"
-            data-testid="kanban-column-collapse"
-            aria-label={String(tr("kanban.column.collapse"))}
-            className="text-muted-foreground hover:text-foreground ml-auto shrink-0"
-            onClick={props.onToggleCollapsed}
-          >
-            <ChevronsLeftRight className="size-3.5" />
-          </button>
-        )}
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          {/* Only on a configured, in-progress column, and only for someone
+              who can manage them: a synthesized lane has nothing to rename
+              and a member would get a 403. */}
+          {descriptor.editable && props.onRename && (
+            <KanbanColumnMenu
+              name={descriptor.label}
+              color={descriptor.color}
+              busy={props.busy}
+              onRename={() => setRenaming(true)}
+              onColor={(color) => props.onColor?.(color)}
+              onDelete={() => props.onDelete?.()}
+            />
+          )}
+          {props.onToggleCollapsed && (
+            <button
+              type="button"
+              data-testid="kanban-column-collapse"
+              aria-label={String(tr("kanban.column.collapse"))}
+              className="text-muted-foreground hover:text-foreground shrink-0"
+              onClick={props.onToggleCollapsed}
+            >
+              <ChevronsLeftRight className="size-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Column body — scrollable */}

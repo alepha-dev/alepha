@@ -28,7 +28,7 @@
     "check:i18n": "yarn workspaces foreach -Apt run check:i18n",
     "check:migrations": "yarn workspaces foreach -Apt run check:migrations",
     "build": "yarn workspaces foreach -Apt run build",
-    "test:bun": "bun test ./packages/**/*.bun.spec.ts",
+    "test:bun": "bun scripts/testBun.ts",
     "e2e": "yarn workspaces foreach -Apt run e2e",
     "e2e-cli": "yarn w e2e-cli test"
   },

@@ -20,13 +20,14 @@ import {
   CalendarClock,
   ChevronDown,
   MapPin,
+  Plus,
   Rows3,
   Search,
   Tag,
   User,
   X,
 } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { KanbanController } from "@/api/controllers/KanbanController.ts";
@@ -41,7 +42,7 @@ import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
 import { kanbanFiltersAtom } from "../../atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { AreaDotColor } from "../shared/areaColor.ts";
+import { AREA_DOT_CLASS, AreaDotColor } from "../shared/areaColor.ts";
 import FilterSlot from "../shared/FilterSlot.tsx";
 import ToolbarSpinner from "../shared/ToolbarSpinner.tsx";
 import { useProjectUsers } from "../shared/useProjectUsers.ts";
@@ -53,6 +54,7 @@ import KanbanColumn, {
 } from "./KanbanColumn.tsx";
 import { KanbanGrouping } from "./kanbanGrouping.ts";
 import { KanbanLanes, type LaneMode } from "./kanbanLanes.ts";
+import { useKanbanColumnOps } from "./useKanbanColumnOps.ts";
 
 type QuestStatus = "new" | "accepted" | "completed";
 
@@ -180,6 +182,18 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const dt = useInject(DateTimeProvider);
   const dndId = useId();
 
+  /**
+   * Managing columns from the board (#1511).
+   *
+   * Owner-only, matched to the endpoints' own gate rather than guessed at:
+   * `addKanbanColumn` and its three siblings all carry `ownsAsOwner()`, so
+   * offering the controls to a member would promise a 403. Same reasoning as
+   * the members settings page.
+   */
+  const canManageColumns = project.createdBy === auth.user?.id;
+  const reloadRef = useRef<() => void>(() => {});
+  const columnOps = useKanbanColumnOps(project.id, () => reloadRef.current());
+
   useEffect(() => {
     questApi
       .listQuestTags({ query: { projectId: project.id } })
@@ -297,8 +311,16 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       subColumn: column.name,
       label: column.name,
       wipLimit: column.wipLimit,
-      dotClass:
-        column.status === "new"
+      color: column.color,
+      // A synthesized end has no entry in `kanbanColumns`, so there is
+      // nothing to rename, recolour or delete (#1511).
+      editable: !column.synthesized,
+      // The operator's token wins; without one the board derives a tint the
+      // way it always has. Both go through `AREA_DOT_CLASS`, so a column and
+      // an area tinted the same read the same.
+      dotClass: column.color
+        ? AREA_DOT_CLASS[column.color]
+        : column.status === "new"
           ? "bg-blue-500"
           : column.status === "completed"
             ? "bg-green-500"
@@ -380,6 +402,11 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       setLoading(false);
     }
   };
+
+  // Filled here rather than passed directly to `useKanbanColumnOps` above:
+  // that hook is declared before `reload` exists, and reading the binding
+  // there is a use-before-initialisation the linter refuses.
+  reloadRef.current = () => void reload();
 
   useEffect(() => {
     // An effect that starts an I/O load is the "synchronize with an external
@@ -867,7 +894,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         on the row beside the one each column body already has.
       */}
       <DndContext id={dndId} sensors={sensors} onDragEnd={handleDragEnd}>
-        {laneGroups.map(({ lane, grouped: laneGrouped }) => {
+        {laneGroups.map(({ lane, grouped: laneGrouped }, laneIndex) => {
           const laneCollapsed = collapsedLanes.has(lane.key);
           return (
             <div
@@ -957,10 +984,69 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                             ? membersById.get(q.acceptedBy)
                             : undefined
                         }
+                        busy={
+                          columnOps.pending?.endsWith(`:${descriptor.label}`) ??
+                          false
+                        }
+                        onRename={
+                          canManageColumns
+                            ? (name) =>
+                                void columnOps.rename(descriptor.label, name)
+                            : undefined
+                        }
+                        onColor={
+                          canManageColumns
+                            ? (color) =>
+                                void columnOps.setColor(descriptor.label, color)
+                            : undefined
+                        }
+                        onDelete={
+                          canManageColumns
+                            ? () => void columnOps.remove(descriptor.label)
+                            : undefined
+                        }
                         last={idx === columns.length - 1}
                       />
                     );
                   })}
+                  {/* After the last column, and only on the first lane: the
+                      board repeats its columns per swimlane, so one control
+                      per lane would offer the same single action several
+                      times over. Adding is capped at five by the server, and
+                      the control simply goes away at the cap rather than
+                      offering a refusal. */}
+                  {canManageColumns &&
+                    laneIndex === 0 &&
+                    columns.filter((c) => c.editable).length < 5 && (
+                      <button
+                        type="button"
+                        data-testid="kanban-column-add"
+                        disabled={columnOps.pending === "add"}
+                        onClick={() =>
+                          void columnOps.add(
+                            String(
+                              tr("kanban.column.addDefault", {
+                                args: [
+                                  String(
+                                    columns.filter((c) => c.editable).length +
+                                      1,
+                                  ),
+                                ],
+                              }),
+                            ),
+                          )
+                        }
+                        className="text-muted-foreground hover:text-foreground hover:bg-muted/50 border-border flex w-10 shrink-0 flex-col items-center gap-2 border-l py-2 text-xs transition-colors disabled:opacity-50"
+                      >
+                        <Plus className="size-4" />
+                        <span
+                          className="truncate font-medium"
+                          style={{ writingMode: "vertical-rl" }}
+                        >
+                          {tr("kanban.column.add")}
+                        </span>
+                      </button>
+                    )}
                 </div>
               )}
             </div>

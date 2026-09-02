@@ -13,6 +13,7 @@ import {
   DbForeignKeyError,
   DbNotNullError,
   DbTableNotFoundError,
+  DbTooManyParametersError,
   db,
   sql,
 } from "../core/index.ts";
@@ -872,6 +873,62 @@ describe("Database Error Tests", () => {
 
       expect(error.column).toBe("email");
       expect(error.table).toBe("users");
+    });
+  });
+
+  /**
+   * The driver ceiling on bound parameters. Classified rather than reproduced:
+   * the limit is 100 on Cloudflare D1 and 32766 on the SQLite build these
+   * tests run against, so a statement that fails in production runs fine here.
+   * `wrapError` is the same entry point every statement's failure takes.
+   */
+  describe("DbTooManyParametersError", () => {
+    const wrap = async (message: string) => {
+      const alepha = Alepha.create().with({
+        provide: DatabaseProvider,
+        use: NodeSqliteProvider,
+      });
+      alepha.store.mut(nodeSqliteOptions, (old) => ({
+        ...old,
+        path: "sqlite://:memory:",
+      }));
+      const app = alepha.inject(App);
+      await alepha.start();
+      return app.parents.wrapError(new Error(message), "Query select failed");
+    };
+
+    it("classifies D1's refusal, which used to read `Query select has failed`", async ({
+      expect,
+    }) => {
+      // Verbatim from blight #529, the production incident this exists for.
+      const error = await wrap(
+        "too many SQL variables at offset 266: SQLITE_ERROR",
+      );
+
+      expect(error).toBeInstanceOf(DbTooManyParametersError);
+      expect(error).toBeInstanceOf(DbError);
+      // The fix is always the same, so the message names it rather than
+      // leaving the reader with the generic wrapper's silence.
+      expect(error.message).toMatch(/chunk/i);
+    });
+
+    it("classifies PostgreSQL's refusal", async ({ expect }) => {
+      expect(
+        await wrap("extended query has too many parameters"),
+      ).toBeInstanceOf(DbTooManyParametersError);
+    });
+
+    it("is not retryable: the same statement binds the same count", async ({
+      expect,
+    }) => {
+      const error = await wrap("too many SQL variables");
+      expect((error as DbTooManyParametersError).retryable).toBe(false);
+    });
+
+    it("leaves a plain column error alone", async ({ expect }) => {
+      const error = await wrap('column "email" does not exist');
+      expect(error).not.toBeInstanceOf(DbTooManyParametersError);
+      expect(error).toBeInstanceOf(DbColumnNotFoundError);
     });
   });
 });

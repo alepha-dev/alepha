@@ -1,15 +1,32 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@alepha/ui/components/ui/sheet";
+import { DateTimeProvider } from "alepha/datetime";
+import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { useState } from "react";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { QUEST_STATUS_TONE } from "../quest/questChips.ts";
+import {
+  QUEST_PRIORITY_ICONS,
+  QUEST_PRIORITY_RANK,
+  QUEST_PRIORITY_TONE,
+  QUEST_STATUS_TONE,
+} from "../quest/questChips.ts";
+import QuestCreate from "../quest/QuestCreate.tsx";
 import EpicQuestPicker from "./EpicQuestPicker.tsx";
 
 export interface ProjectEpicQuestsProps {
@@ -22,6 +39,12 @@ export interface ProjectEpicQuestsProps {
   quests: QuestResource[] | null;
   onAttach: (questId: number) => void;
   onDetach: (quest: QuestResource) => void;
+  /**
+   * A quest the create sheet just made, for the owner of this list to file
+   * under the epic and reload. The sheet is told to stay put (`onCreated`),
+   * so the reader keeps the epic's page rather than landing on the quest's.
+   */
+  onCreated: (quest: QuestResource) => void | Promise<void>;
 }
 
 /**
@@ -48,8 +71,12 @@ export interface ProjectEpicQuestsProps {
 const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
+  const dateFormatter = useInject(DateTimeProvider);
+  const [project] = useStore(currentProjectAtom);
   const quests = props.quests;
   const attachedIds = new Set((quests ?? []).map((q) => q.id));
+  // The create sheet, opened from the toolbar beside Attach (feedback #2057).
+  const [creating, setCreating] = useState(false);
 
   return (
     <div className="min-h-0 flex-1 overflow-auto p-4">
@@ -74,11 +101,25 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
               // popover of its own: `actions` is for icon buttons that do
               // something on click.
               toolbar={
-                <EpicQuestPicker
-                  projectId={props.projectId}
-                  attachedIds={attachedIds}
-                  onAttach={props.onAttach}
-                />
+                <>
+                  {/* The page's primary action (quest #1682's form): a new
+                      quest filed straight under this epic. Attach stays
+                      outline beside it, for a quest that already exists. */}
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!project}
+                    onClick={() => setCreating(true)}
+                  >
+                    <Plus className="size-4" />
+                    {tr("epic.quests.create")}
+                  </Button>
+                  <EpicQuestPicker
+                    projectId={props.projectId}
+                    attachedIds={attachedIds}
+                    onAttach={props.onAttach}
+                  />
+                </>
               }
               // Per project, not per epic: how the reader likes this table
               // sorted is a preference about quests, not about one epic.
@@ -88,35 +129,10 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                   params: { shortId: String(quest.shortId) },
                 })
               }
+              // Status first, then the anchor, then the two most consulted
+              // fields: the Quests list's order, so the two tables read as
+              // one (feedback #2062).
               columns={{
-                shortId: {
-                  label: tr("epic.quests.column.number"),
-                  sortable: true,
-                  className: "w-16 text-muted-foreground",
-                  cell: (quest) => `#${quest.shortId}`,
-                },
-                title: {
-                  label: tr("epic.quests.column.title"),
-                  sortable: true,
-                  className: "w-full max-w-0 min-w-48 font-medium",
-                  cell: (quest) => (
-                    // A real anchor rather than a span inside the clickable
-                    // row, so the browser owns shift / cmd / middle click and
-                    // can offer "copy link address". `stopPropagation`
-                    // because the row carries `onRowClick` too, and without
-                    // it a plain click navigates twice.
-                    <Link
-                      href={router.path("projectQuest", {
-                        params: { shortId: quest.shortId },
-                      })}
-                      onClick={(e) => e.stopPropagation()}
-                      className="block truncate hover:underline"
-                      title={quest.title}
-                    >
-                      {quest.title}
-                    </Link>
-                  ),
-                },
                 status: {
                   label: tr("epic.quests.column.status"),
                   sortable: true,
@@ -138,6 +154,63 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                     </Badge>
                   ),
                 },
+                title: {
+                  label: tr("epic.quests.column.title"),
+                  sortable: true,
+                  className: "w-full max-w-0 min-w-48",
+                  cell: (quest) => (
+                    // A real anchor rather than a span inside the clickable
+                    // row, so the browser owns shift / cmd / middle click and
+                    // can offer "copy link address". `stopPropagation`
+                    // because the row carries `onRowClick` too, and without
+                    // it a plain click navigates twice.
+                    //
+                    // The Quests list's cell: number and title in one name,
+                    // the whole of it the link, only the dash muted.
+                    <Link
+                      href={router.path("projectQuest", {
+                        params: { shortId: String(quest.shortId) },
+                      })}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`block truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
+                      title={`#${quest.shortId} - ${quest.title}`}
+                    >
+                      #{quest.shortId}{" "}
+                      <span className="text-muted-foreground">-</span>{" "}
+                      {quest.title}
+                    </Link>
+                  ),
+                },
+                priority: {
+                  label: tr("epic.quests.column.priority"),
+                  sortable: true,
+                  className: "w-32",
+                  // By weight, not by the word: see `QUEST_PRIORITY_RANK`.
+                  sortValue: (quest) => QUEST_PRIORITY_RANK[quest.priority],
+                  cell: (quest) => {
+                    const Icon = QUEST_PRIORITY_ICONS[quest.priority];
+                    return (
+                      <Badge
+                        variant="tint"
+                        tone={QUEST_PRIORITY_TONE[quest.priority]}
+                        className="capitalize"
+                      >
+                        <Icon className="size-3" />
+                        {quest.priority}
+                      </Badge>
+                    );
+                  },
+                },
+                updatedAt: {
+                  label: tr("epic.quests.column.updated"),
+                  sortable: true,
+                  className: "w-32",
+                  cell: (quest) => (
+                    <span className="text-muted-foreground text-xs">
+                      {dateFormatter.of(quest.updatedAt).fromNow()}
+                    </span>
+                  ),
+                },
               }}
               rowActions={(quest) => [
                 {
@@ -154,6 +227,29 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
           )}
         </CardContent>
       </Card>
+
+      {/* The same `QuestCreate` the header and the Quests list open. The
+          epic is context, not a field: the sheet knows nothing of it, and
+          `onCreated` hands the new quest to the page, which attaches it. */}
+      {project && (
+        <Sheet open={creating} onOpenChange={setCreating}>
+          <SheetContent
+            side="right"
+            className="flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-[50vw]"
+          >
+            <SheetHeader className="shrink-0">
+              <SheetTitle>{tr("epic.quests.create")}</SheetTitle>
+            </SheetHeader>
+            {creating ? (
+              <QuestCreate
+                project={project}
+                onSubmit={() => setCreating(false)}
+                onCreated={(quest) => void props.onCreated(quest)}
+              />
+            ) : null}
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 };

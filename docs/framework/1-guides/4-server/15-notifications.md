@@ -58,6 +58,22 @@ templates, no live editing. A custom syntax is unlearnable and untypable, and
 a template edited in an admin UI is unversioned state that no longer matches
 the code deployed against it.
 
+`subject` and `text` take the same union, and see the same variables plus
+`unsubscribeUrl`. Build the subject whenever the message is about something
+in particular: the subject line is what a phone shows in its notification, so
+a sign-in code that is only in the body is a code the recipient has to open a
+mail client to read.
+
+```typescript
+email: {
+  subject: (vars) => `Your code is ${vars.code}`,
+  body: (vars) => `<p>${vars.code}</p>`,
+}
+```
+
+A built subject can carry a name or an amount, which is what `sensitive`
+above is for: it keeps the subject off the delivery receipt.
+
 Three things the framework does not do for you:
 
 **Nothing escapes for you.** Interpolating a user-supplied value into HTML is

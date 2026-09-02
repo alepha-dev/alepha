@@ -12,6 +12,7 @@ import {
   epicResourceSchema,
 } from "../schemas/epicResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { BoundParameters } from "../services/BoundParameters.ts";
 import { EpicDependencyService } from "../services/EpicDependencyService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
@@ -57,6 +58,7 @@ export class EpicController {
   attachment = $inject(ReleaseAttachmentService);
   dependencies = $inject(EpicDependencyService);
   owned = $inject(OwnedResourceProvider);
+  bound = $inject(BoundParameters);
 
   /**
    * Member gate on the project the route names directly.
@@ -582,25 +584,29 @@ export class EpicController {
       return progress;
     }
 
-    const buckets = await this.quests.aggregate({
-      select: {
-        epicId: true,
-        id: { count: true },
-        completedAt: { count: true },
-        shelvedAt: { count: true },
-        inProgress: {
-          count: {
-            column: "id",
-            where: {
-              acceptedAt: { isNotNull: true },
-              completedAt: { isNull: true },
+    // Chunked: one bound parameter per epic, and nothing caps how many epics
+    // a project has.
+    const buckets = await this.bound.collect(epicIds, (batch) =>
+      this.quests.aggregate({
+        select: {
+          epicId: true,
+          id: { count: true },
+          completedAt: { count: true },
+          shelvedAt: { count: true },
+          inProgress: {
+            count: {
+              column: "id",
+              where: {
+                acceptedAt: { isNotNull: true },
+                completedAt: { isNull: true },
+              },
             },
           },
         },
-      },
-      where: { epicId: { inArray: epicIds } },
-      groupBy: ["epicId"],
-    });
+        where: { epicId: { inArray: batch } },
+        groupBy: ["epicId"],
+      }),
+    );
 
     for (const row of buckets) {
       if (row.epicId == null) continue;

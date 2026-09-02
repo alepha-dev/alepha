@@ -144,6 +144,7 @@ export default {
   "folios.editor.action.code-block": "Bloc de code",
   "folios.editor.action.diagram": "Diagramme",
   "folios.editor.action.divider": "Séparateur",
+  "folios.editor.action.link": "Lien",
   "folios.editor.menu.insert": "Insérer",
   "folios.editor.action.toggle-mode": "Basculer l'aperçu",
   "markdown-editor.tab-hint":
@@ -239,11 +240,11 @@ export default {
   "folios.editor.pinned.note":
     "Les folios épinglés sont envoyés en entier à chaque appel project_context.",
 
-  "project.menu.create-quest": "Créer quête",
+  "project.menu.create-quest": "Nouvelle quête",
   "project.menu.create-folio": "Nouveau folio",
   "project.menu.invite-member": "Inviter un membre",
   "project.menu.create-feedback": "Nouveau retour",
-  "project.menu.create-more": "Autres actions de création",
+  "project.menu.create": "Créer",
   "project.menu.quests": "Quêtes",
   "project.menu.kanban": "Kanban",
   "project.menu.reports": "Rapports",
@@ -285,6 +286,7 @@ export default {
   "board.table.release": "Version",
   "board.filter.release": "Version",
   "board.filter.allReleases": "Toutes les versions",
+  "board.filter.noRelease": "Sans version",
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par la quête #$1",
   "board.table.priority": "Priorité",
@@ -503,7 +505,6 @@ export default {
   "project.settings.members.invite.failed":
     "Impossible d'envoyer l'invitation.",
 
-  "project.settings.members.revoke.action": "Révoquer l'invitation de $1",
   "project.settings.members.revoke.title": "Révoquer cette invitation ?",
   "project.settings.members.revoke.description":
     "$1 ne pourra plus utiliser le lien reçu. Vous pouvez l'inviter à nouveau, ce qui enverra un nouveau lien.",
@@ -512,6 +513,17 @@ export default {
   "project.settings.members.revoke.done": "L'invitation de $1 a été révoquée.",
   "project.settings.members.revoke.failed":
     "Impossible de révoquer l'invitation.",
+  "project.settings.members.revoke.action.short": "Annuler l'invitation",
+
+  "project.settings.members.actions": "Actions pour $1",
+  "project.settings.members.remove.action": "Retirer",
+  "project.settings.members.remove.title": "Retirer ce membre ?",
+  "project.settings.members.remove.description":
+    "$1 perd l'accès à ce projet. Les quêtes qu'il avait acceptées sans les terminer retournent au pot commun ; celles qu'il a terminées lui restent attribuées. Vous pouvez l'inviter à nouveau.",
+  "project.settings.members.remove.confirm": "Retirer",
+  "project.settings.members.remove.cancel": "Le garder",
+  "project.settings.members.remove.done": "$1 a été retiré du projet.",
+  "project.settings.members.remove.failed": "Impossible de retirer le membre.",
 
   "project.settings.danger.title": "Zone à risques",
   "project.settings.actions.delete": "Détruire ce projet",
@@ -674,9 +686,6 @@ export default {
     "Donnez une couleur à chaque étiquette pour lire les cartes et les quêtes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
   "project.settings.kanban.tagColors.empty":
     "Aucune étiquette pour l'instant. Ajoutez-en une à une quête et elle apparaîtra ici.",
-  "project.settings.kanban.defaultSurface.title": "Ouvrir sur le tableau",
-  "project.settings.kanban.defaultSurface.description":
-    "Les membres arrivent sur le tableau Kanban plutôt que sur la liste des quêtes en ouvrant ce projet.",
   "project.settings.kanban.columns.title": "Colonnes « En cours »",
   "project.settings.kanban.columns.description":
     "Découpez la voie « En cours » en sous-colonnes nommées (ex. En relecture → En dev → En test). Jusqu'à 5. Nouvelle et Terminée restent fixes.",
@@ -910,6 +919,18 @@ export default {
   "kanban.column.new": "Nouvelles",
   "kanban.column.completed": "Terminées",
   "kanban.column.collapse": "Réduire la colonne",
+  "kanban.column.actions": "Actions de la colonne $1",
+  "kanban.column.rename": "Renommer",
+  "kanban.column.color": "Couleur",
+  "kanban.column.delete": "Supprimer la colonne",
+  "kanban.column.add": "Ajouter une colonne",
+  "kanban.column.addDefault": "Colonne $1",
+  "kanban.column.delete.title": "Supprimer cette colonne ?",
+  "kanban.column.delete.description":
+    "$1 doit d'abord être vide : déplacez ou terminez ses quêtes, et rien d'autre ne change. Vous pourrez rajouter une colonne ensuite.",
+  "kanban.column.delete.confirm": "Supprimer",
+  "kanban.column.delete.cancel": "La conserver",
+  "kanban.column.failed": "Impossible de modifier la colonne.",
   "kanban.empty": "Aucune quête",
   "kanban.showMore": "Afficher plus",
   "kanban.filter.allAreas": "Tous les domaines",
@@ -1298,7 +1319,7 @@ export default {
   "feedback.filter.accepted": "Acceptés",
   "feedback.filter.rejected": "Rejetés",
   "feedback.promote": "Promouvoir en quête",
-  "feedback.createQuest": "Créer une quête",
+  "feedback.createQuest": "Nouvelle quête",
   "feedback.reject": "Rejeter",
   "feedback.rejected": "Retour rejeté",
   "feedback.rejectError": "Échec du rejet du retour",
@@ -1415,6 +1436,7 @@ export default {
   "epic.filter.search": "Rechercher",
   "epic.filter.status": "Statut",
   "epic.filter.allStatuses": "Tous les statuts",
+  "epic.filter.statusCount": "$1 statuts",
   "epic.progress.none": "Aucune quête pour le moment",
   "epic.progress.specified": "$1 spécifiées, aucune publiée",
   "epic.progress.concluded": "Conclue le $1",
@@ -1429,7 +1451,7 @@ export default {
   "epic.toast.deleted": "Épopée supprimée.",
   "epic.list.column.status": "Statut",
   "epic.list.column.progress": "Progression",
-  "epic.create": "Créer une épopée",
+  "epic.create": "Nouvelle épopée",
   "epic.edit": "Modifier",
   "epic.create.title.helper": "Un nom court pour l'initiative.",
   "epic.create.description.helper":
@@ -1489,13 +1511,15 @@ export default {
   "epic.quests.empty": "Aucune quête dans cette épopée pour le moment.",
   "epic.quests.loading": "Chargement des quêtes…",
   "epic.quests.attach": "Associer une quête",
+  "epic.quests.create": "Nouvelle quête",
   "epic.quests.attach.search": "Rechercher une quête…",
   "epic.quests.detach": "Détacher",
   "epic.quests.detach.title": "Détacher cette quête ?",
   "epic.quests.detach.confirm": "« $1 » ne sera plus liée à cette épopée.",
-  "epic.quests.column.number": "N°",
   "epic.quests.column.title": "Titre",
   "epic.quests.column.status": "Statut",
+  "epic.quests.column.priority": "Priorité",
+  "epic.quests.column.updated": "Mise à jour",
 
   // -- Tableau de bord (page d'accueil connectee) ---------------------------
   "dashboard.greeting": "Bon retour, $1",

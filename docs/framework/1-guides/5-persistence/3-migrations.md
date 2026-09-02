@@ -12,6 +12,10 @@ alepha dev
 
 When the application starts, `DrizzleKitProvider.synchronize()` introspects the actual database state, diffs it against your current entity definitions, and applies the changes. There are no stored snapshots - no drift, no corruption; the database itself is the source of truth.
 
+A column that is both added and removed on one table (or a table added while another is removed) looks like a rename to drizzle-kit, and its rename prompt needs a terminal that `alepha dev` does not have. The sync resolves it the way a development push means: the columns and tables your entities no longer declare are dropped, each one named in a warning, and the push runs again on a diff that only adds. The rows survive; the dropped columns' data does not.
+
+When the push cannot run at all, the sync falls back to creating the tables that are missing and touches nothing else. It then logs the schema as `INCOMPLETE` rather than `OK`, naming how many tables it left as they were: entity changes on those tables have not reached the database. Delete the development database (`node_modules/.alepha/sqlite.db` by default) and start again, or write a migration.
+
 This means you can change entity schemas freely during development. The framework detects differences and applies them on startup.
 
 ## Testing Mode

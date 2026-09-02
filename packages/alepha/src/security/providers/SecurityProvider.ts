@@ -49,25 +49,41 @@ export class SecurityProvider {
   protected readonly permissions: Permission[] = [];
 
   /**
+   * The realm this provider invents so a test container has somewhere to put
+   * an `admin` role, dropped again by {@link SecurityProvider.createRealm} as
+   * soon as the application declares one of its own.
+   *
+   * Held by REFERENCE, and compared by identity there. It used to be
+   * recognised by its name, which made an application realm called `default`
+   * indistinguishable from it: declaring a second realm silently threw the
+   * first one away, and the failure surfaced far from its cause as a 500 at
+   * token minting reading `No secret key found in the keystore`, because the
+   * discarded realm never had its signing key registered. `default` is the
+   * natural name to pick, since `DEFAULT_USER_REALM_NAME` is what every
+   * realm-less `UserService` call falls back to. A name is not an identity.
+   */
+  protected placeholderRealm: Realm | undefined = this.alepha.isTest()
+    ? {
+        name: "default",
+        secret: this.secretKey,
+        roles: [
+          {
+            name: "admin",
+            permissions: [
+              {
+                name: "*",
+              },
+            ],
+          },
+        ],
+      }
+    : undefined;
+
+  /**
    * The realms configured for the security provider.
    */
-  protected readonly realms: Realm[] = this.alepha.isTest()
-    ? [
-        {
-          name: "default",
-          secret: this.secretKey,
-          roles: [
-            {
-              name: "admin",
-              permissions: [
-                {
-                  name: "*",
-                },
-              ],
-            },
-          ],
-        },
-      ]
+  protected readonly realms: Realm[] = this.placeholderRealm
+    ? [this.placeholderRealm]
     : [];
 
   /**
@@ -78,7 +94,7 @@ export class SecurityProvider {
    * container instantiates first wins. A role used to be pushed into the
    * realms that happened to exist at that instant, so one declared before its
    * issuer landed in no realm at all - and under test it was worse, because it
-   * landed in the implicit `default` realm that `createRealm` then popped.
+   * landed in the implicit placeholder realm that `createRealm` then dropped.
    * Either way, silently.
    *
    * `realms: undefined` means every realm, including realms created later.
@@ -144,6 +160,13 @@ export class SecurityProvider {
         // tokens and id_tokens are signed with this same key and would
         // otherwise pass straight through.
         if (!this.jwt.isAccessToken(realmName, result.protectedHeader)) {
+          return null;
+        }
+
+        // A token minted by another realm must not authenticate here: every
+        // realm signs with the same key by default, so the signature check
+        // passing says nothing about which realm minted it.
+        if (!this.jwt.matchesRealmAudience(realmName, result.payload)) {
           return null;
         }
 
@@ -421,15 +444,20 @@ export class SecurityProvider {
   }
 
   public createRealm(realm: Realm) {
-    if (this.realms.length === 1 && this.realms[0].name === "default") {
-      // if the default realm is the only one, we remove it to allow creating new realms
-      this.realms.pop();
+    // By identity, never by name: an application realm called `default` is
+    // not this provider's placeholder, and popping it here was silent.
+    if (this.placeholderRealm) {
+      const at = this.realms.indexOf(this.placeholderRealm);
+      if (at >= 0) {
+        this.realms.splice(at, 1);
+      }
+      this.placeholderRealm = undefined;
     }
 
     this.realms.push(realm);
 
-    // Roles declared before this realm existed - including any the pop above
-    // just took with it - land here.
+    // Roles declared before this realm existed - including any the placeholder
+    // above just took with it - land here.
     this.reconcileRoles();
   }
 
@@ -574,15 +602,63 @@ export class SecurityProvider {
    * Throws if realm not found.
    */
   public getRealm(realmName?: string): Realm {
-    const realm = realmName
-      ? this.realms.find((it) => it.name === realmName)
-      : this.realms[0];
+    if (!realmName) {
+      return this.defaultRealm();
+    }
+
+    const realm = this.realms.find((it) => it.name === realmName);
 
     if (!realm) {
-      throw new RealmNotFoundError(realmName ?? "default");
+      throw new RealmNotFoundError(realmName);
     }
 
     return realm;
+  }
+
+  /**
+   * The realm a lookup that names none resolves against.
+   *
+   * One realm: that realm, because there is nothing to be ambiguous about.
+   * Several: the one declared `$issuer({ default: true })`, and a refusal if
+   * none is - because the alternative is answering a question the caller did
+   * not ask.
+   *
+   * It used to be `realms[0]`, which made the order of FIELDS in a class a
+   * security-relevant decision that nothing declared and nothing checked. It
+   * cost a verified user their access: an application declared its staff realm
+   * first, and a citizen holding `citizen` in their user row was refused
+   * `citizen:apply`, because the role was resolved among staff roles.
+   *
+   * Refusing rather than picking is the same rule as
+   * {@link JwtProvider.matchesRealmAudience}, and for the same reason: the
+   * ambiguity exists exactly from the second realm on, so that is exactly
+   * where it is refused.
+   */
+  public defaultRealm(): Realm {
+    const declared = this.realms.filter((it) => it.default);
+    if (declared.length === 1) {
+      return declared[0];
+    }
+
+    if (this.realms.length === 1) {
+      return this.realms[0];
+    }
+
+    if (this.realms.length === 0) {
+      throw new RealmNotFoundError("default");
+    }
+
+    throw new AlephaError(
+      declared.length > 1
+        ? `Several realms are declared \`default: true\` (${declared
+            .map((it) => it.name)
+            .join(", ")}). Exactly one may be.`
+        : `This application declares ${this.realms.length} realms (${this.realms
+            .map((it) => it.name)
+            .join(
+              ", ",
+            )}) and a lookup named none of them. Pass the caller's realm, or mark one \`$issuer({ default: true })\` to name the answer once.`,
+    );
   }
 
   /**
@@ -706,7 +782,7 @@ export class SecurityProvider {
       }
     }
 
-    return this.getRoles(this.realms[0]?.name);
+    return this.getRoles(this.defaultRealm().name);
   }
 
   /**
@@ -1292,6 +1368,13 @@ export interface Realm {
    * Custom resolvers for this realm (sorted by priority).
    */
   resolvers?: IssuerResolver[];
+
+  /**
+   * Answer every lookup that names no realm. At most one realm may carry it.
+   *
+   * @see SecurityProvider.defaultRealm
+   */
+  default?: boolean;
 }
 
 export interface SecurityCheckResult {

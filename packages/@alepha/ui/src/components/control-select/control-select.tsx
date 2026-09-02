@@ -56,6 +56,54 @@ export type SelectOption =
 
 type LoaderMode = "static" | "short" | "long";
 
+/**
+ * How tall and how loud a select trigger is.
+ *
+ * `xs` exists for a control that sits ON a row of text rather than in a form:
+ * the quest rail's Release field beside its Assigned picker, where a
+ * default-height boxed select reads as heavier than every line around it.
+ */
+export type ControlSelectSize = "xs" | "sm" | "default";
+
+/**
+ * Per-size trigger geometry. Kept as one table rather than scattered
+ * conditionals so a new size is one row and the three axes cannot drift.
+ *
+ * `chevron` targets the trigger's own last SVG - the one `ComboboxTrigger`
+ * appends at a hardcoded `size-4`. That file is stock shadcn, refreshed
+ * wholesale by `yarn sync`, so it is sized from here rather than edited.
+ */
+const SIZE_CLASSES: Record<
+  ControlSelectSize,
+  { trigger: string; icon: string; chevron: string }
+> = {
+  default: {
+    trigger: "h-8 gap-1.5 py-2 pr-2 pl-2.5 text-sm",
+    icon: "size-4",
+    chevron: "[&>svg]:size-4",
+  },
+  sm: {
+    trigger: "h-7 gap-1.5 py-1 pr-1.5 pl-2 text-sm",
+    icon: "size-3.5",
+    chevron: "[&>svg]:size-3.5",
+  },
+  xs: {
+    trigger: "h-6 gap-1 px-1 text-xs",
+    icon: "size-3",
+    chevron: "[&>svg]:size-3",
+  },
+};
+
+/**
+ * The bordered box, or nothing at all.
+ *
+ * `minimal` drops the border, the background and the shadow, and pulls the
+ * trigger left by its own padding so its text aligns with plain rows beside
+ * it. The hover tint is what keeps it discoverable as a control.
+ */
+const MINIMAL_CLASSES =
+  "-mx-1 border-transparent bg-transparent shadow-none hover:bg-muted dark:bg-transparent dark:hover:bg-input/50";
+
 export interface ControlSelectProps {
   /**
    * Bound `InputField` from `useForm`. Single or multi value depending on schema.
@@ -169,6 +217,15 @@ export interface ControlSelectProps {
    * `FormField` in an extra div.
    */
   triggerClassName?: string;
+  /**
+   * Trigger height and type scale. Defaults to `default`.
+   */
+  size?: ControlSelectSize;
+  /**
+   * Render the trigger borderless and transparent, so it reads as the row it
+   * sits on rather than as a form field.
+   */
+  minimal?: boolean;
   /**
    * Extra attributes for whichever trigger this field renders, forwarded from
    * `Control`'s `inputProps`.
@@ -394,6 +451,8 @@ export const ControlSelect = (props: ControlSelectProps) => {
         // its width as soon as its list crossed the threshold.
         triggerClassName={props.triggerClassName}
         triggerProps={props.triggerProps}
+        size={props.size}
+        minimal={props.minimal}
         // `clearable` used to reach this path as a placeholder and nothing
         // else, so a filter chip that had switched to the combobox (>20
         // options) could be set but never put back to "All …".
@@ -438,6 +497,15 @@ interface ComboboxProps {
   createNewEntry?: ControlSelectProps["createNewEntry"];
   icon?: IconComponent;
   triggerClassName?: string;
+  /**
+   * Trigger height and type scale. Defaults to `default`.
+   */
+  size?: ControlSelectSize;
+  /**
+   * Render the trigger borderless and transparent, so it reads as the row it
+   * sits on rather than as a form field.
+   */
+  minimal?: boolean;
   triggerProps?: HTMLAttributes<HTMLElement>;
   /**
    * Trigger text when nothing is selected. Mirrors the native-Select path,
@@ -508,6 +576,7 @@ interface ComboOption {
  */
 function Combobox(props: ComboboxProps) {
   const { tr } = useI18n();
+  const sizeClasses = SIZE_CLASSES[props.size ?? "default"];
   const [query, setQuery] = useState("");
   // Remembers labels for values the user has picked, so the trigger/chips keep
   // a human label even after the source option drops out of a server-filtered
@@ -812,7 +881,10 @@ function Combobox(props: ComboboxProps) {
         disabled={props.disabled}
         {...props.triggerProps}
         className={cn(
-          "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
+          "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex w-full items-center justify-between rounded-lg border bg-transparent whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
+          sizeClasses.trigger,
+          sizeClasses.chevron,
+          props.minimal && MINIMAL_CLASSES,
           // Muted means "nothing chosen yet".
           //
           // For MULTI that is simply "no selection": there is no clear row to
@@ -835,7 +907,9 @@ function Combobox(props: ComboboxProps) {
       >
         <span className="flex min-w-0 items-center gap-2">
           {props.icon && (
-            <props.icon className="text-muted-foreground size-4 shrink-0" />
+            <props.icon
+              className={cn("text-muted-foreground shrink-0", sizeClasses.icon)}
+            />
           )}
           <span className="truncate">{triggerLabel}</span>
         </span>

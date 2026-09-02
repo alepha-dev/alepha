@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitest/config";
 
+import { testServiceEnv } from "./test.slot.ts";
 import { jsdomProject } from "./vitest.jsdom.ts";
 
 const repoRoot = dirname(fileURLToPath(import.meta.url));
@@ -70,13 +71,18 @@ export default defineConfig({
       DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:15432/postgres",
       // S3-compatible storage (s3mock via docker-compose) for testing S3FileStorageProvider
       S3_ENDPOINT: "http://127.0.0.1:19090",
-      // The bucket the S3 specs create on the s3mock service before they run.
-      S3_BUCKET_NAME: "alepha-test",
       S3_REGION: "us-east-1",
       S3_ACCESS_KEY_ID: "mock",
       S3_SECRET_ACCESS_KEY: "mock",
       MQTT_BROKER_URL: "mqtt://localhost:11883",
-      REDIS_URL: "redis://localhost:16379",
+      // `S3_BUCKET_NAME` and `REDIS_URL`, partitioned per checkout.
+      //
+      // These two were the reason `yarn test` held a machine-wide slot: one
+      // hardcoded `alepha-test` bucket that the S3 specs empty on the way
+      // out, and one fixed `queue` prefix on redis database 0. Postgres and
+      // mqtt already isolate themselves per run, so half the queue was paid
+      // for nothing. See `test.slot.ts`.
+      ...testServiceEnv(),
     },
     // `forks`, the default, and it has to stay that way while `TZ` below is
     // set here.

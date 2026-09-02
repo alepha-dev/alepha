@@ -8,6 +8,7 @@ import {
   $parameter,
   AlephaApiParameters,
   ParameterProvider,
+  type ParameterTreeNode,
 } from "../index.ts";
 
 const featureSchema = z.object({
@@ -332,6 +333,64 @@ describe("ParameterProvider", () => {
 
     const features = tree[0].children.find((c) => c.name === "features");
     expect(features?.children.length).toBe(2); // flags, limits
+  });
+
+  /**
+   * A row in the database with no `$parameter` behind it is an orphan, and
+   * the tree has to say so rather than drop it or pass it off as live: the
+   * renamed `alepha.api.notifications` and the retired `lore.campaign.limits`
+   * both sat in production's tree indistinguishable from the real thing
+   * (feedback #2051). A registered name with nothing saved is the opposite
+   * case, and a folder carries what its leaves agree on.
+   */
+  it("marks each node with its origin: registered, orphan, or both", async () => {
+    class Live {
+      limits = $parameter({
+        name: "app.limits",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 1 },
+      });
+      unsaved = $parameter({
+        name: "app.unsaved",
+        schema: featureSchema,
+        default: { enableBeta: false, maxUploadSize: 1 },
+      });
+    }
+
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    alepha.with(AlephaApiParameters);
+    alepha.with(Live);
+    await alepha.start();
+
+    const provider = alepha.inject(ParameterProvider);
+    await provider.save(
+      "app.limits",
+      { enableBeta: true, maxUploadSize: 2 },
+      "h1",
+    );
+    await provider.save("app.old.campaign", { max: 1 }, "h2");
+    await provider.save("app.old.zone", { max: 2 }, "h3");
+
+    const tree = await provider.getParameterTree();
+    const app = tree.find((n) => n.name === "app")!;
+    const byName = new Map<string, ParameterTreeNode>(
+      app.children.map((c: ParameterTreeNode) => [c.name, c]),
+    );
+
+    // Declared and saved.
+    expect(byName.get("limits")?.origin).toBe("both");
+    // Declared, nothing saved yet: kept, and not an orphan.
+    expect(byName.get("unsaved")?.origin).toBe("registered");
+    // Saved, nothing declares them: kept, and said to be orphans, the
+    // folder included since every leaf under it is one.
+    const old = byName.get("old")!;
+    expect(old.origin).toBe("orphan");
+    expect(old.children.map((c: ParameterTreeNode) => c.origin)).toEqual([
+      "orphan",
+      "orphan",
+    ]);
+    // A folder with live and orphan leaves is neither.
+    expect(app.origin).toBe("both");
   });
 
   it("should calculate statuses correctly", async () => {

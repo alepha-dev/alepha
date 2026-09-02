@@ -94,6 +94,50 @@ class App {
 - **admin**: Full access to all resources and permissions.
 - **user**: Access to owned resources only.
 
+### Several realms: a token belongs to the one that minted it
+
+Realms share a signing key by default, so a signature alone does not say which
+realm a token came from. What does is its `aud` claim, which `createToken`
+sets to the issuing realm's name; a resolver refuses a token whose audience
+names a different realm, the way the tenant check already refuses a token
+minted on another tenant.
+
+That matters when you mint a token by hand. `JwtProvider.create`'s second
+argument picks a signing key, not a realm, so in a multi-realm app a token
+minted without an audience names nothing and is refused. Set one:
+
+```typescript
+await jwt.create({ sub: user.id, roles, aud: "staff" }, "staff", {
+  header: { typ: jwt.accessTokenTyp },
+});
+```
+
+A single-realm app is unaffected, and so is a federated issuer: its `aud` is
+its IdP's client id, and it is protected by holding its own JWKS instead.
+
+### Name the default realm, or pass one
+
+Some lookups name no realm: a permission check given a bare string, a
+per-tenant realm name the account carries without a `$realm` behind it. That
+used to resolve to whichever realm was declared FIRST, so the order of fields
+in a class decided it - silently, and with real consequences: an app that
+declared its staff realm first had verified citizens refused their own
+permissions, because their roles were resolved among staff roles.
+
+With one realm there is nothing to be ambiguous about and nothing to declare.
+From the second realm on, say which one answers:
+
+```typescript
+class App {
+  staff = $realm({ issuer: { name: "staff" } });
+  citizens = $realm({ issuer: { name: "citizens", default: true } });
+}
+```
+
+Leave it out and a realm-less lookup is refused, naming the realms it could
+have meant. That is deliberate: a caller that forgot to pass a realm should
+fail at the call, not resolve against the wrong set.
+
 ### Settings That Send a Code Need `features.notifications`
 
 `verifyEmailRequired`, `verifyPhoneRequired` and `resetPasswordAllowed` each

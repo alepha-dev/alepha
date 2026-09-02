@@ -8,6 +8,21 @@ import { BunRedisSubscriberProvider } from "../providers/BunRedisSubscriberProvi
 import { RedisProvider } from "../providers/RedisProvider.ts";
 import { RedisSubscriberProvider } from "../providers/RedisSubscriberProvider.ts";
 
+/**
+ * From the environment, which `scripts/testBun.ts` fills with this checkout's
+ * slice of the shared services (`test.slot.ts`) - the same partition the
+ * vitest half gets from `vitest.config.ts`.
+ *
+ * ⚠️ NOT imported from `test.slot.ts` directly. This file is inside
+ * `packages/alepha`, whose declaration build runs with `rootDir: src`, so
+ * reaching outside that tree fails `yarn build` with TS6059 - and only in the
+ * full verify lane, since `--fast` skips `build`.
+ *
+ * The fallback is the pre-partition address, which is what a bare `bun test`
+ * outside the wrapper used to get.
+ */
+const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:16379";
+
 // -------------------------------------------------------------------------------------------------------------------
 
 describe("BunRedisProvider", () => {
@@ -16,7 +31,7 @@ describe("BunRedisProvider", () => {
 
   beforeAll(async () => {
     alepha = Alepha.create({
-      env: { REDIS_URL: "redis://localhost:16379" },
+      env: { REDIS_URL },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
       .with({
@@ -200,7 +215,7 @@ describe("BunRedisSubscriberProvider", () => {
 
   beforeAll(async () => {
     alepha = Alepha.create({
-      env: { REDIS_URL: "redis://localhost:16379" },
+      env: { REDIS_URL },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
       .with({
@@ -286,7 +301,7 @@ return 0
 
   it("should clean up connections on stop", async () => {
     const fresh = Alepha.create({
-      env: { REDIS_URL: "redis://localhost:16379" },
+      env: { REDIS_URL },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
       .with({

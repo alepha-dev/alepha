@@ -295,7 +295,10 @@ test.describe("Releases", () => {
       await expect(open).toBeVisible({ timeout: 15_000 });
       await open.click();
       await tagField.fill("0.1.0");
-      await page.getByRole("button", { name: "Create" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Create" })
+        .click();
 
       // The table fetches its own rows, so this is the assertion that the
       // create actually signalled it rather than only writing to the atom.
@@ -307,7 +310,10 @@ test.describe("Releases", () => {
     await test.step("a duplicate tag is reported inside the dialog", async () => {
       await open.click();
       await tagField.fill("0.1.0");
-      await page.getByRole("button", { name: "Create" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Create" })
+        .click();
 
       // Still open, still holding the typed tag, with the reason in it.
       await expect(tagField).toBeVisible({ timeout: 15_000 });
@@ -391,17 +397,17 @@ test.describe("Releases", () => {
         .toEqual([`/${slug}/releases`, `/${slug}/reports`]);
     });
 
-    await test.step("the create menu opens on this entry alone", async () => {
-      const chevron = page.getByRole("button", {
-        name: "More create actions",
-      });
-      await expect(chevron).toBeVisible({ timeout: 15_000 });
-      await chevron.click();
+    await test.step("the create menu carries this entry alone", async () => {
+      // The header is one "+" since #1684, its menu leading with Create
+      // Quest; the release entry sits behind it like every other create.
+      const plus = page.getByTestId("project-create-menu");
+      await expect(plus).toBeVisible({ timeout: 15_000 });
+      await plus.click();
 
       const item = page.getByRole("menuitem", { name: "New Release" });
       await expect(item).toBeVisible({ timeout: 10_000 });
-      // The neighbours really are off, so the chevron is being held open by
-      // this entry and nothing else.
+      // The neighbours really are off, so this entry is the only create
+      // beside New Quest.
       await expect(
         page.getByRole("menuitem", { name: "New Epic" }),
       ).toHaveCount(0);
@@ -415,7 +421,10 @@ test.describe("Releases", () => {
       // creating from here lands on the release itself, the way New Epic
       // opens the epic it just made.
       await page.getByLabel("Tag").fill("2.0.0");
-      await page.getByRole("button", { name: "Create" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Create" })
+        .click();
 
       await expect(page).toHaveURL(/\/releases\/2\.0\.0$/, {
         timeout: 15_000,

@@ -3,9 +3,7 @@ import { expect, test } from "@playwright/test";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 test.describe("Members settings page", () => {
-  test("lists the owner and reveals the identity hover-card", async ({
-    page,
-  }) => {
+  test("lists the owner with the Owner badge on the row", async ({ page }) => {
     test.setTimeout(90_000);
 
     const email = `mb-${Date.now()}@example.com`;
@@ -24,12 +22,13 @@ test.describe("Members settings page", () => {
     // account, there is no per-project alias anymore.
     await expect(page.getByText(email).first()).toBeVisible();
 
+    // The Owner badge is on the row itself: the hover card that used to
+    // carry it repeated the row it decorated and is gone (feedback #2067).
+    await expect(trigger.getByText(/owner/i)).toBeVisible();
     await trigger.hover();
-    // Hover-card content is portalled into the body; assert it appears
-    // and surfaces the Owner badge (this project's creator is the owner).
-    const content = page.locator('[data-slot="hover-card-content"]');
-    await expect(content).toBeVisible({ timeout: 5_000 });
-    await expect(content.getByText(/owner/i)).toBeVisible();
+    await expect(page.locator('[data-slot="hover-card-content"]')).toHaveCount(
+      0,
+    );
   });
 
   test("old character and roster URLs are gone", async ({ page }) => {

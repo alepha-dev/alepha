@@ -490,10 +490,24 @@ export class ServerLinksProvider {
           if (!hasRole) return false;
         }
 
-        // explicit permission check
+        // explicit permission check, in the CALLER'S realm.
+        //
+        // `checkPermission` takes the realm only from a permission OBJECT;
+        // given none it falls back to `realms[0]`, so a second-realm user's
+        // roles were looked up among the first realm's and `checkRoles` threw
+        // on the first name it could not find - a 500 from an endpoint that
+        // runs on every page load, so such a session rendered nothing at all.
+        //
+        // `$secure`, the gate this registry only mirrors, already calls the
+        // realm-aware variant; the two disagreed about the same question.
+        // `registryCacheKey` in this same file already keys the response on
+        // the realm, and its comment says why: realm A and realm B with
+        // identical role names resolve to different link sets. The realm was
+        // known to matter here; only this branch was left behind.
         if (link.secured.permissions?.length) {
           for (const perm of link.secured.permissions) {
-            const result = securityProvider.checkPermission(
+            const result = securityProvider.checkPermissionInRealm(
+              user.realm,
               perm,
               ...(user.roles ?? []),
             );

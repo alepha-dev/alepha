@@ -35,6 +35,7 @@ import {
   exceedsObjectiveCap,
   objectiveCapMessage,
 } from "../schemas/questObjectivesLimit.ts";
+import { QUEST_RELEASE_NONE } from "../schemas/questReleaseFilter.ts";
 import {
   type QuestResource,
   type QuestStatus,
@@ -286,6 +287,29 @@ export class QuestController {
           .filter((entry) => Number.isInteger(entry)),
       ),
     ];
+  }
+
+  /**
+   * The release filter, which is ids plus one sentinel.
+   *
+   * `QUEST_RELEASE_NONE` selects the quests attached to no release at all -
+   * the question a release planner asks most often and the one every option
+   * being a release could not answer. It rides in the same multi-value
+   * parameter as the ids rather than in one of its own, because the filter's
+   * selections OR together and two parameters would AND: "no release, or
+   * 0.29.0" has to be expressible.
+   *
+   * `parseIdList` drops it on its own, since it is not an integer, which is
+   * exactly why it is safe to put there.
+   */
+  protected parseReleaseFilter(value: string | undefined): {
+    ids: number[];
+    unattached: boolean;
+  } {
+    return {
+      ids: this.parseIdList(value),
+      unattached: this.parseList(value).includes(QUEST_RELEASE_NONE),
+    };
   }
 
   /**
@@ -1045,11 +1069,24 @@ export class QuestController {
       // itself carries only one `or`.
       const groups: Array<Record<string, any>> = [];
 
-      const releaseIds = this.parseIdList(query.releaseId);
-      if (releaseIds.length === 1) {
-        where.releaseId = { eq: releaseIds[0] };
-      } else if (releaseIds.length > 1) {
-        where.releaseId = { inArray: releaseIds };
+      const release = this.parseReleaseFilter(query.releaseId);
+      if (release.unattached && release.ids.length > 0) {
+        // "No release" OR'd with named ones, through the same `groups` array
+        // the tag filter uses - `where` itself carries only one `or`.
+        groups.push({
+          or: [
+            { releaseId: { isNull: true } },
+            release.ids.length === 1
+              ? { releaseId: { eq: release.ids[0] } }
+              : { releaseId: { inArray: release.ids } },
+          ],
+        });
+      } else if (release.unattached) {
+        where.releaseId = { isNull: true };
+      } else if (release.ids.length === 1) {
+        where.releaseId = { eq: release.ids[0] };
+      } else if (release.ids.length > 1) {
+        where.releaseId = { inArray: release.ids };
       }
 
       if (query.epic) {
@@ -2121,14 +2158,22 @@ export class QuestController {
         throw new BadRequestError(objectiveCapMessage(body.objectives.length));
       }
 
-      // On completed quests the only field that can be revised is the
-      // completion summary — project memory is curatable, but the quest
-      // body (title/description/objectives/…) stays frozen as an audit
-      // record of what was closed.
+      // On a completed quest the quest BODY - title, description, objectives -
+      // stays frozen as an audit record of what was closed. Two things are
+      // not the body and are therefore still editable:
+      //
+      // - `completionMessage`, because project memory is curatable;
+      // - `releaseId`, because which release a finished quest ships in is
+      //   planning metadata decided after completion at least as often as
+      //   before it. A release HOLDS quests by assignment (folio "Lore
+      //   vocabulary"), so the assignment has to stay editable until the
+      //   release is published - and the published-release refusal in
+      //   `ReleaseAttachmentService` is what enforces that end, unchanged.
       if (quest.completedAt) {
         const otherEdits = Object.entries(body).filter(
           ([key, value]) =>
             key !== "completionMessage" &&
+            key !== "releaseId" &&
             // A concurrency token is not an edit: passing it alongside a
             // completionMessage rewrite must not read as trying to change
             // the frozen body.
@@ -2137,7 +2182,7 @@ export class QuestController {
         );
         if (otherEdits.length > 0) {
           throw new BadRequestError(
-            "Only completionMessage can be edited on a completed quest",
+            "Only completionMessage and releaseId can be edited on a completed quest",
           );
         }
       }
@@ -2267,16 +2312,25 @@ export class QuestController {
         ),
         user,
       );
-      // Don't append a "updated" history entry on a completed quest — we
-      // only allow the summary edit, the rest of the quest is frozen.
-      if (!quest.completedAt) {
+      // On a completed quest most of what could be edited is frozen, so an
+      // "updated" entry usually says nothing and used to be skipped outright.
+      // Since #1702 the release can still move, and that IS history: which
+      // release something shipped in is exactly the kind of thing somebody
+      // reconstructs months later. So the entry is written when the diff
+      // found something - which keeps a summary-only edit silent, as before,
+      // and records the release change.
+      //
+      // An open quest keeps appending unconditionally: "somebody touched
+      // this" is itself worth a line while the quest is live.
+      const changes = await this.diffQuest(quest, patch);
+      if (!quest.completedAt || changes.length > 0) {
         patch.history = [
           ...quest.history,
           {
             at: this.dt.nowISOString(),
             by: user.id,
             action: "updated",
-            changes: await this.diffQuest(quest, patch),
+            changes,
           },
         ];
       }

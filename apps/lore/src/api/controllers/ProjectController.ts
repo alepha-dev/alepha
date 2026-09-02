@@ -47,6 +47,7 @@ import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { AreaService } from "../services/AreaService.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectActivityService } from "../services/ProjectActivityService.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
@@ -111,6 +112,7 @@ export class ProjectController {
   limits = $inject(ProjectLimits);
   slugs = $inject(ProjectSlugService);
   projectSecurity = $inject(ProjectSecurityService);
+  audits = $inject(LoreAudits);
   areaService = $inject(AreaService);
   activityService = $inject(ProjectActivityService);
   openQuests = $inject(OpenQuestScope);
@@ -228,6 +230,13 @@ export class ProjectController {
         projectId: project.id,
         userId: user.id,
         owner: true,
+      });
+
+      await this.audits.project.logSuccess("create", {
+        ...this.audits.actor(user),
+        resourceType: "project",
+        resourceId: String(project.id),
+        description: project.title,
       });
 
       return this.projectMapper.toResource(project);
@@ -441,7 +450,6 @@ export class ProjectController {
         retentionDays: z.integer().min(1).max(3_650).nullable().optional(),
         // Which surface bare `/:projectSlug` lands on. `null` clears the
         // override → the index route falls back to the quest table.
-        defaultSurface: z.enum(["list", "kanban"]).nullable().optional(),
         // Who may read `/:projectSlug/roadmap`. `null` clears the override →
         // `ProjectSecurityService.roadmapVisibilityOf` reads it as `off`.
         roadmapVisibility: roadmapVisibilitySchema.nullable().optional(),
@@ -487,10 +495,6 @@ export class ProjectController {
 
       if ("retentionDays" in body) {
         project.retentionDays = body.retentionDays ?? undefined;
-      }
-
-      if ("defaultSurface" in body) {
-        project.defaultSurface = body.defaultSurface ?? undefined;
       }
 
       if ("roadmapVisibility" in body) {
@@ -742,7 +746,19 @@ export class ProjectController {
     handler: async ({ params, user }) => {
       // Shared with the admin shell's delete — see `ProjectDeletionService`
       // for why the cascade is not written out twice.
-      await this.projectDeletion.deleteProject(params.id);
+      const deleted = await this.projectDeletion.deleteProject(params.id);
+
+      // The title comes back from the service because it is read before the
+      // cascade: once the row is gone, an id names nothing.
+      if (deleted) {
+        await this.audits.project.logSuccess("delete", {
+          ...this.audits.actor(user),
+          severity: "warning",
+          resourceType: "project",
+          resourceId: String(deleted.id),
+          description: deleted.title,
+        });
+      }
 
       return { ok: true };
     },
@@ -796,6 +812,97 @@ export class ProjectController {
       );
 
       await this.members.deleteById(member.id);
+
+      await this.audits.member.logSuccess("leave", {
+        ...this.audits.actor(user),
+        resourceType: "project",
+        resourceId: String(params.id),
+        description: project.title,
+      });
+
+      return { ok: true };
+    },
+  });
+
+  /**
+   * The owner removes somebody from the project.
+   *
+   * The mirror of {@link ProjectController.leaveProject}, and deliberately a
+   * separate action rather than a `userId` parameter on that one: leaving is
+   * something any member may do to themselves, and removing is something only
+   * the owner may do to somebody else. One action with two gates inside it is
+   * how those two rules end up sharing a bug.
+   *
+   * It reuses `leaveProject`'s handling of the departing member's work,
+   * because the row disappears either way and half-done quests must not go
+   * with it: accepted-but-unfinished quests are unassigned so somebody else
+   * can pick them up, and completed ones stay attributed - `acceptedBy` on a
+   * finished quest is a record of who did it, not a claim on it.
+   *
+   * ⚠️ Nothing is sent to the removed user. Their next request simply stops
+   * finding the project. That is the same silence `leaveProject` has, and it
+   * is a deliberate hold rather than an oversight: notifying somebody they
+   * were removed is a decision about tone with no obvious right answer, and
+   * `$notification` would need a template, a category and an unsubscribe
+   * story for it.
+   */
+  removeMember = $action({
+    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+        userId: z.uuid(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params, user }) => {
+      const project = this.owned.get<Project>();
+
+      // The owner's own row is not removable, for the reason they cannot
+      // leave either: a project with no owner has nobody who can delete it,
+      // rename it, or let anybody back in.
+      if (project.createdBy === params.userId) {
+        throw new ForbiddenError(
+          "The owner cannot be removed from their own project.",
+        );
+      }
+
+      const member = await this.members.findOne({
+        where: {
+          userId: { eq: params.userId },
+          projectId: { eq: params.id },
+        },
+      });
+
+      if (!member) {
+        // Idempotent, like `leaveProject`: removing somebody who is already
+        // gone is the state the caller asked for.
+        return { ok: true };
+      }
+
+      await this.quests.updateMany(
+        {
+          projectId: { eq: params.id },
+          acceptedBy: { eq: params.userId },
+          completedAt: { isNull: true },
+        },
+        {
+          acceptedAt: null,
+          acceptedBy: null,
+        },
+      );
+
+      await this.members.deleteById(member.id);
+
+      // The same action as a member leaving of their own accord, and the
+      // actor on the row is what tells the two apart.
+      await this.audits.member.logSuccess("leave", {
+        ...this.audits.actor(user),
+        resourceType: "project",
+        resourceId: String(params.id),
+        description: project.title,
+        metadata: { removedUserId: params.userId },
+      });
 
       return { ok: true };
     },
@@ -880,7 +987,10 @@ export class ProjectController {
       }
       await this.projects.updateById(params.id, {
         kanbanColumns: updated,
-        kanbanColumnConfig: Object.keys(config).length ? config : undefined,
+        // `null` for the same reason the delete path uses it: `undefined`
+        // reads as "leave unchanged", so a rename that empties the map would
+        // leave the OLD name's entry behind.
+        kanbanColumnConfig: Object.keys(config).length ? config : null,
       });
       return updated;
     },
@@ -920,11 +1030,19 @@ export class ProjectController {
       // resurrect a status and a WIP limit nobody asked for.
       const remainingConfig = { ...project.kanbanColumnConfig };
       delete remainingConfig[body.name];
+      // ⚠️ `null`, not `undefined`, when the map empties. An undefined patch
+      // value means "leave unchanged" to `updateById`, so emptying the map
+      // used to write nothing at all: the last configured column's settings
+      // survived its deletion, and re-creating a column with that name
+      // silently resurrected them - the exact outcome the comment above says
+      // this code exists to prevent. Reproduced on a live board (#1511):
+      // delete a violet column, add one back with the same name, and it
+      // comes back violet.
       await this.projects.updateById(params.id, {
         kanbanColumns: updated,
         kanbanColumnConfig: Object.keys(remainingConfig).length
           ? remainingConfig
-          : undefined,
+          : null,
       });
       return updated;
     },

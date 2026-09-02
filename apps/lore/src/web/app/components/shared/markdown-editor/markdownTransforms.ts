@@ -285,3 +285,24 @@ export const DIAGRAM_BLOCK = [
  */
 const escapeRegExp = (s: string): string =>
   s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Wrap the selection as a markdown link and leave the URL selected, so the
+ * next thing typed replaces the placeholder. With nothing selected the
+ * text is the placeholder instead, which is the part a reader fills first.
+ */
+export const wrapAsLink = (state: EditorState): TransactionSpec => {
+  const range = state.selection.main;
+  const selected = state.doc.sliceString(range.from, range.to);
+  const text = selected || "text";
+  const url = "https://";
+  const insert = `[${text}](${url})`;
+  // `[` + text + `](` puts the caret at the start of the URL.
+  const urlFrom = range.from + 1 + text.length + 2;
+  return {
+    changes: { from: range.from, to: range.to, insert },
+    selection: selected
+      ? { anchor: urlFrom, head: urlFrom + url.length }
+      : { anchor: range.from + 1, head: range.from + 1 + text.length },
+  };
+};

@@ -6,7 +6,6 @@ import {
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
-  setProjectDefaultSurface,
   setProjectFeature,
 } from "./_helpers.ts";
 
@@ -1018,7 +1017,13 @@ test.describe("Quest", () => {
     const areaSearch = page.getByRole("combobox", { name: "Search…" });
 
     const openQuestForm = async () => {
-      await page.getByRole("button", { name: "Create Quest" }).click();
+      // The list has two ways in since #1690: the header's create menu and
+      // the table's own primary action. This test waits for the navigation
+      // to the new quest, which only the header's path does: the table's
+      // keeps the reader on the list by design. The header is one "+"
+      // (#1684) whose menu leads with New Quest.
+      await page.getByTestId("project-create-menu").click();
+      await page.getByRole("menuitem", { name: "New Quest" }).click();
       await expect(areaCombobox).toBeVisible({ timeout: 10_000 });
     };
 
@@ -1370,8 +1375,9 @@ test.describe("Quest", () => {
   // folded section left to reveal.
 
   /**
-   * The board is reached from the SIDEBAR, and `defaultSurface` decides where
-   * a bare project URL lands.
+   * The board is reached from the SIDEBAR, and a bare project URL lands on
+   * the list. (`defaultSurface`, the per-project setting that could send it
+   * to the board instead, was removed with feedback #2066.)
    *
    * ⚠️ This used to drive the "Quest list | Kanban board" rail, which is gone
    * (#1510). The rail existed for two real bugs and this test is what keeps
@@ -1381,7 +1387,7 @@ test.describe("Quest", () => {
    * entry, which is exactly why the rail became redundant - so the sidebar
    * entry is now the ONLY way in, and it has to work.
    */
-  test("the sidebar reaches the kanban board, and defaultSurface decides the landing", async ({
+  test("the sidebar reaches the kanban board, and a bare URL lands on the list", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -1424,23 +1430,15 @@ test.describe("Quest", () => {
       });
     });
 
-    await test.step("a bare URL lands on the list until defaultSurface says otherwise", async () => {
-      // The choice is a project setting now, not a per-browser cookie, so a
-      // fresh project lands on the list no matter what this browser last
-      // clicked.
+    await test.step("a bare URL lands on the list, whatever this browser last opened", async () => {
+      // Having just been on the board changes nothing: there is no stored
+      // view (the cookie went with #1510) and no project setting (that went
+      // with feedback #2066) that could send a bare URL anywhere else.
       await page.goto(`/${projectSlug}/`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
-
-      await setProjectDefaultSurface(page, projectId, "kanban");
-      await page.goto(`/${projectSlug}/`);
-      await expect(page.getByTestId("kanban-board")).toBeVisible({
-        timeout: 10_000,
-      });
-      // A redirect, not a second rendering mode: the URL moves to the board's
-      // own address, so what the user sees is addressable.
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
+      expect(new URL(page.url()).search).toBe("");
     });
 
     // #156. The board used to trap the project on itself: the seeding
@@ -1451,13 +1449,8 @@ test.describe("Quest", () => {
     // was the stored view. Arriving proves nothing here: the bounce was a
     // second navigation landing after the first succeeded, so the URL has
     // to still be there once the outgoing page has finished unmounting.
-    //
-    // This is the step that earns its keep after `defaultSurface`: the
-    // preference redirects again, from the index route's loader. A loader
-    // runs once on entry and has no outgoing render to misread, but that is
-    // an argument, and this is the evidence. `defaultSurface` is still
-    // "kanban" from the step above, which is the trapping condition.
     await test.step("leaving the board actually leaves it", async () => {
+      await sidebarLink("/kanban").click();
       await expect(page.getByTestId("kanban-board")).toBeVisible({
         timeout: 10_000,
       });
@@ -1484,7 +1477,6 @@ test.describe("Quest", () => {
       // position. The rail used to sit above it and the assertions were
       // about their relative y. With the rail gone the log is simply the top
       // of the content area, on both routes that carry it.
-      await setProjectDefaultSurface(page, projectId, "list");
       await page.goto(`/${projectSlug}/`);
       await expect(page.getByTestId("quest-log")).toBeVisible({
         timeout: 10_000,

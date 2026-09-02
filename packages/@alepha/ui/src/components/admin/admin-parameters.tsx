@@ -26,9 +26,12 @@ import { useQueryParams } from "alepha/react/router";
 import {
   ChevronRight,
   Download,
+  Eye,
+  EyeOff,
   FileCog,
   History as HistoryIcon,
   Settings2,
+  Trash2,
   Upload,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -91,11 +94,64 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
   const selected = query.param || undefined;
   const setSelected = (name: string) => setQuery({ param: name });
   const [reloadKey, setReloadKey] = useState(0);
+  // Orphans (rows with no `$parameter` behind them) are hidden until asked
+  // for: the tree is a list of live configuration, and an orphan is either a
+  // leftover from a rename or a module this process did not load, which is
+  // also why nothing here deletes one on its own.
+  const [showOrphans, setShowOrphans] = useState(false);
 
   const { data: treeNodes } = useQuery(
     { handler: () => client.getParameterTree() as Promise<ParamNode[]> },
     [client, reloadKey],
   );
+
+  const orphanCount = useMemo(
+    () => countOrphanLeaves(treeNodes ?? []),
+    [treeNodes],
+  );
+  const visibleNodes = useMemo(
+    () =>
+      treeNodes === undefined || showOrphans
+        ? treeNodes
+        : pruneOrphans(treeNodes),
+    [treeNodes, showOrphans],
+  );
+
+  const deleteOrphan = async (name: string) => {
+    const ok = await dialog.confirm({
+      title: String(
+        tr("admin.parameters.orphanDeleteTitle", {
+          default: "Delete this parameter?",
+        }),
+      ),
+      description: String(
+        tr("admin.parameters.orphanDeleteDescription", {
+          default: `No $parameter declares "${name}" in this process. If a module that is not loaded here still reads it, deleting it throws that configuration away. Every stored version of it is removed.`,
+          args: [name],
+        }),
+      ),
+      confirmLabel: String(
+        tr("admin.parameters.orphanDelete", { default: "Delete" }),
+      ),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await client.deleteParameter({ params: { name } });
+      toast.success(
+        String(
+          tr("admin.parameters.orphanDeleted", {
+            default: `"${name}" deleted.`,
+            args: [name],
+          }),
+        ),
+      );
+      if (selected === name) setQuery({ param: undefined });
+      setReloadKey((k) => k + 1);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
 
   const leafNames = useMemo(
     () => collectLeafNames(treeNodes ?? []),
@@ -235,13 +291,17 @@ export const AdminParameters = (props: AdminParametersProps = {}) => {
       )}
     >
       <ParameterTreePane
-        nodes={treeNodes}
+        nodes={visibleNodes}
         selected={selected}
         onSelect={setSelected}
         onExportAll={exportAll.run}
         onImport={importParams.run}
         exporting={exportAll.loading}
         importing={importParams.loading}
+        orphanCount={orphanCount}
+        showOrphans={showOrphans}
+        onToggleOrphans={() => setShowOrphans((v) => !v)}
+        onDeleteOrphan={deleteOrphan}
       />
       <ParameterEditorPane
         key={selected ?? "none"}
@@ -279,12 +339,26 @@ interface ParameterTreePaneProps {
   onImport: (file: File) => void | Promise<void>;
   exporting?: boolean;
   importing?: boolean;
+  /**
+   * Orphan leaves in the whole tree, shown or not: the toggle names the
+   * number so a hidden orphan is never a secret.
+   */
+  orphanCount: number;
+  showOrphans: boolean;
+  onToggleOrphans: () => void;
+  onDeleteOrphan: (name: string) => void | Promise<void>;
 }
 
+/**
+ * `origin` is what the provider says about each node: `registered` (a
+ * `$parameter` declares it, nothing saved), `orphan` (saved, nothing
+ * declares it) or `both`. A folder carries what its leaves agree on.
+ */
 interface ParamNode {
   name: string;
   path: string;
   isLeaf: boolean;
+  origin: "registered" | "orphan" | "both";
   children: ParamNode[];
 }
 
@@ -295,6 +369,31 @@ const ParameterTreePane = (props: ParameterTreePaneProps) => {
       <div className="text-muted-foreground flex items-center gap-1.5 px-2 py-1 text-xs font-medium tracking-wide uppercase">
         <Settings2 className="size-3.5" />
         {tr("admin.parameters.treeTitle", { default: "Parameters" })}
+        {props.orphanCount > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="ml-auto h-6 gap-1 px-1.5 text-[11px] tracking-normal normal-case"
+            aria-pressed={props.showOrphans}
+            onClick={props.onToggleOrphans}
+          >
+            {props.showOrphans ? (
+              <EyeOff className="size-3" />
+            ) : (
+              <Eye className="size-3" />
+            )}
+            {props.showOrphans
+              ? tr("admin.parameters.orphansHide", {
+                  default: `Hide ${props.orphanCount} orphan(s)`,
+                  args: [String(props.orphanCount)],
+                })
+              : tr("admin.parameters.orphansShow", {
+                  default: `Show ${props.orphanCount} orphan(s)`,
+                  args: [String(props.orphanCount)],
+                })}
+          </Button>
+        )}
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-2">
         {!props.nodes ? (
@@ -316,6 +415,7 @@ const ParameterTreePane = (props: ParameterTreePaneProps) => {
               depth={0}
               selected={props.selected}
               onSelect={props.onSelect}
+              onDeleteOrphan={props.onDeleteOrphan}
             />
           ))
         ) : (
@@ -392,6 +492,7 @@ interface TreeNodeViewProps {
   depth: number;
   selected: string | undefined;
   onSelect: (name: string) => void;
+  onDeleteOrphan: (name: string) => void | Promise<void>;
 }
 
 const TreeNodeView = (props: TreeNodeViewProps) => {
@@ -405,21 +506,50 @@ const TreeNodeView = (props: TreeNodeViewProps) => {
   // entry — so a parameters tree always renders, localized or not.
   const label = tr(`parameters.${node.path}`, { default: labelOf(node.name) });
   const indent = props.depth * 12;
+  const orphan = node.origin === "orphan";
 
   if (node.isLeaf) {
     return (
-      <button
-        type="button"
-        onClick={() => props.onSelect(node.path)}
-        style={{ paddingLeft: 8 + indent }}
-        className={cn(
-          "hover:bg-accent flex items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm transition-colors",
-          isActive && "bg-accent text-accent-foreground font-medium",
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={() => props.onSelect(node.path)}
+          style={{ paddingLeft: 8 + indent }}
+          className={cn(
+            "hover:bg-accent flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm transition-colors",
+            isActive && "bg-accent text-accent-foreground font-medium",
+            orphan && "text-muted-foreground",
+          )}
+        >
+          <FileCog className="size-3.5 shrink-0 opacity-60" />
+          <span className="truncate">{label}</span>
+          {orphan && (
+            // Saved rows with no `$parameter` behind them: editing changes
+            // nothing this process reads. Shown only once orphans are
+            // revealed, so the badge never has to explain itself twice.
+            <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px]">
+              {tr("admin.parameters.orphan", { default: "orphan" })}
+            </Badge>
+          )}
+        </button>
+        {orphan && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-destructive shrink-0"
+            aria-label={String(
+              tr("admin.parameters.orphanDeleteAction", {
+                default: `Delete ${node.path}`,
+                args: [node.path],
+              }),
+            )}
+            onClick={() => props.onDeleteOrphan(node.path)}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
         )}
-      >
-        <FileCog className="size-3.5 shrink-0 opacity-60" />
-        <span className="truncate">{label}</span>
-      </button>
+      </div>
     );
   }
   return (
@@ -443,6 +573,7 @@ const TreeNodeView = (props: TreeNodeViewProps) => {
             depth={props.depth + 1}
             selected={props.selected}
             onSelect={props.onSelect}
+            onDeleteOrphan={props.onDeleteOrphan}
           />
         ))}
     </>
@@ -837,6 +968,28 @@ const ParameterHistoryPane = (props: ParameterHistoryPaneProps) => {
 };
 
 // ── helpers ──────────────────────────────────────────────────────────
+
+/**
+ * The tree without its orphans: an orphan leaf goes, and a folder whose
+ * leaves were all orphans goes with them. A folder that is also a live leaf
+ * keeps its row.
+ */
+const pruneOrphans = (nodes: ParamNode[]): ParamNode[] =>
+  nodes.flatMap((node) => {
+    if (node.origin === "orphan") return [];
+    const children = pruneOrphans(node.children);
+    return [{ ...node, children }];
+  });
+
+const countOrphanLeaves = (nodes: ParamNode[]): number => {
+  let count = 0;
+  const walk = (n: ParamNode) => {
+    if (n.isLeaf && n.origin === "orphan") count += 1;
+    for (const c of n.children) walk(c);
+  };
+  for (const n of nodes) walk(n);
+  return count;
+};
 
 const collectLeafNames = (nodes: ParamNode[]): string[] => {
   const out: string[] = [];

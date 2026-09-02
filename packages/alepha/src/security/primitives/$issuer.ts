@@ -73,6 +73,20 @@ export type IssuerPrimitiveOptions = {
    * omitted, the HS256 `secret` path is used (default, backward compatible).
    */
   signing?: SigningConfig;
+
+  /**
+   * Answer every lookup that names no realm.
+   *
+   * Only meaningful once an application declares more than one realm. Until
+   * then the single realm is the answer to a realm-less question and there is
+   * nothing to declare; from two realms on, a realm-less lookup is refused
+   * unless exactly one of them carries this flag.
+   *
+   * It used to be positional - `realms[0]`, so the order of FIELDS in a class
+   * decided which realm every realm-less lookup resolved against, which
+   * nothing declared and nothing checked.
+   */
+  default?: boolean;
 } & (IssuerInternal | IssuerExternal);
 
 export interface IssuerSettings {
@@ -209,6 +223,7 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
       profile: this.options.profile,
       secret: "jwks" in this.options ? this.options.jwks : this.options.secret,
       signing: this.options.signing,
+      default: this.options.default,
       roles,
       resolvers: [],
     });
@@ -252,6 +267,13 @@ export class IssuerPrimitive extends Primitive<IssuerPrimitiveOptions> {
         // tokens and id_tokens are signed with this same key and would
         // otherwise pass straight through.
         if (!this.jwt.isAccessToken(this.name, result.protectedHeader)) {
+          return null;
+        }
+
+        // Anti-replay: a token minted by realm B must not authenticate on
+        // realm A. Every realm signs with the same key by default, so the
+        // signature alone decides nothing.
+        if (!this.jwt.matchesRealmAudience(this.name, result.payload)) {
           return null;
         }
 

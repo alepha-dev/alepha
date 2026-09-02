@@ -23,7 +23,10 @@ import { $topic } from "alepha/topic";
 import { type Parameter, parameters } from "../entities/parameters.ts";
 import type { ParameterPrimitive } from "../primitives/$parameter.ts";
 import type { ParameterStatus } from "../schemas/parameterStatusSchema.ts";
-import type { ParameterTreeNode } from "../schemas/parameterTreeNodeSchema.ts";
+import type {
+  ParameterOrigin,
+  ParameterTreeNode,
+} from "../schemas/parameterTreeNodeSchema.ts";
 
 /**
  * Payload for parameter change events across instances.
@@ -825,13 +828,26 @@ export class ParameterProvider {
 
   /**
    * Build a tree structure from parameter names for UI.
-   * Includes both database parameters and registered (but not yet saved) parameters.
+   *
+   * Includes both database parameters and registered (but not yet saved)
+   * parameters, and says which is which on every node: a name in the
+   * database with no `$parameter` behind it is an orphan (a rename or a
+   * removal leaves one, and so does a module not loaded in this process),
+   * a name registered but never saved is the opposite and is the reason
+   * the union exists. The two used to be indistinguishable here, while the
+   * seeding path already skipped orphans on purpose.
    */
   public async getParameterTree(): Promise<ParameterTreeNode[]> {
-    const dbNames = await this.getParameterNames();
-    const registeredNames = Array.from(this.primitives.keys());
+    const dbNames = new Set(await this.getParameterNames());
+    const registeredNames = new Set(this.primitives.keys());
     const allNames = [...new Set([...dbNames, ...registeredNames])].sort();
-    return this.buildTree(allNames);
+    return this.buildTree(allNames, (name) =>
+      dbNames.has(name) && registeredNames.has(name)
+        ? "both"
+        : registeredNames.has(name)
+          ? "registered"
+          : "orphan",
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -1173,7 +1189,15 @@ export class ParameterProvider {
   /**
    * Build tree structure from dot-notation names.
    */
-  protected buildTree(names: string[]): ParameterTreeNode[] {
+  /**
+   * `originOf` names each leaf's origin; a folder takes the origin its
+   * descendants agree on, `both` when they do not. Absent, every node is
+   * `both`, which is what a caller with one source means.
+   */
+  protected buildTree(
+    names: string[],
+    originOf: (name: string) => ParameterOrigin = () => "both",
+  ): ParameterTreeNode[] {
     const root: ParameterTreeNode[] = [];
 
     for (const name of names) {
@@ -1192,6 +1216,7 @@ export class ParameterProvider {
             name: part,
             path,
             isLeaf,
+            origin: "both",
             children: [],
           };
           currentLevel.push(existing);
@@ -1199,13 +1224,37 @@ export class ParameterProvider {
 
         if (isLeaf) {
           existing.isLeaf = true;
+          existing.origin = originOf(name);
         }
 
         currentLevel = existing.children;
       }
     }
 
+    this.settleFolderOrigins(root);
     return root;
+  }
+
+  /**
+   * A folder's origin is what its leaves agree on. Computed after the walk,
+   * because a folder is created by its first leaf and only knows the rest
+   * once they are all in.
+   */
+  protected settleFolderOrigins(nodes: ParameterTreeNode[]): void {
+    for (const node of nodes) {
+      if (node.children.length === 0) {
+        continue;
+      }
+      this.settleFolderOrigins(node.children);
+      const origins = new Set<ParameterOrigin>(
+        node.children.map((child: ParameterTreeNode) => child.origin),
+      );
+      // A folder that is also a leaf counts its own row too.
+      if (node.isLeaf) {
+        origins.add(node.origin);
+      }
+      node.origin = origins.size === 1 ? [...origins][0]! : "both";
+    }
   }
 }
 

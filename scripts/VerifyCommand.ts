@@ -13,27 +13,40 @@ import { $command } from "alepha/command";
  */
 export class VerifyCommand {
   /**
-   * The machine-wide queue key held by the steps that cannot overlap between
-   * checkouts. Two reasons, one key:
+   * ⚠️ There is no machine-wide slot any more, and this note is what replaces
+   * it.
    *
-   *   test, test:bun   `vitest.config.ts` points EVERY checkout at the same
-   *                    services (postgres on 15432, redis on 16379, s3mock on
-   *                    19090, emqx on 11883), one database and one bucket
-   *                    between them. Two worktrees testing at once interleave
-   *                    writes into a single postgres, which is the likeliest
-   *                    cause of the intermittent, never-the-same-spec failures
-   *                    this pipeline used to produce.
+   * `test`, `test:bun` and the `e2e` pair used to queue on `alepha:test`, a
+   * machine-wide FIFO, so two checkouts running `yarn v` at once took turns
+   * over the four `compose.yml` services. Half of that was paid for nothing
+   * and the other half was paid for the wrong reason:
    *
-   *   e2e, e2e-cli     Nothing shared: ports come from the checkout path (see
-   *                    `playwright.port.ts`) and the databases are `:memory:`.
-   *                    They queue for the machine. Two concurrent browser
-   *                    suites on one laptop time each other out, and a flaky
-   *                    e2e failure costs more to diagnose than the wait.
+   * | service  | what actually separates two runs                        |
+   * |----------|---------------------------------------------------------|
+   * | postgres | a `test_alepha_{epoch}_{rand8}` schema per run, already  |
+   * | emqx     | topics namespaced with `randomUUID()`, already          |
+   * | redis    | a per-checkout database index (`test.slot.ts`)          |
+   * | s3mock   | a per-checkout bucket name (`test.slot.ts`)             |
    *
-   * Namespaced because the queue is machine-wide: a bare "test" would put this
-   * repo behind any other project on the machine that picked the same word.
-   */
-  protected static readonly suites = "alepha:test";
+   * The first two never needed the queue. The last two do the same thing the
+   * queue did, one level down, without making anybody wait.
+   *
+   * **The e2e pair shared nothing at all.** Checked rather than assumed: the
+   * service variables live in `vitest.config.ts`, which Playwright never
+   * loads, and no e2e config or `.env` sets one. `examples/playground` and
+   * `examples/shop` pin `:memory:`; `lore`, `docs` and `examples/ssr` set no
+   * `DATABASE_URL`, so each uses its own checkout's SQLite file; `e2e-cli`
+   * says outright it needs no registry and no Docker. Ports are already
+   * partitioned by checkout in `playwright.port.ts`.
+   *
+   * What that slot enforced was "two e2e runs must not saturate the machine
+   * together" - which is the reasoning already weighed and removed for
+   * `v:go`, in this same file, as costing more than it bought.
+   *
+   * ⚠️ **That last part is a judgement, not a proof.** Concurrent runs on a
+   * loaded laptop can still time each other out; what is proven here is only
+   * that they cannot corrupt each other's data. If timeouts return, the fix
+   * is a bound on concurrency, not a queue on a resource nobody shares.
 
   /**
    * The services `vitest.config.ts` points at, exactly the set `compose.yml`
@@ -50,13 +63,14 @@ export class VerifyCommand {
 
   public readonly verify = $command({
     aliases: ["v"],
-    // The machine-wide slot is on the steps that contend, not on this
-    // command: see `suites` above and the `exclusive:` options below.
+    // No slot on this command, and none on its steps either - see the note at
+    // the top of the class for what replaced them.
     //
-    // It was on the command first. Correct, and far too wide. `lint`,
+    // The slot was on the COMMAND first. Correct, and far too wide: `lint`,
     // `typecheck`, `check:*` and `build` share nothing between checkouts, so
     // a second worktree sat through eight minutes of them before finding out
-    // its own typecheck was broken.
+    // its own typecheck was broken. It moved to the steps, and then the steps
+    // stopped needing it.
     description:
       "Run linter, checker and tests (JavaScript/TypeScript only, Go lives in `v:go`).",
     flags: z.object({
@@ -66,8 +80,6 @@ export class VerifyCommand {
         .optional(),
     }),
     handler: async ({ run, flags }) => {
-      const suites = VerifyCommand.suites;
-
       // We need to force CI environment
       // -> tsdown has different behavior when run in CI
       process.env.CI = "true";
@@ -101,8 +113,8 @@ export class VerifyCommand {
         // could have saved it. This is the lane used as the gate before a
         // commit, which makes it a good suspect for a flake that never
         // reproduces the same way twice.
-        await run(`yarn test`, { exclusive: suites });
-        await run(`yarn test:bun`, { exclusive: suites });
+        await run(`yarn test`);
+        await run(`yarn test:bun`);
         return;
       }
 
@@ -150,13 +162,12 @@ export class VerifyCommand {
       // is not worth a test run that takes two and a half times as long to
       // tell you it failed.
       //
-      // Two acquires rather than one, so another checkout can legitimately
-      // take the slot in between and this one queues again. That is the
-      // trade for not grouping them: `run([a, b])` is `Promise.all`, and
-      // running these two together is exactly the interleaving the slot
-      // exists to prevent.
-      await run(`yarn test`, { exclusive: suites });
-      await run(`yarn test:bun`, { exclusive: suites });
+      // Still two calls rather than `run([a, b])`, and still for the reason
+      // above rather than for the queue that used to be here: `run([a, b])`
+      // is `Promise.all`, and these two drive the same postgres, so running
+      // them together is one process interleaving with itself.
+      await run(`yarn test`);
+      await run(`yarn test:bun`);
       await run(`yarn build`);
 
       // Give the one dev-mode e2e suite a cold Vite cache. Only
@@ -178,9 +189,7 @@ export class VerifyCommand {
       // playwright.config.ts) and `e2e-cli` exercises a packed tarball with
       // no server at all.
       //
-      // One slot for the pair, not one each, so the parallelism above
-      // survives the queue.
-      await run([`yarn e2e`, `yarn e2e-cli`], { exclusive: suites });
+      await run([`yarn e2e`, `yarn e2e-cli`]);
 
       // ⚠️ `{ root }`, never `cd X && …`. `shell.run(string)` passes every
       // token through as a LITERAL argument on both runtimes; that is a

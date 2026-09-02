@@ -7,7 +7,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import type * as DrizzleKitPostgres from "drizzle-kit/payload/postgres";
 import type * as DrizzleKitSqlite from "drizzle-kit/payload/sqlite";
-import { sql } from "drizzle-orm";
+import { getColumns, getTableName, sql, type Table } from "drizzle-orm";
 
 import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
 
@@ -19,6 +19,46 @@ import type { DatabaseProvider } from "./drivers/DatabaseProvider.ts";
 export type DrizzleKitPayload =
   | typeof DrizzleKitPostgres
   | typeof DrizzleKitSqlite;
+
+/**
+ * What a development `synchronize()` did, so a caller (or a spec) can tell a
+ * database that matches the entities from one the sync could only partly
+ * repair. The boot log says the same thing; this is the same fact as a value.
+ */
+export interface SchemaSyncResult {
+  /**
+   * `false` when the push failed and the fallback, which can only create
+   * tables, met tables that already existed and left them as they were.
+   * Entity changes on those tables have not reached the database.
+   */
+  complete: boolean;
+
+  /**
+   * Fallback statements skipped because their table already existed.
+   */
+  skipped: number;
+
+  /**
+   * Columns (`table.column`) and tables the entities no longer declared,
+   * dropped so that a push drizzle-kit could not resolve on its own would go
+   * through. Empty when the push needed no help.
+   */
+  dropped: string[];
+
+  /**
+   * The error the push failed with, when the fallback was taken.
+   */
+  pushError?: unknown;
+}
+
+/**
+ * The shape both dialects' `pushSchema` resolve to.
+ */
+export interface PushSchemaResult {
+  sqlStatements: string[];
+  hints: Array<{ hint: string; statement?: string }>;
+  apply: () => Promise<void>;
+}
 
 export class DrizzleKitProvider {
   protected readonly log = $logger();
@@ -34,12 +74,25 @@ export class DrizzleKitProvider {
    * - SQLite: uses `pushSchema` (requires sync driver — node:sqlite shim or bun-sqlite)
    * - PostgreSQL: uses `pushSchema` with schema filters
    *
+   * A rename drizzle-kit cannot decide on its own is resolved as a drop and
+   * a create (see {@link push}). When the push fails outright, the fallback
+   * creates the tables that are missing and the result says, as does the
+   * log, whether existing tables were left behind.
+   *
    * Does nothing in production mode — use file-based migrations instead.
    */
-  public async synchronize(provider: DatabaseProvider): Promise<void> {
+  public async synchronize(
+    provider: DatabaseProvider,
+  ): Promise<SchemaSyncResult> {
+    const result: SchemaSyncResult = {
+      complete: true,
+      skipped: 0,
+      dropped: [],
+    };
+
     if (this.alepha.isProduction()) {
       this.log.warn("Synchronization skipped in production mode.");
-      return;
+      return result;
     }
 
     if (this.alepha.isTest()) {
@@ -50,7 +103,7 @@ export class DrizzleKitProvider {
         ),
         provider,
       );
-      return;
+      return result;
     }
 
     const now = this.dateTime.nowMillis();
@@ -59,11 +112,11 @@ export class DrizzleKitProvider {
 
     if (Object.keys(models).length === 0) {
       this.log.info(`No models to synchronize for '${provider.name}'`);
-      return;
+      return result;
     }
 
     try {
-      await this.push(kit, models, provider);
+      result.dropped = await this.push(kit, models, provider);
     } catch (error) {
       // Fallback: generate migrations from scratch (no snapshots).
       // Covers drivers that don't support introspection (e.g. PgLite, sqlite-proxy).
@@ -80,20 +133,24 @@ export class DrizzleKitProvider {
         statements,
         provider,
       );
-
-      // The fallback diffs against an EMPTY snapshot, so it can only ever
-      // CREATE. Against a database whose tables all exist already, every
-      // statement is skipped and nothing is synchronized, yet the caller
-      // goes on to log "Synchronization OK". That combination is the exact
-      // shape of a silent no-op: entity changes never reach the database and
-      // the app only finds out when a query names a column that was never
-      // added. Say so instead.
+      result.pushError = error;
+      result.skipped = skipped;
+      if (skipped > 0) {
+        result.complete = false;
+      }
       this.reportFallbackOutcome(provider.name, applied, skipped, error);
     }
 
-    this.log.info(
-      `Synchronization of '${provider.name}' OK [${this.dateTime.nowMillis() - now}ms]`,
-    );
+    const elapsed = this.dateTime.nowMillis() - now;
+    if (result.complete) {
+      this.log.info(`Synchronization of '${provider.name}' OK [${elapsed}ms]`);
+    } else {
+      this.log.warn(
+        `Synchronization of '${provider.name}' INCOMPLETE [${elapsed}ms]`,
+      );
+    }
+
+    return result;
   }
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -272,7 +329,21 @@ export class DrizzleKitProvider {
       return { statements: [], warnings: [], hasDataLoss: false };
     }
 
-    const result = await this.callPushSchema(kit, models, provider);
+    let result: PushSchemaResult;
+    try {
+      result = await this.callPushSchema(kit, models, provider);
+    } catch (error) {
+      // A preview must not take the drops `push` takes to get past this, so
+      // it can only say what it ran into, in place of drizzle-kit's
+      // "Internal error".
+      if (this.isRenameResolutionError(error)) {
+        throw new AlephaError(
+          "drizzle-kit cannot compute this push outside a terminal: a table has both an added and a removed column (or one table was added while another was removed) and it wants to ask whether that is a rename. `alepha dev` resolves it by dropping what the entities no longer declare; to preview or apply the change here, create a migration with `alepha db migrations create` instead.",
+          { cause: error },
+        );
+      }
+      throw error;
+    }
 
     // v1 replaced the `hasDataLoss` boolean with structured `hints`. Every
     // hint drizzle raises is a destructive-change confirmation ("about to
@@ -298,11 +369,7 @@ export class DrizzleKitProvider {
     kit: DrizzleKitPayload,
     models: Record<string, unknown>,
     provider: DatabaseProvider,
-  ): Promise<{
-    sqlStatements: string[];
-    hints: Array<{ hint: string; statement?: string }>;
-    apply: () => Promise<void>;
-  }> {
+  ): Promise<PushSchemaResult> {
     if (provider.dialect === "sqlite") {
       const sqlite = kit as typeof DrizzleKitSqlite;
       return await sqlite.pushSchema(
@@ -349,22 +416,264 @@ export class DrizzleKitProvider {
 
   /**
    * Push schema changes to the database using drizzle-kit's introspection.
+   *
+   * Returns the columns and tables it had to drop first, see below.
+   *
+   * ### The rename drizzle-kit cannot decide
+   *
+   * `pushSchema` diffs the database against the entities and, for each
+   * table with both an added and a removed column (or for a table added
+   * while another was removed), asks whether that is a rename. The asking
+   * is wired to its CLI's prompt, which needs a terminal, and outside one
+   * the programmatic call throws `resolver(column) was called without a
+   * HintsHandler` instead. There is no parameter to answer through: the
+   * `HintsHandler` it wants is built inside `pushSchema` itself. So one
+   * renamed column in a week of entity changes used to send the whole sync
+   * to the fallback, which can only create tables, and the boot log said
+   * "OK".
+   *
+   * A development push means "make the database look like the entities",
+   * and a rename it cannot see is a drop and a create. So on exactly that
+   * error the columns and tables the entities no longer declare are dropped
+   * here, each one named in a warning, and the push runs again on a diff
+   * that only adds. Development data in a dropped column is lost, as it
+   * would have been had drizzle-kit's own prompt been answered "create".
    */
   protected async push(
     kit: DrizzleKitPayload,
     models: Record<string, unknown>,
     provider: DatabaseProvider,
-  ): Promise<void> {
+  ): Promise<string[]> {
     if (provider.dialect !== "sqlite" && provider.schema !== "public") {
       await this.createSchemaIfNotExists(provider, provider.schema);
     }
 
-    const result = await this.callPushSchema(kit, models, provider);
+    let dropped: string[] = [];
+    let result: PushSchemaResult;
+    try {
+      result = await this.callPushSchema(kit, models, provider);
+    } catch (error) {
+      if (!this.isRenameResolutionError(error)) {
+        throw error;
+      }
+      this.log.warn(
+        "Schema push needs a rename decision drizzle-kit cannot ask for outside a terminal. Columns and tables the entities no longer declare are dropped so the push can go through; development data in them is lost.",
+        { error },
+      );
+      dropped = await this.dropUndeclared(provider);
+      result = await this.callPushSchema(kit, models, provider);
+    }
+
     this.reportPushRisks(
       result.hints.map((h) => h.hint),
       result.hints.length > 0,
     );
     await this.executeStatements(result.sqlStatements, provider);
+    return dropped;
+  }
+
+  /**
+   * drizzle-kit's prompt-bound resolver refusing to run without a terminal.
+   * The text is its own, so the match is on the one fragment no other error
+   * carries.
+   */
+  protected isRenameResolutionError(error: unknown): boolean {
+    return this.errorMentions(error, "without a HintsHandler");
+  }
+
+  /**
+   * Say what the fallback could and could not do.
+   *
+   * The fallback diffs against an EMPTY snapshot, so it can only ever
+   * CREATE. Every statement it skips is a table that already existed and
+   * was left exactly as it was: a column added to that entity never reached
+   * the database, and the app only finds out when a query names it.
+   *
+   * `skipped > 0`, not `skipped > 0 && applied === 0`: a database that is
+   * only PARTLY behind (one new table, three tables missing a column)
+   * applied the one CREATE and skipped the rest, and the narrower condition
+   * let it log "Synchronization OK". Anything skipped means the fallback
+   * could not say whether those tables match their entities, and that is
+   * worth a warning every time.
+   */
+  protected reportFallbackOutcome(
+    providerName: string,
+    applied: number,
+    skipped: number,
+    error: unknown,
+  ): void {
+    if (skipped === 0) {
+      return;
+    }
+    this.log.warn(
+      `Schema of '${providerName}' could NOT be fully synchronized: the push failed (${this.describePushError(error)}) and the fallback only knows how to create tables; ${applied} created, ${skipped} already existed and were left as they are. Entity changes to existing tables have NOT been applied: run your migrations, or delete the development database (node_modules/.alepha/sqlite.db for the default sqlite setup) and start again.`,
+      { error },
+    );
+  }
+
+  /**
+   * One line for the boot log: drizzle-kit's internal error reads as a bug
+   * in drizzle-kit, and the person reading the log needs the situation, not
+   * the symptom.
+   */
+  protected describePushError(error: unknown): string {
+    if (this.isRenameResolutionError(error)) {
+      return "drizzle-kit needed a rename decision it cannot ask for outside a terminal, and a column in the way could not be dropped";
+    }
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  /**
+   * Drop every column and table the database has and the entities do not,
+   * so the diff drizzle-kit computes next holds no removal it could mistake
+   * for a rename. Only called once the push has already refused to decide
+   * one; the normal path leaves the drops to drizzle-kit, which reports
+   * them through its hints.
+   *
+   * Returns what went, as `table` and `table.column`. A drop the database
+   * refuses (sqlite will not drop a column an index or a key still uses,
+   * postgres will not drop a table an extension owns) is logged and left
+   * for the retried push to fail on.
+   */
+  protected async dropUndeclared(
+    provider: DatabaseProvider,
+  ): Promise<string[]> {
+    const dropped: string[] = [];
+    const declared = this.declaredColumns(provider);
+    const existing = await this.existingColumns(provider);
+
+    for (const [table, columns] of existing) {
+      const wanted = declared.get(table);
+      const qualified = this.qualifiedTableName(provider, table);
+
+      if (!wanted) {
+        try {
+          await provider.execute(sql.raw(`DROP TABLE ${qualified}`));
+          this.log.warn(`Dropped table '${table}': no entity declares it`);
+          dropped.push(table);
+        } catch (error) {
+          this.log.warn(`Could not drop undeclared table '${table}'`, {
+            error,
+          });
+        }
+        continue;
+      }
+
+      for (const column of columns) {
+        if (wanted.has(column)) {
+          continue;
+        }
+        try {
+          await provider.execute(
+            sql.raw(
+              `ALTER TABLE ${qualified} DROP COLUMN ${this.quoteIdentifier(column)}`,
+            ),
+          );
+          this.log.warn(
+            `Dropped column '${table}.${column}': the entity no longer declares it`,
+          );
+          dropped.push(`${table}.${column}`);
+        } catch (error) {
+          this.log.warn(
+            `Could not drop undeclared column '${table}.${column}', the push may still need a rename decision`,
+            { error },
+          );
+        }
+      }
+    }
+
+    return dropped;
+  }
+
+  /**
+   * Table name to the set of column names the entities declare, as they are
+   * spelled in SQL.
+   */
+  protected declaredColumns(
+    provider: DatabaseProvider,
+  ): Map<string, Set<string>> {
+    const declared = new Map<string, Set<string>>();
+    for (const value of provider.tables.values()) {
+      const table = value as Table;
+      const columns = Object.values(getColumns(table)).map(
+        (column) => column.name,
+      );
+      declared.set(getTableName(table), new Set(columns));
+    }
+    return declared;
+  }
+
+  /**
+   * Table name to its column names as the database has them, for the base
+   * tables of the provider's schema. The migration journals are not tables
+   * the entities declare and are not for dropping.
+   */
+  protected async existingColumns(
+    provider: DatabaseProvider,
+  ): Promise<Map<string, string[]>> {
+    const existing = new Map<string, string[]>();
+    const journals = new Set([
+      provider.migrationsTable,
+      "__drizzle_migrations",
+    ]);
+
+    if (provider.dialect === "sqlite") {
+      const tables = await provider.execute(
+        sql.raw(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        ),
+      );
+      for (const row of tables) {
+        const name = String(row.name);
+        if (journals.has(name)) {
+          continue;
+        }
+        const info = await provider.execute(
+          sql.raw(`PRAGMA table_info(${this.quoteIdentifier(name)})`),
+        );
+        existing.set(
+          name,
+          info.map((column) => String(column.name)),
+        );
+      }
+      return existing;
+    }
+
+    const rows = await provider.execute(
+      sql`SELECT c.table_name AS "table", c.column_name AS "column"
+          FROM information_schema.columns c
+          JOIN information_schema.tables t
+            ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+          WHERE c.table_schema = ${provider.schema} AND t.table_type = 'BASE TABLE'
+          ORDER BY c.table_name, c.ordinal_position`,
+    );
+    for (const row of rows) {
+      const name = String(row.table);
+      if (journals.has(name)) {
+        continue;
+      }
+      const columns = existing.get(name) ?? [];
+      columns.push(String(row.column));
+      existing.set(name, columns);
+    }
+    return existing;
+  }
+
+  protected qualifiedTableName(
+    provider: DatabaseProvider,
+    table: string,
+  ): string {
+    const name = this.quoteIdentifier(table);
+    return provider.dialect === "sqlite"
+      ? name
+      : `${this.quoteIdentifier(provider.schema)}.${name}`;
+  }
+
+  /**
+   * Double quotes, which both dialects read as an identifier.
+   */
+  protected quoteIdentifier(name: string): string {
+    return `"${name.replace(/"/g, '""')}"`;
   }
 
   /**
@@ -439,33 +748,6 @@ export class DrizzleKitProvider {
       }
     }
     return { applied, skipped };
-  }
-
-  /**
-   * Say what the fallback could and could not do.
-   *
-   * `skipped > 0`, not `skipped > 0 && applied === 0`: a database that is
-   * only PARTLY behind - one new table, three tables missing a column -
-   * applied the one CREATE and skipped the rest, and the narrower condition
-   * let it log "Synchronization OK". The missing columns then surfaced as a
-   * 500 on the first page that read them, with nothing in the boot log
-   * pointing here. Anything skipped means the fallback could not say whether
-   * those tables match their entities, and that is worth a warning every
-   * time.
-   */
-  protected reportFallbackOutcome(
-    providerName: string,
-    applied: number,
-    skipped: number,
-    error: unknown,
-  ): void {
-    if (skipped === 0) {
-      return;
-    }
-    this.log.warn(
-      `Schema of '${providerName}' could NOT be fully synchronized: push introspection failed (${String((error as Error)?.message ?? error)}) and the fallback only knows how to create tables; ${applied} created, ${skipped} already existed and were left as they are. Entity changes to existing tables have NOT been applied: run your migrations, or recreate the database.`,
-      { error },
-    );
   }
 
   /**

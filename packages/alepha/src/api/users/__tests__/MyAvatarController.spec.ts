@@ -56,3 +56,60 @@ describe("alepha/api/users - MyAvatarController", () => {
     expect(actions).toContain("deleteMyAvatar");
   });
 });
+
+/**
+ * The operator-side pair (#1669), on the same flag and for the same reason: a
+ * realm that switched avatars off must not grow admin endpoints for them.
+ *
+ * Kept off `AdminUserController` deliberately. That controller is always
+ * registered, so putting these two actions on it would pull `UserStorage` in
+ * transitively and leave the routes answering on every realm - which is
+ * verbatim the bug the self-service split above was made to fix.
+ */
+describe("alepha/api/users - AdminAvatarController", () => {
+  it("should not register the admin avatar endpoints without the flag", async ({
+    expect,
+  }) => {
+    const actions = await registeredActions();
+
+    expect(actions).not.toContain("updateUserAvatar");
+    expect(actions).not.toContain("deleteUserAvatar");
+    // The rest of the admin surface is unaffected: this is the avatar's own
+    // switch, not a switch on the admin area.
+    expect(actions).toContain("updateUser");
+    expect(actions).toContain("getUser");
+  });
+
+  it("should register them when the realm enables avatars", async ({
+    expect,
+  }) => {
+    const actions = await registeredActions({ avatars: true });
+
+    expect(actions).toContain("updateUserAvatar");
+    expect(actions).toContain("deleteUserAvatar");
+  });
+
+  it("should gate them on their own permission, not on admin:user:update", async ({
+    expect,
+  }) => {
+    // Reaching into somebody's profile picture is a different capability from
+    // editing their roles or their email, and an operator trusted with one is
+    // not automatically trusted with the other.
+    const alepha = Alepha.create({ env: { LOG_LEVEL: "error" } });
+    alepha.with(AlephaOrmPostgres);
+    alepha.with(AlephaSecurity);
+    alepha.with(() => ({ realm: $realm({ features: { avatars: true } }) }));
+    await alepha.start();
+
+    const links = alepha.inject(LinkProvider).links;
+    const update = links.find((link) => link.name === "updateUserAvatar");
+    const remove = links.find((link) => link.name === "deleteUserAvatar");
+
+    for (const link of [update, remove]) {
+      const secured = link?.secured;
+      expect(
+        typeof secured === "object" ? secured.permissions : undefined,
+      ).toEqual(["admin:user:avatar"]);
+    }
+  });
+});

@@ -22,6 +22,13 @@ export interface RealmRepositories {
 
 export interface Realm {
   name: string;
+  /**
+   * Answer every lookup that names no realm. At most one realm may carry it,
+   * and it only matters once an application declares more than one.
+   *
+   * @see RealmProvider.defaultRealm
+   */
+  default?: boolean;
   repositories: RealmRepositories;
   settings: RealmAuthSettings;
   features: RealmFeatures;
@@ -198,6 +205,7 @@ export class RealmProvider {
 
     const realm: Realm = {
       name: realmName,
+      default: realmOptions.issuer?.default,
       repositories: {
         identities: realmOptions.entities?.identities ?? this.defaultIdentities,
         sessions: realmOptions.entities?.sessions ?? this.defaultSessions,
@@ -525,11 +533,12 @@ export class RealmProvider {
     let realm = this.realms.get(realmName);
 
     if (!realm) {
-      // Auto-register default realm for backward compatibility
-      const realms = Array.from(this.realms.values());
-      const firstRealm = realms[0];
-      if (realmName === DEFAULT_USER_REALM_NAME && firstRealm) {
-        realm = firstRealm;
+      if (realmName === DEFAULT_USER_REALM_NAME && this.realms.size > 0) {
+        // Every realm-less caller in this module lands here, through the
+        // parameter default. It used to answer with `realms[0]`, so the order
+        // of FIELDS in a class decided which realm they all used - see
+        // `SecurityProvider.defaultRealm`, which this mirrors.
+        realm = this.defaultRealm();
       } else if (this.alepha.isTest()) {
         realm = this.register(realmName); // Auto-create default realm in tests
       } else {
@@ -540,6 +549,42 @@ export class RealmProvider {
     }
 
     return realm;
+  }
+
+  /**
+   * The realm a caller that named none resolves against.
+   *
+   * One realm: that realm. Several: the one declared
+   * `$realm({ issuer: { default: true } })`, and a refusal if none is - the
+   * same rule, and the same wording, as `SecurityProvider.defaultRealm`.
+   */
+  public defaultRealm(): Realm {
+    const realms = Array.from(this.realms.values());
+    const declared = realms.filter((it) => it.default);
+
+    if (declared.length === 1) {
+      return declared[0];
+    }
+    if (realms.length === 1) {
+      return realms[0];
+    }
+    if (realms.length === 0) {
+      throw new AlephaError(
+        "No realm is declared, please declare $realm in your application.",
+      );
+    }
+
+    throw new AlephaError(
+      declared.length > 1
+        ? `Several realms are declared \`default: true\` (${declared
+            .map((it) => it.name)
+            .join(", ")}). Exactly one may be.`
+        : `This application declares ${realms.length} realms (${realms
+            .map((it) => it.name)
+            .join(
+              ", ",
+            )}) and a lookup named none of them. Pass the realm, or mark one \`$realm({ issuer: { default: true } })\` to name the answer once.`,
+    );
   }
 
   public identityRepository(

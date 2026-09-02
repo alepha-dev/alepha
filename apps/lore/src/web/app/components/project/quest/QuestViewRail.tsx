@@ -1,4 +1,9 @@
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -198,36 +203,46 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           label={tr("quest.rail.commits")}
         >
           {quest.commits?.length ? (
-            // `w-full` on BOTH, and the leaf's is the load-bearing one.
-            // `truncate` sets `white-space: nowrap`, which makes the leaf's
-            // min-content equal its max-content, so `items-end` sizes it to
-            // the whole commit line however narrow the column gets — and a
-            // right-aligned overflow spills left, over the "Commits" label.
-            // A definite width is the only thing `text-overflow` can clip
-            // against.
-            <span className="flex w-full min-w-0 flex-col items-end gap-0.5">
-              {quest.commits.map((commit) => (
-                <span key={commit.sha} className="w-full min-w-0 truncate">
-                  {project?.repositoryUrl ? (
-                    <a
-                      href={`${project.repositoryUrl}/commit/${commit.sha}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono underline-offset-2 hover:underline"
-                    >
-                      {commit.sha.slice(0, 7)}
-                    </a>
-                  ) : (
-                    <code className="font-mono">{commit.sha.slice(0, 7)}</code>
-                  )}
-                  {commit.message ? (
-                    <span className="text-muted-foreground font-normal">
-                      {" "}
+            // Short codes wrapping right-aligned, so two or three commits
+            // share a line instead of taking one each.
+            //
+            // The message used to sit beside the sha, truncated (#1574). The
+            // rail is a narrow column and a conventional-commit subject never
+            // fits, so what survived the clip was the type and the scope -
+            // the least informative part of it. It is a tooltip now (#1701):
+            // the sha is the identifier, the message is the detail, and the
+            // detail is one hover away rather than four words wide.
+            <span className="flex min-w-0 flex-wrap justify-end gap-x-2 gap-y-0.5">
+              {quest.commits.map((commit) => {
+                const short = commit.sha.slice(0, 7);
+                const sha = project?.repositoryUrl ? (
+                  <a
+                    href={`${project.repositoryUrl}/commit/${commit.sha}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono underline-offset-2 hover:underline"
+                  >
+                    {short}
+                  </a>
+                ) : (
+                  <code className="font-mono">{short}</code>
+                );
+
+                // `quest_commit_add` accepts a bare sha, so a tooltip with
+                // nothing in it is a real case rather than a defensive one.
+                if (!commit.message) {
+                  return <span key={commit.sha}>{sha}</span>;
+                }
+
+                return (
+                  <Tooltip key={commit.sha}>
+                    <TooltipTrigger render={<span>{sha}</span>} />
+                    <TooltipContent className="max-w-xs text-left">
                       {commit.message}
-                    </span>
-                  ) : null}
-                </span>
-              ))}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
             </span>
           ) : undefined}
         </QuestViewRailRow>

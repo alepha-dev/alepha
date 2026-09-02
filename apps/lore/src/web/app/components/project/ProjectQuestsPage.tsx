@@ -8,9 +8,10 @@ import ProjectQuestsTable from "./ProjectQuestsTable.tsx";
  *
  * It used to render the Kanban board instead when `questsViewAtom` said so,
  * which is what made the board a *mode* rather than a place. The board is
- * `projectKanban` at `/:projectSlug/kanban` now, and which surface a bare
- * `/:projectSlug` lands on is `project.defaultSurface`, applied by this
- * route's loader as a redirect rather than by a branch here.
+ * `projectKanban` at `/:projectSlug/kanban` now, and a bare `/:projectSlug`
+ * always lands here. (For a while `project.defaultSurface` could send it to
+ * the board through this route's loader; that setting went with feedback
+ * #2066.)
  *
  * The view bar that switches the two lives in `ProjectView`, not here
  * (#153): a page rendered as the `NestedView` is necessarily to the RIGHT

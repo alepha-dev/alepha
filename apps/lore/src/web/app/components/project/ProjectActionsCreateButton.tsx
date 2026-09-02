@@ -21,18 +21,23 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@alepha/ui/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui/components/ui/tooltip";
 import { useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import {
   BookOpen,
-  ChevronDown,
   Flag,
   Layers,
   Mail,
   MessageSquarePlus,
   Plus,
+  ScrollText,
   UserPlus,
 } from "lucide-react";
 import { useState } from "react";
@@ -81,13 +86,8 @@ const ProjectActionsCreateButton = () => {
   // every project read.
   const releasesEnabled = features.milestones;
   const isOwner = project.createdBy === auth.user?.id;
-  // ⚠️ Releases has to be counted here, not just rendered below. These two
-  // booleans decide whether the chevron and the separator exist at all, so a
-  // project with releases on and epics, folios and feedback all off would
-  // otherwise have a New Release entry inside a menu with no way to open it.
   const hasCreateAction =
     epicsEnabled || releasesEnabled || folioEnabled || feedbackEnabled;
-  const hasSecondaryAction = hasCreateAction || isOwner;
 
   const handleInvite = async () => {
     if (!(await inviteMember.invite(project.id, inviteEmail))) return;
@@ -96,91 +96,93 @@ const ProjectActionsCreateButton = () => {
   };
 
   const mainLabel = tr("project.menu.create-quest");
-
-  // Green base for both halves; the caret half drops a touch of opacity so
-  // the eye reads them as one button with a divider.
-  const baseClass = "bg-green-600 text-white hover:bg-green-700";
-  const mainClass = hasSecondaryAction
-    ? `${baseClass} rounded-r-none`
-    : baseClass;
+  const menuLabel = String(tr("project.menu.create"));
 
   return (
     <>
-      <div className="flex items-stretch">
-        <Button
-          size="icon"
-          disabled={!canCreateQuest}
-          onClick={() => setShowDialog(true)}
-          aria-label={mainLabel}
-          className={`${mainClass} md:w-auto md:gap-1.5 md:px-4`}
-        >
-          <Plus className="size-4" />
-          <span className="hidden md:inline">{mainLabel}</span>
-        </Button>
-        {hasSecondaryAction && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  size="icon"
-                  disabled={!canCreateQuest}
-                  aria-label={tr("project.menu.create-more")}
-                  className={`${baseClass} rounded-l-none border-l border-white/20 px-2`}
-                />
+      {/* One ghost "+" like the header's other icon buttons, and the whole
+          create vocabulary behind it, New Quest first (feedback #2058).
+          It replaced a green split button whose main half was Create Quest:
+          the lists carry their own labelled create action now (quest
+          #1682), so the header no longer has to shout. Icon-only, so it
+          keeps an aria-label and a tooltip; the #1317 rule only drops
+          tooltips that repeat a visible label. */}
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={menuLabel}
+                    data-testid="project-create-menu"
+                  />
+                }
+              >
+                <Plus className="size-4" />
+              </DropdownMenuTrigger>
+            }
+          />
+          <TooltipContent>{menuLabel}</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end" className="min-w-44">
+          <DropdownMenuItem
+            disabled={!canCreateQuest}
+            onClick={() => setShowDialog(true)}
+          >
+            <ScrollText className="size-4" />
+            {mainLabel}
+          </DropdownMenuItem>
+          {hasCreateAction && <DropdownMenuSeparator />}
+          {epicsEnabled && (
+            <DropdownMenuItem onClick={() => setShowEpic(true)}>
+              <Layers className="size-4" />
+              {tr("project.menu.create-epic")}
+            </DropdownMenuItem>
+          )}
+          {/* Directly after New Epic, matching the sidebar's Epics then
+              Releases: a release is when the epic ships. */}
+          {releasesEnabled && (
+            <DropdownMenuItem onClick={() => setShowRelease(true)}>
+              <Flag className="size-4" />
+              {tr("project.menu.create-release")}
+            </DropdownMenuItem>
+          )}
+          {folioEnabled && (
+            <DropdownMenuItem
+              onClick={() =>
+                router.push("projectFoliosNew", {
+                  params: { projectSlug: project.slug },
+                })
               }
             >
-              <ChevronDown className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-44">
-              {epicsEnabled && (
-                <DropdownMenuItem onClick={() => setShowEpic(true)}>
-                  <Layers className="size-4" />
-                  {tr("project.menu.create-epic")}
-                </DropdownMenuItem>
-              )}
-              {/* Directly after New Epic, matching the sidebar's Epics then
-                  Releases: a release is when the epic ships. */}
-              {releasesEnabled && (
-                <DropdownMenuItem onClick={() => setShowRelease(true)}>
-                  <Flag className="size-4" />
-                  {tr("project.menu.create-release")}
-                </DropdownMenuItem>
-              )}
-              {folioEnabled && (
-                <DropdownMenuItem
-                  onClick={() =>
-                    router.push("projectFoliosNew", {
-                      params: { projectSlug: project.slug },
-                    })
-                  }
-                >
-                  <BookOpen className="size-4" />
-                  {tr("project.menu.create-folio")}
-                </DropdownMenuItem>
-              )}
-              {feedbackEnabled && (
-                <DropdownMenuItem
-                  onClick={() =>
-                    router.push("projectFeedbackRequest", {
-                      params: { projectSlug: project.slug },
-                    })
-                  }
-                >
-                  <MessageSquarePlus className="size-4" />
-                  {tr("project.menu.create-feedback")}
-                </DropdownMenuItem>
-              )}
-              {isOwner && hasCreateAction && <DropdownMenuSeparator />}
-              {isOwner && (
-                <DropdownMenuItem onClick={() => setShowInvite(true)}>
-                  <UserPlus className="size-4" />
-                  {tr("project.menu.invite-member")}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+              <BookOpen className="size-4" />
+              {tr("project.menu.create-folio")}
+            </DropdownMenuItem>
+          )}
+          {feedbackEnabled && (
+            <DropdownMenuItem
+              onClick={() =>
+                router.push("projectFeedbackRequest", {
+                  params: { projectSlug: project.slug },
+                })
+              }
+            >
+              <MessageSquarePlus className="size-4" />
+              {tr("project.menu.create-feedback")}
+            </DropdownMenuItem>
+          )}
+          {isOwner && <DropdownMenuSeparator />}
+          {isOwner && (
+            <DropdownMenuItem onClick={() => setShowInvite(true)}>
+              <UserPlus className="size-4" />
+              {tr("project.menu.invite-member")}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent
           side="right"

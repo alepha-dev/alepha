@@ -31,12 +31,26 @@ export class ProjectDeletionService {
   /**
    * Removes the project row, then the child rows the application deletes
    * explicitly rather than leaving to a database cascade.
+   *
+   * Answers what it deleted, read BEFORE the cascade. Both callers write an
+   * audit row, and a row saying only `resourceId: 41` is a row nobody can
+   * read six months later - the title is the only thing that names the
+   * project once it is gone. Undefined when there was nothing to delete,
+   * which is what keeps a caller from auditing a deletion that did not
+   * happen.
+   *
+   * Still not a permission check, for the reason above: both callers gate
+   * first, and doing it here would suggest the call is safe from anywhere.
    */
-  public async deleteProject(projectId: number): Promise<void> {
+  public async deleteProject(
+    projectId: number,
+  ): Promise<{ id: number; title: string } | undefined> {
+    const project = await this.projects.findById(projectId);
     await this.freeSlug(projectId);
     await this.projects.deleteById(projectId);
     await this.members.deleteMany({ projectId: { eq: projectId } });
     await this.quests.deleteMany({ projectId: { eq: projectId } });
+    return project ? { id: project.id, title: project.title } : undefined;
   }
 
   /**
