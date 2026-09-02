@@ -19,7 +19,7 @@ import { DrizzleKitProvider } from "../providers/DrizzleKitProvider.ts";
  * schema went unnoticed.
  */
 class TestDrizzleKitProvider extends DrizzleKitProvider {
-  public async testPush(provider: DatabaseProvider): Promise<void> {
+  public async testPush(provider: DatabaseProvider): Promise<string[]> {
     const kit = this.importDrizzleKit(this.payloadDialect(provider));
     return this.push(kit, this.getModels(provider), provider);
   }
@@ -94,7 +94,7 @@ describe("push with a case-insensitive unique index", () => {
     const { provider, kit } = await boot();
 
     await kit.testPush(provider);
-    await expect(kit.testPush(provider)).resolves.toBeUndefined();
+    await expect(kit.testPush(provider)).resolves.toEqual([]);
   });
 
   /**
@@ -156,7 +156,7 @@ describe("push with a case-insensitive unique index", () => {
       ),
     );
 
-    await expect(kit.testPush(provider)).resolves.toBeUndefined();
+    await expect(kit.testPush(provider)).resolves.toEqual([]);
   });
 
   /**

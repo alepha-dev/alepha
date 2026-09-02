@@ -56,7 +56,9 @@ ${
 #
 # In development DATABASE_SYNC defaults to true, so the schema is pushed from
 # your entities on boot and there is nothing to migrate. Before deploying, run
-# \`alepha db migrations create\` to freeze it.
+# \`alepha db migrations create\` to freeze it. If the boot log reports the
+# synchronization as INCOMPLETE, the push could not alter a table it names:
+# delete node_modules/.alepha/sqlite.db and start again.
 # DATABASE_URL=postgres://user:password@localhost:5432/mydb
 
 # The first account registered with this address is promoted to admin — that
