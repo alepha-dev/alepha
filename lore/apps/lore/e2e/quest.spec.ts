@@ -1021,9 +1021,9 @@ test.describe("Quest", () => {
       // the table's own primary action. This test waits for the navigation
       // to the new quest, which only the header's path does: the table's
       // keeps the reader on the list by design. The header is one "+"
-      // (#1684) whose menu leads with Create Quest.
+      // (#1684) whose menu leads with New Quest.
       await page.getByTestId("project-create-menu").click();
-      await page.getByRole("menuitem", { name: "Create Quest" }).click();
+      await page.getByRole("menuitem", { name: "New Quest" }).click();
       await expect(areaCombobox).toBeVisible({ timeout: 10_000 });
     };
 

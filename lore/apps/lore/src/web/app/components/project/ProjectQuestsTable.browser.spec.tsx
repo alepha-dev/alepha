@@ -195,14 +195,14 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     return { view, links: alepha.inject(FakeLinkProvider) };
   };
 
-  it("renders a labelled primary Create Quest action in the toolbar", async () => {
+  it("renders a labelled primary New Quest action in the toolbar", async () => {
     const { view } = await mount();
 
-    const button = screen.getByRole("button", { name: "Create Quest" });
+    const button = screen.getByRole("button", { name: "New Quest" });
     // The label is on the button, not only in a tooltip that opens later,
     // and the surface is the primary one: the bare `+` feedback #2055 saw
     // was this control at the weight of the column picker.
-    expect(button.textContent).toBe("Create Quest");
+    expect(button.textContent).toBe("New Quest");
     expect(button.className).toContain("bg-primary");
     // The divider the table draws between its actions and the utility
     // icons, which only exists once there is an action to divide from.
@@ -215,10 +215,10 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     const { view, links } = await mount();
     const fetchesBefore = links.fetches;
 
-    fireEvent.click(screen.getByRole("button", { name: "Create Quest" }));
+    fireEvent.click(screen.getByRole("button", { name: "New Quest" }));
 
     const sheet = await view.findByRole("dialog");
-    expect(sheet.textContent).toContain("Create Quest");
+    expect(sheet.textContent).toContain("New Quest");
 
     const title = await waitFor(() => {
       const input = sheet.querySelector<HTMLInputElement>(

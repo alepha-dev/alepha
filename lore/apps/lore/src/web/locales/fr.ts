@@ -240,7 +240,7 @@ export default {
   "folios.editor.pinned.note":
     "Les folios épinglés sont envoyés en entier à chaque appel project_context.",
 
-  "project.menu.create-quest": "Créer quête",
+  "project.menu.create-quest": "Nouvelle quête",
   "project.menu.create-folio": "Nouveau folio",
   "project.menu.invite-member": "Inviter un membre",
   "project.menu.create-feedback": "Nouveau retour",
@@ -1296,7 +1296,7 @@ export default {
   "feedback.filter.accepted": "Acceptés",
   "feedback.filter.rejected": "Rejetés",
   "feedback.promote": "Promouvoir en quête",
-  "feedback.createQuest": "Créer une quête",
+  "feedback.createQuest": "Nouvelle quête",
   "feedback.reject": "Rejeter",
   "feedback.rejected": "Retour rejeté",
   "feedback.rejectError": "Échec du rejet du retour",
@@ -1428,7 +1428,7 @@ export default {
   "epic.toast.deleted": "Épopée supprimée.",
   "epic.list.column.status": "Statut",
   "epic.list.column.progress": "Progression",
-  "epic.create": "Créer une épopée",
+  "epic.create": "Nouvelle épopée",
   "epic.edit": "Modifier",
   "epic.create.title.helper": "Un nom court pour l'initiative.",
   "epic.create.description.helper":
@@ -1488,7 +1488,7 @@ export default {
   "epic.quests.empty": "Aucune quête dans cette épopée pour le moment.",
   "epic.quests.loading": "Chargement des quêtes…",
   "epic.quests.attach": "Associer une quête",
-  "epic.quests.create": "Créer une quête",
+  "epic.quests.create": "Nouvelle quête",
   "epic.quests.attach.search": "Rechercher une quête…",
   "epic.quests.detach": "Détacher",
   "epic.quests.detach.title": "Détacher cette quête ?",

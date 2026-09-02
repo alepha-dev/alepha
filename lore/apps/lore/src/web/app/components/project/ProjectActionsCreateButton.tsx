@@ -101,7 +101,7 @@ const ProjectActionsCreateButton = () => {
   return (
     <>
       {/* One ghost "+" like the header's other icon buttons, and the whole
-          create vocabulary behind it, Create Quest first (feedback #2058).
+          create vocabulary behind it, New Quest first (feedback #2058).
           It replaced a green split button whose main half was Create Quest:
           the lists carry their own labelled create action now (quest
           #1682), so the header no longer has to shout. Icon-only, so it
