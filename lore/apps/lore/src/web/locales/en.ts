@@ -1467,9 +1467,10 @@ export default {
   "epic.quests.detach": "Detach",
   "epic.quests.detach.title": "Detach this quest?",
   "epic.quests.detach.confirm": '"$1" will no longer be linked to this epic.',
-  "epic.quests.column.number": "#",
   "epic.quests.column.title": "Title",
   "epic.quests.column.status": "Status",
+  "epic.quests.column.priority": "Priority",
+  "epic.quests.column.updated": "Updated",
 
   // -- Dashboard (the signed-in landing page) -------------------------------
   "dashboard.greeting": "Welcome back, $1",

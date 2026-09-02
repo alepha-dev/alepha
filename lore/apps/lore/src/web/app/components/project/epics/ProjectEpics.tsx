@@ -8,7 +8,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleDot, Play, Plus, Search, Trash2 } from "lucide-react";
+import { CircleDot, Flag, Play, Plus, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
@@ -297,6 +297,7 @@ const ProjectEpics = () => {
               if (!release) return null;
               return (
                 <Badge variant="outline" className="font-mono">
+                  <Flag className="size-3" />
                   {release.tag ?? release.title}
                 </Badge>
               );

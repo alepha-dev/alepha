@@ -4,6 +4,7 @@ import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { Flag } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
@@ -89,6 +90,9 @@ const EpicReleaseControl = (props: EpicReleaseControlProps) => {
       // to assistive tech instead.
       label=""
       inputProps={{ "aria-label": String(tr("epic.aside.release")) }}
+      // The release glyph every other surface uses, so the flag reads as
+      // "release" here too (feedback #2061).
+      icon={Flag}
       clearable
       clearLabel={String(tr("epic.aside.release.none"))}
       triggerClassName="w-full"

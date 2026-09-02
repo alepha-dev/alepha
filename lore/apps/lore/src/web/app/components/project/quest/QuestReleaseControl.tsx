@@ -4,6 +4,7 @@ import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { Flag } from "lucide-react";
 import { useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
@@ -88,6 +89,7 @@ const QuestReleaseControl = (props: QuestReleaseControlProps) => {
       // to assistive tech instead.
       label=""
       inputProps={{ "aria-label": String(tr("quest.rail.release")) }}
+      icon={Flag}
       clearable
       clearLabel={String(tr("quest.rail.release.none"))}
       triggerClassName="h-7 w-auto border-none shadow-none"
