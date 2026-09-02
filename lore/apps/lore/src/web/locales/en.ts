@@ -146,6 +146,7 @@ export default {
   "folios.editor.action.code-block": "Code block",
   "folios.editor.action.diagram": "Diagram",
   "folios.editor.action.divider": "Divider",
+  "folios.editor.action.link": "Link",
   "folios.editor.menu.insert": "Insert",
   "folios.editor.action.toggle-mode": "Toggle preview",
   "markdown-editor.tab-hint":
@@ -259,6 +260,7 @@ export default {
   "board.table.release": "Release",
   "board.filter.release": "Release",
   "board.filter.allReleases": "All releases",
+  "board.filter.noRelease": "No release",
   "board.table.linked": "Linked",
   "board.table.linked.tooltip": "Blocked by quest #$1",
   "board.table.priority": "Priority",
@@ -293,11 +295,11 @@ export default {
   "board.bulk.unshelve.none": "None of the selected quests is shelved.",
   "board.bulk.unshelve.skipped": "$1 skipped: not shelved.",
 
-  "project.menu.create-quest": "Create Quest",
+  "project.menu.create-quest": "New Quest",
   "project.menu.create-folio": "New Folio",
   "project.menu.invite-member": "Invite Member",
   "project.menu.create-feedback": "New Feedback",
-  "project.menu.create-more": "More create actions",
+  "project.menu.create": "Create",
   "project.menu.quests": "Quests",
   "project.menu.kanban": "Kanban",
   "project.menu.reports": "Reports",
@@ -496,7 +498,6 @@ export default {
   "project.settings.members.invite.sent": "Invitation sent to $1.",
   "project.settings.members.invite.failed": "Could not send the invitation.",
 
-  "project.settings.members.revoke.action": "Revoke the invitation to $1",
   "project.settings.members.revoke.title": "Revoke this invitation?",
   "project.settings.members.revoke.description":
     "$1 will no longer be able to use the link they were sent. You can invite them again, which sends a new link.",
@@ -504,6 +505,17 @@ export default {
   "project.settings.members.revoke.cancel": "Keep it",
   "project.settings.members.revoke.done": "The invitation to $1 was revoked.",
   "project.settings.members.revoke.failed": "Could not revoke the invitation.",
+  "project.settings.members.revoke.action.short": "Cancel invitation",
+
+  "project.settings.members.actions": "Actions for $1",
+  "project.settings.members.remove.action": "Remove",
+  "project.settings.members.remove.title": "Remove this member?",
+  "project.settings.members.remove.description":
+    "$1 loses access to this project. The quests they had accepted but not finished go back to the pool; the ones they finished stay theirs. You can invite them again.",
+  "project.settings.members.remove.confirm": "Remove",
+  "project.settings.members.remove.cancel": "Keep them",
+  "project.settings.members.remove.done": "$1 was removed from the project.",
+  "project.settings.members.remove.failed": "Could not remove the member.",
 
   "project.settings.danger.title": "Danger Zone",
   "project.settings.actions.delete": "Delete this project",
@@ -665,9 +677,6 @@ export default {
     "Give each tag a colour so board cards and quest pages can be read at a glance. Tags with no colour stay neutral.",
   "project.settings.kanban.tagColors.empty":
     "No tags yet. Add one to a quest and it will show up here.",
-  "project.settings.kanban.defaultSurface.title": "Open on the board",
-  "project.settings.kanban.defaultSurface.description":
-    "Members land on the Kanban board instead of the quest list when they open this project.",
   "project.settings.kanban.columns.title": "In-progress columns",
   "project.settings.kanban.columns.description":
     "Split the in-progress lane into named sub-columns (e.g. In review → In dev → In test). Up to 5. New and Completed stay fixed.",
@@ -899,6 +908,18 @@ export default {
   "kanban.column.new": "New",
   "kanban.column.completed": "Completed",
   "kanban.column.collapse": "Collapse column",
+  "kanban.column.actions": "Column actions for $1",
+  "kanban.column.rename": "Rename",
+  "kanban.column.color": "Colour",
+  "kanban.column.delete": "Delete column",
+  "kanban.column.add": "Add a column",
+  "kanban.column.addDefault": "Column $1",
+  "kanban.column.delete.title": "Delete this column?",
+  "kanban.column.delete.description":
+    "$1 has to be empty first: move or complete its quests, and nothing else changes. You can add a column again afterwards.",
+  "kanban.column.delete.confirm": "Delete",
+  "kanban.column.delete.cancel": "Keep it",
+  "kanban.column.failed": "Could not update the column.",
   "kanban.empty": "No quests",
   "kanban.showMore": "Show more",
   "kanban.filter.allAreas": "All areas",
@@ -1276,7 +1297,7 @@ export default {
   "feedback.filter.accepted": "Accepted",
   "feedback.filter.rejected": "Rejected",
   "feedback.promote": "Promote to Quest",
-  "feedback.createQuest": "Create Quest",
+  "feedback.createQuest": "New Quest",
   "feedback.reject": "Reject",
   "feedback.rejected": "Feedback rejected",
   "feedback.rejectError": "Failed to reject feedback",
@@ -1390,6 +1411,7 @@ export default {
   "epic.filter.search": "Search",
   "epic.filter.status": "Status",
   "epic.filter.allStatuses": "All status",
+  "epic.filter.statusCount": "$1 status",
   "epic.progress.none": "No quests yet",
   "epic.progress.specified": "$1 specified, none released",
   "epic.progress.concluded": "Concluded $1",
@@ -1404,7 +1426,7 @@ export default {
   "epic.toast.deleted": "Epic deleted.",
   "epic.list.column.status": "Status",
   "epic.list.column.progress": "Progress",
-  "epic.create": "Create Epic",
+  "epic.create": "New Epic",
   "epic.edit": "Edit",
   "epic.create.title.helper": "A short name for the initiative.",
   "epic.create.description.helper":
@@ -1464,13 +1486,15 @@ export default {
   "epic.quests.empty": "No quests in this epic yet.",
   "epic.quests.loading": "Loading quests…",
   "epic.quests.attach": "Attach Quest",
+  "epic.quests.create": "New Quest",
   "epic.quests.attach.search": "Search quests…",
   "epic.quests.detach": "Detach",
   "epic.quests.detach.title": "Detach this quest?",
   "epic.quests.detach.confirm": '"$1" will no longer be linked to this epic.',
-  "epic.quests.column.number": "#",
   "epic.quests.column.title": "Title",
   "epic.quests.column.status": "Status",
+  "epic.quests.column.priority": "Priority",
+  "epic.quests.column.updated": "Updated",
 
   // -- Dashboard (the signed-in landing page) -------------------------------
   "dashboard.greeting": "Welcome back, $1",

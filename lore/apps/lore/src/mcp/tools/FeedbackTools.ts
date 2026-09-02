@@ -136,17 +136,16 @@ export class FeedbackTools {
   ): Promise<number> {
     if (params.id != null) return params.id;
     if (params.shortId != null) {
-      const result = await this.feedbackController.listFeedback({
-        params: { projectId },
-        query: { status: "all" },
-      });
-      const found = result.items.find((p) => p.shortId === params.shortId);
-      if (!found) {
+      const found = await this.feedbackController.resolveShortId(
+        projectId,
+        params.shortId,
+      );
+      if (found == null) {
         throw new NotFoundError(
           `Feedback with shortId ${params.shortId} not found in project`,
         );
       }
-      return found.id;
+      return found;
     }
     throw new BadRequestError(
       "Feedback reference required: pass `id` (global) or `shortId` (per-project — also requires `project` or `project_name`).",

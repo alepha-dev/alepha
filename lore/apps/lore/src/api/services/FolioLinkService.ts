@@ -1,3 +1,4 @@
+import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { type Epic, epics } from "../entities/epics.ts";
@@ -8,6 +9,7 @@ import { type Folio, folios } from "../entities/folios.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
+import { BoundParameters } from "./BoundParameters.ts";
 
 /**
  * Structured token parsed out of a `[[...]]` wiki-link. The optional
@@ -131,6 +133,7 @@ export class FolioLinkService {
   protected readonly epics = $repository(epics);
   protected readonly directories = $repository(folioDirectories);
   protected readonly blobs = $repository(folioBlobs);
+  protected readonly bound = $inject(BoundParameters);
 
   /**
    * Extract `[[...]]` tokens from markdown content into structured
@@ -653,11 +656,12 @@ export class FolioLinkService {
   public async findQuestRefs(
     ids: number[],
   ): Promise<Array<{ id: number; shortId: number; title: string }>> {
-    if (ids.length === 0) return [];
-    return this.quests.findMany({
-      where: { id: { inArray: ids } },
-      columns: ["id", "shortId", "title"],
-    });
+    return this.bound.collect(ids, (batch) =>
+      this.quests.findMany({
+        where: { id: { inArray: batch } },
+        columns: ["id", "shortId", "title"],
+      }),
+    );
   }
 
   /**
@@ -670,11 +674,12 @@ export class FolioLinkService {
   public async findEpicRefs(
     ids: number[],
   ): Promise<Array<{ id: number; shortId: number; title: string }>> {
-    if (ids.length === 0) return [];
-    const rows = await this.epics.findMany({
-      where: { id: { inArray: ids } },
-      columns: ["id", "number", "title"],
-    });
+    const rows = await this.bound.collect(ids, (batch) =>
+      this.epics.findMany({
+        where: { id: { inArray: batch } },
+        columns: ["id", "number", "title"],
+      }),
+    );
     return rows.map((r) => ({ id: r.id, shortId: r.number, title: r.title }));
   }
 
@@ -815,8 +820,12 @@ export class FolioLinkService {
    * inside.
    *
    * ⚠️ `inArray: []` throws, so each partition is queried only when it has
-   * ids. Ids are deduped: several links from the same source to the same
-   * target are one row to read, not two.
+   * ids - `BoundParameters.collect` gives no batch at all for an empty list,
+   * which is what keeps that true. It also splits a long list, since the
+   * number of folios linking to one folio is bounded by nothing.
+   *
+   * Ids are deduped: several links from the same source to the same target
+   * are one row to read, not two.
    */
   protected async readRewriteSources(inbound: FolioLink[]): Promise<{
     folios: Map<string, Folio>;
@@ -839,15 +848,15 @@ export class FolioLinkService {
     }
 
     const [folioRows, questRows, epicRows] = await Promise.all([
-      folioIds.size
-        ? this.folios.findMany({ where: { id: { inArray: [...folioIds] } } })
-        : [],
-      questIds.size
-        ? this.quests.findMany({ where: { id: { inArray: [...questIds] } } })
-        : [],
-      epicIds.size
-        ? this.epics.findMany({ where: { id: { inArray: [...epicIds] } } })
-        : [],
+      this.bound.collect([...folioIds], (batch) =>
+        this.folios.findMany({ where: { id: { inArray: batch } } }),
+      ),
+      this.bound.collect([...questIds], (batch) =>
+        this.quests.findMany({ where: { id: { inArray: batch } } }),
+      ),
+      this.bound.collect([...epicIds], (batch) =>
+        this.epics.findMany({ where: { id: { inArray: batch } } }),
+      ),
     ]);
 
     return {

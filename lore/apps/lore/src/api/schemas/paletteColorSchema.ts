@@ -19,7 +19,14 @@ import { type Infer, z } from "alepha";
  * change with no migration. Same reasoning as `epics.status` and
  * `folioLinks.targetType`.
  */
-export const paletteColorSchema = z.enum([
+/**
+ * The palette in order, for a picker that has to render every token.
+ *
+ * Declared as a const tuple and handed to `z.enum`, rather than read back
+ * off the schema, so a picker maps over the same list the schema validates
+ * against and the two cannot drift.
+ */
+export const PALETTE_COLORS = [
   "slate",
   "blue",
   "green",
@@ -28,6 +35,8 @@ export const paletteColorSchema = z.enum([
   "violet",
   "cyan",
   "pink",
-]);
+] as const;
+
+export const paletteColorSchema = z.enum(PALETTE_COLORS);
 
 export type PaletteColor = Infer<typeof paletteColorSchema>;

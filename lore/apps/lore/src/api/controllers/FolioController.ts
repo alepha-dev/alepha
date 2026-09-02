@@ -27,6 +27,7 @@ import { folioSavedSchema } from "../schemas/folioSavedSchema.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { BoundParameters } from "../services/BoundParameters.ts";
 import { FolioBlobService } from "../services/FolioBlobService.ts";
 import { FolioHistoryService } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
@@ -60,6 +61,7 @@ export class FolioController {
   protected readonly revisionsWith = $repository(relations, "folioRevisions");
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(FolioLinkService);
+  protected readonly bound = $inject(BoundParameters);
   protected readonly blobService = $inject(FolioBlobService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
@@ -354,39 +356,31 @@ export class FolioController {
       inboundQuestRefs,
       inboundEpicRefs,
     ] = await Promise.all([
-      outFolioIds.length > 0
-        ? this.folios.findMany({
-            where: { id: { inArray: outFolioIds } },
-            columns: ["id", "shortId", "title", "directoryId", "projectId"],
-          })
-        : Promise.resolve([]),
-      outQuestIds.length > 0
-        ? this.linkService.findQuestRefs(outQuestIds)
-        : Promise.resolve([]),
-      outEpicIds.length > 0
-        ? this.linkService.findEpicRefs(outEpicIds)
-        : Promise.resolve([]),
-      outBlobIds.length > 0
-        ? this.blobs.findMany({
-            where: { fileId: { inArray: outBlobIds } },
-            columns: ["fileId", "shortId", "name", "folioId", "projectId"],
-          })
-        : Promise.resolve([]),
+      this.bound.collect(outFolioIds, (batch) =>
+        this.folios.findMany({
+          where: { id: { inArray: batch } },
+          columns: ["id", "shortId", "title", "directoryId", "projectId"],
+        }),
+      ),
+      this.linkService.findQuestRefs(outQuestIds),
+      this.linkService.findEpicRefs(outEpicIds),
+      this.bound.collect(outBlobIds, (batch) =>
+        this.blobs.findMany({
+          where: { fileId: { inArray: batch } },
+          columns: ["fileId", "shortId", "name", "folioId", "projectId"],
+        }),
+      ),
       // Folio SOURCES only. Since links went polymorphic an inbound row
       // can come from a quest or an epic, whose stringified integer ids
       // must never be handed to the folios repository as UUIDs.
-      inboundFolioIds.length > 0
-        ? this.folios.findMany({
-            where: { id: { inArray: inboundFolioIds } },
-            columns: ["id", "shortId", "title", "directoryId", "projectId"],
-          })
-        : Promise.resolve([]),
-      inboundQuestIds.length > 0
-        ? this.linkService.findQuestRefs(inboundQuestIds)
-        : Promise.resolve([]),
-      inboundEpicIds.length > 0
-        ? this.linkService.findEpicRefs(inboundEpicIds)
-        : Promise.resolve([]),
+      this.bound.collect(inboundFolioIds, (batch) =>
+        this.folios.findMany({
+          where: { id: { inArray: batch } },
+          columns: ["id", "shortId", "title", "directoryId", "projectId"],
+        }),
+      ),
+      this.linkService.findQuestRefs(inboundQuestIds),
+      this.linkService.findEpicRefs(inboundEpicIds),
     ]);
 
     // One per-project directory map covers every ref's ancestor walk and

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 
 import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
 import CodeMirrorEditor from "./CodeMirrorEditor.tsx";
+import MarkdownFormatToolbar from "./MarkdownFormatToolbar.tsx";
 import MarkdownSelectionToolbar from "./MarkdownSelectionToolbar.tsx";
 import { createWikiLinkCompletion } from "./wikiLinkCompletion.ts";
 
@@ -67,6 +68,14 @@ export interface MarkdownEditorInnerProps {
    * divider rather than boxing it in. Every other caller keeps the frame.
    */
   variant?: "framed" | "bare";
+  /**
+   * A fixed row of formatting buttons at the top of the frame, in edit
+   * mode only (feedback #2056). The floating selection toolbar stays
+   * either way. Off by default: the folio document has its menubar, and a
+   * second bar there would say everything twice; `LoreEditor` turns it on
+   * for its `field` variant, the description boxes on forms.
+   */
+  formatToolbar?: boolean;
   onViewReady?: (view: EditorView | null) => void;
 }
 
@@ -114,6 +123,9 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
             consumer of this component need an i18n provider it does not
             otherwise require. */}
         {view && <MarkdownSelectionToolbar view={view} />}
+        {view && props.formatToolbar && (
+          <MarkdownFormatToolbar view={view} flush={!bare} />
+        )}
         <CodeMirrorEditor
           value={props.value}
           onChange={props.onChange}

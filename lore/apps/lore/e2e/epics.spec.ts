@@ -502,11 +502,11 @@ test.describe("Epics — the list", () => {
     });
 
     await test.step("the toolbar create button adds a row without a reload", async () => {
-      // The `+` action and the dialog's submit share the "Create Epic" label,
-      // so the toolbar one is addressed through the table's own toolbar and
-      // the submit through the dialog.
+      // The `+` action opens the dialog ("New Epic") and the dialog's submit
+      // confirms it ("Create Epic"): "New" opens the form, "Create" confirms
+      // it, the split the rest of the catalogue uses (#1731).
       const created = `Gamma${t}`;
-      await page.getByRole("button", { name: "Create Epic" }).first().click();
+      await page.getByRole("button", { name: "New Epic" }).first().click();
 
       const modal = page.getByRole("dialog");
       await expect(modal).toBeVisible();

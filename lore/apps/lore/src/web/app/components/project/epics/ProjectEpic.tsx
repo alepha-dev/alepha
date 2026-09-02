@@ -174,6 +174,31 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     }
   };
 
+  /**
+   * A quest the Quests tab's create sheet just made. `createQuest` has no
+   * epic field of its own (`EpicController` owns that mutation), so this is
+   * the attach as a second call, the way MCP's `quest_create` files an
+   * `epic_number`. And like there, a failed attach deletes the quest rather
+   * than leave an unlinked one in the backlog: the reader asked for a quest
+   * IN this epic, and a half-done create is worse than none.
+   */
+  const handleCreatedQuest = async (quest: QuestResource) => {
+    try {
+      const updated = await epicApi.attachQuest({
+        params: { id: epic.id },
+        body: { questId: quest.id },
+      });
+      setEpic(updated);
+    } catch (error) {
+      await questApi
+        .deleteQuest({ params: { id: quest.id } })
+        .catch(() => undefined);
+      toaster.error(error instanceof Error ? error.message : String(error));
+      return;
+    }
+    await reloadQuests();
+  };
+
   const handleDetachQuest = async (quest: QuestResource) => {
     const ok = await dialog.confirm({
       title: tr("epic.quests.detach.title"),
@@ -281,6 +306,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
           quests={quests}
           onAttach={handleAttachQuest}
           onDetach={handleDetachQuest}
+          onCreated={handleCreatedQuest}
         />
       )}
 

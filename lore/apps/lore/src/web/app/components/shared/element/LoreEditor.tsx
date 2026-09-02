@@ -46,6 +46,13 @@ export interface LoreEditorProps {
    * Renders without the input frame — the folio body's full-bleed look.
    */
   bare?: boolean;
+  /**
+   * The fixed formatting bar above the editor (feedback #2056). Absent, it
+   * follows the variant: on for a `field` (quest, epic and release
+   * descriptions), off for a `document`, whose menubar already carries
+   * every one of these commands.
+   */
+  formatToolbar?: boolean;
   onViewReady?: (view: EditorView | null) => void;
 }
 
@@ -122,6 +129,7 @@ const LoreEditor = (props: LoreEditorProps) => {
         lineNumbers={false}
         minHeight={props.minHeight ?? (variant === "document" ? 420 : 220)}
         variant={props.bare ? "bare" : undefined}
+        formatToolbar={props.formatToolbar ?? variant === "field"}
         onViewReady={props.onViewReady}
       />
     </div>

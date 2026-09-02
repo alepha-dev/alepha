@@ -495,6 +495,10 @@ test.describe("Invitation flow (in-app inbox)", () => {
           /\/api\/invitations\/project\/\d+\/[^/]+\/revoke$/.test(r.url()),
         { timeout: 15_000 },
       );
+      // Two clicks to reach it since #1695: the inline × became an item in
+      // the same three-dots menu the member cards carry, so both card kinds
+      // offer their destructive action in one shape.
+      await page.getByTestId("invitation-actions").click();
       await page.getByTestId("revoke-invitation").click();
       await page.getByRole("button", { name: /^revoke$/i }).click();
       expect((await revokeResp).ok()).toBe(true);

@@ -7,6 +7,7 @@ import {
   toggleFencedCode,
   toggleInlineMarker,
   toggleLinePrefix,
+  wrapAsLink,
 } from "./markdownTransforms.ts";
 
 /**
@@ -34,7 +35,8 @@ export type MarkdownCommandId =
   | "insert.table"
   | "insert.codeBlock"
   | "insert.diagram"
-  | "insert.divider";
+  | "insert.divider"
+  | "insert.link";
 
 export const markdownCommands: Record<
   MarkdownCommandId,
@@ -55,6 +57,7 @@ export const markdownCommands: Record<
   "insert.codeBlock": (v) => apply(v, toggleFencedCode(v.state)),
   "insert.diagram": (v) => apply(v, insertBlock(v.state, DIAGRAM_BLOCK)),
   "insert.divider": (v) => apply(v, insertBlock(v.state, "---")),
+  "insert.link": (v) => apply(v, wrapAsLink(v.state)),
 };
 
 /**

@@ -9,6 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@alepha/ui/components/ui/dropdown-menu";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
 import { cn } from "@alepha/ui/lib/utils";
@@ -16,7 +22,7 @@ import type { InvitationEntity } from "alepha/api/invitations";
 import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Mail, Plus, Users, X } from "lucide-react";
+import { Mail, MoreHorizontal, Plus, Users } from "lucide-react";
 import { useState } from "react";
 
 import type { Member } from "@/api/entities/members.ts";
@@ -25,7 +31,9 @@ import type { User } from "@/api/entities/users.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { MemberIdentity } from "@/web/app/components/shared/MemberIdentity.tsx";
 import { useInviteMember } from "@/web/app/components/shared/useInviteMember.ts";
+import { useRemoveMember } from "@/web/app/components/shared/useRemoveMember.ts";
 import { useRevokeInvitation } from "@/web/app/components/shared/useRevokeInvitation.ts";
+import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsMembersSectionProps {
@@ -40,6 +48,7 @@ const ProjectSettingsMembersSection = (
   const router = useRouter<AppRouter>();
   const inviteMember = useInviteMember();
   const revokeInvitation = useRevokeInvitation();
+  const removeMember = useRemoveMember();
   const auth = useAuth();
   const { tr } = useI18n<I18n, "en">();
 
@@ -48,6 +57,15 @@ const ProjectSettingsMembersSection = (
 
   const members = props.members;
   const pendingInvitations = props.pendingInvitations ?? [];
+  const isOwner = props.project.createdBy === auth.user?.id;
+
+  /**
+   * What the confirmation dialog calls the person: the same label the card
+   * above it shows, through `displayName`. The dialog has to name the row the
+   * owner just clicked, and "this member" names nothing.
+   */
+  const nameOf = (member: (typeof members)[number]): string =>
+    displayName(member.user);
 
   const handleInvite = async () => {
     if (!(await inviteMember.invite(props.project.id, email))) return;
@@ -55,6 +73,13 @@ const ProjectSettingsMembersSection = (
     setOpen(false);
     // Re-run the loader for the new pending row; a hard reload threw the
     // whole app state away for one list.
+    await router.push(router.pathname, { force: true });
+  };
+
+  const handleRemove = async (userId: string, name: string) => {
+    if (!(await removeMember.remove(props.project.id, userId, name))) return;
+    // Same reason as `handleInvite`: the member list comes from the route
+    // loader, so re-running it is what removes the row.
     await router.push(router.pathname, { force: true });
   };
 
@@ -143,6 +168,43 @@ const ProjectSettingsMembersSection = (
                 <span className="text-muted-foreground text-xs">
                   <Localize value={member.createdAt} date="fromNow" />
                 </span>
+
+                {/* Owner-only, and never on the owner's own row: a project
+                    with no owner has nobody who can delete it, rename it or
+                    let anybody back in. The endpoint refuses both cases
+                    anyway - this only stops the UI promising a 403. */}
+                {isOwner && member.userId !== props.project.createdBy && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-testid="member-actions"
+                          disabled={removeMember.loading}
+                          aria-label={String(
+                            tr("project.settings.members.actions", {
+                              args: [nameOf(member)],
+                            }),
+                          )}
+                        />
+                      }
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        variant="destructive"
+                        data-testid="remove-member"
+                        onClick={() =>
+                          handleRemove(member.userId, nameOf(member))
+                        }
+                      >
+                        {tr("project.settings.members.remove.action")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -171,24 +233,43 @@ const ProjectSettingsMembersSection = (
                 </div>
                 {/* Owner-only, on the same condition as Invite above — the
                     endpoint refuses anyone else anyway, so showing it to a
-                    member would only promise a 403. */}
-                {props.project.createdBy === auth.user?.id && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    data-testid="revoke-invitation"
-                    disabled={revokeInvitation.loading}
-                    aria-label={String(
-                      tr("project.settings.members.revoke.action", {
-                        args: [invitation.email],
-                      }),
-                    )}
-                    onClick={() =>
-                      handleRevoke(invitation.id, invitation.email)
-                    }
-                  >
-                    <X className="size-4" />
-                  </Button>
+                    member would only promise a 403.
+
+                    The same three-dots menu the member cards carry, rather
+                    than the inline × it used to be: two card kinds sitting in
+                    one list should not offer their one destructive action in
+                    two different shapes. */}
+                {isOwner && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-testid="invitation-actions"
+                          disabled={revokeInvitation.loading}
+                          aria-label={String(
+                            tr("project.settings.members.actions", {
+                              args: [invitation.email],
+                            }),
+                          )}
+                        />
+                      }
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        variant="destructive"
+                        data-testid="revoke-invitation"
+                        onClick={() =>
+                          handleRevoke(invitation.id, invitation.email)
+                        }
+                      >
+                        {tr("project.settings.members.revoke.action.short")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </CardContent>
             </Card>

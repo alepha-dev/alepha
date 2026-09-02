@@ -8,7 +8,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleDot, Play, Plus, Search, Trash2, Flag } from "lucide-react";
+import { CircleDot, Flag, Play, Plus, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
@@ -27,11 +27,16 @@ import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
 
 /**
  * Filter form, owned by AlephaTable: free-text over title + description,
- * and a status select whose cleared state means "all".
+ * and a status multi-select whose empty selection means "all".
+ *
+ * An array, like the Quests list's, because the everyday view is Planned
+ * plus Active and a single value could not say it (feedback #2069). The
+ * array is what `AlephaTable` persists and carries in the URL, the same
+ * way it already does for the board's four list filters.
  */
 const epicsFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z.enum(["planned", "active", "done"]).optional(),
+  status: z.array(z.enum(["planned", "active", "done"])).optional(),
 });
 
 /**
@@ -129,13 +134,16 @@ const ProjectEpics = () => {
       count: all.filter((epic) => epic.status === "planned").length,
     });
 
-    const status = filters?.status as EpicResource["status"] | undefined;
+    const statuses =
+      (filters?.status as EpicResource["status"][] | undefined) ?? [];
     const needle = String(filters?.search ?? "")
       .trim()
       .toLowerCase();
     const rows = sortEpics(
       all.filter((epic) => {
-        if (status && epic.status !== status) return false;
+        if (statuses.length > 0 && !statuses.includes(epic.status)) {
+          return false;
+        }
         if (!needle) return true;
         return (
           epic.title.toLowerCase().includes(needle) ||
@@ -194,6 +202,9 @@ const ProjectEpics = () => {
                   clearable
                   icon={CircleDot}
                   clearLabel={tr("epic.filter.allStatuses")}
+                  countLabel={(n) =>
+                    String(tr("epic.filter.statusCount", { args: [String(n)] }))
+                  }
                   triggerClassName="w-full"
                   items={[
                     { label: tr("epic.status.planned"), value: "planned" },

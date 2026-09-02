@@ -198,17 +198,16 @@ export class QuestTools {
     projectId: number,
     shortId: number,
   ): Promise<number> {
-    const result = await this.feedbackController.listFeedback({
-      params: { projectId },
-      query: { status: "all" },
-    });
-    const found = result.items.find((p) => p.shortId === shortId);
-    if (!found) {
+    const found = await this.feedbackController.resolveShortId(
+      projectId,
+      shortId,
+    );
+    if (found == null) {
       throw new NotFoundError(
         `Feedback with shortId ${shortId} not found in this project`,
       );
     }
-    return found.id;
+    return found;
   }
 
   /**
@@ -994,7 +993,7 @@ export class QuestTools {
    */
   quest_update = $tool({
     description:
-      "Update a quest's properties. Non-completed quests accept any field; completed quests only accept `completionMessage` (project memory stays curatable, but the quest body is frozen as an audit record). Omitted fields stay unchanged. " +
+      "Update a quest's properties. Non-completed quests accept any field; completed quests accept `completionMessage` and `release_tag` only - project memory stays curatable and which release a finished quest ships in is decided after completion as often as before it, while the quest body (title, description, objectives) is frozen as an audit record. Omitted fields stay unchanged. " +
       "Passing `objectives` REPLACES the entire array, so fetch the quest first and pass back the full list, each surviving item carrying the `id` it already had. That path is for rewording, reordering, adding or removing objectives; to tick or untick one, call `quest_objective_set` instead of resending everything. " +
       "Nothing here stops you overwriting an edit someone made while you were working: pass `expectedUpdatedAt` from your last `quest_get` and a 409 will tell you to re-read instead.",
     title: "Update quest",

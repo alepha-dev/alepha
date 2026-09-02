@@ -3,7 +3,6 @@ import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-e
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { Input } from "@alepha/ui/components/ui/input";
-import { Switch } from "@alepha/ui/components/ui/switch";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
 import {
@@ -67,7 +66,6 @@ const ProjectSettingsKanbanPage = () => {
   // and remounts rather than being handed another project's columns.
   const [columns, setColumns] = useState<string[]>(persisted);
   const [pending, setPending] = useState<string | null>(null);
-  const [surfacePending, setSurfacePending] = useState(false);
   const dndId = useId();
   const sensors = useSensors(
     // The grip sits beside a text input; without a distance threshold a
@@ -140,28 +138,6 @@ const ProjectSettingsKanbanPage = () => {
         body: { name },
       }),
     );
-
-  /**
-   * Which surface bare `/:projectSlug` lands on. Per-project rather than
-   * per-browser: this replaced a cookie, so a kanban-first team now gets the
-   * board from every machine and an invited member inherits it.
-   */
-  const setDefaultSurface = async (next: "list" | "kanban") => {
-    setSurfacePending(true);
-    try {
-      const updated = await projectApi.updateProjectById({
-        params: { id: project.id },
-        // "list" is the absence of a preference rather than a value, so it
-        // clears the column instead of writing a second way to say default.
-        body: { defaultSurface: next === "kanban" ? "kanban" : null },
-      });
-      alepha.store.set(currentProjectAtom, updated);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSurfacePending(false);
-    }
-  };
 
   /**
    * Per-column settings: which lifecycle state the column collapses to
@@ -241,31 +217,6 @@ const ProjectSettingsKanbanPage = () => {
         enabled={enabled}
         onToggle={toggle}
       />
-
-      {enabled && (
-        <Card className={cn(settingsCardEdge, "py-4")}>
-          <CardContent className="flex flex-col gap-2 px-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">
-                {tr("project.settings.kanban.defaultSurface.title")}
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {tr("project.settings.kanban.defaultSurface.description")}
-              </span>
-            </div>
-            <div className="flex justify-start sm:justify-end">
-              <Switch
-                checked={project.defaultSurface === "kanban"}
-                disabled={surfacePending}
-                onCheckedChange={(value) => {
-                  void setDefaultSurface(value ? "kanban" : "list");
-                }}
-                aria-label={tr("project.settings.kanban.defaultSurface.title")}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {enabled && (
         <Card className={cn(settingsCardEdge, "py-4")}>
