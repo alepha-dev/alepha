@@ -1,4 +1,4 @@
-import { $atom, type Infer, z } from "alepha";
+import { $atom, $context, type Infer, z } from "alepha";
 
 /**
  * Default scopes to ignore in changelog generation.
@@ -81,3 +81,34 @@ export const changelogOptions = $atom({
 });
 
 export type ChangelogOptions = Infer<typeof changelogOptions.schema>;
+
+/**
+ * Configure the changelog from `defineConfig`.
+ *
+ * `defineConfig` has a typed field for `entry`, `services`, `plugins`,
+ * `build`, `dev`, `meta` and `env`, and none for an arbitrary atom, so the
+ * declarative form had no way to reach {@link changelogOptions}. This plugin
+ * is that way. Same shape as `vendor()` and `platform()`, with nothing to
+ * register: `gen changelog` lives in `alepha/cli` and is always there, so the
+ * only thing to do is set the atom.
+ *
+ * ```ts
+ * import { changelog } from "alepha/cli";
+ * import { defineConfig } from "alepha/cli/config";
+ *
+ * export default defineConfig({
+ *   plugins: [changelog({ types: ["feat", "fix"], scopes: ["core", "orm"] })],
+ * });
+ * ```
+ *
+ * Runs when the config loads, inside the CLI's `configure` hook, which is the
+ * same moment the function form's `alepha.set(changelogOptions, …)` ran. The
+ * command reads the atom through `$store`, which re-reads on every access, so
+ * the value is in place long before `gen changelog` looks at it either way.
+ */
+export const changelog = (options: ChangelogOptions) => {
+  return () => {
+    const { alepha } = $context();
+    alepha.set(changelogOptions, options);
+  };
+};
