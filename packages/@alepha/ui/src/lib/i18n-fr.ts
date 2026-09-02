@@ -561,6 +561,15 @@ export const uiFr: Record<string, string> = {
   "admin.parameters.saveDialogDescription":
     "Vous pouvez étiqueter et planifier cette version avant de l'enregistrer.",
   "admin.parameters.saveDialogTitle": "Enregistrer une nouvelle version",
+  "admin.parameters.orphan": "orphelin",
+  "admin.parameters.orphanDelete": "Supprimer",
+  "admin.parameters.orphanDeleteAction": "Supprimer $1",
+  "admin.parameters.orphanDeleteDescription":
+    "Aucun $parameter ne déclare « $1 » dans ce processus. Si un module non chargé ici le lit encore, le supprimer jette cette configuration. Toutes ses versions enregistrées sont retirées.",
+  "admin.parameters.orphanDeleteTitle": "Supprimer ce paramètre ?",
+  "admin.parameters.orphanDeleted": "« $1 » supprimé.",
+  "admin.parameters.orphansHide": "Masquer $1 orphelin(s)",
+  "admin.parameters.orphansShow": "Afficher $1 orphelin(s)",
   "admin.parameters.saved": "Paramètre enregistré",
   "admin.parameters.tagsPlaceholder": "Ajouter des étiquettes…",
   "admin.parameters.treeEmpty": "Aucun paramètre enregistré.",
