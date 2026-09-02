@@ -49,25 +49,41 @@ export class SecurityProvider {
   protected readonly permissions: Permission[] = [];
 
   /**
+   * The realm this provider invents so a test container has somewhere to put
+   * an `admin` role, dropped again by {@link SecurityProvider.createRealm} as
+   * soon as the application declares one of its own.
+   *
+   * Held by REFERENCE, and compared by identity there. It used to be
+   * recognised by its name, which made an application realm called `default`
+   * indistinguishable from it: declaring a second realm silently threw the
+   * first one away, and the failure surfaced far from its cause as a 500 at
+   * token minting reading `No secret key found in the keystore`, because the
+   * discarded realm never had its signing key registered. `default` is the
+   * natural name to pick, since `DEFAULT_USER_REALM_NAME` is what every
+   * realm-less `UserService` call falls back to. A name is not an identity.
+   */
+  protected placeholderRealm: Realm | undefined = this.alepha.isTest()
+    ? {
+        name: "default",
+        secret: this.secretKey,
+        roles: [
+          {
+            name: "admin",
+            permissions: [
+              {
+                name: "*",
+              },
+            ],
+          },
+        ],
+      }
+    : undefined;
+
+  /**
    * The realms configured for the security provider.
    */
-  protected readonly realms: Realm[] = this.alepha.isTest()
-    ? [
-        {
-          name: "default",
-          secret: this.secretKey,
-          roles: [
-            {
-              name: "admin",
-              permissions: [
-                {
-                  name: "*",
-                },
-              ],
-            },
-          ],
-        },
-      ]
+  protected readonly realms: Realm[] = this.placeholderRealm
+    ? [this.placeholderRealm]
     : [];
 
   /**
@@ -78,7 +94,7 @@ export class SecurityProvider {
    * container instantiates first wins. A role used to be pushed into the
    * realms that happened to exist at that instant, so one declared before its
    * issuer landed in no realm at all - and under test it was worse, because it
-   * landed in the implicit `default` realm that `createRealm` then popped.
+   * landed in the implicit placeholder realm that `createRealm` then dropped.
    * Either way, silently.
    *
    * `realms: undefined` means every realm, including realms created later.
@@ -421,15 +437,20 @@ export class SecurityProvider {
   }
 
   public createRealm(realm: Realm) {
-    if (this.realms.length === 1 && this.realms[0].name === "default") {
-      // if the default realm is the only one, we remove it to allow creating new realms
-      this.realms.pop();
+    // By identity, never by name: an application realm called `default` is
+    // not this provider's placeholder, and popping it here was silent.
+    if (this.placeholderRealm) {
+      const at = this.realms.indexOf(this.placeholderRealm);
+      if (at >= 0) {
+        this.realms.splice(at, 1);
+      }
+      this.placeholderRealm = undefined;
     }
 
     this.realms.push(realm);
 
-    // Roles declared before this realm existed - including any the pop above
-    // just took with it - land here.
+    // Roles declared before this realm existed - including any the placeholder
+    // above just took with it - land here.
     this.reconcileRoles();
   }
 
