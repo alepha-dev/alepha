@@ -674,9 +674,6 @@ export default {
     "Donnez une couleur à chaque étiquette pour lire les cartes et les quêtes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
   "project.settings.kanban.tagColors.empty":
     "Aucune étiquette pour l'instant. Ajoutez-en une à une quête et elle apparaîtra ici.",
-  "project.settings.kanban.defaultSurface.title": "Ouvrir sur le tableau",
-  "project.settings.kanban.defaultSurface.description":
-    "Les membres arrivent sur le tableau Kanban plutôt que sur la liste des quêtes en ouvrant ce projet.",
   "project.settings.kanban.columns.title": "Colonnes « En cours »",
   "project.settings.kanban.columns.description":
     "Découpez la voie « En cours » en sous-colonnes nommées (ex. En relecture → En dev → En test). Jusqu'à 5. Nouvelle et Terminée restent fixes.",
@@ -1414,6 +1411,7 @@ export default {
   "epic.filter.search": "Rechercher",
   "epic.filter.status": "Statut",
   "epic.filter.allStatuses": "Tous les statuts",
+  "epic.filter.statusCount": "$1 statuts",
   "epic.progress.none": "Aucune quête pour le moment",
   "epic.progress.specified": "$1 spécifiées, aucune publiée",
   "epic.progress.concluded": "Conclue le $1",
@@ -1488,6 +1486,7 @@ export default {
   "epic.quests.empty": "Aucune quête dans cette épopée pour le moment.",
   "epic.quests.loading": "Chargement des quêtes…",
   "epic.quests.attach": "Associer une quête",
+  "epic.quests.create": "Créer une quête",
   "epic.quests.attach.search": "Rechercher une quête…",
   "epic.quests.detach": "Détacher",
   "epic.quests.detach.title": "Détacher cette quête ?",

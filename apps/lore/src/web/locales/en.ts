@@ -665,9 +665,6 @@ export default {
     "Give each tag a colour so board cards and quest pages can be read at a glance. Tags with no colour stay neutral.",
   "project.settings.kanban.tagColors.empty":
     "No tags yet. Add one to a quest and it will show up here.",
-  "project.settings.kanban.defaultSurface.title": "Open on the board",
-  "project.settings.kanban.defaultSurface.description":
-    "Members land on the Kanban board instead of the quest list when they open this project.",
   "project.settings.kanban.columns.title": "In-progress columns",
   "project.settings.kanban.columns.description":
     "Split the in-progress lane into named sub-columns (e.g. In review → In dev → In test). Up to 5. New and Completed stay fixed.",
@@ -1389,6 +1386,7 @@ export default {
   "epic.filter.search": "Search",
   "epic.filter.status": "Status",
   "epic.filter.allStatuses": "All status",
+  "epic.filter.statusCount": "$1 status",
   "epic.progress.none": "No quests yet",
   "epic.progress.specified": "$1 specified, none released",
   "epic.progress.concluded": "Concluded $1",
@@ -1463,6 +1461,7 @@ export default {
   "epic.quests.empty": "No quests in this epic yet.",
   "epic.quests.loading": "Loading quests…",
   "epic.quests.attach": "Attach Quest",
+  "epic.quests.create": "Create Quest",
   "epic.quests.attach.search": "Search quests…",
   "epic.quests.detach": "Detach",
   "epic.quests.detach.title": "Detach this quest?",

@@ -533,8 +533,8 @@ const ProjectView = () => {
           by making Kanban a ROUTE with a sidebar entry, which is what makes
           the rail redundant rather than merely noisy - so the sidebar entry
           is now the only way in, and Quests must keep landing on the list.
-          `defaultSurface` is the only thing that may send a bare
-          `/:projectSlug` to the board. */}
+          Nothing may send a bare `/:projectSlug` to the board: the
+          `defaultSurface` setting that once could is gone (feedback #2066). */}
         <div className="flex h-full flex-col">
           <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
             <div

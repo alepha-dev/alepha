@@ -175,42 +175,6 @@ export const addKanbanColumn = async (
 };
 
 /**
- * Set (or clear) which surface a bare `/:projectSlug` lands on.
- *
- * `"list"` sends `null`, which clears the column: the absence of a
- * preference IS the list, and writing a second way to say so would leave
- * two states meaning the same thing.
- *
- * This replaced a cookie (`questsViewAtom`) that a spec could only set by
- * driving the UI. Being a project column, it is settable in one call, which
- * is what lets the redirect be tested from a cold `page.goto`.
- */
-export const setProjectDefaultSurface = async (
-  page: Page,
-  projectId: number,
-  surface: "list" | "kanban",
-): Promise<void> => {
-  const url = `/api/updateProjectById/${projectId}`;
-  await page.evaluate(
-    async ({ url, surface }) => {
-      const r = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          defaultSurface: surface === "kanban" ? "kanban" : null,
-        }),
-      });
-      if (!r.ok)
-        throw new Error(
-          `setProjectDefaultSurface ${r.status} ${await r.text()}`,
-        );
-    },
-    { url, surface },
-  );
-};
-
-/**
  * Register a fresh user through the UI, submit the email verification code
  * read from the dev-mail directory, and wait for auto-login to land on "/".
  */
