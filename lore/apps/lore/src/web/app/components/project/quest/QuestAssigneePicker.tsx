@@ -73,6 +73,17 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
     : tr("quest.rail.assign.unassigned");
 
   return (
+    // ⚠️ Deliberately NOT a `Control`, decided with #1703.
+    //
+    // "Control is the only select, everywhere" is the rule, and the LOOK is
+    // no longer the obstacle: `Control` now takes `minimal size="xs"`, which
+    // is this trigger's geometry, and the Release row beside it uses exactly
+    // that. What stops the swap is the item model. Every row here carries the
+    // member's avatar, and `ControlSelect` takes `{ value, label }` - moving
+    // this over means either dropping the avatars, which is what makes a
+    // people picker scannable, or giving `ControlSelect` a per-item render
+    // escape hatch. That second one is a real design question about the whole
+    // component and does not belong inside a rail row's quest.
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={pending || users.length === 0}
