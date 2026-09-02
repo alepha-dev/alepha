@@ -31,6 +31,7 @@ class TestDbCommand extends DbCommand {
   public testPrepareDrizzleOrmResolution =
     this.prepareDrizzleOrmResolution.bind(this);
   public readonly testBaselineMark = this.baselineMark;
+  public readonly testDoctor = this.doctor;
   public readonly testCreate = this.create;
   public testFindRepositoryProvider = this.findRepositoryProvider.bind(this);
   public testRequireDatabase = this.requireDatabase.bind(this);
@@ -797,6 +798,85 @@ describe("DbCommand", () => {
 
       return { alepha, utils, cli, cmd };
     };
+
+    /**
+     * `doctor` is the row-level half of `migrations check`: a non-STRICT
+     * SQLite table stores an ISO string in an integer column without a
+     * word, and the command has to go red on it rather than print a table
+     * nobody reads (quest #1674).
+     */
+    describe("doctor", () => {
+      // An ordinary integer column, not the primary key: `INTEGER PRIMARY
+      // KEY` is the rowid and is the one column SQLite does type-check.
+      const gauges = $entity({
+        name: "gauges",
+        schema: z.object({
+          id: db.primaryKey(z.integer()),
+          level: z.integer(),
+        }),
+      });
+
+      const userAppWith = async (seed: (provider: any) => Promise<void>) => {
+        const userAlepha = Alepha.create({
+          env: { DATABASE_URL: "sqlite://:memory:" },
+        });
+        class App {
+          gauges = $repository(gauges);
+        }
+        const app = userAlepha.inject(App);
+        await userAlepha.start();
+        await app.gauges.create({ level: 3 });
+        await seed(app.gauges.provider);
+        return userAlepha;
+      };
+
+      it("passes a database whose rows match their columns", async () => {
+        const { alepha, utils, cli, cmd } = createWithUserApp();
+        const fs = alepha.inject(MemoryFileSystemProvider);
+        await fs.writeFile("/project/src/main.server.ts", "export default {};");
+        utils.userAlepha = await userAppWith(async () => {});
+
+        await expect(
+          cli.run(cmd.testDoctor, { root: "/project", argv: "" }),
+        ).resolves.not.toThrow();
+      });
+
+      it("fails on a text value stored in an integer column, naming it", async () => {
+        const { alepha, utils, cli, cmd } = createWithUserApp();
+        const fs = alepha.inject(MemoryFileSystemProvider);
+        await fs.writeFile("/project/src/main.server.ts", "export default {};");
+        const { sql } = await import("alepha/orm");
+        utils.userAlepha = await userAppWith(async (provider) => {
+          await provider.execute(
+            sql.raw(`INSERT INTO "gauges" ("level") VALUES ('high')`),
+          );
+        });
+
+        await expect(
+          cli.run(cmd.testDoctor, { root: "/project", argv: "" }),
+        ).rejects.toThrowError(
+          /1 column\(s\) hold values of the wrong storage class/,
+        );
+      });
+
+      it("prints the statements instead of running them with --print", async () => {
+        const { alepha, utils, cli, cmd } = createWithUserApp();
+        const fs = alepha.inject(MemoryFileSystemProvider);
+        await fs.writeFile("/project/src/main.server.ts", "export default {};");
+        const { sql } = await import("alepha/orm");
+        utils.userAlepha = await userAppWith(async (provider) => {
+          await provider.execute(
+            sql.raw(`INSERT INTO "gauges" ("level") VALUES ('high')`),
+          );
+        });
+
+        // The bad row is there, and --print must not go red on it: it is
+        // for a database this machine cannot reach.
+        await expect(
+          cli.run(cmd.testDoctor, { root: "/project", argv: "--print" }),
+        ).resolves.not.toThrow();
+      });
+    });
 
     it("redirects a D1 provider to 'alepha platform db baseline mark' instead of connecting", async () => {
       const { alepha, utils, cli, cmd } = createWithUserApp();

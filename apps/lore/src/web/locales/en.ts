@@ -1031,6 +1031,7 @@ export default {
   "app.tab.analytics": "Analytics",
   "app.tab.vitals": "Vitals",
   "app.tab.explore": "Explore",
+  "app.tab.artifacts": "Artifacts",
   "app.tab.settings": "Settings",
   "app.dashboard.token": "Token",
   "app.dashboard.enrolled": "Enrolled",

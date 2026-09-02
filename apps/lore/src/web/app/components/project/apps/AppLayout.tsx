@@ -21,6 +21,7 @@ type RouteName =
   | "appAnalytics"
   | "appVitals"
   | "appExplore"
+  | "appArtifacts"
   | "appSettings";
 
 type TabLabelKey =
@@ -28,6 +29,7 @@ type TabLabelKey =
   | "app.tab.analytics"
   | "app.tab.vitals"
   | "app.tab.explore"
+  | "app.tab.artifacts"
   | "app.tab.settings";
 
 interface AppTab {
@@ -49,6 +51,8 @@ const TABS: AppTab[] = [
   // worth putting on a page; this one answers the ones nobody anticipated, so
   // it belongs after the curated pair rather than in place of them.
   { route: "appExplore", labelKey: "app.tab.explore", needsBeacon: true },
+  // No `needsBeacon`: builds come from CI, not from what the app collects.
+  { route: "appArtifacts", labelKey: "app.tab.artifacts" },
   { route: "appSettings", labelKey: "app.tab.settings" },
 ];
 

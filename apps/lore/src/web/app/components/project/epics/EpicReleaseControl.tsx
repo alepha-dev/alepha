@@ -90,10 +90,11 @@ const EpicReleaseControl = (props: EpicReleaseControlProps) => {
       // to assistive tech instead.
       label=""
       inputProps={{ "aria-label": String(tr("epic.aside.release")) }}
-      // The release glyph every other surface uses, so the flag reads as
-      // "release" here too (feedback #2061).
-      icon={Flag}
       clearable
+      // The release glyph, the one every other release surface carries
+      // (feedback #2061): the status row above decorates its value the same
+      // way, and this row was the one place a release was named bare.
+      icon={Flag}
       clearLabel={String(tr("epic.aside.release.none"))}
       triggerClassName="w-full"
       disabled={submitting || !!current?.releasedAt}

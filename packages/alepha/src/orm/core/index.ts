@@ -21,6 +21,7 @@ import { PgRelationManager } from "./services/PgRelationManager.ts";
 import { QueryManager } from "./services/QueryManager.ts";
 import { Repository } from "./services/Repository.ts";
 import { SqliteModelBuilder } from "./services/SqliteModelBuilder.ts";
+import { SqliteTypeAuditService } from "./services/SqliteTypeAuditService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -156,6 +157,7 @@ export const AlephaOrm = $module({
   imports: [AlephaDateTime],
   services: [
     SqliteModelBuilder,
+    SqliteTypeAuditService,
     DrizzleKitProvider,
     RepositoryProvider,
     SequenceProvider,

@@ -11,6 +11,7 @@ import {
   Paperclip,
   Sparkles,
   Timer,
+  Flag,
 } from "lucide-react";
 
 import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
@@ -222,8 +223,9 @@ const KanbanCard = (props: KanbanCardProps) => {
             {releaseTag && (
               <span
                 data-testid="kanban-card-release"
-                className="text-muted-foreground/80 shrink-0 font-mono text-[10px]"
+                className="text-muted-foreground/80 flex shrink-0 items-center gap-0.5 font-mono text-[10px]"
               >
+                <Flag className="size-2.5" />
                 {releaseTag}
               </span>
             )}

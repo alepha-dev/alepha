@@ -10,6 +10,7 @@ import {
 import { metaOptions } from "../atoms/metaOptions.ts";
 import { AppEntryProvider } from "../providers/AppEntryProvider.ts";
 import { ViteBuildProvider } from "../providers/ViteBuildProvider.ts";
+import { BuildFreshness } from "../services/BuildFreshness.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { PackageManagerUtils } from "../services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
@@ -35,6 +36,7 @@ export class BuildCommand {
   protected readonly options = $store(buildOptions);
   protected readonly metaResolver = $inject(MetaResolver);
   protected readonly metaOverride = $store(metaOptions);
+  protected readonly freshness = $inject(BuildFreshness);
 
   /**
    * Build pipeline: tasks run sequentially in this order.
@@ -143,6 +145,17 @@ export class BuildCommand {
           "Skip the bundle steps (Vite client/server + asset compression). Only regenerates target-specific deploy config (e.g. wrangler.jsonc). Use when `dist/` is already built and you just need the config refreshed.",
         )
         .optional(),
+      ifStale: z
+        .boolean()
+        // Every other flag here is one word, so camelCase has no precedent to
+        // follow and `--ifStale` reads badly. The alias is the spelling meant
+        // to be used and written down; the key stays camelCase because that
+        // is what the schema and `flags.ifStale` need.
+        .meta({ aliases: ["if-stale"] })
+        .describe(
+          "Build only when `dist/` is missing or older than the sources it was built from (the app's own src/public/migrations plus every workspace dependency it bundles). Use in a pipeline that builds and then runs the build, so the second invocation is a no-op instead of a full rebuild.",
+        )
+        .optional(),
     }),
     handler: async ({ flags, run, root }) => {
       process.env.NODE_ENV = "production";
@@ -186,6 +199,20 @@ export class BuildCommand {
       const options = this.options;
 
       const distDir = options.output?.dist ?? "dist";
+
+      // `--if-stale`: leave a current `dist/` alone and do nothing.
+      //
+      // Checked here rather than inside a task because the answer is "run no
+      // task at all", and before `clean dist` because that step is what would
+      // destroy the artifact being judged.
+      if (flags.ifStale) {
+        const reason = await this.freshness.staleReason(root, distDir);
+        if (!reason) {
+          this.log.info(`${distDir} is up to date, skipping build`);
+          return;
+        }
+        this.log.info(`Building: ${reason}`);
+      }
 
       // Prebuilt mode: skip clean + Vite builds + asset compression; only
       // regenerate target-specific deploy config (e.g. wrangler.jsonc).

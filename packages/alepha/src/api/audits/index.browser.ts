@@ -8,6 +8,7 @@ export type {
   AuditPrimitive,
   AuditPrimitiveOptions,
 } from "./primitives/$audit.ts";
+export * from "./schemas/auditActionPairSchema.ts";
 export * from "./schemas/auditQuerySchema.ts";
 export * from "./schemas/auditResourceSchema.ts";
 export * from "./schemas/createAuditSchema.ts";

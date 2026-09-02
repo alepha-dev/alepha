@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { Alepha } from "alepha";
+import { AlephaDateTime } from "alepha/datetime";
+import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
-import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
-import { AlephaReactRouter } from "alepha/react/router";
-import { afterEach, describe, expect, it } from "vitest";
+import { AlephaReactI18n } from "alepha/react/i18n";
+import { LinkProvider } from "alepha/server/links";
+import { describe, it } from "vitest";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 
@@ -11,68 +13,69 @@ import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import EpicReleaseControl from "./EpicReleaseControl.tsx";
 
-const epic = {
-  id: 7,
-  number: 24,
+/**
+ * Nothing here picks a release, so the client is never reached; the seam
+ * exists so `useClient` has something to hand out.
+ */
+class FakeLinkProvider extends LinkProvider {
+  // matches the real client's own loose virtual-action shape
+  override client(): any {
+    return {};
+  }
+}
+
+const aRelease = {
+  id: 11,
   projectId: 1,
-  title: "Lore Deploy",
+  number: 1,
+  tag: "0.28.0",
+  title: "0.28.0",
   description: "",
-  status: "active",
-  releaseId: 3,
-  createdAt: "2026-09-01T10:00:00.000Z",
-  updatedAt: "2026-09-01T10:00:00.000Z",
+  createdAt: "2026-08-30T10:00:00.000Z",
+  updatedAt: "2026-08-30T10:00:00.000Z",
+  progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
+};
+
+const anEpic = {
+  id: 1,
+  projectId: 1,
+  number: 24,
+  title: "Kanban v2",
+  status: "done",
+  releaseId: aRelease.id,
+  progress: { completed: 0, total: 0 },
 } as unknown as EpicResource;
 
 /**
- * The epic aside's release row (feedback #2061): the value used to be a bare
- * select, while every other place a release is named draws lucide's `Flag`
- * beside it. The glyph is what makes "0.28.0" read as a release.
+ * The aside decorates its status value with the status glyph, and every other
+ * surface that names a release carries lucide's `Flag`; this row was the one
+ * place a release was named bare (feedback #2061). Lucide names the svg after
+ * the icon, so `svg.lucide-flag` is the flag and nothing else.
  */
-describe("EpicReleaseControl - the release glyph", () => {
-  let alepha: Alepha | undefined;
-
-  afterEach(async () => {
-    await alepha?.stop();
-    alepha = undefined;
-  });
-
-  const mount = async () => {
-    alepha = Alepha.create()
+describe("EpicReleaseControl", () => {
+  it("carries the release glyph on its trigger", async ({ expect }) => {
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      // Before the modules that reach for it: a substitution after
+      // `LinkProvider` has been instantiated is a `TooLateSubstitutionError`.
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
       .with(AlephaReact)
       .with(AlephaReactI18n)
-      .with(AlephaReactRouter);
-    alepha.inject(I18n);
+      .with(I18n);
     await alepha.start();
-    await alepha.inject(I18nProvider).setLang("en");
-    // The atom validates against `releaseResourceSchema`: the whole
-    // required shape, progress rollup included.
-    alepha.store.set(currentReleasesAtom, [
-      {
-        id: 3,
-        projectId: 1,
-        number: 1,
-        tag: "0.28.0",
-        title: "Twenty-eight",
-        description: "",
-        createdAt: "2026-09-01T10:00:00.000Z",
-        updatedAt: "2026-09-01T10:00:00.000Z",
-        progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
-      },
-    ] as never);
-    return render(
+    alepha.store.set(currentReleasesAtom, [aRelease]);
+
+    const { container } = render(
       <AlephaContext.Provider value={alepha}>
-        <EpicReleaseControl epic={epic} onChange={() => undefined} />
+        <EpicReleaseControl epic={anEpic} onChange={() => {}} />
       </AlephaContext.Provider>,
     );
-  };
 
-  it("draws the Flag beside the release in the trigger", async () => {
-    await mount();
-
-    const trigger = await screen.findByRole("combobox", { name: "Release" });
+    const trigger = await screen.findByRole("combobox");
     expect(trigger.textContent).toContain("0.28.0");
-    // lucide stamps each icon with its name, which is the one hook a test
-    // has on "which glyph" without reading path data.
-    expect(trigger.querySelector("svg.lucide-flag")).not.toBeNull();
+    expect(container.querySelector("svg.lucide-flag")).not.toBeNull();
+
+    await alepha.stop();
   });
 });

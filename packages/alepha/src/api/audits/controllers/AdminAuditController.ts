@@ -4,6 +4,7 @@ import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 import { audits } from "../entities/audits.ts";
+import { auditActionPairSchema } from "../schemas/auditActionPairSchema.ts";
 import { auditQuerySchema } from "../schemas/auditQuerySchema.ts";
 import { auditResourceSchema } from "../schemas/auditResourceSchema.ts";
 import { createAuditSchema } from "../schemas/createAuditSchema.ts";
@@ -183,9 +184,10 @@ export class AdminAuditController {
     path: `${this.url}/actions`,
     group: this.group,
     use: [$secure({ permissions: ["admin:audit:read"] })],
-    description: "List distinct action names present in the audit log",
+    description:
+      "List the distinct (type, action) pairs the registered audit types declare, sorted by type then action",
     schema: {
-      response: z.array(z.text()),
+      response: z.array(auditActionPairSchema),
     },
     handler: () => this.auditService.getDistinctActions(),
   });

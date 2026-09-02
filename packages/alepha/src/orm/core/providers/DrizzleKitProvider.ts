@@ -135,21 +135,10 @@ export class DrizzleKitProvider {
       );
       result.pushError = error;
       result.skipped = skipped;
-
-      // The fallback diffs against an EMPTY snapshot, so it can only ever
-      // CREATE. Every statement it skips is a table that already existed and
-      // was left exactly as it was: a column added to that entity never
-      // reached the database, and the app only finds out when a query names
-      // it. This used to be reported only when NOTHING had been applied, so
-      // one new table since the last run was enough to hide the stale
-      // columns on every other table behind "Synchronization OK".
       if (skipped > 0) {
         result.complete = false;
-        this.log.warn(
-          `Schema of '${provider.name}' is only PARTLY synchronized: the push failed (${this.describePushError(error)}) and the fallback only knows how to create. ${applied} statements applied, ${skipped} skipped because what they create already exists, and those tables were left as they were. Entity changes on them have NOT been applied: run your migrations, or delete the development database (node_modules/.alepha/sqlite.db for the default sqlite setup) and start again.`,
-          { error },
-        );
       }
+      this.reportFallbackOutcome(provider.name, applied, skipped, error);
     }
 
     const elapsed = this.dateTime.nowMillis() - now;
@@ -490,6 +479,36 @@ export class DrizzleKitProvider {
    */
   protected isRenameResolutionError(error: unknown): boolean {
     return this.errorMentions(error, "without a HintsHandler");
+  }
+
+  /**
+   * Say what the fallback could and could not do.
+   *
+   * The fallback diffs against an EMPTY snapshot, so it can only ever
+   * CREATE. Every statement it skips is a table that already existed and
+   * was left exactly as it was: a column added to that entity never reached
+   * the database, and the app only finds out when a query names it.
+   *
+   * `skipped > 0`, not `skipped > 0 && applied === 0`: a database that is
+   * only PARTLY behind (one new table, three tables missing a column)
+   * applied the one CREATE and skipped the rest, and the narrower condition
+   * let it log "Synchronization OK". Anything skipped means the fallback
+   * could not say whether those tables match their entities, and that is
+   * worth a warning every time.
+   */
+  protected reportFallbackOutcome(
+    providerName: string,
+    applied: number,
+    skipped: number,
+    error: unknown,
+  ): void {
+    if (skipped === 0) {
+      return;
+    }
+    this.log.warn(
+      `Schema of '${providerName}' could NOT be fully synchronized: the push failed (${this.describePushError(error)}) and the fallback only knows how to create tables; ${applied} created, ${skipped} already existed and were left as they are. Entity changes to existing tables have NOT been applied: run your migrations, or delete the development database (node_modules/.alepha/sqlite.db for the default sqlite setup) and start again.`,
+      { error },
+    );
   }
 
   /**

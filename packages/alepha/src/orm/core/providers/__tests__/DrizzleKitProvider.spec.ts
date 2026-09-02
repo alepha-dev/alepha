@@ -9,6 +9,17 @@ import { DrizzleKitProvider } from "../DrizzleKitProvider.ts";
  */
 class TestDrizzleKitProvider extends DrizzleKitProvider {
   public testErrorMentions = this.errorMentions.bind(this);
+  public testReportFallbackOutcome = this.reportFallbackOutcome.bind(this);
+  public warnings: string[] = [];
+  protected override readonly log = {
+    warn: (message: string) => {
+      this.warnings.push(message);
+    },
+    info: () => {},
+    debug: () => {},
+    trace: () => {},
+    error: () => {},
+  } as any;
 }
 
 describe("DrizzleKitProvider", () => {
@@ -94,6 +105,49 @@ describe("DrizzleKitProvider", () => {
       wrapped.cause = "table `x` already exists";
 
       expect(create().testErrorMentions(wrapped, "already exists")).toBe(false);
+    });
+  });
+
+  /**
+   * When `pushSchema` throws (drizzle-kit rc.4 does, on any column change,
+   * for want of a `HintsHandler`), the fallback diffs against an empty
+   * snapshot and can only CREATE. It used to warn only when it had applied
+   * nothing at all, so one new table since the last run silenced it while
+   * every other table kept its stale columns and the boot log said "OK".
+   */
+  describe("reportFallbackOutcome", () => {
+    const create = () => Alepha.create().inject(TestDrizzleKitProvider);
+
+    it("warns when the fallback left existing tables alone, even after creating one", () => {
+      const kit = create();
+
+      kit.testReportFallbackOutcome(
+        "sqlite",
+        1,
+        3,
+        new Error("no HintsHandler"),
+      );
+
+      expect(kit.warnings).toHaveLength(1);
+      expect(kit.warnings[0]).toContain("could NOT be fully synchronized");
+      expect(kit.warnings[0]).toContain("no HintsHandler");
+      expect(kit.warnings[0]).toContain("1 created, 3 already existed");
+    });
+
+    it("warns when nothing at all could be applied", () => {
+      const kit = create();
+
+      kit.testReportFallbackOutcome("sqlite", 0, 12, new Error("push failed"));
+
+      expect(kit.warnings).toHaveLength(1);
+    });
+
+    it("stays quiet when every statement landed", () => {
+      const kit = create();
+
+      kit.testReportFallbackOutcome("sqlite", 4, 0, new Error("push failed"));
+
+      expect(kit.warnings).toHaveLength(0);
     });
   });
 });

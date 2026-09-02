@@ -43,134 +43,14 @@ import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
+import {
+  ROUTES_APP,
+  ROUTES_FULL_WIDTH,
+  ROUTES_WITH_QUEST_LOG,
+  SECTION_HREF_ROUTES,
+  SECTION_LABEL_KEYS,
+} from "./projectViewRoutes.ts";
 import QuestLog from "./QuestLog.tsx";
-
-/**
- * The quest list AND the quest detail. The log is how you move between
- * quests without going back to the list first, which is exactly what the
- * detail route wants; the collapse rail is what keeps it from costing the
- * quest its width when a reader does not want it.
- *
- * This set also drives the view bar, so both routes get it. Dropping it on
- * the detail route would shift the log up the moment a quest opened - which
- * is why, on that route, the bar navigates instead of switching in place.
- */
-const ROUTES_WITH_QUEST_LOG = new Set(["projectQuests", "projectQuest"]);
-
-/**
- * The per-app page and its tabs.
- *
- * A plain string set, because route names are plain strings here with nothing
- * in the type system tying them to the route table — renaming one of these
- * `$page`s without editing this set is not a compile error, it is a sidebar
- * that silently stops highlighting.
- */
-const ROUTES_APP = new Set([
-  "projectApp",
-  "app",
-  "projectApps",
-  "appAnalytics",
-  "appAnalyticsDimension",
-  "appVitals",
-  "appSettings",
-]);
-
-const ROUTES_FULL_WIDTH = new Set([
-  "projectQuest",
-  "projectKanban",
-  "projectEpics",
-  "projectEpic",
-  "projectReleases",
-  // The release view is a full-width plate over four tabs, and it owns its
-  // own scroll: the plate stays put while a tab body scrolls under it. Capped
-  // and centred, the plate would sit in a 1024px column with a gutter down
-  // both sides and the artifact table would lose the width it is built for.
-  "projectRelease",
-  "projectFolios",
-  "projectFoliosNew",
-  "projectFoliosFolio",
-  "projectFeedback",
-  "projectBlights",
-  "projectQuestGraph",
-  ...ROUTES_APP,
-]);
-
-/**
- * The list route a section's breadcrumb crumb climbs back to, keyed by the
- * route currently open. A section whose crumb has no entry here renders as
- * plain text, which is why "Epics" used to be a dead label on an epic page.
- *
- * The three folio routes all map to the folio root, and `projectFolios` maps
- * to itself on purpose: a deep directory is that same route carrying a `?dir=`
- * query, so treating it as "the page you are already on" and dropping the link
- * would strand the user inside the tree, the opposite of what the link is for.
- *
- * `projectEpics` is deliberately absent for the mirror-image reason: the epic
- * list has no such nested state, so on the list itself the crumb is the open
- * page and should stay inert.
- *
- * Apps now have one, `projectApps`, which is why the "Apps" crumb on an app
- * page is a link rather than the dead text it used to render as. The list has
- * no sidebar entry on purpose - the sidebar already carries a disclosure group
- * with one child per app - so this crumb is its only door.
- */
-const SECTION_HREF_ROUTES: Record<
-  string,
-  | "projectFolios"
-  | "projectEpics"
-  | "projectQuests"
-  | "projectApps"
-  | "projectReleases"
-> = {
-  projectFolios: "projectFolios",
-  projectFoliosNew: "projectFolios",
-  projectFoliosFolio: "projectFolios",
-  projectEpic: "projectEpics",
-  projectQuest: "projectQuests",
-  projectRelease: "projectReleases",
-  projectApp: "projectApps",
-  app: "projectApps",
-  appAnalytics: "projectApps",
-  appAnalyticsDimension: "projectApps",
-  appVitals: "projectApps",
-  appSettings: "projectApps",
-};
-
-const SECTION_LABEL_KEYS: Record<string, string> = {
-  projectQuests: "project.menu.quests",
-  projectQuest: "project.menu.quests",
-  projectKanban: "project.menu.kanban",
-  projectEpics: "project.menu.epics",
-  projectEpic: "project.menu.epics",
-  projectReleases: "project.menu.releases",
-  projectRelease: "project.menu.releases",
-  projectReports: "project.menu.reports",
-  reportsOverview: "project.menu.reports",
-  reportsQuests: "project.menu.reports",
-  reportsMembers: "project.menu.reports",
-  projectFolios: "project.menu.folios",
-  projectFoliosNew: "project.menu.folios",
-  projectFoliosFolio: "project.menu.folios",
-  projectFeedback: "project.menu.feedback",
-  projectBlights: "project.menu.blights",
-  projectApps: "project.menu.apps",
-  projectApp: "project.menu.apps",
-  app: "project.menu.apps",
-  appAnalytics: "project.menu.apps",
-  appAnalyticsDimension: "project.menu.apps",
-  appVitals: "project.menu.apps",
-  appSettings: "project.menu.apps",
-  projectSettings: "project.menu.settings",
-  projectSettingsBanner: "project.menu.settings",
-  projectSettingsAreas: "project.menu.settings",
-  projectSettingsKanban: "project.menu.settings",
-  projectSettingsFolios: "project.menu.settings",
-  projectSettingsReleases: "project.menu.settings",
-  projectSettingsMembers: "project.menu.settings",
-  projectSettingsFeedback: "project.menu.settings",
-  projectSettingsSigils: "project.menu.settings",
-  projectSettingsQuests: "project.menu.settings",
-};
 
 const ProjectView = () => {
   const routerState = useRouterState();
