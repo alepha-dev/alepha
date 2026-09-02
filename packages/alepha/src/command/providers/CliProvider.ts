@@ -229,11 +229,14 @@ export class CliProvider {
     // (read live by Logger). At DEBUG level Runner also switches shelled
     // task output from captured to streamed, so tool output shows live.
     //
-    // An agent session (Claude Code sets CLAUDECODE) implies verbose: the
-    // compact `cli` format is tuned for a human watching a terminal, but an
-    // agent benefits from the full module/context and internal logs — same
+    // An agent session (Claude Code sets CLAUDECODE) used to imply verbose:
+    // the compact `cli` format is tuned for a human watching a terminal, but
+    // an agent benefits from the full module/context and internal logs, same
     // as if `--verbose` were passed.
-    const verbose = globalFlags.verbose || !!this.alepha.env.CLAUDECODE;
+    //
+    // disabled for now for performance reasons
+    // const verbose = globalFlags.verbose || !!this.alepha.env.CLAUDECODE;
+    const verbose = globalFlags.verbose;
     if (verbose) {
       this.alepha.store.set("alepha.logger.level", "trace");
       this.alepha.store.set("alepha.logger.format", "pretty");
