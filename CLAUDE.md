@@ -151,9 +151,47 @@ Two test environments are configured:
 #### Running Tests
 
 - **All packages**: `yarn test`
-- **Single package**: `yarn w alepha test`
+- **Single package**: `yarn w alepha test` (its own specs only, see below)
+- **One project from the root**: `yarn alepha test --project alepha`, comma-separated and glob-friendly
 - **Filtered tests**: `yarn w alepha vitest run <pattern>` (e.g., `yarn w alepha vitest run init.spec`)
 - **With coverage**: `yarn vitest run --coverage`
+
+#### One Vitest project per workspace
+
+Every workspace holding spec files owns a `vitest.config.ts` that calls
+`workspaceProjects` from the repo-root `vitest.projects.ts`, exports the result
+as `projects`, and default-exports it wrapped. The root `vitest.config.ts`
+imports each of those and spreads them, so `yarn test` is the union of the
+workspaces and `yarn w <workspace> test` is exactly one of them. Both read the
+same array; they cannot disagree.
+
+The helper is where the shared settings live: the service env block, the Paris
+timezone, the timeout, `globals`, and the jsdom settings. It also turns the
+workspace's own tsconfig `paths` into aliases, which is what makes `@/` resolve
+in tests the way it already does in the dev server and both builds. A path whose
+prefix is the workspace's own package name is skipped on purpose, because the
+`exports` map resolves the same specifier with conditions an alias would flatten.
+
+Three rules, enforced by `check:conventions`, not by review:
+
+- A workspace with spec files owns a `vitest.config.ts`. Without one, Vitest
+  walks up to the root config and the workspace's `test` script silently runs
+  the entire monorepo.
+- The root `vitest.config.ts` imports it. A config nobody imports contributes
+  nothing to `yarn test`, and a suite that quietly shrinks looks like one that
+  passes.
+- `jsdom: true` is passed if and only if the workspace has `*.browser.spec.*`
+  files.
+
+A workspace with browser specs gets two projects, `<name>` and `<name>:jsdom`,
+so selecting one whole is `--project '<name>*'`. `apps/e2e-cli` is the single
+exemption from all of this: it owns a config, stays out of the root run, and is
+driven by `yarn e2e-cli`.
+
+⚠️ Project entries must stay FLAT. A project config that declares `projects` of
+its own is not nested, it is silently ignored: the parent collapses it into one
+project and runs every spec under the parent's own settings, which is what a
+browser spec running in the node environment looks like.
 
 #### Ports — dev vs e2e
 
@@ -167,7 +205,7 @@ Two disjoint bands, and they must stay disjoint:
 | `4300-4999`                           | **e2e, and nothing else**                                                                                                                                                                                                                                                                                   |
 | `11883` / `15432` / `16379` / `19090` | `compose.yml` test services (emqx / postgres / redis / s3mock)                                                                                                                                                                                                                                              |
 
-All six Playwright configs (`apps/docs`, `apps/lore`, and `apps/examples/{playground,shop,ssr}` — ssr twice, prod + dev mode) take their port from `e2ePort("<app>")` in the repo-root `playwright.port.ts`, the same way every vitest config takes its browser project from `vitest.jsdom.ts`. Add port logic there, never to a caller; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
+All six Playwright configs (`apps/docs`, `apps/lore`, and `apps/examples/{playground,shop,ssr}` — ssr twice, prod + dev mode) take their port from `e2ePort("<app>")` in the repo-root `playwright.port.ts`, the same way every vitest config takes its projects from `vitest.projects.ts`. Add port logic there, never to a caller; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
 
 The argument is the **app name, not a port**, because it used to be the port — and it was the app's own _dev_ port. `yarn dev` and `yarn e2e` in the same app fought over one socket, and with `reuseExistingServer` on, Playwright adopted the dev server and ran the suite against hot-reloaded sources and the dev database, reporting green.
 

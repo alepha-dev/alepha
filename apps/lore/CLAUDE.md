@@ -1019,7 +1019,7 @@ The root `vitest.config.ts`'s "node" project has no `include` filter (removed to
 
 Both are the same shape as the `ADD COLUMN … NOT NULL` trap below — a check that could not have gone red — with a different mechanism: wrong runner, not empty database.
 
-**The fix for face 2 was structural, not the missing line.** The browser project now lives in `vitest.jsdom.ts` at the repo root and both configs call `jsdomProject(include)`, each supplying nothing but its own `include`. Add a jsdom setting there, never to a caller. Guarding the spec instead (`window.localStorage?.clear()`) was rejected: it would pass while still running in the wrong environment, so every assertion about persisted pane preferences would be testing nothing.
+**The fix for face 2 was structural, not the missing line.** The browser project now comes from `workspaceProjects` in the repo-root `vitest.projects.ts`, which every workspace config calls with nothing but its own name and a `jsdom` flag. Add a jsdom setting there, never to a caller. Guarding the spec instead (`window.localStorage?.clear()`) was rejected: it would pass while still running in the wrong environment, so every assertion about persisted pane preferences would be testing nothing.
 
 The `@/` alias is still duplicated in both configs, and the root copy is load-bearing: `apps/examples/playground` and `apps/examples/shop` declare the same `@/* → ./src/*` tsconfig mapping without writing a single `@/` import today, so the first one added in either app resolves into `apps/lore/src` under a root run — typecheck green, wrong file imported. At that point the repo-wide alias has to become per-project, which is why it is not shared the way the jsdom project is.
 
@@ -1054,7 +1054,7 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 
 This suite used to run on **3303 — the same port as `yarn dev`**. With `reuseExistingServer` on, a dev server left running in another terminal was adopted by Playwright, and the whole suite ran against hot-reloaded sources and the dev database instead of `node dist` and `:memory:`. Two agents in two worktrees hit the same trap through each other's servers.
 
-`e2ePort("lore")` in the repo-root `playwright.port.ts` — shared by all six Playwright configs, same pattern as `vitest.jsdom.ts` — makes both impossible. E2E allocates from a reserved **4300-4999** band that no dev server may use; within it the slot is derived from the **checkout path**, so two worktrees never meet; and the port is then **bind-tested**, stepping a full stride if anything answers. `reuseExistingServer` is `false` everywhere as a result: a port verified free has nothing legitimate to adopt.
+`e2ePort("lore")` in the repo-root `playwright.port.ts` — shared by all six Playwright configs, same pattern as `vitest.projects.ts` — makes both impossible. E2E allocates from a reserved **4300-4999** band that no dev server may use; within it the slot is derived from the **checkout path**, so two worktrees never meet; and the port is then **bind-tested**, stepping a full stride if anything answers. `reuseExistingServer` is `false` everywhere as a result: a port verified free has nothing legitimate to adopt.
 
 `E2E_PORT` overrides the whole thing, probe included. Reach for it when the allocation cannot help — most often a worktree checked out _before_ this landed, which still carries the old fixed-3303 config. Pick something inside the e2e band:
 

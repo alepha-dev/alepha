@@ -18,7 +18,7 @@
  * because that is the scope of the thing it protects.
  */
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 /**
  * The trees rules 1 and 2 read.
@@ -785,6 +785,124 @@ if (flatSpecViolations.length > 0) {
       `${flatSpecViolations.join("\n")}\n\n` +
       "A case at the top level of a spec has no subject in the reporter and no\n" +
       "handle for `vitest run -t`. Wrap the file in a describe() and use it().\n",
+  );
+  process.exit(1);
+}
+
+/*
+ * 6. A workspace holding spec files owns a Vitest config, and the root config
+ *    knows about it.
+ *
+ * Vitest walks up from its cwd until it finds a config. Before per-workspace
+ * configs existed that walk always ended at the repository root, whose
+ * `test.root` was the repository, so `yarn w @alepha/protobuf test` ran all
+ * 892 specs in the monorepo and `yarn w alepha test` ran 328 files that are
+ * not in `packages/alepha`. Every one of those commands reported success, so
+ * nobody had a reason to look.
+ *
+ * The failure this guards is the same shape in the other direction: a
+ * workspace whose config exists but is missing from the root's import list
+ * contributes nothing to `yarn test`, and a suite that silently shrinks looks
+ * exactly like a suite that passes.
+ *
+ * `apps/e2e-cli` is the one exemption. It packs a tarball and scaffolds a real
+ * project, and the root run has always excluded it; it owns a config and runs
+ * from `yarn e2e-cli`.
+ */
+const VITEST_ROOT_EXEMPT = {
+  "apps/e2e-cli":
+    "packs a tarball; runs from `yarn e2e-cli`, never `yarn test`",
+};
+
+const unitSpecFiles = execFileSync(
+  "git",
+  ["ls-files", "*.spec.ts", "*.spec.tsx"],
+  { encoding: "utf8" },
+)
+  .trim()
+  .split("\n")
+  .filter(Boolean)
+  .filter((file) => !file.split("/").includes("e2e"));
+
+/**
+ * The workspace a file belongs to: the longest location that prefixes it.
+ * `apps/examples/shop` and the root workspace `.` both prefix a shop spec, and
+ * only the longest is the owner.
+ */
+const specOwnerOf = (file) =>
+  workspaces
+    .filter((w) => w.location === "." || file.startsWith(`${w.location}/`))
+    .sort((a, b) => b.location.length - a.location.length)[0];
+
+const specOwners = new Map();
+
+for (const file of unitSpecFiles) {
+  const owner = specOwnerOf(file);
+  if (!owner) {
+    continue;
+  }
+  const entry = specOwners.get(owner.location) ?? { owner, browser: false };
+  entry.browser ||= /\.browser\.spec\.(ts|tsx)$/.test(file);
+  specOwners.set(owner.location, entry);
+}
+
+const rootVitestConfig = readFileSync("vitest.config.ts", "utf8");
+const vitestViolations = [];
+
+for (const [location, { owner, browser }] of specOwners) {
+  if (location in VITEST_ROOT_EXEMPT) {
+    continue;
+  }
+
+  // The root workspace declares its project inline in the root config, since
+  // its config file IS the root config.
+  const config =
+    location === "." ? "vitest.config.ts" : `${location}/vitest.config.ts`;
+
+  if (!existsSync(config)) {
+    vitestViolations.push(
+      `  ${location}\n    → has spec files but no vitest.config.ts, so` +
+        " `yarn w " +
+        owner.name +
+        " test` runs the whole monorepo",
+    );
+    continue;
+  }
+
+  const source = readFileSync(config, "utf8");
+
+  if (location !== "." && !rootVitestConfig.includes(`./${config}`)) {
+    vitestViolations.push(
+      `  ${location}\n    → its vitest.config.ts is not imported by the root` +
+        " vitest.config.ts, so `yarn test` never runs its specs",
+    );
+  }
+
+  const declaresJsdom = /\bjsdom:\s*true\b/.test(source);
+
+  if (browser && !declaresJsdom) {
+    vitestViolations.push(
+      `  ${config}\n    → has *.browser.spec files but does not pass` +
+        " `jsdom: true`, so they run in the node environment or not at all",
+    );
+  }
+
+  if (!browser && declaresJsdom) {
+    vitestViolations.push(
+      `  ${config}\n    → passes \`jsdom: true\` but has no *.browser.spec` +
+        " files; drop the flag",
+    );
+  }
+}
+
+if (vitestViolations.length > 0) {
+  console.error(
+    `\n${vitestViolations.length} vitest project violation(s):\n\n` +
+      `${vitestViolations.join("\n")}\n\n` +
+      "Every workspace with spec files owns a vitest.config.ts built from\n" +
+      "`workspaceProjects`, and the root vitest.config.ts imports it. That is\n" +
+      "what makes `yarn w <workspace> test` mean what it says and keeps\n" +
+      "`yarn test` the union of every workspace.\n",
   );
   process.exit(1);
 }

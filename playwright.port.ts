@@ -9,7 +9,7 @@ import { checkoutRoot } from "./test.slot.ts";
 /**
  * The e2e port for one suite, shared by every Playwright config in the repo.
  *
- * Same reasoning as `vitest.jsdom.ts`: a setting that must hold across six
+ * Same reasoning as `vitest.projects.ts`: a setting that must hold across six
  * configs lives in one file, and a caller contributes nothing but its own
  * name.
  *
