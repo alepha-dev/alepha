@@ -323,4 +323,141 @@ describe("Attaching a quest to a release", () => {
     expect(read.data.releaseId).toBeUndefined();
     expect(read.data.title).toBe("Survives");
   });
+
+  /**
+   * A completed quest's BODY is frozen as an audit record of what was closed.
+   * Its release is not part of that body: which release a finished quest
+   * ships in is planning metadata, decided after completion at least as often
+   * as before it, and a release holds quests by assignment rather than by
+   * time window. The gate used to catch `releaseId` along with everything
+   * else, so the rail's Release select opened and the choice was refused.
+   */
+  describe("on a completed quest", () => {
+    const aCompletedQuest = async (
+      user: TestUser,
+      projectId: number,
+      title: string,
+    ) => {
+      const quest = await aQuest(ctx, user, projectId, title);
+      await ctx.questController.acceptQuest.fetch(
+        { params: { id: quest.id } },
+        { user },
+      );
+      await ctx.questController.completeQuest.fetch(
+        { params: { id: quest.id }, body: {} },
+        { user },
+      );
+      return quest;
+    };
+
+    it("attaches and detaches", async ({ expect }) => {
+      const user = await createTestUser(ctx);
+      const project = await createTestProject(ctx, user, "Completed Attach");
+      const release = await aRelease(user, project.id, "0.29.0");
+      const quest = await aCompletedQuest(user, project.id, "Shipped");
+
+      const attached = await ctx.questController.updateQuestById.fetch(
+        { params: { id: quest.id }, body: { releaseId: release.data.id } },
+        { user },
+      );
+      expect(attached.data.releaseId).toBe(release.data.id);
+      expect(attached.data.completedAt).toBeDefined();
+
+      const detached = await ctx.questController.updateQuestById.fetch(
+        { params: { id: quest.id }, body: { releaseId: null } },
+        { user },
+      );
+      expect(detached.data.releaseId).toBeUndefined();
+    });
+
+    it("keeps the rest of the body frozen", async ({ expect }) => {
+      const user = await createTestUser(ctx);
+      const project = await createTestProject(ctx, user, "Completed Frozen");
+      const quest = await aCompletedQuest(user, project.id, "Shipped");
+
+      await expect(
+        ctx.questController.updateQuestById.fetch(
+          { params: { id: quest.id }, body: { title: "Rewritten" } },
+          { user },
+        ),
+      ).rejects.toThrow(/completed quest/);
+
+      const read = await ctx.questController.getQuestById.fetch(
+        { params: { id: quest.id } },
+        { user },
+      );
+      expect(read.data.title).toBe("Shipped");
+    });
+
+    it("still refuses a published release, in both directions", async ({
+      expect,
+    }) => {
+      const user = await createTestUser(ctx);
+      const project = await createTestProject(ctx, user, "Completed Published");
+      const release = await aRelease(user, project.id, "0.29.0");
+      const quest = await aCompletedQuest(user, project.id, "Shipped");
+
+      await ctx.questController.updateQuestById.fetch(
+        { params: { id: quest.id }, body: { releaseId: release.data.id } },
+        { user },
+      );
+      await ctx.releaseController.publishRelease.fetch(
+        { params: { id: release.data.id }, body: {} },
+        { user },
+      );
+
+      // Detaching from a published release is the direction this quest makes
+      // newly reachable, and the one that would rewrite what a release says
+      // it shipped.
+      await expect(
+        ctx.questController.updateQuestById.fetch(
+          { params: { id: quest.id }, body: { releaseId: null } },
+          { user },
+        ),
+      ).rejects.toThrow(/published/);
+    });
+
+    it("records the change in the quest's history", async ({ expect }) => {
+      const user = await createTestUser(ctx);
+      const project = await createTestProject(ctx, user, "Completed History");
+      const release = await aRelease(user, project.id, "0.29.0");
+      const quest = await aCompletedQuest(user, project.id, "Shipped");
+
+      const updated = await ctx.questController.updateQuestById.fetch(
+        { params: { id: quest.id }, body: { releaseId: release.data.id } },
+        { user },
+      );
+
+      // The history rides back on the update itself, the way
+      // `quest-history-changes.spec.ts` reads it.
+      const history = updated.data.history;
+      const changes = history[history.length - 1]?.changes ?? [];
+      expect(changes.map((change) => change.field)).toContain("release");
+      expect(changes).toContainEqual({ field: "release", to: "0.29.0" });
+    });
+
+    it("still writes no history entry for a summary-only edit", async ({
+      expect,
+    }) => {
+      const user = await createTestUser(ctx);
+      const project = await createTestProject(ctx, user, "Completed Silent");
+      const quest = await aCompletedQuest(user, project.id, "Shipped");
+
+      const before = await ctx.questController.getQuestById.fetch(
+        { params: { id: quest.id } },
+        { user },
+      );
+
+      // An "updated" entry carrying no change is noise on a frozen quest,
+      // which is why the entry used to be skipped outright. Recording the
+      // release move must not bring the noise back with it.
+      const after = await ctx.questController.updateQuestById.fetch(
+        { params: { id: quest.id }, body: { completionMessage: "Done." } },
+        { user },
+      );
+
+      expect(after.data.history.length).toBe(before.data.history.length);
+      expect(after.data.completionMessage).toBe("Done.");
+    });
+  });
 });
