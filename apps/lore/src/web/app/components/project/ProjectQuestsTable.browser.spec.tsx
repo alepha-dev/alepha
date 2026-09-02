@@ -20,6 +20,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
+import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { I18n } from "../../services/I18n.ts";
 import ProjectQuestsTable from "./ProjectQuestsTable.tsx";
 
@@ -183,6 +184,25 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
         recentQuests: [],
       },
     ] as never);
+    // Two releases, so the release filter renders: it is gated on the project
+    // HAVING releases, not on the option list being non-empty - "No release"
+    // is always in that list and would otherwise show the filter to a project
+    // with nothing to filter by.
+    const aRelease = (id: number, number: number, tag: string) => ({
+      id,
+      projectId: 1,
+      number,
+      tag,
+      title: tag,
+      description: "",
+      createdAt: "2026-08-26T10:00:00.000Z",
+      updatedAt: "2026-08-26T10:00:00.000Z",
+      progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
+    });
+    alepha.store.set(currentReleasesAtom, [
+      aRelease(7, 1, "0.28.0"),
+      aRelease(8, 2, "0.29.0"),
+    ] as never);
 
     const view = render(
       <AlephaContext.Provider value={alepha}>
@@ -302,5 +322,28 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     expect(unshelved()).not.toBeNull();
     // The third action does not depend on the selection.
     expect(screen.getByRole("button", { name: /Add to release/ })).toBeTruthy();
+  });
+
+  /**
+   * "What is still unassigned" is the question a release planner asks most,
+   * and every option being a release left it unanswerable (#1700). The
+   * option leads the list rather than trailing it: it is the one people
+   * reach for, and it is not a release.
+   */
+  it("leads the release filter with No release", async () => {
+    const { view } = await mount();
+
+    fireEvent.click(view.getByRole("combobox", { name: "Release" }));
+
+    const options = await waitFor(() => {
+      const found = view.baseElement.querySelectorAll('[role="option"]');
+      if (found.length === 0) throw new Error("not open yet");
+      return [...found].map((option) => option.textContent);
+    });
+
+    expect(options[0]).toContain("No release");
+    expect(options.join(" ")).toContain("0.28.0");
+    // "None" reads as "no filter" in a filter; the label has to say which.
+    expect(options[0]).not.toBe("None");
   });
 });

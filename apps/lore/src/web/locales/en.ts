@@ -260,6 +260,7 @@ export default {
   "board.table.release": "Release",
   "board.filter.release": "Release",
   "board.filter.allReleases": "All releases",
+  "board.filter.noRelease": "No release",
   "board.table.linked": "Linked",
   "board.table.linked.tooltip": "Blocked by quest #$1",
   "board.table.priority": "Priority",

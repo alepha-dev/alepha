@@ -43,6 +43,7 @@ import { useEffect, useState } from "react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { User } from "@/api/entities/users.ts";
+import { QUEST_RELEASE_NONE } from "@/api/schemas/questReleaseFilter.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
@@ -179,10 +180,21 @@ const ProjectQuestsTable = () => {
   // Every release, published included: this is a filter over history, not a
   // picker for an attachment, so hiding what has shipped would make the
   // table unable to answer "what went into 0.27.0".
-  const releaseOptions = (releases ?? []).map((r) => ({
-    value: String(r.id),
-    label: r.tag ?? r.title,
-  }));
+  //
+  // Led by "No release", which is not a release: "what is still unassigned"
+  // is the question a release planner asks most, and every option being a
+  // release left it unanswerable. Named that rather than "None", which in a
+  // filter reads as "no filter".
+  const releaseOptions = [
+    {
+      value: QUEST_RELEASE_NONE,
+      label: String(tr("board.filter.noRelease")),
+    },
+    ...(releases ?? []).map((r) => ({
+      value: String(r.id),
+      label: r.tag ?? r.title,
+    })),
+  ];
 
   /**
    * One toast per bulk action, and never a green one over a refusal: nine
@@ -449,7 +461,7 @@ const ProjectQuestsTable = () => {
                   />
                 </FilterSlot>
               )}
-              {releaseOptions.length > 0 && (
+              {(releases ?? []).length > 0 && (
                 <FilterSlot>
                   <Control
                     input={form.input.release}
