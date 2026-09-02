@@ -22,4 +22,15 @@ same commit as the feature that exposed it.
 ## Status
 
 Lore is deployed at [lore.alepha.dev](https://lore.alepha.dev) and shares its version
-number with the rest of the ecosystem. There is no self-host artifact yet.
+number with the rest of the ecosystem.
+
+It also ships as a self-hosted image, `ghcr.io/alepha-dev/lore`, published by the
+same release that publishes the framework. One command, one volume, no
+configuration:
+
+```bash
+docker run -p 3000:3000 -v lore:/data ghcr.io/alepha-dev/lore
+```
+
+See [Self-Hosting](/lore/docs/guides-self-hosting) for what happens on first boot and
+what each optional variable buys.
