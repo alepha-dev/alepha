@@ -47,6 +47,7 @@ import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { AreaService } from "../services/AreaService.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectActivityService } from "../services/ProjectActivityService.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
@@ -111,6 +112,7 @@ export class ProjectController {
   limits = $inject(ProjectLimits);
   slugs = $inject(ProjectSlugService);
   projectSecurity = $inject(ProjectSecurityService);
+  audits = $inject(LoreAudits);
   areaService = $inject(AreaService);
   activityService = $inject(ProjectActivityService);
   openQuests = $inject(OpenQuestScope);
@@ -228,6 +230,13 @@ export class ProjectController {
         projectId: project.id,
         userId: user.id,
         owner: true,
+      });
+
+      await this.audits.project.logSuccess("create", {
+        ...this.audits.actor(user),
+        resourceType: "project",
+        resourceId: String(project.id),
+        description: project.title,
       });
 
       return this.projectMapper.toResource(project);
@@ -737,7 +746,19 @@ export class ProjectController {
     handler: async ({ params, user }) => {
       // Shared with the admin shell's delete — see `ProjectDeletionService`
       // for why the cascade is not written out twice.
-      await this.projectDeletion.deleteProject(params.id);
+      const deleted = await this.projectDeletion.deleteProject(params.id);
+
+      // The title comes back from the service because it is read before the
+      // cascade: once the row is gone, an id names nothing.
+      if (deleted) {
+        await this.audits.project.logSuccess("delete", {
+          ...this.audits.actor(user),
+          severity: "warning",
+          resourceType: "project",
+          resourceId: String(deleted.id),
+          description: deleted.title,
+        });
+      }
 
       return { ok: true };
     },
@@ -792,6 +813,13 @@ export class ProjectController {
 
       await this.members.deleteById(member.id);
 
+      await this.audits.member.logSuccess("leave", {
+        ...this.audits.actor(user),
+        resourceType: "project",
+        resourceId: String(params.id),
+        description: project.title,
+      });
+
       return { ok: true };
     },
   });
@@ -827,7 +855,7 @@ export class ProjectController {
       }),
       response: okSchema,
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, user }) => {
       const project = this.owned.get<Project>();
 
       // The owner's own row is not removable, for the reason they cannot
@@ -865,6 +893,16 @@ export class ProjectController {
       );
 
       await this.members.deleteById(member.id);
+
+      // The same action as a member leaving of their own accord, and the
+      // actor on the row is what tells the two apart.
+      await this.audits.member.logSuccess("leave", {
+        ...this.audits.actor(user),
+        resourceType: "project",
+        resourceId: String(params.id),
+        description: project.title,
+        metadata: { removedUserId: params.userId },
+      });
 
       return { ok: true };
     },

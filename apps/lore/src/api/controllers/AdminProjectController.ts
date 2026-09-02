@@ -8,6 +8,7 @@ import { members } from "../entities/members.ts";
 import { projects } from "../entities/projects.ts";
 import { relations } from "../relations.ts";
 import { adminProjectResourceSchema } from "../schemas/adminProjectResourceSchema.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 
 /**
@@ -44,6 +45,7 @@ export class AdminProjectController {
   protected readonly projectsWith = $repository(relations, "projects");
   protected readonly members = $repository(members);
   protected readonly projectDeletion = $inject(ProjectDeletionService);
+  protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   public readonly findProjects = $action({
@@ -157,8 +159,19 @@ export class AdminProjectController {
       }),
       response: okSchema,
     },
-    handler: async ({ params }) => {
-      await this.projectDeletion.deleteProject(params.id);
+    handler: async ({ params, user }) => {
+      const deleted = await this.projectDeletion.deleteProject(params.id);
+      // Same row shape as the owner's own delete, so the two read alike in
+      // the log: only the actor differs.
+      if (deleted) {
+        await this.audits.project.logSuccess("delete", {
+          ...this.audits.actor(user),
+          severity: "warning",
+          resourceType: "project",
+          resourceId: String(deleted.id),
+          description: deleted.title,
+        });
+      }
       return { ok: true };
     },
   });
@@ -185,10 +198,21 @@ export class AdminProjectController {
         deleted: z.array(z.integer()),
       }),
     },
-    handler: async ({ body }) => {
+    handler: async ({ body, user }) => {
       const deleted: number[] = [];
       for (const id of body.ids) {
-        await this.projectDeletion.deleteProject(id);
+        const gone = await this.projectDeletion.deleteProject(id);
+        if (gone) {
+          // One row per project, not one for the batch: the log is read to
+          // answer "what happened to THIS project".
+          await this.audits.project.logSuccess("delete", {
+            ...this.audits.actor(user),
+            severity: "warning",
+            resourceType: "project",
+            resourceId: String(gone.id),
+            description: gone.title,
+          });
+        }
         deleted.push(id);
       }
       return { deleted };
