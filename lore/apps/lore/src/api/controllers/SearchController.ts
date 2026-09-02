@@ -72,34 +72,56 @@ export class SearchController {
       const needle = raw.toLowerCase();
       const limit = query.limit ?? 12;
 
-      // `#42` (or a bare `42`) means "the quest with that shortId" — the
-      // shortcut `getQuests` already offered, kept because people type it.
+      // `#42` (or a bare `42`) means "the thing with that shortId", and
+      // quests, folios and directories all carry one: it is the addressing
+      // form of `/quests/:shortId`, `/folios/:shortId` and `/folios/d/:shortId`.
+      // The lookup used to reach quests only, so `44` typed while reading
+      // folio #44 returned quest #44 and two folios whose BODY contained
+      // "44", and never the folio itself (quest #1676).
+      //
+      // Added to each table's text search rather than replacing it: the
+      // body matches are not wrong, only less likely, so they stay
+      // underneath. `orderSearchHits` pins the exact hits above them.
       const idMatch = raw.match(/^#?(\d+)$/);
+      const id = idMatch ? Number.parseInt(idMatch[1], 10) : undefined;
 
       const [questRows, folioRows, directoryRows] = await Promise.all([
         this.quests.findMany({
-          where: idMatch
-            ? {
-                projectId: { eq: params.projectId },
-                shortId: { eq: Number.parseInt(idMatch[1], 10) },
-              }
-            : {
-                projectId: { eq: params.projectId },
-                title: { ilike: `%${raw}%` },
-              },
+          where: {
+            projectId: { eq: params.projectId },
+            ...(id === undefined
+              ? { title: { ilike: `%${raw}%` } }
+              : {
+                  or: [
+                    { shortId: { eq: id } },
+                    { title: { ilike: `%${raw}%` } },
+                  ],
+                }),
+          },
           limit,
         }),
         this.folios.findMany({
           where: {
             projectId: { eq: params.projectId },
-            searchText: { like: `%${needle}%` },
+            ...(id === undefined
+              ? { searchText: { like: `%${needle}%` } }
+              : {
+                  or: [
+                    { shortId: { eq: id } },
+                    { searchText: { like: `%${needle}%` } },
+                  ],
+                }),
           },
           limit,
         }),
         this.directories.findMany({
           where: {
             projectId: { eq: params.projectId },
-            name: { like: `%${raw}%` },
+            ...(id === undefined
+              ? { name: { like: `%${raw}%` } }
+              : {
+                  or: [{ shortId: { eq: id } }, { name: { like: `%${raw}%` } }],
+                }),
           },
           limit,
         }),
@@ -129,7 +151,7 @@ export class SearchController {
         })),
       ];
 
-      return { hits: orderSearchHits(hits, needle, !!idMatch, limit) };
+      return { hits: orderSearchHits(hits, needle, id, limit) };
     },
   });
 
