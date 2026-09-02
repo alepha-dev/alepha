@@ -2,6 +2,7 @@ import * as React from "react";
 
 void React;
 
+import { AdminUserAvatarControl } from "@alepha/ui/components/admin/admin-user-avatar-control";
 import { AdminUserDetailAuditsTab } from "@alepha/ui/components/admin/admin-user-detail-audits-tab";
 import { AdminUserDetailIdentityAside } from "@alepha/ui/components/admin/admin-user-detail-identity-aside";
 import { AdminUserDetailOverviewTab } from "@alepha/ui/components/admin/admin-user-detail-overview-tab";
@@ -605,7 +606,21 @@ export const AdminUserDetail = (props: AdminUserDetailProps) => {
                 onBack: () => void router.push(backPath),
               }
         }
-        aside={user ? <AdminUserDetailIdentityAside user={user} /> : null}
+        aside={
+          user ? (
+            <div className="flex flex-col gap-3">
+              <AdminUserDetailIdentityAside user={user} />
+              {/* Under the aside rather than inside it: `DetailAside` renders
+                  rows of facts, and this is an action on the picture above
+                  it. It hides itself when the realm has avatars off - the
+                  endpoint is unregistered there, so `can()` is false. */}
+              <AdminUserAvatarControl
+                user={user}
+                onChanged={() => void userQuery.refetch()}
+              />
+            </div>
+          ) : null
+        }
         tabs={tabs}
         tab={tab}
         onTabChange={(v) => setTab(v as TabKey)}

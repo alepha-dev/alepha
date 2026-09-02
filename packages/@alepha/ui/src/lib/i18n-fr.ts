@@ -625,6 +625,11 @@ export const uiFr: Record<string, string> = {
   "admin.userDetail.colStarted": "Ouverte le",
   "admin.userDetail.colWhen": "Date",
   "admin.userDetail.created": "Créé le",
+  "admin.userDetail.avatar.replace": "Remplacer l'avatar",
+  "admin.userDetail.avatar.replaced": "Avatar remplacé.",
+  "admin.userDetail.avatar.remove": "Retirer",
+  "admin.userDetail.avatar.removed": "Avatar retiré.",
+  "admin.userDetail.avatar.failed": "Impossible de changer l'avatar.",
   "admin.userDetail.credentials": "Identifiants",
   "admin.userDetail.credentialsHasPassword":
     "Un mot de passe est défini. Vous ne pouvez pas le retirer, mais vous pouvez en définir un nouveau.",

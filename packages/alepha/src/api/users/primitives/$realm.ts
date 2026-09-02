@@ -40,6 +40,7 @@ import {
 } from "../atoms/realmAuthSettingsAtom.ts";
 import { SessionAudits } from "../audits/SessionAudits.ts";
 import { UserAudits } from "../audits/UserAudits.ts";
+import { AdminAvatarController } from "../controllers/AdminAvatarController.ts";
 import { MyAvatarController } from "../controllers/MyAvatarController.ts";
 import type { identities } from "../entities/identities.ts";
 import type { sessions } from "../entities/sessions.ts";
@@ -116,6 +117,10 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     // so this flag gated nothing observable, and the account UI showed an
     // avatar picker whether or not the realm wanted one.
     alepha.with(MyAvatarController);
+    // The operator-side pair, on the same flag: a realm without avatars has
+    // no admin endpoints for them, and the admin UI's control hides itself
+    // because an unregistered action is absent from `/api/_links`.
+    alepha.with(AdminAvatarController);
   }
 
   if (features.audits) {

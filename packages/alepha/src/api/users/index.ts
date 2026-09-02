@@ -2,6 +2,7 @@ import { $module } from "alepha";
 
 import { SessionAudits } from "./audits/SessionAudits.ts";
 import { UserAudits } from "./audits/UserAudits.ts";
+import { AdminAvatarController } from "./controllers/AdminAvatarController.ts";
 import { AdminIdentityController } from "./controllers/AdminIdentityController.ts";
 import { AdminSessionController } from "./controllers/AdminSessionController.ts";
 import { AdminUserController } from "./controllers/AdminUserController.ts";
@@ -39,6 +40,7 @@ export * from "./controllers/AdminIdentityController.ts";
 export * from "./controllers/AdminSessionController.ts";
 export * from "./controllers/AdminUserController.ts";
 export * from "./controllers/MyAccountController.ts";
+export * from "./controllers/AdminAvatarController.ts";
 export * from "./controllers/MyAvatarController.ts";
 export * from "./controllers/MyConnectionController.ts";
 export * from "./controllers/MyIdentityController.ts";
@@ -141,6 +143,9 @@ export const AlephaApiUsers = $module({
     // Registered by `$realm({ features: { avatars: true } })` only — see the
     // class for why the avatar endpoints are not on `MyProfileController`.
     MyAvatarController,
+    // Same gate, same reason: a realm that switched avatars off must not grow
+    // admin endpoints for them either.
+    AdminAvatarController,
   ],
 });
 
