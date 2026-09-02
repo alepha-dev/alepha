@@ -40,6 +40,7 @@ export const ROUTES_APP = new Set([
   "appAnalyticsDimension",
   "appVitals",
   "appExplore",
+  "appArtifacts",
   "appSettings",
 ]);
 
@@ -102,6 +103,7 @@ export const SECTION_HREF_ROUTES: Record<
   appAnalyticsDimension: "projectApps",
   appVitals: "projectApps",
   appExplore: "projectApps",
+  appArtifacts: "projectApps",
   appSettings: "projectApps",
 };
 
@@ -129,6 +131,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   appAnalyticsDimension: "project.menu.apps",
   appVitals: "project.menu.apps",
   appExplore: "project.menu.apps",
+  appArtifacts: "project.menu.apps",
   appSettings: "project.menu.apps",
   projectSettings: "project.menu.settings",
   projectSettingsBanner: "project.menu.settings",

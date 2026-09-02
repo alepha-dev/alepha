@@ -531,6 +531,7 @@ test.describe("Sigils", () => {
         "Analytics",
         "Vitals",
         "Explore",
+        "Artifacts",
         "Settings",
       ]) {
         await expect(
