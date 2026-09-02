@@ -88,12 +88,7 @@ export class DrizzleKitProvider {
       // shape of a silent no-op: entity changes never reach the database and
       // the app only finds out when a query names a column that was never
       // added. Say so instead.
-      if (skipped > 0 && applied === 0) {
-        this.log.warn(
-          `Schema of '${provider.name}' could NOT be synchronized: push introspection failed and the fallback only knows how to create tables, all ${skipped} of which already exist. Entity changes have NOT been applied: run your migrations, or recreate the database.`,
-          { error },
-        );
-      }
+      this.reportFallbackOutcome(provider.name, applied, skipped, error);
     }
 
     this.log.info(
@@ -444,6 +439,33 @@ export class DrizzleKitProvider {
       }
     }
     return { applied, skipped };
+  }
+
+  /**
+   * Say what the fallback could and could not do.
+   *
+   * `skipped > 0`, not `skipped > 0 && applied === 0`: a database that is
+   * only PARTLY behind - one new table, three tables missing a column -
+   * applied the one CREATE and skipped the rest, and the narrower condition
+   * let it log "Synchronization OK". The missing columns then surfaced as a
+   * 500 on the first page that read them, with nothing in the boot log
+   * pointing here. Anything skipped means the fallback could not say whether
+   * those tables match their entities, and that is worth a warning every
+   * time.
+   */
+  protected reportFallbackOutcome(
+    providerName: string,
+    applied: number,
+    skipped: number,
+    error: unknown,
+  ): void {
+    if (skipped === 0) {
+      return;
+    }
+    this.log.warn(
+      `Schema of '${providerName}' could NOT be fully synchronized: push introspection failed (${String((error as Error)?.message ?? error)}) and the fallback only knows how to create tables; ${applied} created, ${skipped} already existed and were left as they are. Entity changes to existing tables have NOT been applied: run your migrations, or recreate the database.`,
+      { error },
+    );
   }
 
   /**
