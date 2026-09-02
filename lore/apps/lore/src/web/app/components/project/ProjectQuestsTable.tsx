@@ -640,6 +640,7 @@ const ProjectQuestsTable = () => {
               const release = releases?.find((r) => r.id === quest.releaseId);
               return release ? (
                 <Badge variant="outline" className="font-mono">
+                  <Flag className="size-3" />
                   {release.tag ?? release.title}
                 </Badge>
               ) : (
