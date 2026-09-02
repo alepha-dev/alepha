@@ -476,7 +476,7 @@ test.describe("Epics — the list", () => {
 
     await test.step("the Epics breadcrumb climbs back to the list", async () => {
       // A section crumb is a link only when `SECTION_HREF_ROUTES` in
-      // `ProjectView` maps the open route to a list route. That map was a
+      // `projectViewRoutes.ts` maps the open route to a list route. That map was a
       // folio-only ternary, so on an epic the "Epics" crumb fell through to
       // `href: undefined` and `AppShell` rendered it as a `BreadcrumbPage`:
       // plain text, with no way back to the list from the header.
@@ -1089,6 +1089,10 @@ test.describe("Epics — the release control", () => {
     await page.goto(`/${slug}/epics/${epic.number}`);
     const control = page.locator("aside").getByRole("combobox");
     await expect(control).toBeVisible({ timeout: 15_000 });
+    // The release glyph on the trigger (feedback #2061). Lucide names the
+    // svg after the icon, so this is the flag and not the status chip's
+    // glyph two rows up.
+    await expect(page.locator("aside svg.lucide-flag")).toBeVisible();
 
     /**
      * The write behind a pick, armed BEFORE the click that causes it.
