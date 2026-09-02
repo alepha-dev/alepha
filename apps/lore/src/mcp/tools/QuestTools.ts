@@ -198,17 +198,16 @@ export class QuestTools {
     projectId: number,
     shortId: number,
   ): Promise<number> {
-    const result = await this.feedbackController.listFeedback({
-      params: { projectId },
-      query: { status: "all" },
-    });
-    const found = result.items.find((p) => p.shortId === shortId);
-    if (!found) {
+    const found = await this.feedbackController.resolveShortId(
+      projectId,
+      shortId,
+    );
+    if (found == null) {
       throw new NotFoundError(
         `Feedback with shortId ${shortId} not found in this project`,
       );
     }
-    return found.id;
+    return found;
   }
 
   /**

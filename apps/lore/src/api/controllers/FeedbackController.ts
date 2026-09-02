@@ -34,6 +34,7 @@ import {
   type MyFeedbackResource,
   myFeedbackResourceSchema,
 } from "../schemas/myFeedbackResourceSchema.ts";
+import { BoundParameters } from "../services/BoundParameters.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
@@ -89,6 +90,7 @@ export class FeedbackController {
   } as const;
 
   protected rateLimiter = $inject(FeedbackRateLimiter);
+  protected bound = $inject(BoundParameters);
   protected security = $inject(ProjectSecurityService);
   protected fileService = $inject(FileService);
   protected fileSystem = $inject(FileSystemProvider);
@@ -634,10 +636,13 @@ export class FeedbackController {
       const ids = [...new Set(rows.map((r) => r.projectId))];
       if (ids.length === 0) return { items: [] };
 
-      const camps = await this.projects.findMany({
-        where: { id: { inArray: ids } },
-        orderBy: [{ column: "title", direction: "asc" }],
-      });
+      // Chunked, then sorted here: the reporter's project list is bounded by
+      // how many projects they have written feedback in, which nothing caps.
+      const camps = (
+        await this.bound.collect(ids, (batch) =>
+          this.projects.findMany({ where: { id: { inArray: batch } } }),
+        )
+      ).sort((a, b) => a.title.localeCompare(b.title));
       return {
         items: camps.map((c) => ({
           id: c.id,
@@ -767,6 +772,29 @@ export class FeedbackController {
   }
 
   /**
+   * Resolve a per-project feedback `shortId` to its global id.
+   *
+   * One statement. The MCP tools used to list every feedback in the project
+   * and scan the result in memory, which meant a `feedback_shortId` on a
+   * quest went through the whole resource mapper - reporter, attachments,
+   * linked quests - to read one integer. On D1 that is also how the mapper's
+   * attachment lookup took the shortId path down with it when project 1
+   * crossed 100 attachment ids.
+   *
+   * Returns `undefined` when nothing matches, leaving the caller to phrase
+   * the refusal: the MCP tools want a `NotFoundError` naming the shortId.
+   */
+  public async resolveShortId(
+    projectId: number,
+    shortId: number,
+  ): Promise<number | undefined> {
+    const found = await this.feedback.findOne({
+      where: { projectId: { eq: projectId }, shortId: { eq: shortId } },
+    });
+    return found?.id;
+  }
+
+  /**
    * Resolve reporter, attachment metadata, and linked-quest stubs for a batch
    * of feedback. Single round-trip per related table to avoid N+1.
    */
@@ -778,11 +806,13 @@ export class FeedbackController {
     // Attachments are a `uuid[]` column, not a foreign key, so this one stays
     // a lookup: there is no relation to declare over a JSON array. The
     // reporter and the linked quests arrived with the row.
+    // Chunked: this list grows with the attachments the rows happen to carry,
+    // not with the page size, so on D1 it crosses the 100-parameter ceiling on
+    // data volume alone. It did, in production, on 2026-09-02.
     const fileIds = [...new Set(rows.flatMap((p) => p.attachments ?? []))];
-    const fileEntities =
-      fileIds.length > 0
-        ? await this.fileRepo.findMany({ where: { id: { inArray: fileIds } } })
-        : [];
+    const fileEntities = await this.bound.collect(fileIds, (batch) =>
+      this.fileRepo.findMany({ where: { id: { inArray: batch } } }),
+    );
     const fileById = new Map(fileEntities.map((f) => [f.id, f]));
 
     return rows.map((p) => {
@@ -883,13 +913,15 @@ export class FeedbackController {
     ids: string[],
     userId: string,
   ): Promise<void> {
-    const found = await this.fileRepo.findMany({
-      where: {
-        id: { inArray: ids },
-        creator: { eq: userId },
-        bucket: { eq: FeedbackRateLimiter.ATTACHMENT_BUCKET },
-      },
-    });
+    const found = await this.bound.collect(ids, (batch) =>
+      this.fileRepo.findMany({
+        where: {
+          id: { inArray: batch },
+          creator: { eq: userId },
+          bucket: { eq: FeedbackRateLimiter.ATTACHMENT_BUCKET },
+        },
+      }),
+    );
     if (found.length !== ids.length) {
       throw new HttpError({
         status: 400,

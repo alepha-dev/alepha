@@ -67,6 +67,7 @@ import { DbForeignKeyError } from "../errors/DbForeignKeyError.ts";
 import { DbNotNullError } from "../errors/DbNotNullError.ts";
 import { DbTableNotFoundError } from "../errors/DbTableNotFoundError.ts";
 import { DbTimeoutError } from "../errors/DbTimeoutError.ts";
+import { DbTooManyParametersError } from "../errors/DbTooManyParametersError.ts";
 import { DbVersionMismatchError } from "../errors/DbVersionMismatchError.ts";
 import { getAttrFields, type PgAttrField } from "../helpers/pgAttr.ts";
 import type {
@@ -1994,6 +1995,11 @@ export abstract class Repository<T extends ZObject> {
       'column "', // PostgreSQL: column "x" does not exist
       "no such column", // SQLite
     ],
+    // More bound parameters than the driver accepts
+    tooManyParameters: [
+      "too many sql variables", // SQLite, and Cloudflare D1 at 100
+      "extended query has too many parameters", // PostgreSQL, at 65535
+    ],
   };
 
   /**
@@ -2063,6 +2069,14 @@ export abstract class Repository<T extends ZObject> {
     // Check for deadlock
     if (hasPattern(this.errorPatterns.deadlock)) {
       return DbDeadlockError.fromDatabaseError(getSourceError());
+    }
+
+    // Before the column branch: D1 reports the ceiling as `too many SQL
+    // variables at offset 266`, which carries no column marker today, but the
+    // branch below matches a bare `column "` anywhere in the message and a
+    // driver is free to quote the offending statement.
+    if (hasPattern(this.errorPatterns.tooManyParameters)) {
+      return DbTooManyParametersError.fromDatabaseError(getSourceError());
     }
 
     // Column before table: on a write, postgres reports a missing column as
