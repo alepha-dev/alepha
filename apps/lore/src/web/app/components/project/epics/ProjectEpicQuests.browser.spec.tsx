@@ -215,7 +215,7 @@ describe("ProjectEpicQuests - columns", () => {
     expect(detached).toEqual([]);
   });
   /**
-   * Create Quest beside Attach Quest (feedback #2057): the same sheet the
+   * New Quest beside Attach Quest (feedback #2057): the same sheet the
    * header opens, and the new quest is handed to the page through
    * `onCreated` so the page can file it under the epic and reload, rather
    * than the sheet navigating away to the quest it just made.
@@ -225,9 +225,9 @@ describe("ProjectEpicQuests - columns", () => {
       questOf(12, "Ship the thing", "low"),
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Create Quest" }));
+    fireEvent.click(screen.getByRole("button", { name: "New Quest" }));
     const sheet = await view.findByRole("dialog");
-    expect(sheet.textContent).toContain("Create Quest");
+    expect(sheet.textContent).toContain("New Quest");
 
     const title = await waitFor(() => {
       const input = sheet.querySelector<HTMLInputElement>(
