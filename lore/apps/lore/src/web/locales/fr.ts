@@ -144,6 +144,7 @@ export default {
   "folios.editor.action.code-block": "Bloc de code",
   "folios.editor.action.diagram": "Diagramme",
   "folios.editor.action.divider": "Séparateur",
+  "folios.editor.action.link": "Lien",
   "folios.editor.menu.insert": "Insérer",
   "folios.editor.action.toggle-mode": "Basculer l'aperçu",
   "markdown-editor.tab-hint":
@@ -243,7 +244,7 @@ export default {
   "project.menu.create-folio": "Nouveau folio",
   "project.menu.invite-member": "Inviter un membre",
   "project.menu.create-feedback": "Nouveau retour",
-  "project.menu.create-more": "Autres actions de création",
+  "project.menu.create": "Créer",
   "project.menu.quests": "Quêtes",
   "project.menu.kanban": "Kanban",
   "project.menu.reports": "Rapports",

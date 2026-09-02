@@ -1017,14 +1017,13 @@ test.describe("Quest", () => {
     const areaSearch = page.getByRole("combobox", { name: "Search…" });
 
     const openQuestForm = async () => {
-      // The list has two ways in since #1690: the header button and the
-      // table's own primary action. This test waits for the navigation to
-      // the new quest, which only the header's does: the table's keeps the
-      // reader on the list by design.
-      await page
-        .locator("header")
-        .getByRole("button", { name: "Create Quest" })
-        .click();
+      // The list has two ways in since #1690: the header's create menu and
+      // the table's own primary action. This test waits for the navigation
+      // to the new quest, which only the header's path does: the table's
+      // keeps the reader on the list by design. The header is one "+"
+      // (#1684) whose menu leads with Create Quest.
+      await page.getByTestId("project-create-menu").click();
+      await page.getByRole("menuitem", { name: "Create Quest" }).click();
       await expect(areaCombobox).toBeVisible({ timeout: 10_000 });
     };
 
