@@ -35,6 +35,7 @@ import {
   exceedsObjectiveCap,
   objectiveCapMessage,
 } from "../schemas/questObjectivesLimit.ts";
+import { QUEST_RELEASE_NONE } from "../schemas/questReleaseFilter.ts";
 import {
   type QuestResource,
   type QuestStatus,
@@ -286,6 +287,29 @@ export class QuestController {
           .filter((entry) => Number.isInteger(entry)),
       ),
     ];
+  }
+
+  /**
+   * The release filter, which is ids plus one sentinel.
+   *
+   * `QUEST_RELEASE_NONE` selects the quests attached to no release at all -
+   * the question a release planner asks most often and the one every option
+   * being a release could not answer. It rides in the same multi-value
+   * parameter as the ids rather than in one of its own, because the filter's
+   * selections OR together and two parameters would AND: "no release, or
+   * 0.29.0" has to be expressible.
+   *
+   * `parseIdList` drops it on its own, since it is not an integer, which is
+   * exactly why it is safe to put there.
+   */
+  protected parseReleaseFilter(value: string | undefined): {
+    ids: number[];
+    unattached: boolean;
+  } {
+    return {
+      ids: this.parseIdList(value),
+      unattached: this.parseList(value).includes(QUEST_RELEASE_NONE),
+    };
   }
 
   /**
@@ -1045,11 +1069,24 @@ export class QuestController {
       // itself carries only one `or`.
       const groups: Array<Record<string, any>> = [];
 
-      const releaseIds = this.parseIdList(query.releaseId);
-      if (releaseIds.length === 1) {
-        where.releaseId = { eq: releaseIds[0] };
-      } else if (releaseIds.length > 1) {
-        where.releaseId = { inArray: releaseIds };
+      const release = this.parseReleaseFilter(query.releaseId);
+      if (release.unattached && release.ids.length > 0) {
+        // "No release" OR'd with named ones, through the same `groups` array
+        // the tag filter uses - `where` itself carries only one `or`.
+        groups.push({
+          or: [
+            { releaseId: { isNull: true } },
+            release.ids.length === 1
+              ? { releaseId: { eq: release.ids[0] } }
+              : { releaseId: { inArray: release.ids } },
+          ],
+        });
+      } else if (release.unattached) {
+        where.releaseId = { isNull: true };
+      } else if (release.ids.length === 1) {
+        where.releaseId = { eq: release.ids[0] };
+      } else if (release.ids.length > 1) {
+        where.releaseId = { inArray: release.ids };
       }
 
       if (query.epic) {

@@ -286,6 +286,7 @@ export default {
   "board.table.release": "Version",
   "board.filter.release": "Version",
   "board.filter.allReleases": "Toutes les versions",
+  "board.filter.noRelease": "Sans version",
   "board.table.linked": "Liée",
   "board.table.linked.tooltip": "Bloquée par la quête #$1",
   "board.table.priority": "Priorité",
