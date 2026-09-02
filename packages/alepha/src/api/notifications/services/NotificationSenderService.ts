@@ -303,7 +303,6 @@ export class NotificationSenderService {
       );
     }
 
-    const subject = email.subject;
     // A critical template carries no unsubscribe link: there is nothing to
     // opt out of, and offering one would suggest a password reset can be
     // switched off. Undefined also when PUBLIC_URL is unset.
@@ -321,6 +320,13 @@ export class NotificationSenderService {
     // link in its own footer. The framework never injects markup into a body
     // it does not own.
     const renderVariables = { ...(variables as object), unsubscribeUrl };
+
+    // Resolved here rather than above the unsubscribe block so it sees the
+    // same values the body does.
+    const subject =
+      typeof email.subject === "function"
+        ? await email.subject(renderVariables as any)
+        : email.subject;
 
     const body =
       typeof email.body === "function"

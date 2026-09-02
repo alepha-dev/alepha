@@ -350,7 +350,25 @@ export interface NotificationBodyExtras {
 
 export interface NotificationMessage<T extends ZObject> {
   email?: {
-    subject: string;
+    /**
+     * The subject line, or a function building it from the template's
+     * variables.
+     *
+     * A function for the same reason {@link NotificationMessage.email.body}
+     * is one: the subject is what a phone shows in its notification, so a
+     * sign-in code or an amount belongs there rather than behind a tap. It
+     * sees the same values the body does, `unsubscribeUrl` included, and may
+     * be asynchronous. A plain string keeps working unchanged.
+     *
+     * ⚠️ A subject can therefore carry personal data, which is what
+     * `sensitive` on the same template is for: the delivery receipt stores
+     * `null` instead of the subject when it is set.
+     */
+    subject:
+      | string
+      | ((
+          variables: Infer<T> & NotificationBodyExtras,
+        ) => string | Promise<string>);
     /**
      * The rendered HTML body, or a function building it from the template's
      * variables.
