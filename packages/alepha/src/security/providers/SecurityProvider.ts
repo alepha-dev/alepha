@@ -602,15 +602,63 @@ export class SecurityProvider {
    * Throws if realm not found.
    */
   public getRealm(realmName?: string): Realm {
-    const realm = realmName
-      ? this.realms.find((it) => it.name === realmName)
-      : this.realms[0];
+    if (!realmName) {
+      return this.defaultRealm();
+    }
+
+    const realm = this.realms.find((it) => it.name === realmName);
 
     if (!realm) {
-      throw new RealmNotFoundError(realmName ?? "default");
+      throw new RealmNotFoundError(realmName);
     }
 
     return realm;
+  }
+
+  /**
+   * The realm a lookup that names none resolves against.
+   *
+   * One realm: that realm, because there is nothing to be ambiguous about.
+   * Several: the one declared `$issuer({ default: true })`, and a refusal if
+   * none is - because the alternative is answering a question the caller did
+   * not ask.
+   *
+   * It used to be `realms[0]`, which made the order of FIELDS in a class a
+   * security-relevant decision that nothing declared and nothing checked. It
+   * cost a verified user their access: an application declared its staff realm
+   * first, and a citizen holding `citizen` in their user row was refused
+   * `citizen:apply`, because the role was resolved among staff roles.
+   *
+   * Refusing rather than picking is the same rule as
+   * {@link JwtProvider.matchesRealmAudience}, and for the same reason: the
+   * ambiguity exists exactly from the second realm on, so that is exactly
+   * where it is refused.
+   */
+  public defaultRealm(): Realm {
+    const declared = this.realms.filter((it) => it.default);
+    if (declared.length === 1) {
+      return declared[0];
+    }
+
+    if (this.realms.length === 1) {
+      return this.realms[0];
+    }
+
+    if (this.realms.length === 0) {
+      throw new RealmNotFoundError("default");
+    }
+
+    throw new AlephaError(
+      declared.length > 1
+        ? `Several realms are declared \`default: true\` (${declared
+            .map((it) => it.name)
+            .join(", ")}). Exactly one may be.`
+        : `This application declares ${this.realms.length} realms (${this.realms
+            .map((it) => it.name)
+            .join(
+              ", ",
+            )}) and a lookup named none of them. Pass the caller's realm, or mark one \`$issuer({ default: true })\` to name the answer once.`,
+    );
   }
 
   /**
@@ -734,7 +782,7 @@ export class SecurityProvider {
       }
     }
 
-    return this.getRoles(this.realms[0]?.name);
+    return this.getRoles(this.defaultRealm().name);
   }
 
   /**
@@ -1320,6 +1368,13 @@ export interface Realm {
    * Custom resolvers for this realm (sorted by priority).
    */
   resolvers?: IssuerResolver[];
+
+  /**
+   * Answer every lookup that names no realm. At most one realm may carry it.
+   *
+   * @see SecurityProvider.defaultRealm
+   */
+  default?: boolean;
 }
 
 export interface SecurityCheckResult {

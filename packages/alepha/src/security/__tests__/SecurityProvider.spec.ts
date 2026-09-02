@@ -27,7 +27,14 @@ describe("SecurityProvider", () => {
   it("should resolve role names within the given realm only", () => {
     const sec = Alepha.create().inject(SecurityProvider);
 
-    sec.createRealm({ name: "realm-a", roles: [], resolvers: [] });
+    // `default: true` rather than "whichever was declared first": with two
+    // realms a realm-less lookup is refused unless one names itself.
+    sec.createRealm({
+      name: "realm-a",
+      default: true,
+      roles: [],
+      resolvers: [],
+    });
     sec.createRealm({ name: "realm-b", roles: [], resolvers: [] });
 
     // Both realms define a role literally named "admin" — with very
@@ -52,8 +59,8 @@ describe("SecurityProvider", () => {
     );
     expect(allowed.isAuthorized).toBe(true);
 
-    // Without a realm the check resolves in the default realm, which here is
-    // realm-a, so its "*" admin still answers.
+    // Without a realm the check resolves in the DECLARED default realm, which
+    // here is realm-a, so its "*" admin still answers.
     expect(sec.checkPermission("users:delete", "admin").isAuthorized).toBe(
       true,
     );
@@ -62,10 +69,15 @@ describe("SecurityProvider", () => {
   it("should not resolve a role that exists only in a non-default realm", () => {
     const sec = Alepha.create().inject(SecurityProvider);
 
-    sec.createRealm({ name: "realm-a", roles: [], resolvers: [] });
+    sec.createRealm({
+      name: "realm-a",
+      default: true,
+      roles: [],
+      resolvers: [],
+    });
     sec.createRealm({ name: "realm-b", roles: [], resolvers: [] });
 
-    // realm-a is the default realm and knows nothing about "admin".
+    // realm-a is the declared default realm and knows nothing about "admin".
     sec.createRole(
       { name: "user", permissions: [{ name: "reports:read" }] },
       "realm-a",
@@ -84,7 +96,12 @@ describe("SecurityProvider", () => {
   it("should not fall back to other realms when the named realm has no roles", () => {
     const sec = Alepha.create().inject(SecurityProvider);
 
-    sec.createRealm({ name: "realm-a", roles: [], resolvers: [] });
+    sec.createRealm({
+      name: "realm-a",
+      default: true,
+      roles: [],
+      resolvers: [],
+    });
     sec.createRealm({ name: "realm-b", roles: [], resolvers: [] });
 
     sec.createRole({ name: "admin", permissions: [{ name: "*" }] }, "realm-a");
@@ -96,9 +113,11 @@ describe("SecurityProvider", () => {
     ).toThrow(SecurityError);
 
     // A name no $issuer declared is the realm-less case wearing a name, not a
-    // licence to scan: it resolves in the default realm. `alepha/api/users`
-    // stamps its own realm names on the account without creating a security
-    // realm for each.
+    // licence to scan: it resolves in the DECLARED default realm.
+    // `alepha/api/users` stamps its own realm names on the account without
+    // creating a security realm for each - which is why this case must keep
+    // resolving, and why an application with several realms has to say which
+    // one those names land in.
     expect(
       sec.checkPermissionInRealm("tenant-42", "users:delete", "admin")
         .isAuthorized,
@@ -108,7 +127,12 @@ describe("SecurityProvider", () => {
   it("should list permissions from the default realm when the user has none", () => {
     const sec = Alepha.create().inject(SecurityProvider);
 
-    sec.createRealm({ name: "realm-a", roles: [], resolvers: [] });
+    sec.createRealm({
+      name: "realm-a",
+      default: true,
+      roles: [],
+      resolvers: [],
+    });
     sec.createRealm({ name: "realm-b", roles: [], resolvers: [] });
 
     sec.createPermission("reports:read");
