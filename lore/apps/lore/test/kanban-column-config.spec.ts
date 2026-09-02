@@ -127,4 +127,66 @@ describe("KanbanColumnConfig", () => {
       expect(columns.map((c) => c.name)).toEqual(["New", "Doing", "Completed"]);
     });
   });
+
+  /**
+   * The column's dot colour (#1511), added so a column can be recoloured
+   * from the board itself.
+   *
+   * A token from the project-wide palette rather than a hex value, so the
+   * class it resolves to carries a CSS variable and stays legible in light
+   * and dark. `resolve` only carries it through; the class table lives on
+   * the client, because Tailwind scans source text and a computed
+   * `bg-${token}-400` compiles to nothing.
+   */
+  describe("colour", () => {
+    it("carries the chosen token through", () => {
+      const columns = config.resolve(
+        project(["Doing", "Review"], { Doing: { color: "violet" } }),
+        LABELS,
+      );
+      expect(columns.find((c) => c.name === "Doing")?.color).toBe("violet");
+    });
+
+    it("leaves a column with no colour undefined, not defaulted", () => {
+      // Absent is what "the board derives one" means. Resolving it to a
+      // token here would leave two encodings of the same state and make
+      // "clear the colour" impossible to express.
+      const columns = config.resolve(
+        project(["Doing", "Review"], { Doing: { color: "violet" } }),
+        LABELS,
+      );
+      expect(columns.find((c) => c.name === "Review")?.color).toBeUndefined();
+      expect(columns.find((c) => c.name === "New")?.color).toBeUndefined();
+    });
+
+    it("is independent of status and wipLimit", () => {
+      // All three live in one entry, so setting one must not disturb the
+      // others - which is what the board's `setColor` merge depends on.
+      const columns = config.resolve(
+        project(["Done-ish"], {
+          "Done-ish": { status: "completed", wipLimit: 4, color: "green" },
+        }),
+        LABELS,
+      );
+      const column = columns.find((c) => c.name === "Done-ish");
+      expect(column).toMatchObject({
+        status: "completed",
+        wipLimit: 4,
+        color: "green",
+        synthesized: false,
+      });
+    });
+
+    it("is carried by settingsOf, so a rename can move it across", () => {
+      // `renameKanbanColumn` reads the old entry and writes it under the new
+      // name. Without the colour in it, renaming a column would silently
+      // reset its tint.
+      expect(
+        config.settingsOf(
+          { kanbanColumnConfig: { Doing: { color: "amber", wipLimit: 3 } } },
+          "Doing",
+        ),
+      ).toEqual({ color: "amber", wipLimit: 3 });
+    });
+  });
 });

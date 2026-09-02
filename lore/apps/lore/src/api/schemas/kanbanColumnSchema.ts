@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { paletteColorSchema } from "./paletteColorSchema.ts";
+
 /**
  * Per-column board settings, keyed by the column's name.
  *
@@ -38,6 +40,20 @@ export const kanbanColumnSettingsSchema = z.object({
    * you. Absent means no limit.
    */
   wipLimit: z.integer().min(1).max(999).optional(),
+  /**
+   * The column's dot colour, from the project-wide palette.
+   *
+   * A token rather than a hex value, for the reason `paletteColorSchema`
+   * gives: the class it resolves to carries a CSS variable and stays legible
+   * in light and dark. Absent means the board derives one - blue for the
+   * `new` lane, green for `completed`, and a rotating tint for the
+   * in-progress ones - which is what every column meant before this existed.
+   *
+   * Additive and optional, so the existing `kanbanColumnConfig` rows keep
+   * decoding: a REQUIRED key inside a live JSON column is the 2026-08-05
+   * incident, and this is deliberately not that.
+   */
+  color: paletteColorSchema.optional(),
 });
 
 export type KanbanColumnSettings = Infer<typeof kanbanColumnSettingsSchema>;

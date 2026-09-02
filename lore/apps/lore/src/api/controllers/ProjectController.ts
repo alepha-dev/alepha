@@ -987,7 +987,10 @@ export class ProjectController {
       }
       await this.projects.updateById(params.id, {
         kanbanColumns: updated,
-        kanbanColumnConfig: Object.keys(config).length ? config : undefined,
+        // `null` for the same reason the delete path uses it: `undefined`
+        // reads as "leave unchanged", so a rename that empties the map would
+        // leave the OLD name's entry behind.
+        kanbanColumnConfig: Object.keys(config).length ? config : null,
       });
       return updated;
     },
@@ -1027,11 +1030,19 @@ export class ProjectController {
       // resurrect a status and a WIP limit nobody asked for.
       const remainingConfig = { ...project.kanbanColumnConfig };
       delete remainingConfig[body.name];
+      // ⚠️ `null`, not `undefined`, when the map empties. An undefined patch
+      // value means "leave unchanged" to `updateById`, so emptying the map
+      // used to write nothing at all: the last configured column's settings
+      // survived its deletion, and re-creating a column with that name
+      // silently resurrected them - the exact outcome the comment above says
+      // this code exists to prevent. Reproduced on a live board (#1511):
+      // delete a violet column, add one back with the same name, and it
+      // comes back violet.
       await this.projects.updateById(params.id, {
         kanbanColumns: updated,
         kanbanColumnConfig: Object.keys(remainingConfig).length
           ? remainingConfig
-          : undefined,
+          : null,
       });
       return updated;
     },

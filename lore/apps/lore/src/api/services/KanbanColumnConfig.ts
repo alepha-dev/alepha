@@ -10,6 +10,12 @@ export interface ResolvedKanbanColumn {
   status: "new" | "accepted" | "completed";
   wipLimit?: number;
   /**
+   * The operator's chosen dot colour, when they chose one. Absent leaves the
+   * board to derive one from the column's status and position, which is what
+   * it did before columns could be tinted.
+   */
+  color?: KanbanColumnSettings["color"];
+  /**
    * `true` for the ends the board adds when the project has not named a
    * column carrying that status. A synthesized column has no entry in
    * `kanbanColumns`, so it cannot be renamed, deleted or given a limit.
@@ -54,6 +60,7 @@ export class KanbanColumnConfig {
         name,
         status: settings.status ?? "accepted",
         wipLimit: settings.wipLimit,
+        color: settings.color,
         synthesized: false,
       };
     });
