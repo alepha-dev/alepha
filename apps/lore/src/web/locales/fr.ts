@@ -505,7 +505,6 @@ export default {
   "project.settings.members.invite.failed":
     "Impossible d'envoyer l'invitation.",
 
-  "project.settings.members.revoke.action": "Révoquer l'invitation de $1",
   "project.settings.members.revoke.title": "Révoquer cette invitation ?",
   "project.settings.members.revoke.description":
     "$1 ne pourra plus utiliser le lien reçu. Vous pouvez l'inviter à nouveau, ce qui enverra un nouveau lien.",
@@ -514,6 +513,17 @@ export default {
   "project.settings.members.revoke.done": "L'invitation de $1 a été révoquée.",
   "project.settings.members.revoke.failed":
     "Impossible de révoquer l'invitation.",
+  "project.settings.members.revoke.action.short": "Annuler l'invitation",
+
+  "project.settings.members.actions": "Actions pour $1",
+  "project.settings.members.remove.action": "Retirer",
+  "project.settings.members.remove.title": "Retirer ce membre ?",
+  "project.settings.members.remove.description":
+    "$1 perd l'accès à ce projet. Les quêtes qu'il avait acceptées sans les terminer retournent au pot commun ; celles qu'il a terminées lui restent attribuées. Vous pouvez l'inviter à nouveau.",
+  "project.settings.members.remove.confirm": "Retirer",
+  "project.settings.members.remove.cancel": "Le garder",
+  "project.settings.members.remove.done": "$1 a été retiré du projet.",
+  "project.settings.members.remove.failed": "Impossible de retirer le membre.",
 
   "project.settings.danger.title": "Zone à risques",
   "project.settings.actions.delete": "Détruire ce projet",
