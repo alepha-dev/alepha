@@ -255,3 +255,13 @@ export function useDialog(): DialogApi {
   if (!ctx) throw new AlephaError("useDialog requires <DialogProvider>");
   return ctx;
 }
+
+/**
+ * Whether a {@link DialogProvider} is already above this point.
+ *
+ * Lets a shell that is mounted standalone supply its own provider without
+ * doubling the one an `AppShell` already put there. See `AccountLayout`.
+ */
+export function useHasDialogProvider(): boolean {
+  return useContext(Ctx) !== null;
+}

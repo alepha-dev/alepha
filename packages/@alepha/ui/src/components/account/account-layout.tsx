@@ -5,6 +5,10 @@ import { useStore } from "alepha/react";
 import { NestedView } from "alepha/react/router";
 
 import { useNavEntries } from "../nav-shell/use-nav-entries.ts";
+import {
+  DialogProvider,
+  useHasDialogProvider,
+} from "../use-dialog/use-dialog.tsx";
 import { accountRouterOptionsAtom } from "./account-router-options.tsx";
 
 /**
@@ -39,8 +43,17 @@ import { accountRouterOptionsAtom } from "./account-router-options.tsx";
 export const AccountLayout = () => {
   const [options] = useStore(accountRouterOptionsAtom);
   const entries = useNavEntries({ root: "account" });
+  /*
+   * `account-security` and `account-sessions` call
+   * `useDialog()`, which throws without a provider above it. The shell left
+   * that to the application so an `AppShell` would not end up with two, but
+   * an application that mounts this router standalone - as the `saas` preset
+   * does - had no way to add one either, and the two pages crashed on open
+   * with a stack trace. Supplied here only when nothing above has already.
+   */
+  const provided = useHasDialogProvider();
 
-  return (
+  const layout = (
     <SettingsLayout
       className={options.className}
       fill={options.fill}
@@ -63,11 +76,28 @@ export const AccountLayout = () => {
         the `sm` this used to take because the metrics both rails borrow are
         `SidebarMenuButton`'s, and the sidebar itself renders at `default`.
       */
-      nav={<SettingsNav items={entries} size="default" />}
+      nav={
+        <SettingsNav
+          /*
+            The rail groups by `item.group`, which is the raw
+            key ("Account", "Security"), while `useNavEntries` has already
+            resolved `groupLabel` through the dictionary. Without this the
+            headings stayed English on a French account area whose every
+            other word was translated.
+          */
+          items={entries.map((entry) => ({
+            ...entry,
+            group: entry.groupLabel ?? entry.group,
+          }))}
+          size="default"
+        />
+      }
     >
       <NestedView />
     </SettingsLayout>
   );
+
+  return provided ? layout : <DialogProvider>{layout}</DialogProvider>;
 };
 
 export default AccountLayout;
