@@ -24,3 +24,4 @@ It can be internal (with a secret) or external (with a JWKS).
 | `profile`     | `Object`                      | No       | Parse the JWT payload to create a user account info.    |
 | `resolvers`   | `IssuerResolver[]`            | No       | Custom resolvers (in addition to default JWT resolver). |
 | `signing`     | `SigningConfig`               | No       | Asymmetric signing config                               |
+| `default`     | `boolean`                     | No       | Answer every lookup that names no realm                 |
