@@ -141,6 +141,34 @@ describe("AppSecurityProvider", () => {
   });
 
   /**
+   * Everything that completes by sending a code is off until there is
+   * somewhere to send it. A fresh container with no SMTP would otherwise
+   * register an account and park the operator on a "check your inbox"
+   * screen, for a mail written to a file on disk.
+   */
+  it("turns the email-gated settings off when EMAIL_HOST is unset", async ({
+    expect,
+  }) => {
+    const { alepha, realm } = await boot();
+
+    const settings = await realm.getSettings();
+    expect(settings.verifyEmailRequired).toBe(false);
+    expect(settings.resetPasswordAllowed).toBe(false);
+
+    await alepha.stop();
+  });
+
+  it("turns them on when EMAIL_HOST is set", async ({ expect }) => {
+    const { alepha, realm } = await boot({ EMAIL_HOST: "smtp.example.com" });
+
+    const settings = await realm.getSettings();
+    expect(settings.verifyEmailRequired).toBe(true);
+    expect(settings.resetPasswordAllowed).toBe(true);
+
+    await alepha.stop();
+  });
+
+  /**
    * The self-hosted bootstrap, from Lore's side. The framework's own rules
    * are proven in `bootstrapFirstUser.spec.ts`; what belongs here is that
    * Lore's realm actually asks for the behaviour, and that an operator who
