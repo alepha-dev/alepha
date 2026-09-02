@@ -1,4 +1,6 @@
 import { useDetailTab } from "@alepha/ui/components/detail/use-detail-tab";
+import { PlateLayout } from "@alepha/ui/components/plate-layout/plate-layout";
+import type { PlateTab } from "@alepha/ui/components/plate-layout/plate-tab-bar";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +32,6 @@ import ReleaseEditSheet from "./ReleaseEditSheet.tsx";
 import ReleaseOverviewTab from "./ReleaseOverviewTab.tsx";
 import ReleasePlate from "./ReleasePlate.tsx";
 import ReleaseSaveToFolioDialog from "./ReleaseSaveToFolioDialog.tsx";
-import ReleaseTabBar, { type ReleaseTab } from "./ReleaseTabBar.tsx";
 
 interface ChangelogState {
   markdown: string;
@@ -272,14 +273,14 @@ const ProjectRelease = () => {
 
   // A count is shown only once its collection has resolved - `null` renders
   // the bare label rather than a confident "0".
-  const tabs: Array<ReleaseTab<TabKey>> = [
+  const tabs: PlateTab[] = [
     {
-      value: "overview",
+      key: "overview",
       label: String(tr("release.tab.overview")),
       icon: Gauge,
     },
     {
-      value: "contents",
+      key: "contents",
       label: String(tr("release.tab.contents")),
       icon: ListTree,
       count: contents
@@ -287,12 +288,12 @@ const ProjectRelease = () => {
         : undefined,
     },
     {
-      value: "changelog",
+      key: "changelog",
       label: String(tr("release.tab.changelog")),
       icon: ScrollText,
     },
     {
-      value: "artifacts",
+      key: "artifacts",
       label: String(tr("release.tab.artifacts")),
       icon: Package,
       count: artifacts.length,
@@ -300,8 +301,15 @@ const ProjectRelease = () => {
   ];
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
-      <div className="bg-card/30 border-border shrink-0 border-b">
+    <PlateLayout
+      tabsTestId="release-tabs"
+      tabs={tabs}
+      active={tab}
+      onSelect={(key) => setTab(key as TabKey)}
+      // The changelog owns its own scroll region - it has a sticky toolbar and
+      // a reading measure - so the layout must not wrap it in a second one.
+      scroll={tab !== "changelog"}
+      plate={
         <ReleasePlate
           release={release}
           epicCount={contents?.epics.length ?? 0}
@@ -309,12 +317,8 @@ const ProjectRelease = () => {
           onEdit={() => setEditOpen(true)}
           onChanged={() => void reload()}
         />
-        <ReleaseTabBar tabs={tabs} value={tab} onChange={setTab} />
-      </div>
-
-      {/* The changelog owns its own scroll region - it has a sticky toolbar
-          and a reading measure - so it is mounted outside this wrapper rather
-          than inside it. */}
+      }
+    >
       {tab === "changelog" ? (
         <ReleaseChangelogPanel
           groups={changelog?.groups ?? []}
@@ -338,7 +342,7 @@ const ProjectRelease = () => {
           onSaveToFolio={() => setFolioOpen(true)}
         />
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <>
           {tab === "overview" && (
             <ReleaseOverviewTab
               release={release}
@@ -361,7 +365,7 @@ const ProjectRelease = () => {
               onChanged={() => void reloadAll()}
             />
           )}
-        </div>
+        </>
       )}
 
       {/* Beside the tab bodies, not inside one: a drawer portals out anyway,
@@ -394,7 +398,7 @@ const ProjectRelease = () => {
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </PlateLayout>
   );
 };
 
