@@ -22,6 +22,7 @@ import { ControlObject } from "@alepha/ui/components/control-object/control-obje
 import { ControlPassword } from "@alepha/ui/components/control-password/control-password";
 import {
   ControlSelect,
+  type ControlSelectSize,
   type SelectOption,
 } from "@alepha/ui/components/control-select/control-select";
 import {
@@ -258,6 +259,17 @@ export interface ControlProps {
    */
   triggerClassName?: string;
   /**
+   * Trigger height and type scale, for the select-shaped controls. Defaults
+   * to `default`; `xs` is for a control that sits ON a row of text rather
+   * than in a form.
+   */
+  size?: ControlSelectSize;
+  /**
+   * Render the select trigger borderless and transparent, so it reads as the
+   * row it sits on rather than as a form field. Pairs with `size="xs"`.
+   */
+  minimal?: boolean;
+  /**
    * Render a managed upload control (image preview, multi, drag-drop)
    * that calls `FileController.uploadFile` and stores the file ID(s) in
    * the form value. Pass `true` for defaults or an options object.
@@ -446,6 +458,8 @@ export const Control = (props: ControlProps) => {
         // empty state ("Pick an epic…") could not be a `Control` at all.
         placeholder={merged.placeholder}
         triggerClassName={merged.triggerClassName}
+        size={merged.size}
+        minimal={merged.minimal}
         // Used to be dropped here, silently: every `inputProps={{ "aria-label"
         // }}` on a select-shaped Control (the epics and quests status filters
         // among them) named nothing at all, because the trigger is a button

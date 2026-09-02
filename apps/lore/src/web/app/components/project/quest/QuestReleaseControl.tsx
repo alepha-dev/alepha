@@ -92,7 +92,13 @@ const QuestReleaseControl = (props: QuestReleaseControlProps) => {
       icon={Flag}
       clearable
       clearLabel={String(tr("quest.rail.release.none"))}
-      triggerClassName="h-7 w-auto border-none shadow-none"
+      // `minimal size="xs"` rather than a hand-rolled className: the rail is
+      // `text-xs` throughout, and the row above this one (Assigned) is a
+      // small transparent trigger that sits on the line like text. A boxed,
+      // default-height select beside it read as visibly heavier (#1703).
+      minimal
+      size="xs"
+      triggerClassName="w-auto"
       disabled={submitting || !!current?.releasedAt}
       items={options.map((release) => ({
         value: String(release.id),
