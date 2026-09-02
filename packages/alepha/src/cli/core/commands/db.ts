@@ -8,6 +8,7 @@ import type {
   DatabaseProvider,
   DrizzleKitProvider,
   RepositoryProvider,
+  SqliteTypeAuditService,
 } from "alepha/orm";
 import { FileSystemProvider } from "alepha/system";
 
@@ -513,12 +514,105 @@ export class DbCommand {
   });
 
   /**
+   * Report rows whose storage class disagrees with their column's type.
+   *
+   * `migrations check` compares the schema to the entities and never looks at
+   * a row. This is the other half: a SQLite table that is not `STRICT` stores
+   * a wrong-typed value verbatim, and one text row in an integer column sorts
+   * ahead of the whole table (quest #1672). Runs against the configured
+   * database; `--print` emits the statements instead, for a database this
+   * machine cannot reach.
+   */
+  protected readonly doctor = $command({
+    name: "doctor",
+    description:
+      "Report SQLite rows whose stored type disagrees with the column's declared type",
+    flags: this.drizzleCommandFlags.extend({
+      print: z
+        .boolean()
+        .describe(
+          "Print the statements instead of running them, for a remote database (`wrangler d1 execute --remote --command`).",
+        )
+        .optional(),
+    }),
+    handler: async ({ flags, root }) => {
+      const entry = await this.entryProvider.getAppEntry(root);
+      const alepha = await this.utils.loadAlephaFromServerEntryFile({
+        mode: "development",
+        entry,
+      });
+
+      const repositoryProvider = this.findRepositoryProvider(alepha);
+      if (!repositoryProvider) {
+        this.log.info("No database configured; nothing to audit.");
+        return;
+      }
+      // By name, like `DrizzleKitProvider` above: the user's container comes
+      // from Vite's module graph, so its classes are not the CLI's objects.
+      const audit = alepha.inject<SqliteTypeAuditService>(
+        "SqliteTypeAuditService",
+      );
+
+      const seen = new Set<string>();
+      const drifted: string[] = [];
+      for (const repository of repositoryProvider.getRepositories()) {
+        const provider = repository.provider;
+        if (seen.has(provider.name)) {
+          continue;
+        }
+        seen.add(provider.name);
+        if (flags.provider && flags.provider !== provider.name) {
+          continue;
+        }
+        if (provider.dialect !== "sqlite") {
+          this.log.info(
+            `${provider.name}: ${provider.dialect} rejects a wrong-typed value at the wire; nothing to audit.`,
+          );
+          continue;
+        }
+
+        if (flags.print) {
+          for (const statement of audit.plan(provider)) {
+            this.log.info(`-- ${statement.table}\n${statement.sql};`);
+          }
+          continue;
+        }
+
+        for (const it of await audit.audit(provider)) {
+          const found = Object.entries(it.found)
+            .map(([storage, rows]) => `${rows} ${storage}`)
+            .join(", ");
+          drifted.push(
+            `${provider.name}: ${it.table}.${it.column} is ${it.declared} but holds ${found}`,
+          );
+        }
+      }
+
+      for (const line of drifted) {
+        this.log.error(line);
+      }
+      if (drifted.length > 0) {
+        throw new CommandError(
+          `${drifted.length} column(s) hold values of the wrong storage class. Every sort and comparison on them is wrong until the rows are converted (e.g. CAST(unixepoch(col, 'subsec') * 1000 AS INTEGER) for an ISO date in an integer column).`,
+        );
+      }
+      this.log.info("Every stored value matches its column's type.");
+    },
+  });
+
+  /**
    * Parent command for database operations.
    */
   public readonly db = $command({
     name: "db",
     description: "Database management commands",
-    children: [this.migrations, this.baseline, this.push, this.studio],
+    children: [
+      this.migrations,
+      this.baseline,
+      this.push,
+      this.studio,
+      this.doctor,
+    ],
     handler: async ({ help }) => {
       help();
     },

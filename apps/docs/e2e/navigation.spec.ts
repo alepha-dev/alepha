@@ -16,7 +16,7 @@ test.describe("Navigation", () => {
   });
 
   test("docs page loads with sidebar", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
 
     // Wait for page to load
     await page.waitForLoadState("networkidle");
@@ -31,7 +31,7 @@ test.describe("Navigation", () => {
   });
 
   test("file tree navigation works", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     // Find a file link in the sidebar
@@ -46,7 +46,7 @@ test.describe("Navigation", () => {
   });
 
   test("bottom navigation works", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     // Find next button
@@ -64,7 +64,7 @@ test.describe("Navigation", () => {
   });
 
   test("page transitions work", async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     page.url();
@@ -87,7 +87,7 @@ test.describe("Responsive Design", () => {
   test("mobile viewport renders correctly", async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
 
     // Content should still be visible on mobile

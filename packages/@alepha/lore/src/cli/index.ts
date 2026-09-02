@@ -6,6 +6,7 @@ import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
 import { LoreCommand } from "./commands/LoreCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
+import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
 import { ArtifactUploader } from "./services/ArtifactUploader.ts";
 import { GitContextService } from "./services/GitContextService.ts";
 import { LoreClientService } from "./services/LoreClientService.ts";
@@ -62,13 +63,14 @@ export const AlephaLoreCliPlugin = $module({
     GitContextService,
     ArtifactUploader,
     LoreTokenStore,
-    // ⚠️ None of the four below is re-exported. Each names, directly or
+    // ⚠️ None of the five below is re-exported. Each names, directly or
     // through what it injects, a type from the private `lore` workspace, and
     // an exported signature carrying one would put that workspace in the
     // published `.d.ts`. `scripts/check-dts.mjs` fails the build if it does.
     LoreProjectResolver,
     QualityCommand,
     ArtifactCommand,
+    ReleaseCommand,
     LoginCommand,
     // The `lore` root, and the only declaration of it. Two classes declaring
     // it would not collide - `findCommand` resolves by `findLast`, so the

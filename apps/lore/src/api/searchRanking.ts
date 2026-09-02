@@ -12,6 +12,11 @@
 export interface RankableHit {
   kind: string;
   title: string;
+  /**
+   * The per-project number, when the table has one. Quests, folios and
+   * directories all do, and it is what an id query pins on.
+   */
+  shortId?: number;
 }
 
 /**
@@ -31,10 +36,18 @@ export const rankSearchHit = (title: string, needle: string): number => {
 /**
  * Merge every table's rows into one ordered, capped list.
  *
- * `isIdQuery` pins quests above everything else: someone typing `#42`
- * asked for one specific thing, and a folio whose body happens to contain
- * the characters "#42" is a coincidence. Without the pin that tie fell
- * through to alphabetical order and the exact match came out last.
+ * `id` is the number an id query asked for (`#42`, or a bare `42`), and a
+ * hit carrying that `shortId` is pinned above everything else WHATEVER its
+ * kind: someone typing `44` asked for one specific thing, and quest #44,
+ * folio #44 and directory #44 are all it, while a folio whose body happens
+ * to contain the characters "44" is a coincidence. Without the pin that
+ * tie fell through to alphabetical order and the thing asked for came out
+ * last. The pin used to be on `kind === "quest"`, which is why folio #44
+ * ranked under two folios that merely mentioned 44 (quest #1676).
+ *
+ * The two ranks are separable on purpose: an exact shortId hit is -1
+ * regardless of kind; a quest that merely matched by title is ranked on
+ * its title like anything else.
  *
  * Ranking happens across kinds, not within them. The palette groups by
  * kind when it renders, but the grouping must not come from the order the
@@ -43,11 +56,13 @@ export const rankSearchHit = (title: string, needle: string): number => {
 export const orderSearchHits = <T extends RankableHit>(
   hits: T[],
   needle: string,
-  isIdQuery: boolean,
+  id: number | undefined,
   limit: number,
 ): T[] => {
   const rankOf = (hit: T): number =>
-    isIdQuery && hit.kind === "quest" ? -1 : rankSearchHit(hit.title, needle);
+    id !== undefined && hit.shortId === id
+      ? -1
+      : rankSearchHit(hit.title, needle);
 
   // Copied before sorting — `sort` mutates, and the caller's arrays are
   // the repository results.

@@ -1,3 +1,4 @@
+import { lore } from "@alepha/lore/cli";
 import { defineConfig } from "alepha/cli/config";
 import { devtools } from "alepha/cli/devtools";
 import { platform } from "alepha/cli/platform";
@@ -15,6 +16,14 @@ export default defineConfig({
      * `/__devtools/` and injects the floating button into every dev page.
      */
     devtools(),
+    /*
+     * The Alepha team's own project on lore.alepha.dev: the release job pushes
+     * this app's build there as an artifact (`alepha lore artifacts push`),
+     * and the push runs inside this directory, so the plugin is registered
+     * here rather than only in the repository root. Not something to copy:
+     * an app of your own would name your own project, or leave this out.
+     */
+    lore({ project: "alepha" }),
     platform({
       /*
        * Worker secrets are auto-detected from the build manifest's `env` list

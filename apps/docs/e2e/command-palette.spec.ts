@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Command Palette", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/docs/introduction");
+    await page.goto("/docs/guides-introduction");
     await page.waitForLoadState("networkidle");
   });
 
