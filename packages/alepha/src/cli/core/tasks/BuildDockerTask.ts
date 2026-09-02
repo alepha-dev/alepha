@@ -417,6 +417,51 @@ ${userLine}CMD ["${command}", "index.js"]
     );
   }
 
+  /**
+   * `--label` arguments for the `org.opencontainers.image.*` annotations.
+   *
+   * Three are always derived (revision, created, version); the other four
+   * are config, and a field left unset emits no label rather than an empty
+   * one. `source` in particular is what links a package to its repository
+   * on GHCR, and is deliberately never read from the git remote — see
+   * `build.docker.image.source`.
+   */
+  protected async buildOciLabelArgs(
+    imageConfig: {
+      source?: string;
+      title?: string;
+      description?: string;
+      licenses?: string;
+    },
+    version: string,
+  ): Promise<string[]> {
+    const labels: Record<string, string | undefined> = {
+      revision: await this.utils.getGitRevision(),
+      created: this.dateTime.nowISOString(),
+      version,
+      source: imageConfig.source,
+      title: imageConfig.title,
+      description: imageConfig.description,
+      licenses: imageConfig.licenses,
+    };
+
+    return Object.entries(labels)
+      .filter(([, value]) => value !== undefined && value !== "")
+      .map(
+        ([name, value]) =>
+          `--label ${this.escapeShellArg(`org.opencontainers.image.${name}=${value}`)}`,
+      );
+  }
+
+  /**
+   * Single-quote a value for the shell, which is what makes a `description`
+   * carrying a quote or a space produce the label it says rather than a
+   * broken `docker build` invocation.
+   */
+  protected escapeShellArg(value: string): string {
+    return `'${value.replaceAll("'", `'\\''`)}'`;
+  }
+
   protected async buildDockerImage(
     ctx: BuildTaskContext,
     distDir: string,
@@ -469,12 +514,7 @@ ${userLine}CMD ["${command}", "index.js"]
     }
 
     if (imageConfig?.oci) {
-      const revision = await this.utils.getGitRevision();
-      const created = this.dateTime.nowISOString();
-
-      args.push(`--label "org.opencontainers.image.revision=${revision}"`);
-      args.push(`--label "org.opencontainers.image.created=${created}"`);
-      args.push(`--label "org.opencontainers.image.version=${version}"`);
+      args.push(...(await this.buildOciLabelArgs(imageConfig, version)));
     }
 
     const argsStr = args.length > 0 ? `${args.join(" ")} ` : "";

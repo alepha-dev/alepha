@@ -208,8 +208,50 @@ export const buildOptions = $atom({
              * - org.opencontainers.image.revision (git commit SHA)
              * - org.opencontainers.image.created (build timestamp)
              * - org.opencontainers.image.version (from image tag)
+             *
+             * The four fields below are added too, each only when set.
              */
             oci: z.boolean().optional(),
+
+            /**
+             * `org.opencontainers.image.source`: the URL of the repository
+             * the image was built from.
+             *
+             * This is what links a package to its repository on a registry
+             * like GHCR: without it the package page stands alone, with no
+             * README and no repo link.
+             *
+             * **Config only, never derived from the git remote.** An SSH
+             * remote is not a URL, a CI checkout may have no remote at all,
+             * and a fork would publish either the upstream's URL or its own
+             * with nothing inside the build able to tell which is meant. A
+             * wrong `source` on a published image is worse than a missing
+             * one, and the right value changes approximately never.
+             *
+             * @example "https://github.com/myorg/myapp"
+             */
+            source: z.string().optional(),
+
+            /**
+             * `org.opencontainers.image.title`: human-readable image name.
+             *
+             * @example "Lore"
+             */
+            title: z.string().optional(),
+
+            /**
+             * `org.opencontainers.image.description`: one line about what
+             * the image is.
+             */
+            description: z.string().optional(),
+
+            /**
+             * `org.opencontainers.image.licenses`: an SPDX expression.
+             *
+             * @example "MIT"
+             * @example "Apache-2.0 OR MIT"
+             */
+            licenses: z.string().optional(),
           })
           .optional(),
 

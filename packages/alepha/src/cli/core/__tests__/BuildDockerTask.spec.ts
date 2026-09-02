@@ -580,4 +580,96 @@ describe("BuildDockerTask", () => {
       );
     });
   });
+
+  describe("OCI labels", () => {
+    const buildWithImage = async (image: BuildOptions["docker"]) => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+      shell.outputs.set("git rev-parse --short HEAD", "abc1234\n");
+
+      await task.run(
+        createCtx(
+          fs,
+          shell,
+          { target: "docker", runtime: "node", docker: image },
+          { flags: { image: "1.2.3" } as any },
+        ),
+      );
+
+      return shell.calls.map((it) => it.command).join("\n");
+    };
+
+    it("emits the three derived labels when oci is on", async () => {
+      const cmd = await buildWithImage({
+        image: { tag: "ghcr.io/myorg/app", oci: true },
+      });
+
+      expect(cmd).toContain(
+        "--label 'org.opencontainers.image.revision=abc1234'",
+      );
+      expect(cmd).toContain("--label 'org.opencontainers.image.created=");
+      expect(cmd).toContain("--label 'org.opencontainers.image.version=1.2.3'");
+    });
+
+    it("emits source, title, description and licenses when configured", async () => {
+      const cmd = await buildWithImage({
+        image: {
+          tag: "ghcr.io/myorg/app",
+          oci: true,
+          source: "https://github.com/myorg/app",
+          title: "App",
+          description: "Self-hosted app",
+          licenses: "Apache-2.0",
+        },
+      });
+
+      // `source` is what links the package to its repository on GHCR.
+      expect(cmd).toContain(
+        "--label 'org.opencontainers.image.source=https://github.com/myorg/app'",
+      );
+      expect(cmd).toContain("--label 'org.opencontainers.image.title=App'");
+      expect(cmd).toContain(
+        "--label 'org.opencontainers.image.description=Self-hosted app'",
+      );
+      expect(cmd).toContain(
+        "--label 'org.opencontainers.image.licenses=Apache-2.0'",
+      );
+    });
+
+    it("omits a label entirely rather than emitting an empty one", async () => {
+      const cmd = await buildWithImage({
+        image: { tag: "ghcr.io/myorg/app", oci: true, title: "App" },
+      });
+
+      expect(cmd).toContain("--label 'org.opencontainers.image.title=App'");
+      expect(cmd).not.toContain("org.opencontainers.image.source");
+      expect(cmd).not.toContain("org.opencontainers.image.description");
+      expect(cmd).not.toContain("org.opencontainers.image.licenses");
+    });
+
+    it("escapes a label value carrying a quote", async () => {
+      const cmd = await buildWithImage({
+        image: {
+          tag: "ghcr.io/myorg/app",
+          oci: true,
+          description: 'It\'s a "self-hosted" app',
+        },
+      });
+
+      expect(cmd).toContain(
+        `--label 'org.opencontainers.image.description=It'\\''s a "self-hosted" app'`,
+      );
+    });
+
+    it("emits no labels at all when oci is off", async () => {
+      const cmd = await buildWithImage({
+        image: {
+          tag: "ghcr.io/myorg/app",
+          source: "https://github.com/myorg/app",
+        },
+      });
+
+      expect(cmd).not.toContain("--label");
+    });
+  });
 });

@@ -117,11 +117,19 @@ export default defineConfig({
         tag: "ghcr.io/myorg/myapp",
         args: "--platform linux/amd64",
         oci: true, // add org.opencontainers.image.* labels (git revision, timestamp, version)
+        source: "https://github.com/myorg/myapp",
+        title: "My App",
+        description: "Self-hosted My App",
+        licenses: "Apache-2.0",
       },
     },
   },
 });
 ```
+
+`oci: true` derives three labels - `revision` (git commit SHA), `created` and `version`. The four fields beside it are config, emitted only when set: a field left unset produces no label rather than an empty one.
+
+`source` is the one that matters for a published package: it is what links a GHCR package to its repository, and without it the package page stands alone, with no README and no repo link. It is **never derived from the git remote** - an SSH remote is not a URL, a CI checkout may have no remote at all, and a fork would publish either the upstream's URL or its own with nothing inside the build able to tell which is meant. A wrong `source` on a published image is worse than a missing one.
 
 ## Configuration
 
@@ -133,7 +141,7 @@ export default defineConfig({
 | `docker.env`     | `{}`                                 | `ENV` defaults baked into the image, emitted after `SERVER_HOST`                                  |
 | `docker.volumes` | `[]`                                 | `VOLUME` mount points, created and chowned to the container user first                            |
 | `docker.user`    | `1000` (root in compile mode)        | `USER` the server runs as                                                                         |
-| `docker.image`   | -                                    | Image tag, extra `docker build` args, OCI labels (used with `--image`)                            |
+| `docker.image`   | -                                    | Image tag, extra `docker build` args, OCI labels including `source` (used with `--image`)         |
 | `docker.compile` | -                                    | Single-binary compile mode, see below                                                             |
 
 ## Compile Mode (Single Static Binary)
@@ -169,7 +177,7 @@ docker run -p 3000:3000 --env-file .env.production ghcr.io/myorg/myapp:latest
 
 ## Tips
 
-**Use OCI labels in CI.** `image.oci: true` stamps the git revision and build time on the image - invaluable when you're staring at a registry full of `latest` tags.
+**Use OCI labels in CI.** `image.oci: true` stamps the git revision and build time on the image - invaluable when you're staring at a registry full of `latest` tags. Add `source` before you publish anywhere public, or the package page will not link back to the repository.
 
 **Prefer compile mode for public-facing services.** Distroless plus a static binary removes whole vulnerability classes from the image.
 
