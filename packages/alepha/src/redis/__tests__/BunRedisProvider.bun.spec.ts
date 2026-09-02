@@ -3,19 +3,25 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 
-import { testServiceEnv } from "../../../../../test.slot.ts";
 import { BunRedisProvider } from "../providers/BunRedisProvider.ts";
 import { BunRedisSubscriberProvider } from "../providers/BunRedisSubscriberProvider.ts";
 import { RedisProvider } from "../providers/RedisProvider.ts";
 import { RedisSubscriberProvider } from "../providers/RedisSubscriberProvider.ts";
 
 /**
- * `bun test` does not read `vitest.config.ts`, so the slot has to be asked
- * for here rather than inherited. Same derivation, same partition: this
- * suite and the vitest one must land on the same redis database or the two
- * halves of one run stop sharing a namespace.
+ * From the environment, which `scripts/testBun.ts` fills with this checkout's
+ * slice of the shared services (`test.slot.ts`) - the same partition the
+ * vitest half gets from `vitest.config.ts`.
+ *
+ * ⚠️ NOT imported from `test.slot.ts` directly. This file is inside
+ * `packages/alepha`, whose declaration build runs with `rootDir: src`, so
+ * reaching outside that tree fails `yarn build` with TS6059 - and only in the
+ * full verify lane, since `--fast` skips `build`.
+ *
+ * The fallback is the pre-partition address, which is what a bare `bun test`
+ * outside the wrapper used to get.
  */
-const { REDIS_URL } = testServiceEnv();
+const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:16379";
 
 // -------------------------------------------------------------------------------------------------------------------
 
