@@ -3,10 +3,19 @@ import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
 
+import { testServiceEnv } from "../../../../../test.slot.ts";
 import { BunRedisProvider } from "../providers/BunRedisProvider.ts";
 import { BunRedisSubscriberProvider } from "../providers/BunRedisSubscriberProvider.ts";
 import { RedisProvider } from "../providers/RedisProvider.ts";
 import { RedisSubscriberProvider } from "../providers/RedisSubscriberProvider.ts";
+
+/**
+ * `bun test` does not read `vitest.config.ts`, so the slot has to be asked
+ * for here rather than inherited. Same derivation, same partition: this
+ * suite and the vitest one must land on the same redis database or the two
+ * halves of one run stop sharing a namespace.
+ */
+const { REDIS_URL } = testServiceEnv();
 
 // -------------------------------------------------------------------------------------------------------------------
 
@@ -16,7 +25,7 @@ describe("BunRedisProvider", () => {
 
   beforeAll(async () => {
     alepha = Alepha.create({
-      env: { REDIS_URL: "redis://localhost:16379" },
+      env: { REDIS_URL },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
       .with({
@@ -200,7 +209,7 @@ describe("BunRedisSubscriberProvider", () => {
 
   beforeAll(async () => {
     alepha = Alepha.create({
-      env: { REDIS_URL: "redis://localhost:16379" },
+      env: { REDIS_URL },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
       .with({
@@ -286,7 +295,7 @@ return 0
 
   it("should clean up connections on stop", async () => {
     const fresh = Alepha.create({
-      env: { REDIS_URL: "redis://localhost:16379" },
+      env: { REDIS_URL },
     })
       .with({ provide: RedisProvider, use: BunRedisProvider })
       .with({

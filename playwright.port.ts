@@ -1,7 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+
+// The same resolution the test-service partition uses, from one place: two
+// copies of "which directory is this checkout" is two answers waiting to
+// disagree, and both of them decide who collides with whom.
+import { checkoutRoot } from "./test.slot.ts";
 
 /**
  * The e2e port for one suite, shared by every Playwright config in the repo.
@@ -174,19 +177,5 @@ const free = async (port) =>
     // Never fail a suite over the probe. Falling back to the derived port is
     // exactly the behaviour this file had before probing existed.
     return undefined;
-  }
-};
-
-const checkoutRoot = (): string => {
-  let dir = process.cwd();
-  for (;;) {
-    if (existsSync(join(dir, ".git"))) {
-      return dir;
-    }
-    const parent = dirname(dir);
-    if (parent === dir) {
-      return process.cwd();
-    }
-    dir = parent;
   }
 };
