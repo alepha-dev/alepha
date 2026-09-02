@@ -59,6 +59,14 @@ export default defineConfig({
       // Lift the per-IP registration cap — the full suite registers dozens
       // of users from a single localhost IP. Default 10 trips mid-run.
       REGISTRATION_IP_MAX_ATTEMPTS: "1000",
+      // The suite reads verification codes out of `${DATA_DIR}/emails`, so
+      // this instance really can deliver mail — just not over SMTP, and
+      // `node dist` is not serverless, so neither signal
+      // `AppSecurityProvider.emailEnabled` looks at would see it. Without
+      // this the realm ships `verifyEmailRequired: false`, the register form
+      // has no "Complete registration" step, and `registerAndVerify` fails
+      // in global setup, taking every spec with it.
+      EMAIL_ENABLED: "true",
       // The realm promotes exactly this one address, so every admin spec
       // shares the account. Read from `e2e/_helpers.ts` rather than repeated
       // here: the server's `adminEmails` and the address the specs sign in as

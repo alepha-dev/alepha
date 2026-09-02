@@ -146,7 +146,7 @@ describe("AppSecurityProvider", () => {
    * register an account and park the operator on a "check your inbox"
    * screen, for a mail written to a file on disk.
    */
-  it("turns the email-gated settings off when EMAIL_HOST is unset", async ({
+  it("turns the email-gated settings off when no transport is configured", async ({
     expect,
   }) => {
     const { alepha, realm } = await boot();
@@ -166,6 +166,43 @@ describe("AppSecurityProvider", () => {
     expect(settings.resetPasswordAllowed).toBe(true);
 
     await alepha.stop();
+  });
+
+  /**
+   * The deployed instance sends through the Cloudflare `send_email` binding,
+   * which carries no environment variable at all. Reading `EMAIL_HOST` alone
+   * would declare lore.alepha.dev mail-less and ship it with email
+   * verification off.
+   */
+  it("turns them on for a Worker, which has no EMAIL_HOST to read", async ({
+    expect,
+  }) => {
+    const { alepha, realm } = await boot({ ALEPHA_SERVERLESS: "true" });
+
+    // `realm.settings`, not `getSettings()`: the compiled default is what is
+    // under test, and a serverless container does not migrate on boot, so
+    // the `parameters` table the parameter would be read from is absent.
+    expect(realm.settings.verifyEmailRequired).toBe(true);
+    expect(realm.settings.resetPasswordAllowed).toBe(true);
+
+    await alepha.stop();
+  });
+
+  it("lets EMAIL_ENABLED override both signals, in both directions", async ({
+    expect,
+  }) => {
+    // What the e2e suite does: mail lands in `${DATA_DIR}/emails` and the
+    // suite reads it, so the instance can deliver without SMTP.
+    const on = await boot({ EMAIL_ENABLED: "true" });
+    expect((await on.realm.getSettings()).verifyEmailRequired).toBe(true);
+    await on.alepha.stop();
+
+    const off = await boot({
+      EMAIL_ENABLED: "false",
+      EMAIL_HOST: "smtp.example.com",
+    });
+    expect((await off.realm.getSettings()).verifyEmailRequired).toBe(false);
+    await off.alepha.stop();
   });
 
   /**
