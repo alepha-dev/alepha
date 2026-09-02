@@ -137,6 +137,15 @@ export interface BulkAction<T> {
   icon?: IconType;
   onClick: (selected: T[], ctx: BulkActionContext) => void | Promise<void>;
   destructive?: boolean;
+  /**
+   * Whether the action is offered for this selection. Absent means always.
+   *
+   * Hide, not disable: a disabled button in a three-item pill is a question
+   * ("why can't I?"), a missing one is an answer. An action that applies to
+   * some of the rows and not others should stay visible and act on the rows
+   * it fits, which is what its `onClick` receives the whole selection for.
+   */
+  visible?: (selected: T[]) => boolean;
 }
 
 /**
@@ -183,6 +192,10 @@ export interface BulkAction<T> {
 export interface BulkMenuAction<T> {
   label: string;
   icon?: IconType;
+  /**
+   * Same contract as {@link BulkAction.visible}.
+   */
+  visible?: (selected: T[]) => boolean;
   /**
    * The choices, produced when the menu is about to open. An async producer
    * shows a loading row until it settles; a rejection shows a failure row and
@@ -997,6 +1010,17 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     clearSelection,
   } = useTableSelection(data, rowKey);
 
+  // The bulk actions offered for THIS selection: an action's `visible`
+  // predicate reads the selected rows. Computed once, here, so the pill's
+  // contents and the pill's own presence come from the same list.
+  const visibleBulkActions = useMemo(
+    () =>
+      (props.bulkActions ?? []).filter(
+        (action) => action.visible?.(selectedItems) ?? true,
+      ),
+    [props.bulkActions, selectedItems],
+  );
+
   // -- Sort ------------------------------------------------------------------
 
   const toggleSort = (col: string, def: ColumnDef<T>) => {
@@ -1265,7 +1289,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
         )}
 
         {hasCheckbox &&
-          selection.size > 0 && (
+          selection.size > 0 &&
+          visibleBulkActions.length > 0 && (
             // Linear-style floating action pill: fixed at the bottom-center of
             // the viewport, dark surface that stays readable in both themes
             // because the colors are hard-coded (theme-relative `bg-foreground`
@@ -1279,7 +1304,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                   })}
                 </span>
                 <span className="mx-1 h-4 w-px bg-white/20" />
-                {props.bulkActions?.map((action) => {
+                {visibleBulkActions.map((action) => {
                   if ("items" in action) {
                     return (
                       <AlephaTableBulkMenu<T>

@@ -1018,7 +1018,14 @@ test.describe("Quest", () => {
     const areaSearch = page.getByRole("combobox", { name: "Search…" });
 
     const openQuestForm = async () => {
-      await page.getByRole("button", { name: "Create Quest" }).click();
+      // The list has two ways in since #1690: the header button and the
+      // table's own primary action. This test waits for the navigation to
+      // the new quest, which only the header's does: the table's keeps the
+      // reader on the list by design.
+      await page
+        .locator("header")
+        .getByRole("button", { name: "Create Quest" })
+        .click();
       await expect(areaCombobox).toBeVisible({ timeout: 10_000 });
     };
 

@@ -1,6 +1,8 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
+import { DateTimeProvider } from "alepha/datetime";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
@@ -9,7 +11,12 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import { QUEST_STATUS_TONE } from "../quest/questChips.ts";
+import {
+  QUEST_PRIORITY_ICONS,
+  QUEST_PRIORITY_RANK,
+  QUEST_PRIORITY_TONE,
+  QUEST_STATUS_TONE,
+} from "../quest/questChips.ts";
 import EpicQuestPicker from "./EpicQuestPicker.tsx";
 
 export interface ProjectEpicQuestsProps {
@@ -48,6 +55,7 @@ export interface ProjectEpicQuestsProps {
 const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
+  const dateFormatter = useInject(DateTimeProvider);
   const quests = props.quests;
   const attachedIds = new Set((quests ?? []).map((q) => q.id));
 
@@ -88,35 +96,10 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                   params: { shortId: String(quest.shortId) },
                 })
               }
+              // Status first, then the anchor, then the two most consulted
+              // fields: the Quests list's order, so the two tables read as
+              // one (feedback #2062).
               columns={{
-                shortId: {
-                  label: tr("epic.quests.column.number"),
-                  sortable: true,
-                  className: "w-16 text-muted-foreground",
-                  cell: (quest) => `#${quest.shortId}`,
-                },
-                title: {
-                  label: tr("epic.quests.column.title"),
-                  sortable: true,
-                  className: "w-full max-w-0 min-w-48 font-medium",
-                  cell: (quest) => (
-                    // A real anchor rather than a span inside the clickable
-                    // row, so the browser owns shift / cmd / middle click and
-                    // can offer "copy link address". `stopPropagation`
-                    // because the row carries `onRowClick` too, and without
-                    // it a plain click navigates twice.
-                    <Link
-                      href={router.path("projectQuest", {
-                        params: { shortId: quest.shortId },
-                      })}
-                      onClick={(e) => e.stopPropagation()}
-                      className="block truncate hover:underline"
-                      title={quest.title}
-                    >
-                      {quest.title}
-                    </Link>
-                  ),
-                },
                 status: {
                   label: tr("epic.quests.column.status"),
                   sortable: true,
@@ -136,6 +119,63 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                     >
                       {tr(`quest.status.${quest.metadata.status}`)}
                     </Badge>
+                  ),
+                },
+                title: {
+                  label: tr("epic.quests.column.title"),
+                  sortable: true,
+                  className: "w-full max-w-0 min-w-48",
+                  cell: (quest) => (
+                    // A real anchor rather than a span inside the clickable
+                    // row, so the browser owns shift / cmd / middle click and
+                    // can offer "copy link address". `stopPropagation`
+                    // because the row carries `onRowClick` too, and without
+                    // it a plain click navigates twice.
+                    //
+                    // The Quests list's cell: number and title in one name,
+                    // the whole of it the link, only the dash muted.
+                    <Link
+                      href={router.path("projectQuest", {
+                        params: { shortId: String(quest.shortId) },
+                      })}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`block truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
+                      title={`#${quest.shortId} - ${quest.title}`}
+                    >
+                      #{quest.shortId}{" "}
+                      <span className="text-muted-foreground">-</span>{" "}
+                      {quest.title}
+                    </Link>
+                  ),
+                },
+                priority: {
+                  label: tr("epic.quests.column.priority"),
+                  sortable: true,
+                  className: "w-32",
+                  // By weight, not by the word: see `QUEST_PRIORITY_RANK`.
+                  sortValue: (quest) => QUEST_PRIORITY_RANK[quest.priority],
+                  cell: (quest) => {
+                    const Icon = QUEST_PRIORITY_ICONS[quest.priority];
+                    return (
+                      <Badge
+                        variant="tint"
+                        tone={QUEST_PRIORITY_TONE[quest.priority]}
+                        className="capitalize"
+                      >
+                        <Icon className="size-3" />
+                        {quest.priority}
+                      </Badge>
+                    );
+                  },
+                },
+                updatedAt: {
+                  label: tr("epic.quests.column.updated"),
+                  sortable: true,
+                  className: "w-32",
+                  cell: (quest) => (
+                    <span className="text-muted-foreground text-xs">
+                      {dateFormatter.of(quest.updatedAt).fromNow()}
+                    </span>
                   ),
                 },
               }}

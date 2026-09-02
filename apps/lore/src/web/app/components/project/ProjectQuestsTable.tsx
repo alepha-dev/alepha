@@ -26,16 +26,12 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
-  ChevronDown,
-  ChevronsUp,
-  ChevronUp,
   CircleDot,
   Hash,
   Link2,
-  type LucideIcon,
   MapPin,
-  Minus,
   Pencil,
+  Plus,
   Search,
   Signature,
   Flag,
@@ -62,21 +58,12 @@ import {
   useQuestMutations,
 } from "../shared/useQuestMutations.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
-import { QUEST_PRIORITY_TONE } from "./quest/questChips.ts";
+import {
+  QUEST_PRIORITY_ICONS,
+  QUEST_PRIORITY_TONE,
+} from "./quest/questChips.ts";
 import QuestCreate from "./quest/QuestCreate.tsx";
 import { formatQuestSize } from "./quest/questSize.ts";
-
-/**
- * The priority glyph. An arrow idiom rather than four differently-coloured
- * dots: the shape says which way the priority points even before the tone
- * registers, which is what makes the column scannable in monochrome.
- */
-const PRIORITY_ICONS: Record<QuestResource["priority"], LucideIcon> = {
-  high: ChevronsUp,
-  medium: ChevronUp,
-  low: ChevronDown,
-  optional: Minus,
-};
 
 /**
  * Board filter shape. Empty by default → "All statuses", which means
@@ -140,6 +127,9 @@ const ProjectQuestsTable = () => {
   // the drawer outlives the menu that opened it, so this is the escape hatch
   // `refreshSignal` exists for.
   const [reload, setReload] = useState(0);
+  // The create sheet, opened from the toolbar's primary action. The same
+  // drawer as the edit one below, with no row in it.
+  const [creating, setCreating] = useState(false);
   const [knownTags, setKnownTags] = useState<string[]>([]);
 
   /**
@@ -237,6 +227,9 @@ const ProjectQuestsTable = () => {
     bulkActions.push({
       icon: Archive,
       label: tr("board.bulk.shelve"),
+      // Offered only when something in the selection is not shelved yet; a
+      // selection of shelved rows has nothing for it to do (feedback #2063).
+      visible: (selected) => selected.some((quest) => !quest.shelvedAt),
       onClick: async (selected, ctx) => {
         // Only a `new` quest can be shelved, and the server refuses the
         // rest one by one. They are counted here and never sent, so an
@@ -272,6 +265,9 @@ const ProjectQuestsTable = () => {
     bulkActions.push({
       icon: ArchiveRestore,
       label: tr("board.bulk.unshelve"),
+      // And this one only when at least one selected row is shelved. A mixed
+      // selection shows both, each acting on the rows it fits.
+      visible: (selected) => selected.some((quest) => quest.shelvedAt),
       onClick: async (selected, ctx) => {
         const eligible = selected.filter((quest) => quest.shelvedAt);
         const skipped = selected.length - eligible.length;
@@ -377,6 +373,18 @@ const ProjectQuestsTable = () => {
         persistenceKey={`lor.board.${project.id}`}
         refreshSignal={reload}
         bulkActions={bulkActions}
+        // The table's one primary action, labelled so it is visible (quest
+        // #1682): the same sheet the header's create button opens, staying
+        // on the list once the quest exists rather than leaving for its page.
+        actions={[
+          {
+            icon: Plus,
+            label: tr("project.menu.create-quest"),
+            primary: true,
+            disabled: !questApi.createQuest.can(),
+            onClick: () => setCreating(true),
+          },
+        ]}
         filters={{
           schema: boardFiltersSchema,
           seedValues: seededStatus ? { status: [seededStatus] } : undefined,
@@ -640,6 +648,7 @@ const ProjectQuestsTable = () => {
               const release = releases?.find((r) => r.id === quest.releaseId);
               return release ? (
                 <Badge variant="outline" className="font-mono">
+                  <Flag className="size-3" />
                   {release.tag ?? release.title}
                 </Badge>
               ) : (
@@ -675,7 +684,7 @@ const ProjectQuestsTable = () => {
             label: tr("board.table.priority"),
             sortable: true,
             cell: (quest: QuestResource) => {
-              const Icon = PRIORITY_ICONS[quest.priority];
+              const Icon = QUEST_PRIORITY_ICONS[quest.priority];
               return (
                 <Badge
                   variant="tint"
@@ -868,13 +877,17 @@ const ProjectQuestsTable = () => {
         ]}
       />
 
-      {/* One drawer for the table, opened by whichever row asked. The same
-          `QuestCreate` the quest page edits through, so there is one editor
-          rather than a second, thinner one for lists. */}
+      {/* One drawer for the table, opened by whichever row asked, or by the
+          toolbar's create action with no row. The same `QuestCreate` the
+          quest page edits through, so there is one editor rather than a
+          second, thinner one for lists. */}
       <Sheet
-        open={editing !== undefined}
+        open={editing !== undefined || creating}
         onOpenChange={(open) => {
-          if (!open) setEditing(undefined);
+          if (!open) {
+            setEditing(undefined);
+            setCreating(false);
+          }
         }}
       >
         <SheetContent
@@ -882,16 +895,25 @@ const ProjectQuestsTable = () => {
           className="flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-[50vw]"
         >
           <SheetHeader className="shrink-0">
-            <SheetTitle>{tr("quest.create.update")}</SheetTitle>
+            <SheetTitle>
+              {editing
+                ? tr("quest.create.update")
+                : tr("project.menu.create-quest")}
+            </SheetTitle>
           </SheetHeader>
-          {editing ? (
+          {editing || creating ? (
             <QuestCreate
               project={project}
               quest={editing}
               onSubmit={() => {
                 setEditing(undefined);
+                setCreating(false);
                 setReload((n) => n + 1);
               }}
+              // Given, so a created quest lands in the list instead of the
+              // sheet navigating to its page: the reader asked for it from
+              // the list and is still looking at the list.
+              onCreated={() => undefined}
             />
           ) : null}
         </SheetContent>

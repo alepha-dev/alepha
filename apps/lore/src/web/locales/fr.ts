@@ -1492,9 +1492,10 @@ export default {
   "epic.quests.detach": "Détacher",
   "epic.quests.detach.title": "Détacher cette quête ?",
   "epic.quests.detach.confirm": "« $1 » ne sera plus liée à cette épopée.",
-  "epic.quests.column.number": "N°",
   "epic.quests.column.title": "Titre",
   "epic.quests.column.status": "Statut",
+  "epic.quests.column.priority": "Priorité",
+  "epic.quests.column.updated": "Mise à jour",
 
   // -- Tableau de bord (page d'accueil connectee) ---------------------------
   "dashboard.greeting": "Bon retour, $1",
