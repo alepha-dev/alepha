@@ -29,5 +29,6 @@ export * from "./schemas/updateSchema.ts";
 export * from "./services/ModelBuilder.ts";
 export * from "./services/RelationalRepository.ts";
 export * from "./services/Repository.ts";
+export * from "./services/SqliteTypeAuditService.ts";
 export * from "./types/schema.ts";
 export { drizzle };
