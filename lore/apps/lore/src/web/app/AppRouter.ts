@@ -670,7 +670,8 @@ export class AppRouter {
    * Reachable only from the breadcrumb: the sidebar already carries an Apps
    * disclosure group with one child per app, so a list entry beside it would
    * be a second door to the same information. `SECTION_HREF_ROUTES` in
-   * `ProjectView` is what turns the "Apps" crumb from dead text into a link.
+   * `projectViewRoutes.ts` is what turns the "Apps" crumb from dead text into
+   * a link.
    *
    * Gated on `features.sigils` the same way `projectApp` is, and for the same
    * reason: the module toggle is the whole gate, so reaching this by URL with

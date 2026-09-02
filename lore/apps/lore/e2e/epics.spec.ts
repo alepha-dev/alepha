@@ -476,7 +476,7 @@ test.describe("Epics — the list", () => {
 
     await test.step("the Epics breadcrumb climbs back to the list", async () => {
       // A section crumb is a link only when `SECTION_HREF_ROUTES` in
-      // `ProjectView` maps the open route to a list route. That map was a
+      // `projectViewRoutes.ts` maps the open route to a list route. That map was a
       // folio-only ternary, so on an epic the "Epics" crumb fell through to
       // `href: undefined` and `AppShell` rendered it as a `BreadcrumbPage`:
       // plain text, with no way back to the list from the header.
