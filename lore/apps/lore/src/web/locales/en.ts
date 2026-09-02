@@ -498,7 +498,6 @@ export default {
   "project.settings.members.invite.sent": "Invitation sent to $1.",
   "project.settings.members.invite.failed": "Could not send the invitation.",
 
-  "project.settings.members.revoke.action": "Revoke the invitation to $1",
   "project.settings.members.revoke.title": "Revoke this invitation?",
   "project.settings.members.revoke.description":
     "$1 will no longer be able to use the link they were sent. You can invite them again, which sends a new link.",
@@ -506,6 +505,17 @@ export default {
   "project.settings.members.revoke.cancel": "Keep it",
   "project.settings.members.revoke.done": "The invitation to $1 was revoked.",
   "project.settings.members.revoke.failed": "Could not revoke the invitation.",
+  "project.settings.members.revoke.action.short": "Cancel invitation",
+
+  "project.settings.members.actions": "Actions for $1",
+  "project.settings.members.remove.action": "Remove",
+  "project.settings.members.remove.title": "Remove this member?",
+  "project.settings.members.remove.description":
+    "$1 loses access to this project. The quests they had accepted but not finished go back to the pool; the ones they finished stay theirs. You can invite them again.",
+  "project.settings.members.remove.confirm": "Remove",
+  "project.settings.members.remove.cancel": "Keep them",
+  "project.settings.members.remove.done": "$1 was removed from the project.",
+  "project.settings.members.remove.failed": "Could not remove the member.",
 
   "project.settings.danger.title": "Danger Zone",
   "project.settings.actions.delete": "Delete this project",

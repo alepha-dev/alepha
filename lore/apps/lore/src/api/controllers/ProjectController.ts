@@ -796,6 +796,80 @@ export class ProjectController {
     },
   });
 
+  /**
+   * The owner removes somebody from the project.
+   *
+   * The mirror of {@link ProjectController.leaveProject}, and deliberately a
+   * separate action rather than a `userId` parameter on that one: leaving is
+   * something any member may do to themselves, and removing is something only
+   * the owner may do to somebody else. One action with two gates inside it is
+   * how those two rules end up sharing a bug.
+   *
+   * It reuses `leaveProject`'s handling of the departing member's work,
+   * because the row disappears either way and half-done quests must not go
+   * with it: accepted-but-unfinished quests are unassigned so somebody else
+   * can pick them up, and completed ones stay attributed - `acceptedBy` on a
+   * finished quest is a record of who did it, not a claim on it.
+   *
+   * ⚠️ Nothing is sent to the removed user. Their next request simply stops
+   * finding the project. That is the same silence `leaveProject` has, and it
+   * is a deliberate hold rather than an oversight: notifying somebody they
+   * were removed is a decision about tone with no obvious right answer, and
+   * `$notification` would need a template, a category and an unsubscribe
+   * story for it.
+   */
+  removeMember = $action({
+    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+        userId: z.uuid(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params }) => {
+      const project = this.owned.get<Project>();
+
+      // The owner's own row is not removable, for the reason they cannot
+      // leave either: a project with no owner has nobody who can delete it,
+      // rename it, or let anybody back in.
+      if (project.createdBy === params.userId) {
+        throw new ForbiddenError(
+          "The owner cannot be removed from their own project.",
+        );
+      }
+
+      const member = await this.members.findOne({
+        where: {
+          userId: { eq: params.userId },
+          projectId: { eq: params.id },
+        },
+      });
+
+      if (!member) {
+        // Idempotent, like `leaveProject`: removing somebody who is already
+        // gone is the state the caller asked for.
+        return { ok: true };
+      }
+
+      await this.quests.updateMany(
+        {
+          projectId: { eq: params.id },
+          acceptedBy: { eq: params.userId },
+          completedAt: { isNull: true },
+        },
+        {
+          acceptedAt: null,
+          acceptedBy: null,
+        },
+      );
+
+      await this.members.deleteById(member.id);
+
+      return { ok: true };
+    },
+  });
+
   // ── Kanban column CRUD ──────────────────────────────────────────────
 
   addKanbanColumn = $action({
