@@ -3,7 +3,21 @@ import * as path from "node:path";
 
 import { type Browser, expect, type Page } from "@playwright/test";
 
-export const emailDir = path.join(process.cwd(), "node_modules/.alepha/emails");
+/**
+ * Where the running instance writes mail.
+ *
+ * A getter rather than a constant because each Playwright worker now boots its
+ * own Lore on its own `DATA_DIR` (see `_fixtures.ts`). A shared constant would
+ * have every worker reading every other worker's verification codes, which is
+ * the one thing that makes per-worker isolation pointless.
+ *
+ * Falls back to the framework's default `DATA_DIR` so a run without the
+ * fixture, or a helper used outside one, behaves as it always did.
+ */
+export const emailDirOf = (): string =>
+  process.env.LORE_E2E_DATA_DIR
+    ? path.join(process.env.LORE_E2E_DATA_DIR, "emails")
+    : path.join(process.cwd(), "node_modules/.alepha/emails");
 
 /**
  * Poll the dev-mail directory for the most recent message addressed to `email`.
@@ -22,13 +36,14 @@ export const findLatestEmail = async (
   // timestamp a hair before it.
   const floor = since === undefined ? 0 : since - 1_000;
   while (Date.now() - start < maxWaitMs) {
-    if (fs.existsSync(emailDir)) {
+    const dir = emailDirOf();
+    if (fs.existsSync(dir)) {
       const files = fs
-        .readdirSync(emailDir)
+        .readdirSync(dir)
         .filter((f) => f.startsWith(sanitized) && f.endsWith(".eml.json"))
         .map((f) => ({
-          path: path.join(emailDir, f),
-          mtime: fs.statSync(path.join(emailDir, f)).mtime.getTime(),
+          path: path.join(dir, f),
+          mtime: fs.statSync(path.join(dir, f)).mtime.getTime(),
         }))
         .filter((f) => f.mtime >= floor)
         .sort((a, b) => b.mtime - a.mtime);

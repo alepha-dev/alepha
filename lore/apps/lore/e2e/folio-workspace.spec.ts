@@ -1,11 +1,12 @@
 import * as fs from "node:fs";
 
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
+import { expect, test } from "./_fixtures.ts";
 import {
   apiPost,
   createProjectViaWizard,
-  emailDir,
+  emailDirOf,
   registerAndVerify,
   setProjectFeature,
 } from "./_helpers.ts";
@@ -42,7 +43,7 @@ test.describe("Folio workspace", () => {
   test.setTimeout(180_000);
 
   test.beforeAll(() => {
-    fs.mkdirSync(emailDir, { recursive: true });
+    fs.mkdirSync(emailDirOf(), { recursive: true });
   });
 
   let page: Page;

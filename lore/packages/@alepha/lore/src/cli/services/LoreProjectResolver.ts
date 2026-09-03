@@ -12,7 +12,7 @@ import { LoreClientService } from "./LoreClientService.ts";
  * It names `ProjectController`, a type from the private `lore` workspace. The
  * import is erased, but an EXPORTED signature carrying it would put that
  * workspace in the published `.d.ts` and break the install for anyone outside
- * this repo - `scripts/check-dts.mjs` fails the build if that happens.
+ * this repo - `scripts/check-dts.ts` fails the build if that happens.
  *
  * ## Why a service rather than a method on the command that needed it first
  *
