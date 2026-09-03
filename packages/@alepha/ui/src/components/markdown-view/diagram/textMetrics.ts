@@ -44,12 +44,12 @@ export const MAX_LABEL_LINES = 8;
  *
  * ## How this was produced, and how to reproduce it
  *
- * `scripts/measure-font.mjs` loads the real `@fontsource-variable/inter`
+ * `scripts/measure-font.ts` loads the real `@fontsource-variable/inter`
  * woff2 into Chromium via Playwright, waits for `document.fonts.ready` and
  * calls `canvas.measureText` on every character below, then buckets them by
  * rounded ratio. Run it from the repo root and paste the output back here:
  *
- *     node packages/@alepha/ui/scripts/measure-font.mjs
+ *     node packages/@alepha/ui/scripts/measure-font.ts
  *
  * The numbers are NOT magic and NOT hand-tuned. If the pinned face or size
  * ever changes, regenerate rather than nudging a value.

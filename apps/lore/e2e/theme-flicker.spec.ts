@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./_fixtures.ts";
 
 const cookieValue = (mode: string, theme: string) =>
   encodeURIComponent(

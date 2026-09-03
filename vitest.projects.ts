@@ -4,8 +4,6 @@ import { fileURLToPath } from "node:url";
 
 import type { TestProjectInlineConfiguration } from "vitest/config";
 
-import { testServiceEnv } from "./test.slot.ts";
-
 const repoRoot = dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -98,7 +96,7 @@ export interface WorkspaceProjectsOptions {
    * Whether this workspace has `*.browser.spec.{ts,tsx}` files.
    *
    * Declared rather than detected, and cross-checked by
-   * `scripts/check-conventions.mjs`: a workspace whose flag disagrees with
+   * `scripts/check-conventions.ts`: a workspace whose flag disagrees with
    * what is on disk fails the check. Detection alone would be silent in the
    * direction that matters, since a missing jsdom project does not fail, it
    * just runs nothing.
@@ -119,9 +117,6 @@ export interface WorkspaceProjectsOptions {
 
 /**
  * Everything a project needs regardless of which workspace it belongs to.
- *
- * A function rather than a constant because `testServiceEnv()` reads the
- * checkout it is called from.
  */
 const sharedTestOptions = () => ({
   testTimeout: 10_000,
@@ -150,9 +145,9 @@ const sharedTestOptions = () => ({
     S3_ACCESS_KEY_ID: "mock",
     S3_SECRET_ACCESS_KEY: "mock",
     MQTT_BROKER_URL: "mqtt://localhost:11883",
-    // `S3_BUCKET_NAME` and `REDIS_URL`, partitioned per checkout. See
-    // `test.slot.ts` for why those two and not the other four.
-    ...testServiceEnv(),
+    // The bucket the S3 specs create on the s3mock service before they run.
+    S3_BUCKET_NAME: "alepha-test",
+    REDIS_URL: "redis://localhost:16379",
   },
 });
 

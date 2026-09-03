@@ -9,6 +9,7 @@ import {
   E2E_SLOTS,
   type E2eApp,
   e2ePort,
+  e2eWorkerPort,
 } from "./playwright.port.ts";
 
 const APPS = Object.keys(E2E_SLOTS) as E2eApp[];
@@ -191,5 +192,108 @@ describe("e2ePort", () => {
   it("honours E2E_PORT without probing", ({ expect }) => {
     process.env.E2E_PORT = "4999";
     expect(e2ePort("docs")).toBe(4999);
+  });
+});
+
+/**
+ * `apps/lore` boots one instance per Playwright worker, so it needs a port per
+ * worker rather than one for the suite.
+ */
+describe("e2eWorkerPort", () => {
+  const held: Server[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      held.splice(0).map((s) => new Promise((r) => s.close(r))),
+    );
+  });
+
+  const hold = async (port: number): Promise<void> => {
+    const server = createServer();
+    held.push(server);
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(port, () => resolve());
+    });
+  };
+
+  it("gives every worker of a run a different port", ({ expect }) => {
+    delete process.env.E2E_PORT;
+
+    const ports = Array.from({ length: 14 }, (_, i) =>
+      e2eWorkerPort("lore", i),
+    );
+
+    expect(new Set(ports).size).toBe(ports.length);
+  });
+
+  /**
+   * ⚠️ The regression this file caught on the very commit that added it. The
+   * first implementation rotated ONE shared candidate list per worker, so a
+   * worker whose first choice was busy advanced onto the base the next worker
+   * had started from and both took it: 14 workers, 13 distinct ports. In a real
+   * run that is one instance failing to bind for no visible reason.
+   *
+   * Disjoint subsequences make it impossible rather than unlikely, so squatting
+   * some workers' first choices must not affect uniqueness at all.
+   */
+  it("keeps workers disjoint even when first choices are taken", async ({
+    expect,
+  }) => {
+    delete process.env.E2E_PORT;
+
+    for (let i = 0; i < 4; i++) {
+      await hold(e2eWorkerPort("lore", i));
+    }
+
+    const ports = Array.from({ length: 8 }, (_, i) => e2eWorkerPort("lore", i));
+
+    expect(new Set(ports).size).toBe(ports.length);
+  });
+
+  it("stays in lore's own slot, so no sibling suite is encroached on", ({
+    expect,
+  }) => {
+    delete process.env.E2E_PORT;
+
+    for (let i = 0; i < 14; i++) {
+      expect(e2eWorkerPort("lore", i) % 10).toBe(E2E_SLOTS.lore);
+    }
+  });
+
+  it("stays inside the reserved band", ({ expect }) => {
+    delete process.env.E2E_PORT;
+
+    for (let i = 0; i < 14; i++) {
+      const port = e2eWorkerPort("lore", i);
+      expect(port).toBeGreaterThanOrEqual(E2E_BAND_START);
+      expect(port).toBeLessThanOrEqual(E2E_BAND_END);
+    }
+  });
+
+  /**
+   * ⚠️ The property `e2ePort` must NOT have here. It memoises through
+   * `E2E_PORT` so a config and its global-setup agree; doing that per worker
+   * would hand the whole run one port and every instance but the first would
+   * fail to bind.
+   */
+  it("does not memoise, so worker 1 is not handed worker 0's port", ({
+    expect,
+  }) => {
+    delete process.env.E2E_PORT;
+
+    const first = e2eWorkerPort("lore", 0);
+
+    expect(process.env.E2E_PORT).toBeUndefined();
+    expect(e2eWorkerPort("lore", 1)).not.toBe(first);
+  });
+
+  it("offsets E2E_PORT per worker, keeping the escape hatch usable", ({
+    expect,
+  }) => {
+    process.env.E2E_PORT = "4900";
+
+    expect(e2eWorkerPort("lore", 0)).toBe(4900);
+    expect(e2eWorkerPort("lore", 3)).toBe(4903);
   });
 });

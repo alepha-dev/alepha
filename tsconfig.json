@@ -2,5 +2,6 @@
   "extends": "./packages/alepha/tsconfig.base.json",
   "compilerOptions": {
     "types": ["node", "bun"]
-  }
+  },
+  "include": ["*.ts", "scripts/**/*.ts"]
 }

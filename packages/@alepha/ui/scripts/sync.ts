@@ -27,7 +27,7 @@
  * A divergence in none of the three is lost on the next run. `--check` is what
  * makes that visible before it happens rather than weeks later in the UI.
  */
-import { spawnSync } from "node:child_process";
+import { type SpawnSyncOptions, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -38,6 +38,24 @@ import {
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+/**
+ * The shape of one file entry inside a registry item, as fetched from the
+ * shadcn registry. Untyped upstream (it is JSON over HTTP), so this is only
+ * what the script itself reads off it.
+ */
+interface RegistryFile {
+  path?: string;
+  target?: string;
+  content: string;
+}
+
+/**
+ * One registry item, e.g. the response for `ui/button.json`.
+ */
+interface RegistryItem {
+  files?: RegistryFile[];
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 const uiDir = resolve(here, "..");
@@ -66,9 +84,13 @@ const check = process.argv.includes("--check");
  */
 const SCRATCH_DIR_REL = ".sync-check";
 
-const log = (msg) => console.log(`[36m→[0m ${msg}`);
+const log = (msg: string): void => console.log(`[36m→[0m ${msg}`);
 
-const run = (cmd, args, opts = {}) => {
+const run = (
+  cmd: string,
+  args: string[],
+  opts: SpawnSyncOptions = {},
+): void => {
   const res = spawnSync(cmd, args, { stdio: "inherit", ...opts });
   if (res.status !== 0) {
     throw new Error(`${cmd} ${args.join(" ")} exited with ${res.status}`);
@@ -83,7 +105,7 @@ const run = (cmd, args, opts = {}) => {
  * but `@/registry/<style>/lib/utils` and `.../hooks/*` sit next to `components/`
  * in our `src/`, not under it.
  */
-const rewriteImports = (content) =>
+const rewriteImports = (content: string): string =>
   content
     .replaceAll(
       /from(\s+)["']@\/registry\/[^/]+\/(ui\/[^"']+)["']/g,
@@ -111,11 +133,11 @@ const rewriteImports = (content) =>
  */
 const ICON_LIBS = ["lucide", "tabler", "hugeicons", "phosphor", "remixicon"];
 
-const resolveIconPlaceholders = (content) => {
-  const used = new Set();
+const resolveIconPlaceholders = (content: string): string => {
+  const used = new Set<string>();
   const next = content.replaceAll(
     /<IconPlaceholder\s([^>]*?)\/>/g,
-    (match, rawAttrs) => {
+    (match: string, rawAttrs: string) => {
       const icon = rawAttrs.match(/lucide=["']([^"']+)["']/)?.[1];
       if (!icon) return match;
       used.add(icon);
@@ -244,17 +266,17 @@ const LOCAL_COMMENTS = [
   [
     "ui/dropdown-menu.tsx",
     '            "cn-menu-target cn-menu-translucent',
-    '            // The `w-auto` sizing is local. Re-applied by `scripts/sync.mjs`,\n            // which carries the reasoning; this file is overwritten wholesale.\n            "cn-menu-target cn-menu-translucent',
+    '            // The `w-auto` sizing is local. Re-applied by `scripts/sync.ts`,\n            // which carries the reasoning; this file is overwritten wholesale.\n            "cn-menu-target cn-menu-translucent',
   ],
   [
     "ui/tooltip.tsx",
     "  delay = 600,",
-    "  // 600ms rather than the registry's 0. Re-applied by `scripts/sync.mjs`,\n  // which carries the reasoning; this file is overwritten wholesale.\n  delay = 600,",
+    "  // 600ms rather than the registry's 0. Re-applied by `scripts/sync.ts`,\n  // which carries the reasoning; this file is overwritten wholesale.\n  delay = 600,",
   ],
   [
     "ui/table.tsx",
     '      className={cn("bg-muted/50',
-    '      // The permanent header tint is local. Re-applied by `scripts/sync.mjs`,\n      // which carries the reasoning; this file is overwritten wholesale.\n      className={cn("bg-muted/50',
+    '      // The permanent header tint is local. Re-applied by `scripts/sync.ts`,\n      // which carries the reasoning; this file is overwritten wholesale.\n      className={cn("bg-muted/50',
   ],
   [
     "ui/sidebar.tsx",
@@ -265,7 +287,7 @@ const LOCAL_COMMENTS = [
 
 class LocalPatchError extends Error {}
 
-const applyLocalPatches = (rel, content) => {
+const applyLocalPatches = (rel: string, content: string): string => {
   let next = content;
   for (const [file, find, replace, why] of LOCAL_PATCHES) {
     if (file !== rel) continue;
@@ -293,20 +315,24 @@ const applyLocalPatches = (rel, content) => {
  * `src/components/ui/button.tsx`. Items that do set an explicit `target`
  * (hooks, lib helpers) keep using it verbatim.
  */
-const destOf = (file) => {
+// `file.path!`: every caller filters out `!file.path && !file.target` first
+// (see `planWrites`/`checkFiles`), so a file reaching here without a
+// `target` is guaranteed to have a `path` - not provable locally, but true
+// by construction.
+const destOf = (file: RegistryFile): string => {
   if (file.target) return join(srcDir, file.target);
-  const rel = file.path.replace(/^registry\/[^/]+\//, "");
+  const rel = file.path!.replace(/^registry\/[^/]+\//, "");
   return join(srcDir, "components", rel);
 };
 
-const relOf = (file) =>
-  file.target ? file.target : file.path.replace(/^registry\/[^/]+\//, "");
+const relOf = (file: RegistryFile): string =>
+  file.target ?? file.path!.replace(/^registry\/[^/]+\//, "");
 
 /**
  * What this script would write for one registry file, or `null` when the file
  * is protected.
  */
-const renderFile = (file) => {
+const renderFile = (file: RegistryFile): string | null => {
   const rel = relOf(file);
   if (KEEP_LOCAL.has(rel)) return null;
   return applyLocalPatches(
@@ -322,8 +348,8 @@ const renderFile = (file) => {
  * as we go would leave the tree half-refreshed on the first stale patch, which
  * is a worse state to hand someone than either the old tree or the new one.
  */
-const planWrites = (items) => {
-  const plan = [];
+const planWrites = (items: RegistryItem[]): Array<[string, string]> => {
+  const plan: Array<[string, string]> = [];
   for (const item of items) {
     for (const file of item.files ?? []) {
       if (!file.path && !file.target) continue;
@@ -338,7 +364,7 @@ const planWrites = (items) => {
   return plan;
 };
 
-const writeFiles = (plan) => {
+const writeFiles = (plan: Array<[string, string]>): void => {
   for (const [dest, content] of plan) {
     mkdirSync(dirname(dest), { recursive: true });
     writeFileSync(dest, content);
@@ -362,8 +388,14 @@ const writeFiles = (plan) => {
  * while the tree is oxfmt output, so comparing the two directly reported every
  * single file as drifted - a list that says everything and therefore nothing.
  */
-const checkFiles = (items) => {
-  const report = { broken: [], protected: [], drift: [] };
+interface CheckReport {
+  broken: string[];
+  protected: string[];
+  drift: string[];
+}
+
+const checkFiles = (items: RegistryItem[]): CheckReport => {
+  const report: CheckReport = { broken: [], protected: [], drift: [] };
   const scratch = join(uiDir, SCRATCH_DIR_REL);
   rmSync(scratch, { recursive: true, force: true });
   mkdirSync(scratch, { recursive: true });
@@ -429,11 +461,11 @@ const checkFiles = (items) => {
  * living in `src/components/ui/` (e.g. `segmented`) — which the upstream
  * registry does not know about — are skipped instead of aborting the run.
  */
-const fetchJson = async (url) => {
+const fetchJson = async (url: string): Promise<RegistryItem | null> => {
   const r = await fetch(url);
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(`${url} → ${r.status}`);
-  return r.json();
+  return r.json() as Promise<RegistryItem>;
 };
 
 // Fetch every primitive currently in src/components/ui/ from the public
@@ -452,8 +484,8 @@ const stock = readdirSync(join(srcDir, "components/ui"))
   .map((f) => f.replace(/\.tsx$/, ""));
 
 log(`Fetching ${stock.length} shadcn primitives…`);
-const results = await Promise.all(
-  stock.map(async (name) => [
+const results: Array<[string, RegistryItem | null]> = await Promise.all(
+  stock.map(async (name): Promise<[string, RegistryItem | null]> => [
     name,
     await fetchJson(`${SHADCN_BASE}/${name}.json`),
   ]),
@@ -463,7 +495,11 @@ if (skipped.length) {
   log(`Not in registry, left untouched: ${skipped.join(", ")}`);
 }
 if (check) {
-  const report = checkFiles(results.map(([, item]) => item).filter(Boolean));
+  const report = checkFiles(
+    results
+      .map(([, item]) => item)
+      .filter((item): item is RegistryItem => item != null),
+  );
 
   log(`${report.protected.length} files kept local (see KEEP_LOCAL).`);
   if (report.drift.length) {
@@ -489,7 +525,13 @@ if (check) {
 
   log("Every local patch applies and every protected file is in place.");
 } else {
-  writeFiles(planWrites(results.map(([, item]) => item).filter(Boolean)));
+  writeFiles(
+    planWrites(
+      results
+        .map(([, item]) => item)
+        .filter((item): item is RegistryItem => item != null),
+    ),
+  );
 
   log("Linting and formatting with oxlint + oxfmt…");
   run("yarn", ["oxlint", "--fix", "packages/@alepha/ui/src"], {

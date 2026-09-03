@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "@playwright/test";
 
+import { expect, test } from "./_fixtures.ts";
 import {
   createProjectViaWizard,
   newUserContext,

@@ -9,5 +9,5 @@
       "@alepha/ui/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "scripts"]
 }

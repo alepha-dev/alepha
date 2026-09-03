@@ -1,6 +1,7 @@
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import { MAX_QUEST_OBJECTIVES } from "../src/api/schemas/questObjectivesLimit.ts";
+import { expect, test } from "./_fixtures.ts";
 import {
   apiPath,
   apiPost,

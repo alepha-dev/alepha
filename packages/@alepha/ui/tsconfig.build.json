@@ -8,5 +8,11 @@
     "rootDir": "src",
     "outDir": "dist"
   },
+  // Overrides the base `include` (`["src", "scripts"]`) rather than adding to
+  // it — `include`/`exclude` do not merge across `extends`. `rootDir: "src"`
+  // means an emitted declaration outside it fails with TS6059, so this must
+  // stay scoped to `src` even though the typecheck-only base config covers
+  // `scripts/` too.
+  "include": ["src"],
   "exclude": ["src/**/__tests__/**", "src/**/*.spec.ts", "src/**/*.spec.tsx"]
 }

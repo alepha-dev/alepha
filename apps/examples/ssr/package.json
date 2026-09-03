@@ -18,7 +18,7 @@
     "e2e:ui": "playwright test --ui",
     "start": "yarn build:e2e && yarn migrate:e2e && wrangler dev --cwd dist --persist-to ../node_modules/.wrangler-e2e",
     "start:e2e": "CI=true yarn build:e2e && yarn migrate:e2e && wrangler dev --cwd dist --port $SERVER_PORT --var APP_SECRET:e2e-test-secret --persist-to ../node_modules/.wrangler-e2e",
-    "migrate:e2e": "node scripts/migrate-e2e.mjs",
+    "migrate:e2e": "node scripts/migrate-e2e.ts",
     "build:e2e": "DATABASE_URL=d1://emerald:00000000-0000-0000-0000-000000000000 alepha build"
   },
   "dependencies": {

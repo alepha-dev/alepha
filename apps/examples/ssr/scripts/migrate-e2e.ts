@@ -45,9 +45,9 @@ const DB_NAME = "emerald";
  * result that looks like success is the failure mode this script exists to
  * prevent.
  */
-const collect = (dir) => {
-  const found = [];
-  const unrecognized = [];
+const collect = (dir: string): Array<{ name: string; path: string }> => {
+  const found: Array<{ name: string; path: string }> = [];
+  const unrecognized: string[] = [];
 
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === "meta" || entry.name.startsWith(".")) continue;

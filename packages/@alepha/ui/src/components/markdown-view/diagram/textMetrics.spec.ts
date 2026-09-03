@@ -44,7 +44,7 @@ describe("measureLine", () => {
     ["the quick brown fox", 121.393],
   ])("is within 5%% of Chromium's own measurement of %s", (text, browser) => {
     // Measured in Chromium against the real Inter woff2 by
-    // scripts/measure-font.mjs, in the same run that generated the table.
+    // scripts/measure-font.ts, in the same run that generated the table.
     // The gap is rounding the ratios to three decimals, and 5% off on a box
     // width is invisible in a boxes-and-arrows diagram.
     const error = Math.abs(measureLine(text, 13) - browser) / browser;

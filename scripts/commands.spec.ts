@@ -7,13 +7,13 @@ import {
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
-import { VerifyCommand } from "./VerifyCommand.ts";
+import { AlephaCommands } from "./commands.ts";
 
 /**
  * The selection helpers are protected, so a subclass exposes them rather than
  * the pipeline being driven end to end for a string comparison.
  */
-class TestVerifyCommand extends VerifyCommand {
+class TestAlephaCommands extends AlephaCommands {
   public testTestCommand = this.testCommand.bind(this);
   public testForeachCommand = this.foreachCommand.bind(this);
   public testRunsCliSuite = this.runsCliSuite.bind(this);
@@ -27,7 +27,7 @@ const selection = (
   everything = false,
 ) => ({ names, projects, everything });
 
-describe("VerifyCommand --affected", () => {
+describe("AlephaCommands --affected", () => {
   const createTestEnv = () => {
     const alepha = Alepha.create({ env: { LOG_LEVEL: "silent" } })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
@@ -36,7 +36,7 @@ describe("VerifyCommand --affected", () => {
     return {
       shell: alepha.inject(MemoryShellProvider),
       fs: alepha.inject(MemoryFileSystemProvider),
-      cmd: alepha.inject(TestVerifyCommand),
+      cmd: alepha.inject(TestAlephaCommands),
     };
   };
 

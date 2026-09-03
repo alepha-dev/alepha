@@ -337,7 +337,7 @@ jobs:
       # dispatched Release where the multi-arch build the release performs is
       # exercised at all. The size gate rides along on the result.
       - name: Check the image size budget
-        run: node scripts/docker-size.mjs
+        run: node scripts/docker-size.ts
 
   # ──────────────────────────────────────────────────────────────────────
   # Bay - the Go control plane. Nothing in the yarn pipeline compiles or tests

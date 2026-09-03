@@ -49,9 +49,9 @@
     }
   },
   "scripts": {
-    "build": "tsdown && tsc -p tsconfig.build.json && node scripts/copy-css.mjs",
-    "sync": "node scripts/sync.mjs",
-    "sync:check": "node scripts/sync.mjs --check",
+    "build": "tsdown && tsc -p tsconfig.build.json && node scripts/copy-css.ts",
+    "sync": "node scripts/sync.ts",
+    "sync:check": "node scripts/sync.ts --check",
     "test": "alepha test",
     "typecheck": "tsc --noEmit"
   },
