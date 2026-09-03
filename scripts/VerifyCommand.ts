@@ -2,9 +2,9 @@ import { connect } from "node:net";
 
 import { $inject, AlephaError, z } from "alepha";
 import { ChangedFiles, WorkspaceGraph } from "alepha/cli";
-import { $command } from "alepha/command";
+import { $command, TaskCacheProvider } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { FileSystemProvider } from "alepha/system";
+import { FileSystemProvider, ShellProvider } from "alepha/system";
 
 /**
  * What `--affected` decided to run.
@@ -44,6 +44,8 @@ export class VerifyCommand {
   protected readonly graph = $inject(WorkspaceGraph);
   protected readonly changedFiles = $inject(ChangedFiles);
   protected readonly fs = $inject(FileSystemProvider);
+  protected readonly shell = $inject(ShellProvider);
+  protected readonly cache = $inject(TaskCacheProvider);
 
   /**
    * ⚠️ There is no machine-wide slot any more, and this note is what replaces
@@ -121,6 +123,12 @@ export class VerifyCommand {
         .string()
         .describe("The ref `--affected` compares against.")
         .optional(),
+      cache: z
+        .boolean()
+        .describe(
+          "Skip steps that already passed against this exact tree, in any checkout.",
+        )
+        .optional(),
     }),
     handler: async ({ run, flags }) => {
       // We need to force CI environment
@@ -137,6 +145,35 @@ export class VerifyCommand {
         ? await this.selectAffected(flags.since ?? "origin/main")
         : undefined;
 
+      // One fingerprint for the whole run, taken before anything can modify
+      // the tree. `yarn copy` and `yarn lint` both write, so a per-step
+      // fingerprint would key each step to a tree the previous step produced,
+      // and no two runs would ever agree.
+      const fingerprint = flags.cache
+        ? await this.treeFingerprint()
+        : undefined;
+
+      /**
+       * A step whose result can be remembered for an identical tree.
+       *
+       * Deliberately not used for the install or the cleans below: those exist
+       * for their side effects on a directory the fingerprint does not
+       * describe, and skipping one leaves a later step to run against a tree
+       * that is not there.
+       */
+      const step = (command: string | string[]) =>
+        run(
+          command,
+          fingerprint
+            ? {
+                cache: this.cache.digest([
+                  fingerprint,
+                  Array.isArray(command) ? command.join(" + ") : command,
+                ]),
+              }
+            : {},
+        );
+
       await run("yarn");
       await run(`yarn clean`);
 
@@ -144,8 +181,8 @@ export class VerifyCommand {
         // No `copy` in this lane, so nothing generated exists to format and
         // `lint` can go first: see the full path below for why the order
         // matters there.
-        await run(`yarn lint`);
-        await run([
+        await step(`yarn lint`);
+        await step([
           `yarn typecheck`,
           `yarn check:deps`,
           `yarn check:conventions`,
@@ -162,8 +199,8 @@ export class VerifyCommand {
         // could have saved it. This is the lane used as the gate before a
         // commit, which makes it a good suspect for a flake that never
         // reproduces the same way twice.
-        await this.runStep(run, this.testCommand(affected), "test");
-        await run(`yarn test:bun`);
+        await this.runStep(step, this.testCommand(affected), "test");
+        await step(`yarn test:bun`);
         return;
       }
 
@@ -176,7 +213,7 @@ export class VerifyCommand {
       // buys is timings that no longer mean anything when a step regresses,
       // and memory pressure on the one tool in this repo with a history of
       // exhausting it. The only pairing below that pays is e2e.
-      await run(`yarn copy`);
+      await step(`yarn copy`);
 
       // Redundant in this lane, and kept anyway.
       //
@@ -192,18 +229,18 @@ export class VerifyCommand {
       // seconds. It stays because it is the lint gate the `--fast` lane
       // runs too, and a pipeline whose linting is a side effect of a step
       // named `copy` is one rename away from having none.
-      await run(`yarn lint`);
+      await step(`yarn lint`);
 
       // After `copy` for the same reason: checking before it would validate
       // a stale copy and miss a doc-breaking comment change.
-      await run(`yarn check:docs`);
-      await run(`yarn check:deps`);
-      await run(`yarn check:conventions`);
-      await run(`yarn typecheck`);
+      await step(`yarn check:docs`);
+      await step(`yarn check:deps`);
+      await step(`yarn check:conventions`);
+      await step(`yarn typecheck`);
       await this.assertServicesUp();
 
-      await run(`yarn check:i18n`);
-      await run(`yarn check:migrations`);
+      await step(`yarn check:i18n`);
+      await step(`yarn check:migrations`);
 
       // `test` genuinely does not need `build`, and pairing them still lost:
       // together they took 129.4s against 142.3s serial, because `test` alone
@@ -215,9 +252,9 @@ export class VerifyCommand {
       // above rather than for the queue that used to be here: `run([a, b])`
       // is `Promise.all`, and these two drive the same postgres, so running
       // them together is one process interleaving with itself.
-      await this.runStep(run, this.testCommand(affected), "test");
-      await run(`yarn test:bun`);
-      await this.runStep(run, this.foreachCommand("build", affected), "build");
+      await this.runStep(step, this.testCommand(affected), "test");
+      await step(`yarn test:bun`);
+      await this.runStep(step, this.foreachCommand("build", affected), "build");
 
       // Give the one dev-mode e2e suite a cold Vite cache. Only
       // `apps/examples/ssr/playwright.dev.config.ts` runs `yarn dev`; every
@@ -255,7 +292,7 @@ export class VerifyCommand {
       if (suites.length === 0) {
         this.log.info("--affected: skipping e2e, nothing affected owns it");
       } else {
-        await run(suites);
+        await step(suites);
       }
 
       // ⚠️ `{ root }`, never `cd X && …`. `shell.run(string)` passes every
@@ -316,6 +353,53 @@ export class VerifyCommand {
       await run(`yarn w bay test:linux`);
     },
   });
+
+  /**
+   * A digest of the exact tree this run is verifying.
+   *
+   * `HEAD^{tree}` covers everything committed; the working tree is added on
+   * top as one hash per dirty or untracked file, because the same file list
+   * can hold different content and a run has to be able to tell an edit from
+   * an edit and back again.
+   *
+   * ⚠️ Raises rather than degrades. Every other failure mode here is a slow
+   * run; this one is a wrong one. A fingerprint that quietly fell back to a
+   * constant would make every step of every run a cache hit, and the pipeline
+   * would report success without executing anything.
+   */
+  protected async treeFingerprint(): Promise<string> {
+    const tree = await this.git(["rev-parse", "HEAD^{tree}"]);
+    const status = await this.git(["status", "--porcelain", "-uall"]);
+
+    const paths: string[] = [];
+    for (const line of status.split("\n").filter(Boolean)) {
+      // Porcelain v1 is two status characters, a space, then the path.
+      const path = line.slice(3);
+      // A rename prints "old -> new" and a deletion has nothing to hash. Both
+      // are already described by the status line itself.
+      if (!path.includes(" -> ") && (await this.fs.exists(path))) {
+        paths.push(path);
+      }
+    }
+
+    const contents =
+      paths.length > 0 ? await this.git(["hash-object", "--", ...paths]) : "";
+
+    return this.cache.digest([tree, status, contents]);
+  }
+
+  /**
+   * One git invocation, or an error naming it.
+   */
+  protected async git(argv: string[]): Promise<string> {
+    const result = await this.shell.capture(["git", ...argv]);
+    if (result.exitCode !== 0) {
+      throw new AlephaError(
+        `Could not fingerprint the tree: \`git ${argv.join(" ")}\` exited ${result.exitCode}. ${result.stderr}`.trim(),
+      );
+    }
+    return result.stdout.trim();
+  }
 
   /**
    * The workspaces a change since `ref` can reach, and how to name them to

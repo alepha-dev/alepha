@@ -34,6 +34,13 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
   - Not `yarn w bay test`: the native pass is GREEN while skipping every test of `Systemd.render()`, whose files are `//go:build linux` and never compile on macOS.
   - The `bay` CI job runs unconditionally on every PR and push, so nothing reaches main unchecked either way.
 - `yarn v --fast` - Inner-loop sanity check: lint + (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test + test:bun. Skips clean/copy/build/e2e and, like `yarn v`, all Go. Use for tight iteration **and as the gate before a commit**; reach for the full `yarn v` only when the change touches build/e2e territory.
+- `yarn v --affected` - Restrict test, build and e2e to the workspaces the change can reach, from the workspace dependency graph. `--since <ref>` picks what it compares against (default `origin/main`). Measured on a one-file Lore change: 74s against 135s for `--fast`.
+  - **A heuristic, and it says so when it runs.** It reasons about package boundaries, so it is blind to anything a package affects without declaring it: a fixture read by path, a service one suite leaves dirty for another. Plain `yarn v` stays the gate before a commit; CI never passes the flag.
+  - Its unknowns resolve generously, which is the only reason it can be trusted at all: a repo-level file selects every workspace, an unplaceable path selects every workspace, and a git that cannot answer raises rather than reporting an empty change set. A workspace with no vitest config contributes no `--project` filter, because an empty filter is not a filter that matches nothing, it is no filter at all.
+  - `e2e-cli` is named by hand rather than found in the graph: it consumes a packed tarball rather than importing anything, so it runs when `alepha` or `create-alepha` is affected.
+- `yarn v --cache` - Skip steps that already passed against this exact tree, keyed on `HEAD^{tree}` plus a hash per dirty or untracked file. Measured: 187s for the first run, 3.2s for an identical second one, and a one-byte edit invalidates every step. The store is per user and shared between checkouts.
+  - Nothing is restored, only the fact of a pass is recorded, and a step that throws is never recorded. Every skip is announced; a silent skip is indistinguishable from a step that ran and found nothing.
+  - `yarn` and `yarn clean` are never cached: they exist for side effects on a directory the fingerprint does not describe.
 - `yarn clean` or `yarn alepha clean` - Remove all generated files and node_modules
 - `yarn build` - Build all workspace packages using `tsdown`
 - `yarn test` - Run all tests using Vitest

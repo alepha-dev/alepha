@@ -18,6 +18,7 @@ export * from "./helpers/Asker.ts";
 export * from "./helpers/EnvUtils.ts";
 export * from "./helpers/Runner.ts";
 export * from "./primitives/$command.ts";
+export * from "./providers/TaskCacheProvider.ts";
 export * from "./providers/CliProvider.ts";
 export * from "./providers/ConsoleOutputProvider.ts";
 export * from "./providers/ExclusiveProvider.ts";

@@ -8,6 +8,7 @@ import { ShellProvider } from "alepha/system";
 
 import { CommandError } from "../errors/CommandError.ts";
 import { ExclusiveProvider } from "../providers/ExclusiveProvider.ts";
+import { TaskCacheProvider } from "../providers/TaskCacheProvider.ts";
 
 export type Task = {
   name: string;
@@ -48,6 +49,21 @@ export interface RunOptions {
    * run together still do.
    */
   exclusive?: string;
+
+  /**
+   * Skip this task when a task with the same key has already passed.
+   *
+   * The key is the caller's to compute and must cover everything the task
+   * reads: see {@link TaskCacheProvider}. A task that throws is never recorded, so
+   * a red step cannot cache itself green, and an array of tasks is one unit
+   * under one key exactly as `exclusive` is one slot for a group.
+   *
+   * ⚠️ Nothing is restored. This records that a task passed, not what it
+   * produced, so it suits checks and suites rather than anything whose point
+   * is a file on disk. For those, `alepha build --if-stale` compares the
+   * artifact against its sources instead of trusting a record.
+   */
+  cache?: string;
 }
 
 export interface RunnerMethod {
@@ -84,6 +100,7 @@ export class Runner {
   protected readonly alepha = $inject(Alepha);
   protected readonly shell = $inject(ShellProvider);
   protected readonly exclusive = $inject(ExclusiveProvider);
+  protected readonly cache = $inject(TaskCacheProvider);
   public readonly run: RunnerMethod;
 
   constructor() {
@@ -127,10 +144,34 @@ export class Runner {
         tasks = { name, handler };
       }
 
+      const cacheKey = typeof options === "object" ? options.cache : undefined;
+
+      if (cacheKey && (await this.cache.isFresh(cacheKey))) {
+        const name = Array.isArray(tasks)
+          ? tasks.map((it) => it.name).join(" + ")
+          : tasks.name;
+        // Announced, never silent. A skipped step that prints nothing looks
+        // exactly like a step that ran and found nothing to do, and the whole
+        // risk of a cache is that it says a task passed against code it has
+        // never seen.
+        this.log.info(`Skipping '${name}': cached (${cacheKey.slice(0, 12)})`);
+        return "";
+      }
+
+      // Recorded only after the task resolves. Recording up front, or in a
+      // `finally`, turns one red run into a permanently green one.
+      const remember = async <T>(result: Promise<T>): Promise<T> => {
+        const value = await result;
+        if (cacheKey) {
+          await this.cache.record(cacheKey);
+        }
+        return value;
+      };
+
       const key = typeof options === "object" ? options.exclusive : undefined;
 
       if (!key) {
-        return await this.execute(tasks);
+        return await remember(this.execute(tasks));
       }
 
       // One slot around the whole group, not one per task: an array is tasks
@@ -144,7 +185,7 @@ export class Runner {
       });
 
       try {
-        return await this.execute(tasks);
+        return await remember(this.execute(tasks));
       } finally {
         await slot.release();
       }
