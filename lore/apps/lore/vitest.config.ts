@@ -1,38 +1,17 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { defineConfig } from "vitest/config";
 
-import { jsdomProject } from "../../vitest.jsdom.ts";
+import { workspaceProjects } from "../../vitest.projects.ts";
 
-const appRoot = dirname(fileURLToPath(import.meta.url));
-
-export default defineConfig({
-  resolve: {
-    // Mirrors the `@/*` path mapping in tsconfig.json. Vitest inherits its root
-    // from the repo-level config, so without this any spec that reaches web
-    // code — which imports atoms and schemas through `@/` — fails to resolve at
-    // import time rather than failing an assertion.
-    alias: [{ find: /^@\//, replacement: `${resolve(appRoot, "src")}/` }],
-  },
-  test: {
-    testTimeout: 10000,
-    globals: true,
-    projects: [
-      {
-        extends: true,
-        test: {
-          name: { label: "node", color: "green" },
-          environment: "node",
-          exclude: [
-            "**/*.browser.spec.{ts,tsx}",
-            "**/*.bun.spec.{ts,tsx}",
-            "**/node_modules/**",
-            "**/e2e/**",
-          ],
-        },
-      },
-      jsdomProject(["**/*.browser.spec.{ts,tsx}"]),
-    ],
-  },
+/**
+ * This workspace's Vitest projects.
+ *
+ * `projects` is spread by the repo-root `vitest.config.ts`; the default export
+ * is what a standalone `vitest run` in this directory loads. Both read the
+ * same array, so `yarn test` and `yarn w lore test` collect the same files.
+ */
+export const projects = workspaceProjects(import.meta.url, {
+  name: "lore",
+  jsdom: true,
 });
+
+export default defineConfig({ test: { projects } });
