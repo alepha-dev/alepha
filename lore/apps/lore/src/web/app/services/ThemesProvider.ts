@@ -32,6 +32,12 @@ const LORE_THEMES: UiTheme[] = [
     swatch: ["#0969da", "#4493f8", "#f6f8fa", "#0d1117"],
     fontHref: "/fonts/default.css",
   },
+  {
+    id: "claude",
+    label: "Claude",
+    swatch: ["#b85434", "#f0eee6", "#faf9f5", "#262624"],
+    fontHref: "/fonts/claude.css",
+  },
 ];
 
 export class ThemesProvider {
