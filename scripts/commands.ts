@@ -87,33 +87,55 @@ export class AlephaCommands {
     },
   });
 
-  /**
-   * The machine-wide queue key held by `test` and `test:bun`, the two steps
-   * that cannot overlap between checkouts.
+  /*
+   * ⚠️ REMOVED (2026-09-04): the machine-wide `alepha:test` queue that used to
+   * serialize `test` and `test:bun` across checkouts.
    *
-   * The service env in `vitest.projects.ts` points every checkout at the same
+   * It worked, and the cure was worse than the disease. With three worktrees
+   * open it turned three independent runs into one queue: a `yarn v` sat
+   * behind "2 runs ahead of you" and took over twenty minutes to reach a step
+   * that runs in ninety seconds, with nothing on screen but a wait. A gate
+   * nobody can afford to run is not a gate.
+   *
+   * What it was protecting, so this is a decision rather than an amnesia. The
+   * service env in `vitest.projects.ts` points every checkout at the same
    * `compose.yml` services: one postgres, one redis, one s3mock, one emqx.
-   * Postgres already isolates itself per run with a `test_alepha_{epoch}_{rand8}`
-   * schema, and the mqtt specs namespace their own topics with a
-   * `randomUUID()`, so neither needs this queue. Redis (one fixed key prefix,
-   * database 0) and s3mock (one fixed bucket) do not isolate themselves, so
-   * two checkouts testing at once can interleave writes or empty a bucket the
-   * other is still using. This queue is what keeps that from happening, by
-   * making them take turns.
+   * Two of the four isolate themselves per run and never needed the queue -
+   * postgres takes a `test_alepha_{epoch}_{rand8}` schema, and the mqtt specs
+   * namespace their topics with a `randomUUID()`. The other two do not:
    *
-   * **Not `e2e`/`e2e-cli`.** Checked rather than assumed: the service
-   * variables live in `vitest.projects.ts`, which Playwright never loads, and
-   * no e2e config or `.env` sets one. `examples/playground` and
-   * `examples/shop` pin `:memory:`; `lore`, `docs` and `examples/ssr` set no
-   * `DATABASE_URL`, so each uses its own checkout's SQLite file; `e2e-cli`
-   * says outright it needs no registry and no Docker. Ports are already
-   * partitioned by checkout in `playwright.port.ts`. Nothing shared, nothing
-   * to queue for.
+   *   - redis, one fixed key prefix on database 0
+   *   - s3mock, one fixed bucket
+   *   - the 4300-4999 TCP band, which `playwright.port.spec.ts` binds for real
    *
-   * Namespaced because the queue is machine-wide: a bare "test" would put this
-   * repo behind any other project on the machine that picked the same word.
+   * So concurrent checkouts CAN still interleave writes there, or empty a
+   * bucket another run is using. That is the risk now being carried, and it
+   * shows up as a redis or s3 spec failing for no reason a rerun reproduces.
+   *
+   * ⚠️ The third one is not hypothetical: it went red on the very run that
+   * removed this queue. `playwright.port.spec.ts > keeps stepping while ports
+   * stay busy` holds two candidates and asserts the allocator lands on the
+   * third, which is only true while nothing else on the machine holds it. A
+   * second checkout testing at the same time does hold it, and the assertion
+   * reads `expected 4581 to be 4571`. It is a machine-wide resource the
+   * original note above missed, having reasoned about the four `compose.yml`
+   * services and not about ports.
+   *
+   * CI is unaffected either way: one runner, one checkout, nothing concurrent.
+   * This is a local-developer-experience trade, not a correctness one.
+   *
+   * If it becomes annoying, the fix is to isolate the resource rather than to
+   * put every suite back in one line - a per-run redis key prefix and bucket
+   * name the way postgres and mqtt already do it, and a port spec that fakes
+   * the probe instead of binding real sockets. `ExclusiveProvider` is still in
+   * the framework (`{ exclusive: "<key>" }` on a step) if a genuinely
+   * unshareable resource ever turns up.
+   *
+   * `e2e` / `e2e-cli` never took this queue and are unaffected: Playwright
+   * never loads `vitest.projects.ts`, the example apps pin `:memory:`, the
+   * rest use their own checkout's SQLite file, and ports are already
+   * partitioned per checkout by `playwright.port.ts`.
    */
-  protected static readonly suites = "alepha:test";
 
   /**
    * The services `vitest.config.ts` points at, exactly the set `compose.yml`
@@ -130,13 +152,16 @@ export class AlephaCommands {
 
   public readonly verify = $command({
     aliases: ["v"],
-    // The machine-wide slot is on the steps that contend, not on this
-    // command: see `suites` above and the `exclusive:` options below.
+    // No machine-wide slot anywhere in this command any more: see the block
+    // above the services list for what was removed and what risk that carries.
     //
-    // It was on the command first. Correct, and far too wide. `lint`,
-    // `typecheck`, `check:*` and `build` share nothing between checkouts, so
-    // a second worktree sat through eight minutes of them before finding out
-    // its own typecheck was broken.
+    // The history is worth keeping, because it is the same mistake twice at
+    // two widths. The slot was on the COMMAND first. Correct, and far too
+    // wide. `lint`, `typecheck`, `check:*` and `build` share nothing between
+    // checkouts, so a second worktree sat through eight minutes of them
+    // before finding out its own typecheck was broken. Narrowing it to the
+    // two test steps fixed that and left the queue itself, which is what
+    // eventually cost twenty minutes across three worktrees.
     description:
       "Run linter, checker and tests (JavaScript/TypeScript only, Go lives in `v:go`).",
     flags: z.object({
@@ -176,8 +201,6 @@ export class AlephaCommands {
         .default(true),
     }),
     handler: async ({ run, flags }) => {
-      const suites = AlephaCommands.suites;
-
       // We need to force CI environment
       // -> tsdown has different behavior when run in CI
       process.env.CI = "true";
@@ -273,11 +296,11 @@ export class AlephaCommands {
         // commit, which makes it a good suspect for a flake that never
         // reproduces the same way twice.
         await this.runStep(
-          (cmd) => step(cmd, { exclusive: suites }),
+          (cmd) => step(cmd),
           this.testCommand(affected),
           "test",
         );
-        await step(`yarn test:bun`, { exclusive: suites });
+        await step(`yarn test:bun`);
         return;
       }
 
@@ -330,11 +353,11 @@ export class AlephaCommands {
       // is `Promise.all`, and these two drive the same postgres, so running
       // them together is one process interleaving with itself.
       await this.runStep(
-        (cmd) => step(cmd, { exclusive: suites }),
+        (cmd) => step(cmd),
         this.testCommand(affected),
         "test",
       );
-      await step(`yarn test:bun`, { exclusive: suites });
+      await step(`yarn test:bun`);
       await this.runStep(step, this.foreachCommand("build", affected), "build");
 
       // Give the one dev-mode e2e suite a cold Vite cache. Only
