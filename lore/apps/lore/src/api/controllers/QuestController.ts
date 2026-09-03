@@ -53,6 +53,63 @@ import { QuestService } from "../services/QuestService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 
 export class QuestController {
+  /**
+   * What `updateQuestById` still accepts once a quest is completed.
+   *
+   * ⚠️ **The rule is "not the body", not "almost nothing".** On a completed
+   * quest the quest BODY - title, description, objectives - is frozen as an
+   * audit record of what was closed, and `addAttachment` already carries that
+   * sentence: the body stays frozen, "which is what the audit record is
+   * actually protecting". Everything here is metadata about the record rather
+   * than the record, so freezing it makes the history less accurate, not more:
+   *
+   * - `completionMessage`, because project memory is curatable.
+   * - `releaseId`, because which release a finished quest ships in is planning
+   *   metadata decided after completion at least as often as before it. A
+   *   release HOLDS quests by assignment, so the assignment has to stay
+   *   editable until the release is published - and the published-release
+   *   refusal in `ReleaseAttachmentService` is what enforces that end.
+   * - `feedbackId`, because which reported issue the work turned out to resolve
+   *   is usually only established afterwards. There is no other writer:
+   *   `createQuest`, this path and `feedback_accept` (which spawns a NEW quest)
+   *   are the only three, and the feedback side has no "link an existing quest"
+   *   endpoint at all. Added for #1752, found while trying to link 22 completed
+   *   quests to the feedback they resolved.
+   * - `area`, because it is already mutable on a completed quest through
+   *   another door: `AreaService.rename` issues an `updateMany` with no
+   *   `completedAt` filter, so the areas settings page rewrites completed
+   *   quests wholesale. A field a bulk rename can change but a single-quest
+   *   correction cannot is an inconsistency, not a guarantee.
+   * - `tags`, on the same axis argument as `area` and with no side door at all:
+   *   both are what reports and insights group by, retro-classification is
+   *   normal, and a new tag in a project's vocabulary was unusable on exactly
+   *   the history that motivated it.
+   *
+   * Deliberately NOT here: `priority` (what was prioritised at the time),
+   * `size` / `estimateMinutes` / `dueAt` (the PLANNED values - actuals live in
+   * the timer, and editing a plan after seeing the outcome erases the only
+   * thing they are good for), `dependsOn` (it draws the recorded questline and
+   * its live effect is dead post-completion either way) and `attachments`,
+   * which has its own door: `addAttachment` allows `completed` on purpose,
+   * because evidence arrives at the end.
+   *
+   * ⚠️ This gate runs BEFORE the field-specific guards below it, not instead of
+   * them. Widening it widens what reaches `ensureArea`, the owner-only check on
+   * `feedbackId` and the "feedback must exist in this project and be accepted"
+   * check - all of which still run on the completed path.
+   *
+   * ⚠️ Three prose surfaces restate this list and go stale silently:
+   * `QuestTools.quest_update`'s description, and the `feedback_shortId` and
+   * `completionMessage` field descriptions in `questSchemas.ts`.
+   */
+  protected readonly editableAfterCompletion = new Set([
+    "completionMessage",
+    "releaseId",
+    "feedbackId",
+    "area",
+    "tags",
+  ]);
+
   log = $logger();
   quests = $repository(quests);
   feedback = $repository(feedback);
@@ -2158,22 +2215,10 @@ export class QuestController {
         throw new BadRequestError(objectiveCapMessage(body.objectives.length));
       }
 
-      // On a completed quest the quest BODY - title, description, objectives -
-      // stays frozen as an audit record of what was closed. Two things are
-      // not the body and are therefore still editable:
-      //
-      // - `completionMessage`, because project memory is curatable;
-      // - `releaseId`, because which release a finished quest ships in is
-      //   planning metadata decided after completion at least as often as
-      //   before it. A release HOLDS quests by assignment (folio "Lore
-      //   vocabulary"), so the assignment has to stay editable until the
-      //   release is published - and the published-release refusal in
-      //   `ReleaseAttachmentService` is what enforces that end, unchanged.
       if (quest.completedAt) {
         const otherEdits = Object.entries(body).filter(
           ([key, value]) =>
-            key !== "completionMessage" &&
-            key !== "releaseId" &&
+            !this.editableAfterCompletion.has(key) &&
             // A concurrency token is not an edit: passing it alongside a
             // completionMessage rewrite must not read as trying to change
             // the frozen body.
@@ -2182,7 +2227,7 @@ export class QuestController {
         );
         if (otherEdits.length > 0) {
           throw new BadRequestError(
-            "Only completionMessage and releaseId can be edited on a completed quest",
+            `Only ${[...this.editableAfterCompletion].join(", ")} can be edited on a completed quest`,
           );
         }
       }

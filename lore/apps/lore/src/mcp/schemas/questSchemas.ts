@@ -551,7 +551,12 @@ export const questCompleteResultSchema = z.object({
 export const questUpdateParamsSchema = entityRefSchema.extend({
   title: z.string().describe("New quest title").optional(),
   description: z.string().describe(`New ${DESCRIPTION_DESCRIPTION}`).optional(),
-  area: z.string().describe(`New ${AREA_DESCRIPTION}`).optional(),
+  area: z
+    .string()
+    .describe(
+      `New ${AREA_DESCRIPTION} Allowed on a COMPLETED quest: an area rename already rewrites completed quests wholesale (\`AreaService.rename\` filters on nothing else), so a single-quest correction being refused was an inconsistency rather than a guarantee.`,
+    )
+    .optional(),
   priority: prioritySchema.describe(`New ${PRIORITY_DESCRIPTION}`).optional(),
   size: questSizeSchema.describe(`New ${SIZE_DESCRIPTION}`).optional(),
   dueAt: z
@@ -570,13 +575,13 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   completionMessage: z
     .string()
     .describe(
-      `Rewrite the post-completion summary. Allowed on already-completed quests (the only field that is — other edits stay frozen). Pass an empty string to clear. Markdown supported. ${DIAGRAM_CAPABILITY}`,
+      `Rewrite the post-completion summary. Allowed on already-completed quests, alongside \`release_tag\`, \`feedback_shortId\`, \`area\`, \`tags\` and \`epic_number\` — the quest BODY (title, description, objectives) is what stays frozen. Pass an empty string to clear. Markdown supported. ${DIAGRAM_CAPABILITY}`,
     )
     .optional(),
   tags: z
     .array(z.string())
     .describe(
-      "Replace the quest's tags. Normalized server-side (trim, lowercase, dedupe). Pass an empty array to clear. Call `quest_tags` to discover existing tags.",
+      "Replace the quest's tags. Normalized server-side (trim, lowercase, dedupe). Pass an empty array to clear. Call `quest_tags` to discover existing tags. Allowed on a COMPLETED quest: tags are what reports group by, and a tag added to a project's vocabulary has to be usable on the history that motivated it.",
     )
     .optional(),
   dependsOn_shortId: z
@@ -588,7 +593,7 @@ export const questUpdateParamsSchema = entityRefSchema.extend({
   feedback_shortId: z
     .integer()
     .describe(
-      "Link this quest to the ACCEPTED feedback item with this per-project shortId (shows under that item's 'linked quests'). Pass 0 to clear the link. Owner-only; the feedback must already be accepted.",
+      "Link this quest to the ACCEPTED feedback item with this per-project shortId (shows under that item's 'linked quests'). Pass 0 to clear the link. Owner-only; the feedback must already be accepted. Allowed on a COMPLETED quest, which is the usual case: which reported issue the work resolved is normally established after the fact, and there is no 'link an existing quest' endpoint on the feedback side.",
     )
     .optional(),
   epic_number: z
