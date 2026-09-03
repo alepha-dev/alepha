@@ -87,9 +87,9 @@ export const e2ePort = (app: E2eApp): number => {
  * (see `apps/lore/e2e/_fixtures.ts`).
  *
  * The walk is the same one `candidatePorts` already produces — same slot, so a
- * sibling suite is never encroached on — rotated by the worker index, so two
- * workers of one run start on different bases rather than racing for the same
- * first choice. Each then probes forward from there.
+ * sibling suite is never encroached on — divided into disjoint subsequences,
+ * one per worker. Two workers therefore never evaluate the same port at all,
+ * which is what makes their answers independent of whatever is listening.
  *
  * ⚠️ Deliberately NOT memoised through `E2E_PORT`. That variable exists so a
  * config and its `global-setup` agree on one answer; here every worker must get
