@@ -1054,7 +1054,9 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 
 This suite used to run on **3303 — the same port as `yarn dev`**. With `reuseExistingServer` on, a dev server left running in another terminal was adopted by Playwright, and the whole suite ran against hot-reloaded sources and the dev database instead of `node dist` and `:memory:`. Two agents in two worktrees hit the same trap through each other's servers.
 
-`e2ePort("lore")` in the repo-root `playwright.port.ts` — shared by all six Playwright configs, same pattern as `vitest.projects.ts` — makes both impossible. E2E allocates from a reserved **4300-4999** band that no dev server may use; within it the slot is derived from the **checkout path**, so two worktrees never meet; and the port is then **bind-tested**, stepping a full stride if anything answers. `reuseExistingServer` is `false` everywhere as a result: a port verified free has nothing legitimate to adopt.
+`playwright.port.ts` at the repo root — shared by all six Playwright configs, same pattern as `vitest.projects.ts` — makes both impossible. E2E allocates from a reserved **4300-4999** band that no dev server may use; within it the slot is derived from the **checkout path**, so two worktrees never meet; and the port is then **bind-tested**, stepping a full stride if anything answers. `reuseExistingServer` is `false` everywhere as a result: a port verified free has nothing legitimate to adopt.
+
+⚠️ **Lore asks for `e2eWorkerPort("lore", workerIndex)`, not `e2ePort("lore")`** — one port per Playwright worker, because it boots one server per worker (below). Each worker probes a **disjoint subsequence** of the same candidate list, which is not the same thing as rotating one shared list to a different start: that was the first implementation and it let a worker whose first choice was busy advance onto the base the next worker started from, so 14 workers produced 13 ports and one instance failed to bind for no visible reason. `playwright.port.spec.ts` holds the regression.
 
 `E2E_PORT` overrides the whole thing, probe included. Reach for it when the allocation cannot help — most often a worktree checked out _before_ this landed, which still carries the old fixed-3303 config. Pick something inside the e2e band:
 
@@ -1063,6 +1065,53 @@ E2E_PORT=4999 npx playwright test quest.spec.ts
 ```
 
 Before killing anything on a busy port, check whose it is — `lsof -a -p <pid> -d cwd`. A `node dist` whose cwd sits under `.claude/worktrees/` belongs to another agent's run.
+
+### One Lore instance per worker, and why `fullyParallel` is on
+
+`e2e/_fixtures.ts` boots `node dist` **per Playwright worker**, each on its own
+`DATABASE_URL=:memory:` and its own `DATA_DIR`, and hands every spec a `baseURL`
+pointing at its worker's instance. There is no `webServer` block and no
+`global-setup.ts` any more; both existed to serve the single shared server.
+
+**Every spec therefore imports `test` from `./_fixtures.ts`, never from
+`@playwright/test`.** A spec that imports the bare Playwright `test` gets no
+server, no `baseURL` and a confusing failure.
+
+Why it is worth it: the suite used to share one server, one database, one realm
+and one mail directory, so `fullyParallel` could not be turned on, so tests
+inside a file ran one after another. `quest.spec.ts` and `folio-workspace.spec.ts`
+hold 23 tests each, and one of those files running serially set the wall clock
+for the entire `yarn e2e` step across every app. Measured:
+
+|                                | before | after |
+| ------------------------------ | ------ | ----- |
+| lore e2e, 133 tests, 7 workers | 228s   | ~126s |
+| `yarn v` e2e step, every app   | 234.5s | ~130s |
+| `yarn v`, whole pipeline       | ~465s  | ~345s |
+
+It is affordable because a Lore instance answers **325-386ms** after spawn and
+holds **~168MB**, so seven cost about a second of startup and 1.2GB.
+
+⚠️ **More workers does NOT help.** On a clean Lore-only run, 10 workers failed 10
+tests and 14 failed 15, both in registration and sign-in timeouts at ~450-490%
+CPU. The limit is CPU per Chromium-plus-server pair, not shared state, so private
+instances make parallelism safe without making it bigger. The default (half the
+logical cores) is already the right number, and raising it is the wrong lever.
+
+⚠️ **`node dist`, never `yarn start`.** That script is `yarn build && node dist`,
+so the fixture would rebuild the app once per worker. The build must already have
+happened, which under `yarn v` it has; running `yarn e2e` by hand in a tree with
+no `dist` needs a `yarn build` first.
+
+⚠️ **Read mail through `emailDirOf()`, never a captured constant.** Each worker
+has its own `DATA_DIR`, so a shared `emailDir` would have every worker reading
+every other worker's verification codes.
+
+**The biggest remaining cost is per-test registration**, and it is measured so it
+need not be guessed at: `registerAndVerify` is ~2.6s and `createProjectViaWizard`
+~2.5s against a mean test of ~6.3s, so about four fifths of a test is setup.
+Reaching the same end state from a session reused per worker took 2665ms against
+5117ms. Applying that means changing 124 call sites and is its own change.
 
 ### E2E convention: one file per feature
 
