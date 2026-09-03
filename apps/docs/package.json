@@ -3,18 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "alepha dev",
+    "build": "alepha build",
+    "check:docs": "alepha check:docs",
     "copy": "alepha gen:docs && alepha gen:tree",
     "copy&dev": "alepha dev",
-    "start": "node dist",
-    "lint": "alepha lint",
-    "typecheck": "alepha typecheck",
-    "build": "alepha build",
-    "test": "alepha test --config=../../vitest.config.ts",
+    "dev": "alepha dev",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "gen:llm": "alepha gen:llms",
-    "check:docs": "alepha check:docs"
+    "lint": "alepha lint",
+    "start": "node dist",
+    "test": "alepha test",
+    "typecheck": "alepha typecheck"
   },
   "dependencies": {
     "@alepha/lore": "workspace:*",

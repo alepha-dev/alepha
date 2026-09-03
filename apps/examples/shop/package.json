@@ -3,14 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "alepha dev",
     "build": "alepha build --stats",
-    "deploy": "alepha platform up -e production",
-    "typecheck": "tsc --noEmit",
     "check:migrations": "alepha db migrations check",
     "db:generate": "alepha db migrations create",
+    "deploy": "alepha platform up -e production",
+    "dev": "alepha dev",
+    "e2e": "playwright test",
     "start": "yarn build && LOG_LEVEL=info LOG_FORMAT=pretty node dist",
-    "e2e": "playwright test"
+    "test": "alepha test",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@alepha/commerce": "workspace:*",

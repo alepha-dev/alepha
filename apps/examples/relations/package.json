@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "alepha dev",
+    "test": "alepha test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

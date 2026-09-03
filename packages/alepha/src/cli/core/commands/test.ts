@@ -30,6 +30,33 @@ export class TestCommand {
    * - `--outputFile.json=` is the keyed form. Bare `--outputFile=` names a
    *   path with nothing saying which of the two reporters owns it.
    */
+  /**
+   * `--project` for each name in a comma-separated list.
+   *
+   * A repeated flag is what Vitest itself takes, and a repeated flag is not
+   * what this CLI parses: an array-typed flag here expects a JSON value, which
+   * is no way to name two projects. So the list is one string on the way in
+   * and one flag per entry on the way out.
+   *
+   * The values reach the shell as literal arguments, so a glob is passed
+   * through rather than resolved against the working directory on the way.
+   * That matters because selecting a workspace whole is a glob: a workspace
+   * with browser specs owns both `<name>` and `<name>:jsdom`, and only
+   * `<name>*` picks up the pair.
+   */
+  protected projectArgs(project?: string): string {
+    if (!project) {
+      return "";
+    }
+
+    return project
+      .split(",")
+      .map((it) => it.trim())
+      .filter(Boolean)
+      .map((it) => `--project ${it}`)
+      .join(" ");
+  }
+
   protected reportArgs(): string {
     return [
       "--coverage",
@@ -63,6 +90,13 @@ export class TestCommand {
           "Measure coverage and write coverage/coverage-summary.json and coverage/test-results.json",
         )
         .optional(),
+      project: z
+        .string()
+        .meta({ alias: "p" })
+        .describe(
+          "Only run these Vitest projects, comma-separated. Accepts globs, e.g. `lore*`",
+        )
+        .optional(),
     }),
     env: z.object({
       VITEST_ARGS: z
@@ -84,6 +118,8 @@ export class TestCommand {
 
       const reports = flags.coverage ? this.reportArgs() : "";
 
+      const projects = this.projectArgs(flags.project);
+
       // Vitest ships embedded in `alepha` (paired with vite) — resolve and
       // run it from alepha's own install, so the project never declares it.
       const vitest = this.utils.resolveBin("vitest", "vitest");
@@ -93,7 +129,7 @@ export class TestCommand {
       // that makes the escape hatch an escape hatch is that it is appended
       // after the flags built above.
       await run(
-        `node "${vitest}" run ${config} ${filter} ${reports} ${env.VITEST_ARGS}`
+        `node "${vitest}" run ${config} ${projects} ${filter} ${reports} ${env.VITEST_ARGS}`
           .replace(/\s+/g, " ")
           .trim(),
       );

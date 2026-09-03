@@ -1,44 +1,60 @@
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { defineConfig } from "vitest/config";
 
-import { testServiceEnv } from "./test.slot.ts";
-import { jsdomProject } from "./vitest.jsdom.ts";
+import { projects as docs } from "./apps/docs/vitest.config.ts";
+import { projects as relations } from "./apps/examples/relations/vitest.config.ts";
+import { projects as shop } from "./apps/examples/shop/vitest.config.ts";
+import { projects as lore } from "./apps/lore/vitest.config.ts";
+import { projects as commerce } from "./packages/@alepha/commerce/vitest.config.ts";
+import { projects as devtools } from "./packages/@alepha/devtools/vitest.config.ts";
+import { projects as loreSdk } from "./packages/@alepha/lore/vitest.config.ts";
+import { projects as mqtt } from "./packages/@alepha/mqtt/vitest.config.ts";
+import { projects as paymentsMollie } from "./packages/@alepha/payments-mollie/vitest.config.ts";
+import { projects as paymentsStripe } from "./packages/@alepha/payments-stripe/vitest.config.ts";
+import { projects as protobuf } from "./packages/@alepha/protobuf/vitest.config.ts";
+import { projects as ui } from "./packages/@alepha/ui/vitest.config.ts";
+import { projects as alepha } from "./packages/alepha/vitest.config.ts";
+import { projects as createAlepha } from "./packages/create-alepha/vitest.config.ts";
+import { workspaceProjects } from "./vitest.projects.ts";
 
-const repoRoot = dirname(fileURLToPath(import.meta.url));
-
+/**
+ * The suite, as one project per workspace.
+ *
+ * Nothing about a workspace's tests is decided here. Each workspace owns a
+ * `vitest.config.ts` that names itself and lists its own settings through
+ * `workspaceProjects`, and this file is the import list that makes a root
+ * `yarn test` the union of them. A workspace's projects are the same objects
+ * whether they are read from here or from `yarn w <workspace> test`.
+ *
+ * ⚠️ An explicit list, not a glob, and the list is checked rather than
+ * trusted: `scripts/check-conventions.mjs` fails when a workspace holding spec
+ * files is missing a config or is missing from this file. A glob would pick up
+ * a new workspace on its own, which sounds better until it does not: a config
+ * that fails to match reads exactly like a workspace with no tests, and this
+ * repository has paid for that failure mode more than once. An omission that
+ * gets reported beats one that gets skipped.
+ *
+ * This replaced a two-project layout, `node` and `jsdom`, spanning the whole
+ * repository from a single root. Three things went with it:
+ *
+ *   - `yarn w <workspace> test` was a lie everywhere except `apps/lore`. Vitest
+ *     walks up for a config, so a workspace without one found THIS file, whose
+ *     `test.root` was the repository root: `yarn w @alepha/protobuf test` ran
+ *     every spec in the monorepo, and `yarn w alepha test` ran 328 files that
+ *     are not in `packages/alepha`.
+ *
+ *   - `resolve.alias` mapped `@/` to `apps/lore/src` for every spec in the
+ *     repository, because Lore needs it and the root run collects Lore's
+ *     specs. `examples/shop`, `examples/playground` and `examples/totp` all
+ *     declare the same `@/` in their own tsconfig, so the first `@/` import
+ *     written in any of them would have resolved into Lore's source. It now
+ *     comes from each workspace's own tsconfig, in `vitest.projects.ts`.
+ *
+ *   - The `node` project excluded `**\/.claude/**` so that a git worktree
+ *     checked out under it was not collected twice. Project roots are now
+ *     absolute paths into THIS checkout, so a nested one is never reached.
+ */
 export default defineConfig({
-  resolve: {
-    // `apps/lore` maps `@/*` to its own `src/*` in tsconfig, and the "node"
-    // project below has no `include` filter (see the WebStorm comment), so it
-    // collects lore's specs under THIS config — `apps/lore/vitest.config.ts` is
-    // never consulted by a root `yarn test`. Any lore spec that reaches app
-    // source transitively therefore has to resolve `@/` here or it dies at
-    // import time, which is what `test/app-routes.spec.ts` did the moment it
-    // imported `AppRouter.ts` (the first spec anywhere to do so).
-    //
-    // ⚠️ Load-bearing, not incidental. `apps/lore` is the only workspace that
-    // currently *writes* `@/` imports, but `apps/examples/playground` and `apps/examples/shop`
-    // both DECLARE the same `@/* -> ./src/*` mapping in their tsconfig, and
-    // shop has specs this config collects. The first `@/` import added in
-    // either app would resolve into `apps/lore/src` here — typecheck green,
-    // test importing the wrong file. If that day comes, this has to become a
-    // per-project alias rather than a repo-wide one.
-    //
-    // Lore keeps the same alias in its own config — that is what makes
-    // `yarn w lore test` work standalone, where this file is not loaded at all.
-    alias: [{ find: /^@\//, replacement: `${repoRoot}/apps/lore/src/` }],
-  },
   test: {
-    root: repoRoot,
-    testTimeout: 10000,
-    globals: true,
-    onConsoleLog(log) {
-      if (log.includes("was not wrapped in act(")) {
-        return false;
-      }
-    },
     coverage: {
       reporter: ["html"],
       include: ["packages/**/src/**/*.ts", "packages/**/src/**/*.tsx"],
@@ -60,91 +76,30 @@ export default defineConfig({
         "packages/alepha/src/bin",
       ],
     },
-    env: {
-      // Do NOT set LOG_LEVEL here. When it is unset in test mode, Alepha's
-      // logger buffers logs in memory and prints them to the console only when
-      // a test fails (see packages/alepha/src/logger/index.ts). Setting any
-      // LOG_LEVEL opts out of that and makes warn/error spam every passing test.
-      // for testing, let's use Paris timezone as default :)
-      TZ: "Europe/Paris",
-      // database connection string for tests, installed via docker-compose
-      DATABASE_URL: "postgres://postgres:postgres@127.0.0.1:15432/postgres",
-      // S3-compatible storage (s3mock via docker-compose) for testing S3FileStorageProvider
-      S3_ENDPOINT: "http://127.0.0.1:19090",
-      S3_REGION: "us-east-1",
-      S3_ACCESS_KEY_ID: "mock",
-      S3_SECRET_ACCESS_KEY: "mock",
-      MQTT_BROKER_URL: "mqtt://localhost:11883",
-      // `S3_BUCKET_NAME` and `REDIS_URL`, partitioned per checkout.
-      //
-      // These two were the reason `yarn test` held a machine-wide slot: one
-      // hardcoded `alepha-test` bucket that the S3 specs empty on the way
-      // out, and one fixed `queue` prefix on redis database 0. Postgres and
-      // mqtt already isolate themselves per run, so half the queue was paid
-      // for nothing. See `test.slot.ts`.
-      ...testServiceEnv(),
-    },
-    // `forks`, the default, and it has to stay that way while `TZ` below is
-    // set here.
-    //
-    // `pool: "threads"` is tempting — half this suite's cumulative work is
-    // module loading rather than assertions (~277s importing against ~286s
-    // executing over 513 files), and threads amortise that: measured 53s -> 43s
-    // standalone, 63s -> 39s in the pipeline, with every test still passing.
-    //
-    // It was shipped and reverted the same evening. `env.TZ` is applied before
-    // a *process* starts, so forks pick it up; worker threads inherit the
-    // parent's already-initialised timezone and setting `process.env.TZ` inside
-    // one does not re-run tzset. `Localize.spec.tsx` then reads UTC instead of
-    // Paris and six date assertions fail — but ONLY where the machine is not
-    // already in Europe/Paris. It passed locally and failed on CI, which is the
-    // worst possible shape for a regression.
-    //
-    // To try again: move `TZ` out of `env` and onto the process that spawns
-    // vitest (the `test` script), then verify with `TZ=UTC yarn test` locally
-    // before believing it.
-    //
-    // ⚠️ `isolate: false` is a separate dead end — twice as fast again, and 17
-    // tests fail on genuine cross-file state pollution (`QueryManager`,
-    // `FileAccessProvider`, `ErrorBoundary`). Not flakiness. Do not re-try it
-    // without fixing those tests first.
     projects: [
-      {
-        // node.js tests
-        extends: true,
-        test: {
-          name: { label: "node", color: "green" },
-          environment: "node",
-          // include: ["packages/**/*.spec.{ts,tsx}"], <-- doesn't work well with Webstorm
-          exclude: [
-            "**/*.browser.spec.{ts,tsx}",
-            "**/*.bun.spec.{ts,tsx}",
-            "**/node_modules/**",
-            "**/e2e/**",
-            // Git worktrees live here. Without this every spec in the repo is
-            // collected twice, and the root-anchored excludes below (which a
-            // nested checkout does not match) stop applying to the copy — so
-            // e2e suites meant for `yarn e2e` run inside `yarn test`.
-            "**/.claude/**",
-            "apps/e2e-cli/**",
-          ],
-        },
-      },
-      // browser tests. Everything except `include` lives in `vitest.jsdom.ts`,
-      // shared with `apps/lore/vitest.config.ts` — read the comment there
-      // before adding a jsdom setting to either config.
-      //
-      // `apps/**` added alongside the original `packages/**` when `apps/lore`
-      // got its first `.browser.spec.tsx` file (a React-hook test for the folio
-      // workspace) — until then no app had one, so this project's `include` had
-      // never needed to reach past `packages/`. Same shape as the `@/` alias
-      // comment above this file's `resolve.alias`: a root-only include is
-      // invisible from `yarn w <app> test`, so this is what makes an app-level
-      // browser spec actually run under the `yarn test` root command CI uses.
-      jsdomProject([
-        "packages/**/src/**/*.browser.spec.{ts,tsx}",
-        "apps/**/src/**/*.browser.spec.{ts,tsx}",
-      ]),
+      // The repository root is a workspace too (`alepha-monorepo`), and it
+      // holds the tooling specs that belong to no package: `playwright.port.ts`
+      // is the live one. `include` is what keeps it to those. Without it this
+      // project's root is every other project's parent, and the whole suite is
+      // collected a second time.
+      ...workspaceProjects(import.meta.url, {
+        name: "alepha-monorepo",
+        include: ["*.spec.ts", "scripts/**/*.spec.ts"],
+      }),
+      ...alepha,
+      ...commerce,
+      ...createAlepha,
+      ...devtools,
+      ...docs,
+      ...lore,
+      ...loreSdk,
+      ...mqtt,
+      ...paymentsMollie,
+      ...paymentsStripe,
+      ...protobuf,
+      ...relations,
+      ...shop,
+      ...ui,
     ],
   },
 });
