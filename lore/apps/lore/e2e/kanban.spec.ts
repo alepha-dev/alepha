@@ -382,4 +382,75 @@ test.describe("Kanban", () => {
       "column:Review",
     );
   });
+
+  /**
+   * #1742. The filter bar was clipped out of reach at phone widths.
+   *
+   * It is a flex line of two items that both refuse to shrink - the form
+   * because a `FilterSlot` owns a fixed width, the toggles because they are
+   * `whitespace-nowrap` - inside a container that is `overflow-hidden` while
+   * the bar itself is `overflow-x: visible`. Measured at 411x845 before the
+   * fix: `clientWidth 409` against a `scrollWidth` of 678, with `My cards`,
+   * `Overdue` and `No lanes` entirely off-screen and no scrollbar to reach
+   * them. 768px was broken too, because the sidebar returns at `md`.
+   *
+   * The bar wraps rather than scrolls, because `kanbanFiltersAtom` PERSISTS
+   * these filters: a phone can inherit a filtered board from a desktop
+   * session, so a filter that is set and merely out of sight is a board that
+   * looks broken with no visible cause. This asserts what that buys - every
+   * control inside the viewport - rather than the class that delivers it.
+   */
+  test("the filter bar keeps every control on screen at phone width", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const projectTitle = `KW${t}`.slice(0, 20);
+
+    await registerAndVerify(page, `kbwrap${t}@example.com`, "KanbanWrap123!");
+    const { slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    await page.setViewportSize({ width: 411, height: 845 });
+    await page.goto(`/${projectSlug}/kanban`);
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // The bar itself no longer overflows, so nothing is behind its edge.
+    const bar = await page.evaluate(() => {
+      const el = document
+        .querySelector('[data-testid="kanban-filter-mine"]')
+        ?.closest("div.border-b") as HTMLElement | null;
+      if (!el) throw new Error("filter bar not found");
+      return { clientWidth: el.clientWidth, scrollWidth: el.scrollWidth };
+    });
+    expect(bar.scrollWidth).toBe(bar.clientWidth);
+
+    // And each control is reachable where it stands, with no scrolling.
+    for (const id of [
+      "kanban-search",
+      "kanban-filter-mine",
+      "kanban-filter-due",
+      "kanban-lanes",
+    ]) {
+      const box = await page.getByTestId(id).boundingBox();
+      expect(box, `${id} has no box`).not.toBeNull();
+      expect(box!.x, `${id} starts off-screen`).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width, `${id} ends off-screen`).toBeLessThanOrEqual(
+        411,
+      );
+    }
+
+    // The toggles actually work from there - the point of reaching them.
+    await page.getByTestId("kanban-filter-mine").click();
+    await expect(page.getByTestId("kanban-filter-mine")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+      { timeout: 10_000 },
+    );
+  });
 });

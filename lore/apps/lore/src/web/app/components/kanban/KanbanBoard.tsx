@@ -728,7 +728,37 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       className="flex flex-1 flex-col overflow-hidden"
     >
       {/* Filter nav */}
-      <div className="border-border bg-card flex items-center gap-2 border-b px-3 py-1.5">
+      {/* ⚠️ `flex-wrap` and `shrink-0` are the fix for the bar being clipped
+          out of reach at phone widths, and the wrap is deliberate rather than
+          a scroll.
+
+          The row is a flex line of two items that both refuse to shrink: the
+          form because a `FilterSlot` owns a fixed width, the toggle group
+          because its buttons are `whitespace-nowrap`. The board's own
+          container is `overflow-hidden` and this row is `overflow-x: visible`,
+          so anything past the right edge was clipped with NO scrollbar.
+          Measured at 411x845: `clientWidth 409`, `scrollWidth 678`, with
+          `My cards`, `Overdue` and `No lanes` entirely off-screen. Still
+          broken at 768px, because the sidebar returns at `md` and takes the
+          width with it.
+
+          Wrapping, not `overflow-x-auto`, because these filters PERSIST
+          (`kanbanFiltersAtom`): a phone can inherit a filtered board from a
+          desktop session, and a filter that is set and merely scrolled out of
+          sight is a board that looks broken with no visible cause. Wrapping
+          keeps every one of them on screen. The bar has no fixed height to
+          fight, so a second row costs only vertical space.
+
+          The wrap is automatic rather than breakpointed: a flex line breaks on
+          each item's hypothetical main size, which for both of these is their
+          content width, so the bar is one row exactly while one row fits. The
+          toggle group wraps for the same reason - with the reset button
+          showing, the group alone outgrows a 375px phone.
+
+          `shrink-0` because the bar is a flex item in a column: at two rows,
+          without it, a height-constrained board squeezes the bar instead of
+          itself. */}
+      <div className="border-border bg-card flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-1.5">
         {/* The same widget the quests table's toolbar renders: a `Control`
             per filter, in a `FilterSlot` that owns the width. Both bars
             filter the same fields, and the icons were already matched on
@@ -783,7 +813,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
           )}
         </form>
 
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {/* "My cards" is the filter people reach for most and the only one
               that needs no picker, so it gets a button of its own rather
               than a row in the assignee menu. */}
