@@ -1,7 +1,35 @@
 import { connect } from "node:net";
 
-import { AlephaError, z } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
+import { ChangedFiles, WorkspaceGraph } from "alepha/cli";
 import { $command } from "alepha/command";
+import { $logger } from "alepha/logger";
+import { FileSystemProvider } from "alepha/system";
+
+/**
+ * What `--affected` decided to run.
+ */
+interface AffectedSelection {
+  /**
+   * The workspaces the change can reach: the ones that own a changed file,
+   * plus everything that depends on them.
+   */
+  names: string[];
+
+  /**
+   * Vitest project filters for the affected workspaces that own a config.
+   *
+   * Globbed, because a workspace with browser specs owns `<name>` and
+   * `<name>:jsdom` and only the glob selects the pair.
+   */
+  projects: string[];
+
+  /**
+   * Whether the change reached every workspace, in which case the selection
+   * is not a selection and the pipeline runs whole.
+   */
+  everything: boolean;
+}
 
 /**
  * `yarn v` and `yarn v:go`: the verification lanes of this repository.
@@ -12,6 +40,11 @@ import { $command } from "alepha/command";
  * built-ins, so `verify` here is the one `--help` lists and the one that runs.
  */
 export class VerifyCommand {
+  protected readonly log = $logger();
+  protected readonly graph = $inject(WorkspaceGraph);
+  protected readonly changedFiles = $inject(ChangedFiles);
+  protected readonly fs = $inject(FileSystemProvider);
+
   /**
    * ⚠️ There is no machine-wide slot any more, and this note is what replaces
    * it.
@@ -78,6 +111,16 @@ export class VerifyCommand {
         .boolean()
         .describe("Skip build + e2e (faster local sanity check).")
         .optional(),
+      affected: z
+        .boolean()
+        .describe(
+          "Restrict test, build and e2e to the workspaces a change can reach.",
+        )
+        .optional(),
+      since: z
+        .string()
+        .describe("The ref `--affected` compares against.")
+        .optional(),
     }),
     handler: async ({ run, flags }) => {
       // We need to force CI environment
@@ -87,6 +130,12 @@ export class VerifyCommand {
       // When CI=true, yarn might create an immutable install, which is cool, but we don't need that here
       process.env.YARN_ENABLE_IMMUTABLE_INSTALLS = "false";
       process.env.YARN_ENABLE_HARDENED_MODE = "false";
+
+      // Before the install, so a ref that does not resolve costs two seconds
+      // rather than the whole prologue.
+      const affected = flags.affected
+        ? await this.selectAffected(flags.since ?? "origin/main")
+        : undefined;
 
       await run("yarn");
       await run(`yarn clean`);
@@ -113,7 +162,7 @@ export class VerifyCommand {
         // could have saved it. This is the lane used as the gate before a
         // commit, which makes it a good suspect for a flake that never
         // reproduces the same way twice.
-        await run(`yarn test`);
+        await this.runStep(run, this.testCommand(affected), "test");
         await run(`yarn test:bun`);
         return;
       }
@@ -166,9 +215,9 @@ export class VerifyCommand {
       // above rather than for the queue that used to be here: `run([a, b])`
       // is `Promise.all`, and these two drive the same postgres, so running
       // them together is one process interleaving with itself.
-      await run(`yarn test`);
+      await this.runStep(run, this.testCommand(affected), "test");
       await run(`yarn test:bun`);
-      await run(`yarn build`);
+      await this.runStep(run, this.foreachCommand("build", affected), "build");
 
       // Give the one dev-mode e2e suite a cold Vite cache. Only
       // `apps/examples/ssr/playwright.dev.config.ts` runs `yarn dev`; every
@@ -189,7 +238,25 @@ export class VerifyCommand {
       // playwright.config.ts) and `e2e-cli` exercises a packed tarball with
       // no server at all.
       //
-      await run([`yarn e2e`, `yarn e2e-cli`]);
+      // `e2e-cli` is not in the graph's reach and has to be decided by hand:
+      // it declares no dependency on `alepha`, because what it exercises is a
+      // packed tarball rather than an import. So the graph never marks it
+      // affected, and skipping it on that basis would mean a change to the
+      // CLI never runs the suite that tests the CLI.
+      const suites: string[] = [];
+      const browserSuite = this.foreachCommand("e2e", affected);
+      if (browserSuite) {
+        suites.push(browserSuite);
+      }
+      if (this.runsCliSuite(affected)) {
+        suites.push(`yarn e2e-cli`);
+      }
+
+      if (suites.length === 0) {
+        this.log.info("--affected: skipping e2e, nothing affected owns it");
+      } else {
+        await run(suites);
+      }
 
       // ⚠️ `{ root }`, never `cd X && …`. `shell.run(string)` passes every
       // token through as a LITERAL argument on both runtimes; that is a
@@ -249,6 +316,135 @@ export class VerifyCommand {
       await run(`yarn w bay test:linux`);
     },
   });
+
+  /**
+   * The workspaces a change since `ref` can reach, and how to name them to
+   * the tools that will run them.
+   *
+   * ⚠️ This is a heuristic, and the pipeline says so out loud when it uses
+   * one. It reasons about package boundaries, so it is right about
+   * `dependencies` and blind to everything a package can affect without
+   * declaring it: a shared fixture read by path, a service one suite leaves
+   * dirty for another, an environment variable. `yarn v` without the flag
+   * remains the gate, and CI never passes the flag.
+   *
+   * The reason it can be trusted at all is that its unknowns resolve
+   * generously. A repo-level file selects every workspace, an unplaceable
+   * path selects every workspace, and a git that cannot answer raises instead
+   * of reporting an empty change set.
+   */
+  protected async selectAffected(ref: string): Promise<AffectedSelection> {
+    const changed = await this.changedFiles.since(ref);
+    const workspaces = await this.graph.read();
+    const names = [...this.graph.affectedIn(workspaces, changed)].sort();
+    const everything = names.length === workspaces.length;
+
+    const projects: string[] = [];
+    for (const name of names) {
+      const workspace = workspaces.find((it) => it.name === name);
+      if (!workspace) {
+        continue;
+      }
+      const config =
+        workspace.location === "."
+          ? "vitest.config.ts"
+          : `${workspace.location}/vitest.config.ts`;
+      // A workspace with no config owns no project, and naming one that does
+      // not exist fails the whole run with "No projects matched the filter".
+      if (await this.fs.exists(config)) {
+        projects.push(`${name}*`);
+      }
+    }
+
+    if (everything) {
+      this.log.info(
+        `--affected: ${changed.length} changed file(s) since ${ref} reach every workspace, running the pipeline whole`,
+      );
+    } else {
+      this.log.info(
+        `--affected: ${changed.length} changed file(s) since ${ref} reach ${names.length}/${workspaces.length} workspace(s): ${names.join(", ") || "none"}`,
+      );
+    }
+
+    return { names, projects, everything };
+  }
+
+  /**
+   * The test step, restricted to the affected workspaces.
+   *
+   * `null` means there is nothing to run, which is a different answer from
+   * "run everything" and has to stay different: a change reaching no workspace
+   * that owns specs would otherwise run the whole suite or, worse, be handed
+   * an empty filter that vitest reads as no filter at all.
+   */
+  protected testCommand(affected?: AffectedSelection): string | null {
+    if (!affected || affected.everything) {
+      return `yarn test`;
+    }
+    if (affected.projects.length === 0) {
+      return null;
+    }
+    return `yarn alepha test --project ${affected.projects.join(",")}`;
+  }
+
+  /**
+   * A workspace fan-out, restricted to the affected workspaces.
+   *
+   * `--include` takes one ident per occurrence, so an affected set becomes a
+   * repeated flag rather than one comma-joined value.
+   */
+  protected foreachCommand(
+    script: string,
+    affected?: AffectedSelection,
+  ): string | null {
+    if (!affected || affected.everything) {
+      return `yarn ${script}`;
+    }
+    if (affected.names.length === 0) {
+      return null;
+    }
+    const includes = affected.names
+      .map((name) => `--include ${name}`)
+      .join(" ");
+    return `yarn workspaces foreach -Apt ${includes} run ${script}`;
+  }
+
+  /**
+   * Run a step, or say why it was skipped.
+   *
+   * A skipped step that prints nothing is indistinguishable from a step that
+   * ran and found nothing, which is the whole failure mode an affected-only
+   * pipeline has to avoid reporting as success.
+   */
+  protected async runStep(
+    run: (cmd: string) => Promise<unknown>,
+    command: string | null,
+    skipped: string,
+  ): Promise<void> {
+    if (command === null) {
+      this.log.info(
+        `--affected: skipping ${skipped}, nothing affected owns it`,
+      );
+      return;
+    }
+    await run(command);
+  }
+
+  /**
+   * Whether the packed-CLI suite has to run.
+   *
+   * See the call site: `e2e-cli` has no edge to `alepha` in the graph because
+   * it consumes a tarball, not an import, so it is named here explicitly.
+   */
+  protected runsCliSuite(affected?: AffectedSelection): boolean {
+    if (!affected || affected.everything) {
+      return true;
+    }
+    return (
+      affected.names.includes("alepha") ||
+      affected.names.includes("create-alepha")
+    );
+  }
 
   /**
    * Whether something answers on a local port, within a second.
