@@ -993,7 +993,7 @@ export class QuestTools {
    */
   quest_update = $tool({
     description:
-      "Update a quest's properties. Non-completed quests accept any field; completed quests accept `completionMessage` and `release_tag` only - project memory stays curatable and which release a finished quest ships in is decided after completion as often as before it, while the quest body (title, description, objectives) is frozen as an audit record. Omitted fields stay unchanged. " +
+      "Update a quest's properties. Non-completed quests accept any field. A COMPLETED quest freezes its BODY - title, description, objectives - as an audit record of what was closed, and accepts everything that is not the body: `completionMessage`, `release_tag`, `feedback_shortId`, `area`, `tags` and `epic_number`. Which feedback the work turned out to resolve, and how it should be classified for reporting, are usually only settled afterwards, so freezing them made the history less accurate rather than more. Refused on a completed quest: `priority`, `size`, `estimateMinutes`, `dueAt` and `dependsOn_shortId`, which record what was planned at the time. Omitted fields stay unchanged. " +
       "Passing `objectives` REPLACES the entire array, so fetch the quest first and pass back the full list, each surviving item carrying the `id` it already had. That path is for rewording, reordering, adding or removing objectives; to tick or untick one, call `quest_objective_set` instead of resending everything. " +
       "Nothing here stops you overwriting an edit someone made while you were working: pass `expectedUpdatedAt` from your last `quest_get` and a 409 will tell you to re-read instead.",
     title: "Update quest",
