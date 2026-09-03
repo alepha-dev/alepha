@@ -109,7 +109,7 @@ test.describe("Epics — the backlog gate", () => {
       // is a single quest. An earlier draft of this test pointed at
       // `/<slug>/quests` and its "the quests are absent" assertion passed
       // vacuously against a page that does not exist.
-      await page.goto(`/${slug}/`);
+      await page.goto(`/${slug}/quests`);
       await page.waitForLoadState("networkidle");
 
       await expect(page.getByText(gatedTitle)).toHaveCount(0);
@@ -279,7 +279,7 @@ test.describe("Epics — the backlog gate", () => {
       // is a single quest. An earlier draft of this test pointed at
       // `/<slug>/quests` and its "the quests are absent" assertion passed
       // vacuously against a page that does not exist.
-      await page.goto(`/${slug}/`);
+      await page.goto(`/${slug}/quests`);
       await page.waitForLoadState("networkidle");
 
       await expect(page.getByText(gatedTitle).first()).toBeVisible({
@@ -306,7 +306,7 @@ test.describe("Epics — the backlog gate", () => {
       // is a single quest. An earlier draft of this test pointed at
       // `/<slug>/quests` and its "the quests are absent" assertion passed
       // vacuously against a page that does not exist.
-      await page.goto(`/${slug}/`);
+      await page.goto(`/${slug}/quests`);
       await page.waitForLoadState("networkidle");
 
       await expect(page.getByText(gatedTitle)).toHaveCount(0);
@@ -780,7 +780,7 @@ test.describe("Epics — a member, not just the owner", () => {
 
       // Land on the project first: `apiPost` reads the action table out of
       // the SSR payload, which only the project pages carry.
-      await member.page.goto(`/${slug}/`);
+      await member.page.goto(`/${slug}/quests`);
       await member.page.waitForLoadState("domcontentloaded");
 
       // `createEpic` and `attachQuest` carry their id in the path, which

@@ -19,6 +19,10 @@ export const projectActivityEventSchema = z.object({
     "quest.commented",
     "feedback.created",
     "folio.updated",
+    "epic.created",
+    "epic.updated",
+    "release.created",
+    "release.published",
   ]),
   /**
    * Who did it, as an account id. Absent when the row carries no actor: a
@@ -40,6 +44,21 @@ export const projectActivityEventSchema = z.object({
   quest: z.object({ shortId: z.integer(), title: z.string() }).optional(),
   feedback: z.object({ shortId: z.integer(), title: z.string() }).optional(),
   folio: z.object({ shortId: z.integer(), title: z.string() }).optional(),
+  /**
+   * `number`, not `shortId`: an epic's per-project identifier is its
+   * `number`, and it is what the URL segment and MCP both name it by.
+   */
+  epic: z.object({ number: z.integer(), title: z.string() }).optional(),
+  /**
+   * A release is addressed by its TAG, so that is what a consumer needs to
+   * build a link. `tag` is nullable at the column (declaring it `NOT NULL`
+   * would force a column DEFAULT, see `releases.ts`) even though the create
+   * schema requires it, so it stays optional here rather than being coerced
+   * into something that does not resolve.
+   */
+  release: z
+    .object({ tag: z.string().optional(), title: z.string() })
+    .optional(),
   /**
    * One short phrase, already readable without decoding `kind`.
    */

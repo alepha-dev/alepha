@@ -46,6 +46,10 @@ export const ROUTES_APP = new Set([
 ]);
 
 export const ROUTES_FULL_WIDTH = new Set([
+  // The project's landing page. Full width because it is a feed of one
+  // column of rows plus a filter bar, and a centred 1024px column would
+  // leave the project background down both sides of the page you open on.
+  "projectActivity",
   "projectQuest",
   "projectKanban",
   "projectEpics",
@@ -125,6 +129,10 @@ export const SECTION_HREF_ROUTES: Record<
 };
 
 export const SECTION_LABEL_KEYS: Record<string, string> = {
+  // Deliberately absent from `SECTION_HREF_ROUTES` above: Activity is a
+  // leaf with no detail route under it, so its crumb is the open page and
+  // stays inert, the same reading as `projectQuests` on the list itself.
+  projectActivity: "project.menu.activity",
   projectQuests: "project.menu.quests",
   projectQuest: "project.menu.quests",
   projectKanban: "project.menu.kanban",

@@ -890,7 +890,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("shelved quest is gone from the default board", async () => {
-      await page.goto(`/${projectSlug}/`);
+      await page.goto(`/${projectSlug}/quests`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle).first()).toBeHidden({
         timeout: 10_000,
@@ -922,7 +922,7 @@ test.describe("Quest", () => {
         { timeout: 10_000 },
       );
 
-      await page.goto(`/${projectSlug}/`);
+      await page.goto(`/${projectSlug}/quests`);
       await page.waitForLoadState("networkidle");
       // Board filters persist per project (#113), so the "Shelved" choice
       // from the previous step is still applied — clear it before asserting
@@ -964,7 +964,7 @@ test.describe("Quest", () => {
       attachments: [],
     });
 
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await expect(page.getByText(questTitle).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -1027,7 +1027,7 @@ test.describe("Quest", () => {
       await expect(areaCombobox).toBeVisible({ timeout: 10_000 });
     };
 
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await openQuestForm();
 
     await test.step("Enter creates the typed area", async () => {
@@ -1053,7 +1053,7 @@ test.describe("Quest", () => {
     });
 
     await test.step("Enter on a partial query picks the existing area", async () => {
-      await page.goto(`/${projectSlug}/`);
+      await page.goto(`/${projectSlug}/quests`);
       await openQuestForm();
       await areaCombobox.click();
       await areaSearch.fill("Don");
@@ -1093,7 +1093,7 @@ test.describe("Quest", () => {
       projectTitle,
     );
 
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await page.locator(`a[href="/${projectSlug}/kanban"]`).first().click();
     await expect(page.getByTestId("kanban-board")).toBeVisible({
       timeout: 10_000,
@@ -1101,12 +1101,14 @@ test.describe("Quest", () => {
     // The switch is a navigation now, so it is addressable.
     await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
 
-    await page.locator(`a[href="/${projectSlug}/"]`).first().click();
+    // The Quests entry is `/quests` now, not the bare project root: the root
+    // is the Activity page.
+    await page.locator(`a[href="/${projectSlug}/quests"]`).first().click();
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByTestId("kanban-board")).toHaveCount(0);
-    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`));
+    await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`));
 
     // Typing the URL reaches the board — the point of the whole change.
     await page.goto(`/${projectSlug}/kanban`);
@@ -1191,9 +1193,12 @@ test.describe("Quest", () => {
       // `role="link"`, so a dead crumb matches the locator and only the href
       // separates the two. The detail route had no Quests crumb at all until
       // now — `SECTION_LABEL_KEYS` simply had no entry for it.
+      // `/quests`, not the bare project root: the list moved when Activity
+      // took `/`. `SECTION_HREF_ROUTES` still names the route, so the crumb
+      // followed the move without being edited.
       await expect(
         crumbs.getByRole("link", { name: "Quests" }),
-      ).toHaveAttribute("href", `/${projectSlug}/`, { timeout: 15_000 });
+      ).toHaveAttribute("href", `/${projectSlug}/quests`, { timeout: 15_000 });
       // The leaf is the number, and it is inert — it is the open page.
       await expect(crumbs.getByText(`#${shortId}`)).toBeVisible();
     });
@@ -1218,7 +1223,7 @@ test.describe("Quest", () => {
         .getByRole("navigation", { name: "breadcrumb" })
         .getByRole("link", { name: "Quests" })
         .click();
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/?$`), {
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`), {
         timeout: 10_000,
       });
     });
@@ -1244,7 +1249,7 @@ test.describe("Quest", () => {
     // the rail renders at all, so the viewport has to be wide enough for the
     // pane to exist before anything here means anything.
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await expect(page.getByTestId("quest-log")).toBeVisible({
       timeout: 10_000,
     });
@@ -1375,9 +1380,15 @@ test.describe("Quest", () => {
   // folded section left to reveal.
 
   /**
-   * The board is reached from the SIDEBAR, and a bare project URL lands on
-   * the list. (`defaultSurface`, the per-project setting that could send it
-   * to the board instead, was removed with feedback #2066.)
+   * The board is reached from the SIDEBAR, and `/quests` stays `/quests`.
+   * (`defaultSurface`, the per-project setting that could send a bare
+   * project URL to the board instead, was removed with feedback #2066.)
+   *
+   * ⚠️ A bare `/:projectSlug` lands on **Activity** now, not on the list.
+   * That is not a weakening of what this test guards: the thing under
+   * guard was never "which page is the root", it was that nothing may
+   * silently re-point a URL the reader chose. `e2e/activity.spec.ts` pins
+   * the root's own destination.
    *
    * ⚠️ This used to drive the "Quest list | Kanban board" rail, which is gone
    * (#1510). The rail existed for two real bugs and this test is what keeps
@@ -1387,7 +1398,7 @@ test.describe("Quest", () => {
    * entry, which is exactly why the rail became redundant - so the sidebar
    * entry is now the ONLY way in, and it has to work.
    */
-  test("the sidebar reaches the kanban board, and a bare URL lands on the list", async ({
+  test("the sidebar reaches the kanban board, and the list URL stays put", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -1406,7 +1417,7 @@ test.describe("Quest", () => {
     const sidebarLink = (href: string) =>
       page.locator(`a[href="/${projectSlug}${href}"]`).first();
 
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
     });
@@ -1424,17 +1435,17 @@ test.describe("Quest", () => {
       await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
       expect(new URL(page.url()).search).toBe("");
 
-      await sidebarLink("/").click();
+      await sidebarLink("/quests").click();
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
     });
 
-    await test.step("a bare URL lands on the list, whatever this browser last opened", async () => {
+    await test.step("the list URL is stable, whatever this browser last opened", async () => {
       // Having just been on the board changes nothing: there is no stored
       // view (the cookie went with #1510) and no project setting (that went
-      // with feedback #2066) that could send a bare URL anywhere else.
-      await page.goto(`/${projectSlug}/`);
+      // with feedback #2066) that could send this anywhere else.
+      await page.goto(`/${projectSlug}/quests`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
@@ -1477,7 +1488,7 @@ test.describe("Quest", () => {
       // position. The rail used to sit above it and the assertions were
       // about their relative y. With the rail gone the log is simply the top
       // of the content area, on both routes that carry it.
-      await page.goto(`/${projectSlug}/`);
+      await page.goto(`/${projectSlug}/quests`);
       await expect(page.getByTestId("quest-log")).toBeVisible({
         timeout: 10_000,
       });
@@ -1507,7 +1518,7 @@ test.describe("Quest", () => {
 
     await test.step("kanban off removes the sidebar entry, not the route", async () => {
       await setProjectFeature(page, projectId, "kanban", false);
-      await page.goto(`/${projectSlug}/`);
+      await page.goto(`/${projectSlug}/quests`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
       });
@@ -1773,7 +1784,7 @@ test.describe("Quest", () => {
       });
     }
 
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await expect(page.locator("tbody tr").first()).toBeVisible({
       timeout: 15_000,
     });
@@ -1856,7 +1867,7 @@ test.describe("Quest", () => {
       },
     );
 
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await expect(page.getByText(questTitle).first()).toBeVisible({
       timeout: 15_000,
     });
@@ -1889,7 +1900,10 @@ test.describe("Quest", () => {
       await expect(page.getByText(renamed).first()).toBeVisible({
         timeout: 15_000,
       });
-      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/$`));
+      // Still on the list, which is `/quests` since Activity took the root.
+      // The assertion is "no navigation happened", so the path it names has
+      // to be the one the step started on.
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`));
     });
   });
 
@@ -1925,7 +1939,7 @@ test.describe("Quest", () => {
       attachments: [],
     });
 
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await expect(page.getByText(questTitle).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -2016,7 +2030,7 @@ test.describe("Quest table — the Size column", () => {
       });
     }
 
-    await page.goto(`/${slug}/`);
+    await page.goto(`/${slug}/quests`);
     await expect(page.locator("tbody tr").first()).toBeVisible({
       timeout: 15_000,
     });

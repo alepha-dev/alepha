@@ -160,7 +160,7 @@ test.describe("Areas", () => {
     ).toHaveCount(0);
 
     // And the moved quest really carries the new name.
-    await page.goto(`/${slug}/`);
+    await page.goto(`/${slug}/quests`);
     await expect(page.getByText(`Lower${t}`)).toBeVisible();
   });
 });

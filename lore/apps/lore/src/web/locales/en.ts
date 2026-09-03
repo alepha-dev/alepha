@@ -300,6 +300,7 @@ export default {
   "project.menu.invite-member": "Invite Member",
   "project.menu.create-feedback": "New Feedback",
   "project.menu.create": "Create",
+  "project.menu.activity": "Activity",
   "project.menu.quests": "Quests",
   "project.menu.kanban": "Kanban",
   "project.menu.reports": "Reports",
@@ -1660,4 +1661,26 @@ export default {
   "nav.home": "Home",
   "common.close": "Close",
   "common.save": "Save",
+
+  "activity.title": "Activity",
+  "activity.refresh": "Refresh",
+  "activity.window.3h": "3h",
+  "activity.window.24h": "24h",
+  "activity.window.7d": "7d",
+  "activity.window.30d": "30d",
+  "activity.filter.quests": "Quests",
+  "activity.filter.epics": "Epics and releases",
+  "activity.filter.folios": "Folios",
+  "activity.filter.feedback": "Feedback",
+  "activity.actor.unknown": "Someone",
+  "activity.actor.agent": "Agent",
+  "activity.empty.window.title": "Nothing in this window",
+  "activity.empty.window.body":
+    "No quests, epics, folios or feedback moved here. Try a longer window.",
+  "activity.empty.filtered.title": "Nothing of that kind",
+  "activity.empty.filtered.body":
+    "Things happened in this window, but none of them match the filters you picked.",
+  "activity.truncated":
+    "More happened than fits here. Narrow the window to see the rest.",
+  "activity.error": "Couldn't load activity.",
 };

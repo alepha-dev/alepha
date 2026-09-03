@@ -2,8 +2,10 @@ import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
+import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import { quests } from "../entities/quests.ts";
+import { releases } from "../entities/releases.ts";
 import { relations } from "../relations.ts";
 import type { ProjectActivityEvent } from "../schemas/projectActivitySchema.ts";
 
@@ -17,16 +19,31 @@ import type { ProjectActivityEvent } from "../schemas/projectActivitySchema.ts";
  *
  * **There is no event table, and this deliberately does not create one.**
  * The data is spread over per-row stamps: `quests.updatedAt` and its
- * `history[]`, `quest_comments.createdAt`, `feedback.createdAt`, and
- * `folio_revisions.at`. At Lore's scale a union of indexed range scans is
- * the right shape; an event table is a denormalization to reach for only if
- * this gets slow.
+ * `history[]`, `quest_comments.createdAt`, `feedback.createdAt`,
+ * `folio_revisions.at`, `epics.updatedAt` and `releases.updatedAt`. At
+ * Lore's scale a union of indexed range scans is the right shape; an event
+ * table is a denormalization to reach for only if this gets slow.
+ *
+ * ⚠️ **Every read here is projected, and that is load-bearing rather than
+ * tidy.** `folio_revisions.contentSnapshot` is a full copy of the folio body
+ * per save - ~8.8 KB a row and roughly 30% of production's whole database -
+ * and `quests.description` averages 1.27 KB. Unprojected, a week's window
+ * moved hundreds of kilobytes out of D1 to render a few dozen one-line
+ * events. Adding a column to one of these `columns` lists is a bandwidth
+ * decision, not a formality.
+ *
+ * Each read is also backed by an index that leads on the column its window
+ * filters (see the entities). Before this quest, `quest_comments` had no
+ * index at all and `folio_revisions` had one leading on `folioId`, so two of
+ * the four scans were full table reads.
  */
 export class ProjectActivityService {
   protected readonly quests = $repository(quests);
   protected readonly comments = $repository(relations, "questComments");
   protected readonly feedback = $repository(feedback);
   protected readonly revisions = $repository(relations, "folioRevisions");
+  protected readonly epics = $repository(epics);
+  protected readonly releases = $repository(releases);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -93,6 +110,8 @@ export class ProjectActivityService {
       ...(await this.commentEvents(query.projectId, since)),
       ...(await this.feedbackEvents(query.projectId, since)),
       ...(await this.folioEvents(query.projectId, since)),
+      ...(await this.epicEvents(query.projectId, since)),
+      ...(await this.releaseEvents(query.projectId, since)),
     ];
 
     const kept = query.excludeUserId
@@ -132,9 +151,28 @@ export class ProjectActivityService {
         updatedAt: { gt: since },
         deletedAt: { isNull: true },
       },
-      // Deliberately not gated on the epic's status: MCP is not gated
-      // (design §5.3), and a quest under a planned epic that moved is
-      // exactly as interesting as any other.
+      // `description` is the one this leaves behind, and it is the whole
+      // point: it averages 1.27 KB a row on production and nothing below
+      // reads it. `history` has to stay - it is where most of the events
+      // come from.
+      columns: [
+        "shortId",
+        "title",
+        "createdAt",
+        "updatedAt",
+        "completedAt",
+        "completedBy",
+        "createdBy",
+        "history",
+      ],
+      // Deliberately not gated on the epic's status, and this now holds for
+      // a human page as well as for MCP. The backlog gate keeps planned
+      // epics out of the quest list, the board and the Reports
+      // denominators - surfaces that answer "what is there to do". This one
+      // answers "what happened", where a quest moving under a planned epic
+      // is exactly as true as any other. The feed is member-gated, and the
+      // sidebar already surfaces planned epics through
+      // `currentEpicCountAtom` for the same reason.
     });
 
     const events: ProjectActivityEvent[] = [];
@@ -210,6 +248,9 @@ export class ProjectActivityService {
         createdAt: { gt: since },
         quest: { projectId: { eq: projectId } },
       },
+      // `body` is rich markdown and is never read here: the feed says that
+      // a comment happened, and `quest_get` is what serves the text.
+      columns: ["createdAt", "authorId", "source"],
       include: { quest: { select: ["shortId", "title"] } },
     });
 
@@ -249,6 +290,7 @@ export class ProjectActivityService {
         createdAt: { gt: since },
         deletedAt: { isNull: true },
       },
+      columns: ["shortId", "title", "createdAt", "reporterUserId"],
     });
 
     return rows.map((row) => ({
@@ -270,6 +312,10 @@ export class ProjectActivityService {
   ): Promise<ProjectActivityEvent[]> {
     const rows = await this.revisions.findMany({
       where: { at: { gt: since }, folio: { projectId: { eq: projectId } } },
+      // ⚠️ The projection that matters most in this file. Without it every
+      // revision in the window arrives carrying `contentSnapshot`, a whole
+      // copy of the folio body, to produce one line of text.
+      columns: ["at", "byUserId", "action", "titleSnapshot"],
       include: { folio: { select: ["shortId", "title"] } },
     });
 
@@ -283,5 +329,112 @@ export class ProjectActivityService {
       },
       summary: `${row.action === "create" ? "wrote" : row.action === "rename" ? "renamed" : "edited"} folio #${row.folio?.shortId ?? 0}`,
     }));
+  }
+
+  /**
+   * Epics, split into arrival and everything after it.
+   *
+   * `epics` writes no history rows and carries no `createdBy`, so this is
+   * the whole of what the table can say: an epic appeared, or an epic
+   * changed. Which field changed - a status move, a retitle, a release
+   * attachment - is not recoverable, so the summary does not claim to know.
+   * That is a real limit of deriving events from row stamps rather than an
+   * omission, and it is why `epic.updated` reads as vaguely as it does.
+   *
+   * A row can yield both, and must: see the comment on the second push.
+   */
+  protected async epicEvents(
+    projectId: number,
+    since: string,
+  ): Promise<ProjectActivityEvent[]> {
+    const rows = await this.epics.findMany({
+      where: {
+        projectId: { eq: projectId },
+        updatedAt: { gt: since },
+        deletedAt: { isNull: true },
+      },
+      columns: ["number", "title", "createdAt", "updatedAt"],
+    });
+
+    const events: ProjectActivityEvent[] = [];
+    for (const row of rows) {
+      const ref = { number: row.number, title: row.title };
+
+      if (Date.parse(row.createdAt) > Date.parse(since)) {
+        events.push({
+          at: row.createdAt,
+          kind: "epic.created",
+          epic: ref,
+          summary: `opened epic #${row.number}`,
+        });
+      }
+
+      // Both, when both happened. Collapsing to one event would hide the
+      // more recent fact behind the older one: an epic created five days
+      // ago and activated this morning would report only its creation, on
+      // a page whose whole job is to say what just moved.
+      //
+      // `>` against `createdAt` rather than `>=`, because a create stamps
+      // both columns to the same instant and that is one event, not two.
+      if (Date.parse(row.updatedAt) > Date.parse(row.createdAt)) {
+        events.push({
+          at: row.updatedAt,
+          kind: "epic.updated",
+          epic: ref,
+          summary: `changed epic #${row.number}`,
+        });
+      }
+    }
+    return events;
+  }
+
+  /**
+   * Releases: created, and published.
+   *
+   * Publishing is the one release transition worth a line, and it is
+   * derivable because it has its own stamp (`releasedAt`, which is also
+   * what "released" MEANS here - there is no status column). A release
+   * created and published inside the same window yields both events, in
+   * that order, which is the true story of that window.
+   *
+   * Reopening writes no stamp of its own - it clears `releasedAt` - so it
+   * is invisible here, the same way a feedback triage decision is.
+   */
+  protected async releaseEvents(
+    projectId: number,
+    since: string,
+  ): Promise<ProjectActivityEvent[]> {
+    const rows = await this.releases.findMany({
+      where: {
+        projectId: { eq: projectId },
+        updatedAt: { gt: since },
+      },
+      columns: ["tag", "title", "createdAt", "updatedAt", "releasedAt"],
+    });
+
+    const events: ProjectActivityEvent[] = [];
+    for (const row of rows) {
+      const ref = { tag: row.tag, title: row.title };
+      const named = row.tag ?? row.title;
+
+      if (Date.parse(row.createdAt) > Date.parse(since)) {
+        events.push({
+          at: row.createdAt,
+          kind: "release.created",
+          release: ref,
+          summary: `opened release ${named}`,
+        });
+      }
+
+      if (row.releasedAt && Date.parse(row.releasedAt) > Date.parse(since)) {
+        events.push({
+          at: row.releasedAt,
+          kind: "release.published",
+          release: ref,
+          summary: `published release ${named}`,
+        });
+      }
+    }
+    return events;
   }
 }

@@ -36,7 +36,7 @@ test.describe("Kanban", () => {
       projectTitle,
     );
 
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await page.locator(`a[href="/${projectSlug}/kanban"]`).first().click();
     await page.waitForURL(`**/${projectSlug}/kanban`, { timeout: 15_000 });
     await expect(page.getByTestId("kanban-board")).toBeVisible({

@@ -93,7 +93,13 @@ test.describe("Dashboard", () => {
         .locator('[data-metric="activeQuests"]')
         .getByTestId("dashboard-card-open")
         .click();
-      await page.waitForURL(`**/${slug}/?status=new`, { timeout: 15_000 });
+      // `/quests`, not the project root: the list moved when Activity took
+      // `/`. The tile names its destination by route, so the catalog needed
+      // no change - only this URL, and the matching unit assertion in
+      // `test/dashboard-links.spec.ts`.
+      await page.waitForURL(`**/${slug}/quests?status=new`, {
+        timeout: 15_000,
+      });
       await page.waitForLoadState("networkidle");
 
       // The divergence, made visible: the tile counted 3 (new + accepted) and

@@ -388,7 +388,7 @@ test.describe("Releases", () => {
         );
 
     await test.step("it sits between Folios and Reports", async () => {
-      await page.goto(`/${slug}/`);
+      await page.goto(`/${slug}/quests`);
       await expect
         .poll(navOrder, { timeout: 15_000 })
         .toEqual([`/${slug}/folios`, `/${slug}/releases`, `/${slug}/reports`]);
@@ -401,7 +401,7 @@ test.describe("Releases", () => {
       await setProjectFeature(page, projectId, "folios", false);
       await setProjectFeature(page, projectId, "epics", false);
       await setProjectFeature(page, projectId, "feedback", false);
-      await page.goto(`/${slug}/`);
+      await page.goto(`/${slug}/quests`);
       await expect
         .poll(navOrder, { timeout: 15_000 })
         .toEqual([`/${slug}/releases`, `/${slug}/reports`]);

@@ -391,6 +391,7 @@ export class AppRouter {
 
   project = $page({
     children: () => [
+      this.projectActivity,
       this.projectQuests,
       this.projectKanban,
       this.projectQuest,
@@ -948,8 +949,50 @@ export class AppRouter {
     }
   }
 
-  projectQuests = $page({
+  /**
+   * What moved in this project, and the project's landing page.
+   *
+   * **Why this owns `/` and Quests does not.** Every other module is
+   * behind a feature flag - `sigils`, `blights`, `vitals`, `epics`,
+   * `feedback`, `milestones`, `quality` - and `quests` is the one with no
+   * flag at all, precisely because it owned this path. A project using
+   * only the Apps module landed on a page it does not use. Activity is the
+   * only surface that is true regardless of which modules are on, so it is
+   * the honest thing to open on, and moving the root here is what makes
+   * gating Quests possible later.
+   *
+   * ⚠️ **It renders here; it does not redirect here.** `projectQuests`
+   * used to send a bare `/:projectSlug` to `/kanban` through
+   * `project.defaultSurface`, and that setting, its write path and the
+   * redirect were removed with feedback #2066. Nothing in this route may
+   * reintroduce either half: a loader redirect on the project root is the
+   * shape #156 was about, and a per-project "which page do I open on"
+   * setting is the one #2066 rejected.
+   *
+   * No loader. `ProjectActivityPage` fetches its own window and re-fetches
+   * on demand, because the window is a control on the page rather than a
+   * property of the URL.
+   */
+  projectActivity = $page({
     path: "/",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Activity`,
+    }),
+    lazy: () => import("./components/project/activity/ProjectActivityPage.tsx"),
+  });
+
+  /**
+   * The quest list.
+   *
+   * ⚠️ **Moved off `/` when Activity took the project root.** It sits at
+   * `/quests`, which also makes it consistent with `projectQuest` at
+   * `/quests/:shortId` - a SIBLING, not a child, so no quest deep link
+   * moved with it. Every caller reaches this page by NAME
+   * (`router.path("projectQuests", …)`), so the path change touched no
+   * call site; a bare `/:projectSlug` bookmark now lands on Activity.
+   */
+  projectQuests = $page({
+    path: "/quests",
     schema: {
       /**
        * `?status=` seeds the quests table's status filter on arrival — the
@@ -980,10 +1023,12 @@ export class AppRouter {
     }),
     lazy: () => import("./components/project/ProjectQuestsPage.tsx"),
     // No loader. This used to redirect to `/kanban` when the project's
-    // `defaultSurface` said so; the setting is gone (feedback #2066), and a
-    // bare `/:projectSlug` always lands on the list. The board is reached
-    // from its sidebar entry, and nothing else may send a bare project URL
-    // anywhere: a redirect here is the shape #156 was about.
+    // `defaultSurface` said so; the setting is gone (feedback #2066). A
+    // bare `/:projectSlug` no longer reaches this page at all — it lands
+    // on `projectActivity` — but the prohibition is unchanged and belongs
+    // to whichever page holds the root: the board is reached from its
+    // sidebar entry, and nothing may send a bare project URL anywhere,
+    // because a redirect there is the shape #156 was about.
   });
 
   /**

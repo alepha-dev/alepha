@@ -380,6 +380,19 @@ export const quests = $entity({
     {
       columns: ["epicId"],
     },
+    /**
+     * The activity feed's window scan (`ProjectActivityService.questEvents`).
+     *
+     * `(projectId, deletedAt)` above cannot serve it: it narrows to the
+     * project and then every live quest is read to find the handful whose
+     * `updatedAt` moved. That was 1,934 rows on production for a window
+     * that usually matches single digits, and since the feed is now the
+     * project's landing page it runs on every visit rather than
+     * occasionally.
+     */
+    {
+      columns: ["projectId", "updatedAt"],
+    },
   ],
 });
 

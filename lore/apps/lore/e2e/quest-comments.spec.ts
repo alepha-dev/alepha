@@ -158,7 +158,7 @@ test.describe("Quest comments", () => {
     });
 
     // The project is still reachable — nothing here touched the quest.
-    await page.goto(`/${projectSlug}/`);
+    await page.goto(`/${projectSlug}/quests`);
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
     });
