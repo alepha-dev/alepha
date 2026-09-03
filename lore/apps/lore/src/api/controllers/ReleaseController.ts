@@ -12,6 +12,7 @@ import { $etag } from "alepha/server/etag";
 
 import { type Quest, quests } from "../entities/quests.ts";
 import { type Release, releases } from "../entities/releases.ts";
+import { compareReleaseTags } from "../releaseOrder.ts";
 import {
   type ReleaseChangelogGroup,
   releaseChangelogGroupSchema,
@@ -118,10 +119,38 @@ export class ReleaseController {
         open,
       );
 
-      return rows.map((release) => ({
-        ...release,
-        progress: this.contents.progressOf(release, contents.get(release.id)),
-      }));
+      return (
+        rows
+          .map((release) => ({
+            ...release,
+            progress: this.contents.progressOf(
+              release,
+              contents.get(release.id),
+            ),
+          }))
+          // Version order, and it is settled HERE rather than at each of the
+          // dozen surfaces that render this list (#1745, from feedback
+          // #2075: "sort release by name / 0.28 -> 0.29 -> 1.0").
+          //
+          // The SQL above orders by `number`, which is a `$sequence` and so
+          // only tracks version order while releases happen to be created in
+          // it. Planning `1.0.0` before `0.29.0` breaks the proxy, and one
+          // project had already done exactly that - the roadmap read
+          // `0.28.0, 1.0.0, 0.29.0`.
+          //
+          // Ascending, which is what the report asked for and the opposite of
+          // the `desc` above: the surfaces that read this list are pickers and
+          // filters, where the oldest open release is the one being planned
+          // into. The Releases and Epics tables sort themselves and are
+          // unaffected.
+          //
+          // `number` stays as the explicit tiebreak rather than being left to
+          // the sort's stability, because the SQL order it would inherit is
+          // descending and this ordering is ascending.
+          .sort(
+            (a, b) => compareReleaseTags(a.tag, b.tag) || a.number - b.number,
+          )
+      );
     },
   });
 

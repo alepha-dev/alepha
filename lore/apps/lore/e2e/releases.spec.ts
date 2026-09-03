@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
-import { compareReleaseTags } from "../src/web/app/components/project/releases/releaseOrder.ts";
+import { compareReleaseTags } from "../src/api/releaseOrder.ts";
 import {
   apiPost,
   createProjectViaWizard,
@@ -228,7 +228,7 @@ test.describe("Releases", () => {
     await expect(page.getByRole("button", { name: /^edit$/i })).toHaveCount(0);
   });
 
-  test("orders by number, not by tag", async ({ page }) => {
+  test("answers in version order, not in creation order", async ({ page }) => {
     test.setTimeout(90_000);
 
     const t = Date.now();
@@ -247,10 +247,20 @@ test.describe("Releases", () => {
     await post(page, `/api/createRelease/${projectId}`, { tag: "0.9.0" });
 
     const releases = await listReleases(page, projectId);
+
+    // The endpoint itself sorts by version now (#1745). It used to answer in
+    // `number` order and leave every consumer to re-sort, which is how the
+    // roadmap, the release filter and both release controls all ended up
+    // showing creation order.
+    expect(releases.map((r) => r.tag)).toEqual(["0.9.0", "0.10.0"]);
+
+    // `number` still records creation order, which is exactly why it could
+    // never be the version order: here the two disagree.
     const byNumber = [...releases].sort((a, b) => a.number - b.number);
     expect(byNumber.map((r) => r.tag)).toEqual(["0.10.0", "0.9.0"]);
 
-    // And the ordering the UI applies, which is neither of those.
+    // And the comparator the tables sort their own columns with agrees with
+    // what the endpoint already did.
     const byVersion = [...releases].sort((a, b) =>
       compareReleaseTags(a.tag, b.tag),
     );

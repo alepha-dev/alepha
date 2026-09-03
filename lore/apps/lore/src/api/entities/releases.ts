@@ -43,7 +43,7 @@ export const releases = $entity({
      * ⚠️ It is creation order, not version order, and the two disagree the
      * moment a release is planned ahead of one that ships sooner. The UI
      * therefore does NOT sort on it: both release tables parse the tag
-     * (`web/app/components/project/releases/releaseOrder.ts`) and keep this
+     * (`api/releaseOrder.ts`) and keep this
      * only as a tiebreak. See quest #1640.
      */
     number: z.integer().min(1),

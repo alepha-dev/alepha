@@ -12,13 +12,13 @@ import { CircleDot, Flag, Play, Plus, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
+import { compareReleaseTags } from "@/api/releaseOrder.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
-import { compareReleaseTags } from "@/web/app/components/project/releases/releaseOrder.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -484,7 +484,7 @@ const sortEpics = (
  * would drift from the first. That was right about the risk and wrong about
  * the fix: `number` is a `$sequence`, so it is creation order, and it only
  * matches version order while releases are created in version order. The
- * answer is now written once, in `releaseOrder.ts`, and imported here.
+ * answer is now written once, in `api/releaseOrder.ts`, and imported here.
  *
  * `epic.releaseId` is not usable either: it is a row id, and nothing
  * guarantees it tracks anything.
