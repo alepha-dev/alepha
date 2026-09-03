@@ -48,6 +48,10 @@ const THEMES: Theme[] = [
     id: "frost",
     url: "https://fonts.googleapis.com/css2?family=Marcellus&family=Spectral:wght@400;500&display=swap",
   },
+  {
+    id: "claude",
+    url: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Source+Serif+4:wght@400;600;700&display=swap",
+  },
 ];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

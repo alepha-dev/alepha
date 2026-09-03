@@ -464,6 +464,122 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
+ * Claude — Anthropic's own surfaces: warm paper, book-cloth terracotta.
+ *
+ * The only theme here named after something real, so it is the only one
+ * where the values are a transcription rather than an invention. The anchors
+ * are Anthropic's: ivory #F0EEE6, paper #FAF9F5, slate #262624, and the
+ * book-cloth orange the Claude mark is drawn in.
+ *
+ * Two of those anchors are transcribed with a correction. Claude's own
+ * orange, #D97757, carries white at 3.9:1 and sits at 4.2:1 on a dark card,
+ * both under 4.5 — fine on claude.ai, where it is mostly a large button, and
+ * not fine in Lore, where `--primary` is also link text in a quest list. So
+ * light darkens it to #B85434 (4.8:1 on white) and dark lifts it to #DF7C5C
+ * (4.5:1 on a card). The hue and chroma are untouched: it still reads as the
+ * same orange, one step either side of it.
+ *
+ * The light stepping is Anthropic's and inverts the usual one: sidebar
+ * (0.948) is the DARKEST surface, page (0.982) sits above it, and cards go
+ * to pure white. Every other theme here steps the other way. The chrome
+ * recedes and the content floats, which is the whole gesture of the app it
+ * comes from.
+ *
+ * Neutrals are warm, not grey: every one carries ~0.005 chroma at hue 95-106
+ * so the ivory stays ivory instead of drifting to a cool grey next to the
+ * orange.
+ *
+ * `--destructive` is the one token pushed AWAY from Anthropic's palette on
+ * purpose. A warm-red destructive at hue 31 sat seven degrees from a
+ * terracotta primary at hue 38, and in dark mode Delete and the primary
+ * action rendered as the same swatch: #E0705C beside #DF7C5C. Both are now
+ * real reds (hue 27 light, 22 dark) at roughly three times the oklab
+ * separation. The dark value is the framework's own stock destructive,
+ * which is where an independent search for "red enough to separate, light
+ * enough to stay legible as error text on a card" lands anyway.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.theme-claude {
+  /* Copernicus, Anthropic's display serif, is proprietary. Source Serif 4 is
+   * the nearest free face by construction: transitional, moderate contrast,
+   * the same sturdy text-weight roman. Body stays on Geist, which is close
+   * enough to Styrene's neutrality to leave alone. */
+  --font-display:
+    "Source Serif 4", "Iowan Old Style", "Charter", Georgia, serif;
+  --radius: 0.75rem;
+  --display-tracking: -0.015em;
+  --display-weight: 600;
+  --shadow-color: 31 30 28;
+  --shadow-alpha: 0.06;
+  --background: oklch(0.982 0.005 95);
+  --foreground: oklch(0.236 0.004 95);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.236 0.004 95);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.236 0.004 95);
+  --primary: oklch(0.566 0.138 38.2);
+  --primary-foreground: oklch(0.99 0.004 95);
+  --secondary: oklch(0.939 0.012 95);
+  --secondary-foreground: oklch(0.236 0.004 95);
+  --muted: oklch(0.939 0.012 95);
+  --muted-foreground: oklch(0.51 0.012 95);
+  --accent: oklch(0.915 0.015 95);
+  --accent-foreground: oklch(0.236 0.004 95);
+  --destructive: oklch(0.505 0.19 27);
+  --destructive-foreground: oklch(0.99 0.004 95);
+  --border: oklch(0.875 0.015 95);
+  --input: oklch(0.875 0.015 95);
+  --ring: oklch(0.566 0.138 38.2);
+  --sidebar: oklch(0.948 0.011 95);
+  --sidebar-foreground: oklch(0.236 0.004 95);
+  --sidebar-primary: oklch(0.566 0.138 38.2);
+  --sidebar-primary-foreground: oklch(0.99 0.004 95);
+  --sidebar-accent: oklch(0.905 0.016 95);
+  --sidebar-accent-foreground: oklch(0.236 0.004 95);
+  --sidebar-border: oklch(0.875 0.015 95);
+  --sidebar-ring: oklch(0.566 0.138 38.2);
+}
+
+/*
+ * Dark keeps the same inversion, reading the other way: sidebar (0.236) is
+ * the darkest, page (0.268) sits above it, cards (0.308) above that. So the
+ * card is the lit surface in both modes, which is the one structural idea
+ * the theme has to carry across.
+ */
+.dark.theme-claude,
+.theme-claude.dark {
+  --shadow-color: 13 12 11;
+  --shadow-alpha: 0.35;
+  --background: oklch(0.268 0.004 106);
+  --foreground: oklch(0.966 0.008 99);
+  --card: oklch(0.308 0.004 106);
+  --card-foreground: oklch(0.966 0.008 99);
+  --popover: oklch(0.308 0.004 106);
+  --popover-foreground: oklch(0.966 0.008 99);
+  --primary: oklch(0.69 0.131 38.8);
+  --primary-foreground: oklch(0.24 0.004 106);
+  --secondary: oklch(0.347 0.005 106);
+  --secondary-foreground: oklch(0.966 0.008 99);
+  --muted: oklch(0.347 0.005 106);
+  --muted-foreground: oklch(0.76 0.014 97.5);
+  --accent: oklch(0.386 0.008 97.5);
+  --accent-foreground: oklch(0.966 0.008 99);
+  --destructive: oklch(0.704 0.191 22.2);
+  --destructive-foreground: oklch(0.24 0.004 106);
+  --border: oklch(0.362 0.007 106);
+  --input: oklch(0.347 0.005 106);
+  --ring: oklch(0.69 0.131 38.8);
+  --sidebar: oklch(0.236 0.004 106);
+  --sidebar-foreground: oklch(0.966 0.008 99);
+  --sidebar-primary: oklch(0.69 0.131 38.8);
+  --sidebar-primary-foreground: oklch(0.24 0.004 106);
+  --sidebar-accent: oklch(0.386 0.008 97.5);
+  --sidebar-accent-foreground: oklch(0.966 0.008 99);
+  --sidebar-border: oklch(0.362 0.007 106);
+  --sidebar-ring: oklch(0.69 0.131 38.8);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
  * Folio workspace typography + find highlighting.
  * The font files are lazy-loaded by `useReadingFonts`; these vars always
  * resolve thanks to the fallback stacks, so a failed load degrades
