@@ -5,6 +5,7 @@ import { epics } from "../entities/epics.ts";
 import type { Project } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
+import { compareReleaseTags } from "../releaseOrder.ts";
 import type { RoadmapEpic } from "../schemas/roadmapEpicSchema.ts";
 import type { RoadmapRelease } from "../schemas/roadmapReleaseSchema.ts";
 import type { RoadmapResource } from "../schemas/roadmapResourceSchema.ts";
@@ -37,10 +38,24 @@ export class RoadmapService {
    * the `#7` a reader recognises. None of them grows with the project.
    */
   async roadmapOf(project: Project): Promise<RoadmapResource> {
-    const rows = await this.releases.findMany({
-      where: { projectId: { eq: project.id } },
-      orderBy: [{ column: "number", direction: "asc" }],
-    });
+    const rows = (
+      await this.releases.findMany({
+        where: { projectId: { eq: project.id } },
+        orderBy: [{ column: "number", direction: "asc" }],
+      })
+    )
+      // Version order, not the `number` the query asked for (#1745, from
+      // feedback #2075: the Upcoming row read `0.28.0, 1.0.0, 0.29.0`).
+      // `number` is a `$sequence`, so it tracks version order only while
+      // releases are created in it, and this project had planned `1.0.0`
+      // before `0.29.0`.
+      //
+      // Sorted here rather than in the two actions, because both of them -
+      // the anonymous read path and the member one - go through this method,
+      // and a payload that differs between those two audiences is the shape
+      // of a leak. `number` remains the tiebreak for tags that do not
+      // separate.
+      .sort((a, b) => compareReleaseTags(a.tag, b.tag) || a.number - b.number);
 
     // Only the open ones are looked up. A released release renders entirely
     // from the four counts frozen onto its own row - see
@@ -104,9 +119,9 @@ export class RoadmapService {
 
     return {
       project: { title: project.title },
-      // Open first, in `number` order, then the shipped ones - which is the
+      // Open first, in VERSION order, then the shipped ones - which is the
       // order both pages render, so the client never re-sorts. The two halves
-      // keep the ascending order the query produced.
+      // keep the ascending order established above.
       releases: [
         ...rows.filter((release) => !release.releasedAt).map(toRelease),
         ...rows.filter((release) => release.releasedAt).map(toRelease),

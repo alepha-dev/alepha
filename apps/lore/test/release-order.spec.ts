@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { compareReleaseTags } from "../src/web/app/components/project/releases/releaseOrder.ts";
+import { compareReleaseTags } from "../src/api/releaseOrder.ts";
 
 /**
  * The regression guard for quest #1640.

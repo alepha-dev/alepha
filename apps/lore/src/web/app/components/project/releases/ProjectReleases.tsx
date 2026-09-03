@@ -10,6 +10,7 @@ import { CircleDot, Flag, Plus, Search } from "lucide-react";
 import { useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
+import { compareReleaseTags } from "@/api/releaseOrder.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -17,7 +18,6 @@ import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
-import { compareReleaseTags } from "./releaseOrder.ts";
 import ReleaseProgress from "./ReleaseProgress.tsx";
 import {
   releaseState,
