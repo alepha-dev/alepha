@@ -17,6 +17,7 @@ import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { FEEDBACK_PAGE_SIZE } from "./feedbackPageSize.ts";
 import ProjectFeedbackCard from "./ProjectFeedbackCard.tsx";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
 import ProjectFeedbackEmptyState from "./ProjectFeedbackEmptyState.tsx";
@@ -32,6 +33,7 @@ type StatusFilter = FeedbackResource["status"];
 
 export interface ProjectFeedbackProps {
   items: FeedbackResource[];
+  hasMore: boolean;
 }
 
 const ProjectFeedback = (props: ProjectFeedbackProps) => {
@@ -42,9 +44,30 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
 
   const [status, setStatus] = useState<StatusFilter>("pending");
   const [items, setItems] = useState<FeedbackResource[]>(props.items ?? []);
+  const [hasMore, setHasMore] = useState(props.hasMore ?? false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(
     props.items?.[0]?.id ?? null,
   );
+
+  /**
+   * The badge counts the whole pending set, never the page.
+   *
+   * It used to be `items.length` off the list, which was the same number
+   * while the list was unbounded. With a ten-row page it would report 10
+   * over an inbox of 106 — a badge that reads as a full inbox emptying
+   * itself down to a round number.
+   */
+  const refreshCount = () => {
+    if (!project) return;
+    feedbackApi
+      .countFeedback({
+        params: { projectId: project.id },
+        query: { status: "pending" },
+      })
+      .then((r) => setFeedbackCount({ count: r.count }))
+      .catch(() => {});
+  };
 
   // No loading indicator on purpose: the status switch refetches in ~300ms and
   // a spinner next to the segmented control reads as flicker (feedback #11).
@@ -52,26 +75,51 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
     if (!project) return;
     const res = await feedbackApi.listFeedback({
       params: { projectId: project.id },
-      query: { status: next },
+      query: { status: next, limit: FEEDBACK_PAGE_SIZE },
     });
     setItems(res.items);
+    setHasMore(res.hasMore);
     setActiveId(res.items[0]?.id ?? null);
-    if (next === "pending") {
-      setFeedbackCount({ count: res.items.length });
-    } else {
-      feedbackApi
-        .listFeedback({
-          params: { projectId: project.id },
-          query: { status: "pending" },
-        })
-        .then((r) => setFeedbackCount({ count: r.items.length }))
-        .catch(() => {});
+    refreshCount();
+  };
+
+  /**
+   * Append the next page. Deliberately not a `reload`: the selected card and
+   * the pages already on screen both survive, so pressing this never moves
+   * the detail pane out from under whoever is reading it.
+   *
+   * The offset is `items.length` rather than a page counter, so a row
+   * accepted or rejected between two presses shifts the window instead of
+   * leaving a gap — the list is filtered by status, and a triaged row leaves
+   * it.
+   */
+  const loadMore = async () => {
+    if (!project || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await feedbackApi.listFeedback({
+        params: { projectId: project.id },
+        query: {
+          status,
+          limit: FEEDBACK_PAGE_SIZE,
+          offset: items.length,
+        },
+      });
+      // Keyed by id: the offset above can overlap when the set shifted under
+      // it, and a duplicate row would break React's keys as well as the eye.
+      setItems((current) => {
+        const seen = new Set(current.map((item) => item.id));
+        return [...current, ...res.items.filter((item) => !seen.has(item.id))];
+      });
+      setHasMore(res.hasMore);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
     if (status === "pending" && props.items && items === props.items) {
-      setFeedbackCount({ count: props.items.length });
+      refreshCount();
       return;
     }
     // An effect that starts an I/O load is the "synchronize with an external
@@ -148,6 +196,19 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
                     onClick={() => setActiveId(feedback.id)}
                   />
                 ))}
+                {hasMore && (
+                  <button
+                    type="button"
+                    data-testid="feedback-show-more"
+                    disabled={loadingMore}
+                    onClick={() => void loadMore()}
+                    className="text-muted-foreground hover:bg-muted hover:text-foreground border-border border-t px-3 py-3 text-sm font-medium transition-colors disabled:opacity-60"
+                  >
+                    {loadingMore
+                      ? tr("feedback.list.loadingMore")
+                      : tr("feedback.list.showMore")}
+                  </button>
+                )}
               </div>
             )}
           </div>

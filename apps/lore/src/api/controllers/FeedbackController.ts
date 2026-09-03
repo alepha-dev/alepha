@@ -361,8 +361,86 @@ export class FeedbackController {
           .enum(["pending", "accepted", "rejected", "all"])
           .meta({ mode: "text" })
           .optional(),
+        /**
+         * How many rows this page holds. Ten by default, fifty at most.
+         *
+         * The list is what pays the D1 bill and what tripped the
+         * 100-parameter ceiling (#1730): `toResources` binds every row's
+         * attachment ids, so an unbounded list scales its statement with the
+         * inbox. Project 1 had 106 accepted rows rendering at once.
+         */
+        limit: z.integer().min(1).max(50).optional(),
+        /**
+         * Where this page starts. Offset rather than a keyset cursor: the
+         * order is `createdAt` desc on a table one project writes to by hand,
+         * so the drift a cursor protects against needs a human filing
+         * feedback between two clicks of "Show more". Offset costs one
+         * parameter and no new index.
+         */
+        offset: z.integer().min(0).optional(),
       }),
-      response: z.object({ items: z.array(feedbackResourceSchema) }),
+      response: z.object({
+        items: z.array(feedbackResourceSchema),
+        /**
+         * Whether another page exists. Derived by over-fetching one row
+         * rather than by a second `COUNT(*)`, so paging costs one query.
+         */
+        hasMore: z.boolean(),
+      }),
+    },
+    handler: async ({ params, query, user }) => {
+      await this.ensureMember(params.projectId, user);
+
+      const status = query.status ?? "pending";
+      const limit = query.limit ?? 10;
+      const offset = query.offset ?? 0;
+      const where = this.feedback.createQueryWhere();
+      where.projectId = { eq: params.projectId };
+      if (status !== "all") {
+        where.status = { eq: status };
+      }
+
+      // `limit + 1`: the extra row is never returned, it only answers
+      // "is there another page".
+      const rows = await this.feedbackWith.findMany({
+        where,
+        orderBy: [{ column: "createdAt", direction: "desc" }],
+        include: FeedbackController.withRelations,
+        limit: limit + 1,
+        offset,
+      });
+
+      const hasMore = rows.length > limit;
+
+      return {
+        items: await this.toResources(hasMore ? rows.slice(0, limit) : rows),
+        hasMore,
+      };
+    },
+  });
+
+  /**
+   * How many feedback rows a project holds in one state, for the sidebar
+   * badge.
+   *
+   * Its own endpoint because `listFeedback` is paged now: the badge used to
+   * read `items.length` off the list, which after paging would have counted
+   * a page and reported "10" over an inbox of 106. Mirrors
+   * `countOpenBlights` / `countOpenQuests`.
+   */
+  countFeedback = $action({
+    use: [$secure({ permissions: ["project:read"] })],
+    method: "GET",
+    path: "/projects/:projectId/feedback/count",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      query: z.object({
+        status: z
+          .enum(["pending", "accepted", "rejected", "all"])
+          .meta({ mode: "text" })
+          .optional(),
+      }),
+      response: z.object({ count: z.integer() }),
     },
     handler: async ({ params, query, user }) => {
       await this.ensureMember(params.projectId, user);
@@ -374,13 +452,11 @@ export class FeedbackController {
         where.status = { eq: status };
       }
 
-      const items = await this.feedbackWith.findMany({
-        where,
-        orderBy: [{ column: "createdAt", direction: "desc" }],
-        include: FeedbackController.withRelations,
-      });
+      // `columns: ["id"]` so the count never drags a row's body, its
+      // attachments or its relations back with it.
+      const rows = await this.feedback.findMany({ where, columns: ["id"] });
 
-      return { items: await this.toResources(items) };
+      return { count: rows.length };
     },
   });
 

@@ -48,6 +48,7 @@ import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
 import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
+import { FEEDBACK_PAGE_SIZE } from "./components/project/feedback/feedbackPageSize.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 
 /**
@@ -495,12 +496,16 @@ export class AppRouter {
         // project navigation instead of polled: accept/reject/remove
         // actions adjust the atom locally, so within-session math stays
         // correct. Errors count as 0 (the badge hides).
+        //
+        // `countFeedback`, not `listFeedback().items.length`: the list pages
+        // at ten now, so counting it would cap the badge at 10 over an inbox
+        // of 106 (#1744).
         this.feedbackApi
-          .listFeedback({
+          .countFeedback({
             params: { projectId: project.id },
             query: { status: "pending" },
           })
-          .then((r) => r.items.length)
+          .then((r) => r.count)
           .catch(() => 0),
 
         // Open-quest count for the sidebar badge. Always on (unlike Blights /
@@ -1124,11 +1129,13 @@ export class AppRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      const { items } = await this.feedbackApi.listFeedback({
+      // The first page only. `Show more` fetches the rest from inside the
+      // page, so the loader is one screenful regardless of inbox size.
+      const { items, hasMore } = await this.feedbackApi.listFeedback({
         params: { projectId: project.id },
-        query: { status: "pending" },
+        query: { status: "pending", limit: FEEDBACK_PAGE_SIZE },
       });
-      return { items };
+      return { items, hasMore };
     },
   });
 
