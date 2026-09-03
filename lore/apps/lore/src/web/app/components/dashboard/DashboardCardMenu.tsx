@@ -36,7 +36,11 @@ const DashboardCardMenu = (props: DashboardCardMenuProps) => {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={tr("dashboard.card.options")}
-        className="text-muted-foreground/70 hover:bg-accent hover:text-foreground inline-flex size-[22px] shrink-0 items-center justify-center rounded-md transition-colors"
+        // `size-6` (24px), not the 22px this started on. WCAG 2.2's Target
+        // Size (Minimum) asks for 24x24 CSS px and this missed by two in each
+        // direction - reachable with a mouse, awkward with a thumb. The glyph
+        // stays `size-3.5`, so only the hover chip grows, by one pixel a side.
+        className="text-muted-foreground/70 hover:bg-accent hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors"
       >
         <MoreVertical className="size-3.5" />
       </DropdownMenuTrigger>
