@@ -1053,6 +1053,7 @@ export default {
   "app.tab.dashboard": "Dashboard",
   "app.tab.analytics": "Analytics",
   "app.tab.vitals": "Vitals",
+  "app.tab.errors": "Errors",
   "app.tab.explore": "Explore",
   "app.tab.artifacts": "Artifacts",
   "app.tab.settings": "Settings",
@@ -1091,7 +1092,9 @@ export default {
     "No artifacts pushed yet. Everything else on this page comes from the app itself; artifacts come from CI, so an app with no pipeline wired up shows none.",
   "app.artifacts.empty.credential":
     "Needs LORE_API_KEY in the environment that runs it. `latest` may be replaced; any other tag is written once.",
+  "insights.errors.title": "Error budget",
   "insights.errors.note": "Distinct failures still happening in this app",
+  "insights.errors.empty": "No failures reported in this window.",
   "app.settings.general": "General",
   "app.settings.credential": "Credential",
   "app.settings.danger": "Danger zone",

@@ -16,6 +16,7 @@ type RouteName =
   | "app"
   | "appAnalytics"
   | "appVitals"
+  | "appErrors"
   | "appExplore"
   | "appArtifacts"
   | "appSettings";
@@ -24,6 +25,7 @@ type TabLabelKey =
   | "app.tab.dashboard"
   | "app.tab.analytics"
   | "app.tab.vitals"
+  | "app.tab.errors"
   | "app.tab.explore"
   | "app.tab.artifacts"
   | "app.tab.settings";
@@ -37,12 +39,22 @@ interface AppTab {
    * app itself, which exists either way.
    */
   needsBeacon?: boolean;
+  /**
+   * Same idea for the error tab, and deliberately a second flag rather than a
+   * reuse of the one above: `beacon` fills the view and vitals datasets,
+   * `blights` fills the error groups, and an app may carry either alone.
+   */
+  needsBlights?: boolean;
 }
 
 const TABS: AppTab[] = [
   { route: "app", labelKey: "app.tab.dashboard" },
   { route: "appAnalytics", labelKey: "app.tab.analytics", needsBeacon: true },
   { route: "appVitals", labelKey: "app.tab.vitals", needsBeacon: true },
+  // Not `needsBeacon`: this one reads `sigil_error_groups`, which is written
+  // under the `blights` kind. It carries `needsBlights` instead, and the two
+  // are genuinely independent - see the route's own note.
+  { route: "appErrors", labelKey: "app.tab.errors", needsBlights: true },
   // Last before Settings on purpose. Analytics and Vitals answer the questions
   // worth putting on a page; this one answers the ones nobody anticipated, so
   // it belongs after the curated pair rather than in place of them.
@@ -90,7 +102,13 @@ const AppLayout = () => {
   // read what Beacon collects, and an app that does not carry it has nothing
   // behind either tab.
   const collectsBeacon = sigil.kinds.includes("beacon");
-  const tabs = TABS.filter((tab) => !tab.needsBeacon || collectsBeacon);
+  // And the same question for errors, which come in under a different kind.
+  const collectsBlights = sigil.kinds.includes("blights");
+  const tabs = TABS.filter(
+    (tab) =>
+      (!tab.needsBeacon || collectsBeacon) &&
+      (!tab.needsBlights || collectsBlights),
+  );
   // The whole analytics question lives in the URL, so crossing between
   // Analytics and Vitals has to carry it across or the link itself resets what
   // it used to preserve. Only for the two tabs that read it: a `?range=`

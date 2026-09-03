@@ -1066,6 +1066,7 @@ export default {
   "app.tab.dashboard": "Vue d'ensemble",
   "app.tab.analytics": "Audience",
   "app.tab.vitals": "Vitals",
+  "app.tab.errors": "Erreurs",
   "app.tab.explore": "Explorer",
   "app.tab.artifacts": "Artefacts",
   "app.tab.settings": "Paramètres",
@@ -1105,8 +1106,10 @@ export default {
     "Aucun artefact publié pour l'instant. Tout le reste de cette page vient de l'app elle-même ; les artefacts viennent de la CI, donc une app sans pipeline n'en montre aucun.",
   "app.artifacts.empty.credential":
     "Nécessite LORE_API_KEY dans l'environnement qui l'exécute. `latest` peut être remplacé ; tout autre tag est écrit une seule fois.",
+  "insights.errors.title": "Budget d'erreurs",
   "insights.errors.note":
     "Défaillances distinctes encore actives dans cette app",
+  "insights.errors.empty": "Aucune défaillance signalée sur cette période.",
   "app.settings.general": "Général",
   "app.settings.credential": "Accès",
   "app.settings.danger": "Zone dangereuse",

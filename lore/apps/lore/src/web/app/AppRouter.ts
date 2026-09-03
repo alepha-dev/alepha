@@ -710,6 +710,7 @@ export class AppRouter {
       this.appAnalytics,
       this.appAnalyticsDimension,
       this.appVitals,
+      this.appErrors,
       this.appExplore,
       this.appArtifacts,
       this.appSettings,
@@ -845,6 +846,31 @@ export class AppRouter {
   });
 
   /**
+   * Distinct failures still happening in this app.
+   *
+   * ⚠️ Gated on **`blights`**, not on Beacon like its neighbours. The rows it
+   * renders come from `sigil_error_groups`, which `SigilIngestService` writes
+   * under the `errors` gate - an app that collects page views and refuses
+   * error reports has nothing to put here, and one that does the reverse has
+   * everything. Copying `assertBeacon()` from the tab above would have got
+   * both of those backwards.
+   *
+   * It reads the same insights payload Analytics does, so it costs the same
+   * one query and shares `?range=` with the other two curated tabs.
+   */
+  appErrors = $page({
+    name: "appErrors",
+    path: "/errors",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Errors`,
+    }),
+    lazy: () => import("./components/project/apps/AppErrors.tsx"),
+    loader: async () => {
+      this.assertBlights();
+    },
+  });
+
+  /**
    * The query explorer: the framework's analytics query builder, scoped to
    * this app.
    *
@@ -906,6 +932,19 @@ export class AppRouter {
     const sigil = this.alepha.store.get(currentSigilAtom);
     if (!sigil?.kinds.includes("beacon")) {
       throw new NotFoundError("Beacon is not enabled for this app");
+    }
+  }
+
+  /**
+   * The Errors tab's gate. Separate from `assertBeacon` because the two answer
+   * different questions: `beacon` is what fills `sigil_views` / `sigil_vitals`,
+   * `blights` is what fills `sigil_error_groups`, and an app can carry either
+   * without the other.
+   */
+  protected assertBlights(): void {
+    const sigil = this.alepha.store.get(currentSigilAtom);
+    if (!sigil?.kinds.includes("blights")) {
+      throw new NotFoundError("Blights are not enabled for this app");
     }
   }
 
