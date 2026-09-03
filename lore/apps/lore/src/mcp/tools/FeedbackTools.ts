@@ -155,6 +155,7 @@ export class FeedbackTools {
   feedback_list = $tool({
     description:
       "List feedback (user-submitted bug/feature requests) for a project. Any project member can read it; accept/reject are owner-only. Defaults to status 'pending' — the inbox the owner needs to triage. Pass status='all' to see everything. " +
+      "⚠️ **PAGED since 0.28.0, where it used to return every row.** It answers at most 50 at a time, newest first, and `hasMore` says whether older rows remain — a project with 106 accepted items now takes three calls, so treat a full page as 'there is probably more' rather than as the whole set. Page with `offset`, raised by the page size; there is no cursor. " +
       "A row with a non-zero `attachmentCount` carries files: `feedback_get` lists them and `feedback_attachment_get` renders an image inline, so triage does not need a round-trip per row to find out which reports came with a screenshot.",
     title: "List feedback",
     annotations: { readOnlyHint: true, idempotentHint: true },
@@ -170,10 +171,18 @@ export class FeedbackTools {
 
       const result = await this.feedbackController.listFeedback({
         params: { projectId },
-        query: { status: params.status },
+        // 50, not the HTTP default of 10: an agent reads a list to reason
+        // over it and pays a round-trip per page, where the inbox reads one
+        // screenful and pays a scroll. Both are bounded by the same ceiling.
+        query: {
+          status: params.status,
+          limit: params.limit ?? 50,
+          offset: params.offset,
+        },
       });
 
       return {
+        hasMore: result.hasMore,
         feedback: result.items.map((p) => ({
           id: p.id,
           shortId: p.shortId,

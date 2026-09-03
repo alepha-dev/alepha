@@ -161,10 +161,35 @@ export const feedbackListParamsSchema = projectParamsSchema.extend({
     .meta({ mode: "text" })
     .describe("Filter by status. Defaults to 'pending' (inbox triage).")
     .optional(),
+  limit: z
+    .integer()
+    .min(1)
+    .max(50)
+    .describe(
+      "Rows in this page, 1-50. Defaults to 50 — this list is PAGED and no longer answers with the whole inbox, so read `hasMore` before concluding a project has nothing older.",
+    )
+    .optional(),
+  offset: z
+    .integer()
+    .min(0)
+    .describe(
+      "Rows to skip, for the next page. Add the page size you asked for; there is no cursor.",
+    )
+    .optional(),
 });
 
 export const feedbackListResultSchema = z.object({
   feedback: z.array(feedbackRefSchema),
+  /**
+   * Whether a further page exists past this one. The list used to return
+   * every row, so a caller that ignores this now sees at most fifty and has
+   * no way to tell a small project from a truncated one.
+   */
+  hasMore: z
+    .boolean()
+    .describe(
+      "True when rows remain past this page. Ask again with `offset` raised by the page size.",
+    ),
 });
 
 // -----------------------------------------------------------------------------

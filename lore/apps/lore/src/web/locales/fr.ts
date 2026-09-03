@@ -1301,6 +1301,8 @@ export default {
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
 
+  "feedback.list.showMore": "Afficher plus",
+  "feedback.list.loadingMore": "Chargement…",
   "feedback.empty.pending": "Aucun retour en attente.",
   "feedback.empty.status": "Aucun retour $1.",
   "feedback.empty.selectOne": "Sélectionnez un élément dans la liste",

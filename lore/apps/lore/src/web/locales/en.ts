@@ -1279,6 +1279,8 @@ export default {
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",
 
+  "feedback.list.showMore": "Show more",
+  "feedback.list.loadingMore": "Loading…",
   "feedback.empty.pending": "No pending feedback.",
   "feedback.empty.status": "No $1 feedback.",
   "feedback.empty.selectOne": "Select an item from the list",
