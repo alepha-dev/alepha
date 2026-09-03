@@ -544,13 +544,27 @@ export class AlephaCommands {
    *
    * The reason it can be trusted at all is that its unknowns resolve
    * generously. A repo-level file selects every workspace, an unplaceable
-   * path selects every workspace, and a git that cannot answer raises instead
-   * of reporting an empty change set.
+   * path selects every workspace, a git that cannot answer raises instead
+   * of reporting an empty change set, and an EMPTY DIFF selects every
+   * workspace rather than none.
+   *
+   * ⚠️ That last one is not symmetry for its own sake, it is the post-pull
+   * trap. `ref` defaults to `origin/main`, and the moment you pull, HEAD IS
+   * `origin/main`, so the diff is empty by construction. The old behaviour
+   * narrowed that to zero workspaces and skipped test, build and e2e, so
+   * `yarn v` straight after a pull exited 0 in seventy seconds having
+   * verified nothing at workspace level - the most dangerous shape a gate
+   * can take, because it looks like a fast green. "Nothing changed" is not
+   * "nothing to check": it means this ref cannot narrow anything, and the
+   * generous reading is the whole repo.
    */
   protected async selectAffected(ref: string): Promise<AffectedSelection> {
     const changed = await this.changedFiles.since(ref);
     const workspaces = await this.graph.read();
-    const names = [...this.graph.affectedIn(workspaces, changed)].sort();
+    const nothingChanged = changed.length === 0;
+    const names = nothingChanged
+      ? workspaces.map((it) => it.name).sort()
+      : [...this.graph.affectedIn(workspaces, changed)].sort();
     const everything = names.length === workspaces.length;
 
     const projects: string[] = [];
@@ -570,7 +584,11 @@ export class AlephaCommands {
       }
     }
 
-    if (everything) {
+    if (nothingChanged) {
+      this.log.info(
+        `--affected: nothing changed since ${ref}, so this ref narrows nothing - running the pipeline whole. To verify only what a pull brought in, name the pre-pull commit: --since HEAD@{1}.`,
+      );
+    } else if (everything) {
       this.log.info(
         `--affected: ${changed.length} changed file(s) since ${ref} reach every workspace, running the pipeline whole`,
       );
