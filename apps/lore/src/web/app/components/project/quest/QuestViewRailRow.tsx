@@ -24,8 +24,27 @@ const QuestViewRailRow = (props: QuestViewRailRowProps) => {
 
   const Icon = props.icon;
 
+  /*
+   * `items-center`, not the `items-start` this had. Most values are plain
+   * text the same height as their label, so the difference was invisible -
+   * but Assigned renders an avatar chip and Release a select trigger with a
+   * chevron, and on both the label was pinned to the top of a box the value
+   * filled (feedback #2083).
+   *
+   * Chosen over the alternative of a `min-h` on the two tall rows: that
+   * keeps first-line alignment when a value wraps, but the number would be
+   * a copy of a control's height living in a different file, which is
+   * exactly the drift `FilterSlot` and `releaseOrder` were each written to
+   * stop. A label centred against its value is also the ordinary treatment
+   * for a definition row.
+   *
+   * The cost is real and small: a value long enough to wrap - a long area
+   * name, an epic title, an email; see the `break-words` note below for why
+   * wrapping is possible at all - now sits centred against its label rather
+   * than level with its first line. Checked at 1440 and at 491.
+   */
   return (
-    <div className="flex items-start justify-between gap-3 py-1.5">
+    <div className="flex items-center justify-between gap-3 py-1.5">
       <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
         <Icon className="size-3.5" />
         {props.label}
