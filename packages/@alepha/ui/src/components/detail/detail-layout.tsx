@@ -181,14 +181,44 @@ export const DetailLayout = (props: DetailLayoutProps) => {
               and `actions` is caller JSX this component cannot size, so any
               increase here breaks it. Both are centred in a 56px bar, which
               is why 8px of difference does not show. */}
-          <Segmented
-            size="lg"
-            options={options}
-            value={props.tab}
-            onChange={props.onTabChange}
-          />
+          {/* ⚠️ `min-w-0 overflow-x-auto` around the tab strip, and `shrink-0`
+              on the actions. Without them the row is a non-wrapping flex line
+              whose items refuse to shrink below their `whitespace-nowrap`
+              min-content width, while the ancestor two levels up is
+              `overflow-hidden` (deliberately, see the comment above it) and
+              this row is `overflow-x: visible`. Everything past the right edge
+              was therefore CLIPPED, with no scrollbar and no way to reach it.
+
+              Measured on the epic view at 411x845: the row was 409 wide with a
+              648 scrollWidth, and `Folios`, `Edit` and `Begin the Epic` - the
+              page's primary action - were all off-screen and unclickable. 768px
+              was worse, not better, because the 288px aside returns at `md`.
+
+              The two classes split the row's shortfall deliberately. The tab
+              strip is a bounded list this component owns, so it takes the
+              scrolling; the actions are caller JSX this component cannot size
+              (as the comment above already says), so they keep their full width
+              and stay clickable. A tab strip that scrolls is a known phone
+              pattern; a primary action hidden behind a scroll is not.
+
+              The `no-scrollbar` class used elsewhere in this package is not
+              defined anywhere in the repo, so the thin scrollbar shows - which
+              is the affordance saying there is more to the right.
+
+              `py-1` is not spacing: `overflow-x: auto` makes the computed
+              `overflow-y` `auto` too, and without 4px of slack the segment's
+              3px focus ring is clipped top and bottom. The row is
+              `items-center` in a fixed 56px bar, so it costs no height. */}
+          <div className="min-w-0 overflow-x-auto py-1">
+            <Segmented
+              size="lg"
+              options={options}
+              value={props.tab}
+              onChange={props.onTabChange}
+            />
+          </div>
           {props.actions ? (
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               {props.actions}
             </div>
           ) : null}

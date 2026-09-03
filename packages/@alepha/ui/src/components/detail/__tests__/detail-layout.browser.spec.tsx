@@ -162,6 +162,52 @@ describe("DetailLayout", () => {
   });
 
   /**
+   * The toolbar splits its shortfall: the tab strip scrolls, the actions do
+   * not shrink.
+   *
+   * The row is a non-wrapping flex line whose items are `whitespace-nowrap`,
+   * so they refuse to shrink below their min-content width, while the shell
+   * row two levels up is `overflow-hidden` and this row is
+   * `overflow-x: visible`. Anything past the right edge was therefore clipped
+   * with no scrollbar and no way to reach it.
+   *
+   * ⚠️ jsdom does no layout, so this can only pin the classes. The
+   * measurement that proves the behaviour was taken in a real browser, on the
+   * Lore epic view at 411x845: the row was `clientWidth 409` /
+   * `scrollWidth 648`, with `Folios`, `Edit` and `Begin the Epic` off-screen
+   * and unclickable. With these classes the row is 409/409, `Edit` sits at
+   * 200-270 and `Begin the Epic` at 278-394 - both inside the viewport - and
+   * the tab wrapper scrolls 0 to 255 to bring `Folios` back to 81-189.
+   */
+  it("scrolls the tab strip and keeps the actions at full width", async () => {
+    const { container } = await mount(
+      <DetailLayout
+        aside={<p>identity panel</p>}
+        tabs={tabs}
+        tab="overview"
+        onTabChange={() => {}}
+        actions={<button type="button">Publish</button>}
+      >
+        <p>overview body</p>
+      </DetailLayout>,
+    );
+
+    const segmented = container.querySelector('[data-slot="segmented"]');
+    const tabWrapper = segmented?.parentElement;
+
+    expect(tabWrapper?.className).toContain("overflow-x-auto");
+    // Without it the wrapper's `min-width: auto` is the strip's min-content
+    // width, so it never shrinks and never scrolls.
+    expect(tabWrapper?.className).toContain("min-w-0");
+
+    const actions = screen.getByRole("button", {
+      name: "Publish",
+    }).parentElement;
+
+    expect(actions?.className).toContain("shrink-0");
+  });
+
+  /**
    * `loading` wins over `notFound`. A page computes "not found" as "no record",
    * which is also true on the very first render — ordering it the other way
    * flashes "not found" before every successful load.
