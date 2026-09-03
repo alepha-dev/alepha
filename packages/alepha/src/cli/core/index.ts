@@ -37,6 +37,7 @@ import { AlephaCliUtils } from "./services/AlephaCliUtils.ts";
 import { PackageManagerUtils } from "./services/PackageManagerUtils.ts";
 import { ProjectScaffolder } from "./services/ProjectScaffolder.ts";
 import { ViteUtils } from "./services/ViteUtils.ts";
+import { WorkspacePacker } from "./services/WorkspacePacker.ts";
 import { BuildAssetsTask } from "./tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "./tasks/BuildClientTask.ts";
 import { BuildCloudflareTask } from "./tasks/BuildCloudflareTask.ts";
@@ -82,6 +83,7 @@ export * from "./services/PackageManagerUtils.ts";
 export * from "./services/ProjectScaffolder.ts";
 export * from "./services/ViteUtils.ts";
 export * from "./services/WorkspaceGraph.ts";
+export * from "./services/WorkspacePacker.ts";
 export * from "./tasks/BuildAssetsTask.ts";
 export * from "./tasks/BuildClientTask.ts";
 export * from "./tasks/BuildCloudflareTask.ts";
@@ -113,6 +115,7 @@ export const AlephaCliServices = $module({
     GitProvider,
     ViteDevServerProvider,
     ViteBuildProvider,
+    WorkspacePacker,
   ],
 });
 

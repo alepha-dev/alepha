@@ -1,7 +1,8 @@
-import { $inject, AlephaError, z } from "alepha";
+import { $inject, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
-import { FileSystemProvider, ShellProvider } from "alepha/system";
+
+import { WorkspacePacker } from "../services/WorkspacePacker.ts";
 
 /**
  * Pack the workspace into a deployable `tar.gz`.
@@ -22,39 +23,18 @@ import { FileSystemProvider, ShellProvider } from "alepha/system";
  * "latest"). Project name comes from `--name` when the caller passes
  * one, otherwise from `package.json.name`. Naming mirrors Docker tags:
  * same artifact, different tag = different file.
+ *
+ * ## ⚠️ The work is in {@link WorkspacePacker}, not here
+ *
+ * Everything below is flag parsing. Packing lives in a service registered by
+ * the command-free `AlephaCliServices`, because injecting a command registers
+ * the module that declares it: a caller reaching for `PackCommand` was
+ * registering the whole of `AlephaCli` and growing a `build`, a `dev` and a
+ * `verify` it never asked for.
  */
 export class PackCommand {
   protected readonly log = $logger();
-
-  /**
-   * What an explicit `--name` may contain.
-   *
-   * It lands verbatim in a path, so a separator or a parent reference would
-   * write the archive outside the output directory. Deliberately the same
-   * shape Bay validates an app key against, so the platform name it hands
-   * over always passes.
-   */
-  protected readonly namePattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
-
-  /**
-   * Make a package name safe to use as a filename.
-   *
-   * A scoped name like `@acme/app` carries a path separator, so the archive
-   * path pointed into a directory that does not exist and tar failed.
-   * `@acme/app` → `acme-app`.
-   *
-   * `platform-lib`'s `NamingService` does the same thing for cloud resource
-   * names, but `cli/core` must not depend on `platform-lib` — the dependency
-   * runs the other way.
-   */
-  protected slugify(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-  }
-  protected readonly fs = $inject(FileSystemProvider);
-  protected readonly shell = $inject(ShellProvider);
+  protected readonly packer = $inject(WorkspacePacker);
 
   public readonly pack = $command({
     name: "pack",
@@ -84,118 +64,12 @@ export class PackCommand {
         .optional(),
     }),
     handler: async ({ flags, root, run }) => {
-      // Taken verbatim, so the caller that passed it can build the same
-      // filename without re-implementing `slugify`. That second derivation
-      // is exactly what let `pack` write one file while `BayAdapter` looked
-      // for another. Only the `package.json` fallback is slugified.
-      let project: string;
-      if (flags.name !== undefined) {
-        if (!this.namePattern.test(flags.name)) {
-          throw new AlephaError(
-            `Invalid --name "${flags.name}": the artifact filename is built from it, so it must be a single filename segment matching ${this.namePattern}.`,
-          );
-        }
-        project = flags.name;
-      } else {
-        const pkgPath = this.fs.join(root, "package.json");
-        try {
-          const pkg = await this.fs.readJsonFile<{ name?: string }>(pkgPath);
-          if (!pkg.name) {
-            throw new AlephaError(
-              'Missing "name" in package.json: `alepha pack` needs it for the artifact filename. Pass `--name` to set it explicitly.',
-            );
-          }
-          project = this.slugify(pkg.name);
-        } catch (err) {
-          if (err instanceof AlephaError) throw err;
-          throw new AlephaError(
-            `Could not read package.json at ${pkgPath}. Run \`alepha pack\` from a workspace directory.`,
-          );
-        }
-      }
-
-      const tag = flags.tag ?? "latest";
-      const outputDir = flags.output ?? root;
-      const filename = `${project}-${tag}.tar.gz`;
-      const outputPath = this.fs.join(outputDir, filename);
-
-      // Include list: just `dist/` + `migrations/`. Everything else
-      // (src, alepha.config.ts, tsconfig.json, package.json) is
-      // dev-time scaffolding — the deploy side reads
-      // `dist/manifest.json` for project/env/resources and never
-      // touches source.
-      const candidates = ["dist", "migrations"];
-      const includes: string[] = [];
-      for (const candidate of candidates) {
-        if (await this.fs.exists(this.fs.join(root, candidate))) {
-          includes.push(candidate);
-        }
-      }
-
-      if (!includes.includes("dist")) {
-        throw new AlephaError(
-          "dist/ missing — run `alepha build` before `alepha pack`.",
-        );
-      }
-      const manifestPath = this.fs.join(root, "dist", "manifest.json");
-      if (!(await this.fs.exists(manifestPath))) {
-        throw new AlephaError(
-          `dist/manifest.json missing — required for prebuilt deploys. Rebuild with the current alepha version (\`alepha build\`).`,
-        );
-      }
-
-      // An app that declares a database but ships no migrations is packed
-      // silently and then fails at runtime with missing tables, far from the
-      // cause. The mismatch is knowable here, so it is refused here.
-      //
-      // It is a real shape, not a hypothetical: in a monorepo the migrations
-      // often live in a shared package (`packages/server/migrations`) while the
-      // deployable workspace is `apps/<name>`, and a self-hosted runtime
-      // resolves `migrations/<dialect>` relative to its own working directory —
-      // so only what `pack` includes ever exists.
-      const manifest = await this.fs.readJsonFile<{
-        resources?: { hasDatabase?: boolean };
-      }>(manifestPath);
-      if (manifest.resources?.hasDatabase && !includes.includes("migrations")) {
-        throw new AlephaError(
-          "This app declares a database but there is no `migrations/` next to " +
-            "`dist/`, so the artifact would deploy with no schema and fail at " +
-            "runtime with missing tables.\n\n" +
-            "Generate them with `alepha db migrations create`, or — if they live " +
-            "in another workspace — make them reachable from this one before " +
-            "packing.",
-        );
-      }
-
-      // macOS sets COPYFILE_DISABLE=0 by default; tar will then include
-      // AppleDouble `._*` files. Force it off here so the tarball is
-      // portable. Also pass explicit excludes for `node_modules`,
-      // `.DS_Store`, etc. — they slip in via `dist/`.
-      const excludes = [
-        "node_modules",
-        ".DS_Store",
-        "._*",
-        ".alepha",
-        "e2e",
-        "playwright-report",
-        "test-results",
-        "coverage",
-      ]
-        .map((p) => `--exclude='${p}'`)
-        .join(" ");
-
-      const tarCmd = `tar -czf '${outputPath}' ${excludes} ${includes.map((p) => `'${p}'`).join(" ")}`;
-      // Wrap in `sh -c` so the env-var assignment is interpreted by the
-      // shell instead of being parsed as the binary name. COPYFILE_DISABLE
-      // suppresses macOS AppleDouble (`._*`) entries that tar otherwise
-      // emits when running on HFS+/APFS.
-      const cmd = `sh -c "COPYFILE_DISABLE=1 ${tarCmd}"`;
-
-      await run({
-        name: `pack → ${filename}`,
-        handler: async () => {
-          await this.shell.run(cmd, { root });
-        },
+      const { filename, outputPath } = await this.packer.pack({
+        root,
+        name: flags.name,
+        tag: flags.tag,
+        output: flags.output,
+        run,
       });
 
       this.log.info(`Packed ${filename} → ${outputPath}`);
