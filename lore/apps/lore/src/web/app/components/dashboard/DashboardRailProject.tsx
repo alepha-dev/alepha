@@ -7,6 +7,17 @@ import { ProjectIcon } from "../shared/ProjectIcon.tsx";
 export interface DashboardRailProjectProps {
   project: ProjectOverviewResource;
   href: string;
+  /**
+   * What to mark the row with, defaulting to the rail's own name.
+   *
+   * ⚠️ A parameter rather than a constant, because this row renders on TWO
+   * surfaces now: the rail at `lg` and up, and `DashboardProjectsSection`
+   * inline below it. Both are in the DOM at every width - the section is
+   * CSS-hidden, not unmounted - so a shared testid resolves to two elements
+   * per project, and every page-wide selector on it becomes a strict-mode
+   * violation. `home.spec` counted ten rows for five projects before this.
+   */
+  testId?: string;
 }
 
 /**
@@ -25,7 +36,7 @@ export interface DashboardRailProjectProps {
 const DashboardRailProject = (props: DashboardRailProjectProps) => (
   <Link
     href={props.href}
-    data-testid="dashboard-rail-project"
+    data-testid={props.testId ?? "dashboard-rail-project"}
     className="hover:bg-accent flex items-center gap-2.5 rounded-lg px-1.5 py-2 transition-colors"
   >
     <ProjectIcon fileId={props.project.icon} className="size-8 rounded-lg" />

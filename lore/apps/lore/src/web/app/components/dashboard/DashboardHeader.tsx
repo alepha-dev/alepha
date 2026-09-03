@@ -78,7 +78,12 @@ const DashboardHeader = (props: DashboardHeaderProps) => {
         <HeaderActions />
       </div>
 
-      <div className="mt-8 flex items-end gap-4">
+      {/* Wraps below `sm` rather than truncating (feedback #2084). The row
+          was `flex items-end`, with the two actions `shrink-0`, so at 412px
+          they took the width they asked for and the greeting absorbed the
+          whole shortfall - "Welco...". Stacking gives the title the full line
+          and costs a phone one row of height. */}
+      <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-end">
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-semibold tracking-[-0.02em]">
             {tr("dashboard.greeting", { args: [props.name] })}
@@ -87,7 +92,8 @@ const DashboardHeader = (props: DashboardHeaderProps) => {
             {standfirst}
           </p>
         </div>
-        <span className="flex-1" />
+        {/* Inert in the stacked direction, so it is not drawn there. */}
+        <span className="hidden flex-1 sm:block" />
         <div className="flex shrink-0 items-center gap-2">
           <Button
             variant="outline"

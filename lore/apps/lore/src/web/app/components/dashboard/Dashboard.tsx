@@ -18,6 +18,7 @@ import DashboardCatalogue from "./DashboardCatalogue.tsx";
 import DashboardEmpty from "./DashboardEmpty.tsx";
 import DashboardGrid from "./DashboardGrid.tsx";
 import DashboardHeader from "./DashboardHeader.tsx";
+import DashboardProjectsSection from "./DashboardProjectsSection.tsx";
 import DashboardRail from "./DashboardRail.tsx";
 import type { DashboardScopeApp } from "./DashboardScopeStep.tsx";
 
@@ -246,6 +247,12 @@ const Dashboard = () => {
         />
 
         {dashboard.cards.length === 0 && <DashboardEmpty />}
+
+        {/* The rail's contents, for every width the rail is not rendered at.
+            `lg:hidden` is the exact complement of its `lg:flex`, which is what
+            covers 768-1023 - the band where there is no rail and `useIsMobile`
+            still reports desktop. See the section's own note. */}
+        <DashboardProjectsSection />
       </main>
 
       {/*
