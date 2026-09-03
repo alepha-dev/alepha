@@ -5,7 +5,6 @@ import { FileAccessProvider } from "alepha/api/files";
 import { oauthOptions } from "alepha/api/oauth";
 import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
-import { AlephaEmailSmtp } from "alepha/email/smtp";
 
 import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
@@ -40,9 +39,23 @@ if (alepha.isProduction()) {
 // `verifyEmailRequired` and `resetPasswordAllowed` are off until this is
 // configured (see `AppSecurityProvider`).
 //
-// ⚠️ Behind an `if`, but still a STATIC import: nodemailer is in the bundle
-// whether or not SMTP is configured.
+// ⚠️ **A dynamic import, and that is load-bearing.** This file is also the
+// Cloudflare Worker entry. nodemailer requires `events`, `net` and `tls`,
+// which workerd cannot `createRequire`, so a STATIC import put them in the
+// Worker bundle and the production deploy died at boot validation with
+// `Uncaught Error: createRequire is unavailable on workerd; cannot require
+// "events"`. The `if` around it was never enough: an import is resolved at
+// module load, not at the branch.
+//
+// `yarn v` never builds for cloudflare, so nothing local catches this class —
+// only the deploy does. Do not turn this back into a static import.
+//
+// The condition needs nothing about workerd: a Worker sends through the
+// Cloudflare `send_email` binding and never carries EMAIL_HOST, so the branch
+// is false there and the chunk is never evaluated. And if one ever did carry
+// it, throwing on a config that cannot work beats skipping it in silence.
 if (alepha.env.EMAIL_HOST) {
+  const { AlephaEmailSmtp } = await import("alepha/email/smtp");
   alepha.with(AlephaEmailSmtp);
 }
 
