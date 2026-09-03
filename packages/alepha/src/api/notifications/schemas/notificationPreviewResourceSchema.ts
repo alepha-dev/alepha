@@ -15,7 +15,7 @@ import { type Infer, z } from "alepha";
 export const notificationPreviewResourceSchema = z.object({
   available: z.boolean(),
   reason: z.enum(["outbox-purged", "sensitive", "template-missing"]).optional(),
-  channel: z.enum(["email", "sms"]),
+  channel: z.text({ maxLength: 32 }),
   /**
    * ⚠️ **Every length here is explicit, and none of them may go back to a
    * bare `z.text()`.** That defaults to `Z_LIMITS.regular`, 255 characters,

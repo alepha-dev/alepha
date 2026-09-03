@@ -117,7 +117,7 @@ export class NotificationUnsubscribeService {
 
 export interface UnsubscribeClaims {
   contact: string;
-  channel: "email" | "sms";
+  channel: string;
   /**
    * The template's category, or absent for "everything".
    */

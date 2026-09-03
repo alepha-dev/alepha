@@ -46,7 +46,18 @@ export const notificationDeliveryEntity = $entity({
     messageId: z.text({ maxLength: 255 }).nullable().optional(),
 
     provider: z.text({ maxLength: 64 }),
-    channel: z.enum(["email", "sms"]),
+    /**
+     * The delivery channel, as a plain identifier rather than an enum.
+     *
+     * Open on purpose: a channel is a plugin (`NotificationChannel`), so the
+     * set of legal values is whatever the container registers and cannot be
+     * known by a column. The boot check refuses a template naming a channel
+     * nothing provides, which is what keeps a typo out of here.
+     *
+     * 32 rather than a bare `z.text()`: a channel name is a short
+     * identifier, and 255 is the default cap.
+     */
+    channel: z.text({ maxLength: 32 }),
     contact: z.text({ maxLength: 320 }),
     template: z.text({ maxLength: 100 }),
     category: z.text({ maxLength: 100 }).nullable().optional(),

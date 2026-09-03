@@ -71,7 +71,7 @@ export interface NotificationPreferenceOptions {
    * The normalized address or number the message is going to.
    */
   contact: string;
-  channel: "email" | "sms";
+  channel: string;
   /**
    * The `$notification` template's name.
    */

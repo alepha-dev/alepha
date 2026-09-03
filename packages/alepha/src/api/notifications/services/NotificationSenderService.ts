@@ -212,7 +212,7 @@ export class NotificationSenderService {
     }
   }
 
-  protected providerName(channel: "email" | "sms"): string {
+  protected providerName(channel: string): string {
     const provider =
       channel === "email" ? this.emailProvider : this.smsProvider;
     return provider.constructor.name;

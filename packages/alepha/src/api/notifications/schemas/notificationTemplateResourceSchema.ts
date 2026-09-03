@@ -23,7 +23,7 @@ export const notificationTemplateResourceSchema = z.object({
    * The channels this template declares, so the UI can say which of them a
    * given template can even produce.
    */
-  channels: z.array(z.enum(["email", "sms"])),
+  channels: z.array(z.text({ maxLength: 32 })),
   critical: z.boolean(),
   sensitive: z.boolean(),
 });

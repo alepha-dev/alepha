@@ -3,7 +3,12 @@ import { type Infer, z } from "alepha";
 import { notificationAttachmentSchema } from "./notificationAttachmentSchema.ts";
 
 export const notificationPayloadSchema = z.object({
-  type: z.enum(["email", "sms"]),
+  /**
+   * The delivery channel this row is for, one per channel the template
+   * declares. Open: the legal values are whatever `NotificationChannel`
+   * services the container registers.
+   */
+  type: z.text({ maxLength: 32 }),
   template: z.text(),
   contact: z.text(),
   variables: z.record(z.text(), z.any()).optional(),
