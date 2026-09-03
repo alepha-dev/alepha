@@ -211,4 +211,90 @@ test.describe("Dashboard", () => {
       );
     }
   });
+
+  /**
+   * #1754, from feedback #2084 on Chrome/Android at 412x924: no way to select
+   * a project from `/` at all.
+   *
+   * This page renders no `AppShell`, so it has no sidebar, no sheet and no
+   * trigger - and `DashboardRail`, which is `hidden ... lg:flex`, was the only
+   * thing carrying the project list, the new-project action and the Spotlight
+   * button. #1649's guard runs on a PROJECT page and could never have caught
+   * this: the landing page is a different tree that was never covered.
+   *
+   * ⚠️ 768 is asserted alongside 412 on purpose. The rail hides at `lg` (1024)
+   * while `useIsMobile` flips at 767, so a fix hung off `useIsMobile` would
+   * have left 768-1023 with neither - the same bug in a narrower band. The
+   * inline section is `lg:hidden`, the exact complement of the rail's
+   * `lg:flex`, and these two widths are what pins that.
+   */
+  test("the landing page reaches a project below lg", async ({ page }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `land${t}@example.com`, "GoodPassw0rd");
+    const { slug } = await createProjectViaWizard(page, `LD${t}`.slice(0, 20));
+
+    const section = page.getByTestId("dashboard-projects-section");
+    const rail = page.getByTestId("dashboard-rail");
+
+    for (const width of [412, 768]) {
+      await page.setViewportSize({ width, height: 924 });
+      await page.goto("/");
+      await page.waitForLoadState("networkidle");
+
+      await expect(section, `no projects section at ${width}px`).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(
+        rail,
+        `the rail should be hidden at ${width}px`,
+      ).toBeHidden();
+
+      // ⚠️ The section's rows carry their OWN testid. Both surfaces are in the
+      // DOM at every width - this one is CSS-hidden, not unmounted - so
+      // reusing the rail's name made every page-wide selector on it resolve to
+      // two elements per project. That is how the first draft of this shipped,
+      // and it took `home.spec` (ten rows counted for five projects) and this
+      // file's own drill-through down with it.
+      // Scoped to the section, because the RAIL is in the DOM here too - it is
+      // `hidden lg:flex`, CSS-hidden rather than unmounted, so a page-wide
+      // count cannot tell the two apart. Which is exactly the point.
+      await expect(
+        section.getByTestId("dashboard-rail-project"),
+        `the section reuses the rail's row testid at ${width}px`,
+      ).toHaveCount(0);
+      await expect(
+        section.getByTestId("dashboard-projects-project"),
+      ).toHaveCount(1);
+      await expect(rail.getByTestId("dashboard-rail-project")).toHaveCount(1);
+
+      // Both of the rail's other doors are here too, not just the list.
+      await expect(page.getByTestId("dashboard-projects-search")).toBeVisible();
+      await expect(page.getByTestId("dashboard-projects-new")).toBeVisible();
+
+      // The greeting takes the whole line instead of absorbing the shortfall
+      // the two actions leave: "Welco..." in the report's screenshot.
+      const truncated = await page
+        .locator("h1")
+        .first()
+        .evaluate((el) => el.scrollWidth > el.clientWidth);
+      expect(truncated, `greeting truncated at ${width}px`).toBe(false);
+    }
+
+    // And the point of all of it: a project is one tap away.
+    await page.setViewportSize({ width: 412, height: 924 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await section.getByRole("link", { name: new RegExp(`LD${t}`) }).click();
+    await page.waitForURL(`**/${slug}**`, { timeout: 15_000 });
+
+    // At `lg` the rail is back and the section is gone - complementary, never
+    // both and never neither.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await expect(rail).toBeVisible({ timeout: 15_000 });
+    await expect(section).toBeHidden();
+  });
 });

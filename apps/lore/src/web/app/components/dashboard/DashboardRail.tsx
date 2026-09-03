@@ -8,9 +8,9 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { spotlightOpenAtom } from "../../atoms/spotlightOpenAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
-import { RECENT_PROJECTS_CAP } from "../project/recentProjectsCap.ts";
 import LoreLogo from "../shared/LoreLogo.tsx";
 import DashboardRailProject from "./DashboardRailProject.tsx";
+import { recentProjects } from "./recentProjects.ts";
 
 /**
  * The left rail: search, the projects, and the way to make another one.
@@ -20,6 +20,10 @@ import DashboardRailProject from "./DashboardRailProject.tsx";
  * filters that array — a truncated atom would quietly reduce ⌘K to finding
  * whichever five sorted highest. See `recentProjectsCap.ts`, which carries
  * the same warning for Home.
+ *
+ * The sort and the slice live in `recentProjects.ts`, shared with
+ * `DashboardProjectsSection` - the same list rendered inline below `lg`,
+ * where this rail is not.
  *
  * The search box opens the Spotlight rather than being its own input: ⌘K
  * already works from any page (it is mounted in `Layout`), and a second
@@ -34,11 +38,10 @@ const DashboardRail = () => {
   const alepha = useAlepha();
   const [overview] = useStore(userProjectsAtom);
 
-  const projects = [...(overview?.projects ?? [])].sort((a, b) =>
-    a.updatedAt > b.updatedAt ? -1 : 1,
-  );
-  const shown = projects.slice(0, RECENT_PROJECTS_CAP);
-  const hasMore = projects.length > RECENT_PROJECTS_CAP;
+  // Shared with `DashboardProjectsSection`, which renders the same list
+  // inline below `lg`: the two are one idea at two widths, and a resize must
+  // not change the order or the count.
+  const { shown, total, hasMore } = recentProjects(overview?.projects);
 
   return (
     <aside
@@ -84,7 +87,7 @@ const DashboardRail = () => {
           data-testid="dashboard-rail-see-all"
           className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 px-1.5 py-2 text-[12.5px] transition-colors"
         >
-          {tr("dashboard.seeAll", { args: [String(projects.length)] })}
+          {tr("dashboard.seeAll", { args: [String(total)] })}
           <ArrowRight className="size-3.5" />
         </Link>
       )}
