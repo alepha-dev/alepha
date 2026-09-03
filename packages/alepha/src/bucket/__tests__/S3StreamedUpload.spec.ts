@@ -59,10 +59,8 @@ const setup = async () => {
  * rule, and a stub that accepts anything would prove none of it.
  */
 describe("S3 streamed upload", () => {
-  // From the env, not a literal. The bucket is partitioned per checkout
-  // (`test.slot.ts`), so a hardcoded name writes to a bucket the `beforeAll`
-  // below did not create - and, when two checkouts run at once, to one the
-  // other is emptying.
+  // From the env, not a literal, so this can never drift from the bucket
+  // `beforeAll` below actually provisions.
   const bucket = process.env.S3_BUCKET_NAME!;
 
   // Provisioned here rather than assumed. The suite passed locally on a mock

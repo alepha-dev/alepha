@@ -2,7 +2,7 @@ import { connect } from "node:net";
 
 import { $inject, AlephaError, z } from "alepha";
 import { ChangedFiles, WorkspaceGraph } from "alepha/cli";
-import { $command, TaskCacheProvider } from "alepha/command";
+import { $command, type RunOptions, TaskCacheProvider } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider, ShellProvider } from "alepha/system";
 
@@ -32,14 +32,19 @@ interface AffectedSelection {
 }
 
 /**
- * `yarn v` and `yarn v:go`: the verification lanes of this repository.
+ * The repository's own commands: `clean`, `verify` / `v` and `verify:go` /
+ * `v:go`. Each takes the slot of a CLI built-in of the same name - the CLI
+ * keeps the LAST registration for a name and `defineConfig` registers its
+ * services after the built-ins, so each one here is the one `--help` lists
+ * and the one that runs.
  *
- * Both replace nothing: the CLI's own `verify` is the single-app pipeline and
- * this monorepo needs the workspace fan-out instead. The CLI keeps the LAST
- * registration for a name and `defineConfig` registers its services after the
- * built-ins, so `verify` here is the one `--help` lists and the one that runs.
+ * `clean` replaces nothing conceptually, only scope: the CLI's own `clean`
+ * removes one app's `dist`, this one removes generated files for the whole
+ * repository. `verify` and `verify:go` replace nothing either: the CLI's own
+ * `verify` is a single-app pipeline and this monorepo needs the workspace
+ * fan-out instead.
  */
-export class VerifyCommand {
+export class AlephaCommands {
   protected readonly log = $logger();
   protected readonly graph = $inject(WorkspaceGraph);
   protected readonly changedFiles = $inject(ChangedFiles);
@@ -47,41 +52,68 @@ export class VerifyCommand {
   protected readonly shell = $inject(ShellProvider);
   protected readonly cache = $inject(TaskCacheProvider);
 
+  public readonly clean = $command({
+    description: "Will remove all generated files.",
+    handler: async ({ run }) => {
+      await run.rm([
+        // The e2e-cli scratch project: a packed tarball plus its own
+        // node_modules. `afterAll` removes it, but an interrupted run leaves
+        // it behind and it is not small.
+        `.e2e-tmp`,
+        `coverage`,
+        // Two levels: apps live at `apps/<app>` and `apps/examples/<app>`.
+        // A single `apps/*/…` silently stopped cleaning everything under
+        // `apps/examples/` the moment the examples moved down a level, and
+        // a stale `dist` there is exactly what makes an e2e run test the
+        // previous build.
+        `apps/*/playwright-report`,
+        `apps/*/test-results`,
+        `apps/*/.playwright`,
+        `apps/*/dist`,
+        `apps/*/coverage`,
+        `apps/*/*/playwright-report`,
+        `apps/*/*/test-results`,
+        `apps/*/*/.playwright`,
+        `apps/*/*/dist`,
+        `apps/*/*/coverage`,
+        `packages/*/dist`,
+        `packages/*/node_modules`,
+        `packages/*/coverage`,
+        // The scoped packages sit one level deeper.
+        `packages/*/*/dist`,
+        `packages/*/*/node_modules`,
+        `packages/*/*/coverage`,
+      ]);
+    },
+  });
+
   /**
-   * ⚠️ There is no machine-wide slot any more, and this note is what replaces
-   * it.
+   * The machine-wide queue key held by `test` and `test:bun`, the two steps
+   * that cannot overlap between checkouts.
    *
-   * `test`, `test:bun` and the `e2e` pair used to queue on `alepha:test`, a
-   * machine-wide FIFO, so two checkouts running `yarn v` at once took turns
-   * over the four `compose.yml` services. Half of that was paid for nothing
-   * and the other half was paid for the wrong reason:
+   * The service env in `vitest.projects.ts` points every checkout at the same
+   * `compose.yml` services: one postgres, one redis, one s3mock, one emqx.
+   * Postgres already isolates itself per run with a `test_alepha_{epoch}_{rand8}`
+   * schema, and the mqtt specs namespace their own topics with a
+   * `randomUUID()`, so neither needs this queue. Redis (one fixed key prefix,
+   * database 0) and s3mock (one fixed bucket) do not isolate themselves, so
+   * two checkouts testing at once can interleave writes or empty a bucket the
+   * other is still using. This queue is what keeps that from happening, by
+   * making them take turns.
    *
-   * | service  | what actually separates two runs                        |
-   * |----------|---------------------------------------------------------|
-   * | postgres | a `test_alepha_{epoch}_{rand8}` schema per run, already  |
-   * | emqx     | topics namespaced with `randomUUID()`, already          |
-   * | redis    | a per-checkout database index (`test.slot.ts`)          |
-   * | s3mock   | a per-checkout bucket name (`test.slot.ts`)             |
-   *
-   * The first two never needed the queue. The last two do the same thing the
-   * queue did, one level down, without making anybody wait.
-   *
-   * **The e2e pair shared nothing at all.** Checked rather than assumed: the
-   * service variables live in `vitest.config.ts`, which Playwright never
-   * loads, and no e2e config or `.env` sets one. `examples/playground` and
+   * **Not `e2e`/`e2e-cli`.** Checked rather than assumed: the service
+   * variables live in `vitest.projects.ts`, which Playwright never loads, and
+   * no e2e config or `.env` sets one. `examples/playground` and
    * `examples/shop` pin `:memory:`; `lore`, `docs` and `examples/ssr` set no
    * `DATABASE_URL`, so each uses its own checkout's SQLite file; `e2e-cli`
    * says outright it needs no registry and no Docker. Ports are already
-   * partitioned by checkout in `playwright.port.ts`.
+   * partitioned by checkout in `playwright.port.ts`. Nothing shared, nothing
+   * to queue for.
    *
-   * What that slot enforced was "two e2e runs must not saturate the machine
-   * together" - which is the reasoning already weighed and removed for
-   * `v:go`, in this same file, as costing more than it bought.
-   *
-   * ⚠️ **That last part is a judgement, not a proof.** Concurrent runs on a
-   * loaded laptop can still time each other out; what is proven here is only
-   * that they cannot corrupt each other's data. If timeouts return, the fix
-   * is a bound on concurrency, not a queue on a resource nobody shares.
+   * Namespaced because the queue is machine-wide: a bare "test" would put this
+   * repo behind any other project on the machine that picked the same word.
+   */
+  protected static readonly suites = "alepha:test";
 
   /**
    * The services `vitest.config.ts` points at, exactly the set `compose.yml`
@@ -98,14 +130,13 @@ export class VerifyCommand {
 
   public readonly verify = $command({
     aliases: ["v"],
-    // No slot on this command, and none on its steps either - see the note at
-    // the top of the class for what replaced them.
+    // The machine-wide slot is on the steps that contend, not on this
+    // command: see `suites` above and the `exclusive:` options below.
     //
-    // The slot was on the COMMAND first. Correct, and far too wide: `lint`,
+    // It was on the command first. Correct, and far too wide. `lint`,
     // `typecheck`, `check:*` and `build` share nothing between checkouts, so
     // a second worktree sat through eight minutes of them before finding out
-    // its own typecheck was broken. It moved to the steps, and then the steps
-    // stopped needing it.
+    // its own typecheck was broken.
     description:
       "Run linter, checker and tests (JavaScript/TypeScript only, Go lives in `v:go`).",
     flags: z.object({
@@ -145,6 +176,8 @@ export class VerifyCommand {
         .default(true),
     }),
     handler: async ({ run, flags }) => {
+      const suites = AlephaCommands.suites;
+
       // We need to force CI environment
       // -> tsdown has different behavior when run in CI
       process.env.CI = "true";
@@ -201,18 +234,18 @@ export class VerifyCommand {
        * describe, and skipping one leaves a later step to run against a tree
        * that is not there.
        */
-      const step = (command: string | string[]) =>
-        run(
-          command,
-          fingerprint
+      const step = (command: string | string[], extra?: RunOptions) =>
+        run(command, {
+          ...(fingerprint
             ? {
                 cache: this.cache.digest([
                   fingerprint,
                   Array.isArray(command) ? command.join(" + ") : command,
                 ]),
               }
-            : {},
-        );
+            : {}),
+          ...extra,
+        });
 
       await run("yarn");
       await run(`yarn clean`);
@@ -239,8 +272,12 @@ export class VerifyCommand {
         // could have saved it. This is the lane used as the gate before a
         // commit, which makes it a good suspect for a flake that never
         // reproduces the same way twice.
-        await this.runStep(step, this.testCommand(affected), "test");
-        await step(`yarn test:bun`);
+        await this.runStep(
+          (cmd) => step(cmd, { exclusive: suites }),
+          this.testCommand(affected),
+          "test",
+        );
+        await step(`yarn test:bun`, { exclusive: suites });
         return;
       }
 
@@ -292,8 +329,12 @@ export class VerifyCommand {
       // above rather than for the queue that used to be here: `run([a, b])`
       // is `Promise.all`, and these two drive the same postgres, so running
       // them together is one process interleaving with itself.
-      await this.runStep(step, this.testCommand(affected), "test");
-      await step(`yarn test:bun`);
+      await this.runStep(
+        (cmd) => step(cmd, { exclusive: suites }),
+        this.testCommand(affected),
+        "test",
+      );
+      await step(`yarn test:bun`, { exclusive: suites });
       await this.runStep(step, this.foreachCommand("build", affected), "build");
 
       // Give the one dev-mode e2e suite a cold Vite cache. Only
@@ -320,19 +361,19 @@ export class VerifyCommand {
       // packed tarball rather than an import. So the graph never marks it
       // affected, and skipping it on that basis would mean a change to the
       // CLI never runs the suite that tests the CLI.
-      const suites: string[] = [];
+      const e2eSuites: string[] = [];
       const browserSuite = this.foreachCommand("e2e", affected);
       if (browserSuite) {
-        suites.push(browserSuite);
+        e2eSuites.push(browserSuite);
       }
       if (this.runsCliSuite(affected)) {
-        suites.push(`yarn e2e-cli`);
+        e2eSuites.push(`yarn e2e-cli`);
       }
 
-      if (suites.length === 0) {
+      if (e2eSuites.length === 0) {
         this.log.info("--affected: skipping e2e, nothing affected owns it");
       } else {
-        await step(suites);
+        await step(e2eSuites);
       }
 
       // ⚠️ `{ root }`, never `cd X && …`. `shell.run(string)` passes every
@@ -619,7 +660,7 @@ export class VerifyCommand {
    */
   protected async assertServicesUp(): Promise<void> {
     const probed = await Promise.all(
-      VerifyCommand.services.map(async (it) => ({
+      AlephaCommands.services.map(async (it) => ({
         ...it,
         up: await this.isUp(it.port),
       })),

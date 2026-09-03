@@ -43,18 +43,8 @@ export const emptyBuckets = async (
 
 // Container names are just key prefixes now — no primitive declares them and
 // no provider pre-creates them, so these are plain strings.
-/**
- * Partitioned per checkout, like `S3_BUCKET_NAME` itself.
- *
- * These are emptied by `emptyBuckets` on the way out of every S3 spec, so two
- * checkouts sharing the machine's one s3mock would delete each other's objects
- * mid-assertion. The suffix comes from the env vitest already set, so the
- * derivation lives in one place (`test.slot.ts`) rather than being repeated
- * here.
- */
-const SLOT = process.env.S3_BUCKET_NAME?.split("-").pop() ?? "0";
-export const TEST_IMAGES_BUCKET = `test-images-${SLOT}`;
-export const TEST_DOCUMENTS_BUCKET = `test-documents-${SLOT}`;
+export const TEST_IMAGES_BUCKET = "test-images";
+export const TEST_DOCUMENTS_BUCKET = "test-documents";
 
 const BUCKET_NAME = TEST_IMAGES_BUCKET;
 
