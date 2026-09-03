@@ -1,6 +1,6 @@
 {
   "name": "@alepha/devtools",
-  "version": "0.27.1",
+  "version": "0.28.0",
   "description": "Developer tools for Alepha applications.",
   "keywords": [
     "alepha",
@@ -60,7 +60,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.18",
     "@xyflow/react": "^12.11.5",
-    "alepha": "0.27.1",
+    "alepha": "0.28.0",
     "lucide-react": "^1.38.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -71,7 +71,7 @@
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
-    "alepha": "^0.27.1",
+    "alepha": "^0.28.0",
     "react": "^19",
     "react-dom": "^19"
   },

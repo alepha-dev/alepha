@@ -1,6 +1,6 @@
 {
   "name": "@alepha/payments-stripe",
-  "version": "0.27.1",
+  "version": "0.28.0",
   "description": "Stripe payment provider for alepha/payments.",
   "keywords": [
     "alepha",
@@ -51,12 +51,12 @@
     "stripe": "^22.6.0"
   },
   "devDependencies": {
-    "alepha": "0.27.1",
+    "alepha": "0.28.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   },
   "peerDependencies": {
-    "alepha": "^0.27.1"
+    "alepha": "^0.28.0"
   },
   "engines": {
     "node": ">=22.0.0"
