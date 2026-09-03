@@ -26,18 +26,31 @@
  * outside a dispatched Release where the multi-arch build the release
  * performs is exercised at all.
  *
- * Usage:  node scripts/docker-size.mjs [--budget-mb 200] [--context apps/lore/dist]
+ * Usage:  node scripts/docker-size.ts [--budget-mb 200] [--context apps/lore/dist]
  */
-import { execFileSync } from "node:child_process";
+import { type ExecFileSyncOptions, execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+/**
+ * One OCI index or image manifest document. The two shapes share a reader
+ * (`readJson`/`readBlob`), so both sets of fields are optional here rather
+ * than split into two types.
+ */
+interface OciDoc {
+  manifests?: Array<{
+    digest: string;
+    platform?: { architecture?: string };
+  }>;
+  layers?: Array<{ size: number }>;
+}
 
 const PLATFORMS = ["linux/amd64", "linux/arm64"];
 const MB = 1_000_000;
 
 const args = process.argv.slice(2);
-const flag = (name, fallback) => {
+const flag = (name: string, fallback: string): string => {
   const i = args.indexOf(`--${name}`);
   return i === -1 ? fallback : args[i + 1];
 };
@@ -45,16 +58,21 @@ const flag = (name, fallback) => {
 const budgetMb = Number(flag("budget-mb", "200"));
 const context = flag("context", "apps/lore/dist");
 
-const run = (cmd, cmdArgs, opts = {}) =>
-  execFileSync(cmd, cmdArgs, { encoding: "utf8", ...opts });
+const run = (
+  cmd: string,
+  cmdArgs: string[],
+  opts: ExecFileSyncOptions = {},
+): string =>
+  execFileSync(cmd, cmdArgs, { encoding: "utf8", ...opts }) as string;
 
 /** One file out of a tar, without unpacking the archive. */
-const readEntry = (tarball, name) =>
+const readEntry = (tarball: string, name: string): string =>
   run("tar", ["-xOf", tarball, name], { maxBuffer: 64 * MB });
 
-const readJson = (tarball, name) => JSON.parse(readEntry(tarball, name));
+const readJson = (tarball: string, name: string): OciDoc =>
+  JSON.parse(readEntry(tarball, name));
 
-const readBlob = (tarball, digest) => {
+const readBlob = (tarball: string, digest: string): OciDoc => {
   const [algo, hex] = digest.split(":");
   return readJson(tarball, `blobs/${algo}/${hex}`);
 };
@@ -64,8 +82,11 @@ const readBlob = (tarball, digest) => {
  * output in. Attestation manifests carry no `platform.architecture` and are
  * skipped: they are metadata, not something a runtime pulls.
  */
-const findManifest = (tarball) => {
-  let entry = readJson(tarball, "index.json").manifests[0];
+const findManifest = (tarball: string): OciDoc => {
+  let entry = readJson(tarball, "index.json").manifests?.[0];
+  if (!entry) {
+    throw new Error(`no manifests in ${tarball}`);
+  }
   let doc = readBlob(tarball, entry.digest);
   while (Array.isArray(doc.manifests)) {
     entry = doc.manifests.find(
@@ -105,6 +126,9 @@ try {
 
     const manifest = findManifest(tarball);
     const layers = manifest.layers;
+    if (!layers) {
+      throw new Error(`image manifest for ${platform} has no layers`);
+    }
     const compressed = layers.reduce((sum, it) => sum + it.size, 0);
 
     console.log(`\n── ${platform}`);

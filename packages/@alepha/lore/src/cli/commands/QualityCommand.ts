@@ -27,7 +27,7 @@ import { QualityReportReader } from "../services/QualityReportReader.ts";
  *
  * They must **never** reach an exported signature of `@alepha/lore/cli`. This
  * class is deliberately not re-exported from `index.ts`, and
- * `scripts/check-dts.mjs` fails the build if any emitted `.d.ts` names the
+ * `scripts/check-dts.ts` fails the build if any emitted `.d.ts` names the
  * private `lore` workspace: a published package that declares a dependency on
  * a workspace nobody outside this repo can resolve breaks for whoever installs
  * the tarball, not for us.

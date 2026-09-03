@@ -7,7 +7,7 @@
     "start": "node src/run-benchmark.ts",
     "x-raw-node": "node src/3004-node.ts",
     "x-raw-bun": "bun src/3006-bun.ts",
-    "x-express": "node src/3001-express.js",
+    "x-express": "node src/3001-express.ts",
     "x-fastify": "node src/3002-fastify.ts",
     "x-alepha": "node src/3003-alepha.ts",
     "x-alepha-bun": "SERVER_PORT=3005 bun src/3003-alepha.ts",
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@types/autocannon": "^7.12.7",
+    "@types/express": "^5.0.6",
     "alepha": "0.28.0",
     "autocannon": "^8.0.0",
     "express": "^5.2.1",

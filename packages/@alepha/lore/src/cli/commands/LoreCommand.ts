@@ -24,7 +24,7 @@ import { ReleaseCommand } from "./ReleaseCommand.ts";
  * ## ⚠️ NOT re-exported from `index.ts`
  *
  * It names three classes that name types from the private `lore` workspace.
- * Same rule as `QualityCommand`, enforced by `scripts/check-dts.mjs`.
+ * Same rule as `QualityCommand`, enforced by `scripts/check-dts.ts`.
  */
 export class LoreCommand {
   protected readonly quality = $inject(QualityCommand);

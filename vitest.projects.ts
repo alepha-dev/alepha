@@ -96,7 +96,7 @@ export interface WorkspaceProjectsOptions {
    * Whether this workspace has `*.browser.spec.{ts,tsx}` files.
    *
    * Declared rather than detected, and cross-checked by
-   * `scripts/check-conventions.mjs`: a workspace whose flag disagrees with
+   * `scripts/check-conventions.ts`: a workspace whose flag disagrees with
    * what is on disk fails the check. Detection alone would be silent in the
    * direction that matters, since a missing jsdom project does not fail, it
    * just runs nothing.

@@ -66,7 +66,7 @@ export const AlephaLoreCliPlugin = $module({
     // ⚠️ None of the five below is re-exported. Each names, directly or
     // through what it injects, a type from the private `lore` workspace, and
     // an exported signature carrying one would put that workspace in the
-    // published `.d.ts`. `scripts/check-dts.mjs` fails the build if it does.
+    // published `.d.ts`. `scripts/check-dts.ts` fails the build if it does.
     LoreProjectResolver,
     QualityCommand,
     ArtifactCommand,

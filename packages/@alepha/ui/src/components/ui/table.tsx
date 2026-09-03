@@ -22,7 +22,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      // The permanent header tint is local. Re-applied by `scripts/sync.mjs`,
+      // The permanent header tint is local. Re-applied by `scripts/sync.ts`,
       // which carries the reasoning; this file is overwritten wholesale.
       className={cn("bg-muted/50 [&_tr]:border-b", className)}
       {...props}

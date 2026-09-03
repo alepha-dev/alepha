@@ -4,7 +4,7 @@ import { cn } from "@alepha/ui/lib/utils";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 
 function TooltipProvider({
-  // 600ms rather than the registry's 0. Re-applied by `scripts/sync.mjs`,
+  // 600ms rather than the registry's 0. Re-applied by `scripts/sync.ts`,
   // which carries the reasoning; this file is overwritten wholesale.
   delay = 600,
   ...props

@@ -21,6 +21,31 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
 /**
+ * One row of `yarn workspaces list --json`.
+ */
+interface Workspace {
+  name: string;
+  location: string;
+}
+
+/**
+ * The parts of a workspace's `package.json` this file reads. Not exhaustive -
+ * only what is actually inspected below.
+ */
+interface Manifest {
+  name?: string;
+  private?: boolean;
+  version?: string;
+  exports?: Record<string, ExportsEntry>;
+}
+
+/**
+ * One value of a package's `exports` map: a bare path, or a conditions object
+ * whose `types`/`import` branch is what a subpath actually resolves to.
+ */
+type ExportsEntry = string | { types?: string; import?: string };
+
+/**
  * The trees rules 1 and 2 read.
  *
  * `packages/alepha/src` was the whole list, which left every app free to do
@@ -65,7 +90,7 @@ const DATE_NOW_EXEMPT = [
  */
 const THROW_EXEMPT = ["packages/alepha/src/cli/core/tasks/BuildServerTask.ts"];
 
-const search = (pattern) => {
+const search = (pattern: string): string[] => {
   try {
     return execFileSync(
       "grep",
@@ -88,14 +113,14 @@ const search = (pattern) => {
  * and why, and that sentence necessarily contains the banned string. Without
  * this, explaining the rule trips the rule.
  */
-const isRelevant = (line) => {
+const isRelevant = (line: string): boolean => {
   const [file] = line.split(":");
   if (/__tests__|\.spec\.|fixtures/.test(file)) return false;
   const body = line.slice(line.indexOf(":", line.indexOf(":") + 1) + 1);
   return !/^\s*(\*|\/\/)/.test(body);
 };
 
-const violations = [];
+const violations: string[] = [];
 
 for (const line of search("throw new Error(").filter(isRelevant)) {
   const file = line.split(":")[0];
@@ -115,7 +140,7 @@ if (violations.length > 0) {
   console.error(
     `\n${violations.length} convention violation(s):\n\n${violations.join("\n")}\n\n` +
       "If one of these is genuinely exempt, add it to the allowlist in\n" +
-      "scripts/check-conventions.mjs — with the reason.\n",
+      "scripts/check-conventions.ts — with the reason.\n",
   );
   process.exit(1);
 }
@@ -133,7 +158,7 @@ const stale = [...DATE_NOW_EXEMPT, ...THROW_EXEMPT].filter((f) => {
 
 if (stale.length > 0) {
   console.error(
-    `\nStale exemption(s) in scripts/check-conventions.mjs — nothing to exempt:\n` +
+    `\nStale exemption(s) in scripts/check-conventions.ts — nothing to exempt:\n` +
       stale.map((f) => `  ${f}`).join("\n") +
       "\n\nRemove them.\n",
   );
@@ -155,17 +180,19 @@ if (stale.length > 0) {
  * which failed on the root workspace. Checking it here moves the failure into
  * `yarn v`, where it costs nothing.
  */
-const workspaces = execFileSync("yarn", ["workspaces", "list", "--json"], {
-  encoding: "utf8",
-})
+const workspaces: Workspace[] = execFileSync(
+  "yarn",
+  ["workspaces", "list", "--json"],
+  { encoding: "utf8" },
+)
   .trim()
   .split("\n")
-  .map((line) => JSON.parse(line));
+  .map((line): Workspace => JSON.parse(line));
 
-const versionViolations = [];
+const versionViolations: string[] = [];
 
 for (const workspace of workspaces) {
-  const manifest = JSON.parse(
+  const manifest: Manifest = JSON.parse(
     readFileSync(`${workspace.location}/package.json`, "utf8"),
   );
   const location = `${workspace.location}/package.json`;
@@ -215,7 +242,7 @@ if (versionViolations.length > 0) {
  *
  * The exemptions below are the two shapes that legitimately have no `@module`.
  */
-const SUBPATH_EXEMPT = {
+const SUBPATH_EXEMPT: Record<string, string | string[]> = {
   // A component library, not a module: many subpaths on purpose, one per
   // component, so an app pulls only what it renders. Wildcards - there is no
   // file to hold a block.
@@ -233,15 +260,15 @@ const SUBPATH_EXEMPT = {
   "@alepha/commerce": ["./vat"],
 };
 
-const subpathViolations = [];
+const subpathViolations: string[] = [];
 
 for (const workspace of workspaces) {
   if (workspace.location === ".") continue;
 
-  const manifest = JSON.parse(
+  const manifest: Manifest = JSON.parse(
     readFileSync(`${workspace.location}/package.json`, "utf8"),
   );
-  const exempt = SUBPATH_EXEMPT[manifest.name];
+  const exempt = manifest.name ? SUBPATH_EXEMPT[manifest.name] : undefined;
   if (exempt === "*") continue;
 
   for (const [subpath, value] of Object.entries(manifest.exports ?? {})) {
@@ -330,10 +357,10 @@ const SERVICE_DIRS = [
  * module-level functions at column 0 on purpose. A raw grep reads them as
  * violations of a rule they are not even subject to.
  */
-const stripLiterals = (src) => {
+const stripLiterals = (src: string): string => {
   let out = "";
   let i = 0;
-  const keep = (ch) => (ch === "\n" ? "\n" : " ");
+  const keep = (ch: string): string => (ch === "\n" ? "\n" : " ");
 
   while (i < src.length) {
     const ch = src[i];
@@ -383,7 +410,7 @@ const serviceFiles = execFileSync(
   .filter((file) => SERVICE_DIRS.some((dir) => file.includes(`/${dir}/`)))
   .filter((file) => !/__tests__|\.spec\.|fixtures/.test(file));
 
-const moduleCodeViolations = [];
+const moduleCodeViolations: string[] = [];
 
 for (const file of serviceFiles) {
   const lines = stripLiterals(readFileSync(file, "utf8")).split("\n");
@@ -440,7 +467,7 @@ const declaredPorts = execFileSync(
   });
 
 const tableRow = PORT_TABLE_ROW.exec(readFileSync("CLAUDE.md", "utf8"))?.[1];
-const portViolations = [];
+const portViolations: string[] = [];
 
 if (!tableRow) {
   portViolations.push(
@@ -500,7 +527,7 @@ if (portViolations.length > 0) {
  */
 const CI_WORKFLOW = ".github/workflows/ci.yml";
 const ciSource = readFileSync(CI_WORKFLOW, "utf8");
-const concurrencyViolations = [];
+const concurrencyViolations: string[] = [];
 
 const groupLine = /^concurrency:\n(?:\s*#.*\n)*\s*group:\s*(.+)$/m.exec(
   ciSource,
@@ -565,7 +592,7 @@ const setupSource = readFileSync(SETUP_ACTION, "utf8")
   .split("\n")
   .filter((line) => !/^\s*#/.test(line))
   .join("\n");
-const setupViolations = [];
+const setupViolations: string[] = [];
 
 const nodeAt = setupSource.indexOf("actions/setup-node@");
 const corepackAt = setupSource.search(/corepack\s+enable/);
@@ -621,7 +648,7 @@ if (setupViolations.length > 0) {
 const DOCS_EXCLUDED = new Set(["superpowers"]);
 const GEN_TREE = "apps/docs/scripts/gen-tree.ts";
 const genTreeSource = readFileSync(GEN_TREE, "utf8");
-const docRootViolations = [];
+const docRootViolations: string[] = [];
 
 const docDirs = execFileSync("git", ["ls-files", "docs/"], { encoding: "utf8" })
   .trim()
@@ -701,7 +728,7 @@ const FRENCH_WORDS = [
   "fait",
 ];
 
-const changelogViolations = [];
+const changelogViolations: string[] = [];
 const changelogLines = readFileSync("CHANGELOG.md", "utf8").split("\n");
 
 for (const [index, line] of changelogLines.entries()) {
@@ -766,7 +793,7 @@ const specFiles = [
   ),
 ].filter((file) => !file.includes("/e2e/"));
 
-const flatSpecViolations = [];
+const flatSpecViolations: string[] = [];
 
 for (const file of specFiles) {
   const lines = readFileSync(file, "utf8").split("\n");
@@ -829,12 +856,12 @@ const unitSpecFiles = execFileSync(
  * `apps/examples/shop` and the root workspace `.` both prefix a shop spec, and
  * only the longest is the owner.
  */
-const specOwnerOf = (file) =>
+const specOwnerOf = (file: string): Workspace | undefined =>
   workspaces
     .filter((w) => w.location === "." || file.startsWith(`${w.location}/`))
     .sort((a, b) => b.location.length - a.location.length)[0];
 
-const specOwners = new Map();
+const specOwners = new Map<string, { owner: Workspace; browser: boolean }>();
 
 for (const file of unitSpecFiles) {
   const owner = specOwnerOf(file);
@@ -847,7 +874,7 @@ for (const file of unitSpecFiles) {
 }
 
 const rootVitestConfig = readFileSync("vitest.config.ts", "utf8");
-const vitestViolations = [];
+const vitestViolations: string[] = [];
 
 for (const [location, { owner, browser }] of specOwners) {
   if (location in VITEST_ROOT_EXEMPT) {

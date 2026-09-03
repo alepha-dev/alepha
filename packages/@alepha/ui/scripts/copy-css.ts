@@ -19,9 +19,9 @@ import { fileURLToPath } from "node:url";
  */
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-const walk = async (dir) => {
+const walk = async (dir: string): Promise<string[]> => {
   const entries = await readdir(dir, { withFileTypes: true });
-  const files = [];
+  const files: string[] = [];
   for (const entry of entries) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {

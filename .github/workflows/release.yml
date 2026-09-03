@@ -83,7 +83,7 @@ jobs:
       # version in its binary, from the `alepha` number by way of the ldflags
       # further down, which is where it always came from.
       #
-      # `scripts/check-conventions.mjs` guards the invariant, so the next
+      # `scripts/check-conventions.ts` guards the invariant, so the next
       # violation surfaces in `yarn v` instead of here, in a release someone
       # dispatched by hand.
       - name: Bump Version

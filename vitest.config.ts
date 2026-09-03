@@ -26,7 +26,7 @@ import { workspaceProjects } from "./vitest.projects.ts";
  * whether they are read from here or from `yarn w <workspace> test`.
  *
  * ⚠️ An explicit list, not a glob, and the list is checked rather than
- * trusted: `scripts/check-conventions.mjs` fails when a workspace holding spec
+ * trusted: `scripts/check-conventions.ts` fails when a workspace holding spec
  * files is missing a config or is missing from this file. A glob would pick up
  * a new workspace on its own, which sounds better until it does not: a config
  * that fails to match reads exactly like a workspace with no tests, and this
