@@ -586,6 +586,23 @@ test.describe("Sigils", () => {
       // The address it reported, resolved the same way the app header does.
       await expect(table.getByText("docs.alepha.dev")).toBeVisible();
 
+      // #1751, feedback #2081. Two notes on this page, one assertion each.
+      //
+      // The heading is gone: the breadcrumb already says "Apps" two lines up,
+      // and no other project list carries one.
+      await expect(table.locator("h1")).toHaveCount(0);
+
+      // And the Reports column holds its badges on ONE line. This app carries
+      // all four kinds, and the cell used to be `flex-wrap`, so it stacked
+      // them into a column and made the row four times the height of a
+      // neighbour. Measured rather than asserted on a class: a row that fits
+      // is the claim.
+      const rowHeight = await table
+        .locator("tbody tr")
+        .first()
+        .evaluate((el) => Math.round(el.getBoundingClientRect().height));
+      expect(rowHeight).toBeLessThan(60);
+
       // Back to the app, which the rest of this flow addresses directly.
       await table.getByRole("link", { name: appName }).click();
       await expect(page).toHaveURL(
