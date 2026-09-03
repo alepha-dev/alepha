@@ -17,8 +17,8 @@ import { fileURLToPath } from "node:url";
  */
 const dist = fileURLToPath(new URL("../dist", import.meta.url));
 
-const walk = (dir) => {
-  let files = [];
+const walk = (dir: string): string[] => {
+  let files: string[] = [];
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) {
@@ -30,7 +30,7 @@ const walk = (dir) => {
   return files;
 };
 
-let declarations;
+let declarations: string[];
 try {
   declarations = walk(dist);
 } catch {

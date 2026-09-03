@@ -58,7 +58,7 @@
     "lint": "alepha lint",
     "typecheck": "alepha typecheck",
     "test": "alepha test",
-    "build": "tsdown && node scripts/check-dts.mjs"
+    "build": "tsdown && node scripts/check-dts.ts"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

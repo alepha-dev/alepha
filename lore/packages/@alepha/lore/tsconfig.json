@@ -9,5 +9,5 @@
       "@alepha/lore/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "scripts"]
 }

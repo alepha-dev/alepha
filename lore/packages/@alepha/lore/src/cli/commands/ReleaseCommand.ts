@@ -42,7 +42,7 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  *
  * `import type`, so it is erased: nothing from Lore's server graph is loaded.
  * It must never reach an exported signature of `@alepha/lore/cli`; this class
- * is deliberately not re-exported from `index.ts`, and `scripts/check-dts.mjs`
+ * is deliberately not re-exported from `index.ts`, and `scripts/check-dts.ts`
  * fails the build if an emitted `.d.ts` names the private `lore` workspace.
  */
 export class ReleaseCommand {
