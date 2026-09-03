@@ -138,4 +138,58 @@ test.describe("Mobile topbar and sidebar", () => {
     await page.mouse.click(340, 400);
     await expect(sheet(page)).toHaveCount(0);
   });
+
+  /**
+   * #1746, from feedback #2077 at 491x929: tapping a nav entry navigated and
+   * left the sheet up, so the destination rendered behind an overlay the
+   * reader had to dismiss by hand.
+   *
+   * ⚠️ Matched with `:not([data-closed])`, not by counting the element. Base
+   * UI keeps a dismissed sheet mounted through its exit animation, so a
+   * plain `toHaveCount(0)` here would be asserting the animation's timing.
+   */
+  test("a nav entry closes the sheet and lands on the page", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const slug = await openProject(page, "nav");
+
+    await page.setViewportSize({ width: 491, height: 929 });
+    await page.goto(`/${slug}/feedback`);
+    await page.waitForLoadState("networkidle");
+
+    const openSheet = page.locator(
+      '[data-slot="sidebar"][data-mobile="true"]:not([data-closed])',
+    );
+
+    await page.getByRole("button", { name: /Expand sidebar/ }).click();
+    await expect(openSheet).toBeVisible();
+
+    await openSheet.locator(`a[href="/${slug}/releases"]`).click();
+
+    await page.waitForURL(`**/${slug}/releases`, { timeout: 15_000 });
+    await expect(openSheet).toHaveCount(0);
+  });
+
+  /**
+   * The desktop half of the same fix. `toggleSidebar` branches on `isMobile`
+   * and the close-on-navigate has to stay behind that branch: collapsing the
+   * docked rail on every click would be a new bug, not a fix.
+   */
+  test("the docked sidebar survives a nav click", async ({ page }) => {
+    test.setTimeout(120_000);
+    const slug = await openProject(page, "dsk");
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`/${slug}/feedback`);
+    await page.waitForLoadState("networkidle");
+
+    const rail = page.locator('[data-slot="sidebar"][data-state]').first();
+    await expect(rail).toHaveAttribute("data-state", "expanded");
+
+    await page.locator(`a[href="/${slug}/releases"]`).first().click();
+    await page.waitForURL(`**/${slug}/releases`, { timeout: 15_000 });
+
+    await expect(rail).toHaveAttribute("data-state", "expanded");
+  });
 });
