@@ -822,7 +822,7 @@ export class TreeCommand {
   slug(name: string) {
     const slug = name
       .toLowerCase()
-      .replace(/(\d+)-/, "") // remove leading numbers
+      .replace(/^(\d+)-/, "") // remove the leading order prefix, not interior digits
       .replace(/[/\\]/g, "-")
       .replace(/\s+/g, "-") // replace spaces with dashes
       .replace("@", "");
@@ -832,7 +832,7 @@ export class TreeCommand {
 
   pretty(name: string) {
     const pretty = name
-      .replace(/(\d+)-/, "")
+      .replace(/^(\d+)-/, "")
       .replace(/[-/\\]/g, " ")
       .replace("@", "")
       .split(" ")
