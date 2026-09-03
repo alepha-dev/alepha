@@ -17,10 +17,9 @@ import {
 } from "@alepha/ui/components/ui/tooltip";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { useRouter } from "alepha/react/router";
 import {
   BarChart3,
-  Bug,
   DoorOpen,
   Eye,
   Info,
@@ -333,32 +332,11 @@ const AppAnalytics = () => {
         </Card>
       </div>
 
-      {/*
-        The error budget, off the metric row on purpose: it is not a traffic
-        number, and reading it beside four of them invites a comparison that
-        means nothing. Per app, which is the question the Blights inbox cannot
-        answer — it keys on `(project, fingerprint)` so a triage decision does
-        not fork, and that merges every enrolled app into one row.
-      */}
-      <Card data-testid="insights-errors">
-        <CardContent className="flex flex-wrap items-center gap-3 text-sm">
-          <Bug className="text-muted-foreground size-4" />
-          <span className="font-semibold tabular-nums">
-            {data.errorGroups.length.toLocaleString()}
-          </span>
-          <span className="text-muted-foreground">
-            {tr("insights.errors.note")}
-          </span>
-          <Link
-            href={router.path("projectBlights", {
-              params: { projectSlug: project.slug },
-            })}
-            className="text-muted-foreground hover:text-foreground ml-auto text-xs transition-colors"
-          >
-            {tr("insights.errors.inbox")}
-          </Link>
-        </CardContent>
-      </Card>
+      {/* The error budget used to sit here, off the metric row (#1215). It has
+          its own tab now: an error budget is not a traffic number, and as a
+          card it was a bare count whose only action was a link to the
+          project-wide inbox. See `AppErrors.tsx` for why a tab rather than a
+          deletion or a move back to the Dashboard (feedback #2080). */}
 
       {/* Views over time, full width. */}
       <Card>

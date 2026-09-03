@@ -462,6 +462,26 @@ test.describe("Sigils", () => {
       expect(bogus.status()).toBe(401);
     });
 
+    await test.step("the Errors tab shows the failure, scoped to this app", async () => {
+      // The other side of #1749. The Blights inbox below answers "has anyone
+      // triaged this"; this tab answers "is it still happening HERE", which
+      // the inbox cannot, because it keys on `(project, fingerprint)`.
+      await page.goto(`/${projectSlug}/apps/${appName}/errors`);
+      await page.waitForLoadState("networkidle");
+
+      const group = page.getByTestId("app-error-group");
+      await expect(group).toHaveCount(1, { timeout: 15_000 });
+      await expect(group).toContainText(blightMessage);
+      // The occurrence count, which the card this replaced never showed: it
+      // rendered `errorGroups.length` and nothing from inside a group.
+      await expect(group).toContainText("3");
+
+      // And the card is gone from the page it was asked to leave.
+      await page.goto(`/${projectSlug}/apps/${appName}/analytics`);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByTestId("insights-errors")).toHaveCount(0);
+    });
+
     await test.step("the settings row now says the app reported", async () => {
       await page.reload();
       await page.waitForLoadState("networkidle");
@@ -530,6 +550,13 @@ test.describe("Sigils", () => {
         "Dashboard",
         "Analytics",
         "Vitals",
+        // #1749: the error budget left the Analytics page (feedback #2080,
+        // "remove Blights Card on Analytics page, it's not the right place")
+        // and became a tab rather than being deleted, because the per-app
+        // reading is the one thing the project Blights inbox structurally
+        // cannot give - it keys on `(project, fingerprint)` so a triage
+        // decision does not fork, which merges every enrolled app into one row.
+        "Errors",
         "Explore",
         "Artifacts",
         "Settings",
