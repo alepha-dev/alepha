@@ -55,6 +55,21 @@ export const ROUTES_FULL_WIDTH = new Set([
   // and centred, the plate would sit in a 1024px column with a gutter down
   // both sides and the artifact table would lose the width it is built for.
   "projectRelease",
+  // Reports, for the same reason as the release view above and on the same
+  // layout since #1693: a full-width plate over tabs that owns its own scroll.
+  // Capped, the plate sat in a centred column with the project background down
+  // both sides, and the OUTER container kept `overflow-auto`, so the whole
+  // page scrolled instead of the tab body under a plate that should stay put
+  // (feedback #2079, at 1920x929).
+  //
+  // The shell is listed alongside the four leaves although `ProjectView` only
+  // ever reads the active leaf: a set that names four of the five is a trap
+  // for whoever adds the sixth.
+  "projectReports",
+  "reportsOverview",
+  "reportsQuests",
+  "reportsMembers",
+  "reportsQuality",
   "projectFolios",
   "projectFoliosNew",
   "projectFoliosFolio",
