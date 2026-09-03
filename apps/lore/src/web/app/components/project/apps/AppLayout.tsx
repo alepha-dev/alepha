@@ -130,6 +130,18 @@ const AppLayout = () => {
       tabsTestId="app-tabs"
       tabs={plateTabs}
       active={activeRoute}
+      // Explore owns its scrolling. `AdminAnalytics` is a two-pane layout that
+      // never scrolls as a page - only the panel's clause list and the results
+      // grid do - and it says so on itself. Handing it a scroll region would
+      // give it a second scrollbar and, more to the point, a height it can
+      // grow past instead of one it fills: `flex-1` inside an `overflow-y-auto`
+      // box resolves against the CONTENT, so the builder ended up short of the
+      // plate rather than filling it.
+      //
+      // Keyed on the route rather than on a flag each tab sets, because the
+      // property belongs to the tab's layout and `PlateLayout` is rendered
+      // once here, above the tab that would set it.
+      scroll={activeRoute !== "appExplore"}
       plate={
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-6 pt-6 pb-4">
           <h1 className="text-xl font-semibold">{sigil.name}</h1>
@@ -171,10 +183,13 @@ const AppLayout = () => {
     >
       {/* Per-tab width rules stay inside the tabs, where they moved when the
           shell stopped capping them: Settings keeps `max-w-3xl`, the rest run
-          full width. */}
-      <div className="p-4">
-        <NestedView />
-      </div>
+          full width. The PADDING moved in with them for the same reason
+          (#1747, feedback #2078): it used to be a shared `p-4` here, which
+          Explore had no way to opt out of, so the query builder sat in a
+          gutter with a strip of plate showing underneath it. Dashboard,
+          Analytics, Vitals, Artifacts and Settings each carry their own `p-4`
+          now and render identically; Explore carries none. */}
+      <NestedView />
     </PlateLayout>
   );
 };
