@@ -17,6 +17,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import FilterSlot from "../../shared/FilterSlot.tsx";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 import ReleaseProgress from "./ReleaseProgress.tsx";
 import {
@@ -193,7 +194,7 @@ const ProjectReleases = () => {
           schema: releasesFiltersSchema,
           render: (form) => (
             <>
-              <div className="w-56">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
@@ -201,8 +202,8 @@ const ProjectReleases = () => {
                   placeholder={tr("release.filter.search")}
                   inputProps={{ "aria-label": tr("release.filter.search") }}
                 />
-              </div>
-              <div className="w-44">
+              </FilterSlot>
+              <FilterSlot>
                 <Control
                   input={form.input.state}
                   label=""
@@ -216,7 +217,7 @@ const ProjectReleases = () => {
                   ]}
                   inputProps={{ "aria-label": tr("release.filter.state") }}
                 />
-              </div>
+              </FilterSlot>
             </>
           ),
         }}

@@ -14,6 +14,7 @@ import type { FeedbackController } from "@/api/controllers/FeedbackController.ts
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import FilterSlot from "../../shared/FilterSlot.tsx";
 import MyFeedbackEditSheet from "./MyFeedbackEditSheet.tsx";
 
 /**
@@ -89,7 +90,7 @@ const MyFeedback = () => {
           schema: myFeedbackFiltersSchema,
           render: (form) => (
             <>
-              <div className="w-44">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
@@ -99,7 +100,7 @@ const MyFeedback = () => {
                     "aria-label": String(tr("myFeedback.filter.search.aria")),
                   }}
                 />
-              </div>
+              </FilterSlot>
               <div className="w-40">
                 <Control
                   input={form.input.status}

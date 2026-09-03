@@ -14,6 +14,7 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import FilterSlot from "../../shared/FilterSlot.tsx";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
 
 /**
@@ -85,7 +86,7 @@ const ProjectApps = () => {
           schema: filtersSchema,
           render: (form) => (
             <>
-              <div className="w-44">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
@@ -93,8 +94,8 @@ const ProjectApps = () => {
                   placeholder={tr("apps.filter.search")}
                   inputProps={{ "aria-label": tr("apps.filter.search") }}
                 />
-              </div>
-              <div className="w-44">
+              </FilterSlot>
+              <FilterSlot>
                 <Control
                   input={form.input.reporting}
                   label=""
@@ -114,7 +115,7 @@ const ProjectApps = () => {
                   ]}
                   inputProps={{ "aria-label": tr("apps.filter.reporting") }}
                 />
-              </div>
+              </FilterSlot>
             </>
           ),
         }}

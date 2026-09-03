@@ -32,6 +32,7 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import FilterSlot from "../../shared/FilterSlot.tsx";
 
 /**
  * Filter form, owned by AlephaTable: a status select (open / resolved / all)
@@ -163,7 +164,7 @@ const ProjectBlights = () => {
           initialValues: { status: "open", sigilId: "all" },
           render: (form) => (
             <div className="flex gap-2">
-              <div className="w-44">
+              <FilterSlot>
                 <Control
                   input={form.input.status}
                   label=""
@@ -175,7 +176,7 @@ const ProjectBlights = () => {
                     { label: tr("blights.filter.all"), value: "all" },
                   ]}
                 />
-              </div>
+              </FilterSlot>
               <div className="w-52">
                 <Control
                   input={form.input.sigilId}

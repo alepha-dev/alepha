@@ -21,6 +21,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import FilterSlot from "../../shared/FilterSlot.tsx";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
@@ -186,7 +187,7 @@ const ProjectEpics = () => {
           schema: epicsFiltersSchema,
           render: (form) => (
             <>
-              <div className="w-56">
+              <FilterSlot>
                 <Control
                   input={form.input.search}
                   label=""
@@ -194,8 +195,8 @@ const ProjectEpics = () => {
                   placeholder={tr("epic.filter.search")}
                   inputProps={{ "aria-label": tr("epic.filter.search") }}
                 />
-              </div>
-              <div className="w-44">
+              </FilterSlot>
+              <FilterSlot>
                 <Control
                   input={form.input.status}
                   label=""
@@ -213,7 +214,7 @@ const ProjectEpics = () => {
                   ]}
                   inputProps={{ "aria-label": tr("epic.filter.status") }}
                 />
-              </div>
+              </FilterSlot>
             </>
           ),
         }}
