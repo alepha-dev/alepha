@@ -453,4 +453,48 @@ test.describe("Kanban", () => {
       { timeout: 10_000 },
     );
   });
+
+  /**
+   * #1743. The column header's controls were bare buttons the size of their
+   * own 14px glyph, well under half of WCAG 2.2's 24x24 minimum.
+   *
+   * They were grown into real 24px boxes rather than given invisible
+   * `::before` overlays: the two sit 20px apart centre to centre, so two
+   * 24px overlays would intersect and one would swallow the other's edge.
+   */
+  test("the column header controls meet the 24px minimum target size", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const projectTitle = `KT${t}`.slice(0, 20);
+
+    await registerAndVerify(page, `kbtap${t}@example.com`, "KanbanTap123!");
+    const { slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    await page.setViewportSize({ width: 411, height: 845 });
+    await page.goto(`/${projectSlug}/kanban`);
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // The collapse button is on every column; the menu only on a configured,
+    // editable one, which is why the audit that found this saw only the first.
+    for (const id of ["kanban-column-collapse", "kanban-column-menu"]) {
+      const targets = page.getByTestId(id);
+      const count = await targets.count();
+      expect(count, `${id} not rendered`).toBeGreaterThan(0);
+
+      for (let i = 0; i < count; i++) {
+        const box = await targets.nth(i).boundingBox();
+        expect(box, `${id} ${i} has no box`).not.toBeNull();
+        expect(box!.width, `${id} ${i} width`).toBeGreaterThanOrEqual(24);
+        expect(box!.height, `${id} ${i} height`).toBeGreaterThanOrEqual(24);
+      }
+    }
+  });
 });

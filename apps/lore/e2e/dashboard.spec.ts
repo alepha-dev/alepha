@@ -174,4 +174,41 @@ test.describe("Dashboard", () => {
       });
     });
   });
+
+  /**
+   * #1743. Every card's options button was 22x22, two pixels short of WCAG
+   * 2.2's Target Size (Minimum) in each direction - and the same size on a
+   * desktop, where a mouse makes it workable and a thumb never does.
+   *
+   * Asserted at a phone width because that is where it matters, though the
+   * measurement is viewport-independent.
+   */
+  test("each card's options button meets the 24px minimum target size", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+
+    await registerAndVerify(page, `dashtap${t}@example.com`, "GoodPassw0rd");
+    await createProjectViaWizard(page, `DT${t}`.slice(0, 20));
+
+    await page.setViewportSize({ width: 411, height: 845 });
+    await page.goto("/");
+    const cards = page.getByTestId("dashboard-card");
+    await expect(cards.first()).toBeVisible({ timeout: 15_000 });
+
+    const options = page.getByRole("button", { name: "Card options" });
+    const count = await options.count();
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const box = await options.nth(i).boundingBox();
+      expect(box, `card ${i} options has no box`).not.toBeNull();
+      expect(box!.width, `card ${i} options width`).toBeGreaterThanOrEqual(24);
+      expect(box!.height, `card ${i} options height`).toBeGreaterThanOrEqual(
+        24,
+      );
+    }
+  });
 });

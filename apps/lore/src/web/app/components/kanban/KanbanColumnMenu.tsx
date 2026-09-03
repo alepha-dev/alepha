@@ -53,7 +53,11 @@ const KanbanColumnMenu = (props: KanbanColumnMenuProps) => {
             aria-label={String(
               tr("kanban.column.actions", { args: [props.name] }),
             )}
-            className="text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-50"
+            // 24x24, matching the collapse button it sits beside - see the
+            // note there. The audit that found this (#1743) measured a board
+            // with no editable column, so it only reported the sibling; this
+            // trigger carried the identical 14x14 target in the same row.
+            className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors disabled:opacity-50"
           />
         }
       >

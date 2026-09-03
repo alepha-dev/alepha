@@ -239,7 +239,18 @@ const KanbanColumn = (props: KanbanColumnProps) => {
               type="button"
               data-testid="kanban-column-collapse"
               aria-label={String(tr("kanban.column.collapse"))}
-              className="text-muted-foreground hover:text-foreground shrink-0"
+              // A 24x24 box around a 14px glyph, WCAG 2.2 Target Size
+              // (Minimum). It was a bare button the size of its icon, so the
+              // whole target was 14x14 - workable with a mouse, never with a
+              // thumb, and the same on a desktop as on a phone.
+              //
+              // Grown rather than given a `::before` overlay: this button and
+              // the menu beside it are 20px apart centre to centre, so two
+              // invisible 24px overlays would intersect and whichever painted
+              // last would swallow the other's edge. Two real 24px boxes with
+              // the row's 6px gap between them do not. It costs the header
+              // 4px of height and the title 20px it truncates anyway.
+              className="text-muted-foreground hover:bg-accent hover:text-foreground inline-flex size-6 shrink-0 items-center justify-center rounded-md transition-colors"
               onClick={props.onToggleCollapsed}
             >
               <ChevronsLeftRight className="size-3.5" />
