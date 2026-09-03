@@ -1,8 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { expect, test } from "@playwright/test";
-
+import { expect, test } from "./_fixtures.ts";
 import {
   apiPost,
   createProjectViaWizard,
