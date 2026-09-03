@@ -1,7 +1,6 @@
 import { $env, $inject, AlephaError, z } from "alepha";
-import { PackCommand } from "alepha/cli";
+import { WorkspacePacker } from "alepha/cli";
 import { $command } from "alepha/command";
-import { CliProvider } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
@@ -44,8 +43,7 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 export class ArtifactCommand {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly cli = $inject(CliProvider);
-  protected readonly packCommand = $inject(PackCommand);
+  protected readonly packer = $inject(WorkspacePacker);
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
   protected readonly uploader = $inject(ArtifactUploader);
@@ -121,7 +119,7 @@ export class ArtifactCommand {
         )
         .optional(),
     }),
-    handler: async ({ flags, root }) => {
+    handler: async ({ flags, root, run }) => {
       const project = this.client.resolveProject(flags.project);
       const app = flags.app ?? (await this.appNameFrom(root));
       const tag = flags.tag ?? ArtifactCommand.DEFAULT_TAG;
@@ -137,13 +135,16 @@ export class ArtifactCommand {
       const archivePath = this.fs.join(workDir, filename);
 
       try {
-        // ⚠️ `--name` is passed rather than left to `pack`'s own fallback, so
-        // the filename is derived ONCE. Deriving it a second time here is
+        // ⚠️ `name` is passed rather than left to the packer's own fallback,
+        // so the filename is derived ONCE. Deriving it a second time here is
         // exactly what let `pack` write one file while `BayAdapter` looked for
         // another.
-        await this.cli.run(this.packCommand.pack, {
+        await this.packer.pack({
           root,
-          argv: ["--name", app, "--tag", tag, "--output", workDir],
+          name: app,
+          tag,
+          output: workDir,
+          run,
         });
 
         const result = await this.uploader.upload({
@@ -227,21 +228,8 @@ export class ArtifactCommand {
         'Missing "name" in package.json, so there is nothing to file this artifact under. Pass --app <name>.',
       );
     }
-    return this.slugify(name);
-  }
-
-  /**
-   * A package name made safe to be both a filename segment and a URL segment.
-   *
-   * The same transformation `PackCommand` applies, restated because that one is
-   * `protected` and this package must not reach into it. They cannot drift
-   * apart unnoticed: `--name` is passed to `pack` from here, so `pack` takes
-   * this result verbatim and never computes its own.
-   */
-  protected slugify(name: string): string {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
+    // The packer's own copy, not a restatement of it: the two used to be
+    // separate methods held together by a comment saying they must not drift.
+    return this.packer.slugify(name);
   }
 }
