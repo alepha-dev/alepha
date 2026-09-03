@@ -18,6 +18,7 @@ class TestVerifyCommand extends VerifyCommand {
   public testForeachCommand = this.foreachCommand.bind(this);
   public testRunsCliSuite = this.runsCliSuite.bind(this);
   public testSelectAffected = this.selectAffected.bind(this);
+  public testSelectOrRunEverything = this.selectOrRunEverything.bind(this);
 }
 
 const selection = (
@@ -200,6 +201,49 @@ describe("VerifyCommand --affected", () => {
       const affected = await cmd.testSelectAffected("origin/main");
 
       expect(affected.everything).toBe(true);
+    });
+  });
+
+  /**
+   * The selection is on by default, so it must not be able to break a run that
+   * would otherwise have worked: a checkout with no `origin/main`, a remote
+   * under another name, a git that will not answer.
+   *
+   * ⚠️ It degrades UPWARDS. `undefined` here is what the command receives when
+   * the flag was never passed, so every step runs. The failure to avoid is the
+   * opposite one, an empty selection, which would skip every suite and report
+   * success; `ChangedFiles` raises rather than reporting that, and this turns
+   * the raise into the full pipeline.
+   */
+  describe("selectOrRunEverything", () => {
+    it("should verify everything when the ref cannot be resolved", async () => {
+      const env = createTestEnv();
+      env.shell.errors.set(
+        "git diff --name-only origin/nope...HEAD",
+        "fatal: bad revision",
+      );
+
+      expect(
+        await env.cmd.testSelectOrRunEverything("origin/nope"),
+      ).toBeUndefined();
+    });
+
+    it("should still select normally when git answers", async () => {
+      const env = createTestEnv();
+      env.shell.outputs.set(
+        "yarn workspaces list -v --json",
+        JSON.stringify({ name: "alepha", location: "packages/alepha" }),
+      );
+      env.shell.outputs.set(
+        "git diff --name-only origin/main...HEAD",
+        "packages/alepha/src/x.ts",
+      );
+      env.shell.outputs.set("git diff --name-only HEAD", "");
+      env.shell.outputs.set("git ls-files --others --exclude-standard", "");
+
+      const affected = await env.cmd.testSelectOrRunEverything("origin/main");
+
+      expect(affected?.names).toEqual(["alepha"]);
     });
   });
 });

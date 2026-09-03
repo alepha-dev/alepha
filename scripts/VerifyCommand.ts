@@ -113,12 +113,26 @@ export class VerifyCommand {
         .boolean()
         .describe("Skip build + e2e (faster local sanity check).")
         .optional(),
+      // Both default ON, and `--no-affected` / `--no-cache` turn them off:
+      // see `CliProvider.resolveFlagDef`, where `--no-x` exists precisely so a
+      // defaulted-true flag can be switched off.
+      //
+      // They were opt-in first, on the reasoning that this command is the gate
+      // before a commit and a gate should be exact. Two of the three arguments
+      // for that turned out to be wrong. CI does not run this command at all,
+      // it runs the underlying scripts as separate steps, so a default here
+      // cannot weaken it. And `deploy-lore-production` has
+      // `needs: [verify, e2e]`, so a suite missed locally costs a red main and
+      // a blocked deploy, not a bad one.
+      //
+      // What is left is that a speedup you have to remember to type is a
+      // speedup nobody gets.
       affected: z
         .boolean()
         .describe(
-          "Restrict test, build and e2e to the workspaces a change can reach.",
+          "Restrict test, build and e2e to the workspaces a change can reach. `--no-affected` runs everything.",
         )
-        .optional(),
+        .default(true),
       since: z
         .string()
         .describe("The ref `--affected` compares against.")
@@ -126,9 +140,9 @@ export class VerifyCommand {
       cache: z
         .boolean()
         .describe(
-          "Skip steps that already passed against this exact tree, in any checkout.",
+          "Skip steps that already passed against this exact tree, in any checkout. `--no-cache` runs them.",
         )
-        .optional(),
+        .default(true),
     }),
     handler: async ({ run, flags }) => {
       // We need to force CI environment
@@ -142,16 +156,42 @@ export class VerifyCommand {
       // Before the install, so a ref that does not resolve costs two seconds
       // rather than the whole prologue.
       const affected = flags.affected
-        ? await this.selectAffected(flags.since ?? "origin/main")
+        ? await this.selectOrRunEverything(flags.since ?? "origin/main")
         : undefined;
 
       // One fingerprint for the whole run, taken before anything can modify
       // the tree. `yarn copy` and `yarn lint` both write, so a per-step
       // fingerprint would key each step to a tree the previous step produced,
       // and no two runs would ever agree.
-      const fingerprint = flags.cache
-        ? await this.treeFingerprint()
-        : undefined;
+      //
+      // ⚠️ The constraint that buys: a step which WRITES to the tree must not
+      // change the inputs of a later step that is keyed on the same
+      // fingerprint. Only `copy` qualifies, and it holds, for a reason worth
+      // stating rather than rediscovering. `copy` regenerates the reference
+      // docs and the package READMEs and nothing else, no spec reads those,
+      // and the root `copy` script ends in `yarn lint`, so its own output is
+      // formatted before the pipeline's `lint` step is reached. That is what
+      // makes it safe for the `--fast` and full lanes to share a cached
+      // `lint`, `test` and `test:bun`, which is worth real time: a full run
+      // after a `--fast` one on the same tree skips ~110s of them.
+      //
+      // If `copy` ever writes something a later step reads, that sharing
+      // becomes wrong, and the fix is to put the lane into the key.
+      // A fingerprint that cannot be taken disables the cache for this run
+      // rather than failing it. `treeFingerprint` still raises, because a
+      // fingerprint that quietly fell back to a constant would make every step
+      // of every run a hit; catching it HERE is what keeps that property while
+      // letting a checkout git cannot describe verify normally.
+      let fingerprint: string | undefined;
+      if (flags.cache) {
+        try {
+          fingerprint = await this.treeFingerprint();
+        } catch (error) {
+          this.log.warn(
+            `--cache disabled for this run: ${(error as Error).message}`,
+          );
+        }
+      }
 
       /**
        * A step whose result can be remembered for an identical tree.
@@ -399,6 +439,32 @@ export class VerifyCommand {
       );
     }
     return result.stdout.trim();
+  }
+
+  /**
+   * {@link selectAffected}, degrading to "run everything" rather than failing.
+   *
+   * The selection is on by default, so it has to be impossible for it to break
+   * a run that would otherwise have worked. A checkout with no `origin/main`,
+   * a remote under another name, a git that will not answer: each used to be a
+   * hard error, which was acceptable while the flag was opt-in and is not now.
+   *
+   * Degrading UPWARDS is the whole point. `ChangedFiles` still raises rather
+   * than reporting an empty change set, because empty means "run nothing" and
+   * then reports success; this turns that raise into the full pipeline, which
+   * is exactly what the command did before the flag existed.
+   */
+  protected async selectOrRunEverything(
+    ref: string,
+  ): Promise<AffectedSelection | undefined> {
+    try {
+      return await this.selectAffected(ref);
+    } catch (error) {
+      this.log.warn(
+        `--affected disabled for this run, verifying everything: ${(error as Error).message}`,
+      );
+      return undefined;
+    }
   }
 
   /**
