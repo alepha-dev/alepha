@@ -1,6 +1,7 @@
 import { sigilKeyPrefix, sigilKeyProject } from "@alepha/lore/sigil";
-import { expect, type Page, type Request, test } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 
+import { expect, test } from "./_fixtures.ts";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**

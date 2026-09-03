@@ -82,6 +82,59 @@ export const e2ePort = (app: E2eApp): number => {
 };
 
 /**
+ * A port for ONE Playwright worker of a suite that boots a server per worker.
+ *
+ * `e2ePort` hands out a single port because a suite normally has a single
+ * `webServer`. `apps/lore` does not: each worker boots its own instance on its
+ * own in-memory database, which is what lets its specs run `fullyParallel`
+ * (see `apps/lore/e2e/_fixtures.ts`).
+ *
+ * The walk is the same one `candidatePorts` already produces — same slot, so a
+ * sibling suite is never encroached on — rotated by the worker index, so two
+ * workers of one run start on different bases rather than racing for the same
+ * first choice. Each then probes forward from there.
+ *
+ * ⚠️ Deliberately NOT memoised through `E2E_PORT`. That variable exists so a
+ * config and its `global-setup` agree on one answer; here every worker must get
+ * a DIFFERENT answer, so writing it back would hand the whole run one port.
+ * `E2E_PORT` still overrides, offset per worker, which keeps the escape hatch
+ * usable for a suite that needs several.
+ */
+export const e2eWorkerPort = (app: E2eApp, workerIndex: number): number => {
+  if (process.env.E2E_PORT) {
+    return Number(process.env.E2E_PORT) + workerIndex;
+  }
+
+  const candidates = candidatePorts(checkoutRoot(), app);
+
+  // Each worker probes a DISJOINT subsequence, never the shared list rotated to
+  // a different start. Rotation was the first attempt and is wrong: a worker
+  // whose first choice is busy advances onto the next base, which is exactly
+  // the base the next worker started from, and both take it. The suite's own
+  // test caught it, 14 workers yielding 13 distinct ports, and it would have
+  // surfaced in a run as one instance failing to bind for no visible reason.
+  //
+  // Taking every WORKER_SLOTS-th candidate makes that impossible rather than
+  // unlikely: two workers never evaluate the same port at all, so what is
+  // listening cannot make their answers converge.
+  const slot = workerIndex % WORKER_SLOTS;
+  const mine = candidates.filter((_, i) => i % WORKER_SLOTS === slot);
+
+  return firstFreePort(mine) ?? mine[0];
+};
+
+/**
+ * How many workers get disjoint port sequences.
+ *
+ * Above this they wrap and workers `w` and `w + WORKER_SLOTS` share a list
+ * again. Sixteen is past anything this repo runs: Lore's suite is measured
+ * slower at 10 workers than at 7 and fails outright at 14, because the limit is
+ * CPU per browser-plus-server pair rather than ports. Raising it costs fallback
+ * depth, since the band holds a fixed number of bases to divide up.
+ */
+const WORKER_SLOTS = 16;
+
+/**
  * The e2e band. Nothing else in the repo may allocate inside it — see the table
  * above for what owns everything around it.
  */

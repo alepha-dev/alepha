@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { expect, test } from "@playwright/test";
-
+import { expect, test } from "./_fixtures.ts";
 import { extractCode, findLatestEmail } from "./_helpers.ts";
 
 // No wipe of the dev-mail directory here: spec files run in parallel
