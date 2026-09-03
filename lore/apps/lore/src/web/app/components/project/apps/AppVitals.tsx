@@ -33,7 +33,7 @@ const AppVitals = () => {
   const { data, loading, error, range, traffic, setFilters } = useAppInsights();
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <Gauge className="size-4" />

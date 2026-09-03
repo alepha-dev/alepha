@@ -867,6 +867,47 @@ test.describe("Sigils", () => {
       await expect(page.getByTitle("group by country")).toBeVisible();
       await expect(page.getByTitle("group by sigilId")).toHaveCount(0);
 
+      // #1747, feedback #2078: the builder sat in a gutter with a strip of
+      // plate showing under it. `AppLayout` used to wrap every tab in a shared
+      // `p-4` and hand it a scroll region, and neither is what a two-pane
+      // layout that scrolls its own panes wants: `flex-1` inside an
+      // `overflow-y-auto` box resolves against the content, so the builder
+      // ended up short of the plate rather than filling it.
+      //
+      // Asserted as the body matching the plate rather than as a class,
+      // because the claim is that it FILLS - a right answer reached another
+      // way is still a right answer.
+      const boxes = await page.evaluate(() => {
+        const tabs = document.querySelector('[data-testid="app-tabs"]')!;
+        const plate = tabs.closest<HTMLElement>(
+          ".flex.min-h-0.w-full.flex-1.flex-col",
+        )!;
+        const body = plate.lastElementChild as HTMLElement;
+        const r = (el: HTMLElement) => {
+          const b = el.getBoundingClientRect();
+          return {
+            left: Math.round(b.left),
+            right: Math.round(b.right),
+            bottom: Math.round(b.bottom),
+          };
+        };
+        return {
+          plate: r(plate),
+          body: r(body),
+          padding: getComputedStyle(body).padding,
+          pageOverflowY:
+            document.documentElement.scrollHeight -
+            document.documentElement.clientHeight,
+        };
+      });
+
+      expect(boxes.body.left).toBe(boxes.plate.left);
+      expect(boxes.body.right).toBe(boxes.plate.right);
+      expect(boxes.body.bottom).toBe(boxes.plate.bottom);
+      expect(boxes.padding).toBe("0px");
+      // The two panes scroll, the page does not.
+      expect(boxes.pageOverflowY).toBe(0);
+
       // ⚠️ The default window ends YESTERDAY (the last complete UTC day), and
       // everything this run reported was stamped today — so the panel opens on
       // "No data for this query" and that is correct, not a failure. Reaching
