@@ -134,6 +134,13 @@ export const releases = $entity({
     { columns: ["projectId"] },
     { columns: ["projectId", "number"], unique: true },
     { columns: ["projectId", "tag"], unique: true },
+    /**
+     * The activity feed's window scan
+     * (`ProjectActivityService.releaseEvents`). `updatedAt` is what the
+     * scan filters on; `createdAt` and `releasedAt` are then read off the
+     * rows it returns, so neither needs one of its own.
+     */
+    { columns: ["projectId", "updatedAt"] },
   ],
 });
 

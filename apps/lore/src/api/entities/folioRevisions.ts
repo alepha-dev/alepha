@@ -82,6 +82,18 @@ export const folioRevisions = $entity({
      * Read path: list revisions for a folio, newest first.
      */
     { columns: ["folioId", "at"] },
+    /**
+     * The activity feed's window scan
+     * (`ProjectActivityService.folioEvents`), which filters on `at` alone
+     * and joins the folio afterwards to scope it to a project.
+     *
+     * The index above cannot serve that: `folioId` leads and the predicate
+     * constrains nothing on it, so the feed read every one of production's
+     * 998 revisions. Expensive out of proportion to the output, because
+     * this table carries `contentSnapshot` - a full copy of the folio body
+     * per save, ~8.8 KB a row and roughly 30% of the whole database.
+     */
+    { columns: ["at"] },
   ],
 });
 

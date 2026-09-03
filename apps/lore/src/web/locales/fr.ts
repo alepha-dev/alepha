@@ -245,6 +245,7 @@ export default {
   "project.menu.invite-member": "Inviter un membre",
   "project.menu.create-feedback": "Nouveau retour",
   "project.menu.create": "Créer",
+  "project.menu.activity": "Activité",
   "project.menu.quests": "Quêtes",
   "project.menu.kanban": "Kanban",
   "project.menu.reports": "Rapports",
@@ -1687,4 +1688,26 @@ export default {
   "nav.home": "Accueil",
   "common.close": "Fermer",
   "common.save": "Enregistrer",
+
+  "activity.title": "Activité",
+  "activity.refresh": "Actualiser",
+  "activity.window.3h": "3 h",
+  "activity.window.24h": "24 h",
+  "activity.window.7d": "7 j",
+  "activity.window.30d": "30 j",
+  "activity.filter.quests": "Quêtes",
+  "activity.filter.epics": "Epics et versions",
+  "activity.filter.folios": "Folios",
+  "activity.filter.feedback": "Retours",
+  "activity.actor.unknown": "Quelqu'un",
+  "activity.actor.agent": "Agent",
+  "activity.empty.window.title": "Rien sur cette période",
+  "activity.empty.window.body":
+    "Aucune quête, epic, folio ni retour n'a bougé ici. Essayez une période plus longue.",
+  "activity.empty.filtered.title": "Rien de ce type",
+  "activity.empty.filtered.body":
+    "Des choses se sont passées sur cette période, mais aucune ne correspond aux filtres choisis.",
+  "activity.truncated":
+    "Il s'est passé plus de choses que ce qui tient ici. Réduisez la période pour voir le reste.",
+  "activity.error": "Impossible de charger l'activité.",
 };

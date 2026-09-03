@@ -13,8 +13,11 @@ import { FeedbackController } from "../src/api/controllers/FeedbackController.ts
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
+import { EpicTools } from "../src/mcp/tools/EpicTools.ts";
+import { FolioTools } from "../src/mcp/tools/FolioTools.ts";
 import { ProjectTools } from "../src/mcp/tools/ProjectTools.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
+import { ReleaseTools } from "../src/mcp/tools/ReleaseTools.ts";
 
 /**
  * `project_activity`: one call for everything that moved, which is what
@@ -40,6 +43,9 @@ const setup = async () => {
 
   const questTools = alepha.inject(QuestTools);
   const projectTools = alepha.inject(ProjectTools);
+  const epicTools = alepha.inject(EpicTools);
+  const releaseTools = alepha.inject(ReleaseTools);
+  const folioTools = alepha.inject(FolioTools);
   const projectApi = alepha.inject(ProjectController);
   const feedbackApi = alepha.inject(FeedbackController);
   const users = alepha.inject(UserService);
@@ -77,6 +83,9 @@ const setup = async () => {
   return {
     questTools,
     projectTools,
+    epicTools,
+    releaseTools,
+    folioTools,
     projectApi,
     feedbackApi,
     project,
@@ -299,5 +308,124 @@ describe("Lore MCP: project_activity", () => {
     expect(
       next.events.every((e: any) => Date.parse(e.at) > Date.parse(first.until)),
     ).toBe(true);
+  });
+
+  it("reports an epic being opened", async () => {
+    const { epicTools, projectTools, project, call, dt } = await setup();
+
+    const since = anHourAgo(dt);
+    const epic = await call(epicTools.epic_create, {
+      project: project.id,
+      title: "Activity feed",
+      description: "x",
+    });
+
+    const res = await call(projectTools.project_activity, {
+      project: project.id,
+      since,
+      includeOwn: true,
+    });
+
+    const events = res.events.filter((e: any) => e.kind === "epic.created");
+    expect(events).toHaveLength(1);
+    expect(events[0].epic).toEqual({
+      number: epic.number,
+      title: "Activity feed",
+    });
+    // `number`, not `shortId`: an epic's per-project identifier is its
+    // number, and that is what the URL segment needs.
+    expect(events[0].epic.shortId).toBeUndefined();
+  });
+
+  it("reports an epic that was created AND changed as two events", async ({
+    expect,
+  }) => {
+    const { epicTools, projectTools, project, call, dt } = await setup();
+
+    const since = anHourAgo(dt);
+    const epic = await call(epicTools.epic_create, {
+      project: project.id,
+      title: "Two things happened",
+      description: "x",
+    });
+    await call(epicTools.epic_set_status, {
+      project: project.id,
+      number: epic.number,
+      status: "active",
+    });
+
+    const res = await call(projectTools.project_activity, {
+      project: project.id,
+      since,
+      includeOwn: true,
+    });
+
+    // Collapsing these to one event hides the more recent fact behind the
+    // older one: an epic created last week and activated this morning would
+    // report only its creation, on a page whose whole job is what just
+    // moved.
+    const kinds = res.events
+      .filter((e: any) => e.kind.startsWith("epic."))
+      .map((e: any) => e.kind);
+    expect(kinds).toEqual(["epic.created", "epic.updated"]);
+  });
+
+  it("separates a release being opened from a release being published", async () => {
+    const { releaseTools, projectTools, project, call, dt } = await setup();
+
+    const since = anHourAgo(dt);
+    await call(releaseTools.release_create, {
+      project: project.id,
+      tag: "0.1.0",
+      title: "First",
+    });
+    await call(releaseTools.release_publish, {
+      project: project.id,
+      tag: "0.1.0",
+    });
+
+    const res = await call(projectTools.project_activity, {
+      project: project.id,
+      since,
+      includeOwn: true,
+    });
+
+    // Created and published inside one window yields both, in that order:
+    // it is the true story of the window, not a duplicate.
+    const kinds = res.events
+      .filter((e: any) => e.kind.startsWith("release."))
+      .map((e: any) => e.kind);
+    expect(kinds).toEqual(["release.created", "release.published"]);
+
+    const published = res.events.find(
+      (e: any) => e.kind === "release.published",
+    );
+    expect(published.release.tag).toBe("0.1.0");
+  });
+
+  it("carries no folio body on a folio event", async () => {
+    const { folioTools, projectTools, project, call, dt } = await setup();
+
+    const since = anHourAgo(dt);
+    const body = "a body long enough to notice ".repeat(40);
+    await call(folioTools.folio_create, {
+      project: project.id,
+      title: "Notes",
+      content: body,
+    });
+
+    const res = await call(projectTools.project_activity, {
+      project: project.id,
+      since,
+      includeOwn: true,
+    });
+
+    const event = res.events.find((e: any) => e.kind === "folio.updated");
+    expect(event).toBeDefined();
+    // The projection guard. `folio_revisions.contentSnapshot` is a whole
+    // copy of the folio body and is ~30% of production's database; nothing
+    // here reads it, so nothing here may carry it. A regression would be
+    // invisible except as bandwidth.
+    expect(JSON.stringify(event)).not.toContain("long enough to notice");
   });
 });

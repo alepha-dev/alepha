@@ -74,8 +74,12 @@ describe("dashboard drill-through links", () => {
       params: { projectSlug: "sds" },
       query: { status: "new" },
     });
+    // `/quests`, not `/`: the quest list moved off the project root when
+    // Activity took it. The tile still names its destination by ROUTE, which
+    // is why the move needed no change to the catalog — only to this
+    // assertion, which is the one place the path is spelled out.
     expect(router.path(link!.route, { params, query: link!.query })).toBe(
-      "/sds/?status=new",
+      "/sds/quests?status=new",
     );
   });
 

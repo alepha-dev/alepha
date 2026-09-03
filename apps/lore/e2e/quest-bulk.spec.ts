@@ -57,7 +57,7 @@ test.describe("Quests, bulk actions", () => {
     }
     await post(page, `/api/createRelease/${projectId}`, { tag: "0.1.0" });
 
-    await page.goto(`/${slug}/`);
+    await page.goto(`/${slug}/quests`);
     await expect(page.locator("tbody tr")).toHaveCount(2, { timeout: 15_000 });
 
     await test.step("select both rows", async () => {

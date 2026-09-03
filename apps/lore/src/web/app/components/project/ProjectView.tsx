@@ -6,6 +6,7 @@ import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import {
+  Activity,
   AppWindow,
   BarChart3,
   BookOpen,
@@ -85,9 +86,10 @@ const ProjectView = () => {
     ...project.features,
   };
 
-  // Four unlabelled groups (`NavGroup.label` omitted on purpose, see the great
+  // Five unlabelled groups (`NavGroup.label` omitted on purpose, see the great
   // rename Task 9):
   //
+  //   Activity  Activity
   //   Work      Quests, Kanban, Epics, Feedback, Blights
   //   Record    Folios, Releases, Reports
   //   Ops       Apps
@@ -122,6 +124,20 @@ const ProjectView = () => {
   //
   // Groups with no items are dropped by the `.filter` below, so an
   // all-gates-off project still renders a clean sidebar.
+  //
+  // Activity is a fifth group above these four - see the `nav` array below
+  // for why it stands alone. It is behind no feature gate on purpose: it is
+  // the one page that says something whatever else a project has turned off,
+  // and it is where a bare `/:projectSlug` lands.
+  const activityItems: NavGroup["items"] = [
+    {
+      label: tr("project.menu.activity"),
+      icon: Activity,
+      href: router.path("projectActivity", { params: { projectSlug } }),
+      active: name === "projectActivity",
+    },
+  ];
+
   const workItems: NavGroup["items"] = [
     {
       label: tr("project.menu.quests"),
@@ -284,6 +300,13 @@ const ProjectView = () => {
   }
 
   const nav: NavGroup[] = [
+    // Activity is a group of one, above Work, so the separator the groups
+    // already draw falls between it and Quests. A hand-placed divider would
+    // do the same thing once and then disagree with the four below it.
+    //
+    // It is alone rather than at the top of Work because it is not work: it
+    // is the view over every other group, and the project's landing page.
+    { items: activityItems },
     { items: workItems },
     { items: recordItems },
     { items: opsItems },

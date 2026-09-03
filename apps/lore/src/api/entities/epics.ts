@@ -127,6 +127,11 @@ export const epics = $entity({
     { columns: ["projectId", "number"], unique: true },
     { columns: ["projectId", "status"] },
     { columns: ["releaseId"] },
+    /**
+     * The activity feed's window scan (`ProjectActivityService.epicEvents`).
+     * Same shape and same reason as the one on `quests`.
+     */
+    { columns: ["projectId", "updatedAt"] },
   ],
 });
 

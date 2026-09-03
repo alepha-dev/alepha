@@ -71,6 +71,25 @@ export const questComments = $entity({
      */
     source: questCommentSourceSchema.optional(),
   }),
+  indexes: [
+    /**
+     * The activity feed's window scan
+     * (`ProjectActivityService.commentEvents`), which filters on
+     * `createdAt` and joins the quest afterwards to scope it to a project.
+     * `createdAt` therefore has to lead: an index on `questId` would not
+     * be reachable from that predicate.
+     *
+     * ⚠️ This table had NO index at all before, not even on `questId`, so
+     * the feed's comment read was a full table scan. Invisible at the 98
+     * rows production holds, and this is the table that grows with every
+     * agent comment on every quest, forever.
+     *
+     * The per-quest thread read wants `(questId, createdAt)` and still has
+     * nothing. Deliberately left alone: it is a different query with a
+     * different leading column, and it is not what this quest is about.
+     */
+    { columns: ["createdAt"] },
+  ],
 });
 
 export type QuestComment = Infer<typeof questComments.schema>;

@@ -72,7 +72,7 @@ test.describe("Quests — ?status= seeds the filter", () => {
     const table = page.locator("[data-testid=quests-table]");
 
     await test.step("no param means no filter", async () => {
-      await page.goto(`/${slug}/`);
+      await page.goto(`/${slug}/quests`);
       await page.waitForLoadState("networkidle");
       await expect(table.getByText(newTitle)).toHaveCount(1, {
         timeout: 15_000,
@@ -83,7 +83,7 @@ test.describe("Quests — ?status= seeds the filter", () => {
     await test.step("an unknown status is ignored, not fatal", async () => {
       // "Ignored" means the page behaves exactly as if the param were not
       // there — not "shows nothing", and not "resets the reader's filter".
-      await page.goto(`/${slug}/?status=not-a-status`);
+      await page.goto(`/${slug}/quests?status=not-a-status`);
       await page.waitForLoadState("networkidle");
       await expect(table.getByText(newTitle)).toHaveCount(1, {
         timeout: 15_000,
@@ -92,7 +92,7 @@ test.describe("Quests — ?status= seeds the filter", () => {
     });
 
     await test.step("?status=new narrows the list", async () => {
-      await page.goto(`/${slug}/?status=new`);
+      await page.goto(`/${slug}/quests?status=new`);
       await page.waitForLoadState("networkidle");
       await expect(table.getByText(newTitle)).toHaveCount(1, {
         timeout: 15_000,
@@ -115,7 +115,7 @@ test.describe("Quests — ?status= seeds the filter", () => {
     });
 
     await test.step("the seed does not become the reader's stored filter", async () => {
-      await page.goto(`/${slug}/`);
+      await page.goto(`/${slug}/quests`);
       await page.waitForLoadState("networkidle");
       // Two things at once. The param must not reappear in the address bar
       // (the #156 write-back), and the seed must not have been persisted as
