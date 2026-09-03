@@ -20,9 +20,6 @@ import { cn } from "@alepha/ui/lib/utils";
 import { useStore } from "alepha/react";
 import { uiThemeListAtom, useTheme } from "alepha/react/ui";
 import { Check, Palette } from "lucide-react";
-import { useEffect } from "react";
-
-const FONT_LINK_ID = "alepha-theme-fonts";
 
 export interface ButtonThemeProps {
   /**
@@ -51,33 +48,15 @@ export interface ButtonThemeProps {
  * ]);
  * ```
  *
- * Selecting a theme with a `fontHref` lazily injects a single `<link>` into
- * `<head>` (id `alepha-theme-fonts`); switching themes swaps it. No effect
- * when the list has 0 or 1 entries.
+ * Renders nothing when the list has 0 or 1 entries. Loading a theme's
+ * `fontHref` is `<ColorScheme/>`'s job, not this one's: a picker is absent
+ * from most pages, so an injection done here reached only the pages that
+ * happen to show a toolbar.
  */
 export const ButtonTheme = (props: ButtonThemeProps) => {
   const { theme, setTheme } = useTheme();
   const [list] = useStore(uiThemeListAtom);
   const themes = list ?? [];
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const def = themes.find((t) => t.id === theme) ?? themes[0];
-    const existing = document.getElementById(FONT_LINK_ID);
-    if (!def?.fontHref) {
-      existing?.remove();
-      return;
-    }
-    if (existing && existing.getAttribute("href") === def.fontHref) {
-      return;
-    }
-    existing?.remove();
-    const link = document.createElement("link");
-    link.id = FONT_LINK_ID;
-    link.rel = "stylesheet";
-    link.href = def.fontHref;
-    document.head.appendChild(link);
-  }, [theme, themes]);
 
   if (themes.length <= 1) {
     return null;

@@ -27,8 +27,8 @@ export const uiThemeListAtom = $atom({
        */
       swatch: z.array(z.string()).min(4).max(4).optional(),
       /**
-       * Optional stylesheet URL (typically Google Fonts) loaded lazily when
-       * the theme is selected.
+       * Optional stylesheet URL (typically Google Fonts) injected by
+       * `<ColorScheme/>` as a single `<link>` when the theme is selected.
        */
       fontHref: z.string().optional(),
     }),
