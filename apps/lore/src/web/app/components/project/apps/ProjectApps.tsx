@@ -69,10 +69,13 @@ const ProjectApps = () => {
   return (
     <div
       data-testid="apps-table"
-      className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 md:pt-10"
+      // `p-4` and nothing more, matching Epics, Releases and Blights. The
+      // extra `md:pt-10` existed to give the page heading room above the
+      // table; the heading is gone (feedback #2081 - the breadcrumb already
+      // says "Apps" two lines up, and no other project list carries one), so
+      // the inset went with it and this page starts where its siblings do.
+      className="flex min-h-0 flex-1 flex-col overflow-hidden p-4"
     >
-      <h1 className="mb-4 text-xl font-semibold">{tr("project.menu.apps")}</h1>
-
       <AlephaTable<SigilResource>
         className="min-h-0 flex-1"
         defaultSize={25}
@@ -182,9 +185,23 @@ const ProjectApps = () => {
               sigil.kinds.length === 0 ? (
                 <span className="text-muted-foreground text-xs">-</span>
               ) : (
-                <span className="flex flex-wrap gap-1">
+                // ⚠️ `flex-nowrap`, not the `flex-wrap` this had. An app
+                // carrying all four kinds wrapped its badges into a column and
+                // made its row four times the height of its neighbours
+                // (feedback #2081, at 1920x929). A table row is a line; a cell
+                // that stacks is one that has not been given its width.
+                //
+                // The column takes the width instead, which the table has:
+                // `<td>` sizes to content, and the page had 1000px of empty
+                // space to the right of the last column at the width this was
+                // reported from.
+                <span className="flex flex-nowrap items-center gap-1">
                   {sigil.kinds.map((kind) => (
-                    <Badge key={kind} variant="outline" className="text-xs">
+                    <Badge
+                      key={kind}
+                      variant="outline"
+                      className="text-xs whitespace-nowrap"
+                    >
                       {kind}
                     </Badge>
                   ))}
