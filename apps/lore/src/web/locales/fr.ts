@@ -753,7 +753,7 @@ export default {
   "release.list.column.tag": "Version",
   "release.list.column.progress": "Progression",
   "release.list.column.date": "Date",
-  "release.filter.search": "Rechercher une version",
+  "release.filter.search": "Rechercher",
   "release.filter.state": "État",
   "release.filter.allStates": "Tous les états",
   "release.progress.none": "Rien de rattaché",
@@ -1054,7 +1054,7 @@ export default {
   "project.menu.apps": "Applications",
   "project.menu.apps.unavailable": "Liste indisponible",
 
-  "apps.filter.search": "Rechercher une app",
+  "apps.filter.search": "Rechercher",
   "apps.filter.allApps": "Toutes les apps",
   "apps.filter.reporting": "Actives",
   "apps.filter.silent": "Silencieuses",

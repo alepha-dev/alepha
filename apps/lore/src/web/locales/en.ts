@@ -743,7 +743,7 @@ export default {
   "release.list.column.tag": "Release",
   "release.list.column.progress": "Progress",
   "release.list.column.date": "Date",
-  "release.filter.search": "Search releases",
+  "release.filter.search": "Search",
   "release.filter.state": "State",
   "release.filter.allStates": "All states",
   "release.progress.none": "Nothing attached yet",
@@ -1041,7 +1041,7 @@ export default {
   "project.menu.apps": "Apps",
   "project.menu.apps.unavailable": "Couldn't load apps",
 
-  "apps.filter.search": "Search apps",
+  "apps.filter.search": "Search",
   "apps.filter.allApps": "All apps",
   "apps.filter.reporting": "Reporting",
   "apps.filter.silent": "Silent",
