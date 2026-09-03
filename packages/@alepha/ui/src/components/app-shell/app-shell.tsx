@@ -8,6 +8,10 @@ import {
   type ActionErrorToasterProps,
 } from "@alepha/ui/components/action-error-toaster/action-error-toaster";
 import {
+  NavigationProgress,
+  type NavigationProgressOptions,
+} from "@alepha/ui/components/app-shell/navigation-progress";
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -60,7 +64,6 @@ import {
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useEvents } from "alepha/react";
 import { Link, NestedView } from "alepha/react/router";
 import { useSidebarState } from "alepha/react/ui";
 import {
@@ -70,84 +73,14 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useState } from "react";
 
-export interface NavigationProgressOptions {
-  /**
-   * Tailwind classes applied to the bar. Defaults to `bg-primary`.
-   */
-  className?: string;
-  /**
-   * Bar height in pixels. Defaults to 2.
-   */
-  height?: number;
-}
-
-const NavigationProgress = (options: NavigationProgressOptions) => {
-  const [progress, setProgress] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEvents(
-    {
-      "react:transition:begin": () => {
-        // A second transition before the first ends used to leave the
-        // first interval running for the page's lifetime.
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        setProgress(0);
-        setVisible(true);
-        setIsLoading(true);
-        let current = 0;
-        intervalRef.current = setInterval(() => {
-          current += (90 - current) * 0.1;
-          setProgress(Math.min(90, current));
-        }, 100);
-      },
-      "react:transition:end": () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        setProgress(100);
-        setIsLoading(false);
-        setTimeout(() => {
-          setVisible(false);
-          setProgress(0);
-        }, 200);
-      },
-    },
-    [],
-  );
-
-  useEffect(
-    () => () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    },
-    [],
-  );
-
-  if (!visible) return null;
-  const height = options.height ?? 2;
-  const barClassName = options.className ?? "bg-primary";
-  return (
-    <div
-      className="pointer-events-none fixed top-0 right-0 left-0 z-50"
-      style={{ height }}
-    >
-      <div
-        className={`h-full ${barClassName}`}
-        style={{
-          width: `${progress}%`,
-          transition: isLoading
-            ? "width 0.1s ease-out"
-            : "width 0.2s ease-out, opacity 0.2s ease-out",
-          opacity: isLoading ? 1 : 0,
-        }}
-      />
-    </div>
-  );
-};
+/**
+ * Re-exported: the bar moved to its own module so it can be mounted at an
+ * application root, but the option type is part of {@link AppShellProps}
+ * and was importable from here first.
+ */
+export type { NavigationProgressOptions };
 
 const StatefulSidebarTrigger = () => {
   const { toggleSidebar, isMobile, openMobile, state } = useSidebar();

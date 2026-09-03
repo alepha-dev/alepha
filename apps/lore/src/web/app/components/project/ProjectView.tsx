@@ -383,6 +383,10 @@ const ProjectView = () => {
       <AppShell
         embedded
         fill
+        // `Layout` mounts the bar at the root, which is the only place it can
+        // see the transitions that enter and leave this shell. Leaving the
+        // default on would draw a second, identical one on top of it.
+        progress={false}
         variant="inset"
         // The page surface. Defined in `main.css` rather than inline because
         // it needs a `.dark` variant: the mockup's dot is near-white, which is
