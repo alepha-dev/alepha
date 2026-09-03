@@ -1,4 +1,34 @@
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "./_fixtures.ts";
+import { registerAndVerify } from "./_helpers.ts";
+
+/**
+ * POST to a name-derived action route.
+ *
+ * A direct path rather than `_helpers`' `apiPost`, which resolves an action
+ * through the SSR-injected `apiLinks` map: that map is scoped to what the
+ * CURRENT page declares, and this test does its setup from `/`, where
+ * `createProject` is not in it. Same reasoning as `roadmap.spec.ts`.
+ */
+const apiPost = async <T>(
+  page: Page,
+  path: string,
+  body: unknown,
+): Promise<T> =>
+  (await page.evaluate(
+    async ({ path, body }) => {
+      const r = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+      return r.json();
+    },
+    { path, body },
+  )) as T;
 
 const cookieValue = (mode: string, theme: string) =>
   encodeURIComponent(
@@ -90,5 +120,80 @@ test.describe("theme no-flash", () => {
     await page.waitForSelector("html[data-alepha-hydrated='true']");
 
     expect(mismatches).toEqual([]);
+  });
+});
+
+/**
+ * The theme's font stylesheet used to be injected by `<ButtonTheme/>`, which
+ * only mounts where a theme picker renders. Nearly every Lore page carries
+ * `PageHeader` and therefore a picker, which is why this hid for so long -
+ * the roadmap is the one page that renders no header at all. It got
+ * `theme-arcane`'s colors while `--font-display` resolved to Cinzel with
+ * Cinzel never loaded, falling silently down to Times New Roman. Measured
+ * before the fix: `document.fonts` held Inter and JetBrains Mono and nothing
+ * else. `<ColorScheme/>` owns the link now, and Lore mounts that at the root
+ * of `Layout`, above every page including this one.
+ */
+test.describe("theme fonts", () => {
+  test("font loads on the roadmap, the one page with no theme picker", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    await registerAndVerify(page, `themefont${t}@example.com`, "ThemeFont123!");
+
+    // Over the API rather than the wizard: this test is about what the
+    // document loads, not about how a project gets made.
+    const project = await apiPost<{ id: number; slug: string }>(
+      page,
+      "/api/createProject",
+      { title: `TF${t}`.slice(0, 24) },
+    );
+
+    await apiPost(page, `/api/updateProjectById/${project.id}`, {
+      roadmapVisibility: "public",
+    });
+
+    await context.addCookies([
+      {
+        name: "alepha-ui",
+        value: cookieValue("light", "arcane"),
+        url: String(baseURL),
+      },
+    ]);
+
+    await page.goto(`/${project.slug}/roadmap`);
+
+    // The premise: no picker here. If this ever starts failing, the page grew
+    // a header and this test has stopped covering the regression it was
+    // written for - move it to whatever page has no picker then.
+    await expect(page.locator('[aria-label="Pick theme"]')).toHaveCount(0);
+
+    // Injected from an effect, so let the assertion converge rather than
+    // reading the DOM once and racing hydration.
+    await expect(page.locator("link#alepha-theme-fonts")).toHaveAttribute(
+      "href",
+      "/fonts/arcane.css",
+    );
+
+    // The link is the mechanism; the loaded face is the outcome. Asserting
+    // only the link would still pass if the stylesheet 404'd or named a font
+    // the theme does not use, which is the failure this whole file is about.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() =>
+            [
+              ...(
+                document as unknown as { fonts: Iterable<{ family: string }> }
+              ).fonts,
+            ].some((f) => f.family === "Cinzel"),
+          ),
+        { message: "the arcane theme's display face never loaded" },
+      )
+      .toBe(true);
   });
 });
