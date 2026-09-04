@@ -11,6 +11,7 @@ import { LoreDashboardCatalog } from "@/api/dashboardCatalogModule.ts";
 
 import { AppRouter } from "./AppRouter.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
+import { currentEpicsAtom } from "./atoms/currentEpicsAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
@@ -41,6 +42,7 @@ export const LoreWebApp = $module({
     projectDirectoriesAtom,
     currentAssignedQuestsAtom,
     currentReleasesAtom,
+    currentEpicsAtom,
     currentProjectAtom,
     currentProjectMemberAtom,
     currentQuestAtom,

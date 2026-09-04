@@ -31,6 +31,7 @@ import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts"
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
 import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "./atoms/currentEpicCountAtom.ts";
+import { currentEpicsAtom } from "./atoms/currentEpicsAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioBlobsAtom } from "./atoms/currentFolioBlobsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
@@ -484,7 +485,7 @@ export class AppRouter {
         releases,
         pendingFeedback,
         openQuests,
-        plannedEpics,
+        epicRefs,
         sigils,
         openBlights,
         areas,
@@ -518,20 +519,31 @@ export class AppRouter {
           .then((r) => r.count)
           .catch(() => 0),
 
-        // Planned-epic count for the sidebar badge. Gated on the same
-        // `features.epics` switch that decides whether the entry renders at
-        // all, so a project with epics off pays nothing for it.
+        // Every epic as a ref, which serves two readers at once: the sidebar's
+        // planned-epic badge, counted locally below, and the quests table's
+        // Epic column, which resolves `quests.epicId` against it exactly as
+        // the Release column resolves `releaseId` against `currentReleasesAtom`.
         //
-        // This is the counterweight to the quest count above: that one runs
-        // the backlog gate, so quests parked inside a planned epic are
+        // It replaced a `countPlannedEpics` call rather than joining it, so
+        // this stays one request. `getEpicRefs` and not `getEpics`: the full
+        // resource carries `description`, which is 213 KB of the 222 KB this
+        // project's own epic list weighs, and no reader here wants a word of it.
+        //
+        // Gated on the same `features.epics` switch that decides whether the
+        // Epics entry renders at all, so a project with epics off pays nothing.
+        //
+        // The badge is the counterweight to the quest count above: that one
+        // runs the backlog gate, so quests parked inside a planned epic are
         // excluded from it on purpose. Without this number the sidebar
         // reported none of that work.
+        //
+        // `undefined` on failure and NOT `[]`, like `currentSigilsAtom`: the
+        // badge must read "could not count" rather than "none planned".
         project.features?.epics
           ? this.epicApi
-              .countPlannedEpics({ params: { projectId: project.id } })
-              .then((r) => r.count)
-              .catch(() => 0)
-          : Promise.resolve(0),
+              .getEpicRefs({ params: { projectId: project.id } })
+              .catch(() => undefined)
+          : Promise.resolve([]),
 
         // The sidebar's Apps section. Member-readable (`listSigils` is gated
         // on `project:read`, unlike every sigil mutation, which is owner-only)
@@ -586,7 +598,14 @@ export class AppRouter {
       });
       this.alepha.store.set(currentBlightCountAtom, { count: openBlights });
       this.alepha.store.set(currentQuestCountAtom, { count: openQuests });
-      this.alepha.store.set(currentEpicCountAtom, { count: plannedEpics });
+      this.alepha.store.set(currentEpicsAtom, epicRefs);
+      // Counted here rather than server-side, the same way `ProjectEpics`
+      // counts it off the list it already holds. `undefined` means the read
+      // failed, and 0 is the honest answer for a badge that can only hide.
+      this.alepha.store.set(currentEpicCountAtom, {
+        count: (epicRefs ?? []).filter((epic) => epic.status === "planned")
+          .length,
+      });
       this.alepha.store.set(currentSigilsAtom, sigils);
       this.alepha.store.set(currentAreasAtom, areas);
 
@@ -603,6 +622,7 @@ export class AppRouter {
       this.alepha.store.set(currentBlightCountAtom, { count: 0 });
       this.alepha.store.set(currentQuestCountAtom, { count: 0 });
       this.alepha.store.set(currentEpicCountAtom, { count: 0 });
+      this.alepha.store.set(currentEpicsAtom, undefined);
       this.alepha.store.set(currentSigilsAtom, undefined);
       this.alepha.store.set(currentAreasAtom, undefined);
     },

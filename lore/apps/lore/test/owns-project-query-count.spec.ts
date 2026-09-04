@@ -126,7 +126,7 @@ const PORTED = [
   "getQuests",
   "countOpenQuests",
   "getEpics",
-  "countPlannedEpics",
+  "getEpicRefs",
   "getReleases",
   // Replaced `getReleaseBacklog`, deleted with the release recorder. Any
   // ported `params.projectId` action reachable with nothing seeded does the

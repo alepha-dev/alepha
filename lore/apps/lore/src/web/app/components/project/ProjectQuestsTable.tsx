@@ -28,6 +28,7 @@ import {
   ArchiveRestore,
   CircleDot,
   Hash,
+  Layers,
   Link2,
   MapPin,
   Pencil,
@@ -48,6 +49,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
+import { currentEpicsAtom } from "../../atoms/currentEpicsAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
@@ -111,6 +113,7 @@ const ProjectQuestsTable = () => {
   const [project] = useStore(currentProjectAtom);
   const [currentAreas] = useStore(currentAreasAtom);
   const [releases] = useStore(currentReleasesAtom);
+  const [epics] = useStore(currentEpicsAtom);
   const questApi = useClient<QuestController>();
   const questMutations = useQuestMutations();
   const projectApi = useClient<ProjectController>();
@@ -665,6 +668,49 @@ const ProjectQuestsTable = () => {
                 </Badge>
               ) : (
                 <span className="text-muted-foreground">-</span>
+              );
+            },
+          },
+          epicId: {
+            label: tr("board.table.epic"),
+            // Hidden by default, like its two neighbours: most quests carry no
+            // epic at all, and the ones that do are read from the epic's own
+            // page more often than from here.
+            defaultHidden: true,
+            className: "w-24",
+            cell: (quest: QuestResource) => {
+              // ⚠️ Resolved, never printed raw. `quest.epicId` is the global
+              // database id; the identifier a reader knows and the one
+              // `/epics/:epicNumber` takes is the per-project `number`.
+              // Rendering `#${quest.epicId}` prints a number nobody
+              // recognises AND links to a different epic, and both failures
+              // look like a working column.
+              const epic = epics?.find((e) => e.id === quest.epicId);
+              if (!epic) {
+                return <span className="text-muted-foreground">-</span>;
+              }
+              return (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      // A real anchor for the same reasons the title column
+                      // gives, `stopPropagation` included: the row carries
+                      // `onRowClick` to the quest, so without it a click here
+                      // navigates twice, once to the epic and once to the
+                      // quest.
+                      <Link
+                        href={router.path("projectEpic", {
+                          params: { epicNumber: String(epic.number) },
+                        })}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
+                      />
+                    }
+                  >
+                    <Layers className="size-3.5" />#{epic.number}
+                  </TooltipTrigger>
+                  <TooltipContent>{epic.title}</TooltipContent>
+                </Tooltip>
               );
             },
           },
