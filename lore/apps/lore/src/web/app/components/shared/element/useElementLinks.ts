@@ -20,6 +20,7 @@ import type {
 } from "../../folios/folioWikiLinkResolver.ts";
 import { rewriteFolioWikiLinks } from "../../folios/rewriteFolioWikiLinks.ts";
 import type { ElementRef } from "./elementRef.ts";
+import { formatReference } from "./typedReference.ts";
 
 export interface ElementLinks {
   /**
@@ -209,43 +210,56 @@ export const useElementLinks = (
   );
 
   /**
-   * Ordering is folios, then quests, then epics, then files. The picker
-   * shows the first eight matches, and a folio is what `[[` means when
-   * nothing qualifies it — putting anything ahead of folios would bury the
-   * common case. Epics follow quests because a project has far fewer of
-   * them, so they are rarely what a prefix-free search is reaching for.
+   * Ordering is folios, then quests, then epics. The picker shows the first
+   * eight matches and every entry inserts the same `#<LETTER><n>` shape, so
+   * the order only says what a body most often points at: notes cite notes.
+   * Epics come last because a project has far fewer of them, so they are
+   * rarely what a prefix-free search is reaching for.
+   *
+   * Every token is the typed reference (`typedReference.ts`), shown again
+   * as the hint so the author sees what will land in the document. A quest
+   * used to be inserted as `quest#N`, without the colon both parsers needed
+   * to select the type, so every quest link the picker ever wrote was a
+   * broken folio reference (epic #32).
+   *
+   * Attachments are not offered. `[[blob:#N]]` is dead: a file is embedded
+   * as `![name](assets/<name>)` from the Attachments tab or by dropping it
+   * into the editor, never through a wiki-link.
    */
   const suggestions = useMemo<WikiLinkSuggestion[]>(
     () => [
-      ...folios.map((f) => ({
-        key: `folio:${f.id}`,
-        kind: "folio" as const,
-        token: f.title,
-        label: f.title,
-        hint: `#${f.shortId}`,
-      })),
-      ...(quests ?? []).map((q) => ({
-        key: `quest:${q.shortId}`,
-        kind: "quest" as const,
-        token: `quest#${q.shortId}`,
-        label: q.title,
-        hint: `#${q.shortId}`,
-      })),
-      ...(epics ?? []).map((e) => ({
-        key: `epic:${e.shortId}`,
-        kind: "epic" as const,
-        token: `epic:#${e.shortId}`,
-        label: e.title,
-        hint: `#${e.shortId}`,
-      })),
-      ...blobs.map((b) => ({
-        key: `blob:${b.fileId}`,
-        kind: "blob" as const,
-        token: `blob:#${b.shortId}`,
-        label: b.name,
-      })),
+      ...folios.map((f) => {
+        const token = formatReference("folio", f.shortId);
+        return {
+          key: `folio:${f.id}`,
+          kind: "folio" as const,
+          token,
+          label: f.title,
+          hint: token,
+        };
+      }),
+      ...(quests ?? []).map((q) => {
+        const token = formatReference("quest", q.shortId);
+        return {
+          key: `quest:${q.shortId}`,
+          kind: "quest" as const,
+          token,
+          label: q.title,
+          hint: token,
+        };
+      }),
+      ...(epics ?? []).map((e) => {
+        const token = formatReference("epic", e.shortId);
+        return {
+          key: `epic:${e.shortId}`,
+          kind: "epic" as const,
+          token,
+          label: e.title,
+          hint: token,
+        };
+      }),
     ],
-    [folios, quests, epics, blobs],
+    [folios, quests, epics],
   );
 
   const rendered = useMemo(

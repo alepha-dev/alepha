@@ -2,23 +2,22 @@
  * One entry the `[[` picker can offer.
  *
  * Lives in its own file because the Lexical plugin that used to declare it
- * is deleted. The shape is what `useWikiLinkEditorContext` produces and what
- * the CodeMirror completion source consumes, and neither of those is Lexical
- * — so the type outliving the plugin is the point, not an accident.
+ * is deleted. The shape is what `useElementLinks` produces and what the
+ * CodeMirror completion source consumes, and neither of those is Lexical:
+ * the type outliving the plugin is the point, not an accident.
  */
 export interface WikiLinkSuggestion {
   key: string;
-  kind: "folio" | "quest" | "epic" | "blob";
+  kind: "folio" | "quest" | "epic";
   /**
-   * What is written INTO the document, between the brackets.
+   * What is written INTO the document, between the brackets: the typed
+   * reference `#Q12` / `#E3` / `#F12` (`typedReference.ts`), for every kind.
    *
-   * A folio goes by title: a reference written by title survives an
-   * export/import into another project, and reads in the source. A quest
-   * goes by `quest#N` instead, because quest titles get rewritten as the
-   * work is understood and a title-keyed reference silently breaks when they
-   * do — whereas a folio's title IS its identity and is renamed far less.
-   * An epic goes by `epic:#N` for the same reason as a quest: it is work,
-   * and work gets renamed as it is understood.
+   * By number and never by title, on purpose. Quest and epic titles get
+   * rewritten as the work is understood. Folios used to go by title so a
+   * reference survived an export into another project; that portability was
+   * given up for one grammar (epic #32). A number is rename-proof and needs
+   * no rewriter behind it.
    */
   token: string;
   label: string;

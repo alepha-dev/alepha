@@ -131,10 +131,43 @@ describe("useElementLinks — a planned epic's quest is direct addressing", () =
     );
 
     await waitFor(() => {
-      expect(
-        result.current.suggestions.some((s) => s.token === "quest#7"),
-      ).toBe(true);
+      expect(result.current.suggestions.some((s) => s.token === "#Q7")).toBe(
+        true,
+      );
     });
+  });
+
+  it("the token the picker inserts resolves once it is in the body", async ({
+    expect,
+  }) => {
+    // The picker used to insert `quest#7`, which neither parser read as a
+    // quest, and the only spec on it asserted the string. This one takes
+    // the token the hook offers and puts it back through the same hook.
+    const { fake, wrapper } = setup();
+    fake.quests = [{ id: 1, shortId: 7, title: "Deploy pipeline" }];
+
+    const { result, rerender } = renderHook(
+      (content: string) =>
+        useElementLinks(
+          { kind: "quest", projectId: 1, projectSlug: "acme" },
+          content,
+        ),
+      { wrapper, initialProps: "" },
+    );
+
+    let token = "";
+    await waitFor(() => {
+      const quest = result.current.suggestions.find((s) => s.kind === "quest");
+      expect(quest).toBeDefined();
+      token = quest?.token ?? "";
+    });
+
+    rerender(`See [[${token}]] for details.`);
+
+    await waitFor(() => {
+      expect(result.current.rendered).toContain("(/acme/quests/7)");
+    });
+    expect(result.current.rendered).not.toContain("#lore-broken:");
   });
 
   it("offers epics, which only this hook ever did", async ({ expect }) => {
@@ -153,7 +186,7 @@ describe("useElementLinks — a planned epic's quest is direct addressing", () =
     await waitFor(() => {
       expect(result.current.rendered).toContain("(/acme/epics/3)");
     });
-    expect(result.current.suggestions.some((s) => s.token === "epic:#3")).toBe(
+    expect(result.current.suggestions.some((s) => s.token === "#E3")).toBe(
       true,
     );
   });
