@@ -13,6 +13,7 @@ import { BlobController } from "./controllers/BlobController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
+import { EstateController } from "./controllers/EstateController.ts";
 import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
@@ -52,6 +53,8 @@ import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
+import { EstateService } from "./services/EstateService.ts";
+import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -179,6 +182,12 @@ export const LoreApi = $module({
     // `FrozenSigilAnalyticsTables` above — names it.
     SigilTokenService,
     SigilIngestService,
+    // The deploy-destination half: a machine's secret and what an estate is.
+    // `EstateTokenService` is deliberately not `SigilTokenService` with a
+    // different table, see its doc: the two credentials are one grep apart
+    // and mean different things.
+    EstateTokenService,
+    EstateService,
     // Controllers
     QuestController,
     QuestCommentController,
@@ -202,6 +211,7 @@ export const LoreApi = $module({
     FeedbackController,
     SigilController,
     SigilIngestController,
+    EstateController,
     SigilAnalyticsController,
     InsightsController,
     BlightController,
