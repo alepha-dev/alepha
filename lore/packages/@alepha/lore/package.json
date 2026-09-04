@@ -19,6 +19,7 @@
     "type": "git",
     "url": "git+https://github.com/alepha-dev/alepha.git"
   },
+  "bin": "./src/bin/index.ts",
   "files": [
     "dist",
     "src"
@@ -39,6 +40,9 @@
     "./package.json": "./package.json"
   },
   "publishConfig": {
+    "bin": {
+      "lore": "./dist/bin/index.js"
+    },
     "exports": {
       "./sigil": {
         "types": "./dist/sigil/index.d.ts",

@@ -50,4 +50,18 @@ export default defineConfig([
     dts: true,
     deps,
   },
+  // The `lore` binary. `dts: false` is load-bearing rather than an
+  // optimisation: a bin has no consumers, so its types are dead weight, and
+  // emitting them hands `scripts/check-dts.ts` a new `.d.ts` to walk for the
+  // private `lore` workspace it exists to keep out of `dist`.
+  {
+    entry: "src/bin/index.ts",
+    format: ["esm"],
+    platform: "node",
+    sourcemap: true,
+    fixedExtension: false,
+    outDir: "dist/bin",
+    dts: false,
+    deps,
+  },
 ]);
