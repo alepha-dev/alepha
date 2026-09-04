@@ -57,6 +57,28 @@ describe("PlateLayout", () => {
     expect(view.getByRole("heading", { name: "0.28.0" })).toBeTruthy();
     expect(view.getByText("body")).toBeTruthy();
     expect(view.getByTestId("probe-tabs")).toBeTruthy();
+    // The rule that separates the tabs from the plate above them.
+    expect(view.getByTestId("probe-tabs").className).toContain("border-t");
+  });
+
+  /**
+   * `plate` has always been optional and had never been exercised, which is
+   * how the tab bar's top rule came to be unconditional: with no plate it
+   * drew a stray line immediately under the container's own top edge
+   * (feedback #2095, found by Reports dropping a plate that only reprinted
+   * its breadcrumb leaf).
+   */
+  it("drops the tab bar's top rule when there is no plate", async () => {
+    const view = await mount(
+      <PlateLayout tabs={stateTabs} active="overview" tabsTestId="probe-tabs">
+        <p>body</p>
+      </PlateLayout>,
+    );
+
+    expect(view.getByTestId("probe-tabs").className).not.toContain("border-t");
+    // The tabs themselves are unchanged: still there, still the right height.
+    expect(view.getByRole("tab", { name: "Overview" })).toBeTruthy();
+    expect(view.getByText("body")).toBeTruthy();
   });
 
   it("calls back with the tab key when a stateful tab is pressed", async () => {

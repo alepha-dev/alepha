@@ -46,6 +46,16 @@ export interface PlateTabBarProps {
    * BODIES too, and "Settings" is also a project-level nav entry.
    */
   testId?: string;
+  /**
+   * Whether to rule off the top edge. Default `true`.
+   *
+   * The line separates the tabs from the plate above them, so it is only
+   * right when there IS one. `PlateLayout` derives this from its own `plate`
+   * slot; a bar with no plate above it would otherwise draw a stray line
+   * immediately under the container's top edge, which is what a caller
+   * omitting the plate for the first time discovered (feedback #2095).
+   */
+  divided?: boolean;
 }
 
 /**
@@ -67,7 +77,10 @@ export const PlateTabBar = (props: PlateTabBarProps) => {
   return (
     <div
       data-testid={props.testId}
-      className="border-border/60 flex gap-5 border-t px-6"
+      className={cn(
+        "border-border/60 flex gap-5 px-6",
+        props.divided !== false && "border-t",
+      )}
       role={navigates ? "navigation" : "tablist"}
     >
       {props.tabs.map((tab) => {

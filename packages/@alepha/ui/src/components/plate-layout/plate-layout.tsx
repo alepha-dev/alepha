@@ -13,6 +13,11 @@ export interface PlateLayoutProps {
    * A slot rather than props, because there is no shape common to a release's
    * tag and progress bar, a project's reporting period and an enrolled app's
    * address. What the layout owns is the band, not its contents.
+   *
+   * Optional, and genuinely so since feedback #2095: a page whose plate would
+   * only reprint what the breadcrumb leaf already says is better without one.
+   * Omitting it also drops the tab bar's top rule, which exists to separate
+   * the tabs from the plate and has nothing to separate them from otherwise.
    */
   plate?: ReactNode;
   tabs: PlateTab[];
@@ -66,6 +71,7 @@ export const PlateLayout = (props: PlateLayoutProps) => (
         active={props.active}
         onSelect={props.onSelect}
         testId={props.tabsTestId}
+        divided={props.plate !== undefined}
       />
     </div>
 

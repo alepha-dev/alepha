@@ -11,8 +11,8 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import { reportsTabs } from "./reportsTabs.ts";
 
 /**
- * Reports shell: the project's name over a tab strip, and a `<NestedView />`
- * rendering the active child page.
+ * Reports shell: a tab strip and a `<NestedView />` rendering the active
+ * child page. No plate - see the note at the `PlateLayout` call below.
  *
  * On `PlateLayout` since #1693, which is the Release view's shape lifted into
  * `@alepha/ui`. Before that this file drew its own tab row inside a
@@ -44,18 +44,15 @@ const ReportsLayout = () => {
       tabsTestId="reports-tabs"
       tabs={tabs}
       active={routerState.name ?? ""}
-      plate={
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-6 pt-6 pb-4">
-          {/* The section's own name, from the sidebar entry that leads here
-              rather than a second key saying the same word. */}
-          <h1 className="text-xl font-semibold">
-            {tr("project.menu.reports")}
-          </h1>
-          <span className="text-muted-foreground text-xs">
-            {project?.title}
-          </span>
-        </div>
-      }
+      // No plate, deliberately (feedback #2095). It printed "Reports" beside
+      // the project's title, directly under a breadcrumb already reading
+      // "Alepha > Reports": both words twice, a few pixels apart. Same
+      // reasoning as the Activity heading in #2090.
+      //
+      // `AppLayout` and `ProjectRelease` keep theirs because a plate that
+      // names an ENTITY - an app's address, a release's tag and progress -
+      // carries what the breadcrumb leaf cannot. A plate that names the
+      // section is the leaf, drawn twice.
     >
       <div className="flex flex-col gap-8 p-4">
         <NestedView />
