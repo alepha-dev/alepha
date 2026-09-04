@@ -1473,13 +1473,19 @@ export default {
   "epic.begin.title": "Begin this epic?",
   "epic.begin.confirm":
     "Beginning $1 releases its quests into the backlog, where the rest of the project can see and pick them up.",
-  "epic.returnToPlanning.title": "Return this epic to planning?",
-  "epic.returnToPlanning.confirm":
-    "Returning $1 to planning withdraws its quests from the backlog again. They keep their status; they stop being listed.",
+  "epic.conclude.title": "Conclude this epic?",
+  "epic.conclude.confirm":
+    "Concluding $1 is final. It cannot be reopened or returned to planning. Anything left to do goes in a new epic that depends on this one.",
+  "epic.begin.blocked": "Blocked by Epic $1",
   "epic.status.actions.begin": "Begin the Epic",
   "epic.status.actions.conclude": "Conclude the Epic",
-  "epic.status.actions.returnToPlanning": "Return to Planning",
-  "epic.status.actions.reopen": "Reopen the Epic",
+  "epic.aside.predecessor": "Depends on",
+  "epic.aside.predecessor.after": "After Epic $1",
+  "epic.aside.predecessor.blocked": "Blocked by Epic $1",
+  // The quest page's Accept, withheld while the quest's epic is not active.
+  "quest.view.accept.epicPlanned": "Epic $1 has not begun. Begin it first.",
+  "quest.view.accept.epicDone":
+    "Epic $1 is concluded. File this in a new epic.",
   "epic.tab.overview": "Overview",
   "epic.tab.quests": "Quests",
   "epic.tab.flow": "Flow",

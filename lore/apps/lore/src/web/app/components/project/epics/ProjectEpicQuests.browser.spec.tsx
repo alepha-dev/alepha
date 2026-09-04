@@ -15,6 +15,7 @@ import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { defaultProjectFeatures } from "@/api/entities/projects.ts";
+import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import { currentAreasAtom } from "../../../atoms/currentAreasAtom.ts";
@@ -46,6 +47,24 @@ const questOf = (
       totalTimeSpent: 0,
     },
   }) as unknown as QuestResource;
+
+/**
+ * The epic the tab belongs to. Only its status matters here: the quest set
+ * is editable while `planned` and frozen otherwise (epic #31).
+ */
+const epicOf = (status: EpicResource["status"]): EpicResource =>
+  ({
+    id: 7,
+    number: 7,
+    projectId: 1,
+    title: "The initiative",
+    description: "",
+    status,
+    createdAt: "2026-09-01T10:00:00.000Z",
+    updatedAt: "2026-09-01T10:00:00.000Z",
+    progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
+    questCount: 0,
+  }) as unknown as EpicResource;
 
 /**
  * Stands in for the HTTP-backed `useClient()` calls the create sheet makes.
@@ -110,7 +129,10 @@ describe("ProjectEpicQuests - columns", () => {
     alepha = undefined;
   });
 
-  const mount = async (quests: QuestResource[]) => {
+  const mount = async (
+    quests: QuestResource[],
+    status: EpicResource["status"] = "planned",
+  ) => {
     alepha = Alepha.create()
       .with(AlephaDateTime)
       // Before the modules that reach for it: `AlephaReactRouter`
@@ -161,6 +183,7 @@ describe("ProjectEpicQuests - columns", () => {
         <DialogProvider>
           <ProjectEpicQuests
             projectId={1}
+            epic={epicOf(status)}
             quests={quests}
             onAttach={() => undefined}
             onDetach={(quest) => detached.push(quest.shortId)}
@@ -213,6 +236,32 @@ describe("ProjectEpicQuests - columns", () => {
     const menus = screen.getAllByRole("button", { name: /actions|menu/i });
     expect(menus.length).toBeGreaterThan(0);
     expect(detached).toEqual([]);
+  });
+
+  /**
+   * The plan freeze (epic #31). Once the epic has begun the server refuses
+   * attach, detach and create-into, so the affordances go with the
+   * permission instead of answering 400: no New Quest, no Attach Quest, and
+   * no row menu, since Detach was the only entry in it.
+   */
+  it("hides Create, Attach and Detach once the plan is frozen", async () => {
+    for (const status of ["active", "done"] as const) {
+      const { view } = await mount(
+        [questOf(12, "Ship the thing", "low")],
+        status,
+      );
+
+      await screen.findByRole("link", { name: "#12 - Ship the thing" });
+      expect(screen.queryByRole("button", { name: "New Quest" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Attach Quest" })).toBeNull();
+      expect(
+        screen.queryAllByRole("button", { name: /actions|menu/i }),
+      ).toEqual([]);
+
+      view.unmount();
+      await alepha?.stop();
+      alepha = undefined;
+    }
   });
   /**
    * New Quest beside Attach Quest (feedback #2057): the same sheet the

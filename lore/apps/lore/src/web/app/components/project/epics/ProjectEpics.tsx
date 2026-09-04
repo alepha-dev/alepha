@@ -37,7 +37,12 @@ import { settleBulk } from "../../shared/bulkOutcome.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import { useBulkReport } from "../../shared/useBulkReport.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
-import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
+import {
+  epicBlockedBy,
+  STATUS_ICONS,
+  STATUS_LABEL_KEYS,
+  STATUS_TONE,
+} from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
 import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 
@@ -462,7 +467,21 @@ const ProjectEpics = () => {
                 },
                 {
                   icon: Play,
-                  label: tr("epic.status.actions.begin"),
+                  // `dependsOn` is a gate since epic #31: Begin is refused
+                  // while the predecessor is not done. The entry stays on the
+                  // row, disabled, and its label names the blocking epic, so
+                  // the reason sits where the click would have been rather
+                  // than in a 400 after it.
+                  label:
+                    epicBlockedBy(epic) !== undefined
+                      ? String(
+                          tr("epic.begin.blocked", {
+                            args: [String(epicBlockedBy(epic))],
+                          }),
+                        )
+                      : tr("epic.status.actions.begin"),
+                  disabled: (row: EpicResource) =>
+                    epicBlockedBy(row) !== undefined,
                   onClick: async (
                     row: EpicResource,
                     { refresh }: { refresh: () => void },

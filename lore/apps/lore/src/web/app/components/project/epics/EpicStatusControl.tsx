@@ -8,43 +8,55 @@ import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
+import { epicBlockedBy } from "./epicStatus.ts";
+
 export interface EpicStatusControlProps {
   epic: EpicResource;
   onChange: (epic: EpicResource) => void;
 }
 
 /**
- * The lifecycle-verb buttons for the epic's current status, following the
- * vocabulary table in the design doc: `planned` only offers "Begin", `active`
- * offers both "Conclude" and "Return to Planning", `done` only offers
- * "Reopen". There is no direct `planned <-> done` button — that always goes
- * through `active`, matching the four named transitions.
+ * The lifecycle verb for the epic's current status: `planned` offers
+ * "Begin", `active` offers "Conclude", `done` offers nothing.
  *
- * It renders the verbs and NOT the status badge. The badge moved to
- * `ProjectEpicAside` when the page went to a `DetailLayout`: the aside states
- * what the epic currently is, and this toolbar control changes it. Keeping a
- * badge here too would have put the same fact on screen twice, a hand's width
- * apart.
+ * Two verbs, one way. Epic #31 made `setEpicStatus` a ratchet, so "Return
+ * to Planning" and "Reopen" are gone along with their keys: the server
+ * refuses both edges, and a button that answers 400 is worse than no
+ * button. The way forward from a concluded epic is a new epic that depends
+ * on it, which is what the Conclude dialog says.
+ *
+ * It renders the verb and NOT the status badge. The badge lives in
+ * `ProjectEpicAside`: the aside states what the epic currently is, and this
+ * toolbar control changes it. Keeping a badge here too would put the same
+ * fact on screen twice, a hand's width apart.
  *
  * `submitting` guards against a double-click firing two overlapping
  * `setEpicStatus` calls, the same way `ProjectEpics.tsx`'s `submitCreate`
  * guards its own in-flight request.
  *
- * ## Which verbs confirm, and why it is not arbitrary
+ * ## Both verbs confirm, for two different reasons
  *
- * **Begin and Return to Planning confirm. Conclude and Reopen do not.**
+ * **Begin moves the backlog gate.** A `planned` epic hides its quests from
+ * the project's backlog (`EpicVisibilityService`), so beginning one releases
+ * them for everybody: it changes what other people see on a page they are
+ * not looking at, which is the property worth a confirmation. Same copy as
+ * the Epics list's row menu, from the same keys.
  *
- * The line is not how important the transition feels, it is whether it moves
- * the BACKLOG GATE. A `planned` epic hides its quests from the project's
- * backlog (`EpicVisibilityService`), so beginning one releases them for
- * everybody and returning one to planning withdraws them again. Both change
- * what other people see on a page they are not looking at, which is the
- * property worth a confirmation.
+ * **Conclude is a one-way door.** It used to confirm nothing, on the
+ * reasoning that `active -> done` crossed no gate and could be undone, so a
+ * dialog there would teach people to dismiss dialogs unread. It cannot be
+ * undone any more, which is exactly what a confirmation is for, and the copy
+ * says so plainly. The server also refuses to conclude while a quest is
+ * open, and that refusal reaches the toast with its count.
  *
- * `active -> done` and `done -> active` cross no gate: the quests stay
- * exactly as visible as they were, so a dialog there would be a click asking
- * "are you sure you meant to click that", which teaches people to dismiss
- * dialogs unread.
+ * ## A blocked Begin says why
+ *
+ * `epics.dependsOn` is a gate since epic #31: Begin is refused while the
+ * predecessor is not done. The button is disabled and captioned with the
+ * blocking epic rather than left to fail on click, because until the aside
+ * gained its predecessor row nothing on this page showed the field at all,
+ * and a refusal for a reason nobody can see reads as a bug.
  */
 const EpicStatusControl = (props: EpicStatusControlProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -52,16 +64,10 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
   const [submitting, setSubmitting] = useState(false);
+  const blockedBy = epicBlockedBy(props.epic);
 
-  /**
-   * The two gate-moving transitions ask first. Same copy as the Epics list's
-   * row menu, from the same keys, so the two entry points into `Begin`
-   * cannot come to describe it differently.
-   */
-  const confirmFor = async (
-    status: "planned" | "active" | "done",
-  ): Promise<boolean> => {
-    if (status === "active" && props.epic.status === "planned") {
+  const confirmFor = async (status: "active" | "done"): Promise<boolean> => {
+    if (status === "active") {
       return await dialog.confirm({
         title: tr("epic.begin.title"),
         description: tr("epic.begin.confirm", {
@@ -71,20 +77,17 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
         cancelLabel: tr("common.cancel"),
       });
     }
-    if (status === "planned") {
-      return await dialog.confirm({
-        title: tr("epic.returnToPlanning.title"),
-        description: tr("epic.returnToPlanning.confirm", {
-          args: [props.epic.title],
-        }) as string,
-        confirmLabel: tr("epic.status.actions.returnToPlanning"),
-        cancelLabel: tr("common.cancel"),
-      });
-    }
-    return true;
+    return await dialog.confirm({
+      title: tr("epic.conclude.title"),
+      description: tr("epic.conclude.confirm", {
+        args: [props.epic.title],
+      }) as string,
+      confirmLabel: tr("epic.status.actions.conclude"),
+      cancelLabel: tr("common.cancel"),
+    });
   };
 
-  const changeStatus = async (status: "planned" | "active" | "done") => {
+  const changeStatus = async (status: "active" | "done") => {
     if (submitting) return;
     if (!(await confirmFor(status))) return;
     setSubmitting(true);
@@ -101,48 +104,43 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
     }
   };
 
+  if (props.epic.status === "done") {
+    return null;
+  }
+
+  const blockedLabel =
+    blockedBy !== undefined
+      ? String(tr("epic.begin.blocked", { args: [String(blockedBy)] }))
+      : undefined;
+
   return (
     <div className="flex items-center gap-2">
       {props.epic.status === "planned" && (
-        <Button
-          type="button"
-          size="lg"
-          disabled={submitting}
-          onClick={() => void changeStatus("active")}
-        >
-          {tr("epic.status.actions.begin")}
-        </Button>
-      )}
-      {props.epic.status === "active" && (
         <>
+          {blockedLabel !== undefined && (
+            <span className="text-muted-foreground text-xs">
+              {blockedLabel}
+            </span>
+          )}
           <Button
             type="button"
             size="lg"
-            variant="outline"
-            disabled={submitting}
-            onClick={() => void changeStatus("planned")}
+            disabled={submitting || blockedLabel !== undefined}
+            title={blockedLabel}
+            onClick={() => void changeStatus("active")}
           >
-            {tr("epic.status.actions.returnToPlanning")}
-          </Button>
-          <Button
-            type="button"
-            size="lg"
-            disabled={submitting}
-            onClick={() => void changeStatus("done")}
-          >
-            {tr("epic.status.actions.conclude")}
+            {tr("epic.status.actions.begin")}
           </Button>
         </>
       )}
-      {props.epic.status === "done" && (
+      {props.epic.status === "active" && (
         <Button
           type="button"
           size="lg"
-          variant="outline"
           disabled={submitting}
-          onClick={() => void changeStatus("active")}
+          onClick={() => void changeStatus("done")}
         >
-          {tr("epic.status.actions.reopen")}
+          {tr("epic.status.actions.conclude")}
         </Button>
       )}
     </div>
