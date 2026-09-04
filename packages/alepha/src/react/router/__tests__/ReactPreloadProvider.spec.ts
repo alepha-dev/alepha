@@ -22,12 +22,10 @@ describe("ReactPreloadProvider", () => {
 
     // Set up mock SSR manifest with entry assets
     alepha.store.set(ssrManifestAtom, {
-      client: {
-        "src/entry.tsx": {
-          file: "assets/entry.abc123.js",
-          isEntry: true,
-          css: ["assets/style.def456.css"],
-        },
+      preload: {
+        files: ["/assets/entry.abc123.js", "/assets/style.def456.css"],
+        keys: {},
+        entry: { js: 0, css: [1], graph: [] },
       },
     });
 
@@ -74,20 +72,20 @@ describe("ReactPreloadProvider", () => {
     await alepha.stop();
   });
 
-  it("should handle base path in manifest", async ({ expect }) => {
+  it("should carry the asset base the build baked into the hrefs", async ({
+    expect,
+  }) => {
     const alepha = Alepha.create({
       env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
     }).with(App);
 
-    // Set up mock SSR manifest with base path
+    // Set up mock SSR manifest whose hrefs already carry the asset base: the
+    // build applies it once rather than the runtime applying it per request.
     alepha.store.set(ssrManifestAtom, {
-      base: "/app",
-      client: {
-        "src/entry.tsx": {
-          file: "assets/entry.abc123.js",
-          isEntry: true,
-          css: ["assets/style.def456.css"],
-        },
+      preload: {
+        files: ["/app/assets/entry.abc123.js", "/app/assets/style.def456.css"],
+        keys: {},
+        entry: { js: 0, css: [1], graph: [] },
       },
     });
 
@@ -118,11 +116,10 @@ describe("ReactPreloadProvider", () => {
 
     // Set up mock SSR manifest with only JS entry
     alepha.store.set(ssrManifestAtom, {
-      client: {
-        "src/entry.tsx": {
-          file: "assets/entry.abc123.js",
-          isEntry: true,
-        },
+      preload: {
+        files: ["/assets/entry.abc123.js"],
+        keys: {},
+        entry: { js: 0, css: [], graph: [] },
       },
     });
 

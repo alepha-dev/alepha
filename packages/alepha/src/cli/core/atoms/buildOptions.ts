@@ -77,6 +77,25 @@ export const buildOptions = $atom({
       .optional(),
 
     /**
+     * SSR module preloading.
+     */
+    preload: z
+      .object({
+        /**
+         * Source paths allowed to resolve to no chunks.
+         *
+         * A page whose preload key resolves to nothing ships no module
+         * preloads at all, so the build refuses it by default and names the
+         * path. List one here when the fold is deliberate and the cost is
+         * understood.
+         *
+         * @example allowUnresolved: ["src/pages/Rare.tsx"]
+         */
+        allowUnresolved: z.array(z.string()).optional(),
+      })
+      .optional(),
+
+    /**
      * Cloudflare-specific deployment configuration.
      *
      * Note: Set `target: "cloudflare"` to enable Cloudflare deployment.
