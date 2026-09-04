@@ -14,6 +14,7 @@ import type { DirectoryController } from "@/api/controllers/DirectoryController.
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 
 import type { AppRouter } from "../../../../AppRouter.ts";
+import { folioTreeCollapsedAtom } from "../../../../atoms/folioTreeCollapsedAtom.ts";
 import { pendingFolioTreeRenameAtom } from "../../../../atoms/pendingFolioTreeRenameAtom.ts";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
@@ -107,22 +108,29 @@ export interface FolioTreeState {
  * collapse/selection/rename/drag state, and every mutation the tree can
  * trigger (create, rename, move via drag, delete, duplicate, pin).
  *
- * ## This hook must NOT be mounted inside the folio-keyed subtree
+ * ## Collapse state is NOT this hook's to hold
  *
- * `FolioWorkspace` remounts `FolioWorkspaceContent` on a `key` tied to the
- * folio id specifically so a folio-to-folio navigation resets the draft
- * buffer, `useForm`, etc. (see that file's doc). This hook is the opposite:
- * its collapse state and the one-time-seed guard below only work if THIS
- * hook survives a folio switch — the seed must run once per TREE mount, not
- * once per FOLIO mount. `FolioTree` (and therefore this hook) is mounted
- * from `FolioWorkspace` itself, outside the keyed subtree, for exactly this
- * reason. The deleted `FolioTreePanel.tsx` got this "for free" because it
- * was rendered by the old `FolioView.tsx`, itself never remounted across
- * folio navigations (Alepha's router doesn't remount on a param-only nav —
- * see `FolioWorkspace.tsx`'s doc). Mounting this hook from
- * `FolioWorkspaceContent` instead would silently reintroduce feedback #14:
- * every navigation would look like a fresh mount, `initializedRef` would
- * reset, and the seed would re-collapse whatever the user had left open.
+ * It lives in `folioTreeCollapsedAtom`, and the reason is that this hook IS
+ * remounted, on a path nobody expected. `FoliosLayout` renders
+ * `{name === "projectFolios" ? <FolioWorkspace empty /> : <NestedView />}`,
+ * two different component types in two different positions, so walking from
+ * the folio list to a folio tears the whole workspace down and builds it
+ * again. The old `initializedRef` guard survived re-renders but not that, so
+ * the one-time seed ran a second time and re-collapsed every directory except
+ * the opened folio's ancestors - feedback #14, returning as #2100 through a
+ * door its guard could not see.
+ *
+ * The atom survives a remount by construction, and carries its `projectId`
+ * so the seed runs once per PROJECT rather than once per mount, which is what
+ * "one-time" was always trying to mean.
+ *
+ * ⚠️ The placement below still matters for everything else. `FolioWorkspace`
+ * remounts `FolioWorkspaceContent` on a `key` tied to the folio id, so a
+ * folio-to-folio navigation resets the draft buffer and `useForm` (see that
+ * file's doc). `FolioTree` is mounted from `FolioWorkspace` itself, OUTSIDE
+ * that keyed subtree, so `renamingId`, `dragId` and the rest are not thrown
+ * away every time the reader opens another folio. Moving it inside would
+ * still be wrong.
  *
  * ## Why this hook has its own `useQuery`
  *
@@ -173,7 +181,30 @@ export const useFolioTreeModel = (
   const [folios, setFolios] = useStore(userFoliosAtom);
   const [directories, setDirectories] = useStore(projectDirectoriesAtom);
 
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  /**
+   * ⚠️ Collapse state lives in an ATOM, not here.
+   *
+   * See `folioTreeCollapsedAtom`: `FoliosLayout` swaps component types
+   * between `/folios` and `/folios/:shortId`, so this hook is remounted on
+   * that navigation and any ref-guarded local state starts over. That is how
+   * feedback #14 came back as #2100.
+   *
+   * `projectId` carried alongside is what replaces `initializedRef`: a set
+   * stored for THIS project means the seed has run, and one stored for
+   * another project means it has not.
+   */
+  const [collapsedState, setCollapsedState] = useStore(folioTreeCollapsedAtom);
+  const seededForProject = collapsedState?.projectId === input.projectId;
+  const collapsed = useMemo(
+    () => new Set(seededForProject ? collapsedState.collapsed : []),
+    [collapsedState, seededForProject],
+  );
+  const writeCollapsed = (next: ReadonlySet<string>): void => {
+    setCollapsedState({
+      projectId: input.projectId,
+      collapsed: [...next],
+    });
+  };
   // Seeded from `pendingFolioTreeRenameAtom` — see that atom's doc for why
   // `createFolio`'s own `setRenamingId` call (below) is not enough on its
   // own: the navigation it triggers can remount this whole hook before that
@@ -192,9 +223,6 @@ export const useFolioTreeModel = (
   const [drop, setDrop] = useState<
     { id: string; position: FolioDropPosition } | undefined
   >();
-  // Guards the one-time default-collapse below — see the file doc.
-  const initializedRef = useRef(false);
-
   const seeded = folios.length > 0 || directories.length > 0;
 
   const { loading: fetching } = useQuery(
@@ -302,51 +330,47 @@ export const useFolioTreeModel = (
     return ids;
   }, [ancestorDirIds, nodeById, revealedDirectoryId]);
 
-  // One-time seed: collapse every directory except the ones that must be
-  // open. Ported from `FolioTreePanel.tsx` - without the `initializedRef`
-  // guard this re-ran on every folio→folio navigation and re-collapsed
-  // whatever the user had opened (feedback #14).
+  // Seed, once per PROJECT: collapse every directory except the ones that
+  // must be open. `seededForProject` replaces the old `initializedRef` - a
+  // ref survives re-renders but not the remount `FoliosLayout` causes between
+  // `/folios` and `/folios/:shortId`, which is what re-collapsed the tree
+  // under the reader (feedback #14, then #2100).
   useEffect(() => {
-    if (initializedRef.current) return;
+    if (seededForProject) return;
     if (directories.length === 0 && folios.length === 0) return; // await data
-    initializedRef.current = true;
     const defaultCollapsed = new Set<string>();
     for (const d of directories) {
       if (!expandDirIds.has(d.id)) defaultCollapsed.add(d.id);
     }
-    // One-time initialisation, guarded by `initializedRef` above, so it cannot
-    // cascade.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setCollapsed(defaultCollapsed);
-  }, [expandDirIds, directories, folios]);
+    // Runs once per project, guarded by `seededForProject`. No
+    // `set-state-in-effect` suppression needed any more: this writes an atom
+    // rather than component state, which is the other half of why the move
+    // was worth making.
+    writeCollapsed(defaultCollapsed);
+  }, [seededForProject, expandDirIds, directories, folios]);
 
   // Later navigations only ever EXPAND the new target's path - never
   // collapse anything else. This is what keeps a directory open when
   // jumping from one of its folios to an unrelated root-level folio, and
   // what makes a `?dir=` link work when the workspace is already mounted.
   useEffect(() => {
-    if (!initializedRef.current) return;
+    if (!seededForProject) return;
     if (expandDirIds.size === 0) return;
-    // One-time initialisation, guarded by `initializedRef` above, so it cannot
-    // cascade.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setCollapsed((prev) => {
-      let changed = false;
-      const next = new Set(prev);
-      for (const id of expandDirIds) {
-        if (next.delete(id)) changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [expandDirIds]);
+    let changed = false;
+    const next = new Set(collapsed);
+    for (const id of expandDirIds) {
+      if (next.delete(id)) changed = true;
+    }
+    // Guarded on `changed`, so it settles in one pass.
+    if (!changed) return;
+    writeCollapsed(next);
+  }, [expandDirIds, seededForProject, collapsed]);
 
   const toggle = (id: string): void => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const next = new Set(collapsed);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    writeCollapsed(next);
   };
 
   /**
@@ -357,13 +381,10 @@ export const useFolioTreeModel = (
    * might be collapsed.
    */
   const expandOne = (id?: string): void => {
-    if (!id) return;
-    setCollapsed((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
+    if (!id || !collapsed.has(id)) return;
+    const next = new Set(collapsed);
+    next.delete(id);
+    writeCollapsed(next);
   };
 
   const select = (node: FolioTreeNode): void => {
