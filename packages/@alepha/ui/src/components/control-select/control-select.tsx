@@ -24,7 +24,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { ListChecks, Loader2 } from "lucide-react";
+import { ListChecks, Loader2, X } from "lucide-react";
 import type { HTMLAttributes } from "react";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 
@@ -246,13 +246,6 @@ export interface ControlSelectProps {
    */
   icon?: IconComponent;
 }
-
-/**
- * Internal sentinel for the `clearable` row. Picked to be unlikely to
- * collide with a real option value; we translate it to `undefined` at
- * the boundary so callers never see it.
- */
-const CLEAR_VALUE = "__alepha_clear__";
 
 /**
  * Internal sentinel for the "select every match" row. Same reasoning as
@@ -514,12 +507,19 @@ interface ComboboxProps {
    */
   placeholder?: string;
   /**
-   * Prepend a row that resets the field to `undefined` — the combobox
-   * equivalent of the native `Select`'s clear row.
+   * Empty is a meaningful choice for this field, so say so and offer it: the
+   * trigger shows {@link clearLabel} while nothing is selected, and carries
+   * an `x` to get back there once something is.
+   *
+   * ⚠️ It used to PREPEND A ROW saying the same thing, which is why the two
+   * names still read that way at some call sites. That row was drawn as a
+   * pickable option with a check mark, so "All states" looked like a third
+   * state rather than the absence of a filter (feedback #2098).
    */
   clearable?: boolean;
   /**
-   * Label of the `clearable` row (e.g. "All zones").
+   * What empty is called on this field (e.g. "All zones"), shown as the
+   * trigger's placeholder.
    */
   clearLabel?: string;
   /**
@@ -550,10 +550,6 @@ interface ComboOption {
    * Marks the synthetic "create new" row injected by `createNewEntry`.
    */
   create?: boolean;
-  /**
-   * Marks the synthetic "clear" row injected by `clearable`.
-   */
-  clear?: boolean;
   /**
    * Marks the synthetic "select every match" row a multi-select offers while
    * a query is narrowing the list.
@@ -638,20 +634,22 @@ function Combobox(props: ComboboxProps) {
       })()
     : undefined;
 
-  // The synthetic "no selection" row — "All zones", "All tags", "None". Only
-  // meaningful for a single select: the multi path clears by removing chips.
-  const clearRow: ComboOption | undefined =
-    props.clearable && !props.multi
-      ? {
-          value: CLEAR_VALUE,
-          label:
-            props.clearLabel ?? tr("controlSelect.none", { default: "None" }),
-          clear: true,
-        }
-      : undefined;
-  // Filtered on its own label like any other row, so searching "zone" doesn't
-  // leave "All zones" stranded at the top of a list it doesn't match.
-  const showClear = clearRow && clearRow.label.toLowerCase().includes(q);
+  // ⚠️ There is no synthetic "no selection" ROW any more.
+  //
+  // A `clearable` single-select used to inject one - "All states", "Everyone",
+  // "All sigils" - at the top of its list. It said the same thing the trigger
+  // already says when the field is empty, a second time, as a pickable option
+  // carrying a check mark, so "all" read as a third state a release could be
+  // in rather than as the absence of a filter (feedback #2092, then #2098).
+  //
+  // The empty state is now expressed ONCE, on the trigger, via `clearLabel`
+  // as its placeholder. Clearing a chosen value is re-clicking it, which
+  // `deselectable` already implements and
+  // `control-select-deselect.browser.spec.tsx` already covers.
+  //
+  // `clearable` therefore no longer adds a row. It still means "this field
+  // may be empty": it is what puts `clearLabel` on the trigger and what makes
+  // a REQUIRED field deselectable.
 
   /**
    * "Select every match" — the row that makes a typed prefix a filter clause
@@ -692,7 +690,6 @@ function Combobox(props: ComboboxProps) {
       : undefined;
 
   const items: ComboOption[] = [
-    ...(showClear && clearRow ? [clearRow] : []),
     ...(selectAllRow ? [selectAllRow] : []),
     ...filtered,
     ...(createOption ? [createOption] : []),
@@ -711,9 +708,10 @@ function Combobox(props: ComboboxProps) {
     ? selected.map(toValueObject)
     : selected[0]
       ? toValueObject(selected[0])
-      : // Empty + clearable reads as "the clear row is what's selected", so it
-        // carries the check mark — same as the native `Select` path.
-        (clearRow ?? null);
+      : // Empty is EMPTY. It used to resolve to the clear row so that row
+        // carried a check mark; with no such row, nothing is selected and the
+        // trigger shows `clearLabel` as its placeholder.
+        null;
 
   const remember = (o: ComboOption) => {
     if (o.create) labelCache.current.set(o.value, o.query ?? o.value);
@@ -721,7 +719,11 @@ function Combobox(props: ComboboxProps) {
   };
 
   const handleSingle = (o: ComboOption | null) => {
-    if (!o || o.clear) {
+    // `null` still arrives from Base UI's own clearing paths (Escape on an
+    // open popup, a controlled reset). There is no longer a synthetic clear
+    // ROW that could arrive here as an option - the label lives on the
+    // trigger and nowhere else since feedback #2098.
+    if (!o) {
       props.onChange(undefined);
       setQuery("");
       return;
@@ -786,6 +788,26 @@ function Combobox(props: ComboboxProps) {
     : selected[0]
       ? labelFor(selected[0])
       : emptyLabel;
+
+  /**
+   * The `x` that puts a `clearable` field back to empty in one click.
+   *
+   * ⚠️ This is the affordance the injected clear ROW used to be, moved to
+   * where it belongs (feedback #2098). Deleting the row made the empty state
+   * a placeholder rather than a third pickable value, which is what the
+   * report asked for - but it also left re-pressing the chosen row as the
+   * ONLY way back, and that gesture is quiet. On a table filter the table's
+   * own "Reset filters" entry covers it; on a rail control like an epic's
+   * release picker, "None" was the one visible way to detach and there is no
+   * such fallback. So the row does not come back and this does instead, the
+   * way the quest that removed the row specified.
+   *
+   * Gated on `clearable` rather than on `deselectable`: `clearable` is the
+   * caller saying that empty is a meaningful choice here, so an ordinary
+   * optional field in a form keeps the trigger it has today.
+   */
+  const showClear =
+    Boolean(props.clearable) && selected.length > 0 && !props.disabled;
 
   // The list (loading / empty / items) is identical for single and multi, and
   // so is the trigger now, so render it once.
@@ -875,45 +897,69 @@ function Combobox(props: ComboboxProps) {
       {/* One trigger for single AND multi. Multi used to render a bordered
           chips box instead, which made it a different-looking control for the
           same job, grew with every pick, and forced a search field on because
-          the chips input was the only way to open the popup. */}
-      <ComboboxTrigger
-        id={props.id}
-        disabled={props.disabled}
-        {...props.triggerProps}
-        className={cn(
-          "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex w-full items-center justify-between rounded-lg border bg-transparent whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
-          sizeClasses.trigger,
-          sizeClasses.chevron,
-          props.minimal && MINIMAL_CLASSES,
-          // Muted means "nothing chosen yet".
-          //
-          // For MULTI that is simply "no selection": there is no clear row to
-          // stand in for it, so empty is empty and the placeholder is shown in
-          // placeholder colour.
-          //
-          // For SINGLE it is only true without a clear row. WITH one, empty is
-          // a selected value — the popup already puts the check mark on it
-          // (see `cbValue`), and the native `Select` path renders the same
-          // state in full contrast because it makes the clear label a genuine
-          // `selectedValue`. Muting there made one `clearable` filter look
-          // unset and its neighbour look set for the same meaning, purely
-          // because the option count crossed the threshold that picks between
-          // the two paths.
-          selected.length === 0 &&
-            (props.multi || !props.clearable) &&
-            "text-muted-foreground",
-          props.triggerClassName,
-        )}
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          {props.icon && (
-            <props.icon
-              className={cn("text-muted-foreground shrink-0", sizeClasses.icon)}
-            />
+          the chips input was the only way to open the popup.
+
+          Wrapped so the clear button below can sit ON the trigger without
+          being INSIDE it: a button nested in a button is invalid, and Base
+          UI renders this trigger as a real `<button>`. */}
+      <div className="relative w-full">
+        <ComboboxTrigger
+          id={props.id}
+          disabled={props.disabled}
+          {...props.triggerProps}
+          className={cn(
+            "border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50 flex w-full items-center justify-between rounded-lg border bg-transparent whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
+            sizeClasses.trigger,
+            sizeClasses.chevron,
+            props.minimal && MINIMAL_CLASSES,
+            // Muted means "nothing chosen yet", and now that is simply
+            // "nothing selected" for every shape.
+            //
+            // It used to carve out `clearable` singles, because for those empty
+            // WAS a selected value - the injected clear row - and muting it made
+            // one filter look unset while its neighbour looked set for the same
+            // meaning. That row is gone (see `items`), so empty is empty and
+            // reads as a placeholder everywhere.
+            selected.length === 0 && "text-muted-foreground",
+            props.triggerClassName,
           )}
-          <span className="truncate">{triggerLabel}</span>
-        </span>
-      </ComboboxTrigger>
+        >
+          {/* The room for the clear button is made on the LABEL, not in the
+              trigger's padding: the chevron is this row's last flex child
+              under `justify-between`, so padding the trigger walks the
+              chevron inwards and leaves the button hanging off its right.
+              A margin here truncates the label early instead and leaves the
+              chevron where every other control in the kit puts it. */}
+          <span
+            className={cn(
+              "flex min-w-0 items-center gap-2",
+              showClear && "mr-6",
+            )}
+          >
+            {props.icon && (
+              <props.icon
+                className={cn(
+                  "text-muted-foreground shrink-0",
+                  sizeClasses.icon,
+                )}
+              />
+            )}
+            <span className="truncate">{triggerLabel}</span>
+          </span>
+        </ComboboxTrigger>
+        {showClear && (
+          <button
+            type="button"
+            aria-label={String(
+              tr("controlSelect.clear", { default: "Clear selection" }),
+            )}
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 absolute top-1/2 right-8 -translate-y-1/2 rounded p-0.5 outline-none focus-visible:ring-2"
+            onClick={() => props.onChange(props.multi ? [] : undefined)}
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
       <ComboboxContent>
         {props.searchable && (
           <ComboboxInput showTrigger={false} placeholder="Search…" />

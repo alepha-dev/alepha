@@ -94,6 +94,7 @@ export const uiFr: Record<string, string> = {
   "controlObject.initialize": "Initialiser",
 
   // Select, combobox and boolean controls.
+  "controlSelect.clear": "Effacer la sélection",
   "controlSelect.count": "$1 sélectionnés",
   "controlSelect.create": "Créer « $1 »",
   "controlSelect.selectAll": "Sélectionner les $1 résultats de « $2 »",
