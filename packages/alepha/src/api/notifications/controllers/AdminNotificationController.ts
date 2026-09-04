@@ -194,10 +194,10 @@ export class AdminNotificationController {
       name: template.name,
       category: template.options.category,
       description: template.options.description,
-      channels: [
-        ...(template.options.email ? (["email"] as const) : []),
-        ...(template.options.sms ? (["sms"] as const) : []),
-      ],
+      // The primitive's own intersection of declared blocks and registered
+      // channels, so a plugin's channel reaches the filter bar without this
+      // list knowing it exists.
+      channels: template.channels(),
       critical: template.options.critical === true,
       sensitive: template.options.sensitive === true,
     }));
@@ -357,27 +357,18 @@ export class AdminNotificationController {
     const renderable = { ...payload, attachments: undefined };
 
     try {
-      // The base fields only. A plugin channel carries whatever it needs in
-      // its own channel-private `R` - a resolved webhook, a signed url - and
-      // reading no further is what keeps that out of an admin response.
+      // The base fields only, and no branch on which channel produced them.
+      // That is also what keeps a plugin's secrets out of an admin response:
+      // a sink carries its resolved webhook in its own channel-private `R`,
+      // and nothing here reads past `NotificationRendered`.
       const rendered = await this.sender.render(renderable as any);
-
-      if (receipt.channel === "email") {
-        return {
-          available: true,
-          channel: "email" as const,
-          subject: rendered.subject ?? undefined,
-          html: rendered.body ?? undefined,
-          text: rendered.text ?? undefined,
-          attachments,
-          source: "live" as const,
-        };
-      }
 
       return {
         available: true,
         channel: receipt.channel,
-        message: rendered.body ?? undefined,
+        subject: rendered.subject ?? undefined,
+        body: rendered.body ?? undefined,
+        text: rendered.text ?? undefined,
         attachments,
         source: "live" as const,
       };

@@ -29,9 +29,16 @@ export const notificationPreviewResourceSchema = z.object({
    * explicitly for that reason.
    */
   subject: z.text({ maxLength: 500 }).optional(),
-  html: z.text({ maxLength: 1_000_000 }).optional(),
+  /**
+   * The message itself: HTML for email, the text for sms and for sinks.
+   *
+   * Flat, and named after the channel contract's own field rather than after
+   * one channel's idea of it. `html` and `message` used to be separate keys
+   * chosen by a branch on the channel literal, which meant a third channel
+   * had nowhere to put its body.
+   */
+  body: z.text({ maxLength: 1_000_000 }).optional(),
   text: z.text({ maxLength: 1_000_000 }).optional(),
-  message: z.text({ maxLength: 1024 }).optional(),
   /**
    * Attachment file ids, read straight off the payload.
    *

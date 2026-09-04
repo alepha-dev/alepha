@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { notificationChannelLabel } from "./admin-notifications-channel-label.ts";
 // Relative, not through the `@alepha/ui/components/*` alias: that subpath
 // pattern maps to `.tsx`, so a plain `.ts` sibling only resolves this way.
 import { useNotificationStatusLabels } from "./admin-notifications-status-labels.ts";
@@ -253,7 +254,10 @@ export const AdminNotifications = () => {
           schema: z.object({
             search: z.text().optional(),
             status: z.enum(NOTIFICATION_STATUSES as [string]).optional(),
-            channel: z.enum(["email", "sms"]).optional(),
+            // Open, like the column behind it. A closed enum here would
+            // reject `?channel=discord` outright, so a plugin's channel
+            // would be listed in the table and unfilterable.
+            channel: z.text().optional(),
             template: z.text().optional(),
           }),
           render: (form) => (
@@ -304,10 +308,15 @@ export const AdminNotifications = () => {
                     default: "All channels",
                   })}
                   triggerClassName="w-full"
+                  // Derived from the templates this app registers, which
+                  // already carry their own channel list. A hand-written
+                  // pair could only ever offer the two the framework ships.
                   items={[
-                    { label: "Email", value: "email" },
-                    { label: "SMS", value: "sms" },
-                  ]}
+                    ...new Set((templates ?? []).flatMap((t) => t.channels)),
+                  ].map((channel) => ({
+                    label: notificationChannelLabel(channel),
+                    value: channel,
+                  }))}
                   inputProps={{
                     "aria-label": tr("admin.notifications.colChannel", {
                       default: "Channel",
