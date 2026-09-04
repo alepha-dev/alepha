@@ -4,6 +4,7 @@ import type { ComponentType, SVGProps } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../../shared/element/typedReference.ts";
 import {
   CARD_H,
   CARD_W,
@@ -41,7 +42,7 @@ const QuestlineCard = (props: QuestlineCardProps) => {
       type="button"
       onClick={() => props.onOpen(node)}
       style={{ width: CARD_W, height: CARD_H }}
-      aria-label={`#${node.quest.shortId} ${node.quest.title}`}
+      aria-label={`${formatReference("quest", node.quest.shortId)} ${node.quest.title}`}
       className={`group/card focus-visible:outline-primary relative flex flex-col gap-2 rounded-lg border px-3.5 pt-[15px] pb-3 text-left transition-[transform,background-color,border-color] hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 ${STATE_CARD[node.state]}`}
     >
       {/* Status band across the top edge, following the card's radius. */}
@@ -56,7 +57,7 @@ const QuestlineCard = (props: QuestlineCardProps) => {
 
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground font-mono text-[11.5px]">
-          #{node.quest.shortId}
+          {formatReference("quest", node.quest.shortId)}
         </span>
         <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px]">
           <span

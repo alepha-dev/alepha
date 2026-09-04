@@ -34,6 +34,7 @@ import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { settleBulk } from "../../shared/bulkOutcome.ts";
+import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import { useBulkReport } from "../../shared/useBulkReport.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -387,12 +388,12 @@ const ProjectEpics = () => {
                   })}
                   onClick={(e) => e.stopPropagation()}
                   className="truncate text-sm font-medium"
-                  title={`#${epic.number} - ${epic.title}`}
+                  title={`${formatReference("epic", epic.number)} - ${epic.title}`}
                 >
                   {/* The number carries the title's own colour: it is part
                       of the name, not an annotation on it. Only the
                       separator is muted. */}
-                  #{epic.number}{" "}
+                  {formatReference("epic", epic.number)}{" "}
                   <span className="text-muted-foreground">-</span> {epic.title}
                 </Link>
                 {epic.description ? (

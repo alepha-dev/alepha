@@ -1,4 +1,7 @@
-import type { LinkTargetKind } from "@/api/schemas/linkTargetKindSchema.ts";
+// Relative rather than `@/`: the api tree imports this module too, and a
+// workspace that compiles a Lore api file from outside the app (the sigil
+// package's typecheck does) has no `@/` alias to resolve it with.
+import type { LinkTargetKind } from "../../../../../api/schemas/linkTargetKindSchema.ts";
 
 /**
  * The typed reference grammar: `#<LETTER><integer>`, project-scoped.
@@ -35,6 +38,14 @@ export const REFERENCE_LETTERS: Record<ReferenceKind, string> = {
   feedback: "P",
   release: "R",
 };
+
+/**
+ * Whether a link kind has a letter, which a `blob` and a `comment` do not.
+ * The Links tab renders every kind through one row shape and asks this
+ * before labelling one.
+ */
+export const isReferenceKind = (kind: string): kind is ReferenceKind =>
+  Object.hasOwn(REFERENCE_LETTERS, kind);
 
 export interface TypedReference {
   kind: ReferenceKind;

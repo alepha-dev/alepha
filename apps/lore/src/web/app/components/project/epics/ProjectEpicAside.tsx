@@ -12,6 +12,7 @@ import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import EpicReleaseControl from "./EpicReleaseControl.tsx";
 import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
 
@@ -50,7 +51,7 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
   const rows: DetailAsideRow[] = [
     {
       label: String(tr("epic.aside.number")),
-      copy: `#${props.epic.number}`,
+      copy: formatReference("epic", props.epic.number),
     },
     {
       label: String(tr("epic.aside.status")),

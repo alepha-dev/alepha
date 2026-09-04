@@ -23,6 +23,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import ReleaseArtifactsTab from "./ReleaseArtifactsTab.tsx";
 import ReleaseChangelogPanel from "./ReleaseChangelogPanel.tsx";
 import ReleaseContents, {
@@ -239,7 +240,7 @@ const ProjectRelease = () => {
           content: changelog.markdown,
           summary: tr("release.folio.summary", {
             args: [
-              release.tag ?? String(release.number),
+              release.tag ?? formatReference("release", release.number),
               String(changelog.stats.questCount),
             ],
           }) as string,
@@ -326,7 +327,7 @@ const ProjectRelease = () => {
             published
               ? tr("release.changelog.frozen", {
                   args: [
-                    release.tag ?? String(release.number),
+                    release.tag ?? formatReference("release", release.number),
                     String(changelog?.stats.questCount ?? 0),
                   ],
                 })
@@ -390,7 +391,10 @@ const ProjectRelease = () => {
           </DialogHeader>
           <ReleaseSaveToFolioDialog
             defaultTitle={tr("release.folio.defaultTitle", {
-              args: [release.tag ?? String(release.number), release.title],
+              args: [
+                release.tag ?? formatReference("release", release.number),
+                release.title,
+              ],
             })}
             saving={folioSaving}
             onConfirm={handleSaveToFolio}

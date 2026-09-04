@@ -43,6 +43,7 @@ import { kanbanFiltersAtom } from "../../atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { AREA_DOT_CLASS, AreaDotColor } from "../shared/areaColor.ts";
+import { formatReference } from "../shared/element/typedReference.ts";
 import FilterSlot from "../shared/FilterSlot.tsx";
 import ToolbarSpinner from "../shared/ToolbarSpinner.tsx";
 import { useProjectUsers } from "../shared/useProjectUsers.ts";
@@ -637,7 +638,11 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         title: tr("kanban.reopen.title"),
         description: dependents.length
           ? tr("kanban.reopen.confirmWithDependents", {
-              args: [dependents.map((d) => `#${d.shortId}`).join(", ")],
+              args: [
+                dependents
+                  .map((d) => formatReference("quest", d.shortId))
+                  .join(", "),
+              ],
             })
           : tr("kanban.reopen.confirm"),
         confirmLabel: tr("kanban.reopen.confirmButton"),
