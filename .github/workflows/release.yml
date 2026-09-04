@@ -20,6 +20,14 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+# Where every `lore` command in this workflow reports, named once so no step
+# can forget. See the same block in `ci.yml`: this is the line that replaces
+# four `continue-on-error` steps each relying on whichever `alepha.config.ts`
+# their working directory happened to hold. One of them held none, and Lore's
+# own 0.28.0 artifact was never pushed because of it.
+env:
+  LORE_PROJECT: alepha
+
 on:
   workflow_dispatch:
     inputs:
@@ -344,18 +352,12 @@ jobs:
       # `artifacts.tag = releases.tag` with no foreign key, and publishing
       # blocks no later push.
       #
-      # Each push runs INSIDE its app: `alepha lore artifacts push` packs that
-      # app's `dist/` and reads its `package.json`, and `CliProvider` reads
-      # `alepha.config.ts` from `process.cwd()` only, so each of the three
-      # configs registers `lore(...)` itself. The publish needs neither and
-      # runs from the root, whose config already does.
-      #
-      # ⚠️ Only `apps/docs` and `apps/examples/shop` name a project in their
-      # config. `apps/lore` registers a bare `lore()` on purpose, so its push
-      # needs `--project` on the step or it dies on `No Lore project named`
-      # and `continue-on-error` turns that into a warning nobody reads. That
-      # is not hypothetical: it is what happened to Lore's own 0.28.0
-      # artifact, which was never pushed.
+      # Each push still runs INSIDE its app, because `lore artifacts push`
+      # packs the workspace it is run in and reads its `package.json`. What it
+      # no longer needs is an `alepha.config.ts` in that directory: `lore` is
+      # a binary, Yarn links it in all four working directories these steps
+      # use, and the destination comes from the workflow-level `LORE_PROJECT`
+      # above. The publish needs neither and runs from the root.
       #
       # `--tag` is the version, byte for byte: `releases.tag` preserves case
       # so the artifact and the release meet on the same string. A version
@@ -366,7 +368,7 @@ jobs:
         continue-on-error: true
         working-directory: apps/docs
         run: >-
-          yarn alepha lore artifacts push
+          yarn lore artifacts push
           --app docs
           --tag "$VERSION"
         env:
@@ -377,8 +379,7 @@ jobs:
         continue-on-error: true
         working-directory: apps/lore
         run: >-
-          yarn alepha lore artifacts push
-          --project alepha
+          yarn lore artifacts push
           --app lore
           --tag "$VERSION"
         env:
@@ -389,7 +390,7 @@ jobs:
         continue-on-error: true
         working-directory: apps/examples/shop
         run: >-
-          yarn alepha lore artifacts push
+          yarn lore artifacts push
           --app shop
           --tag "$VERSION"
         env:
@@ -398,7 +399,7 @@ jobs:
 
       - name: Publish the Lore release
         continue-on-error: true
-        run: yarn alepha lore releases publish --tag "$VERSION"
+        run: yarn lore releases publish --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}

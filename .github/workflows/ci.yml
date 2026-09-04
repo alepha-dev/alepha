@@ -29,6 +29,22 @@ concurrency:
   group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Where every `lore` command in this workflow reports, named once so no step
+# can forget. A step that means to push somewhere else passes `--project`, and
+# exactly one does.
+#
+# It used to come from `lore({ project: "alepha" })` in `alepha.config.ts`,
+# which meant it came from whichever directory a step happened to run in.
+# `apps/lore`'s config named no project, so its artifact push died on
+# `No Lore project named`, `continue-on-error` swallowed it, and the 0.28.0
+# release shipped green without Lore's own artifact. A workflow-level default
+# is the shape that cannot do that again.
+#
+# Not a secret: a project slug is in every URL Lore serves. `LORE_API_KEY` is
+# the secret, and it stays on the individual steps that need it.
+env:
+  LORE_PROJECT: alepha
+
 jobs:
   # ──────────────────────────────────────────────────────────────────────
   # The `yarn v` pipeline, minus its build and e2e half - which is the job
@@ -138,7 +154,7 @@ jobs:
       - name: Push Coverage To Lore
         if: github.event_name != 'pull_request'
         continue-on-error: true
-        run: yarn alepha lore quality push
+        run: yarn lore quality push
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
@@ -222,7 +238,7 @@ jobs:
       # ────────────────────────────────────────────────────────────────
       # Build in, artifact out. `yarn build` above already produced
       # `apps/lore/dist`, so this packs it and stores it in the project's
-      # registry: `alepha lore artifacts push` calls `alepha pack` itself
+      # registry: `lore artifacts push` packs the workspace itself
       # rather than requiring a separate step, because a tarball on disk and
       # the build in `dist/` can differ and the push would happily ship the
       # older one.
@@ -246,7 +262,10 @@ jobs:
       #
       # ⚠️ `vars.LORE_ARTIFACT_PROJECT` gates it, and the gate is the point.
       # The step ships INERT: set the variable to a throwaway project, watch a
-      # run land, and only then point it at a real one. That is quest #1202's
+      # run land, and only then point it at a real one. It is also the ONLY
+      # step in this workflow that overrides the `LORE_PROJECT` default, and
+      # it has to: the whole idea is that this artifact lands somewhere
+      # disposable until it is proven. That is quest #1202's
       # "prove it on a throwaway project before any real one" expressed as a
       # property of the workflow rather than as a note somebody has to
       # remember.
@@ -270,7 +289,7 @@ jobs:
         continue-on-error: true
         working-directory: apps/lore
         run: >-
-          yarn alepha lore artifacts push
+          yarn lore artifacts push
           --project "$LORE_ARTIFACT_PROJECT"
           --app lore
           --tag latest
