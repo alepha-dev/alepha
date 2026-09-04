@@ -44,7 +44,7 @@ describe("@alepha/lore packaging", () => {
   it("resolves ./cli through the exports map", async () => {
     const cli = await import("@alepha/lore/cli");
 
-    expect(cli.AlephaLoreCliPlugin).toBeDefined();
+    expect(cli.AlephaLoreCli).toBeDefined();
   });
 
   it("publishes both subpaths from dist", () => {
