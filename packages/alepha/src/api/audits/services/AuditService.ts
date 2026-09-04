@@ -248,6 +248,34 @@ export class AuditService {
   /**
    * Find audit entries with filtering and pagination.
    */
+  /**
+   * A comma-separated filter, as one condition.
+   *
+   * ⚠️ Never `inArray: []`, which throws: an empty selection is the ABSENCE
+   * of a filter, so no clause is added at all. And `eq` rather than a
+   * one-element `inArray`, so the common single-value case produces exactly
+   * the query it always did.
+   */
+  protected applyList(
+    where: Record<string, unknown>,
+    column: "type" | "action",
+    value: string | undefined,
+  ): void {
+    const values = [
+      ...new Set(
+        (value ?? "")
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0),
+      ),
+    ];
+    if (values.length === 1) {
+      where[column] = { eq: values[0] };
+    } else if (values.length > 1) {
+      where[column] = { inArray: values };
+    }
+  }
+
   public async find(query: AuditQuery = {}): Promise<Page<AuditEntity>> {
     this.log.trace("Finding audit entries", { query });
 
@@ -255,13 +283,11 @@ export class AuditService {
 
     const where = this.repo.createQueryWhere();
 
-    if (query.type) {
-      where.type = { eq: query.type };
-    }
-
-    if (query.action) {
-      where.action = { eq: query.action };
-    }
+    // `type` and `action` take a comma-separated list, so a caller can ask
+    // for "create or update" in one query. One value still produces an `eq`,
+    // so nothing about a single-value caller changed.
+    this.applyList(where, "type", query.type);
+    this.applyList(where, "action", query.action);
 
     if (query.severity) {
       where.severity = { eq: query.severity };

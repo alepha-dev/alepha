@@ -684,10 +684,20 @@ export class FeedbackController {
     schema: {
       query: pageQuerySchema.extend({
         search: z.string().optional(),
-        status: z
-          .enum(["pending", "accepted", "rejected", "all"])
-          .meta({ mode: "text" })
-          .optional(),
+        /**
+         * Comma-separated, and an empty or absent value means every status.
+         *
+         * ⚠️ It used to be an enum carrying `"all"`, a value standing in for
+         * the absence of a filter (feedback #2092). A `z.string()` here for
+         * the reason `getQuests.status` is one: a list on the wire is one
+         * comma-joined param, since `parseQueryString` returns
+         * `Record<string, string>` and a repeated key keeps only the last.
+         *
+         * Unknown entries are DROPPED rather than rejected, so a stale
+         * bookmark or a hand-edited link lands on an unfiltered list instead
+         * of a 400.
+         */
+        status: z.string().optional(),
         projectId: z.integer().optional(),
       }),
       response: db.page(myFeedbackResourceSchema),
@@ -699,8 +709,21 @@ export class FeedbackController {
       if (query.search) {
         where.title = { ilike: `%${query.search}%` };
       }
-      if (query.status && query.status !== "all") {
-        where.status = { eq: query.status };
+      const KNOWN = ["pending", "accepted", "rejected"] as const;
+      const statuses = [
+        ...new Set(
+          (query.status ?? "")
+            .split(",")
+            .map((entry) => entry.trim())
+            .filter((entry): entry is (typeof KNOWN)[number] =>
+              KNOWN.includes(entry as (typeof KNOWN)[number]),
+            ),
+        ),
+      ];
+      // ⚠️ Never `inArray: []`, which throws. An empty selection is the
+      // absence of a filter, so the clause is simply not added.
+      if (statuses.length > 0) {
+        where.status = { inArray: statuses };
       }
       if (query.projectId) {
         where.projectId = { eq: query.projectId };
