@@ -1,40 +1,36 @@
-import { $hook, $inject } from "alepha";
-import {
-  WorkflowProvider,
-  workflowExecutions,
-  workflowStepExecutions,
-} from "alepha/api/workflows";
+import { $hook, $inject, $store } from "alepha";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { checkoutSessions } from "../../checkout/entities/checkoutSessions.ts";
-import { SettlementWorkflows } from "./SettlementWorkflows.ts";
+import { settlementConfig } from "../settlementConfigAtom.ts";
+import { SettlementJobs } from "./SettlementJobs.ts";
 
 /**
- * Starts the settlement workflow when an order is paid, schedules a
- * reconciliation when a checkout is handed to the payment rail, and
- * stands the reconciliation down once the order pays.
+ * Pushes the settlement job when an order is paid, schedules a
+ * reconciliation when a checkout is handed to the payment rail, and stands
+ * the reconciliation down once the order pays.
  *
  * `commerce:order:paid` fires once per order, after the outermost
- * transaction commits (see OrderService.markPaid), so the start here
- * reads a committed order. The `key`s make both starts idempotent
- * anyway: a duplicate event while an execution is live resolves to the
- * same execution.
+ * transaction commits (see OrderService.markPaid), so the push here reads a
+ * committed order. The `key`s make both pushes idempotent anyway: a
+ * duplicate event while an execution is live resolves to the same one.
  */
 export class SettlementListener {
   protected readonly log = $logger();
-  protected readonly workflows = $inject(SettlementWorkflows);
-  protected readonly workflowProvider = $inject(WorkflowProvider);
-  protected readonly executions = $repository(workflowExecutions);
-  protected readonly steps = $repository(workflowStepExecutions);
+  protected readonly jobs = $inject(SettlementJobs);
+  protected readonly config = $store(settlementConfig);
   protected readonly sessions = $repository(checkoutSessions);
 
   protected readonly onCheckoutPaying = $hook({
     on: "commerce:checkout:paying",
     handler: async (event) => {
-      const executionId = await this.workflows.checkoutReconciliation.start(
+      const executionId = await this.jobs.checkoutReconciliation.push(
         { sessionId: event.sessionId, intentId: event.intentId },
-        { key: event.sessionId },
+        {
+          key: event.sessionId,
+          delay: [this.config.reconcileAfterMinutes, "minute"],
+        },
       );
       this.log.debug("Checkout reconciliation scheduled", {
         sessionId: event.sessionId,
@@ -46,11 +42,11 @@ export class SettlementListener {
   protected readonly onOrderPaid = $hook({
     on: "commerce:order:paid",
     handler: async (event) => {
-      const executionId = await this.workflows.orderSettlement.start(
+      const executionId = await this.jobs.orderSettlement.push(
         { orderId: event.orderId },
         { key: event.orderId },
       );
-      this.log.debug("Settlement workflow started", {
+      this.log.debug("Settlement job pushed", {
         orderId: event.orderId,
         executionId,
       });
@@ -60,9 +56,14 @@ export class SettlementListener {
   });
 
   /**
-   * A paid order means the reconciliation has nothing left to do — its
-   * `when()` guard would skip anyway; cancelling now ends the execution
-   * and says why in the admin.
+   * A paid order means the reconciliation has nothing left to do; its own
+   * opening re-check would skip anyway. Cancelling the parked row now ends
+   * it and says why in the admin.
+   *
+   * When the reconciliation is the RUNNING actor, this very event is its
+   * own doing (the poll found the capture and settled). `cancelByKey`
+   * leaves a running row alone by contract, so the execution that rescued
+   * the money completes as `ok` rather than being branded `cancelled`.
    */
   protected async cancelReconciliationFor(orderId: string): Promise<void> {
     const session = await this.sessions.findOne({
@@ -72,40 +73,15 @@ export class SettlementListener {
       return;
     }
 
-    const live = await this.executions.findOne({
-      where: {
-        workflowName: {
-          eq: "SettlementWorkflows.checkoutReconciliation",
-        },
-        key: { eq: session.id },
-        status: { inArray: ["pending", "running"] },
-      },
-    });
-    if (!live) {
-      return;
+    const cancelled = await this.jobs.checkoutReconciliation.cancelByKey(
+      session.id,
+      { cancelledBy: "system", cancelledByName: "checkout settled" },
+    );
+    if (cancelled) {
+      this.log.debug("Checkout reconciliation cancelled, order paid", {
+        sessionId: session.id,
+        executionId: cancelled,
+      });
     }
-
-    // When the reconcile step is the RUNNING actor, this very event is
-    // its own doing (the poll found the capture and settled) — cancelling
-    // would brand the execution that rescued the money "cancelled". Let
-    // it finish and record its outcome; it completes on its own.
-    const reconcileStep = await this.steps.findOne({
-      where: {
-        workflowExecutionId: { eq: live.id },
-        stepName: { eq: "reconcile" },
-      },
-    });
-    if (reconcileStep?.status === "running") {
-      return;
-    }
-
-    await this.workflowProvider.cancel(live.id, {
-      cancelledBy: "system",
-      cancelledByName: "checkout settled",
-    });
-    this.log.debug("Checkout reconciliation cancelled — order paid", {
-      sessionId: session.id,
-      executionId: live.id,
-    });
   }
 }
