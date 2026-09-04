@@ -10,6 +10,7 @@ import type { PushManyItem } from "alepha/api/jobs";
 import type { DurationLike } from "alepha/datetime";
 import { currentTenantAtom } from "alepha/security";
 
+import { NotificationChannel } from "../channels/NotificationChannel.ts";
 import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 import type { NotificationAttachment } from "../schemas/notificationAttachmentSchema.ts";
 
@@ -41,15 +42,28 @@ import type { NotificationAttachment } from "../schemas/notificationAttachmentSc
  * }
  * ```
  */
-export const $notification = <T extends ZObject>(
-  options: NotificationPrimitiveOptions<T>,
-) => createPrimitive(NotificationPrimitive<T>, options);
+export const $notification = <
+  T extends ZObject,
+  O extends NotificationPrimitiveOptions<T>,
+>(
+  // ⚠️ `options: O & { schema: T }`, never `options: O`. Without `schema: T`
+  // spelled out here, `T` appears only inside `O`'s constraint, has no
+  // inference site, and collapses to `ZObject`: every `variables` callback
+  // then receives `Record<string, unknown>` and `push({ variables: { nope: 1 } })`
+  // compiles. A single-channel template still looks fine, which is what makes
+  // the mistake survive review.
+  options: O & { schema: T },
+) =>
+  createPrimitive(
+    NotificationPrimitive<T, O>,
+    options,
+  ) as NotificationPrimitive<T, O>;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface NotificationPrimitiveOptions<
   T extends ZObject,
-> extends NotificationMessage<T> {
+> extends NotificationChannels<Infer<T>> {
   name?: string;
   description?: string;
   category?: string;
@@ -63,16 +77,47 @@ export interface NotificationPrimitiveOptions<
   sensitive?: boolean;
   translations?: {
     // e.g., "en", "fr", even "en-US"
-    [lang: string]: NotificationMessage<T>;
+    [lang: string]: NotificationChannels<Infer<T>>;
   };
   schema: T;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export class NotificationPrimitive<T extends ZObject> extends Primitive<
-  NotificationPrimitiveOptions<T>
-> {
+/**
+ * Every option key that is NOT a channel.
+ *
+ * Channel blocks sit flat in the options object (`$notification({ discord })`),
+ * so telling one from a normal option needs a list — and a hand-maintained
+ * list would drift the first time an option is added, silently turning it
+ * into "a channel nothing provides" and refusing to boot.
+ *
+ * The `satisfies` clause is what stops that: it is exactly the options
+ * interface minus the channel interface, so adding an option without adding
+ * it here fails to compile.
+ */
+export const NOTIFICATION_RESERVED_KEYS = {
+  name: true,
+  description: true,
+  category: true,
+  critical: true,
+  sensitive: true,
+  translations: true,
+  schema: true,
+} as const satisfies Record<
+  Exclude<
+    keyof NotificationPrimitiveOptions<ZObject>,
+    keyof NotificationChannels<any>
+  >,
+  true
+>;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+export class NotificationPrimitive<
+  T extends ZObject,
+  O extends NotificationPrimitiveOptions<T> = NotificationPrimitiveOptions<T>,
+> extends Primitive<O> {
   protected readonly notificationJobs = $inject(NotificationJobs);
 
   public get name() {
@@ -98,21 +143,29 @@ export class NotificationPrimitive<T extends ZObject> extends Primitive<
   }
 
   /**
-   * The channels this template declares.
+   * The channels this template declares AND the container can serve.
+   *
+   * The intersection, not the declaration: a template that names a channel
+   * whose plugin was never registered would otherwise push a job row nothing
+   * can send. That intersection can also drop a channel silently, which is
+   * what {@link NotificationChannelService} refuses to boot on.
    *
    * One job row per channel, never one row that fans out: a delivery receipt
    * is per message, so a row that sent two messages could not carry both
    * their ids.
+   *
+   * Public because `AdminNotificationController.templates()` publishes it as
+   * the filter bar's channel list.
    */
-  protected channels(): Array<"email" | "sms"> {
-    const channels: Array<"email" | "sms"> = [];
-    if (this.options.email) channels.push("email");
-    if (this.options.sms) channels.push("sms");
-    return channels;
+  public channels(): string[] {
+    return this.alepha
+      .services(NotificationChannel)
+      .filter((channel) => (this.options as any)[channel.channel] != null)
+      .map((channel) => channel.channel);
   }
 
   protected payloadFor(
-    type: "email" | "sms",
+    type: string,
     entry: {
       contact: string;
       variables: Infer<T>;
@@ -145,7 +198,7 @@ export class NotificationPrimitive<T extends ZObject> extends Primitive<
    */
   protected channelKey(
     key: string | undefined,
-    type: "email" | "sms",
+    type: string,
   ): string | undefined {
     return key ? `${key}:${type}` : undefined;
   }
@@ -348,13 +401,36 @@ export interface NotificationBodyExtras {
   unsubscribeUrl?: string;
 }
 
-export interface NotificationMessage<T extends ZObject> {
+/**
+ * The channel blocks a template may declare, keyed by channel name.
+ *
+ * **This interface is the extension point.** A plugin package adds its own
+ * key by declaration merging, the same mechanism the module already uses for
+ * `Hooks`, and the generic `V` is what lets its message callback see the
+ * template's own variables:
+ *
+ * ```ts
+ * declare module "alepha/api/notifications" {
+ *   interface NotificationChannels<V> {
+ *     discord?: { to?: string; message: (v: V) => string | Promise<string> };
+ *   }
+ * }
+ * ```
+ *
+ * `email` and `sms` are declared inline rather than merged in, so
+ * `$notification({ email })` typechecks with no import.
+ *
+ * ⚠️ A plugin that adds a key here must also declare whether it is a sink,
+ * in {@link NotificationSinkChannels}. Without that, `push()` on a template
+ * declaring only that channel still demands a `contact`.
+ */
+export interface NotificationChannels<V> {
   email?: {
     /**
      * The subject line, or a function building it from the template's
      * variables.
      *
-     * A function for the same reason {@link NotificationMessage.email.body}
+     * A function for the same reason {@link NotificationChannels.email.body}
      * is one: the subject is what a phone shows in its notification, so a
      * sign-in code or an amount belongs there rather than behind a tap. It
      * sees the same values the body does, `unsubscribeUrl` included, and may
@@ -366,9 +442,7 @@ export interface NotificationMessage<T extends ZObject> {
      */
     subject:
       | string
-      | ((
-          variables: Infer<T> & NotificationBodyExtras,
-        ) => string | Promise<string>);
+      | ((variables: V & NotificationBodyExtras) => string | Promise<string>);
     /**
      * The rendered HTML body, or a function building it from the template's
      * variables.
@@ -380,9 +454,7 @@ export interface NotificationMessage<T extends ZObject> {
      */
     body:
       | string
-      | ((
-          variables: Infer<T> & NotificationBodyExtras,
-        ) => string | Promise<string>);
+      | ((variables: V & NotificationBodyExtras) => string | Promise<string>);
     /**
      * The plain-text alternative to {@link body}.
      *
@@ -393,9 +465,7 @@ export interface NotificationMessage<T extends ZObject> {
      */
     text?:
       | string
-      | ((
-          variables: Infer<T> & NotificationBodyExtras,
-        ) => string | Promise<string>);
+      | ((variables: V & NotificationBodyExtras) => string | Promise<string>);
   };
   sms?: {
     /**
@@ -404,8 +474,30 @@ export interface NotificationMessage<T extends ZObject> {
      */
     message:
       | string
-      | ((
-          variables: Infer<T> & NotificationBodyExtras,
-        ) => string | Promise<string>);
+      | ((variables: V & NotificationBodyExtras) => string | Promise<string>);
   };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Which channel keys fire at a **destination** rather than at a person.
+ *
+ * Empty here: `email` and `sms` both address a contact. A sink plugin adds
+ * its own key alongside the one it adds to {@link NotificationChannels}:
+ *
+ * ```ts
+ * declare module "alepha/api/notifications" {
+ *   interface NotificationSinkChannels {
+ *     discord: true;
+ *   }
+ * }
+ * ```
+ *
+ * This is the type-level half of the channel's runtime `addressable` flag,
+ * and it exists because `NotificationPushOptions` is a compile-time type:
+ * without it, `contact` could not be optional for a sink-only template, and
+ * the runtime flag alone would leave `push()` demanding an address for a
+ * message going to a chatroom.
+ */
+export interface NotificationSinkChannels {}

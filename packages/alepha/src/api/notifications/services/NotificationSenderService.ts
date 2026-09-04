@@ -1,16 +1,17 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import { EmailProvider, EmailTextRenderer } from "alepha/email";
+import { EmailProvider } from "alepha/email";
 import { $logger } from "alepha/logger";
 import { SmsProvider } from "alepha/sms";
 
+import type { NotificationRenderInput } from "../channels/NotificationChannel.ts";
+import { NotificationEmailChannel } from "../channels/NotificationEmailChannel.ts";
+import { NotificationSmsChannel } from "../channels/NotificationSmsChannel.ts";
 import { $notification } from "../primitives/$notification.ts";
 import { NotificationPreferenceProvider } from "../providers/NotificationPreferenceProvider.ts";
 import type { NotificationPayload } from "../schemas/notificationPayloadSchema.ts";
-import { NotificationAttachmentService } from "./NotificationAttachmentService.ts";
 import { NotificationDeliveryService } from "./NotificationDeliveryService.ts";
 import { NotificationSettings } from "./NotificationSettings.ts";
 import { NotificationSuppressionService } from "./NotificationSuppressionService.ts";
-import { NotificationUnsubscribeService } from "./NotificationUnsubscribeService.ts";
 
 /**
  * What the caller knows about the delivery attempt that the payload does
@@ -25,29 +26,17 @@ export interface NotificationSendContext {
   executionId?: string;
 }
 
-type NotificationMessageEmail = {
-  subject: string;
-  body: string | ((variables: any) => string | Promise<string>);
-  text?: string | ((variables: any) => string | Promise<string>);
-};
-type NotificationMessageSms = {
-  message: string | ((variables: any) => string | Promise<string>);
-};
-
 export class NotificationSenderService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly emailProvider = $inject(EmailProvider);
   protected readonly smsProvider = $inject(SmsProvider);
-  protected readonly textRenderer = $inject(EmailTextRenderer);
+  protected readonly emailChannel = $inject(NotificationEmailChannel);
+  protected readonly smsChannel = $inject(NotificationSmsChannel);
   protected readonly suppressions = $inject(NotificationSuppressionService);
   protected readonly preferences = $inject(NotificationPreferenceProvider);
-  protected readonly unsubscribeTokens = $inject(
-    NotificationUnsubscribeService,
-  );
   protected readonly deliveries = $inject(NotificationDeliveryService);
   protected readonly settings = $inject(NotificationSettings);
-  protected readonly attachmentService = $inject(NotificationAttachmentService);
 
   public async send(
     payload: NotificationPayload,
@@ -271,97 +260,38 @@ export class NotificationSenderService {
     return undefined;
   }
 
-  public async renderSms(payload: NotificationPayload) {
-    const { variables, contact, template } = this.load(payload);
+  /**
+   * Everything a channel needs to render, resolved from the payload.
+   *
+   * Translation resolution stays here rather than moving into the channels:
+   * picking `translations["fr"]` is channel-agnostic, and every channel
+   * would otherwise reimplement the same two-step fallback.
+   */
+  protected renderInput(
+    payload: NotificationPayload,
+  ): NotificationRenderInput<any> {
+    const { variables, template } = this.load(payload);
 
-    const sms =
-      this.translation(template.options, payload.lang)?.sms ??
-      template.options.sms;
-    if (!sms) {
+    const message =
+      this.translation(template.options, payload.lang)?.[payload.type] ??
+      (template.options as Record<string, any>)[payload.type];
+
+    if (!message) {
       throw new AlephaError(
-        `Notification template ${payload.template} has no sms defined`,
+        `Notification template ${payload.template} has no ${payload.type} defined`,
       );
     }
 
-    const message =
-      typeof sms.message === "function"
-        ? await sms.message(variables as any)
-        : sms.message;
+    return { message, variables, payload };
+  }
 
-    return { to: contact, message };
+  public async renderSms(payload: NotificationPayload) {
+    const rendered = await this.smsChannel.render(this.renderInput(payload));
+    return { to: rendered.to, message: rendered.body };
   }
 
   public async renderEmail(payload: NotificationPayload) {
-    const { variables, contact, template } = this.load(payload);
-
-    const email =
-      this.translation(template.options, payload.lang)?.email ??
-      template.options.email;
-    if (!email) {
-      throw new AlephaError(
-        `Notification template ${payload.template} has no email defined`,
-      );
-    }
-
-    // A critical template carries no unsubscribe link: there is nothing to
-    // opt out of, and offering one would suggest a password reset can be
-    // switched off. Undefined also when PUBLIC_URL is unset.
-    const unsubscribeUrl = payload.critical
-      ? undefined
-      : this.unsubscribeTokens.urlFor({
-          contact: contact,
-          channel: "email",
-          category: payload.category,
-          template: payload.template,
-          organizationId: payload.organizationId,
-        });
-
-    // The body sees it as one more variable, so an app can put a visible
-    // link in its own footer. The framework never injects markup into a body
-    // it does not own.
-    const renderVariables = { ...(variables as object), unsubscribeUrl };
-
-    // Resolved here rather than above the unsubscribe block so it sees the
-    // same values the body does.
-    const subject =
-      typeof email.subject === "function"
-        ? await email.subject(renderVariables as any)
-        : email.subject;
-
-    const body =
-      typeof email.body === "function"
-        ? await email.body(renderVariables as any)
-        : email.body;
-
-    // A template's own text always wins. Deriving one when it is absent is
-    // what gets every existing template a plain-text part without any of
-    // them being rewritten, which is the whole point: an HTML-only message
-    // scores worse with every spam filter.
-    const declared =
-      typeof email.text === "function"
-        ? await email.text(renderVariables as any)
-        : email.text;
-    const text = declared ?? this.textRenderer.fromHtml(body);
-
-    // Framework-set, never caller-set, so there is nothing for the header
-    // policy to refuse here. It guards `$email.send()`, where the map does
-    // come from a caller.
-    const headers = unsubscribeUrl
-      ? {
-          "List-Unsubscribe": `<${unsubscribeUrl}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        }
-      : undefined;
-
-    // Bytes are fetched here and nowhere earlier. A missing object throws,
-    // which fails the send rather than quietly delivering an invoice email
-    // with no invoice.
-    const attachments = await this.attachmentService.resolve(
-      payload.attachments,
-      { organizationId: payload.organizationId },
-    );
-
-    return { to: contact, subject, body, text, headers, attachments };
+    return this.emailChannel.render(this.renderInput(payload));
   }
 
   /**
@@ -371,16 +301,9 @@ export class NotificationSenderService {
    * (template-level) message.
    */
   protected translation(
-    options: {
-      translations?: Record<
-        string,
-        { email?: unknown; sms?: unknown } | undefined
-      >;
-    },
+    options: { translations?: Record<string, object | undefined> },
     lang?: string,
-  ):
-    | { email?: NotificationMessageEmail; sms?: NotificationMessageSms }
-    | undefined {
+  ): Record<string, any> | undefined {
     if (!lang || !options.translations) return undefined;
     const exact = options.translations[lang];
     if (exact) return exact as any;
