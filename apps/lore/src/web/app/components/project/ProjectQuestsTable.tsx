@@ -688,6 +688,11 @@ const ProjectQuestsTable = () => {
             label: tr("board.table.linked"),
             // Niche column — starts hidden; users opt in via the column picker.
             defaultHidden: true,
+            // ⚠️ `quest.dependsOn` is the predecessor's database id, not its
+            // per-project number, and the row carries nothing else about it.
+            // This column used to print that id after a `#`, a reference to a
+            // quest nobody has, so it now says only that a predecessor exists
+            // (epic #32). The quest page names it.
             cell: (quest: QuestResource) =>
               quest.dependsOn ? (
                 <Tooltip>
@@ -697,12 +702,9 @@ const ProjectQuestsTable = () => {
                     }
                   >
                     <Link2 className="size-3.5" />
-                    {formatReference("quest", quest.dependsOn)}
                   </TooltipTrigger>
                   <TooltipContent>
-                    {tr("board.table.linked.tooltip", {
-                      args: [String(quest.dependsOn)],
-                    })}
+                    {tr("board.table.linked.tooltip")}
                   </TooltipContent>
                 </Tooltip>
               ) : (
