@@ -58,7 +58,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const thisFile = fileURLToPath(import.meta.url);
 const ROOT = resolve(dirname(thisFile), "../../.."); // apps/e2e-cli/src -> monorepo root
-const WORK_DIR = join(ROOT, ".e2e-tmp");
+// A SUBDIRECTORY of `.e2e-tmp`, not `.e2e-tmp` itself. `lore.e2e.spec.ts`
+// takes the sibling one: vitest runs spec files in parallel workers, and both
+// suites wipe their work directory on the way in, so sharing the root would
+// mean one deleting the other's tarballs mid-install.
+const WORK_DIR = join(ROOT, ".e2e-tmp", "cli");
 const TARBALL_DIR = join(WORK_DIR, "tarballs");
 const PROJECT_DIR = join(WORK_DIR, "proj");
 const isWindows = process.platform === "win32";
