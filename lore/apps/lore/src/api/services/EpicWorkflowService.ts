@@ -87,6 +87,12 @@ export class EpicWorkflowService {
    * resolution, and shelving is the only exit for a `new` quest sitting in a
    * `done` epic from before this rule existed.
    *
+   * Unshelve is the one verb that is also allowed while `planned`. Shelving
+   * and unshelving during planning are edits to an open plan ("out of scope"
+   * and "back in scope"), and a plan that lets a quest be shelved but never
+   * brought back until the epic begins would be asymmetric for no reason.
+   * What unshelve may not do is re-open work inside a `done` epic.
+   *
    * Reported BEFORE the questline gate where both apply, because the epic
    * reason is fixed by a single click somewhere else.
    */
@@ -98,6 +104,7 @@ export class EpicWorkflowService {
     if (!epic || epic.status === "active") return;
 
     if (epic.status === "planned") {
+      if (verb === "unshelve") return;
       throw new BadRequestError(
         `Cannot ${verb} quest #${quest.shortId}: Epic #${epic.number} is planned. Begin it first.`,
       );

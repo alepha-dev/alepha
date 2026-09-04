@@ -45,6 +45,7 @@ import {
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
+import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
@@ -134,6 +135,13 @@ export class QuestController {
    */
   security = $inject(ProjectSecurityService);
   epicVisibility = $inject(EpicVisibilityService);
+  /**
+   * The epic phase gate (epic #31): a quest can be worked only while its
+   * epic is `active`, and deleted only while it is `planned`. Every refusal
+   * and its wording is written on the service, once; the handlers below
+   * only say which verb they are.
+   */
+  epicWorkflow = $inject(EpicWorkflowService);
   openQuests = $inject(OpenQuestScope);
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
@@ -1512,6 +1520,13 @@ export class QuestController {
     },
   });
 
+  /**
+   * Hand an accepted quest back to the backlog as "new".
+   *
+   * Deliberately NOT behind the epic phase gate (epic #31), for the reason
+   * `shelveQuest` is not: unassigning is the step before shelving, and both
+   * move a quest toward resolution rather than opening work.
+   */
   abandonQuest = $action({
     use: [
       $secure({ permissions: ["quest:update"] }),
@@ -1555,6 +1570,10 @@ export class QuestController {
    * Only quests still in "new" status can be shelved: an accepted quest
    * must be abandoned first, so that clearing the assignee, timer and
    * reminders stays an explicit act rather than a side-effect of shelving.
+   *
+   * Deliberately NOT behind the epic phase gate (epic #31). Shelving moves
+   * a quest toward resolution, and it is the only exit for a `new` quest
+   * sitting in a concluded epic from before that rule existed.
    */
   shelveQuest = $action({
     use: [
@@ -1610,6 +1629,9 @@ export class QuestController {
     },
     handler: async ({ params, user }) => {
       const { quest } = this.getQuestForTransition("unshelve", ["shelved"]);
+      // Re-opening work inside a concluded epic is refused; unshelving
+      // inside a planned one is allowed, since that edits an open plan.
+      await this.epicWorkflow.assertQuestWorkable(quest, "unshelve");
 
       quest.shelvedAt = undefined;
       quest.shelvedBy = undefined;
@@ -1643,6 +1665,11 @@ export class QuestController {
         "new",
         "shelved",
       ]);
+
+      // Epic phase gate (epic #31), BEFORE the questline gate: a quest can
+      // be accepted only while its epic is active, and of the two reasons
+      // this is the one fixed by a single click somewhere else.
+      await this.epicWorkflow.assertQuestWorkable(quest, "accept");
 
       // Questline gate (Lore #32): refuse to accept while a non-null
       // predecessor is still in flight. The dependent quest stays
@@ -1724,6 +1751,10 @@ export class QuestController {
       const { quest, project } = this.getQuestForTransition("reopen", [
         "completed",
       ]);
+      // A concluded epic's quest stays closed: the board reaches this by
+      // dragging a card out of Done, and a done epic's cards ARE on the
+      // board (the backlog gate hides planned epics only).
+      await this.epicWorkflow.assertQuestWorkable(quest, "reopen");
 
       quest.completedAt = undefined;
       quest.completedBy = undefined;
@@ -1779,6 +1810,10 @@ export class QuestController {
         "shelved",
         "accepted",
       ]);
+
+      // Assigning makes a quest accepted without going through
+      // `acceptQuest`, so it answers to the same epic phase gate.
+      await this.epicWorkflow.assertQuestWorkable(quest, "assign");
 
       if (!(await this.security.isMemberById(quest.projectId, body.userId))) {
         throw new BadRequestError(
@@ -1987,6 +2022,10 @@ export class QuestController {
     },
     handler: async ({ params, body, user }) => {
       const { quest } = this.getQuestForTransition("complete", ["accepted"]);
+      // Unreachable once the clean-conclude rule holds (a done epic has no
+      // accepted quest), but rows that pre-date epic #31 can still be here,
+      // and the refusal has to be right for them too.
+      await this.epicWorkflow.assertQuestWorkable(quest, "complete");
 
       const now = this.dt.nowISOString();
 

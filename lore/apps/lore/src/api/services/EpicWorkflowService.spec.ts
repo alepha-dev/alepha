@@ -97,9 +97,7 @@ describe("EpicWorkflowService", () => {
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, {
-        status: "planned",
-      });
+      const epic = await createTestEpic(alepha, project, { status: "done" });
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
       for (const verb of [
@@ -113,6 +111,29 @@ describe("EpicWorkflowService", () => {
           app.workflow.assertQuestWorkable(quest, verb),
         ).rejects.toThrow(`Cannot ${verb} quest #${quest.shortId}:`);
       }
+    });
+
+    it("lets a planned epic's quest be unshelved, since that edits an open plan", async ({
+      expect,
+    }) => {
+      // Shelve is allowed while planning, so unshelve has to be too, or a
+      // quest set aside during planning could not come back until Begin.
+      const { alepha, app, project } = await setup();
+      const epic = await createTestEpic(alepha, project, {
+        status: "planned",
+      });
+      const quest = await createTestQuest(alepha, project, {
+        epicId: epic.id,
+        shelvedAt: "2026-09-04T00:00:00.000Z",
+      });
+
+      await expect(
+        app.workflow.assertQuestWorkable(quest, "unshelve"),
+      ).resolves.toBeUndefined();
+      // The other four still refuse in `planned`.
+      await expect(
+        app.workflow.assertQuestWorkable(quest, "accept"),
+      ).rejects.toThrow(/is planned. Begin it first/);
     });
 
     it("allows a quest whose epic row is gone rather than refusing", async ({

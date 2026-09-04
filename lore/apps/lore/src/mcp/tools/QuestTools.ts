@@ -521,10 +521,13 @@ export class QuestTools {
       // chain an accept onto the create so an agent about to work the quest
       // skips a second quest_accept round-trip. Best-effort and non-atomic
       // (same as the UI, which fires two sequential calls): if the accept is
-      // refused — the only realistic case on a brand-new quest is a
-      // questline gate, i.e. `dependsOn` points at an incomplete predecessor
-      // — the quest stays created and we surface the reason in `acceptNote`
-      // instead of failing the whole tool call.
+      // refused, the quest stays created and the reason lands in
+      // `acceptNote` instead of failing the whole tool call. The common
+      // refusal is the epic phase gate (epic #31): filing into a `planned`
+      // epic with `accept: true` creates the quest and answers "Begin it
+      // first". The questline gate (`dependsOn` on an incomplete
+      // predecessor) is the other one. Both messages are the server's own
+      // words, which name the fix; nothing here rewrites them.
       let acceptedAt: string | undefined;
       let acceptNote: string | undefined;
       if (params.accept) {
