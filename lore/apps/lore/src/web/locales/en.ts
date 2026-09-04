@@ -748,7 +748,6 @@ export default {
   "release.filter.search": "Search",
   "release.filter.state": "State",
   "release.filter.allStates": "All states",
-  "release.filter.stateCount": "$1 states",
   "release.progress.none": "Nothing attached yet",
   "release.list.target": "Targeting $1",
   "release.list.noTarget": "No target date",
