@@ -551,7 +551,7 @@ export class ReactServerProvider {
       if (this.hasServerLinksProvider) {
         this.alepha.store.set(
           "alepha.server.request.apiLinks",
-          await this.alepha.inject(ServerLinksProvider).getUserApiLinks({
+          await this.alepha.inject(ServerLinksProvider).getCachedUserApiLinks({
             // `user` is declaration-merged onto `ServerRequest` by
             // `alepha/security`, which react cannot import — an optional
             // module must not become a compile-time dependency of the router.
