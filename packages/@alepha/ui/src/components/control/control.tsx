@@ -16,7 +16,10 @@ import {
   type IconComponent,
   iconFor,
 } from "@alepha/ui/components/control-base/icon-hint";
-import { ControlDate } from "@alepha/ui/components/control-date/control-date";
+import {
+  ControlDate,
+  type ControlDateProps,
+} from "@alepha/ui/components/control-date/control-date";
 import { ControlNumber } from "@alepha/ui/components/control-number/control-number";
 import { ControlObject } from "@alepha/ui/components/control-object/control-object";
 import { ControlPassword } from "@alepha/ui/components/control-password/control-password";
@@ -100,6 +103,20 @@ export interface ControlProps {
    * Force a time picker.
    */
   time?: boolean;
+  /**
+   * Date picker caption style — `"dropdown"` swaps the month arrows for
+   * month/year selects. See {@link ControlDateProps.captionLayout}.
+   */
+  captionLayout?: ControlDateProps["captionLayout"];
+  /** First selectable month of a date picker. */
+  startMonth?: Date;
+  /** Last selectable month of a date picker. */
+  endMonth?: Date;
+  /**
+   * Date-of-birth shorthand: a year dropdown covering the last 120 years.
+   * See {@link ControlDateProps.birthdate}.
+   */
+  birthdate?: boolean;
   /**
    * Force a `<Select>`.
    */
@@ -516,6 +533,10 @@ export const Control = (props: ControlProps) => {
         time={merged.time}
         disabled={merged.disabled}
         clearable={merged.clearable}
+        captionLayout={merged.captionLayout}
+        startMonth={merged.startMonth}
+        endMonth={merged.endMonth}
+        birthdate={merged.birthdate}
       />,
     );
   }
