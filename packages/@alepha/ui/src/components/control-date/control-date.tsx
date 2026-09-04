@@ -24,7 +24,12 @@ import {
   Clock,
   X,
 } from "lucide-react";
+import type { DayPickerProps } from "react-day-picker";
 import { useState } from "react";
+
+/** How many years back a `birthdate` picker offers. Covers every living
+ *  person; the oldest verified human reached 122. */
+const BIRTHDATE_YEARS = 120;
 
 export interface ControlDateProps {
   /**
@@ -63,6 +68,32 @@ export interface ControlDateProps {
    * control in the kit spells this `clearable`, so this one does too.
    */
   clearable?: boolean;
+  /**
+   * Caption style. `"label"` (the default) shows the month name with
+   * previous/next arrows; `"dropdown"` swaps both for month and year selects.
+   *
+   * Arrows are fine for a date near today and hopeless for one that is not:
+   * reaching a 1988 birthday costs about 450 clicks on `<`. Pair `"dropdown"`
+   * with {@link startMonth} / {@link endMonth}, or use {@link birthdate},
+   * which sets both.
+   */
+  captionLayout?: DayPickerProps["captionLayout"];
+  /**
+   * First selectable month. Also bounds the year dropdown, which otherwise
+   * offers a narrow range around today.
+   */
+  startMonth?: Date;
+  /** Last selectable month. */
+  endMonth?: Date;
+  /**
+   * Shorthand for a date of birth: a year dropdown covering the last
+   * {@link BIRTHDATE_YEARS} years, ending this year.
+   *
+   * Sugar over `captionLayout` + `startMonth` / `endMonth`, which stay
+   * available for any other historical field. An explicit value for one of
+   * those wins over what this sets.
+   */
+  birthdate?: boolean;
 }
 
 export const ControlDate = (props: ControlDateProps) => {
@@ -105,6 +136,8 @@ export const ControlDate = (props: ControlDateProps) => {
     );
   }
 
+  const thisYear = new Date().getFullYear();
+
   return (
     <FormField
       id={meta.id}
@@ -119,6 +152,19 @@ export const ControlDate = (props: ControlDateProps) => {
         withTime={isDateTime}
         disabled={props.disabled}
         clearable={props.clearable}
+        captionLayout={
+          props.captionLayout ?? (props.birthdate ? "dropdown" : undefined)
+        }
+        startMonth={
+          props.startMonth ??
+          (props.birthdate
+            ? new Date(thisYear - BIRTHDATE_YEARS, 0, 1)
+            : undefined)
+        }
+        endMonth={
+          props.endMonth ??
+          (props.birthdate ? new Date(thisYear, 11, 31) : undefined)
+        }
         onChange={(v) => setValue(v)}
       />
     </FormField>
@@ -131,6 +177,9 @@ interface DatePopoverProps {
   withTime: boolean;
   disabled?: boolean;
   clearable?: boolean;
+  captionLayout?: DayPickerProps["captionLayout"];
+  startMonth?: Date;
+  endMonth?: Date;
   onChange: (value: string | undefined) => void;
 }
 
@@ -236,7 +285,14 @@ const DatePopover = (props: DatePopoverProps) => {
         )}
       </div>
       <PopoverContent className="w-auto p-0" align="start">
-        <Calendar mode="single" selected={date} onSelect={handleDate} />
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={handleDate}
+          captionLayout={props.captionLayout}
+          startMonth={props.startMonth}
+          endMonth={props.endMonth}
+        />
         {props.withTime && (
           <div className="border-t p-3">
             <Input
