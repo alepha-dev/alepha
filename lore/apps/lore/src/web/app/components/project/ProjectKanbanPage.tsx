@@ -7,6 +7,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import KanbanBoard from "../kanban/KanbanBoard.tsx";
+import { preloadQuestView } from "../project/quest/LazyQuestView.tsx";
 
 /**
  * The Kanban board, at `/:projectSlug/kanban`.
@@ -29,6 +30,13 @@ const ProjectKanbanPage = () => {
   const [project] = useStore(currentProjectAtom);
   const kanbanApi = useClient<KanbanController>();
   const [quests, setQuests] = useState<QuestResource[] | undefined>(undefined);
+
+  // Every card on this board opens `QuestView` behind a chunk boundary.
+  // Fetching that chunk while the board is being read is what keeps the
+  // boundary invisible: by the time a card is clicked it is already there.
+  useEffect(() => {
+    preloadQuestView();
+  }, []);
 
   useEffect(() => {
     if (!project) {

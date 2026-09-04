@@ -6,7 +6,7 @@ import {
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
-import QuestView from "../QuestView.tsx";
+import LazyQuestView from "../LazyQuestView.tsx";
 import type { QuestlineNode } from "./questlineLayout.ts";
 
 export interface QuestlineDialogProps {
@@ -93,7 +93,7 @@ const QuestlineDialog = (props: QuestlineDialogProps) => {
               to stick to.
             */}
             <div className="flex min-h-0 overflow-hidden rounded-xl">
-              <QuestView
+              <LazyQuestView
                 quest={node.quest}
                 context="dialog"
                 onClose={props.onClose}
