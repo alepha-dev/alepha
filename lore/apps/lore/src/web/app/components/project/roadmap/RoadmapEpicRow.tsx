@@ -57,11 +57,17 @@ const RoadmapEpicRow = (props: RoadmapEpicRowProps) => {
             exists: it used to live in prose ("depends on epic #14 landing
             first") that could not be rendered, sorted or checked.
 
-            Advisory, and the wording says so. "After Epic 7" states an
-            intended order; "Blocked by Epic 7" would claim an enforcement
-            that does not exist - nothing refuses a status change because of
-            this field, by decision recorded on the column. The rows are also
-            sorted so the predecessor is already above this one. */}
+            "After Epic 7", and deliberately not "Blocked by Epic 7", even
+            though the field is a gate since epic #31 (Begin is refused while
+            the predecessor is not done). A roadmap draws ORDER, and the
+            order is exactly as true now as when the field was advisory.
+            Whether the gate currently blocks needs the predecessor's status,
+            which this row does not have: `roadmapEpicSchema` is a closed
+            `pick` with a pinned key set, the page may be public, and the
+            predecessor may sit in no release at all. "Blocked by" belongs
+            where Begin is clickable, on the epic page, which reads
+            `dependsOnStatus` off the full resource. The rows are also sorted
+            so the predecessor is already above this one. */}
         {dependsOnNumber !== undefined ? (
           <Badge variant="tint" tone="neutral">
             <ArrowUp className="size-3" />

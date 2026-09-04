@@ -85,6 +85,7 @@ export class EpicTools {
           // numbers, the same split `quest_*` makes with `dependsOn_shortId`.
           // `buildEpicResource` is what resolves it.
           dependsOn_number: epic.dependsOnNumber,
+          dependsOn_status: epic.dependsOnStatus,
         })),
       };
     },
@@ -131,6 +132,7 @@ export class EpicTools {
         activatedAt: epic.activatedAt,
         completedAt: epic.completedAt,
         dependsOn_number: epic.dependsOnNumber,
+        dependsOn_status: epic.dependsOnStatus,
         folios: folios.map((folio) => ({
           shortId: folio.shortId,
           title: folio.title,

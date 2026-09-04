@@ -53,12 +53,12 @@ export class EpicDependencyService {
   /**
    * Refuse a write that would close a loop.
    *
-   * ⚠️ This is NOT the advisory-versus-gate question the column's own comment
-   * settles - that one is about workflow, and the answer there is advisory.
+   * ⚠️ This is NOT the workflow gate the column's own comment settles - that
+   * one is about when an epic may BEGIN, and lives on `EpicWorkflowService`.
    * A cycle is a different thing entirely: `A → B → A` is a graph the roadmap
    * cannot draw and {@link order} cannot terminate on, and a self-reference
    * with no constraint behind it is the only place one can be created. So it
-   * is refused on write, always, whatever the workflow rules turn out to be.
+   * is refused on write, always, whatever the workflow rules are.
    *
    * Walks forward from the PROPOSED predecessor. If the epic being written is
    * reachable that way, storing the link would close the loop.

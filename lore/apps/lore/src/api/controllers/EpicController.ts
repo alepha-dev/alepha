@@ -153,13 +153,13 @@ export class EpicController {
       // for the list rather than one per epic that has a predecessor. Every
       // predecessor is in `allEpics` already (a dependency cannot leave its
       // project), so this reads off the rows in hand.
-      const numbers = new Map(allEpics.map((epic) => [epic.id, epic.number]));
+      const byId = new Map(allEpics.map((epic) => [epic.id, epic]));
 
       return allEpics.map((epic) =>
         this.toEpicResource(
           epic,
           progress.get(epic.id) ?? this.zeroProgress(),
-          epic.dependsOn != null ? numbers.get(epic.dependsOn) : undefined,
+          epic.dependsOn != null ? byId.get(epic.dependsOn) : undefined,
         ),
       );
     },
@@ -392,6 +392,12 @@ export class EpicController {
         return await this.buildEpicResource(epic);
       }
       this.assertStatusEdge(epic, body.status);
+      // The gate on Begin (epic #31): an epic cannot begin while the epic it
+      // depends on is not done. Evaluated here and only here; `dependsOn`
+      // stays writable in every phase because the roadmap draws it.
+      if (body.status === "active") {
+        await this.workflow.assertCanBegin(epic);
+      }
 
       const updated = await this.epics.updateById(params.id, {
         status: body.status,
@@ -625,7 +631,7 @@ export class EpicController {
     return this.toEpicResource(
       epic,
       await this.computeProgress(epic),
-      predecessor?.number,
+      predecessor,
     );
   }
 
@@ -633,19 +639,27 @@ export class EpicController {
    * Assembles the resource once the rollup is in hand, so the single-epic
    * path and the batched list path cannot drift on what a resource is.
    *
-   * ⚠️ `dependsOnNumber` is supplied rather than looked up, for the same
+   * ⚠️ The predecessor is supplied rather than looked up, for the same
    * reason `progress` is: this method is the one place a resource is built,
    * and the two callers reach both facts differently - one row at a time, or
    * batched over the whole list. A lookup in here would make the batched path
    * N+1 again, and computing it in only one caller would let `epic_list`
-   * silently stop carrying a field `epic_get` returns.
+   * silently stop carrying a field `epic_get` returns. Its `number` and its
+   * `status` ride out together, so neither surface can carry one without the
+   * other.
    */
   protected toEpicResource(
     epic: Epic,
     progress: EpicProgress,
-    dependsOnNumber?: number,
+    predecessor?: Pick<Epic, "number" | "status">,
   ): EpicResource {
-    return { ...epic, progress, questCount: progress.total, dependsOnNumber };
+    return {
+      ...epic,
+      progress,
+      questCount: progress.total,
+      dependsOnNumber: predecessor?.number,
+      dependsOnStatus: predecessor?.status,
+    };
   }
 
   /**
