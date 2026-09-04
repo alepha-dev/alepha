@@ -370,7 +370,7 @@ export default {
   "quest.view.questline.open": "Open the questline",
   "quest.discussion.title": "Discussion",
   "quest.discussion.composer.placeholder":
-    "Leave a comment. Mention a member with @, link a folio with [[…]], or point at another quest with #1204.",
+    "Leave a comment. Mention a member with @, link a folio with [[…]], or point at another quest with #Q1204.",
   "quest.discussion.composer.markdown": "Markdown supported",
   "quest.discussion.composer.submit": "Comment",
   "quest.discussion.commented": "commented",

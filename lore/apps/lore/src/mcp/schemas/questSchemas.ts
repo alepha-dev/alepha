@@ -291,7 +291,7 @@ export const questCommentAddParamsSchema = entityRefSchema.extend({
     .string()
     .min(1)
     .describe(
-      `The comment, in Markdown. \`[[folio title]]\`, \`[[quest:#12]]\` and a bare \`#12\` all resolve to links when Lore renders it. ${DIAGRAM_CAPABILITY}`,
+      `The comment, in Markdown. References are typed: \`[[#Q12]]\` is quest 12, \`[[#E3]]\` epic 3, \`[[#F12]]\` folio 12, \`[[#P120]]\` feedback 120, \`[[#R7]]\` release 7; written bare (\`#Q12\`) they become links too, and an untyped \`#12\` stays plain text. Mention a member with \`@name\`. ${DIAGRAM_CAPABILITY}`,
     ),
   as: z
     .string()
