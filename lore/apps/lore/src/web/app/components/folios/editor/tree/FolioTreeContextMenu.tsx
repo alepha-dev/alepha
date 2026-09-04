@@ -22,11 +22,11 @@ import type { ReactElement } from "react";
 import type { AppRouter } from "../../../../AppRouter.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import type { FolioTreeNode } from "./folioTreeModel.ts";
-import type { FolioTreeState } from "./useFolioTreeModel.ts";
+import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeContextMenuProps {
   node: FolioTreeNode;
-  tree: FolioTreeState;
+  commands: FolioTreeCommands;
   projectSlug: string;
 }
 
@@ -99,23 +99,25 @@ const FolioTreeContextMenu = (
       <ContextMenuSeparator />
       {isDirectory ? (
         <>
-          <ContextMenuItem onClick={() => props.tree.createFolio(node.id)}>
+          <ContextMenuItem onClick={() => props.commands.createFolio(node.id)}>
             <FilePlus className="size-4" />
             {tr("folios.editor.tree.new-folio")}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => props.tree.createDirectory(node.id)}>
+          <ContextMenuItem
+            onClick={() => props.commands.createDirectory(node.id)}
+          >
             <FolderPlus className="size-4" />
             {tr("folios.editor.tree.new-directory")}
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem onClick={() => props.tree.beginRename(node.id)}>
+          <ContextMenuItem onClick={() => props.commands.beginRename(node.id)}>
             <Pencil className="size-4" />
             {tr("folios.editor.tree.rename")}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem
             variant="destructive"
-            onClick={() => props.tree.remove(node)}
+            onClick={() => props.commands.remove(node)}
           >
             <Trash2 className="size-4" />
             {tr("folio.action.delete")}
@@ -123,11 +125,11 @@ const FolioTreeContextMenu = (
         </>
       ) : (
         <>
-          <ContextMenuItem onClick={() => props.tree.beginRename(node.id)}>
+          <ContextMenuItem onClick={() => props.commands.beginRename(node.id)}>
             <Pencil className="size-4" />
             {tr("folios.editor.tree.rename")}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => props.tree.duplicate(node)}>
+          <ContextMenuItem onClick={() => props.commands.duplicate(node)}>
             <Copy className="size-4" />
             {tr("folio.action.duplicate")}
           </ContextMenuItem>
@@ -135,7 +137,7 @@ const FolioTreeContextMenu = (
             <Link2 className="size-4" />
             {tr("folios.editor.tree.copy-wiki-link")}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => props.tree.togglePin(node)}>
+          <ContextMenuItem onClick={() => props.commands.togglePin(node)}>
             {node.pinned ? (
               <PinOff className="size-4" />
             ) : (
@@ -148,7 +150,7 @@ const FolioTreeContextMenu = (
           <ContextMenuSeparator />
           <ContextMenuItem
             variant="destructive"
-            onClick={() => props.tree.remove(node)}
+            onClick={() => props.commands.remove(node)}
           >
             <Trash2 className="size-4" />
             {tr("folio.action.delete")}

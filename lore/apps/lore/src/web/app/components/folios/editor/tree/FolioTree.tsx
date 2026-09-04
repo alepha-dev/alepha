@@ -1,7 +1,7 @@
 import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
 import { FilePlus, FolderPlus } from "lucide-react";
-import { type ReactElement, useEffect, useRef } from "react";
+import { type ReactElement, useEffect } from "react";
 
 import type { I18n } from "../../../../services/I18n.ts";
 import FolioTreeRow from "./FolioTreeRow.tsx";
@@ -71,23 +71,20 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
     revealDirectoryShortId: props.revealDirectoryShortId,
   });
 
-  // Published through a ref, and the published closures read through it too.
-  // `useFolioTreeModel` returns fresh function identities every render, so
-  // depending on them here meant: effect re-runs → parent setState → parent
-  // re-renders this → new identities → effect re-runs. That was a live
-  // "Maximum update depth exceeded" loop. The ref keeps the published object
-  // stable (created once per `onActions` identity) while the closures still
-  // reach the current model.
-  const treeRef = useRef(tree);
-  treeRef.current = tree;
-
+  // `tree.commands` is stable for the life of the hook, so this effect can
+  // depend on it honestly. It used to need a ref: the model returned fresh
+  // function identities every render, so depending on them meant effect
+  // re-runs, parent setState, a re-render here, new identities, and a live
+  // "Maximum update depth exceeded" loop. The stable facade that makes
+  // `FolioTreeRow`'s memo hold removed the need for the workaround too.
   const { onActions } = props;
+  const { commands } = tree;
   useEffect(() => {
     onActions?.({
-      createFolio: () => void treeRef.current.createFolio(),
-      createDirectory: () => void treeRef.current.createDirectory(),
+      createFolio: () => void commands.createFolio(),
+      createDirectory: () => void commands.createDirectory(),
     });
-  }, [onActions]);
+  }, [onActions, commands]);
 
   return (
     <div
@@ -103,7 +100,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           type="button"
           size="icon-sm"
           variant="ghost"
-          onClick={() => tree.createFolio()}
+          onClick={() => commands.createFolio()}
           aria-label={String(tr("folios.editor.tree.new-folio"))}
         >
           <FilePlus className="size-3.5" />
@@ -112,7 +109,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           type="button"
           size="icon-sm"
           variant="ghost"
-          onClick={() => tree.createDirectory()}
+          onClick={() => commands.createDirectory()}
           aria-label={String(tr("folios.editor.tree.new-directory"))}
         >
           <FolderPlus className="size-3.5" />
@@ -125,13 +122,25 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             {tr("folios.editor.tree.empty")}
           </p>
         )}
+        {/* The per-row state is derived HERE and passed as primitives.
+            Handing each row the whole state object is what made every
+            visible row re-render on every toggle: `rows` is memoised, the
+            object around it is not. */}
         {tree.rows.map((row) => (
           <FolioTreeRow
             key={row.node.id}
             node={row.node}
             depth={row.depth}
-            tree={tree}
+            commands={commands}
             projectSlug={props.projectSlug}
+            isCollapsed={tree.collapsed.has(row.node.id)}
+            isSelected={tree.selectedId === row.node.id}
+            isRenaming={tree.renamingId === row.node.id}
+            isDragging={tree.dragId === row.node.id}
+            isDragActive={tree.dragId !== undefined}
+            dropHere={
+              tree.drop?.id === row.node.id ? tree.drop.position : undefined
+            }
           />
         ))}
       </div>
