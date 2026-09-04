@@ -170,6 +170,22 @@ export class LoreAudits {
   });
 
   /**
+   * An estate is a credential too: the secret a machine dials in with, and
+   * later (epic #22) a token into somebody's cloud account. Same retention as
+   * sigils, for the same reason. `create`, `update`, `rotate` and `delete`
+   * are app-layer, since an estate belongs to a user and not to a project;
+   * `attach` and `detach` are the lending (#1837) and carry the project
+   * scope, because a project gaining or losing a deploy destination is what
+   * that project's members want to see on their Activity page.
+   */
+  readonly estate = $audit({
+    type: "estate",
+    description: "Deploy destinations and their credentials",
+    actions: ["create", "update", "rotate", "delete", "attach", "detach"],
+    retentionDays: 730,
+  });
+
+  /**
    * Every `(type, action)` pair the project layer can write, for the Activity
    * page's two dropdowns.
    *
@@ -193,6 +209,7 @@ export class LoreAudits {
       this.feedback,
       this.member,
       this.sigil,
+      this.estate,
       this.project,
     ].flatMap((audit) =>
       audit.actions.map((action) => ({ type: audit.type, action })),
