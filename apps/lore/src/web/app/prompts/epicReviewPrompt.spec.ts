@@ -17,7 +17,8 @@ describe("buildEpicReviewPrompt", () => {
   });
 
   it("names the epic, the project and the URL", () => {
-    expect(prompt).toContain("#31");
+    // The typed reference (epic #32), the same string every screen shows.
+    expect(prompt).toContain("#E31");
     expect(prompt).toContain("Epic Workflow");
     expect(prompt).toContain("alepha");
     // The URL is what lets an agent with no Lore MCP be pointed at it.

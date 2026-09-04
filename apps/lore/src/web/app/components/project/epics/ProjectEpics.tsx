@@ -164,10 +164,12 @@ const ProjectEpics = () => {
           return false;
         }
         if (!needle) return true;
+        // `#E3`, `#3` and `3` all reach the number; `needle` is lowercased,
+        // so the letter is.
         return (
           epic.title.toLowerCase().includes(needle) ||
           epic.description.toLowerCase().includes(needle) ||
-          String(epic.number) === needle.replace(/^#/, "")
+          String(epic.number) === needle.replace(/^#e?/, "")
         );
       }),
       sort,

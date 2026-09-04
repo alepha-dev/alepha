@@ -786,11 +786,11 @@ const ProjectQuestsTable = () => {
             icon: Hash,
             label: tr("board.action.copyId"),
             onClick: async () => {
-              // The `#N` reference, not the row id. That is the form the
-              // whole app already speaks: quest titles, `[[quest:#12]]` over
-              // MCP, and what someone types into a commit message. The row
-              // id is a database detail nobody pastes anywhere.
-              const reference = `#${quest.shortId}`;
+              // The `#Q12` reference, not the row id. That is the form the
+              // whole app speaks: quest titles, `[[#Q12]]` over MCP, and what
+              // someone types into a commit message. The row id is a
+              // database detail nobody pastes anywhere.
+              const reference = formatReference("quest", quest.shortId);
               try {
                 await navigator.clipboard.writeText(reference);
                 toaster.success(

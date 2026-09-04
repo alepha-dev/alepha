@@ -238,11 +238,12 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       );
     }
     if (search.trim()) {
-      // Title and `#shortId`, the two things a person types when hunting
-      // for a card they already know exists. Not the description: matching
-      // it would surface cards whose match is invisible on the board.
+      // Title and `#Q12` (or the untyped `#12` and `12`), the two things a
+      // person types when hunting for a card they already know exists. Not
+      // the description: matching it would surface cards whose match is
+      // invisible on the board. `needle` is lowercased, so the letter is.
       const needle = search.trim().toLowerCase();
-      const asNumber = needle.replace(/^#/, "");
+      const asNumber = needle.replace(/^#q?/, "");
       out = out.filter(
         (quest) =>
           quest.title.toLowerCase().includes(needle) ||
