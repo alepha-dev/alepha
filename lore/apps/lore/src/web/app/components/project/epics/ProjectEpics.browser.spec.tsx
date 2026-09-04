@@ -319,7 +319,7 @@ describe("ProjectEpics - the status filter", () => {
         "epic-review-prompt-text",
       )) as HTMLTextAreaElement;
       const prompt = editor.value;
-      expect(prompt).toContain("#1");
+      expect(prompt).toContain("#E1");
       expect(prompt).toContain("Planned epic");
       expect(prompt).toContain("/epics/1");
       expect(prompt).toContain("epic_get");

@@ -1875,14 +1875,14 @@ test.describe("Quest", () => {
       timeout: 15_000,
     });
 
-    await test.step("Copy ID puts the #N reference on the clipboard", async () => {
+    await test.step("Copy ID puts the #Q<n> reference on the clipboard", async () => {
       await page.getByRole("button", { name: "Open row actions" }).click();
       await page.getByRole("menuitem", { name: /copy id/i }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
-      // The `#N` reference, not the row id: that is what pastes usefully into
-      // a commit message, a prompt or a folio.
-      expect(copied).toBe(`#${shortId}`);
+      // The typed `#Q<n>` reference, not the row id: that is what pastes
+      // usefully into a commit message, a prompt or a folio (epic #32).
+      expect(copied).toBe(`#Q${shortId}`);
     });
 
     await test.step("Edit opens the drawer and saves in place", async () => {
