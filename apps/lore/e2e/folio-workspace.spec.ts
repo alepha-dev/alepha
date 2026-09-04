@@ -1221,8 +1221,10 @@ test.describe("Folio workspace", () => {
 
       // The picker only ever inserts plain `[[token]]` text — which is why
       // the assertion is on the DOCUMENT, not on any decoration. There is no
-      // decoration anymore; the token is markdown like everything else.
-      await expect(editor).toContainText(`[[${folioTitle}]]`, {
+      // decoration anymore; the token is markdown like everything else. The
+      // token is the typed `#F<n>` form (epic #32), never the title.
+      const targetShortId = Number(folioUrl.split("/").pop());
+      await expect(editor).toContainText(`[[#F${targetShortId}]]`, {
         timeout: 10_000,
       });
     });
@@ -1266,6 +1268,8 @@ test.describe("Folio workspace", () => {
       // drops the project's whole link graph on the next save.
       expect(content).toContain(`[[${folioTitle}]]`);
       expect(content).toContain(`[[No Such Folio ${stamp}]]`);
+      // And what the picker inserted in the previous step.
+      expect(content).toContain(`[[#F${Number(folioUrl.split("/").pop())}]]`);
     });
   });
 

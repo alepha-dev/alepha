@@ -465,7 +465,9 @@ test.describe("Epics — the list", () => {
       const option = page.getByRole("option", { name: `Q${t}` }).first();
       await expect(option).toBeVisible({ timeout: 15_000 });
       await option.click();
-      await expect(editor).toContainText("[[quest#", { timeout: 10_000 });
+      // The typed form (epic #32). This used to pin `[[quest#`, a token
+      // neither parser read as a quest.
+      await expect(editor).toContainText("[[#Q", { timeout: 10_000 });
 
       // This step navigated to the epic's own page; the steps after it act
       // on the LIST's toolbar, which does not exist here.
