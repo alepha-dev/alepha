@@ -72,6 +72,8 @@ __metadata:
       optional: true
     react-dom:
       optional: true
+  bin:
+    lore: ./src/bin/index.ts
   languageName: unknown
   linkType: soft
 
