@@ -98,12 +98,10 @@ describe("ReactServerTemplateProvider", () => {
 
       // Set up mock SSR manifest
       alepha.store.set(ssrManifestAtom, {
-        client: {
-          "src/entry.tsx": {
-            file: "assets/entry.abc123.js",
-            isEntry: true,
-            css: ["assets/style.def456.css"],
-          },
+        preload: {
+          files: ["/assets/entry.abc123.js", "/assets/style.def456.css"],
+          keys: {},
+          entry: { js: 0, css: [1], graph: [] },
         },
       });
 

@@ -281,6 +281,16 @@ export class ReactServerProvider {
       );
     }
 
+    // The entry's own static graph, which every page needs and nothing about
+    // a request can change. Without it these chunks are discovered only by
+    // parsing entry.js, two sequential round trips deep.
+    const entryGraph = this.templateProvider.renderHeadContent({
+      link: this.ssrManifestProvider.collectEntryGraphLinks(),
+    });
+    if (entryGraph) {
+      parts.push(entryGraph.trimEnd());
+    }
+
     this.templateProvider.setEarlyHeadContent(
       parts.length > 0 ? `${parts.join("\n")}\n` : "",
       globalHead,
@@ -541,7 +551,7 @@ export class ReactServerProvider {
       if (this.hasServerLinksProvider) {
         this.alepha.store.set(
           "alepha.server.request.apiLinks",
-          await this.alepha.inject(ServerLinksProvider).getUserApiLinks({
+          await this.alepha.inject(ServerLinksProvider).getCachedUserApiLinks({
             // `user` is declaration-merged onto `ServerRequest` by
             // `alepha/security`, which react cannot import — an optional
             // module must not become a compile-time dependency of the router.
@@ -616,12 +626,22 @@ export class ReactServerProvider {
         };
       }
 
+      // The route's preload links, ahead of the loaders rather than behind
+      // them. Nothing in their resolution reads loader output, and the wait
+      // they used to sit behind is 170ms to 1000ms of a browser holding one
+      // script and nothing else.
+      const preloadHead = this.templateProvider.renderHeadContent({
+        link: this.ssrManifestProvider.collectPreloadLinks(route),
+      });
+
       // Create optimized HTML stream with early head
       const htmlStream = this.templateProvider.createEarlyHtmlStream(
         globalHead,
         async () => {
           // === ASYNC WORK (runs while early head is being sent) ===
-          const result = await this.renderPage(route, state);
+          const result = await this.renderPage(route, state, {
+            preloadLinks: false,
+          });
 
           if (result.redirect) {
             // Return redirect URL - template provider will inject meta refresh
@@ -634,6 +654,7 @@ export class ReactServerProvider {
         {
           hydration: true,
           state,
+          earlyHead: preloadHead,
           onError: (error) => {
             if (error instanceof Redirection) {
               this.log.debug("Streaming resulted in redirection", {
@@ -722,11 +743,14 @@ export class ReactServerProvider {
    *
    * @param route - The page route to render
    * @param state - The router state
+   * @param options - `preloadLinks: false` when the caller has already put
+   *   them in the early head, which only the streaming path can do
    * @returns Render result with redirect or React stream
    */
   protected async renderPage(
     route: PageRoute,
     state: ReactRouterState,
+    options: { preloadLinks?: boolean } = {},
   ): Promise<{ redirect?: string; reactStream?: ReadableStream<Uint8Array> }> {
     // Resolve page layers (loaders)
     const { redirect } = await this.pageApi.createLayers(route, state);
@@ -738,11 +762,19 @@ export class ReactServerProvider {
     // Fill head from route config
     this.serverHeadProvider.fillHead(state);
 
-    // Collect and inject modulepreload links for page-specific chunks
-    const preloadLinks = this.ssrManifestProvider.collectPreloadLinks(route);
-    if (preloadLinks.length > 0) {
-      state.head ??= {};
-      state.head.link = [...(state.head.link ?? []), ...preloadLinks];
+    // Collect and inject modulepreload links for page-specific chunks.
+    //
+    // The streaming path opts out: it emits the same links itself, before this
+    // function is even called, so that the browser starts pulling the page's
+    // chunks while the loaders are still running. The buffered ($cache) and
+    // prerender paths build the whole document from `state.head` and have no
+    // early phase to put them in, so they still fill it here.
+    if (options.preloadLinks !== false) {
+      const preloadLinks = this.ssrManifestProvider.collectPreloadLinks(route);
+      if (preloadLinks.length > 0) {
+        state.head ??= {};
+        state.head.link = [...(state.head.link ?? []), ...preloadLinks];
+      }
     }
 
     // Inject SEO hreflang alternates for locale-prefix routing

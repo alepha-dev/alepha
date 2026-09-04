@@ -121,6 +121,7 @@ export class BuildClientTask extends BuildTask {
       build: {
         outDir: opts.dist,
         manifest: true,
+        ssrManifest: true,
         chunkSizeWarningLimit: 1000,
         rolldownOptions: {
           input: "node_modules/.alepha/index.html",
