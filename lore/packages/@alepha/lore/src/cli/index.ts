@@ -4,7 +4,6 @@ import { AlephaServerLinksClient } from "alepha/server/links";
 import { type LoreOptions, loreOptions } from "./atoms/loreOptions.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
-import { LoreCommand } from "./commands/LoreCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
 import { ReleaseCommand } from "./commands/ReleaseCommand.ts";
 import { ArtifactUploader } from "./services/ArtifactUploader.ts";
@@ -17,7 +16,7 @@ import { QualityReportReader } from "./services/QualityReportReader.ts";
 // ---------------------------------------------------------------------------
 
 /**
- * CLI plugin for talking to a Lore instance from a build or a CI job.
+ * What the `lore` binary is made of.
  *
  * The other half of this package reports from a running app; this half is what
  * a pipeline runs. It lives here rather than in `alepha/cli` because Lore is a
@@ -25,19 +24,25 @@ import { QualityReportReader } from "./services/QualityReportReader.ts";
  * a subpath rather than a package of its own so that both halves share one
  * answer to "where is Lore, and how do I authenticate to it".
  *
- * Registered from `alepha.config.ts`, the same way `alepha/cli/vendor` is:
- *
- * ```typescript
- * import { lore } from "@alepha/lore/cli";
- *
- * export default defineConfig({
- *   plugins: [lore({ project: "alepha" })],
- * });
+ * ```bash
+ * npm i -g "@alepha/lore"
+ * lore login
+ * lore quality push -p alepha
  * ```
  *
- * Config carries the project, env carries the secret (`LORE_API_KEY`), and
- * `--project` overrides the config for one invocation. No credential ever
- * lands in a committed file.
+ * ## ⚠️ Five top-level commands, and no root of its own
+ *
+ * `quality`, `artifacts`, `releases`, `login` and `logout` register at the top
+ * level, because the binary IS the root. A `lore` command inside a `lore`
+ * binary reads `lore lore quality push`.
+ *
+ * That also means nothing here may inject a command from `alepha/cli`:
+ * `Alepha.inject` registers the module that declares a service, so one such
+ * injection would hand this container every Alepha CLI command under a second
+ * name. `commandSurface.spec.ts` is what keeps that true.
+ *
+ * The project comes from `-p`, and the secret from `LORE_API_KEY`. No
+ * credential ever lands in a committed file.
  *
  * ## Why `AlephaServerLinksClient` and not `AlephaServer`
  *
@@ -53,7 +58,7 @@ import { QualityReportReader } from "./services/QualityReportReader.ts";
  *
  * @module alepha.lore.cli
  */
-export const AlephaLoreCliPlugin = $module({
+export const AlephaLoreCli = $module({
   name: "alepha.lore.cli",
   imports: [AlephaServerLinksClient],
   atoms: [loreOptions],
@@ -72,17 +77,21 @@ export const AlephaLoreCliPlugin = $module({
     ArtifactCommand,
     ReleaseCommand,
     LoginCommand,
-    // The `lore` root, and the only declaration of it. Two classes declaring
-    // it would not collide - `findCommand` resolves by `findLast`, so the
-    // second would silently shadow the first and take its subtree with it.
-    LoreCommand,
   ],
 });
 
+/**
+ * Register this module into an app's own CLI container, from
+ * `alepha.config.ts`.
+ *
+ * ⚠️ On its way out. The binary is the supported entry point, and the four
+ * configs in this repo that still call this lose it in the next step; the
+ * export goes with them. It exists here only so no commit in between is red.
+ */
 export const lore = (options: LoreOptions = {}) => {
   return () => {
     const { alepha } = $context();
-    alepha.with(AlephaLoreCliPlugin).set(loreOptions, options);
+    alepha.with(AlephaLoreCli).set(loreOptions, options);
   };
 };
 

@@ -3,7 +3,7 @@ import pkg from "@alepha/lore/package.json" with { type: "json" };
 import { Alepha, run } from "alepha";
 import { AlephaCommand } from "alepha/command";
 
-import { AlephaLoreCliPlugin } from "../cli/index.ts";
+import { AlephaLoreCli } from "../cli/index.ts";
 
 /**
  * The `lore` binary.
@@ -26,7 +26,7 @@ import { AlephaLoreCliPlugin } from "../cli/index.ts";
  * false premise. `AlephaCommand` keeps the build commands out of the MODULE
  * graph; keeping them out of the INJECT graph is a separate property, because
  * `Alepha.inject` registers the module that declares a service. It holds
- * today because nothing under `AlephaLoreCliPlugin` injects a command from
+ * today because nothing under `AlephaLoreCli` injects a command from
  * `alepha/cli`, and `commandSurface.spec.ts` is what keeps it holding.
  */
 const alepha = Alepha.create({
@@ -49,6 +49,6 @@ const alepha = Alepha.create({
 });
 
 alepha.with(AlephaCommand);
-alepha.with(AlephaLoreCliPlugin);
+alepha.with(AlephaLoreCli);
 
 run(alepha);

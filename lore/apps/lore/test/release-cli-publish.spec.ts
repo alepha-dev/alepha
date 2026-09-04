@@ -1,4 +1,4 @@
-import { AlephaLoreCliPlugin, loreOptions } from "@alepha/lore/cli";
+import { AlephaLoreCli, loreOptions } from "@alepha/lore/cli";
 import { Alepha, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -132,7 +132,7 @@ const cliFor = async (ctx: TestContext, token: string, project: string) => {
     },
   })
     .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
-    .with(AlephaLoreCliPlugin);
+    .with(AlephaLoreCli);
 
   cli.set(loreOptions, { project });
 
