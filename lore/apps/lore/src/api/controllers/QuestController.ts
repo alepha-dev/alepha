@@ -170,7 +170,7 @@ export class QuestController {
     //   markup type here becomes executable in this origin. A download route
     //   that writes its own headers is the thing to watch for.
     // - The lightbox renders images through `<img>` and everything else as
-    //   highlighted source (`questAttachmentPreview`). `<img>` does not run
+    //   highlighted source (`attachmentPreview`). `<img>` does not run
     //   an SVG's scripts; an `<iframe>` or a `dangerouslySetInnerHTML` over
     //   attachment bytes would.
     // - `LoreFileAccessProvider` gates reads on project membership, so a

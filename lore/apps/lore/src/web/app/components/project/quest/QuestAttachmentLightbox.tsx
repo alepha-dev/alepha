@@ -14,7 +14,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import {
   attachmentPreview,
   PREVIEW_MAX_BYTES,
-} from "./questAttachmentPreview.ts";
+} from "../../shared/attachmentPreview.ts";
 
 export interface PreviewableAttachment {
   fileId: string;
