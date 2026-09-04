@@ -27,7 +27,6 @@ Type-safe data layer over Drizzle ORM.
 - [`$relations`](/docs/reference-primitives-$relations) - Declares how entities relate to one another.
 - [`$repositories`](/docs/reference-primitives-$repositories) - One relation-aware repository per entity, in a single binding.
 - [`$repository`](/docs/reference-primitives-$repository) - Get the repository for the given entity.
-- [`$seed`](/docs/reference-primitives-$seed) - Activate seed mode: a convenience wrapper around `$mode` that runs the handler
 - [`$sequence`](/docs/reference-primitives-$sequence) - Declare a portable, scoped numeric sequence.
 - [`$transactional`](/docs/reference-primitives-$transactional) - Middleware that wraps handler execution in a database transaction.
 

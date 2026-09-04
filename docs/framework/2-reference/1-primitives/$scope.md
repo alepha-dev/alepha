@@ -19,7 +19,7 @@ Adding `$scope()` to their `use` array will throw - you're already in a scope.
 ```typescript
 class OrderService {
   processOrder = $pipeline({
-    use: [$scope(), $retry({ max: 3 })],
+    use: [$scope()],
     handler: async (orderId: string) => {
       // alepha.context.set/get are scoped here
       return await this.orders.updateById(orderId, { status: "paid" });

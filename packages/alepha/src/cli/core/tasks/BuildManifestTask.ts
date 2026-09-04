@@ -326,7 +326,6 @@ export class BuildManifestTask extends BuildTask {
       version: 1,
       project: name,
       defaultEnv,
-      tenancy: ctx.platformOptions?.tenancy,
       environments,
       runtime: isStatic ? "static" : processRuntime,
       // No interpreter is resolved for a static site, so a version here would

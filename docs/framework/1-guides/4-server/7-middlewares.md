@@ -322,13 +322,13 @@ Everything above is either global (a module) or per-action (`use: [...]`).
 path prefix.
 
 ```typescript check
+import { $secure } from "alepha/security";
 import { $middleware } from "alepha/server";
-import { $throttle } from "alepha/datetime";
 
 class Gateway {
   api = $middleware({
     path: "/api",
-    use: [$throttle({ rate: 200, per: [1, "second"] })],
+    use: [$secure()],
   });
 }
 ```

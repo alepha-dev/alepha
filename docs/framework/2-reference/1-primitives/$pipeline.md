@@ -21,7 +21,7 @@ Host primitives extend `PipelinePrimitive` directly to get middleware support.
 ```ts
 class OrderService {
   processOrder = $pipeline({
-    use: [$lock({ name: "process-order" }), $retry({ max: 3 })],
+    use: [$lock({ name: "process-order" })],
     handler: async (orderId: string) => {
       return await this.orders.updateById(orderId, { status: "paid" });
     },

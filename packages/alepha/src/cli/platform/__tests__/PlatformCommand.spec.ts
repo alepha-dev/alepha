@@ -16,7 +16,7 @@ import { PlatformCommand } from "../commands/platform.ts";
  * `authenticate()` shells out to wrangler for login/version checks and hits
  * the real Cloudflare REST API for account resolution. None of that is
  * under test here — only that `platform db baseline mark` resolves the
- * right D1 database name (naming/tenancy) and reaches
+ * right D1 database name (naming) and reaches
  * `WranglerApi.d1MigrationsBaseline` with the right arguments — so it is
  * stubbed to a no-op, same as a real `platform up` would have already
  * authenticated in an earlier step.
@@ -247,23 +247,6 @@ describe("PlatformCommand", () => {
       expect(
         shell.commands.some((c) => c.includes("INSERT INTO d1_migrations")),
       ).toBe(false);
-    });
-
-    it("names D1 resources with the tenant prefix when --tenant is given", async ({
-      expect,
-    }) => {
-      const { cli, cmd, shell } = await create({ tenancy: "optional" });
-
-      await cli.run(cmd.testBaselineMark, {
-        root: "/project",
-        argv: "--env production --tenant b14",
-      });
-
-      expect(
-        shell.commands.some((c) =>
-          c.startsWith("wrangler d1 execute b14-my-app-production --remote"),
-        ),
-      ).toBe(true);
     });
 
     it("refuses when the environment's adapter is not cloudflare", async ({

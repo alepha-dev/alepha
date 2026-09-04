@@ -14,7 +14,7 @@ import { createMiddleware } from "./$pipeline.ts";
  * ```typescript
  * class OrderService {
  *   processOrder = $pipeline({
- *     use: [$scope(), $retry({ max: 3 })],
+ *     use: [$scope()],
  *     handler: async (orderId: string) => {
  *       // alepha.context.set/get are scoped here
  *       return await this.orders.updateById(orderId, { status: "paid" });

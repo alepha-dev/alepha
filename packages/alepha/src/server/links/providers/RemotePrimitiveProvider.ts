@@ -1,6 +1,6 @@
-import { $hook, $inject, $pipeline, $store, Alepha, AlephaError } from "alepha";
+import { $hook, $inject, $store, Alepha, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $retry } from "alepha/retry";
 import type { ServiceAccountPrimitive } from "alepha/security";
 import { serverApiOptions } from "alepha/server";
 import { ServerProxyProvider } from "alepha/server/proxy";
@@ -15,6 +15,7 @@ import { LinkProvider } from "./LinkProvider.ts";
 export class RemotePrimitiveProvider {
   protected readonly serverApi = $store(serverApiOptions);
   protected readonly alepha = $inject(Alepha);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly proxyProvider = $inject(ServerProxyProvider);
   protected readonly linkProvider = $inject(LinkProvider);
   protected readonly remotes: Array<ServerRemote> = [];
@@ -90,7 +91,7 @@ export class RemotePrimitiveProvider {
       internal: !proxy.noInternal,
       links: async (opts) => {
         const { authorization } = opts;
-        const remoteApi = await this.fetchLinks.run({
+        const remoteApi = await this.fetchLinks({
           service: name,
           url: `${url}${linkPath}`,
           authorization,
@@ -121,40 +122,48 @@ export class RemotePrimitiveProvider {
     }
   }
 
-  protected readonly fetchLinks = $pipeline({
-    use: [
-      $retry({
-        max: 10,
-        backoff: {
-          initial: 1000,
-        },
-        onError: (_: Error, attempt: number) => {
-          this.log.warn(`Failed to fetch links, retry (${attempt})...`);
-        },
-      }),
-    ],
-    handler: async (opts: FetchLinksOptions): Promise<ApiRegistryResponse> => {
-      const { url, authorization } = opts;
-      const response = await fetch(url, {
-        headers: new Headers(
-          authorization
-            ? {
-                authorization,
-              }
-            : {},
-        ),
-      });
-
-      if (!response.ok) {
-        throw new AlephaError(`Failed to fetch links from ${url}`);
+  /**
+   * Fetch a remote's link registry, retrying transient failures.
+   *
+   * Ten attempts, exponential backoff from one second, capped at ten
+   * seconds. This is the one place the framework retries in-process: jobs,
+   * queues and workflows persist their attempts instead, which is why the
+   * former `alepha/retry` module had no other caller.
+   */
+  protected async fetchLinks(
+    opts: FetchLinksOptions,
+  ): Promise<ApiRegistryResponse> {
+    const attempts = 10;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.fetchLinksOnce(opts);
+      } catch (error) {
+        if (attempt >= attempts) {
+          throw error;
+        }
+        this.log.warn(`Failed to fetch links, retry (${attempt})...`);
+        await this.dateTime.wait(Math.min(1000 * 2 ** (attempt - 1), 10_000));
       }
+    }
+  }
 
-      return this.alepha.codec.decode(
-        apiRegistryResponseSchema,
-        await response.json(),
-      );
-    },
-  });
+  protected async fetchLinksOnce(
+    opts: FetchLinksOptions,
+  ): Promise<ApiRegistryResponse> {
+    const { url, authorization } = opts;
+    const response = await fetch(url, {
+      headers: new Headers(authorization ? { authorization } : {}),
+    });
+
+    if (!response.ok) {
+      throw new AlephaError(`Failed to fetch links from ${url}`);
+    }
+
+    return this.alepha.codec.decode(
+      apiRegistryResponseSchema,
+      await response.json(),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -117,7 +117,6 @@ declare module "alepha" {
 
 export * from "./index.shared.ts";
 export * from "./primitives/$action.ts";
-export * from "./primitives/$circuit.ts";
 export * from "./primitives/$middleware.ts";
 export * from "./primitives/$route.ts";
 export * from "./primitives/$sse.ts";

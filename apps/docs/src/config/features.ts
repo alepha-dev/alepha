@@ -17,10 +17,8 @@ import {
   IconMail,
   IconMessage2,
   IconMessageCircle,
-  IconPackage,
   IconPhone,
   IconPlugConnected,
-  IconRepeat,
   IconRobot,
   IconSeo,
   IconServer,
@@ -161,20 +159,6 @@ export const coreFeatures = [
     module: "alepha/lock",
     description: "Distributed locking.",
     slug: "packages-alepha-lock-core",
-  },
-  {
-    icon: IconRepeat,
-    title: "Retry",
-    module: "alepha/retry",
-    description: "Retry failed operations.",
-    slug: "packages-alepha-retry",
-  },
-  {
-    icon: IconPackage,
-    title: "Batch",
-    module: "alepha/batch",
-    description: "Group operations together.",
-    slug: "packages-alepha-batch",
   },
 
   // Dev & Ops

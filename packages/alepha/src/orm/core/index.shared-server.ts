@@ -12,7 +12,6 @@ export * from "./index.shared.ts";
 export * from "./interfaces/D1Database.ts";
 export * from "./primitives/$repositories.ts";
 export * from "./primitives/$repository.ts";
-export * from "./primitives/$seed.ts";
 export * from "./primitives/$sequence.ts";
 export * from "./primitives/$transactional.ts";
 export * from "./providers/DbCacheProvider.ts";

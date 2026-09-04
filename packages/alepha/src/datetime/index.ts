@@ -3,10 +3,7 @@ import { $module } from "alepha";
 import { $interval } from "./primitives/$interval.ts";
 import { DateTimeProvider } from "./providers/DateTimeProvider.ts";
 
-export * from "./primitives/$debounce.ts";
 export * from "./primitives/$interval.ts";
-export * from "./primitives/$throttle.ts";
-export * from "./primitives/$timeout.ts";
 export * from "./providers/DateTimeProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------

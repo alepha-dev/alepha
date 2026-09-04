@@ -250,7 +250,6 @@ const SUBPATH_EXEMPT: Record<string, string | string[]> = {
   // A container, not a module. `.` is the DI kernel itself; `$module` is
   // declared *by* it.
   alepha: ["."],
-  "@alepha/payments-mollie": ["."],
   // `./vat` is `services/VatCalculator.ts` - a class handed a public path,
   // the same mistake sigil spent 13 subpaths on. Exempt rather than fixed
   // because commerce is private and its whole surface is already queued for
@@ -438,9 +437,7 @@ if (moduleCodeViolations.length > 0) {
  * Every dev port sits in the 33xx band, and the port table knows about it.
  *
  * The bands are disjoint on purpose: e2e lives in 4300-4999 so a `yarn dev`
- * left running in another terminal cannot be adopted by Playwright, and
- * `apps/benchmark` owns 3001-3006 so a benchmark run and a dev server are not
- * the same socket. `@alepha/devtools` sat on 3001 for exactly that collision.
+ * left running in another terminal cannot be adopted by Playwright.
  *
  * The table in the root CLAUDE.md is the human-readable half, and it had
  * already drifted: `examples/totp` took 3307 and the table never heard about
@@ -478,10 +475,7 @@ if (!tableRow) {
 for (const { file, port } of declaredPorts) {
   if (port < 3300 || port > 3399) {
     portViolations.push(
-      `  ${file}\n    → dev port ${port} is outside the 3300-3399 band` +
-        (port >= 3001 && port <= 3006
-          ? " (3001-3006 belongs to apps/benchmark)"
-          : ""),
+      `  ${file}\n    → dev port ${port} is outside the 3300-3399 band`,
     );
     continue;
   }
@@ -498,7 +492,7 @@ if (portViolations.length > 0) {
       `${portViolations.join("\n")}\n\n` +
       "Dev servers live in 3300-3399, and the port table in the root\n" +
       "CLAUDE.md lists every one of them. Both halves matter: the band keeps\n" +
-      "e2e and the benchmark out, and the table is what a person reads before\n" +
+      "e2e out, and the table is what a person reads before\n" +
       "picking the next number.\n",
   );
   process.exit(1);

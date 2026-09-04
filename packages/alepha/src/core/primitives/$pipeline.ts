@@ -18,7 +18,7 @@ import { $context } from "./$context.ts";
  * ```ts
  * class OrderService {
  *   processOrder = $pipeline({
- *     use: [$lock({ name: "process-order" }), $retry({ max: 3 })],
+ *     use: [$lock({ name: "process-order" })],
  *     handler: async (orderId: string) => {
  *       return await this.orders.updateById(orderId, { status: "paid" });
  *     },

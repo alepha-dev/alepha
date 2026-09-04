@@ -19,13 +19,11 @@ const APPS = Object.keys(E2E_SLOTS) as E2eApp[];
  * intersect. 3300-3399 is the `dev.port` band in each app's `alepha.config.ts`
  * (docs 3302 … examples/ssr 3311); 5173+ is what an app WITHOUT a `dev.port`
  * gets from Vite, and what `alepha dev` hands each child in multi-app mode
- * (`5173 + index`). 3001-3006 is `apps/benchmark`, and the four high ports are
- * `compose.yml`.
+ * (`5173 + index`). The four high ports are `compose.yml`.
  */
 const RESERVED = new Set([
   ...range(3300, 3399),
   ...range(5173, 5199),
-  ...range(3001, 3006),
   11883,
   15432,
   16379,

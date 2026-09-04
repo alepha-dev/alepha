@@ -44,12 +44,6 @@ export class PlatformCommand {
         description: "Target environment",
       })
       .optional(),
-    tenant: z
-      .text({
-        description:
-          "Tenant slug (apps with tenancy: optional | required). Names resources <tenant>-<project>-<env> and serves <tenant>.<domain>.",
-      })
-      .optional(),
     verbose: z
       .boolean()
       .meta({ aliases: ["v"] })
@@ -77,8 +71,7 @@ export class PlatformCommand {
         config,
         this.isServerless(adapterName),
       );
-      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
-      const namingCtx = this.naming.forContext(config.project, env, tenant);
+      const namingCtx = this.naming.forContext(config.project, env);
 
       // --- Data collection ---
 
@@ -223,7 +216,7 @@ export class PlatformCommand {
       prebuilt: z
         .boolean()
         .describe(
-          "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-tenant overrides. Use when `dist/` is already produced upstream (e.g. inside Alepha Rocket).",
+          "Pre-built mode. Skips the Vite bundle steps; only regenerates the target deploy config (wrangler.jsonc) so it reflects current bindings and per-deploy overrides. Use when `dist/` is already produced upstream (e.g. inside Alepha Rocket).",
         )
         .optional(),
     }),
@@ -248,7 +241,6 @@ export class PlatformCommand {
 
         run,
         prebuilt: flags.prebuilt,
-        tenant: flags.tenant,
       });
 
       if (flags.json) {
@@ -310,7 +302,6 @@ export class PlatformCommand {
         resources: app.resources,
 
         run,
-        tenant: flags.tenant,
         confirm: async (prompt) => {
           if (flags.yes) {
             return flags.env as string;
@@ -443,7 +434,6 @@ export class PlatformCommand {
         resources: app.resources,
 
         run,
-        tenant: flags.tenant,
       });
 
       // --- JSON output ---
@@ -616,8 +606,7 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
-      const namingCtx = this.naming.forContext(config.project, env, tenant);
+      const namingCtx = this.naming.forContext(config.project, env);
 
       const ctx = {
         project: config.project,
@@ -628,7 +617,6 @@ export class PlatformCommand {
 
         root,
         naming: namingCtx,
-        tenant,
       };
 
       await adapter.build(ctx, run);
@@ -649,8 +637,7 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
-      const namingCtx = this.naming.forContext(config.project, env, tenant);
+      const namingCtx = this.naming.forContext(config.project, env);
 
       const ctx = {
         project: config.project,
@@ -661,7 +648,6 @@ export class PlatformCommand {
 
         root,
         naming: namingCtx,
-        tenant,
       };
 
       await adapter.authenticate(ctx, run);
@@ -683,8 +669,7 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
-      const namingCtx = this.naming.forContext(config.project, env, tenant);
+      const namingCtx = this.naming.forContext(config.project, env);
 
       const ctx = {
         project: config.project,
@@ -695,7 +680,6 @@ export class PlatformCommand {
 
         root,
         naming: namingCtx,
-        tenant,
       };
 
       await adapter.authenticate(ctx, run);
@@ -746,8 +730,7 @@ export class PlatformCommand {
         config,
         this.isServerless(envConfig.adapter),
       );
-      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
-      const namingCtx = this.naming.forContext(config.project, env, tenant);
+      const namingCtx = this.naming.forContext(config.project, env);
 
       const ctx = {
         project: config.project,
@@ -758,7 +741,6 @@ export class PlatformCommand {
 
         root,
         naming: namingCtx,
-        tenant,
       };
 
       await adapter.authenticate(ctx, run);
@@ -777,7 +759,7 @@ export class PlatformCommand {
    * D1's deploy path doesn't go through drizzle's migrator at all — it
    * keys off a filename-based `d1_migrations` bookkeeping table driven by
    * wrangler (see `WranglerApi.d1MigrationsBaseline`), which needs the
-   * project/env/tenant resource naming that only this command tree can
+   * project/env resource naming that only this command tree can
    * resolve. That's also why `--reset` lives here rather than on core
    * `alepha db baseline mark`: it rewrites wrangler's bookkeeping rows
    * only (never table data), and only the D1 path supports it today.
@@ -823,8 +805,7 @@ export class PlatformCommand {
       }
 
       const adapter = this.orchestrator.resolveAdapter(envConfig.adapter);
-      const tenant = this.naming.resolveTenant(config.tenancy, flags.tenant);
-      const namingCtx = this.naming.forContext(config.project, env, tenant);
+      const namingCtx = this.naming.forContext(config.project, env);
       const dbName = namingCtx.d1();
 
       // No app boot needed below this point — unlike `migrate`/`export`,
@@ -846,7 +827,6 @@ export class PlatformCommand {
           hasCron: false,
         },
         naming: namingCtx,
-        tenant,
       };
 
       await adapter.authenticate(ctx, run);
@@ -889,7 +869,7 @@ export class PlatformCommand {
   /**
    * `db` subgroup — operations against the *deployed* database (export,
    * migrate, baseline mark). They live under `platform` (not core
-   * `alepha db`) because they need the env config, tenancy, adapter, and
+   * `alepha db`) because they need the env config, adapter, and
    * resource naming.
    */
   protected readonly db = $command({

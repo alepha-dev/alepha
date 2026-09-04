@@ -2,13 +2,12 @@
 
 Most of the time an Alepha app is a server. Sometimes the same codebase has to
 be something else for thirty seconds: apply migrations, seed a database, print a
-report, drain a queue. Three primitives cover that without a second entry point
+report, drain a queue. Two primitives cover that without a second entry point
 and without a second copy of your wiring.
 
 | Primitive  | Import           | Triggered by            | Good for                             |
 | ---------- | ---------------- | ----------------------- | ------------------------------------ |
 | `$mode`    | `alepha`         | An environment variable | One-shot tasks in the deployed image |
-| `$seed`    | `alepha/orm`     | `SEED=true`             | Filling a database, transactionally  |
 | `$command` | `alepha/command` | A CLI argument          | Tooling humans invoke by name        |
 
 ## `$mode`
@@ -64,45 +63,6 @@ The check is `isEnvEnabled`, not truthiness. `MIGRATE=false`, `MIGRATE=0` and
 `MIGRATE=` all leave the mode off. This is worth stating because the naive
 version of this check treats every non-empty string as true, and `MIGRATE=false`
 then runs your migrations.
-
-## `$seed`
-
-`$seed` is `$mode({ env: "SEED" })` with the handler wrapped in a database
-transaction:
-
-```typescript check
-import { z } from "alepha";
-import { $entity, $repository, $seed, db } from "alepha/orm";
-
-const user = $entity({
-  name: "users",
-  schema: z.object({
-    id: db.primaryKey(z.uuid()),
-    name: z.text(),
-  }),
-});
-
-class AppSeed {
-  users = $repository(user);
-
-  seed = $seed({
-    handler: async () => {
-      await this.users.create({ name: "John Doe" });
-    },
-  });
-}
-```
-
-```bash
-SEED=true node app.js
-```
-
-The transaction is the whole reason it exists as its own primitive. A seed that
-throws on row 400 rolls back the 399 before it, so a failed seed leaves an empty
-database rather than a half-populated one that the next run then duplicates.
-
-Everything true of `$mode` is true here: the graph is pruned, the app stops when
-the handler finishes.
 
 ## `$command`
 

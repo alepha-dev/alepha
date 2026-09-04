@@ -45,31 +45,29 @@ Alias: `alepha p` (or `alepha platform`).
 
 Common flags accepted by most subcommands:
 
-| Flag              | Description                                                      |
-| ----------------- | ---------------------------------------------------------------- |
-| `--env`, `-e`     | Target environment (default: `"production"`)                     |
-| `--tenant`        | Tenant slug, for apps with `tenancy: "optional"` or `"required"` |
-| `--verbose`, `-v` | Enable detailed output                                           |
-| `--json`          | Machine-readable output                                          |
+| Flag              | Description                                  |
+| ----------------- | -------------------------------------------- |
+| `--env`, `-e`     | Target environment (default: `"production"`) |
+| `--verbose`, `-v` | Enable detailed output                       |
+| `--json`          | Machine-readable output                      |
 
 ## Configuration
 
 `platform()` accepts the following options:
 
-| Option         | Type                                 | Default             | Description                                                           |
-| -------------- | ------------------------------------ | ------------------- | --------------------------------------------------------------------- |
-| `name`         | `string`                             | `package.json` name | Project name. Used as prefix for all resource names.                  |
-| `default`      | `string`                             | `"production"`      | Default environment when `--env` is omitted.                          |
-| `tenancy`      | `"none" \| "optional" \| "required"` | `"none"`            | Multi-tenancy mode - see [Multi-Tenancy](#multi-tenancy).             |
-| `secrets`      | `object`                             | -                   | External secret store config - see [the secrets command](#secrets-1). |
-| `environments` | `Record`                             | -                   | Named environments with adapter and options.                          |
+| Option         | Type     | Default             | Description                                                           |
+| -------------- | -------- | ------------------- | --------------------------------------------------------------------- |
+| `name`         | `string` | `package.json` name | Project name. Used as prefix for all resource names.                  |
+| `default`      | `string` | `"production"`      | Default environment when `--env` is omitted.                          |
+| `secrets`      | `object` | -                   | External secret store config - see [the secrets command](#secrets-1). |
+| `environments` | `Record` | -                   | Named environments with adapter and options.                          |
 
 ### Environment Options
 
 | Option         | Type                          | Description                                                                                                                                                         |
 | -------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `adapter`      | `string`                      | Deploy target: `"cloudflare"` (Workers) or `"bay"`                                                                                                                  |
-| `domain`       | `string`                      | Custom domain for the worker. Wildcards (`"*.club.myapp.com"`) are supported for multi-tenant apps and require `zone`. Omit to use the default `*.workers.dev` URL. |
+| `domain`       | `string`                      | Custom domain for the worker. Wildcards (`"*.club.myapp.com"`) are supported and require `zone`. Omit to use the default `*.workers.dev` URL.                       |
 | `zone`         | `string`                      | Cloudflare zone that owns `domain`. Required for wildcard domains; for a plain host it switches the binding from a Custom Domain to a zone route.                   |
 | `host`         | `string`                      | **Bay only, required there.** SSH destination of the Bay server (an ssh alias works). `BAY_HOST` overrides it.                                                      |
 | `socket`       | `string`                      | **Bay only.** Absolute path of Bay's control socket - required on any host whose Bay root isn't `$HOME/bay-data`. See the [Bay guide](/docs/guides-deployment-bay). |
@@ -126,8 +124,6 @@ For a project named `acme` deployed to `production`:
 | R2 Bucket    | `acme-production` |
 | KV Namespace | `acme-production` |
 | Queue        | `acme-production` |
-
-With a tenant (see [Multi-Tenancy](#multi-tenancy)): `<tenant>-<project>-<env>`.
 
 Names are slugified - lowercase, alphanumeric and dashes, max 63 characters.
 
@@ -213,7 +209,7 @@ alepha p deploy --env production
 
 ### db
 
-Operations against the _deployed_ database. They live under `platform` (not core `alepha db`) because they need the environment config, tenancy, adapter, and resource naming.
+Operations against the _deployed_ database. They live under `platform` (not core `alepha db`) because they need the environment config, adapter, and resource naming.
 
 ```bash
 # Run database migrations on the deployed database
@@ -268,33 +264,6 @@ Configure the store in `platform()`:
 | `secrets.store`              | `"github"` | -                   | Secret store backend                                      |
 | `secrets.environmentPattern` | `string`   | `"{project}-{env}"` | Pattern for resolving environment names in the store      |
 | `secrets.keys`               | `string[]` | auto                | Override the worker secret-key allowlist used during `up` |
-
-## Multi-Tenancy
-
-Set `tenancy` to deploy the same app once per tenant:
-
-- **`none`** (default): single instance; `--tenant` is rejected.
-- **`required`**: every deploy needs `--tenant <slug>`; resources are named `<tenant>-<project>-<env>` and the app is served at `<tenant>.<domain>`.
-- **`optional`**: a base instance (no `--tenant`) and per-tenant instances coexist.
-
-```typescript
-platform({
-  tenancy: "required",
-  environments: {
-    production: {
-      adapter: "cloudflare",
-      domain: "*.club.myapp.com",
-      zone: "myapp.com",
-    },
-  },
-});
-```
-
-```bash
-alepha p up --tenant acme      # deploys acme-myproject-production at acme.club.myapp.com
-```
-
-Wildcard domains require the `zone` option, and the wildcard DNS record must already exist (proxied) in the Cloudflare zone.
 
 ## Cloudflare Adapter
 

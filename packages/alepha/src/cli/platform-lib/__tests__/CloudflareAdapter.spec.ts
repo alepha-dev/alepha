@@ -923,26 +923,6 @@ describe("CloudflareAdapter", () => {
       expect(publicUrl?.text).toBe("https://lore.alepha.dev");
     });
 
-    test("derives PUBLIC_URL for a tenant subdomain", async ({ expect }) => {
-      const { adapter, fs, naming, api } = createTestEnv();
-      const ctx = makeCtx(naming, {
-        envConfig: { adapter: "cloudflare", domain: "alepha.dev" },
-        tenant: "acme",
-      });
-
-      await fs.writeFile(
-        "/project/.env.production",
-        ["APP_SECRET=my-secret", ""].join("\n"),
-      );
-
-      const run = createMockRun();
-      await adapter.secrets(ctx, run);
-
-      const bindings = api.bindings.get("acme-portal-production") ?? [];
-      const publicUrl = bindings.find((b) => b.name === "PUBLIC_URL");
-      expect(publicUrl?.text).toBe("https://acme.alepha.dev");
-    });
-
     test("honors an explicit PUBLIC_URL over the derived one", async ({
       expect,
     }) => {

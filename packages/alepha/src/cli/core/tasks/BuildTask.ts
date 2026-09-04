@@ -76,7 +76,6 @@ export interface BuildTaskContext {
    */
   platformOptions: {
     default?: string;
-    tenancy?: "none" | "optional" | "required";
     environments?: Record<
       string,
       {
@@ -96,7 +95,7 @@ export interface BuildTaskContext {
      * compression). Only runs the deploy-config generation
      * (wrangler.jsonc, etc.) — useful when the caller already has a
      * built `dist/` and just needs the wrangler config refreshed for
-     * per-tenant overrides.
+     * per-deploy overrides.
      */
     prebuilt?: boolean;
   };

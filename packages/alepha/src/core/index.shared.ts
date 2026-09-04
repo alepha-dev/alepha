@@ -27,7 +27,6 @@ export * from "./primitives/$context.ts";
 export * from "./primitives/$env.ts";
 export * from "./primitives/$hook.ts";
 export * from "./primitives/$inject.ts";
-export * from "./primitives/$memoize.ts";
 export * from "./primitives/$mode.ts";
 export * from "./primitives/$module.ts";
 export * from "./primitives/$pipeline.ts";

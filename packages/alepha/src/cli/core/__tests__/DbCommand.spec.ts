@@ -757,7 +757,7 @@ describe("DbCommand", () => {
    * Cloudflare D1 doesn't go through drizzle's migrator at all — its
    * deploy path is driven by `WranglerApi.d1MigrationsBaseline`, reachable
    * only via `alepha platform db baseline mark` (it needs project/env/
-   * tenant naming that core `alepha db` can't resolve; see Task 4's
+   * resource naming that core `alepha db` can't resolve; see Task 4's
    * report). Core `baseline mark` must redirect a D1-driver provider there
    * instead of letting it fall through to `DatabaseProvider`'s generic
    * "driver not supported" error, which would wrongly imply the capability

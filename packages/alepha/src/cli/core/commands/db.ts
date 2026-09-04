@@ -330,7 +330,7 @@ export class DbCommand {
         // Cloudflare D1 doesn't go through drizzle's migrator at all — its
         // deploy path keys off a filename-based bookkeeping table driven by
         // wrangler (see WranglerApi.d1MigrationsBaseline), which needs the
-        // project/env/tenant naming that only the `platform` command tree
+        // project/env naming that only the `platform` command tree
         // can resolve. Redirect here rather than let `markBaselineApplied`
         // fall through to `runMigrator`'s generic "driver not supported"
         // error, which would wrongly suggest the capability doesn't exist.

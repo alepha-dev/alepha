@@ -325,9 +325,7 @@ export class CheckDocsCommand {
    * Guides cover families rather than primitives, which is why 30 names came
    * off this list as five new pages plus a handful of sections folded into
    * guides that already existed: the eight `$auth*` shorthands are one table
-   * in the authentication guide, and the resilience decorators
-   * (`$retry`, `$throttle`, `$debounce`, `$timeout`, `$circuit`, `$memoize`,
-   * `$batch`) are one page with `$pipeline`, the thing that hosts them.
+   * in the authentication guide.
    */
   protected readonly primitivesWithoutGuide: string[] = [];
 

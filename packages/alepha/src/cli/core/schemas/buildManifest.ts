@@ -49,12 +49,6 @@ export const buildManifestSchema = z
      */
     defaultEnv: z.string(),
     /**
-     * Multi-tenancy mode (`none` | `optional` | `required`). Captured from
-     * `platformOptions.tenancy` so the prebuilt deploy side (Rocket) can
-     * validate `--tenant` without re-evaluating `alepha.config.ts`.
-     */
-    tenancy: z.enum(["none", "optional", "required"]).optional(),
-    /**
      * Resolved `platform({ environments: ... })` map. Captured at build
      * time from the workspace's `alepha.config.ts` so the deploy side
      * doesn't need to re-evaluate the config. Each value is the same

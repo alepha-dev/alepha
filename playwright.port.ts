@@ -23,7 +23,6 @@ import { dirname, join } from "node:path";
  *
  * | band          | who owns it                                            |
  * |---------------|--------------------------------------------------------|
- * | 3001-3006     | `apps/benchmark`                                        |
  * | 3300-3399     | dev servers (`dev.port` in each `alepha.config.ts`)      |
  * | 5173+         | dev servers with no `dev.port` (Vite default, multi-app) |
  * | 11883/15432/16379/19090 | `compose.yml` test services                   |

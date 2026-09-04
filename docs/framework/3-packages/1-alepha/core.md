@@ -27,7 +27,6 @@ and providing a unified interface for the application.
 - [`$env`](/docs/reference-primitives-$env) - Get typed values from environment variables.
 - [`$hook`](/docs/reference-primitives-$hook) - Registers a new hook.
 - [`$inject`](/docs/reference-primitives-$inject) - Get the instance of the specified type from the context.
-- [`$memoize`](/docs/reference-primitives-$memoize) - Lightweight in-process memoization middleware.
 - [`$mode`](/docs/reference-primitives-$mode) - Activate a selective bootstrap mode.
 - [`$module`](/docs/reference-primitives-$module) - Wrap Services and Primitives into a Module.
 - [`$pipeline`](/docs/reference-primitives-$pipeline) - Creates a pipeline primitive that composes middleware with a handler.

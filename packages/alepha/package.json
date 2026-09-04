@@ -90,13 +90,6 @@
       "import": "./src/api/oauth/index.ts",
       "default": "./src/api/oauth/index.ts"
     },
-    "./api/organizations": {
-      "types": "./src/api/organizations/index.ts",
-      "react-native": "./src/api/organizations/index.browser.ts",
-      "browser": "./src/api/organizations/index.browser.ts",
-      "import": "./src/api/organizations/index.ts",
-      "default": "./src/api/organizations/index.ts"
-    },
     "./api/parameters": {
       "types": "./src/api/parameters/index.ts",
       "react-native": "./src/api/parameters/index.browser.ts",
@@ -135,11 +128,6 @@
       "workerd": "./src/background/index.workerd.ts",
       "import": "./src/background/index.ts",
       "default": "./src/background/index.ts"
-    },
-    "./batch": {
-      "types": "./src/batch/index.ts",
-      "import": "./src/batch/index.ts",
-      "default": "./src/batch/index.ts"
     },
     "./bucket": {
       "types": "./src/bucket/index.ts",
@@ -373,11 +361,6 @@
       "import": "./src/redis/index.ts",
       "default": "./src/redis/index.ts"
     },
-    "./retry": {
-      "types": "./src/retry/index.ts",
-      "import": "./src/retry/index.ts",
-      "default": "./src/retry/index.ts"
-    },
     "./router": {
       "types": "./src/router/index.ts",
       "import": "./src/router/index.ts",
@@ -554,13 +537,6 @@
         "import": "./dist/api/oauth/index.js",
         "default": "./dist/api/oauth/index.js"
       },
-      "./api/organizations": {
-        "types": "./dist/api/organizations/index.d.ts",
-        "react-native": "./dist/api/organizations/index.browser.js",
-        "browser": "./dist/api/organizations/index.browser.js",
-        "import": "./dist/api/organizations/index.js",
-        "default": "./dist/api/organizations/index.js"
-      },
       "./api/parameters": {
         "types": "./dist/api/parameters/index.d.ts",
         "react-native": "./dist/api/parameters/index.browser.js",
@@ -599,11 +575,6 @@
         "workerd": "./dist/background/index.workerd.js",
         "import": "./dist/background/index.js",
         "default": "./dist/background/index.js"
-      },
-      "./batch": {
-        "types": "./dist/batch/index.d.ts",
-        "import": "./dist/batch/index.js",
-        "default": "./dist/batch/index.js"
       },
       "./bucket": {
         "types": "./dist/bucket/index.d.ts",
@@ -836,11 +807,6 @@
         "bun": "./dist/redis/index.bun.js",
         "import": "./dist/redis/index.js",
         "default": "./dist/redis/index.js"
-      },
-      "./retry": {
-        "types": "./dist/retry/index.d.ts",
-        "import": "./dist/retry/index.js",
-        "default": "./dist/retry/index.js"
       },
       "./router": {
         "types": "./dist/router/index.d.ts",

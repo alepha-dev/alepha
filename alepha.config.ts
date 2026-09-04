@@ -25,7 +25,6 @@ export default defineConfig({
         // alepha: modules
         "api",
         "background",
-        "batch",
         "bucket",
         "cache",
         "captcha",
@@ -43,7 +42,6 @@ export default defineConfig({
         "queue",
         "react",
         "redis",
-        "retry",
         "router",
         "scheduler",
         "security",
@@ -60,7 +58,6 @@ export default defineConfig({
         "keys",
         "notifications",
         "oauth",
-        "organizations",
         "parameters",
         "payments",
         "subscriptions",

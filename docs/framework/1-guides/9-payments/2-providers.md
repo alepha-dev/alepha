@@ -18,8 +18,8 @@ abstract class PaymentProvider {
   createElementSession?(intent, options): Promise<ElementSession>;
 
   // non-abstract, returns null by default - but providers SHOULD override it:
-  // it is the reconciliation path when a webhook goes missing. Both shipped
-  // providers do.
+  // it is the reconciliation path when a webhook goes missing. The shipped
+  // provider does.
   retrieveSessionStatus(providerRef): Promise<SessionStatus | null>;
 }
 ```
@@ -28,13 +28,11 @@ abstract class PaymentProvider {
 
 `PaymentService` and `PaymentMethodService` call these methods; you never call them directly.
 
-Two implementations ship with the framework: `@alepha/payments-stripe` and `@alepha/payments-mollie`. Both compose with `AlephaApiPayments` the same way:
+One implementation ships with the framework, `@alepha/payments-stripe`. It composes with `AlephaApiPayments` like this:
 
 ```typescript
 import { AlephaApiPayments } from "alepha/api/payments";
 import { AlephaPaymentsStripe } from "@alepha/payments-stripe";
-// or:
-import { AlephaPaymentsMollie } from "@alepha/payments-mollie";
 
 const alepha = Alepha.create()
   .with(AlephaApiPayments)
@@ -75,46 +73,6 @@ Earlier versions shipped an `AlephaCliPlatformStripePlugin` that registered a `P
 ### Saved payment methods
 
 Stripe's tokenize-then-attach model maps directly: the client tokenizes a card via Stripe.js, posts the token to `POST /api/payments/payment-methods`, and `StripePaymentProvider.createPaymentMethod` calls `paymentMethods.attach(token, { customer })`.
-
-## Mollie
-
-```bash
-yarn add @alepha/payments-mollie
-```
-
-### Environment
-
-| Variable             | Description                                                                                                                               |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `MOLLIE_API_KEY`     | Mollie test or live API key.                                                                                                              |
-| `MOLLIE_WEBHOOK_URL` | _(optional)_ Public URL Mollie POSTs webhooks to. Typically `https://app.example.com/api/payments/webhook`. Omit in dev to skip webhooks. |
-
-### Webhook security
-
-Mollie does not sign webhook payloads. The body carries only `id=tr_xxx`. `MolliePaymentProvider.parseWebhook` re-fetches the payment via the authenticated SDK client - the fetch itself is the authentication boundary. An attacker can POST a fake id, but the lookup either misses or returns a payment whose state we already trust (because it came from Mollie's API, not the request body).
-
-### Per-payment webhook URLs
-
-Unlike Stripe (one global endpoint), Mollie's webhook URL is attached to each payment at create time. The provider reads `MOLLIE_WEBHOOK_URL` once and threads it into every `payments.create` call. There is no platform hook to provision because there is nothing to provision.
-
-### Limitations
-
-- **`createPaymentMethod` throws.** Mollie creates mandates implicitly via a `sequenceType: "first"` checkout payment - there is no tokenize-then-attach flow. For recurring billing, route the first payment through the checkout flow with a customer attached; subsequent off-session charges then use the mandate.
-- **`deletePaymentMethod` is a no-op.** Mandates are tied to customers; the entity does not yet track the customer↔mandate relationship needed to revoke safely. A future iteration will call `customers.mandates.revoke`.
-- **Manual capture (`authorize: true`)** is supported for cards only. Other methods (iDEAL, SEPA, Bancontact) reject the option at create time.
-
-## Choosing a provider
-
-| Criterion        | Stripe                                           | Mollie                                                         |
-| ---------------- | ------------------------------------------------ | -------------------------------------------------------------- |
-| Coverage         | Global; strong in US.                            | EU-focused; strong in NL/DE/BE/FR.                             |
-| Methods          | Cards, Apple/Google Pay, ACH, SEPA, Klarna, etc. | Cards, iDEAL, Bancontact, SEPA, Klarna, gift cards, Apple Pay. |
-| Webhook security | HMAC signature.                                  | Re-fetch by id.                                                |
-| Saved cards      | Tokenize-then-attach.                            | Mandate-via-first-payment.                                     |
-| Manual capture   | All card types.                                  | Cards only.                                                    |
-| Platform fees    | Stripe Connect.                                  | Mollie Connect (OAuth).                                        |
-
-For most EU SaaS apps either works; for marketplaces with US sellers, Stripe is the path of least resistance.
 
 ## Writing your own provider
 

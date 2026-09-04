@@ -107,20 +107,15 @@ export class PlatformOrchestrator {
      * `wrangler.jsonc`) and skips the Vite client + server builds.
      * Used by external orchestrators (Rocket) that ship a pre-built
      * `dist/` and just need the wrangler config refreshed for
-     * per-tenant overrides on every deploy.
+     * per-deploy overrides on every deploy.
      */
     prebuilt?: boolean;
-    /**
-     * Tenant slug (apps with tenancy optional|required).
-     */
-    tenant?: string;
   }): Promise<{ urls: string[]; domain?: string }> {
     const { root, env, entry, resources, run, prebuilt } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
-    const tenant = this.naming.resolveTenant(config.tenancy, options.tenant);
-    const namingCtx = this.naming.forContext(config.project, env, tenant);
+    const namingCtx = this.naming.forContext(config.project, env);
 
     const ctx: PlatformContext = {
       project: config.project,
@@ -130,7 +125,6 @@ export class PlatformOrchestrator {
       entry,
       resources,
       naming: namingCtx,
-      tenant,
       prebuilt,
     };
 
@@ -164,9 +158,7 @@ export class PlatformOrchestrator {
       // unconditionally, an adapter that does not choose the host had its own
       // config echoed back as the deploy's address — see
       // `PlatformAdapter.controlsDomain`.
-      domain: adapter.controlsDomain
-        ? this.naming.tenantDomain(envConfig.domain, tenant)
-        : undefined,
+      domain: adapter.controlsDomain ? envConfig.domain : undefined,
     };
   }
 
@@ -204,17 +196,12 @@ export class PlatformOrchestrator {
     resources: DetectedResources;
     run: RunnerMethod;
     confirm: (prompt: string) => Promise<string>;
-    /**
-     * Tenant slug (apps with tenancy optional|required).
-     */
-    tenant?: string;
   }): Promise<boolean> {
     const { root, env, entry, resources, run, confirm } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
-    const tenant = this.naming.resolveTenant(config.tenancy, options.tenant);
-    const namingCtx = this.naming.forContext(config.project, env, tenant);
+    const namingCtx = this.naming.forContext(config.project, env);
 
     const ctx: PlatformContext = {
       project: config.project,
@@ -224,7 +211,6 @@ export class PlatformOrchestrator {
       entry,
       resources,
       naming: namingCtx,
-      tenant,
     };
 
     // Confirm (skip for tmp envs)
@@ -255,10 +241,6 @@ export class PlatformOrchestrator {
     root: string;
     env: string;
     resources: DetectedResources;
-    /**
-     * Tenant slug (apps with tenancy optional|required).
-     */
-    tenant?: string;
   }): Promise<{
     config: ResolvedPlatformConfig;
     naming: NamingContext;
@@ -266,8 +248,7 @@ export class PlatformOrchestrator {
   }> {
     const { root, env, resources } = options;
     const config = await this.inspector.resolveConfig(root);
-    const tenant = this.naming.resolveTenant(config.tenancy, options.tenant);
-    const namingCtx = this.naming.forContext(config.project, env, tenant);
+    const namingCtx = this.naming.forContext(config.project, env);
     return { config, naming: namingCtx, resources };
   }
 
@@ -281,17 +262,12 @@ export class PlatformOrchestrator {
     entry: AppEntry;
     resources: DetectedResources;
     run: RunnerMethod;
-    /**
-     * Tenant slug (apps with tenancy optional|required).
-     */
-    tenant?: string;
   }): Promise<{ config: ResolvedPlatformConfig; state: PlatformState }> {
     const { root, env, entry, resources, run } = options;
     const envConfig = await this.inspector.resolveEnvironment(root, env);
     const config = await this.inspector.resolveConfig(root);
     const adapter = this.resolveAdapter(envConfig.adapter);
-    const tenant = this.naming.resolveTenant(config.tenancy, options.tenant);
-    const namingCtx = this.naming.forContext(config.project, env, tenant);
+    const namingCtx = this.naming.forContext(config.project, env);
 
     const ctx: PlatformContext = {
       project: config.project,
@@ -301,7 +277,6 @@ export class PlatformOrchestrator {
       entry,
       resources,
       naming: namingCtx,
-      tenant,
     };
 
     await adapter.authenticate(ctx, run);

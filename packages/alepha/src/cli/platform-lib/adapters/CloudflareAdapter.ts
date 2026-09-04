@@ -312,10 +312,7 @@ export class CloudflareAdapter extends PlatformAdapter {
       env.CLOUDFLARE_QUEUE_NAME = ctx.naming.queue();
     }
 
-    // For a tenanted deploy the host is `<tenant>.<domain>`; otherwise the
-    // configured domain is used as-is. (V2 custom-domain override plugs in
-    // via tenantDomain's third arg.)
-    const host = this.naming.tenantDomain(ctx.envConfig.domain, ctx.tenant);
+    const host = ctx.envConfig.domain;
     if (host) {
       // A wildcard host needs a CF zone for its Worker route, but `zone` is
       // optional: when omitted the build derives it from the domain's last two
@@ -338,7 +335,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     // Two paths:
     //  - `--prebuilt`: in-process call to BuildCloudflareTask. Reads
     //    `dist/manifest.json` for resources/crons/containers, reads
-    //    per-tenant values from process.env (set below), and writes a
+    //    per-deploy values from process.env (set below), and writes a
     //    fresh `dist/wrangler.jsonc` + `dist/main.cloudflare.js`. No
     //    Vite, no spawn, no `alepha` binary needed at the workspace
     //    cwd — required for Rocket, which deploys a bare prebuilt
@@ -369,7 +366,7 @@ export class CloudflareAdapter extends PlatformAdapter {
 
   /**
    * Library-embed of `alepha build -t cloudflare --prebuilt`. Loads the
-   * pre-built `dist/manifest.json`, sets the per-tenant env vars on
+   * pre-built `dist/manifest.json`, sets the per-deploy env vars on
    * `process.env` for the duration of the call (the task's enhance*
    * methods read them directly), then runs `BuildCloudflareTask`
    * against a synthetic context.
@@ -537,7 +534,7 @@ export class CloudflareAdapter extends PlatformAdapter {
     //         no file on the runner.
     //      b. `.env.<env>.local` keys — the per-deploy override layer. External
     //         orchestrators (Alepha Rocket) write injected `config.vars` +
-    //         `config.secrets` (e.g. CLUB_CONFIG_JSON, per-tenant OAuth) here,
+    //         `config.secrets` (e.g. CLUB_CONFIG_JSON, per-deploy OAuth) here,
     //         and those must reach the worker even though the prebuilt app
     //         never declared them. Only `.local` is unioned, NOT the base
     //         `.env.<env>` — so local infra creds (CLOUDFLARE_API_TOKEN, …)
@@ -723,12 +720,12 @@ export class CloudflareAdapter extends PlatformAdapter {
   }
 
   /**
-   * Public base URL for this deploy, derived from the configured domain
-   * (honoring tenant subdomains). Returns undefined when no domain is set or
+   * Public base URL for this deploy, derived from the configured domain.
+   * Returns undefined when no domain is set or
    * the host is a wildcard — there's no single resolvable origin to point at.
    */
   protected publicUrl(ctx: PlatformContext): string | undefined {
-    const host = this.naming.tenantDomain(ctx.envConfig.domain, ctx.tenant);
+    const host = ctx.envConfig.domain;
     if (!host || host.includes("*")) {
       return undefined;
     }
