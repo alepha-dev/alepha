@@ -654,6 +654,23 @@ test.describe("Epics — the questline", () => {
       await expect(page.getByText("2 waiting")).toBeVisible();
     });
 
+    await test.step("the zoom control moves the map, and fit brings it back", async () => {
+      // The board is a transform layer now, not a scroller. The math is
+      // proven in `questlineViewport.spec.ts`; what only a browser can show
+      // is that the control is wired to it, and that the click the next
+      // step makes on a card still lands after the pan-versus-click
+      // threshold went in.
+      const level = page.getByTestId("questline-zoom-level");
+      await expect(level).toHaveText(/^\d+%$/);
+      const fitted = (await level.textContent()) ?? "";
+
+      await page.getByRole("button", { name: "Zoom in" }).click();
+      await expect(level).not.toHaveText(fitted);
+
+      await page.getByRole("button", { name: "Fit to view" }).click();
+      await expect(level).toHaveText(fitted);
+    });
+
     await test.step("opening the fork names both ways onward", async () => {
       await card(root).click();
 
