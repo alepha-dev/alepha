@@ -148,20 +148,24 @@ test.describe("Releases", () => {
 
     const inEpicDone = await createQuest(page, projectId, `Done${t}`);
     const inEpicOpen = await createQuest(page, projectId, `Open${t}`);
-    for (const quest of [inEpicDone, inEpicOpen]) {
+    // The same quest reachable BOTH ways: in the release's epic AND named
+    // directly. It must still count once.
+    const both = await createQuest(page, projectId, `Both${t}`);
+    // Every quest goes in while the epic is planned, then the epic begins,
+    // then one of them is worked: since epic #31 the quest set freezes at
+    // Begin, and a quest can be accepted only inside an active epic. This
+    // seed used to accept inside a planned epic, which is now the refusal
+    // "Begin it first".
+    for (const quest of [inEpicDone, inEpicOpen, both]) {
       await post(page, `/api/attachQuest/${epic.id}`, { questId: quest.id });
     }
+    await post(page, `/api/setEpicStatus/${epic.id}`, { status: "active" });
     await completeQuest(page, inEpicDone.id);
 
     const loose = await createQuest(page, projectId, `Loose${t}`);
     await post(page, `/api/updateQuestById/${loose.id}`, {
       releaseId: first.id,
     });
-
-    // The same quest reachable BOTH ways: in the release's epic AND named
-    // directly. It must still count once.
-    const both = await createQuest(page, projectId, `Both${t}`);
-    await post(page, `/api/attachQuest/${epic.id}`, { questId: both.id });
     await post(page, `/api/updateQuestById/${both.id}`, {
       releaseId: first.id,
     });
