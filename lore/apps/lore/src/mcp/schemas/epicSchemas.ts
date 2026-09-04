@@ -159,7 +159,7 @@ export const epicUpdateResultSchema = z.object({
 
 export const epicSetStatusParamsSchema = epicRefSchema.extend({
   status: epicStatusSchema.describe(
-    "New epic status. All transitions between planned/active/done are legal; there is no forbidden edge. Moving to `active` releases the epic's quests into the human-facing backlog/kanban/reports and into quest_list's default view.",
+    "New epic status. Only two edges are legal: `active` from `planned` (Begin), and `done` from `active` (Conclude); `done` is terminal, and the same status again is a no-op. Moving to `active` releases the epic's quests into the human-facing backlog/kanban/reports and into quest_list's default view.",
   ),
 });
 

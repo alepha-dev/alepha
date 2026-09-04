@@ -338,51 +338,109 @@ describe("EpicController", () => {
     expect(updated.title).toBe("New title");
   });
 
-  it("allows every status transition and manages the timestamps correctly", async ({
-    expect,
-  }) => {
+  /**
+   * ⚠️ This used to be "allows every status transition and manages the
+   * timestamps correctly", and walked planned, active, done, active,
+   * planned, asserting `activatedAt` survived the swings. Epic #31 made the
+   * lifecycle a one-way ratchet, so the case was rewritten into its
+   * opposite rather than deleted: the two forward edges succeed with their
+   * stamps, every other edge refuses, and a repeat is a no-op.
+   */
+  it("walks the two forward edges and stamps each once", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
     const epic = await createTestEpic(ctx.alepha, project, {
       status: "planned",
     });
 
-    // planned -> active
     const activated = await ctx.controller.setEpicStatus(
       { params: { id: epic.id }, body: { status: "active" } },
       { user },
     );
     expect(activated.status).toBe("active");
     expect(activated.activatedAt).toBeDefined();
-    const firstActivatedAt = activated.activatedAt;
+    expect(activated.completedAt).toBeUndefined();
 
-    // active -> done
     const done = await ctx.controller.setEpicStatus(
       { params: { id: epic.id }, body: { status: "done" } },
       { user },
     );
     expect(done.status).toBe("done");
     expect(done.completedAt).toBeDefined();
+    expect(done.activatedAt).toEqual(activated.activatedAt);
+  });
 
-    // done -> active
-    const reactivated = await ctx.controller.setEpicStatus(
-      { params: { id: epic.id }, body: { status: "active" } },
+  it("refuses every backward or skipping edge, naming the way forward", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const planned = await createTestEpic(ctx.alepha, project, {
+      status: "planned",
+    });
+    const active = await createTestEpic(ctx.alepha, project, {
+      status: "active",
+      activatedAt: "2026-09-04T00:00:00.000Z",
+    });
+    const done = await createTestEpic(ctx.alepha, project, {
+      status: "done",
+      activatedAt: "2026-09-04T00:00:00.000Z",
+      completedAt: "2026-09-04T01:00:00.000Z",
+    });
+    const move = (
+      epic: { id: number },
+      status: "planned" | "active" | "done",
+    ) =>
+      ctx.controller.setEpicStatus(
+        { params: { id: epic.id }, body: { status } },
+        { user },
+      );
+
+    await expect(move(planned, "done")).rejects.toThrow(
+      `Cannot move Epic #${planned.number} from planned to done. Begin it first.`,
+    );
+    await expect(move(active, "planned")).rejects.toThrow(
+      `Cannot move Epic #${active.number} from active to planned. Its plan is frozen. Shelve what will not be done, or create a new epic.`,
+    );
+    await expect(move(done, "active")).rejects.toThrow(
+      `Cannot move Epic #${done.number} from done to active. An epic is concluded once. Create a new epic that depends on it.`,
+    );
+    await expect(move(done, "planned")).rejects.toThrow(
+      `Cannot move Epic #${done.number} from done to planned. An epic is concluded once. Create a new epic that depends on it.`,
+    );
+
+    // Nothing moved, and `completedAt` is never cleared.
+    expect((await ctx.repos.epics.getById(planned.id)).status).toBe("planned");
+    expect((await ctx.repos.epics.getById(active.id)).status).toBe("active");
+    const sealed = await ctx.repos.epics.getById(done.id);
+    expect(sealed.status).toBe("done");
+    expect(sealed.completedAt).toBe("2026-09-04T01:00:00.000Z");
+  });
+
+  it("treats the same status as a no-op that writes nothing", async ({
+    expect,
+  }) => {
+    // The refusal is on the edge, not the value, and `epic_set_status` is
+    // declared idempotent. Before the ratchet, `done` to `done` re-stamped
+    // `completedAt` on every call.
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const done = await createTestEpic(ctx.alepha, project, {
+      status: "done",
+      activatedAt: "2026-09-04T00:00:00.000Z",
+      completedAt: "2026-09-04T01:00:00.000Z",
+    });
+    const before = await ctx.repos.epics.getById(done.id);
+
+    const result = await ctx.controller.setEpicStatus(
+      { params: { id: done.id }, body: { status: "done" } },
       { user },
     );
-    expect(reactivated.status).toBe("active");
-    // The original activation timestamp survives a done -> active swing —
-    // it marks when the epic began, not when it was last active.
-    expect(reactivated.activatedAt).toEqual(firstActivatedAt);
-    expect(reactivated.completedAt).toBeUndefined();
 
-    // active -> planned
-    const reparked = await ctx.controller.setEpicStatus(
-      { params: { id: epic.id }, body: { status: "planned" } },
-      { user },
-    );
-    expect(reparked.status).toBe("planned");
-    expect(reparked.activatedAt).toEqual(firstActivatedAt);
-    expect(reparked.completedAt).toBeUndefined();
+    expect(result.status).toBe("done");
+    const after = await ctx.repos.epics.getById(done.id);
+    expect(after.updatedAt).toEqual(before.updatedAt);
+    expect(after.completedAt).toBe("2026-09-04T01:00:00.000Z");
   });
 
   it("orphans its quests and folios on delete instead of writing to them", async ({

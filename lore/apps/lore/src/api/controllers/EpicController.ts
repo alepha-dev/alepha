@@ -348,17 +348,33 @@ export class EpicController {
   });
 
   /**
-   * `planned | active | done`, all four transitions legal — there is no
-   * forbidden edge. Stamps `activatedAt` on the FIRST move to `active`
-   * (kept across later `done`/`planned` swings — it marks when the epic
-   * began, not when it was last active) and `completedAt` on `done`,
-   * clearing `completedAt` on any move away from `done`.
+   * A one-way ratchet: `planned` to `active`, `active` to `done`, and
+   * nothing else. `done` is terminal, with no reopen and no return to
+   * planning; the way forward from a concluded epic is a new epic that
+   * depends on it.
+   *
+   * Nine legal transitions became two with epic #31, and this is what makes
+   * the rest of that epic hold: every refusal the phase gate adds (a quest
+   * can be worked only while its epic is active, the quest set is frozen
+   * once it is) would be undone by flipping the epic back a phase. Until
+   * then every edge was legal on purpose, and `activatedAt` carried a
+   * paragraph about surviving `done`/`planned` swings; there are no swings,
+   * so it is simply when the epic began, stamped on the one edge that
+   * begins it. `completedAt` is stamped on the one edge that concludes it,
+   * and is never cleared.
+   *
+   * The body schema still accepts the three values: the refusal is on the
+   * EDGE, not the value, so asking for the status the epic already has is a
+   * no-op that writes nothing and logs nothing (`epic_set_status` is declared
+   * idempotent).
    *
    * ⚠️ Must not write to any quest row. Activating an epic releases its
    * quests because the backlog gate (`EpicVisibilityService`) stops
    * matching them, not because anything about them changed — this is the
-   * single most important invariant in this controller. See
-   * `EpicController.spec.ts`'s `updatedAt`-is-unchanged assertion.
+   * single most important invariant in this controller, and a terminal
+   * `done` is the transition most tempted to break it by "stamping" the
+   * quests. See `EpicController.spec.ts`'s `updatedAt`-is-unchanged
+   * assertion.
    */
   setEpicStatus = $action({
     use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
@@ -372,16 +388,18 @@ export class EpicController {
     handler: async ({ params, body, user }) => {
       const epic = this.owned.get<Epic>();
 
+      if (body.status === epic.status) {
+        return await this.buildEpicResource(epic);
+      }
+      this.assertStatusEdge(epic, body.status);
+
       const updated = await this.epics.updateById(params.id, {
         status: body.status,
-        ...(body.status === "active" && !epic.activatedAt
+        ...(body.status === "active"
           ? { activatedAt: this.dt.nowISOString() }
           : {}),
         ...(body.status === "done"
           ? { completedAt: this.dt.nowISOString() }
-          : {}),
-        ...(body.status !== "done" && epic.completedAt
-          ? { completedAt: null }
           : {}),
       });
       await this.logEpic("status", updated, user, {
@@ -392,6 +410,37 @@ export class EpicController {
       return await this.buildEpicResource(updated);
     },
   });
+
+  /**
+   * The two edges of the ratchet, and the words for the three refused ones.
+   *
+   * Written here rather than on `EpicWorkflowService` because this is the
+   * one place a status is ever written, so there is nothing to keep in step
+   * with; the service holds the questions the two legal edges consult
+   * (`assertCanBegin`, `assertCanConclude`), which several callers ask.
+   * Same rule as every message on the service: name the epic by its number,
+   * and name the way forward.
+   */
+  protected assertStatusEdge(
+    epic: Pick<Epic, "number" | "status">,
+    to: Epic["status"],
+  ): void {
+    if (epic.status === "planned" && to === "active") return;
+    if (epic.status === "active" && to === "done") return;
+
+    const move = `Cannot move Epic #${epic.number} from ${epic.status} to ${to}.`;
+    if (epic.status === "done") {
+      throw new BadRequestError(
+        `${move} An epic is concluded once. Create a new epic that depends on it.`,
+      );
+    }
+    if (epic.status === "active") {
+      throw new BadRequestError(
+        `${move} Its plan is frozen. Shelve what will not be done, or create a new epic.`,
+      );
+    }
+    throw new BadRequestError(`${move} Begin it first.`);
+  }
 
   /**
    * Relies on the `epicId` FK's `ON DELETE SET NULL` to orphan the epic's
