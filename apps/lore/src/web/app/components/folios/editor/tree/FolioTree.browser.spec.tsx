@@ -1,5 +1,11 @@
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -89,6 +95,23 @@ describe("FolioTree", () => {
     updatedAt: "2026-09-04T10:00:00.000Z",
   });
 
+  /**
+   * A fresh tree against the CURRENT alepha instance.
+   *
+   * Separate from `mount` so the remount case can build a second tree over
+   * the same store, which is what the list-to-folio navigation does: the
+   * component is torn down and rebuilt while the app around it, and its
+   * atoms, live on.
+   */
+  const renderTree = () =>
+    render(
+      <AlephaContext.Provider value={alepha!}>
+        <DialogProvider>
+          <FolioTree projectId={1} projectSlug="alepha" width={260} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+
   const mount = async () => {
     alepha = Alepha.create()
       .with(AlephaLogger)
@@ -111,15 +134,40 @@ describe("FolioTree", () => {
       folioOf("44444444-4444-4444-8444-444444444444", "At the root"),
     ] as never);
 
-    const view = render(
-      <AlephaContext.Provider value={alepha}>
-        <DialogProvider>
-          <FolioTree projectId={1} projectSlug="alepha" width={260} />
-        </DialogProvider>
-      </AlephaContext.Provider>,
-    );
+    const view = renderTree();
     await screen.findByText("Framework");
+    // ⚠️ Wait for the collapse SEED, which is an effect and always was: the
+    // tree paints fully expanded for one frame and the seed then closes every
+    // directory that does not have to be open. Asserting before it settles
+    // reads the pre-seed tree and every case below looks like the directory
+    // failed to collapse. It became visible when the state moved into
+    // `folioTreeCollapsedAtom` (feedback #2100), because an atom write is not
+    // wrapped by testing-library's `act` the way a `setState` in an effect is.
+    await waitFor(() => expect(screen.queryByText("Inside A")).toBeNull());
     return view;
+  };
+
+  /**
+   * A click that leaves no state update in flight.
+   *
+   * ⚠️ `act` rather than a `waitFor` on the assertion, and the difference is
+   * the whole point of these cases. Collapse state lives in
+   * `folioTreeCollapsedAtom` (feedback #2100), and an atom write is not
+   * wrapped by testing-library the way a `setState` is, so a bare `fireEvent`
+   * leaves the re-render unflushed and the row still closed. `act` flushes
+   * state and effects synchronously - and it does NOT flush a `setTimeout`,
+   * so the 250ms defer these cases exist to catch would still fail them.
+   * A `waitFor` would not: its default timeout is 1000ms, so it would happily
+   * wait the timer out and report the bug as fixed.
+   */
+  const click = async (el: Element) => {
+    // The ASYNC form: the atom notifies its subscribers in a microtask, so
+    // the synchronous `act` flushes React but not the store. `await act`
+    // drains both. It still does NOT advance timers, so the 250ms defer
+    // these cases exist to catch would leave the row closed and fail them.
+    await act(async () => {
+      fireEvent.click(el);
+    });
   };
 
   const rowFor = (name: string): HTMLElement => {
@@ -139,7 +187,7 @@ describe("FolioTree", () => {
 
     expect(screen.queryByText("Inside A")).toBeNull();
 
-    fireEvent.click(rowFor("Framework"));
+    await click(rowFor("Framework"));
 
     // No `waitFor` and no fake timers on purpose: the child has to be there
     // in the same tick the click was handled. Before this change the assert
@@ -150,10 +198,10 @@ describe("FolioTree", () => {
   it("collapses again on the next click", async () => {
     await mount();
 
-    fireEvent.click(rowFor("Framework"));
+    await click(rowFor("Framework"));
     expect(screen.getByText("Inside A")).not.toBeNull();
 
-    fireEvent.click(rowFor("Framework"));
+    await click(rowFor("Framework"));
     expect(screen.queryByText("Inside A")).toBeNull();
   });
 
@@ -166,8 +214,10 @@ describe("FolioTree", () => {
     const view = await mount();
 
     const row = rowFor("Framework");
-    fireEvent.click(row, { detail: 1 });
-    fireEvent.doubleClick(row);
+    await click(row);
+    await act(async () => {
+      fireEvent.doubleClick(row);
+    });
 
     await waitFor(() =>
       expect(view.container.querySelector("input")).not.toBeNull(),
@@ -183,7 +233,7 @@ describe("FolioTree", () => {
     const chevron = row.querySelector("button");
     expect(chevron).not.toBeNull();
 
-    fireEvent.click(chevron!);
+    await click(chevron!);
     expect(screen.getByText("Inside A")).not.toBeNull();
   });
 
@@ -243,11 +293,55 @@ describe("FolioTree", () => {
     // A root-level row has nothing to guide back to.
     expect(rowFor("Framework").style.backgroundImage).toBe("");
 
-    fireEvent.click(rowFor("Framework"));
+    await click(rowFor("Framework"));
 
     const nested = rowFor("Inside A");
     expect(nested.style.backgroundImage).toContain("repeating-linear-gradient");
     // The guide is painted from the theme's border token, never a literal.
     expect(nested.style.backgroundImage).toContain("var(--border)");
+  });
+
+  /**
+   * ⚠️ Feedback #14, returning as #2100 through a door its guard could not
+   * see.
+   *
+   * `FoliosLayout` renders `{name === "projectFolios" ? <FolioWorkspace
+   * empty /> : <NestedView />}` - two different component types in the same
+   * position - so walking from the folio list to a folio UNMOUNTS the tree
+   * and mounts a new one. The old `initializedRef` survived re-renders but
+   * not that, so the one-time collapse seed ran again and closed every
+   * directory except the opened folio's own ancestors.
+   *
+   * Simulated here by unmounting and re-mounting rather than by driving the
+   * router: the remount IS the mechanism, and reproducing it directly is what
+   * makes this case fail against the old code. The original #14 reasoning
+   * never covered this path at all.
+   */
+  it("keeps what the reader opened across the list-to-folio remount", async () => {
+    const view = await mount();
+
+    // The reader opens a directory on /folios.
+    await click(rowFor("Framework"));
+    expect(screen.getByText("Inside A")).not.toBeNull();
+
+    // ...and clicks a folio, which swaps the layout's branch.
+    view.unmount();
+    const again = renderTree();
+    await again.findByText("Framework");
+
+    // Still open. Before the state moved to `folioTreeCollapsedAtom` the
+    // fresh mount re-seeded and closed it under them.
+    expect(again.getByText("Inside A")).not.toBeNull();
+  });
+
+  it("still seeds a genuinely first visit, so the tree does not open fully expanded", async () => {
+    // `mount` itself asserts this: it waits for "Inside A" to disappear
+    // before returning, which only happens because the seed runs. Restated
+    // here so the property is not only an implicit precondition of the
+    // others - a seed that stopped running would make every case above pass
+    // for the wrong reason.
+    const view = await mount();
+    expect(view.queryByText("Inside A")).toBeNull();
+    expect(view.getByText("Framework")).not.toBeNull();
   });
 });
