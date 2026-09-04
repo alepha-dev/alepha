@@ -993,14 +993,24 @@ test.describe("Epics — sorting by release", () => {
     // The release cell of every row, in rendered order. An empty string is an
     // epic with no release, which is exactly what the last-in-both-directions
     // assertion is about.
+    //
+    // ⚠️ The column index is read off the header rather than hardcoded. It
+    // used to be `td[3]`, and adding the bulk-selection checkbox column
+    // (feedback #2086) moved every cell one to the right - so this spec read
+    // the Progress column instead and asserted "No quests yet" against a list
+    // of version tags. A throw here is deliberate: a missing header must fail
+    // loudly rather than resolve to `td[-1]` and report every row as empty.
     const order = async () =>
-      await page
-        .locator("tbody tr")
-        .evaluateAll((rows) =>
-          rows.map(
-            (row) => row.querySelectorAll("td")[3]?.textContent?.trim() ?? "",
-          ),
+      await page.locator("table").evaluate((table) => {
+        const headers = [...table.querySelectorAll("thead th")];
+        const index = headers.findIndex(
+          (th) => th.textContent?.trim() === "Release",
         );
+        if (index < 0) throw new Error("no Release column in the header");
+        return [...table.querySelectorAll("tbody tr")].map(
+          (row) => row.querySelectorAll("td")[index]?.textContent?.trim() ?? "",
+        );
+      });
 
     await test.step("ascending walks the versions, unassigned last", async () => {
       await header.click();

@@ -56,10 +56,8 @@ import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import FilterSlot from "../shared/FilterSlot.tsx";
-import {
-  type BulkOutcome,
-  useQuestMutations,
-} from "../shared/useQuestMutations.ts";
+import { useBulkReport } from "../shared/useBulkReport.ts";
+import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
 import {
   QUEST_PRIORITY_ICONS,
@@ -116,6 +114,7 @@ const ProjectQuestsTable = () => {
   const [epics] = useStore(currentEpicsAtom);
   const questApi = useClient<QuestController>();
   const questMutations = useQuestMutations();
+  const reportBulk = useBulkReport();
   const projectApi = useClient<ProjectController>();
   const dateFormatter = useInject(DateTimeProvider);
   const router = useRouter<AppRouter>();
@@ -198,36 +197,6 @@ const ProjectQuestsTable = () => {
       label: r.tag ?? r.title,
     })),
   ];
-
-  /**
-   * One toast per bulk action, and never a green one over a refusal: nine
-   * shelved and one refused reads as "9 shelved" only if the refusal is
-   * said out loud, so a failure makes the whole toast red and still names
-   * what did land.
-   */
-  const reportBulk = (
-    outcome: BulkOutcome,
-    done: string,
-    skipped?: string,
-  ): void => {
-    const parts = [outcome.done.length > 0 ? done : undefined, skipped].filter(
-      (it): it is string => Boolean(it),
-    );
-    if (outcome.failed.length > 0) {
-      toaster.error(
-        [
-          String(
-            tr("board.bulk.failed", {
-              args: [String(outcome.failed.length)],
-            }),
-          ),
-          ...parts,
-        ].join(" "),
-      );
-      return;
-    }
-    toaster.success(parts.join(" "));
-  };
 
   const count = (ids: number[]) => String(ids.length);
 

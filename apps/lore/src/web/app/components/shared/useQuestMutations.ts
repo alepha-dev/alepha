@@ -6,6 +6,8 @@ import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuests
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts";
 
+import { type BulkOutcome, settleBulk } from "./bulkOutcome.ts";
+
 /**
  * The five quest transitions, plus the bookkeeping the two sidebar atoms
  * need, in one place.
@@ -75,28 +77,11 @@ export const useQuestMutations = (): QuestMutations => {
       .catch(() => null);
   };
 
-  /**
-   * Run one call per id, all at once, and sort the outcomes. Concurrent calls
-   * go out as one `POST /api/_batch`, so a selection of twenty costs one
-   * round trip; `allSettled` is what keeps one refusal from hiding the
-   * nineteen that landed.
-   */
-  const settle = async (
-    ids: number[],
-    call: (id: number) => Promise<unknown>,
-  ): Promise<BulkOutcome> => {
-    const results = await Promise.allSettled(ids.map((id) => call(id)));
-    const outcome: BulkOutcome = { done: [], failed: [] };
-    results.forEach((result, index) => {
-      const id = ids[index];
-      if (result.status === "fulfilled") {
-        outcome.done.push(id);
-      } else {
-        outcome.failed.push({ id, error: result.reason });
-      }
-    });
-    return outcome;
-  };
+  // `settleBulk` used to be a local `settle` here. It moved to
+  // `bulkOutcome.ts` when the Epics list grew the same selection bar
+  // (feedback #2086) - the behaviour is unchanged, and the alias keeps the
+  // call sites below reading as they did.
+  const settle = settleBulk;
 
   return {
     accept: async (id) => {
@@ -198,16 +183,6 @@ export interface QuestMutations {
    * bulk paths.
    */
   refreshCount: () => Promise<void>;
-}
-
-/**
- * What a bulk call answers: the ids the server took, and the ones it
- * refused with the reason it gave. Nine shelved and one refused is not a
- * success, and this is the shape that keeps a caller from saying it is.
- */
-export interface BulkOutcome {
-  done: number[];
-  failed: Array<{ id: number; error: unknown }>;
 }
 
 /**

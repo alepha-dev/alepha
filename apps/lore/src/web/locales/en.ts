@@ -1431,6 +1431,10 @@ export default {
   "epic.delete.confirm":
     'Its quests and folios stay, detached from "$1". This cannot be undone.',
   "epic.toast.deleted": "Epic deleted.",
+  "epic.bulk.delete.title": "Delete $1 epics?",
+  "epic.bulk.delete.confirm": "Delete $1 epics",
+  "epic.bulk.delete.description":
+    "Their quests and folios stay, detached from them. This cannot be undone.",
   "epic.list.column.status": "Status",
   "epic.list.column.progress": "Progress",
   "epic.create": "New Epic",

@@ -1,4 +1,8 @@
-import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import {
+  AlephaTable,
+  type BulkAction,
+  type BulkMenuAction,
+} from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
@@ -21,7 +25,9 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { settleBulk } from "../../shared/bulkOutcome.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
+import { useBulkReport } from "../../shared/useBulkReport.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
@@ -95,6 +101,7 @@ const ProjectEpics = () => {
   const dt = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);
+  const reportBulk = useBulkReport();
   const alepha = useAlepha();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -174,12 +181,107 @@ const ProjectEpics = () => {
     };
   };
 
+  // Bulk over a selection, the Quests table's shape (feedback #2086). The
+  // checkbox column exists because this array is not empty - `AlephaTable`
+  // derives `hasCheckbox` from it - so gating an entry out on permissions
+  // can leave the selection with nothing to do, which is why both are
+  // pushed conditionally rather than rendered disabled.
+  //
+  // ⚠️ No bulk Begin. The row menu keeps it because beginning is a per-epic
+  // decision with a per-epic confirmation, and epic #31 is about to make the
+  // status transitions themselves refuse things a selection cannot reason
+  // about.
+  //
+  // Every entry refreshes and then clears, in that order: a selection that
+  // survives a delete points at rows that no longer exist. `ctx.refresh()`
+  // is also what repaints the sidebar's planned-epic badge, since
+  // `fetchEpics` pushes that count on every fetch.
+  const bulkActions: Array<
+    BulkAction<EpicResource> | BulkMenuAction<EpicResource>
+  > = [];
+
+  if (epicApi.updateEpic.can()) {
+    bulkActions.push({
+      icon: Flag,
+      label: tr("board.bulk.release"),
+      // ⚠️ Unpublished only. The Release COLUMN below lists every release
+      // because it reads history; this is a picker for a write, and
+      // `ReleaseAttachmentService.resolve` refuses a published release
+      // server-side. A published entry here would be an item that can only
+      // fail. Same reasoning, same filter, as the Quests table's.
+      items: () =>
+        (releases ?? [])
+          .filter((release) => !release.releasedAt)
+          .map((release) => ({
+            label: release.tag ?? release.title,
+            onClick: async (selected, ctx) => {
+              const outcome = await settleBulk(
+                selected.map((epic) => epic.id),
+                (id) =>
+                  epicApi.updateEpic({
+                    params: { id },
+                    body: { releaseId: release.id },
+                  }),
+              );
+              reportBulk(
+                outcome,
+                String(
+                  tr("board.bulk.released", {
+                    args: [
+                      String(outcome.done.length),
+                      release.tag ?? release.title,
+                    ],
+                  }),
+                ),
+              );
+              ctx.refresh();
+              ctx.clearSelection();
+            },
+          })),
+    });
+  }
+
+  if (epicApi.deleteEpic.can()) {
+    bulkActions.push({
+      icon: Trash2,
+      label: tr("board.bulk.delete"),
+      destructive: true,
+      onClick: async (selected, ctx) => {
+        const n = String(selected.length);
+        const confirmed = await dialog.confirm({
+          title: tr("epic.bulk.delete.title", { args: [n] }),
+          // The plural of the row menu's own warning, and it says the same
+          // true thing: `deleteEpic` detaches the quests and folios, it
+          // does not delete them.
+          description: tr("epic.bulk.delete.description"),
+          confirmLabel: tr("epic.bulk.delete.confirm", { args: [n] }),
+          cancelLabel: tr("common.cancel"),
+          destructive: true,
+        });
+        if (!confirmed) return;
+        const outcome = await settleBulk(
+          selected.map((epic) => epic.id),
+          (id) => epicApi.deleteEpic({ params: { id } }),
+        );
+        reportBulk(
+          outcome,
+          String(
+            tr("board.bulk.deleted", { args: [String(outcome.done.length)] }),
+          ),
+        );
+        ctx.refresh();
+        ctx.clearSelection();
+      },
+    });
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col p-4">
       <AlephaTable<EpicResource>
         className="min-h-0 flex-1"
         defaultSize={20}
         persistenceKey={`lor.epics.${project.id}`}
+        bulkActions={bulkActions}
         defaultSort={{ field: "updatedAt", direction: "desc" }}
         emptyMessage={tr("epic.list.empty")}
         refreshSignal={reload}
