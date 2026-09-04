@@ -66,12 +66,36 @@ describe("@alepha/lore packaging", () => {
   });
 
   /**
-   * Zero runtime dependencies today, and worth protecting: production apps
-   * install this package for the reporter half. File and git work in the CLI
-   * goes through `FileSystemProvider` and `ShellProvider` for the same reason.
+   * Exactly one runtime dependency, and it is `alepha`.
+   *
+   * This used to assert none at all, which was right while both halves were
+   * imported by a host that already had `alepha` and could satisfy a peer.
+   * The `lore` bin has no host: `npm i -g "@alepha/lore"` installs into a
+   * directory with nothing else in it, npm 7+ would auto-install the peer,
+   * Yarn would not and pnpm differs again, and a tool people are told to
+   * install globally cannot depend on which manager they used.
+   *
+   * The list stays closed, because everything else the CLI needs is still
+   * reached through the container: file and git work go through
+   * `FileSystemProvider` and `ShellProvider`, not through a tar or a git
+   * library, and a production app installing this package for the reporter
+   * half pays for none of it.
    */
-  it("has no runtime dependencies", () => {
-    expect(manifest.dependencies).toBeUndefined();
+  it("depends on alepha at runtime, and on nothing else", () => {
+    expect(Object.keys(manifest.dependencies)).toEqual(["alepha"]);
+  });
+
+  /**
+   * A caret rather than an exact pin, and the same range all eight sibling
+   * `@alepha/*` packages declare. It dedupes with a sigil consumer's own
+   * `alepha` anywhere in `0.28.x` instead of guaranteeing a second copy, and
+   * `release.yml` keeps it current for free: `yarn workspaces foreach version`
+   * rewrites inter-workspace ranges in `dependencies` exactly as it already
+   * does in `peerDependencies`.
+   */
+  it("takes alepha by caret, and no longer as a peer", () => {
+    expect(manifest.dependencies.alepha).toMatch(/^\^/);
+    expect(manifest.peerDependencies.alepha).toBeUndefined();
   });
 
   /**
