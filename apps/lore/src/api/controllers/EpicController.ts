@@ -398,6 +398,12 @@ export class EpicController {
       if (body.status === "active") {
         await this.workflow.assertCanBegin(epic);
       }
+      // The gate on Conclude (epic #31): every quest completed or shelved,
+      // or a terminal `done` strands the open one forever. Shelving is the
+      // epic-level equivalent of waiving an objective on `completeQuest`.
+      if (body.status === "done") {
+        await this.workflow.assertCanConclude(epic);
+      }
 
       const updated = await this.epics.updateById(params.id, {
         status: body.status,
