@@ -103,6 +103,14 @@ const setup = async () => {
 const anHourAgo = (dt: DateTimeProvider) =>
   new Date(dt.nowMillis() - 60 * 60 * 1000).toISOString();
 
+/**
+ * One `(type, action)` pair per event, which is what an activity row is
+ * identified by now that the feed reads recorded audit rows rather than
+ * deriving events from six tables.
+ */
+const pairs = (res: { events: Array<{ type: string; action: string }> }) =>
+  res.events.map((event) => `${event.type}:${event.action}`);
+
 describe("Lore MCP: project_activity", () => {
   it("reports another member's comment and hides your own", async () => {
     const { questTools, projectTools, project, call, dt, MATE } = await setup();
@@ -129,13 +137,12 @@ describe("Lore MCP: project_activity", () => {
     });
 
     const comments = res.events.filter(
-      (e: any) => e.kind === "quest.commented",
+      (event: any) => event.type === "quest" && event.action === "comment",
     );
     expect(comments).toHaveLength(1);
     expect(comments[0].actor).toBe("mate");
-    expect(comments[0].quest.shortId).toBe(quest.shortId);
-    // Written through MCP, so it is marked as machine-authored.
-    expect(comments[0].actorKind).toBe("agent");
+    // The link target is the quest, addressed the way its page addresses it.
+    expect(comments[0].resourceId).toBe(String(quest.shortId));
   });
 
   it("includes your own events on request", async () => {
@@ -155,51 +162,92 @@ describe("Lore MCP: project_activity", () => {
       project: project.id,
       since,
     });
-    expect(
-      hidden.events.filter((e: any) => e.kind === "quest.commented"),
-    ).toHaveLength(0);
+    expect(pairs(hidden)).not.toContain("quest:comment");
 
     const shown = await call(projectTools.project_activity, {
       project: project.id,
       since,
       includeOwn: true,
     });
-    expect(
-      shown.events.filter((e: any) => e.kind === "quest.commented"),
-    ).toHaveLength(1);
+    expect(pairs(shown)).toContain("quest:comment");
   });
 
   it("ignores anything older than since", async () => {
     const { questTools, projectTools, project, call, dt, MATE } = await setup();
 
-    const quest = await call(questTools.quest_create, {
-      project: project.id,
-      title: "Old news",
-      description: "x",
-      area: "core",
-      priority: "medium",
-    });
     await call(
-      questTools.quest_comment_add,
-      { id: quest.id, body: "before" },
+      questTools.quest_create,
+      {
+        project: project.id,
+        title: "Old news",
+        description: "x",
+        area: "core",
+        priority: "medium",
+      },
       MATE,
     );
 
-    // A window opening after everything above happened.
+    // Everything above happened before this instant, so nothing may match.
     const since = new Date(dt.nowMillis() + 1000).toISOString();
     const res = await call(projectTools.project_activity, {
       project: project.id,
       since,
     });
 
-    expect(res.events).toEqual([]);
-    expect(res.truncated).toBe(false);
+    expect(res.events).toHaveLength(0);
     // With nothing to report the cursor stays where it was, so a caller
-    // passing `until` back never skips over events it has not seen.
-    expect(res.until).toBe(res.since);
+    // passing it back never skips over events it has not seen.
+    expect(res.until).toBe(since);
   });
 
-  it("derives quest lifecycle from history and the timestamp columns", async () => {
+  it("never reports another project's events", async () => {
+    const {
+      questTools,
+      projectTools,
+      projectApi,
+      project,
+      call,
+      asUser,
+      dt,
+      OWNER,
+      MATE,
+    } = await setup();
+
+    const other = await asUser(OWNER, () =>
+      projectApi.createProject({ body: { title: "Other" } } as any),
+    );
+    await (projectApi as any).members.create({
+      userId: MATE,
+      projectId: other.id,
+      owner: false,
+    });
+
+    const since = anHourAgo(dt);
+    await call(
+      questTools.quest_create,
+      {
+        project: other.id,
+        title: "Belongs elsewhere",
+        description: "x",
+        area: "core",
+        priority: "medium",
+      },
+      MATE,
+    );
+
+    const res = await call(projectTools.project_activity, {
+      project: project.id,
+      since,
+    });
+
+    // The scope is a WHERE on an indexed column pair, so this is structural
+    // rather than a filter somebody has to remember to apply. Before the
+    // event table existed the equivalent leak was real: the derived feed
+    // loaded comments by quest id with no project predicate.
+    expect(res.events).toHaveLength(0);
+  });
+
+  it("records the quest lifecycle as distinct actions", async ({ expect }) => {
     const { questTools, projectTools, project, call, dt, MATE } = await setup();
 
     const since = anHourAgo(dt);
@@ -207,14 +255,14 @@ describe("Lore MCP: project_activity", () => {
       questTools.quest_create,
       {
         project: project.id,
-        title: "Lifecycle",
+        title: "Ship it",
         description: "x",
         area: "core",
         priority: "medium",
-        accept: true,
       },
       MATE,
     );
+    await call(questTools.quest_accept, { id: quest.id }, MATE);
     await call(questTools.quest_complete, { id: quest.id }, MATE);
 
     const res = await call(projectTools.project_activity, {
@@ -222,27 +270,27 @@ describe("Lore MCP: project_activity", () => {
       since,
     });
 
-    const kinds = res.events.map((e: any) => e.kind);
-    // `created` and `completed` write no history row and come off the
-    // timestamp columns; `accepted` is the `assigned` history entry.
-    expect(kinds).toContain("quest.created");
-    expect(kinds).toContain("quest.accepted");
-    expect(kinds).toContain("quest.completed");
-    // Oldest first.
-    expect(kinds.indexOf("quest.created")).toBeLessThan(
-      kinds.indexOf("quest.completed"),
-    );
+    // Oldest first, so the order below IS the order things happened in.
+    expect(pairs(res)).toEqual([
+      "quest:create",
+      "quest:accept",
+      "quest:complete",
+    ]);
   });
 
   it("reports feedback arrivals", async () => {
-    const { projectTools, feedbackApi, project, call, asUser, dt, MATE } =
+    const { feedbackApi, projectTools, project, call, asUser, dt, MATE } =
       await setup();
 
     const since = anHourAgo(dt);
     await asUser(MATE, () =>
       feedbackApi.submitFeedback({
         params: { projectId: project.id },
-        body: { title: "It crashes", description: "x" },
+        body: {
+          title: "It broke",
+          description: "everywhere",
+          type: "bug",
+        },
       } as any),
     );
 
@@ -251,181 +299,162 @@ describe("Lore MCP: project_activity", () => {
       since,
     });
 
-    const reported = res.events.filter(
-      (e: any) => e.kind === "feedback.created",
-    );
-    expect(reported).toHaveLength(1);
-    expect(reported[0].feedback.title).toBe("It crashes");
-    expect(reported[0].actor).toBe("mate");
+    expect(pairs(res)).toContain("feedback:create");
   });
 
-  it("clamps a since older than the window and says so", async () => {
-    const { projectTools, project, call } = await setup();
-
-    const res = await call(projectTools.project_activity, {
-      project: project.id,
-      since: "2020-01-01T00:00:00.000Z",
-    });
-
-    expect(res.sinceClamped).toBe(true);
-    expect(Date.parse(res.since)).toBeGreaterThan(
-      Date.parse("2020-01-01T00:00:00.000Z"),
-    );
-  });
-
-  it("truncates at the limit and hands back a usable cursor", async () => {
+  it("hands back a cursor that does not repeat what it already reported", async ({
+    expect,
+  }) => {
     const { questTools, projectTools, project, call, dt, MATE } = await setup();
 
     const since = anHourAgo(dt);
-    for (let i = 0; i < 4; i++) {
-      await call(
-        questTools.quest_create,
-        {
-          project: project.id,
-          title: `Quest ${i}`,
-          description: "x",
-          area: "core",
-          priority: "medium",
-        },
-        MATE,
-      );
-    }
+    await call(
+      questTools.quest_create,
+      {
+        project: project.id,
+        title: "First",
+        description: "x",
+        area: "core",
+        priority: "medium",
+      },
+      MATE,
+    );
 
     const first = await call(projectTools.project_activity, {
       project: project.id,
       since,
-      limit: 2,
     });
-    expect(first.events).toHaveLength(2);
-    expect(first.truncated).toBe(true);
-    expect(first.until).toBe(first.events[1].at);
+    expect(first.events.length).toBeGreaterThan(0);
 
-    const next = await call(projectTools.project_activity, {
+    const second = await call(projectTools.project_activity, {
       project: project.id,
       since: first.until,
     });
-    // Nothing from the first page comes back twice.
-    expect(
-      next.events.every((e: any) => Date.parse(e.at) > Date.parse(first.until)),
-    ).toBe(true);
-  });
-
-  it("reports an epic being opened", async () => {
-    const { epicTools, projectTools, project, call, dt } = await setup();
-
-    const since = anHourAgo(dt);
-    const epic = await call(epicTools.epic_create, {
-      project: project.id,
-      title: "Activity feed",
-      description: "x",
-    });
-
-    const res = await call(projectTools.project_activity, {
-      project: project.id,
-      since,
-      includeOwn: true,
-    });
-
-    const events = res.events.filter((e: any) => e.kind === "epic.created");
-    expect(events).toHaveLength(1);
-    expect(events[0].epic).toEqual({
-      number: epic.number,
-      title: "Activity feed",
-    });
-    // `number`, not `shortId`: an epic's per-project identifier is its
-    // number, and that is what the URL segment needs.
-    expect(events[0].epic.shortId).toBeUndefined();
-  });
-
-  it("reports an epic that was created AND changed as two events", async ({
-    expect,
-  }) => {
-    const { epicTools, projectTools, project, call, dt } = await setup();
-
-    const since = anHourAgo(dt);
-    const epic = await call(epicTools.epic_create, {
-      project: project.id,
-      title: "Two things happened",
-      description: "x",
-    });
-    await call(epicTools.epic_set_status, {
-      project: project.id,
-      number: epic.number,
-      status: "active",
-    });
-
-    const res = await call(projectTools.project_activity, {
-      project: project.id,
-      since,
-      includeOwn: true,
-    });
-
-    // Collapsing these to one event hides the more recent fact behind the
-    // older one: an epic created last week and activated this morning would
-    // report only its creation, on a page whose whole job is what just
-    // moved.
-    const kinds = res.events
-      .filter((e: any) => e.kind.startsWith("epic."))
-      .map((e: any) => e.kind);
-    expect(kinds).toEqual(["epic.created", "epic.updated"]);
-  });
-
-  it("separates a release being opened from a release being published", async () => {
-    const { releaseTools, projectTools, project, call, dt } = await setup();
-
-    const since = anHourAgo(dt);
-    await call(releaseTools.release_create, {
-      project: project.id,
-      tag: "0.1.0",
-      title: "First",
-    });
-    await call(releaseTools.release_publish, {
-      project: project.id,
-      tag: "0.1.0",
-    });
-
-    const res = await call(projectTools.project_activity, {
-      project: project.id,
-      since,
-      includeOwn: true,
-    });
-
-    // Created and published inside one window yields both, in that order:
-    // it is the true story of the window, not a duplicate.
-    const kinds = res.events
-      .filter((e: any) => e.kind.startsWith("release."))
-      .map((e: any) => e.kind);
-    expect(kinds).toEqual(["release.created", "release.published"]);
-
-    const published = res.events.find(
-      (e: any) => e.kind === "release.published",
-    );
-    expect(published.release.tag).toBe("0.1.0");
+    // Strictly after the cursor, so the same event is never handed out twice.
+    expect(second.events).toHaveLength(0);
   });
 
   it("carries no folio body on a folio event", async () => {
-    const { folioTools, projectTools, project, call, dt } = await setup();
+    const { folioTools, projectTools, project, call, dt, MATE } = await setup();
 
     const since = anHourAgo(dt);
-    const body = "a body long enough to notice ".repeat(40);
-    await call(folioTools.folio_create, {
-      project: project.id,
-      title: "Notes",
-      content: body,
-    });
+    await call(
+      folioTools.folio_create,
+      {
+        project: project.id,
+        title: "Design notes",
+        content: "SECRET-MARKER-DO-NOT-LEAK",
+      },
+      MATE,
+    );
 
     const res = await call(projectTools.project_activity, {
       project: project.id,
       since,
-      includeOwn: true,
     });
 
-    const event = res.events.find((e: any) => e.kind === "folio.updated");
-    expect(event).toBeDefined();
-    // The projection guard. `folio_revisions.contentSnapshot` is a whole
-    // copy of the folio body and is ~30% of production's database; nothing
-    // here reads it, so nothing here may carry it. A regression would be
-    // invisible except as bandwidth.
-    expect(JSON.stringify(event)).not.toContain("long enough to notice");
+    expect(pairs(res)).toContain("folio:create");
+    // The row carries the TITLE and never the body. A folio can be
+    // end-to-end encrypted, and an unencrypted one is still member-gated
+    // behind the folio itself; this feed is a wider surface than that.
+    expect(JSON.stringify(res.events)).not.toContain("SECRET-MARKER");
   });
 });
+
+describe("Project activity table", () => {
+  it("pages newest first and filters on the server", async ({ expect }) => {
+    const { questTools, projectApi, project, call, asUser, OWNER, MATE } =
+      await setup();
+
+    const quest = await call(
+      questTools.quest_create,
+      {
+        project: project.id,
+        title: "Filterable",
+        description: "x",
+        area: "core",
+        priority: "medium",
+      },
+      MATE,
+    );
+    await call(questTools.quest_accept, { id: quest.id }, MATE);
+    await asUser(OWNER, () =>
+      projectApi.updateProjectById({
+        params: { id: project.id },
+        body: { title: "Renamed" },
+      } as any),
+    );
+
+    const all = await asUser(OWNER, () =>
+      projectApi.getProjectActivity({
+        params: { id: project.id },
+        query: {},
+      } as any),
+    );
+    // Newest first without asking, which is the question somebody opening
+    // the page is holding.
+    expect(all.content[0].type).toBe("project");
+    expect(all.content[0].action).toBe("update");
+
+    const byResource = await asUser(OWNER, () =>
+      projectApi.getProjectActivity({
+        params: { id: project.id },
+        query: { type: "quest" },
+      } as any),
+    );
+    expect(byResource.content.every((row: any) => row.type === "quest")).toBe(
+      true,
+    );
+
+    const byWho = await asUser(OWNER, () =>
+      projectApi.getProjectActivity({
+        params: { id: project.id },
+        query: { userId: MATE },
+      } as any),
+    );
+    expect(byWho.content.every((row: any) => row.userId === MATE)).toBe(true);
+    expect(byWho.content.length).toBeGreaterThan(0);
+
+    const byAction = await asUser(OWNER, () =>
+      projectApi.getProjectActivity({
+        params: { id: project.id },
+        query: { action: "accept" },
+      } as any),
+    );
+    expect(pairsOf(byAction.content)).toEqual(["quest:accept"]);
+  });
+
+  it("resolves the actor to the same display name the quest page shows", async ({
+    expect,
+  }) => {
+    const { questTools, projectApi, project, call, asUser, OWNER, MATE } =
+      await setup();
+
+    await call(
+      questTools.quest_create,
+      {
+        project: project.id,
+        title: "Named",
+        description: "x",
+        area: "core",
+        priority: "medium",
+      },
+      MATE,
+    );
+
+    const page = await asUser(OWNER, () =>
+      projectApi.getProjectActivity({
+        params: { id: project.id },
+        query: { userId: MATE },
+      } as any),
+    );
+
+    expect(page.content[0].actor).toBe("mate");
+    // The email snapshot stays on the row for the admin log and must not
+    // reach a page every member of the project can open.
+    expect(page.content[0]).not.toHaveProperty("userEmail");
+  });
+});
+
+const pairsOf = (rows: Array<{ type: string; action: string }>) =>
+  rows.map((row) => `${row.type}:${row.action}`);

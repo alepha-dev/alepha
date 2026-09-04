@@ -18,6 +18,7 @@ import { feedbackComments } from "../entities/feedbackComments.ts";
 import { projects } from "../entities/projects.ts";
 import { feedbackCommentResourceSchema } from "../schemas/feedbackCommentResourceSchema.ts";
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
@@ -42,6 +43,7 @@ export class FeedbackCommentController {
   feedback = $repository(feedback);
   users = $repository(users);
   projects = $repository(projects);
+  audits = $inject(LoreAudits);
   security = $inject(ProjectSecurityService);
   dt = $inject(DateTimeProvider);
 
@@ -159,6 +161,20 @@ export class FeedbackCommentController {
         body: body.body,
         source: body.source,
       });
+      // Filed under `feedback` rather than a comment type of its own, for the
+      // reason a quest comment is filed under `quest`: the reader filtering by
+      // resource is asking what happened to the feedback.
+      await this.audits.feedback.logSuccess("comment", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(row.projectId),
+        resourceType: "feedback",
+        resourceId: String(row.shortId),
+        description: row.title,
+        // No body: it is member-gated behind the feedback item, and the row
+        // outlives the comment's own deletion.
+        metadata: { commentId: created.id, source: body.source },
+      });
+
       const [resource] = await this.withAuthors([created]);
       return resource;
     },

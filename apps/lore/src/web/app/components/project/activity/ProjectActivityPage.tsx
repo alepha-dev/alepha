@@ -1,123 +1,131 @@
-import { Button } from "@alepha/ui/components/ui/button";
+import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
+import { Control } from "@alepha/ui/components/control/control";
+import { Badge } from "@alepha/ui/components/ui/badge";
+import { type Page, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useQuery, useStore } from "alepha/react";
+import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Activity, RefreshCw } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useRouter } from "alepha/react/router";
+import { Layers, User, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
-import type { ProjectActivityEvent } from "@/api/schemas/projectActivitySchema.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
+import type { ProjectActivityRow } from "@/api/schemas/projectActivityRowSchema.ts";
 
-import {
-  ACTIVITY_FILTER_LABELS,
-  ACTIVITY_FILTERS,
-  ACTIVITY_GROUP,
-  ACTIVITY_WINDOW_LABELS,
-  ACTIVITY_WINDOWS,
-  type ActivityFilter,
-  type ActivityWindow,
-} from "./activityEventMeta.ts";
-import ProjectActivityRow from "./ProjectActivityRow.tsx";
+import type { AppRouter } from "../../../AppRouter.ts";
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { displayName } from "../../../services/displayName.ts";
+import type { I18n } from "../../../services/I18n.ts";
+import FilterSlot from "../../shared/FilterSlot.tsx";
+import { activityResourceHref } from "./activityResourceHref.ts";
+
+const activityFiltersSchema = z.object({
+  userId: z.string().optional(),
+  type: z.string().optional(),
+  action: z.string().optional(),
+});
 
 /**
- * What moved in this project, and the project's landing page.
+ * What happened in this project: one row per recorded write, newest first.
+ *
+ * ## It is a table, and that is the whole point
+ *
+ * The page it replaces was a hand-rolled feed over `ProjectActivityService`,
+ * which derived events at read time from six range scans and unioned them in
+ * JS. Nothing about that could sort, page or filter on the server, so the page
+ * grew a WINDOW control (3h / 24h / 7d / 30d) and four client-side chips
+ * instead - controls that existed to work around the data shape rather than to
+ * answer a question anybody had. `audits` scoped to this project is a real
+ * table with real indexes, so this is a real table: server-side sort, server
+ * -side paging, server-side filters on the three columns worth filtering.
  *
  * ## No polling, ever
  *
- * This resolves once per (project, window) and again only when the reader
- * presses Refresh. There is deliberately no interval: the QuestGraph
- * incident (folio #1057) was a route loader revalidating once per second
- * for 51 minutes, producing 4,009 identical `/api/_batch` requests from a
- * single browser tab — roughly 35% of that day's account-wide Worker
- * invocations. This page is the one a project opens on, so it is the worst
- * possible place to reintroduce that. The relative timestamps are stamps,
- * not a heartbeat.
+ * `AlephaTable` fetches on mount and on an explicit refresh, and there is
+ * deliberately no interval. The QuestGraph incident (folio #1057) was a route
+ * loader revalidating once per second for 51 minutes, producing 4,009
+ * identical `/api/_batch` requests from one browser tab - roughly 35% of that
+ * day's account-wide Worker invocations. This is a page a project opens on, so
+ * it is the worst possible place to reintroduce that.
  *
- * ## `includeOwn` is true here, and false over MCP
+ * ## The three filters are the three questions
  *
- * The endpoint defaults it off, because the question an agent asks is what
- * OTHER people did while it was away. A human opening their own project is
- * asking the opposite question, and on a solo project the feed is empty
- * without it — every event on Alepha's own busiest morning was the owner's.
- *
- * ## Filtering is client-side
- *
- * The four chips narrow rows already fetched. The window control is the
- * only thing that re-queries, because it is the only one the server can
- * answer differently.
+ * Who (an account), resource (the `type` column: quest, epic, release, ...)
+ * and what (the `action` column: create, complete, publish, ...). Each is one
+ * indexed column behind the `(scopeType, scopeId)` prefix, so a filter is a
+ * seek and not a scan.
  */
 const ProjectActivityPage = () => {
-  const { tr } = useI18n<I18n, "en">();
+  const { tr, l } = useI18n<I18n, "en">();
+  const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
   const projectApi = useClient<ProjectController>();
   const dt = useInject(DateTimeProvider);
 
-  const [windowHours, setWindowHours] = useState<ActivityWindow>(168);
-  const [active, setActive] = useState<ActivityFilter[]>([]);
+  const [people, setPeople] = useState<{ id: string; label: string }[]>([]);
+  const [options, setOptions] = useState<{
+    types: string[];
+    actions: string[];
+  }>({ types: [], actions: [] });
 
-  const { data, loading, error, refetch } = useQuery(
-    {
-      enabled: !!project,
-      key: ["project-activity", project?.id, windowHours],
-      keepPreviousData: true,
-      handler: async () => {
-        if (!project) {
-          return undefined;
-        }
-        // `since` is computed at fetch time rather than held in state, so a
-        // Refresh press actually moves the window instead of re-asking the
-        // same one. Through `DateTimeProvider`, never `Date.now()`, so the
-        // page is travellable like everything else.
-        const since = new Date(
-          dt.nowMillis() - windowHours * 60 * 60 * 1000,
-        ).toISOString();
+  // The two dropdowns' contents, fetched once per project. The actions come
+  // from the `$audit` DECLARATIONS rather than from the rows, so the list is
+  // complete on a project's first day instead of growing under the reader as
+  // things happen for the first time.
+  useEffect(() => {
+    if (!project) return;
+    let alive = true;
+    void Promise.all([
+      projectApi.getProjectUsers({ params: { id: project.id } }),
+      projectApi.getProjectActivityFilters({ params: { id: project.id } }),
+    ])
+      .then(([users, filters]) => {
+        if (!alive) return;
+        setPeople(
+          users.map((user) => ({
+            id: user.id,
+            label: displayName(user, user.id),
+          })),
+        );
+        setOptions(filters);
+      })
+      .catch(() => {
+        // A filter bar that could not be filled costs the filters, not the
+        // table: the rows below are a separate request and still render.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [project, projectApi]);
 
-        return await projectApi.getProjectActivity({
-          params: { id: project.id },
-          query: { since, limit: 200, includeOwn: true },
-        });
+  const fetchActivity = async ({
+    page,
+    size,
+    sort,
+    filters,
+  }: {
+    page: number;
+    size: number;
+    sort?: string;
+    filters?: Record<string, any>;
+  }): Promise<Page<ProjectActivityRow>> => {
+    if (!project) {
+      return emptyPage(page, size);
+    }
+    return await projectApi.getProjectActivity({
+      params: { id: project.id },
+      query: {
+        page,
+        size,
+        sort,
+        // `""` is what a cleared Control sends, and it is not a filter: sent
+        // through, it would select the rows whose column is the empty string,
+        // which is none of them.
+        userId: filters?.userId || undefined,
+        type: filters?.type || undefined,
+        action: filters?.action || undefined,
       },
-    },
-    [project?.id, windowHours],
-  );
-
-  // Newest first. The service answers oldest-first with a cursor, which is
-  // right for an agent paging forward and backwards for a person reading a
-  // page: what happened last is what you came to find out.
-  const events = useMemo(() => {
-    const rows = (data?.events ?? []).toReversed();
-    if (active.length === 0) {
-      return rows;
-    }
-    return rows.filter((row) => active.includes(ACTIVITY_GROUP[row.kind]));
-  }, [data?.events, active]);
-
-  const groups = useMemo(() => {
-    const byDay = new Map<string, ProjectActivityEvent[]>();
-    for (const event of events) {
-      // The reader's own day, not the stamp's UTC prefix. `at.slice(0, 10)`
-      // is a whole day out for anything after 22:00 in Paris, so a row
-      // could sit under a heading that disagreed with the local time
-      // printed beside it.
-      const day = String(dt.of(event.at).format("YYYY-MM-DD"));
-      const bucket = byDay.get(day);
-      if (bucket) {
-        bucket.push(event);
-      } else {
-        byDay.set(day, [event]);
-      }
-    }
-    return [...byDay.entries()];
-  }, [events, dt]);
-
-  const toggle = (filter: ActivityFilter) => {
-    setActive((current) =>
-      current.includes(filter)
-        ? current.filter((entry) => entry !== filter)
-        : [...current, filter],
-    );
+    });
   };
 
   if (!project) {
@@ -125,104 +133,182 @@ const ProjectActivityPage = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-medium">{tr("activity.title")}</h1>
-        <div className="flex items-center gap-1">
-          {ACTIVITY_WINDOWS.map((hours) => (
-            <Button
-              aria-pressed={hours === windowHours}
-              key={hours}
-              onClick={() => setWindowHours(hours)}
-              size="sm"
-              variant={hours === windowHours ? "secondary" : "ghost"}
-            >
-              {tr(ACTIVITY_WINDOW_LABELS[hours])}
-            </Button>
-          ))}
-          <Button
-            aria-label={tr("activity.refresh")}
-            disabled={loading}
-            onClick={() => void refetch()}
-            size="sm"
-            variant="ghost"
-          >
-            <RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} />
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-1">
-        {ACTIVITY_FILTERS.map((filter) => (
-          <Button
-            // These read as tabs otherwise: four ghost buttons in a row with
-            // no pressed state look like a tab strip with nothing selected,
-            // and "no chip picked" means everything, not nothing.
-            aria-pressed={active.includes(filter)}
-            key={filter}
-            onClick={() => toggle(filter)}
-            size="sm"
-            variant={active.includes(filter) ? "secondary" : "ghost"}
-          >
-            {tr(ACTIVITY_FILTER_LABELS[filter])}
-          </Button>
-        ))}
-      </div>
-
-      {error ? (
-        <p className="text-destructive text-sm">{tr("activity.error")}</p>
-      ) : null}
-
-      {/*
-        Two different empty states, because they are two different facts.
-        Nothing has EVER happened in this project is a first run and wants
-        an explanation; nothing happened in the last three hours is a
-        perfectly healthy answer and wants the window control pointed at.
-      */}
-      {!error && groups.length === 0 && !loading ? (
-        <div className="flex flex-col items-center gap-2 py-16 text-center">
-          <Activity
-            aria-hidden="true"
-            className="text-muted-foreground size-8"
-          />
-          <p className="font-medium">
-            {active.length > 0
-              ? tr("activity.empty.filtered.title")
-              : tr("activity.empty.window.title")}
-          </p>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            {active.length > 0
-              ? tr("activity.empty.filtered.body")
-              : tr("activity.empty.window.body")}
-          </p>
-        </div>
-      ) : null}
-
-      {groups.map(([day, rows]) => (
-        <section key={day}>
-          <h2 className="text-muted-foreground mb-1 text-xs font-medium uppercase">
-            {dt.of(rows[0].at).format("ll")}
-          </h2>
-          {rows.map((event, index) => (
-            <ProjectActivityRow
-              event={event}
-              // Two events can share a millisecond and a kind (a quest
-              // accepted and a comment posted by the same write), so the
-              // stamp alone is not a key.
-              key={`${event.at}-${event.kind}-${index}`}
-              projectSlug={project.slug}
-            />
-          ))}
-        </section>
-      ))}
-
-      {data?.truncated ? (
-        <p className="text-muted-foreground text-xs">
-          {tr("activity.truncated")}
-        </p>
-      ) : null}
+    <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
+      <h1 className="mb-4 text-xl font-medium">{tr("activity.title")}</h1>
+      <AlephaTable<ProjectActivityRow>
+        className="min-h-0 flex-1"
+        defaultSize={25}
+        persistenceKey={`lor.activity.${project.id}`}
+        // Newest first, which is the question somebody opening this page is
+        // asking. The column is sortable, so the other direction is one click.
+        defaultSort={{ field: "createdAt", direction: "desc" }}
+        emptyMessage={tr("activity.empty")}
+        fetch={fetchActivity}
+        filters={{
+          schema: activityFiltersSchema,
+          render: (form) => (
+            <div className="flex flex-wrap gap-2">
+              <FilterSlot>
+                <Control
+                  input={form.input.userId}
+                  label=""
+                  clearable
+                  icon={User}
+                  clearLabel={String(tr("activity.filter.allPeople"))}
+                  triggerClassName="w-full"
+                  items={people.map((person) => ({
+                    label: person.label,
+                    value: person.id,
+                  }))}
+                />
+              </FilterSlot>
+              <FilterSlot>
+                <Control
+                  input={form.input.type}
+                  label=""
+                  clearable
+                  icon={Layers}
+                  clearLabel={String(tr("activity.filter.allResources"))}
+                  triggerClassName="w-full"
+                  items={options.types.map((type) => ({
+                    label: resourceLabel(tr, type),
+                    value: type,
+                  }))}
+                />
+              </FilterSlot>
+              <FilterSlot>
+                <Control
+                  input={form.input.action}
+                  label=""
+                  clearable
+                  icon={Zap}
+                  clearLabel={String(tr("activity.filter.allActions"))}
+                  triggerClassName="w-full"
+                  items={options.actions.map((action) => ({
+                    label: action,
+                    value: action,
+                  }))}
+                />
+              </FilterSlot>
+            </div>
+          ),
+        }}
+        columns={{
+          createdAt: {
+            label: tr("activity.col.when"),
+            sortable: true,
+            cell: (row) => (
+              <span
+                className="text-muted-foreground text-xs whitespace-nowrap"
+                // The absolute stamp on hover, because "3 days ago" is the
+                // right default and the wrong answer when somebody is
+                // reconstructing a sequence.
+                title={String(dt.of(row.createdAt).format("lll"))}
+              >
+                {String(l(row.createdAt, { date: "fromNow" }))}
+              </span>
+            ),
+          },
+          actor: {
+            label: tr("activity.col.who"),
+            cell: (row) => (
+              <span className="text-sm">
+                {row.actor ?? tr("activity.actor.unknown")}
+              </span>
+            ),
+          },
+          action: {
+            label: tr("activity.col.what"),
+            cell: (row) => (
+              <Badge variant="secondary" className="font-mono text-xs">
+                {row.action}
+              </Badge>
+            ),
+          },
+          resource: {
+            label: tr("activity.col.resource"),
+            cell: (row) => {
+              const href = activityResourceHref(project.slug, row);
+              const label =
+                `${resourceLabel(tr, row.type)} ${row.resourceId ?? ""}`.trim();
+              const title = row.description;
+              if (!href) {
+                return (
+                  <span className="text-sm">
+                    {label}
+                    {title ? (
+                      <span className="text-muted-foreground"> {title}</span>
+                    ) : null}
+                  </span>
+                );
+              }
+              return (
+                <button
+                  type="button"
+                  // The row's own snapshot of the title, never a live lookup:
+                  // a quest renamed after the fact must not rewrite what the
+                  // feed says happened.
+                  title={title}
+                  onClick={() => router.push(href as never)}
+                  className="hover:text-primary inline-flex max-w-[420px] items-center gap-1.5 truncate text-left text-sm underline-offset-2 hover:underline"
+                >
+                  <span className="text-muted-foreground shrink-0 text-xs">
+                    {label}
+                  </span>
+                  {title ? <span className="truncate">{title}</span> : null}
+                </button>
+              );
+            },
+          },
+          details: {
+            label: tr("activity.col.details"),
+            cell: (row) => {
+              const fields = row.metadata?.fields;
+              if (!Array.isArray(fields) || fields.length === 0) {
+                return null;
+              }
+              return (
+                <span className="text-muted-foreground text-xs">
+                  {tr("activity.fields", { args: [fields.join(", ")] })}
+                </span>
+              );
+            },
+          },
+        }}
+      />
     </div>
   );
 };
 
 export default ProjectActivityPage;
+
+/**
+ * A resource kind in the reader's language, falling back to the raw value.
+ *
+ * The fallback is load-bearing rather than defensive: a new `$audit` type
+ * reaches this page the moment it is declared, before anybody has written its
+ * label, and printing `sigil` beats printing a missing translation key.
+ */
+const resourceLabel = (
+  tr: (key: any, options?: any) => string | number,
+  type: string,
+): string =>
+  String(tr(`activity.resource.${type}` as never, { default: type }));
+
+/**
+ * The shape `AlephaTable` expects when there is nothing to fetch yet.
+ */
+const emptyPage = <T,>(page: number, size: number): Page<T> => ({
+  content: [],
+  page: {
+    number: page,
+    size,
+    offset: page * size,
+    numberOfElements: 0,
+    totalElements: 0,
+    totalPages: 1,
+    isEmpty: true,
+    isFirst: page === 0,
+    isLast: true,
+  },
+});

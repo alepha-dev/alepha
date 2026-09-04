@@ -1,6 +1,6 @@
 import { z } from "alepha";
 
-import { projectActivityResultSchema as apiProjectActivityResultSchema } from "../../api/schemas/projectActivitySchema.ts";
+import { projectActivityRowSchema } from "../../api/schemas/projectActivityRowSchema.ts";
 import { epicStatusSchema } from "./epicStatusSchema.ts";
 import { prioritySchema } from "./prioritySchema.ts";
 import { projectParamsSchema } from "./projectParamsSchema.ts";
@@ -211,7 +211,7 @@ export const projectActivityParamsSchema = projectParamsSchema.extend({
   since: z
     .datetime()
     .describe(
-      "Return everything that happened strictly after this instant. Pass the `until` of your previous call, or the time your last session ended. Reaching back more than 30 days is pulled forward to the limit and reported as `sinceClamped`.",
+      "Return everything that happened strictly after this instant. Pass the `until` of your previous call, or the time your last session ended. There is no window limit any more: this reads an indexed event table rather than deriving events from six range scans, so a `since` of any age is answered directly. What bounds how far back you can see is retention, not the query.",
     ),
   limit: z
     .integer()
@@ -227,4 +227,36 @@ export const projectActivityParamsSchema = projectParamsSchema.extend({
     .optional(),
 });
 
-export const projectActivityResultSchema = apiProjectActivityResultSchema;
+/**
+ * One recorded event, as `project_activity` reports it.
+ *
+ * Derived from the API row so the tool and the Activity page cannot describe
+ * the same row differently, plus `summary`: a phrase already readable without
+ * decoding `type` and `action` against each other.
+ */
+export const projectActivityEventSchema = projectActivityRowSchema
+  .omit({ id: true, metadata: true, resourceType: true })
+  .extend({
+    summary: z
+      .string()
+      .describe(
+        "One short phrase describing the event, e.g. `completed quest #208`.",
+      ),
+  });
+
+export const projectActivityResultSchema = z.object({
+  events: z
+    .array(projectActivityEventSchema)
+    .describe("Matching events, OLDEST first, so the last one is the newest."),
+  truncated: z
+    .boolean()
+    .describe(
+      "True when more events matched than `limit` allowed. Call again with `since` set to `until`.",
+    ),
+  since: z.datetime().describe("The lower bound actually used."),
+  until: z
+    .datetime()
+    .describe(
+      "The stamp of the last event read, to pass as the next call's `since`. Equals `since` when nothing matched, so the cursor never moves backwards over events you have not seen.",
+    ),
+});

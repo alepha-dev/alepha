@@ -1,8 +1,9 @@
 import { $inject, Alepha, z } from "alepha";
+import { AuditService } from "alepha/api/audits";
 import { $storage, files } from "alepha/api/files";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
-import { $repository, pageQuerySchema } from "alepha/orm";
+import { $repository, db, pageQuerySchema } from "alepha/orm";
 import {
   $owns,
   $secure,
@@ -37,7 +38,7 @@ import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
-import { projectActivityResultSchema } from "../schemas/projectActivitySchema.ts";
+import { projectActivityRowSchema } from "../schemas/projectActivityRowSchema.ts";
 import { projectRepositoryUrlSchema } from "../schemas/projectRepositoryUrlSchema.ts";
 import {
   projectOverviewResourceSchema,
@@ -49,7 +50,6 @@ import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
-import { ProjectActivityService } from "../services/ProjectActivityService.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
@@ -113,8 +113,8 @@ export class ProjectController {
   slugs = $inject(ProjectSlugService);
   projectSecurity = $inject(ProjectSecurityService);
   audits = $inject(LoreAudits);
+  auditService = $inject(AuditService);
   areaService = $inject(AreaService);
-  activityService = $inject(ProjectActivityService);
   openQuests = $inject(OpenQuestScope);
 
   /**
@@ -369,64 +369,133 @@ export class ProjectController {
   });
 
   /**
-   * Everything that moved in a project since a timestamp.
+   * The project's Activity table: every recorded write, newest first.
    *
-   * Backs MCP's `project_activity`, which exists so an agent picking up a
-   * session can see what other people did while it was away instead of
-   * polling `quest_get` per quest.
+   * ## One indexed table, not six range scans
    *
-   * Member-gated like every other project read. Names are resolved here
-   * rather than in the service, so the same display name shows in a feed
-   * and on the quest page.
+   * This used to be `ProjectActivityService`, which derived events at read
+   * time by scanning `quests`, `quest_comments`, `feedback`,
+   * `folio_revisions`, `epics` and `releases`, unioning them in JS and
+   * clamping the window to 30 days. That shape could not sort, could not
+   * paginate and could not filter server-side, which is why the page had a
+   * window control instead of a table.
+   *
+   * It now reads `audits` scoped to this project. The entity carries four
+   * partial composite indexes leading on `(scopeType, scopeId)` and ending on
+   * `createdAt`, so this is an index seek followed by a backwards walk: a page
+   * of 50 reads 50 rows, whichever filter is applied.
+   *
+   * ## The table starts empty, on purpose
+   *
+   * There is no backfill. Events before the cutover exist only on the entities
+   * themselves, where they always did (a quest's history, a folio's
+   * revisions). Reconstructing them would mean trusting a derivation that the
+   * whole point of this change was to stop trusting.
+   *
+   * Member-gated like every other project read. Names are resolved here rather
+   * than stored on the row, so the same display name shows in the feed and on
+   * the quest page.
    */
   getProjectActivity = $action({
     use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    path: "/projects/:id/activity",
     schema: {
       params: z.object({
         id: z.integer(),
       }),
-      query: z.object({
-        since: z.datetime(),
-        limit: z.integer().min(1).max(200).optional(),
+      query: pageQuerySchema.extend({
         /**
-         * Include events the caller performed. Off by default: the question
-         * this answers is what OTHERS did, and a busy session's own writes
-         * would drown that out.
+         * Who. An account id, from {@link getProjectUsers}.
          */
-        includeOwn: z.boolean().optional(),
+        userId: z.uuid().optional(),
+        /**
+         * The resource kind: quest, epic, release, folio, feedback, member,
+         * sigil, project.
+         */
+        type: z.text().optional(),
+        /**
+         * The verb: create, update, complete, publish, ...
+         */
+        action: z.text().optional(),
+        /**
+         * Exclusive lower bound on the stamp, for MCP's cursor. The page does
+         * not use it - a table pages rather than windows.
+         *
+         * Exclusive, not inclusive: a caller passing back the `until` of its
+         * previous call must not be handed that same event again.
+         */
+        after: z.datetime().optional(),
       }),
-      response: projectActivityResultSchema,
+      response: db.page(projectActivityRowSchema),
     },
-    handler: async ({ params, query, user }) => {
-      const result = await this.activityService.collect({
-        projectId: params.id,
-        since: query.since,
-        limit: query.limit ?? 100,
-        excludeUserId: query.includeOwn ? undefined : user.id,
+    handler: async ({ params, query }) => {
+      const page = await this.auditService.find({
+        ...query,
+        // Both halves, always: every project-layer index leads on the pair,
+        // and a `scopeId` alone would fall off them onto a scan.
+        scopeType: "project",
+        scopeId: String(params.id),
       });
 
-      // One lookup for the page, and only when something needs a name.
+      // One lookup for the whole page, and only when something needs a name.
       const actorIds = new Set(
-        result.events.map((event) => event.actorId).filter(Boolean),
+        page.content.map((row) => row.userId).filter(Boolean),
       );
       const people = actorIds.size
         ? await this.getProjectUsers({ params: { id: params.id } })
         : [];
 
       return {
-        ...result,
-        events: result.events.map((event) => ({
-          ...event,
-          actor: event.actorId
+        ...page,
+        content: page.content.map((row) => ({
+          id: row.id,
+          createdAt: row.createdAt,
+          type: row.type,
+          action: row.action,
+          userId: row.userId,
+          resourceType: row.resourceType,
+          resourceId: row.resourceId,
+          description: row.description,
+          metadata: row.metadata,
+          actor: row.userId
             ? displayName(
-                people.find((person) => person.id === event.actorId),
-                event.actorId,
+                people.find((person) => person.id === row.userId),
+                row.userId,
               )
             : undefined,
         })),
-        // Never moves backwards over events the caller has not seen: with
-        // nothing to report, the window's own start is the honest cursor.
-        until: result.events.at(-1)?.at ?? result.since,
+      };
+    },
+  });
+
+  /**
+   * What the Activity table's two dropdowns offer.
+   *
+   * Read from the `$audit` declarations rather than from the rows: a filter
+   * built from `SELECT DISTINCT` can only offer what has already happened, so
+   * a project's first week would show a dropdown that grows under the reader.
+   * The declared set is stable and complete from the first day.
+   *
+   * The actor list is the project's members, which the page already fetches
+   * for the avatar column, so it is deliberately not repeated here.
+   */
+  getProjectActivityFilters = $action({
+    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    path: "/projects/:id/activity/filters",
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: z.object({
+        types: z.array(z.text()),
+        actions: z.array(z.text()),
+      }),
+    },
+    handler: async () => {
+      const pairs = this.audits.projectLayerActions();
+      return {
+        types: [...new Set(pairs.map((pair) => pair.type))].sort(),
+        actions: [...new Set(pairs.map((pair) => pair.action))].sort(),
       };
     },
   });
@@ -533,6 +602,20 @@ export class ProjectController {
       }
 
       await this.projects.save(project);
+      // Scoped, unlike `create` and `delete`. Those two are app-layer events:
+      // a creation belongs to the deployment rather than to a project that
+      // did not exist yet, and a deletion outlives the scope it would have
+      // been filed under. By the time somebody edits settings there is a
+      // project to read the row on.
+      await this.audits.project.logSuccess("update", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(project.id),
+        resourceType: "project",
+        resourceId: String(project.id),
+        description: project.title,
+        metadata: { fields: Object.keys(body) },
+      });
+
       return this.projectMapper.toResource(project);
     },
   });
@@ -815,6 +898,7 @@ export class ProjectController {
 
       await this.audits.member.logSuccess("leave", {
         ...this.audits.actor(user),
+        ...this.audits.scope(params.id),
         resourceType: "project",
         resourceId: String(params.id),
         description: project.title,
@@ -898,6 +982,7 @@ export class ProjectController {
       // actor on the row is what tells the two apart.
       await this.audits.member.logSuccess("leave", {
         ...this.audits.actor(user),
+        ...this.audits.scope(params.id),
         resourceType: "project",
         resourceId: String(params.id),
         description: project.title,

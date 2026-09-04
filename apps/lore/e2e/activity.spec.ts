@@ -14,6 +14,11 @@ import {
  * the real project layout, and it is the claim the whole change rests on.
  * `test/dashboard-links.spec.ts` pins the quest list's new path from the
  * other side.
+ *
+ * Since the page became an `AlephaTable` over scoped `audits` rows, the last
+ * step also pins the half that no unit test can: that a filter is answered by
+ * the SERVER. The unit specs can only assert that the query was built; only a
+ * real request proves it was honoured.
  */
 test.describe("Activity", () => {
   test("is what a bare project URL opens, and reports what moved", async ({
@@ -80,14 +85,35 @@ test.describe("Activity", () => {
       );
     });
 
-    await test.step("a narrow window empties the feed rather than breaking it", async () => {
-      // The quest was filed seconds ago, so 3h still contains it; what this
-      // guards is that switching the window re-queries and re-renders at all
-      // rather than throwing. The empty case is exercised by the unit specs,
-      // where the clock can be moved.
-      await page.getByRole("button", { name: "3h" }).click();
+    await test.step("a resource filter re-queries the server and narrows the table", async () => {
+      await page.goto(`/${slug}`);
       await page.waitForLoadState("networkidle");
-      await expect(page.getByText(questTitle)).toBeVisible({
+      await expect(page.getByText(questTitle)).toBeVisible({ timeout: 15_000 });
+
+      // Every filter on this page is an indexed column, so picking one is a
+      // ROUND TRIP and not a client-side narrowing of rows already fetched.
+      // That is the whole difference between this table and the feed it
+      // replaced, and it is what this step exists to pin: arming the wait
+      // before the click is what makes it an assertion about the request
+      // rather than about the DOM settling.
+      const request = page.waitForResponse(
+        (response) =>
+          response.url().includes("/api/") && response.status() === 200,
+        { timeout: 15_000 },
+      );
+
+      // Base UI renders a `Control` as a role=combobox BUTTON, not a native
+      // <select>, so the option is reached by opening the popover.
+      await page
+        .getByRole("combobox")
+        .filter({ hasText: /All resources/i })
+        .click();
+      await page.getByRole("option", { name: "Folio", exact: true }).click();
+      await request;
+
+      // Nothing wrote a folio in this project, so the quest row must go: a
+      // filter that left it there would be narrowing nothing.
+      await expect(page.getByText(questTitle)).toHaveCount(0, {
         timeout: 15_000,
       });
     });

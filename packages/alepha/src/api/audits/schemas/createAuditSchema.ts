@@ -10,6 +10,10 @@ export const createAuditSchema = z.object({
   type: z.text({ description: "Audit event type" }),
   action: z.text({ description: "Specific action performed" }),
   severity: auditSeveritySchema.optional(),
+  scopeType: z
+    .text({ description: "Container the event happened inside" })
+    .optional(),
+  scopeId: z.text({ description: "Identifier of that container" }).optional(),
   userId: z.uuid().optional(),
   userRealm: z.text().optional(),
   userEmail: z.email().optional(),

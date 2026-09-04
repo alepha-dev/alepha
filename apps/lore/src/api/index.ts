@@ -65,7 +65,6 @@ import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
 import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
 import { TrelloParser } from "./services/parsers/TrelloParser.ts";
-import { ProjectActivityService } from "./services/ProjectActivityService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { QualityService } from "./services/QualityService.ts";
@@ -152,7 +151,6 @@ export const LoreApi = $module({
     ArtifactService,
     ProjectLimits,
     AreaService,
-    ProjectActivityService,
     BlightRuleService,
     OpenBlightCounter,
     // What "open quests" means, shared by the sidebar badge, the dashboard

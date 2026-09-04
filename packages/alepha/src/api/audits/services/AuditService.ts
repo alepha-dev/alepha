@@ -185,6 +185,19 @@ export class AuditService {
     const entry = await this.repo.create({
       ...contextData,
       ...data,
+      // Clamped, because an audit row must never be the thing that fails the
+      // action it is recording.
+      //
+      // Both columns are `z.text()`, which carries a 255-character cap. The
+      // values that land in them come from the audited domain and are not
+      // bounded by it: Lore writes a quest's title into `description`, and a
+      // quest title has no maximum. Unclamped, creating a quest with a
+      // 300-character title would fail schema validation on the audit insert
+      // and - since call sites await this inside their own transaction - roll
+      // back the quest itself. The record is worth having truncated; it is not
+      // worth breaking the write.
+      description: this.clamp(data.description),
+      errorMessage: this.clamp(data.errorMessage),
       // Outcome drives severity: a failed audit (success:false) defaults to
       // `warning`, otherwise `info`. Explicit `severity` always wins. This is
       // the single place the OK/Failed → severity rule lives, so holders and
@@ -200,6 +213,25 @@ export class AuditService {
     });
 
     return entry;
+  }
+
+  /**
+   * The `z.text()` cap both clamped columns are declared with.
+   */
+  protected readonly maxTextLength = 255;
+
+  /**
+   * Cut a value to the column's cap, marking that it was cut.
+   *
+   * The ellipsis is one character of the budget rather than an addition to it,
+   * so the result always fits, and it is what tells a reader the value is a
+   * prefix rather than the whole thing.
+   */
+  protected clamp(value: string | undefined): string | undefined {
+    if (value == null || value.length <= this.maxTextLength) {
+      return value;
+    }
+    return `${value.slice(0, this.maxTextLength - 1)}…`;
   }
 
   /**
@@ -235,6 +267,27 @@ export class AuditService {
       where.severity = { eq: query.severity };
     }
 
+    // Both halves, always in front, because every project-layer index leads
+    // on the pair. Filtering on `scopeId` alone would fall back to a scan.
+    if (query.scopeType) {
+      where.scopeType = { eq: query.scopeType };
+    }
+
+    // The layer as a whole, for a reader who wants the deployment's own
+    // events without the tenants' (or the reverse) and has no one scope in
+    // mind. `scopeId` rather than `scopeType` because it is the column the
+    // partial indexes are predicated on.
+    //
+    // Applied before `scopeId`, so naming a scope wins over the layer it
+    // belongs to rather than being silently overwritten by it.
+    if (query.layer) {
+      where.scopeId = { isNull: query.layer === "app" };
+    }
+
+    if (query.scopeId) {
+      where.scopeId = { eq: query.scopeId };
+    }
+
     if (query.userId) {
       where.userId = { eq: query.userId };
     }
@@ -257,6 +310,10 @@ export class AuditService {
 
     if (query.from) {
       where.createdAt = { ...(where.createdAt as object), gte: query.from };
+    }
+
+    if (query.after) {
+      where.createdAt = { ...(where.createdAt as object), gt: query.after };
     }
 
     if (query.to) {

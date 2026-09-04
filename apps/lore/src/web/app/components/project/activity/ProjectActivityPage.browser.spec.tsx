@@ -1,5 +1,5 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { Alepha } from "alepha";
+import { type Page, Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
@@ -9,19 +9,19 @@ import { LinkProvider } from "alepha/server/links";
 import { afterEach, describe, it } from "vitest";
 
 import { defaultProjectFeatures } from "@/api/entities/projects.ts";
-import type { ProjectActivityEvent } from "@/api/schemas/projectActivitySchema.ts";
+import type { ProjectActivityRow } from "@/api/schemas/projectActivityRowSchema.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import ProjectActivityPage from "./ProjectActivityPage.tsx";
 
 /**
- * Answers `getProjectActivity` and records the query it was asked with, so a
- * case can assert both what rendered and what was requested. Substitution
- * rather than `vi.mock`, per CLAUDE.md.
+ * Answers the three calls the page makes and records the activity query it
+ * was asked with, so a case can assert both what rendered and what was
+ * requested. Substitution rather than `vi.mock`, per CLAUDE.md.
  */
 class FakeLinkProvider extends LinkProvider {
-  public events: ProjectActivityEvent[] = [];
+  public rows: ProjectActivityRow[] = [];
   public lastQuery: Record<string, unknown> | undefined;
 
   override client(): any {
@@ -31,13 +31,13 @@ class FakeLinkProvider extends LinkProvider {
         get: (_target, prop: string) => async (input: any) => {
           if (prop === "getProjectActivity") {
             this.lastQuery = input?.query;
-            return {
-              events: this.events,
-              truncated: false,
-              since: "2026-09-01T00:00:00.000Z",
-              sinceClamped: false,
-              until: "2026-09-03T00:00:00.000Z",
-            };
+            return page(this.rows);
+          }
+          if (prop === "getProjectUsers") {
+            return [{ id: ACTOR, username: "feunard" }];
+          }
+          if (prop === "getProjectActivityFilters") {
+            return { types: ["quest", "folio"], actions: ["create", "update"] };
           }
           return {};
         },
@@ -46,40 +46,53 @@ class FakeLinkProvider extends LinkProvider {
   }
 }
 
+const ACTOR = "00000000-0000-4000-8000-000000000009";
+
+const page = (rows: ProjectActivityRow[]): Page<ProjectActivityRow> => ({
+  content: rows,
+  page: {
+    number: 0,
+    size: 25,
+    offset: 0,
+    numberOfElements: rows.length,
+    totalElements: rows.length,
+    totalPages: 1,
+    isEmpty: rows.length === 0,
+    isFirst: true,
+    isLast: true,
+  },
+});
+
 /**
  * Only the routes the rows link to. The real `AppRouter` is not mounted:
- * these cases are about the feed, not about the route table.
+ * these cases are about the table, not about the route table.
  */
 class Routes {
   quest = $page({
     name: "projectQuest",
-    path: "/quests/:shortId",
-    component: () => null,
-  });
-  epic = $page({
-    name: "projectEpic",
-    path: "/epics/:epicNumber",
+    path: "/:projectSlug/quests/:shortId",
     component: () => null,
   });
   folio = $page({
     name: "projectFoliosFolio",
-    path: "/folios/:shortId",
-    component: () => null,
-  });
-  release = $page({
-    name: "projectRelease",
-    path: "/releases/:releaseTag",
+    path: "/:projectSlug/folios/:shortId",
     component: () => null,
   });
 }
 
-const event = (over: Partial<ProjectActivityEvent>): ProjectActivityEvent => ({
-  at: "2026-09-02T10:00:00.000Z",
-  kind: "quest.created",
-  actor: "feunard",
-  summary: "filed quest #1",
-  ...over,
-});
+const row = (over: Partial<ProjectActivityRow>): ProjectActivityRow =>
+  ({
+    id: "1",
+    createdAt: "2026-09-02T10:00:00.000Z",
+    type: "quest",
+    action: "create",
+    userId: ACTOR,
+    actor: "feunard",
+    resourceType: "quest",
+    resourceId: "1",
+    description: "Wire it",
+    ...over,
+  }) as ProjectActivityRow;
 
 describe("ProjectActivityPage", () => {
   let alepha: Alepha | undefined;
@@ -90,7 +103,7 @@ describe("ProjectActivityPage", () => {
     alepha = undefined;
   });
 
-  const show = async (events: ProjectActivityEvent[]) => {
+  const show = async (rows: ProjectActivityRow[]) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -104,7 +117,7 @@ describe("ProjectActivityPage", () => {
     alepha.inject(Routes);
     alepha.inject(I18n);
     await alepha.start();
-    alepha.inject(FakeLinkProvider).events = events;
+    alepha.inject(FakeLinkProvider).rows = rows;
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentProjectAtom, {
       id: 1,
@@ -127,95 +140,62 @@ describe("ProjectActivityPage", () => {
     );
   };
 
-  it("asks for the caller's own events, unlike the MCP default", async ({
-    expect,
-  }) => {
-    await show([event({ quest: { shortId: 1, title: "Wire it" } })]);
+  it("asks the server for the newest rows first", async ({ expect }) => {
+    await show([row({})]);
 
     await waitFor(() => {
       expect(alepha!.inject(FakeLinkProvider).lastQuery).toBeDefined();
     });
-    // The endpoint defaults this off because an agent is asking what OTHERS
-    // did. A person opening their own project is asking the opposite, and on
-    // a solo project the feed is empty without it.
-    expect(alepha!.inject(FakeLinkProvider).lastQuery?.includeOwn).toBe(true);
+    // The whole reason this page stopped being a hand-rolled feed: sorting
+    // is the server's job, so the default has to reach it.
+    expect(alepha!.inject(FakeLinkProvider).lastQuery?.sort).toBe("-createdAt");
   });
 
-  it("badges a machine-written comment and leaves a human one plain", async ({
+  it("sends a picked filter to the server rather than narrowing rows in the browser", async ({
+    expect,
+  }) => {
+    const screen = await show([row({})]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Wire it")).toBeTruthy();
+    });
+
+    // Filters are indexed columns now. A page that narrowed client-side
+    // would be filtering one page of results and calling it a filter.
+    const query = alepha!.inject(FakeLinkProvider).lastQuery;
+    expect(query).toHaveProperty("type");
+    expect(query).toHaveProperty("action");
+    expect(query).toHaveProperty("userId");
+  });
+
+  it("links a row to the page its resource is addressed by", async ({
     expect,
   }) => {
     const screen = await show([
-      event({
-        kind: "quest.commented",
-        actorKind: "agent",
-        summary: "commented on quest #1",
-        quest: { shortId: 1, title: "Machine wrote here" },
-      }),
-      event({
-        kind: "quest.commented",
-        summary: "commented on quest #2",
-        quest: { shortId: 2, title: "Person wrote here" },
-      }),
+      row({ type: "quest", resourceId: "7", description: "A quest happened" }),
     ]);
 
     await waitFor(() => {
-      expect(screen.getByText("Machine wrote here")).toBeTruthy();
+      expect(screen.getByText("A quest happened")).toBeTruthy();
     });
-    // One badge, not two: `quest_comments.source` is the only place
-    // provenance is recorded, so an unmarked row means "unknown", never
-    // "human", and must not be labelled either way.
-    expect(screen.queryAllByText("Agent")).toHaveLength(1);
+    expect(screen.getByText("A quest happened").closest("button")).toBeTruthy();
   });
 
-  it("links a release that has a tag and does not link one that has none", async ({
-    expect,
-  }) => {
+  it("does not link a deletion", async ({ expect }) => {
     const screen = await show([
-      event({
-        kind: "release.published",
-        summary: "published release 0.1.0",
-        release: { tag: "0.1.0", title: "Tagged release" },
-      }),
-      event({
-        kind: "release.created",
-        summary: "opened release",
-        release: { title: "Untagged release" },
+      row({
+        type: "quest",
+        action: "delete",
+        resourceId: "7",
+        description: "A deleted quest",
       }),
     ]);
 
     await waitFor(() => {
-      expect(screen.getByText("Tagged release")).toBeTruthy();
+      expect(screen.getByText(/A deleted quest/)).toBeTruthy();
     });
-    // `releases.tag` is nullable at the column even though the create schema
-    // requires it. Without the guard the second row renders an anchor to
-    // `/alepha/releases/undefined`, which resolves to nothing.
-    expect(screen.getByText("Tagged release").closest("a")).toBeTruthy();
-    expect(screen.getByText("Untagged release").closest("a")).toBeNull();
-  });
-
-  it("filters client-side without re-querying", async ({ expect }) => {
-    const screen = await show([
-      event({ quest: { shortId: 1, title: "A quest happened" } }),
-      event({
-        kind: "folio.updated",
-        summary: "wrote folio #3",
-        folio: { shortId: 3, title: "A folio happened" },
-      }),
-    ]);
-
-    await waitFor(() => {
-      expect(screen.getByText("A folio happened")).toBeTruthy();
-    });
-
-    const before = alepha!.inject(FakeLinkProvider).lastQuery;
-    screen.getByRole("button", { name: "Folios" }).click();
-
-    await waitFor(() => {
-      expect(screen.queryByText("A quest happened")).toBeNull();
-    });
-    expect(screen.getByText("A folio happened")).toBeTruthy();
-    // The window control is the only thing that may re-query; the chips
-    // narrow rows already on the page.
-    expect(alepha!.inject(FakeLinkProvider).lastQuery).toBe(before);
+    // The row is a record of what happened, so the title survives — but the
+    // page behind it does not, and a link to a 404 is worse than no link.
+    expect(screen.getByText(/A deleted quest/).closest("button")).toBeNull();
   });
 });

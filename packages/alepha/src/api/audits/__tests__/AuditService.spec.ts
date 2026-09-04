@@ -541,4 +541,103 @@ describe("alepha/api/audits - AuditService", () => {
       expect(await countByType(db, type)).toBe(1);
     });
   });
+  describe("scope", () => {
+    it("keeps an over-long description instead of failing the write", async ({
+      expect,
+    }) => {
+      const { auditService } = await setup();
+
+      // The values that reach `description` come from the audited domain and
+      // are not bounded by this column: Lore writes a quest's title here, and
+      // a quest title has no maximum. Unclamped, this insert fails schema
+      // validation - and because call sites await it inside their own
+      // transaction, it would roll back the very action it is recording.
+      const entry = await auditService.create({
+        type: "test",
+        action: "create",
+        description: "x".repeat(400),
+      });
+
+      expect(entry.description).toHaveLength(255);
+      // Cut, and saying so: a reader has to be able to tell a prefix from a
+      // whole value.
+      expect(entry.description?.endsWith("…")).toBe(true);
+    });
+
+    it("finds only the rows of the scope it is asked for", async ({
+      expect,
+    }) => {
+      const { auditService } = await setup();
+
+      await auditService.create({
+        type: "quest",
+        action: "create",
+        scopeType: "project",
+        scopeId: "1",
+      });
+      await auditService.create({
+        type: "quest",
+        action: "create",
+        scopeType: "project",
+        scopeId: "2",
+      });
+      // App layer: no scope at all.
+      await auditService.create({ type: "user", action: "login" });
+
+      const scoped = await auditService.find({
+        scopeType: "project",
+        scopeId: "1",
+      });
+      expect(scoped.content).toHaveLength(1);
+      expect(scoped.content[0].scopeId).toBe("1");
+
+      // `layer` narrows without naming a scope, which is what the admin page
+      // needs to separate the deployment's own events from its tenants'.
+      const app = await auditService.find({ layer: "app" });
+      expect(app.content.map((row) => row.type)).toEqual(["user"]);
+
+      const tenant = await auditService.find({ layer: "scoped" });
+      expect(tenant.content).toHaveLength(2);
+    });
+
+    it("excludes the boundary row for a forward cursor", async ({ expect }) => {
+      const { auditService } = await setup();
+
+      const first = await auditService.create({
+        type: "quest",
+        action: "create",
+        scopeType: "project",
+        scopeId: "1",
+      });
+
+      const at = Date.parse(first.createdAt);
+      const stamp = (offsetMs: number) => new Date(at + offsetMs).toISOString();
+
+      // `from` is inclusive, so a window opening one millisecond after the
+      // row has already passed it by.
+      expect(
+        (await auditService.find({ from: stamp(-1) })).content,
+      ).toHaveLength(1);
+      expect(
+        (await auditService.find({ from: stamp(1000) })).content,
+      ).toHaveLength(0);
+
+      // `after` is exclusive, which is what makes it usable as a forward
+      // cursor: passing back a stamp the caller has already seen must not
+      // hand the same row over again.
+      //
+      // The boundary is asserted a second apart rather than exactly on the
+      // row's own stamp, because how precisely the boundary itself is
+      // excluded depends on what the column stores: integer milliseconds on
+      // sqlite, microseconds on postgres, and this suite runs on the latter.
+      // The exact-boundary guarantee belongs to the caller that owns the
+      // cursor - see `project_activity` and its own spec.
+      expect(
+        (await auditService.find({ after: stamp(-1000) })).content,
+      ).toHaveLength(1);
+      expect(
+        (await auditService.find({ after: stamp(1000) })).content,
+      ).toHaveLength(0);
+    });
+  });
 });

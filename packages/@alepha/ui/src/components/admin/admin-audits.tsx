@@ -18,12 +18,20 @@ import type {
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { CircleDot, SlidersHorizontal, Trash2, User, Zap } from "lucide-react";
+import {
+  CircleDot,
+  Layers,
+  SlidersHorizontal,
+  Trash2,
+  User,
+  Zap,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 const auditFiltersSchema = z.object({
   status: z.string().optional(),
   action: z.string().optional(),
+  layer: z.string().optional(),
 });
 type AuditFilters = Infer<typeof auditFiltersSchema>;
 
@@ -70,6 +78,8 @@ export const AdminAudits = () => {
           sort: params.sort,
           type: pair?.type,
           action: pair?.action,
+          layer:
+            f?.layer === "app" || f?.layer === "scoped" ? f.layer : undefined,
           success: f?.status ? f.status === "ok" : undefined,
         },
       });
@@ -142,6 +152,37 @@ export const AdminAudits = () => {
           schema: auditFiltersSchema,
           render: (form) => (
             <div className="flex items-center gap-2">
+              {/*
+                Unfiltered by default, so this page stays the view that shows
+                everything: an admin who cannot see a row cannot audit it.
+                The control is here because tenant-scoped events (a project's
+                own activity, read on the project's page) otherwise bury the
+                deployment's security events under their volume.
+              */}
+              <Control
+                input={form.input.layer}
+                label=""
+                clearable
+                icon={Layers}
+                clearLabel={String(
+                  tr("admin.audits.layerAll", { default: "All layers" }),
+                )}
+                triggerClassName="w-40"
+                items={[
+                  {
+                    value: "app",
+                    label: String(
+                      tr("admin.audits.layerApp", { default: "App" }),
+                    ),
+                  },
+                  {
+                    value: "scoped",
+                    label: String(
+                      tr("admin.audits.layerScoped", { default: "Scoped" }),
+                    ),
+                  },
+                ]}
+              />
               <Control
                 input={form.input.status}
                 label=""
@@ -203,6 +244,22 @@ export const AdminAudits = () => {
                 {a.type}:{a.action}
               </code>
             ),
+          },
+          scope: {
+            label: tr("admin.audits.colScope", { default: "Scope" }),
+            // Without this the Scoped filter shows rows with no way to tell
+            // which tenant they belong to, which is a filter that narrows to
+            // an unreadable list.
+            cell: (a) =>
+              a.scopeType ? (
+                <span className="font-mono text-xs">
+                  {a.scopeType}:{a.scopeId ?? "?"}
+                </span>
+              ) : (
+                <span className="text-muted-foreground text-xs">
+                  {tr("admin.audits.layerApp", { default: "App" })}
+                </span>
+              ),
           },
           resource: {
             label: tr("admin.audits.colResource", { default: "Resource" }),

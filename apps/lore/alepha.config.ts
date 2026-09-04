@@ -115,6 +115,12 @@ export default defineConfig({
         // accepted / declined / revoked). `auth.invitation.signIn` is written
         // out in full and so is not hidden by this prefix.
         "auth.invitation.",
+        // tr(`activity.resource.${type}`) - the Activity table's resource
+        // labels, one per `$audit` type declared in `LoreAudits`. Constructed
+        // rather than written out because the set is the DECLARATIONS: a new
+        // audit type reaches the page the moment it exists, and the call site
+        // falls back to the raw value until somebody writes the label.
+        "activity.resource.",
         // tr(`blights.origin.${origin}`) — client/server crash provenance badge.
         "blights.origin.",
         // tr(`language.${code}`) — @alepha/ui button-language picker labels.

@@ -157,6 +157,21 @@ export class AuditPrimitive extends Primitive<AuditPrimitiveOptions> {
  */
 export interface AuditLogOptions {
   severity?: "info" | "warning" | "critical";
+
+  /**
+   * The container this event happened inside, and its identifier.
+   *
+   * Omit both for an app-layer event (a sign-in, a tenant being created):
+   * those belong to the deployment rather than to any one tenant, and the
+   * admin audit page is where they are read.
+   *
+   * Set both for a tenant-layer event, and set them together: the indexes
+   * lead on the pair, so a `scopeId` without a `scopeType` is a row no
+   * scoped query will ever return.
+   */
+  scopeType?: string;
+  scopeId?: string;
+
   userId?: string;
   userRealm?: string;
   userEmail?: string;

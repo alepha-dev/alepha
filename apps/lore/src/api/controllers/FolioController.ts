@@ -1,7 +1,11 @@
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository, $sequence, $transactional } from "alepha/orm";
-import { OwnedResourceProvider, $secure } from "alepha/security";
+import {
+  OwnedResourceProvider,
+  type UserAccountToken,
+  $secure,
+} from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -33,6 +37,7 @@ import { FolioHistoryService } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
 import { FolioRevisionStatsService } from "../services/FolioRevisionStatsService.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 
 /**
  * The columns of `folio_directories` any ancestor walk needs — the tree
@@ -66,7 +71,35 @@ export class FolioController {
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
   protected readonly revisionStats = $inject(FolioRevisionStatsService);
+  protected readonly audits = $inject(LoreAudits);
   protected readonly owned = $inject(OwnedResourceProvider);
+
+  /**
+   * One project-layer audit row for something that happened to a folio.
+   *
+   * `resourceId` is the **shortId**, matching `/:projectSlug/folios/:shortId`.
+   *
+   * ⚠️ Never the folio's CONTENT, not even a prefix. A protected folio's body
+   * is ciphertext the server cannot read by design, and an unprotected one is
+   * still member-gated behind the folio itself; the Activity page is a wider
+   * surface than that. The title is what the feed prints, and a protected
+   * folio's title is not secret - it is shown in the tree.
+   */
+  protected async logFolio(
+    action: string,
+    folio: { shortId: number; title: string; projectId: number },
+    user: UserAccountToken | undefined,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.audits.folio.logSuccess(action, {
+      ...this.audits.actor(user),
+      ...this.audits.scope(folio.projectId),
+      resourceType: "folio",
+      resourceId: String(folio.shortId),
+      description: folio.title,
+      ...(metadata ? { metadata } : {}),
+    });
+  }
 
   /**
    * The four gates this controller needs - the only place in the app where
@@ -650,6 +683,7 @@ export class FolioController {
       // folio as it stands right after insert — gives the History tab a
       // baseline to diff later edits against.
       await this.historyService.appendRevision(folio, user.id, "create");
+      await this.logFolio("create", folio, user, { protected: isProtected });
 
       // Always true here: a brand-new folio has nothing to fold into. Sent
       // anyway so the two save paths answer the same shape and the client
@@ -860,6 +894,14 @@ export class FolioController {
       // and why this is not named `revisionCreated`. A purge with no insert
       // is rare but real: it empties the list, and a client told only about
       // insertions would keep rendering revisions the server has deleted.
+      await this.logFolio("update", updated, user, {
+        // What the update actually touched, from the revision decision that
+        // has already computed it. `undefined` when nothing recordable moved
+        // (a pin, a reparent), which is exactly the distinction the feed
+        // wants to draw.
+        change: action,
+      });
+
       return {
         ...updated,
         revisionsChanged: purged || appended?.created === true,
@@ -875,6 +917,10 @@ export class FolioController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
+      // Read before the row goes: once it is deleted, an id names nothing
+      // and the feed has no title to print.
+      const folio = this.owned.get<Folio>();
+
       // Folios no longer have folio children since quest #66 — they're
       // leaves under folio directories. `folio_revisions` still cascades
       // via its FK.
@@ -900,6 +946,7 @@ export class FolioController {
       // block the name forever.
       await this.nameService.releaseByEntity(params.id);
       await this.folios.deleteById(params.id);
+      await this.logFolio("delete", folio, user);
       return { ok: true };
     },
   });
@@ -1203,6 +1250,9 @@ export class FolioController {
         );
       }
       await this.historyService.appendRevision(updated, user.id, "revert");
+      await this.logFolio("revert", updated, user, {
+        revisionId: params.revisionId,
+      });
       return updated;
     },
   });
