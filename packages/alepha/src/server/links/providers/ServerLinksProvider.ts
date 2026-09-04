@@ -33,9 +33,21 @@ export class ServerLinksProvider {
   protected securityProvider: SecurityProvider | undefined;
 
   /**
-   * Cache of serialized JSON by identity key (see {@link registryCacheKey}).
+   * Registry responses by identity key (see {@link registryCacheKey}).
+   *
+   * Bounded and least-recently-used: the key set is the realm-and-role
+   * combinations a deployment actually serves, which is a handful for most
+   * applications and unbounded for a tenant that mints roles per customer.
    */
   protected registryCache = new Map<string, RegistryCacheEntry>();
+
+  /**
+   * How many identities the registry cache keeps.
+   *
+   * Well past any fixed role set, small enough that an application inventing
+   * role combinations cannot turn this into a leak.
+   */
+  protected static readonly MAX_REGISTRY_CACHE = 128;
 
   public get prefix() {
     return this.serverApi.prefix;
@@ -114,36 +126,21 @@ export class ServerLinksProvider {
   public readonly links = $route({
     path: LinkProvider.path.apiLinks,
     handler: async ({ user, headers, reply }) => {
-      const roleKey = this.registryCacheKey(user);
-      const cached = this.registryCache.get(roleKey);
-
-      if (cached) {
-        // ETag match → 304
-        if (headers["if-none-match"] === cached.etag) {
-          reply.setStatus(304);
-          reply.setHeader("etag", cached.etag);
-          return;
-        }
-
-        reply.setHeader("etag", cached.etag);
-        reply.setHeader("content-type", "application/json");
-        reply.body = cached.json;
-        return;
-      }
-
-      // Cache miss — compute, serialize, cache
-      const response = await this.getUserApiLinks({
+      const entry = await this.registryEntry({
         user,
         authorization: headers.authorization,
       });
-      const json = JSON.stringify(response);
-      const etag = `"${createHash("md5").update(json).digest("hex")}"`;
 
-      this.registryCache.set(roleKey, { json, etag });
+      // ETag match → 304
+      if (headers["if-none-match"] === entry.etag) {
+        reply.setStatus(304);
+        reply.setHeader("etag", entry.etag);
+        return;
+      }
 
-      reply.setHeader("etag", etag);
+      reply.setHeader("etag", entry.etag);
       reply.setHeader("content-type", "application/json");
-      reply.body = json;
+      reply.body = entry.json;
     },
   });
 
@@ -366,6 +363,59 @@ export class ServerLinksProvider {
   }
 
   /**
+   * The registry for an identity, built at most once per identity.
+   *
+   * This is what every caller should reach for. {@link getUserApiLinks} is the
+   * uncached computation underneath: roughly 300 accessibility checks, the
+   * permission walk, and a round trip to every proxy remote, for a result that
+   * is byte-identical for every request with the same identity key.
+   *
+   * The SSR path used to call the uncached one directly, once per rendered
+   * page, while the HTTP route beside it had been caching all along.
+   */
+  public async getCachedUserApiLinks(
+    options: GetApiLinksOptions,
+  ): Promise<ApiRegistryResponse> {
+    return (await this.registryEntry(options)).response;
+  }
+
+  /**
+   * The cached response, its serialization and its ETag, as one entry.
+   *
+   * Serializing here rather than in the route is what lets the two consumers
+   * share a cache: SSR inlines the object, the route answers with the string,
+   * and neither pays for the other's form.
+   */
+  protected async registryEntry(
+    options: GetApiLinksOptions,
+  ): Promise<RegistryCacheEntry> {
+    const key = this.registryCacheKey(options.user);
+
+    const cached = this.registryCache.get(key);
+    if (cached) {
+      // Re-insert to mark it as most recently used: a Map iterates in
+      // insertion order, which is what makes eviction below an LRU.
+      this.registryCache.delete(key);
+      this.registryCache.set(key, cached);
+      return cached;
+    }
+
+    const response = await this.getUserApiLinks(options);
+    const json = JSON.stringify(response);
+    const etag = `"${createHash("md5").update(json).digest("hex")}"`;
+    const entry: RegistryCacheEntry = { response, json, etag };
+
+    while (this.registryCache.size >= ServerLinksProvider.MAX_REGISTRY_CACHE) {
+      const oldest = this.registryCache.keys().next();
+      if (oldest.done) break;
+      this.registryCache.delete(oldest.value);
+    }
+    this.registryCache.set(key, entry);
+
+    return entry;
+  }
+
+  /**
    * Retrieves API registry for the user based on their permissions.
    * Will check on local links and remote links.
    */
@@ -528,6 +578,7 @@ export interface GetApiLinksOptions {
 }
 
 interface RegistryCacheEntry {
+  response: ApiRegistryResponse;
   json: string;
   etag: string;
 }

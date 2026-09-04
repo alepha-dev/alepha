@@ -8,6 +8,10 @@ import type * as vite from "vite";
 import type { UserConfig } from "vite";
 
 import { MetaResolver } from "../services/MetaResolver.ts";
+import {
+  type PreloadTable,
+  PreloadTableBuilder,
+} from "../services/PreloadTableBuilder.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
@@ -23,6 +27,7 @@ export class BuildServerTask extends BuildTask {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly viteUtils = $inject(ViteUtils);
   protected readonly metaResolver = $inject(MetaResolver);
+  protected readonly preloadTable = $inject(PreloadTableBuilder);
 
   /**
    * Whether the Durable Object class should be re-exported through the app's
@@ -74,6 +79,7 @@ export class BuildServerTask extends BuildTask {
           conditions,
           alepha: ctx.alepha,
           meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
+          allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
         });
 
         // Server will handle index.html if both client & server are built
@@ -98,6 +104,11 @@ export class BuildServerTask extends BuildTask {
      * one the client bundle gets.
      */
     meta?: Record<string, string>;
+    /**
+     * Source paths whose preload key may resolve to no chunks without failing
+     * the build.
+     */
+    allowUnresolvedPreloads?: string[];
   }): Promise<void> {
     const { build: viteBuild, resolveConfig } =
       await this.viteUtils.importVite();
@@ -256,9 +267,7 @@ export class BuildServerTask extends BuildTask {
     let manifest = "";
     let manifestData:
       | {
-          base?: string;
-          client?: Record<string, any>;
-          preload?: Record<string, string>;
+          preload?: PreloadTable;
           favicon?: string;
         }
       | undefined;
@@ -271,8 +280,9 @@ export class BuildServerTask extends BuildTask {
       const preloadManifest = await this.loadJsonFile(
         `${viteDir}/preload-manifest.json`,
       );
-
-      const strippedClientManifest = this.stripClientManifest(clientManifest);
+      const ssrManifest = await this.loadJsonFile(
+        `${viteDir}/ssr-manifest.json`,
+      );
 
       let base = resolvedConfig.base || "/";
       if (!base.startsWith("/")) {
@@ -287,13 +297,24 @@ export class BuildServerTask extends BuildTask {
       );
 
       manifestData = {
-        base: base !== "/" ? base : undefined,
-        client: strippedClientManifest,
-        preload: preloadManifest,
+        // This is the only point in the pipeline holding every manifest at
+        // once, so it is the only one that can resolve a preload key - and the
+        // only one that can refuse to.
+        preload: clientManifest
+          ? this.preloadTable.build({
+              clientManifest,
+              preloadManifest: preloadManifest ?? {},
+              ssrManifest: ssrManifest ?? {},
+              base: base === "/" ? "" : base,
+              allowUnresolved: opts.allowUnresolvedPreloads,
+            })
+          : undefined,
         favicon,
       };
 
-      manifest = `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(manifestData, null, "  ")});\n`;
+      // Compact, not pretty-printed: the payload is an index table, and one
+      // integer per line tripled the size of a generated file nobody reads.
+      manifest = `__alepha.set("alepha.react.ssr.manifest", ${JSON.stringify(manifestData)});\n`;
 
       opts.alepha.store.set("alepha.react.ssr.manifest" as any, manifestData);
 
@@ -641,23 +662,6 @@ export class BuildServerTask extends BuildTask {
     } catch {
       return undefined;
     }
-  }
-
-  protected stripClientManifest(
-    manifest: Record<string, any> | undefined,
-  ): Record<string, any> | undefined {
-    if (!manifest) return undefined;
-
-    const stripped: Record<string, any> = {};
-    for (const [key, entry] of Object.entries(manifest)) {
-      stripped[key] = {
-        file: entry.file,
-        ...(entry.isEntry && { isEntry: entry.isEntry }),
-        ...(entry.imports?.length && { imports: entry.imports }),
-        ...(entry.css?.length && { css: entry.css }),
-      };
-    }
-    return stripped;
   }
 
   protected extractEntryFromBundle(

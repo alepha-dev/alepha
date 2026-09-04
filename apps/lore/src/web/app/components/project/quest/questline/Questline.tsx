@@ -1,12 +1,13 @@
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { AreaDotColor } from "../../../shared/areaColor.ts";
+import { preloadQuestView } from "../LazyQuestView.tsx";
 import QuestlineDialog from "./QuestlineDialog.tsx";
 import { QuestlineLayout, type QuestlineNode } from "./questlineLayout.ts";
 import QuestlineStatBar from "./QuestlineStatBar.tsx";
@@ -34,6 +35,13 @@ const Questline = (props: QuestlineProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [areas] = useStore(currentAreasAtom);
   const [open, setOpen] = useState<QuestlineNode | null>(null);
+
+  // The dialog mounts `QuestView` behind a chunk boundary, and it opens on a
+  // click. Warm it while the map is being read so the click lands on a chunk
+  // that is already in the module cache.
+  useEffect(() => {
+    preloadQuestView();
+  }, []);
 
   const tracks = useMemo(
     () => new QuestlineLayout().build(props.quests),

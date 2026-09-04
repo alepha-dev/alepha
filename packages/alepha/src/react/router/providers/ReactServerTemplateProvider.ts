@@ -335,7 +335,8 @@ export class ReactServerTemplateProvider {
    * Create HTML stream with early head optimization.
    *
    * Flow:
-   * 1. Send DOCTYPE, <html>, <head> open, entry preloads (IMMEDIATE)
+   * 1. Send DOCTYPE, <html>, <head> open, entry assets and the route's own
+   *    preload links (IMMEDIATE)
    * 2. Run async work (page loaders)
    * 3. Send rest of head, body, React content, hydration
    */
@@ -349,6 +350,14 @@ export class ReactServerTemplateProvider {
     options: {
       hydration?: boolean;
       state?: ReactRouterState;
+      /**
+       * Per-request head content for the EARLY phase, sent before the async
+       * work rather than after it.
+       *
+       * {@link setEarlyHeadContent} cannot serve this: it runs once at
+       * configuration, and this fragment is the route's own.
+       */
+      earlyHead?: string;
       onError?: (error: unknown) => void;
     } = {},
   ): ReadableStream<Uint8Array> {
@@ -372,6 +381,9 @@ export class ReactServerTemplateProvider {
           controller.enqueue(slots.HEAD_OPEN);
           if (this.earlyHeadContent) {
             controller.enqueue(encoder.encode(this.earlyHeadContent));
+          }
+          if (options.earlyHead) {
+            controller.enqueue(encoder.encode(options.earlyHead));
           }
 
           // === ASYNC WORK ===

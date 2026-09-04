@@ -2,11 +2,12 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { basename, join, relative, resolve } from "node:path";
 
 import { $hook, $inject, type Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import MagicString from "magic-string";
 import type { InlineConfig, Logger, Plugin, ViteDevServer } from "vite";
 
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
@@ -45,6 +46,21 @@ export interface BufferedLogger extends Logger {
  */
 export interface PreloadManifest {
   [key: string]: string;
+}
+
+/**
+ * The slice of the Rollup/rolldown plugin context the preload transform needs.
+ *
+ * Both of these are answers only the bundler can give: its own parser, and its
+ * own resolver. Taking them as an argument is what lets the transform be
+ * exercised without a build.
+ */
+export interface SsrPreloadContext {
+  parse: (code: string, options?: unknown) => any;
+  resolve: (
+    source: string,
+    importer: string,
+  ) => Promise<{ id: string } | null | undefined>;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -271,9 +287,10 @@ export class ViteUtils {
     let root = "";
     const preloadMap = new Map<string, string>();
 
-    function generateKey(sourcePath: string): string {
-      return createHash("md5").update(sourcePath).digest("hex").slice(0, 8);
-    }
+    // An arrow, so the transform hook below keeps `this` bound to the plugin
+    // context while still reaching this service.
+    const inject = (context: SsrPreloadContext, code: string, id: string) =>
+      this.injectPreloadKeys(context, code, id, root, preloadMap);
 
     return {
       name: "alepha-preload",
@@ -281,91 +298,7 @@ export class ViteUtils {
         root = config.root;
       },
       transform(code, id) {
-        if (!id.match(/\.[tj]sx?$/)) return null;
-        if (id.includes("node_modules")) return null;
-        if (!code.includes("$page") || !code.includes("lazy")) return null;
-
-        const insertions: Array<{ position: number; text: string }> = [];
-        const pageStartRegex = /\$page\s*\(\s*\{/g;
-        let pageMatch: RegExpExecArray | null = pageStartRegex.exec(code);
-
-        while (pageMatch !== null) {
-          const objectStartIndex = pageMatch.index + pageMatch[0].length - 1;
-
-          let braceCount = 1;
-          let i = objectStartIndex + 1;
-          while (i < code.length && braceCount > 0) {
-            if (code[i] === "{") braceCount++;
-            else if (code[i] === "}") braceCount--;
-            i++;
-          }
-
-          if (braceCount !== 0) {
-            pageMatch = pageStartRegex.exec(code);
-            continue;
-          }
-
-          const objectEndIndex = i - 1;
-          const pageContent = code.slice(objectStartIndex, objectEndIndex + 1);
-
-          if (pageContent.includes("alepha.page.preload")) {
-            pageMatch = pageStartRegex.exec(code);
-            continue;
-          }
-
-          const lazyRegex =
-            /lazy\s*:\s*\(\s*\)\s*=>\s*import\s*\(\s*['"]([^'"]+)['"]\s*\)/;
-          const lazyMatch = lazyRegex.exec(pageContent);
-
-          if (!lazyMatch) {
-            pageMatch = pageStartRegex.exec(code);
-            continue;
-          }
-
-          const importPath = lazyMatch[1];
-          const currentDir = dirname(id);
-          let resolvedPath: string;
-
-          if (importPath.startsWith(".")) {
-            resolvedPath = resolve(currentDir, importPath);
-          } else if (importPath.startsWith("/")) {
-            resolvedPath = resolve(root, importPath.slice(1));
-          } else {
-            pageMatch = pageStartRegex.exec(code);
-            continue;
-          }
-
-          let relativePath = relative(root, resolvedPath);
-          relativePath = relativePath.replace(/\\/g, "/");
-
-          if (!relativePath.match(/\.[tj]sx?$/)) {
-            relativePath = `${relativePath}.tsx`;
-          } else if (relativePath.endsWith(".jsx")) {
-            relativePath = relativePath.replace(/\.jsx$/, ".tsx");
-          } else if (relativePath.endsWith(".js")) {
-            relativePath = relativePath.replace(/\.js$/, ".ts");
-          }
-
-          const key = generateKey(relativePath);
-          preloadMap.set(key, relativePath);
-
-          const beforeBrace = code.slice(0, objectEndIndex).trimEnd();
-          const needsComma = !beforeBrace.endsWith(",");
-          const preloadProperty = `${needsComma ? "," : ""} [Symbol.for("alepha.page.preload")]: "${key}"`;
-
-          insertions.push({ position: objectEndIndex, text: preloadProperty });
-          pageMatch = pageStartRegex.exec(code);
-        }
-
-        if (insertions.length === 0) return null;
-
-        let result = code;
-        for (let j = insertions.length - 1; j >= 0; j--) {
-          const { position, text } = insertions[j];
-          result = result.slice(0, position) + text + result.slice(position);
-        }
-
-        return { code: result, map: null };
+        return inject(this as unknown as SsrPreloadContext, code, id);
       },
       writeBundle(options) {
         const outDir = options.dir || "";
@@ -385,6 +318,171 @@ export class ViteUtils {
         }
       },
     };
+  }
+
+  /**
+   * Register every `$page` of a module in the preload manifest and inject its
+   * key, or return null when the module defines no lazily loaded page.
+   */
+  protected async injectPreloadKeys(
+    context: SsrPreloadContext,
+    code: string,
+    id: string,
+    root: string,
+    preloadMap: Map<string, string>,
+  ): Promise<{ code: string; map: any } | null> {
+    if (!id.match(/\.[tj]sx?$/)) return null;
+    if (id.includes("node_modules")) return null;
+    if (!code.includes("$page") || !code.includes("lazy")) return null;
+
+    let ast: any;
+    try {
+      ast = context.parse(code, this.parserOptionsFor(id));
+    } catch {
+      // Not this plugin's error to report: whatever cannot be parsed here
+      // fails the build a moment later, with a real code frame.
+      return null;
+    }
+
+    const magic = new MagicString(code);
+    let injected = false;
+
+    for (const page of this.findPageObjects(ast)) {
+      if (this.hasPreloadKey(page)) continue;
+
+      const importPath = this.readLazyImport(page);
+      if (!importPath) continue;
+
+      // Ask the resolver rather than guessing an extension: the guess is what
+      // left every `.js` or `.jsx` application with no page preloads at all,
+      // and it registered keys for files that do not exist.
+      const resolved = await context.resolve(importPath, id);
+      if (!resolved?.id) continue;
+
+      const relativePath = relative(root, resolved.id.split("?")[0]).replace(
+        /\\/g,
+        "/",
+      );
+
+      const key = this.preloadKey(relativePath);
+      preloadMap.set(key, relativePath);
+
+      // After the last property, never before the closing brace: the object
+      // may already carry a trailing comma, and a comma is legal in both
+      // spellings here.
+      const properties = page.properties;
+      const anchor = properties[properties.length - 1].end;
+      magic.appendLeft(
+        anchor,
+        `, [Symbol.for("alepha.page.preload")]: "${key}"`,
+      );
+      injected = true;
+    }
+
+    if (!injected) return null;
+
+    return {
+      code: magic.toString(),
+      map: magic.generateMap({ source: id, hires: true }),
+    };
+  }
+
+  /**
+   * Short, stable key for a source path. The full path lives in the preload
+   * manifest; only this key is injected into the bundle.
+   */
+  public preloadKey(sourcePath: string): string {
+    return createHash("md5").update(sourcePath).digest("hex").slice(0, 8);
+  }
+
+  /**
+   * Parser options for a module, so `this.parse` reads the file under the
+   * dialect it is actually written in.
+   */
+  protected parserOptionsFor(id: string): {
+    lang: "js" | "jsx" | "ts" | "tsx";
+    astType: "js" | "ts";
+  } {
+    const lang = id.endsWith(".tsx")
+      ? "tsx"
+      : id.endsWith(".ts")
+        ? "ts"
+        : id.endsWith(".jsx")
+          ? "jsx"
+          : "js";
+    return { lang, astType: lang.startsWith("ts") ? "ts" : "js" };
+  }
+
+  /**
+   * Every object literal passed as the first argument of a `$page(...)` call.
+   *
+   * Walking the AST rather than scanning the text is what makes comments and
+   * string literals cost nothing: neither is a node, so a `$page` in an
+   * `@example` block is invisible and a `}` inside a string cannot move the
+   * end of the object.
+   */
+  protected findPageObjects(node: any, found: any[] = []): any[] {
+    if (!node || typeof node !== "object") return found;
+
+    if (Array.isArray(node)) {
+      for (const child of node) this.findPageObjects(child, found);
+      return found;
+    }
+
+    if (typeof node.type !== "string") return found;
+
+    if (
+      node.type === "CallExpression" &&
+      node.callee?.type === "Identifier" &&
+      node.callee.name === "$page" &&
+      node.arguments?.[0]?.type === "ObjectExpression" &&
+      node.arguments[0].properties?.length > 0
+    ) {
+      found.push(node.arguments[0]);
+    }
+
+    for (const key of Object.keys(node)) {
+      if (key === "type" || key === "start" || key === "end") continue;
+      this.findPageObjects(node[key], found);
+    }
+
+    return found;
+  }
+
+  /**
+   * The module specifier of `lazy: () => import("...")`, when the page has one.
+   */
+  protected readLazyImport(page: any): string | undefined {
+    for (const property of page.properties ?? []) {
+      if (property.type !== "Property" || property.computed) continue;
+
+      const name =
+        property.key?.type === "Identifier"
+          ? property.key.name
+          : property.key?.value;
+      if (name !== "lazy") continue;
+
+      const body = property.value?.body;
+      if (body?.type !== "ImportExpression") continue;
+      if (typeof body.source?.value !== "string") continue;
+
+      return body.source.value;
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Whether the page already carries an injected preload key, so a second
+   * pass over the same module cannot inject a duplicate.
+   */
+  protected hasPreloadKey(page: any): boolean {
+    return (page.properties ?? []).some(
+      (property: any) =>
+        property.computed &&
+        property.key?.type === "CallExpression" &&
+        property.key.arguments?.[0]?.value === "alepha.page.preload",
+    );
   }
 
   // ---------------------------------------------------------------------------------------------------------------
