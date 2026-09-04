@@ -317,6 +317,63 @@ describe("the epic phase gate on quest transitions", () => {
     }
   });
 
+  describe("delete", () => {
+    it("deletes a loose quest and a planned epic's quest", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "planned",
+      });
+      const loose = await createTestQuest(ctx.alepha, project);
+      const parked = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+      const user = ownerToken(project);
+
+      for (const quest of [loose, parked]) {
+        const result = await ctx.controller.deleteQuest(
+          { params: { id: quest.id } },
+          { user },
+        );
+        expect(result.ok).toBe(true);
+      }
+    });
+
+    it("refuses inside an active or concluded epic, naming shelve", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha);
+      const active = await createTestEpic(ctx.alepha, project, {
+        status: "active",
+      });
+      const done = await createTestEpic(ctx.alepha, project, {
+        status: "done",
+      });
+      const held = await createTestQuest(ctx.alepha, project, {
+        epicId: active.id,
+      });
+      const sealed = await createTestQuest(ctx.alepha, project, {
+        epicId: done.id,
+      });
+      const user = ownerToken(project);
+
+      await expect(
+        ctx.controller.deleteQuest({ params: { id: held.id } }, { user }),
+      ).rejects.toThrow(
+        `Cannot delete quest #${held.shortId}: Epic #${active.number} is active. Its plan is frozen. Shelve it instead.`,
+      );
+      await expect(
+        ctx.controller.deleteQuest({ params: { id: sealed.id } }, { user }),
+      ).rejects.toThrow(
+        `Cannot delete quest #${sealed.shortId}: Epic #${done.number} is concluded.`,
+      );
+      // Both rows survive.
+      expect((await ctx.repos.quests.getById(held.id)).id).toBe(held.id);
+      expect((await ctx.repos.quests.getById(sealed.id)).id).toBe(sealed.id);
+    });
+  });
+
   it("shelve and unassign stay ungated in every phase", async ({ expect }) => {
     // The two exits out of a concluded epic for rows that pre-date the
     // rule. Refusing either would trap the first such row forever.

@@ -19,6 +19,7 @@ import {
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { EpicDependencyService } from "../services/EpicDependencyService.ts";
+import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
@@ -63,6 +64,12 @@ export class EpicController {
   linkService = $inject(FolioLinkService);
   attachment = $inject(ReleaseAttachmentService);
   dependencies = $inject(EpicDependencyService);
+  /**
+   * The epic phase gate (epic #31): the quest set can change only while the
+   * epic is `planned`, and the two status edges each have a precondition.
+   * Every refusal and its wording is written on the service, once.
+   */
+  workflow = $inject(EpicWorkflowService);
   audits = $inject(LoreAudits);
   owned = $inject(OwnedResourceProvider);
 
@@ -434,6 +441,24 @@ export class EpicController {
       }
 
       if (quest.epicId !== epic.id) {
+        // The plan freeze (epic #31). A quest enters an epic only while
+        // that epic is planned, and a MOVE has to satisfy both ends: the
+        // quest cannot be pulled out of a frozen plan any more than pushed
+        // into one. The target is checked first, since it is what the
+        // caller asked for; the source only when there is one.
+        this.workflow.assertPlanEditable(epic, { kind: "add" });
+        if (quest.epicId != null) {
+          const source = await this.epics.findOne({
+            where: { id: { eq: quest.epicId } },
+          });
+          if (source) {
+            this.workflow.assertPlanEditable(source, {
+              kind: "remove",
+              quest,
+            });
+          }
+        }
+
         await this.quests.updateById(quest.id, { epicId: epic.id });
         await this.logEpic("attach", epic, user, {
           quest: quest.shortId,
@@ -455,6 +480,11 @@ export class EpicController {
 
       const quest = await this.quests.getById(params.questId);
       if (quest.epicId === epic.id) {
+        // The plan freeze (epic #31): a quest leaves an epic only while the
+        // epic is planned. Shelve is the route for one that will not be
+        // done, and the message says so.
+        this.workflow.assertPlanEditable(epic, { kind: "remove", quest });
+
         await this.quests.updateById(quest.id, { epicId: null });
         await this.logEpic("detach", epic, user, { quest: quest.shortId });
       }
