@@ -121,4 +121,35 @@ export class PlaygroundJobs {
       this.log.info("slow finished", payload);
     },
   });
+
+  /**
+   * A two-stage sequence on one execution row: record the intent, then
+   * send the reminder two minutes later. The wait is a `reschedule()` of
+   * the same row, so the admin shows one execution parked on its second
+   * stage rather than two jobs, and a restart inside the wait loses
+   * nothing. The abandoned-cart shape, in miniature.
+   */
+  public readonly reminderSequence = $job({
+    description:
+      "Records an intent, then reminds two minutes later on the same execution.",
+    schema: z.object({
+      email: z.string().meta({ format: "email" }),
+      stage: z.enum(["recordIntent", "sendReminder"]).optional(),
+    }),
+    record: "all",
+    handler: async ({ payload, reschedule }) => {
+      switch (payload.stage ?? "recordIntent") {
+        case "recordIntent":
+          this.log.info("intent recorded (demo)", { email: payload.email });
+          reschedule({
+            delay: [2, "minute"],
+            payload: { ...payload, stage: "sendReminder" },
+          });
+          return;
+        case "sendReminder":
+          this.log.info("reminder sent (demo)", { to: payload.email });
+          return;
+      }
+    },
+  });
 }
