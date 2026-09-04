@@ -21,6 +21,7 @@ import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
+import EpicReviewPromptDialog from "./EpicReviewPromptDialog.tsx";
 import ProjectEpics from "./ProjectEpics.tsx";
 
 const epicOf = (
@@ -134,6 +135,10 @@ describe("ProjectEpics - the status filter", () => {
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <ProjectEpics />
+          {/* Mounted in `Layout` in the app, so this spec supplies its own.
+              Review writes an atom rather than the clipboard now, and the
+              dialog is what reads it. */}
+          <EpicReviewPromptDialog />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
@@ -297,8 +302,12 @@ describe("ProjectEpics - the status filter", () => {
       expect(items.join(" ")).not.toContain("Begin");
     });
 
-    it("copies a prompt naming the epic, the URL and the calls that read it", async () => {
-      const written = stubClipboard();
+    /**
+     * ⚠️ Review no longer copies on click (feedback #2097). It opens the
+     * prompt for editing first, so this asserts the DIALOG'S initial value -
+     * the same guarantee, moved to where the text now appears.
+     */
+    it("opens the prompt, prefilled with the epic, the URL and the calls that read it", async () => {
       await mount();
 
       const items = await openRowMenu("#1 - Planned epic");
@@ -306,15 +315,62 @@ describe("ProjectEpics - the status filter", () => {
       expect(review).toBeTruthy();
       fireEvent.click(review!);
 
-      await waitFor(() => expect(written).toHaveLength(1));
-      const prompt = written[0]!;
+      const editor = (await screen.findByTestId(
+        "epic-review-prompt-text",
+      )) as HTMLTextAreaElement;
+      const prompt = editor.value;
       expect(prompt).toContain("#1");
       expect(prompt).toContain("Planned epic");
       expect(prompt).toContain("/epics/1");
       expect(prompt).toContain("epic_get");
       expect(prompt).toContain('detail: "full"');
-      // Nothing that is not the four fields the builder takes.
+      // Nothing that is not the four fields the builder takes. Letting a
+      // human edit the text before copying does not weaken this: the
+      // guarantee is about what Lore ADDS, and what Lore added is this value.
       expect(prompt).not.toContain("sg_");
+    });
+
+    it("copies what the reader edited, not what was built", async () => {
+      const written = stubClipboard();
+      await mount();
+
+      const items = await openRowMenu("#1 - Planned epic");
+      fireEvent.click(
+        items.find((item) => item.textContent?.includes("Review"))!,
+      );
+
+      const editor = (await screen.findByTestId(
+        "epic-review-prompt-text",
+      )) as HTMLTextAreaElement;
+      // The one sentence of context that was the whole point of the report.
+      fireEvent.change(editor, {
+        target: { value: `${editor.value}\n\nFocus on the migration.` },
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Copy and close" }));
+
+      await waitFor(() => expect(written).toHaveLength(1));
+      expect(written[0]).toContain("Focus on the migration.");
+      // Still the built prompt underneath, not a replacement.
+      expect(written[0]).toContain("epic_get");
+    });
+
+    it("copies nothing when the reader cancels", async () => {
+      const written = stubClipboard();
+      await mount();
+
+      const items = await openRowMenu("#1 - Planned epic");
+      fireEvent.click(
+        items.find((item) => item.textContent?.includes("Review"))!,
+      );
+      await screen.findByTestId("epic-review-prompt-text");
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() =>
+        expect(screen.queryByTestId("epic-review-prompt-text")).toBeNull(),
+      );
+      expect(written).toHaveLength(0);
     });
   });
 });

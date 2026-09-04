@@ -307,7 +307,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
             <Button
               variant="outline"
               size="lg"
-              onClick={() => void copyReviewPrompt(epic)}
+              onClick={() => copyReviewPrompt(epic)}
             >
               <ClipboardCheck className="size-4" />
               {tr("epic.action.review")}

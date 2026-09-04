@@ -7,6 +7,7 @@ import { NestedView } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import { useEffect } from "react";
 
+import EpicReviewPromptDialog from "./project/epics/EpicReviewPromptDialog.tsx";
 import Spotlight from "./shared/spotlight/Spotlight.tsx";
 
 const Layout = () => {
@@ -37,6 +38,11 @@ const Layout = () => {
         {/* App-wide so ⌘K works from any page, not just the ones that
             happen to render a header. */}
         <Spotlight />
+        {/* App-wide for the same reason: two surfaces open the review prompt
+            (the Epics row menu and the epic page) and neither should own the
+            dialog, or the two would drift. Driven by
+            `epicReviewPromptAtom`. */}
+        <EpicReviewPromptDialog />
         <Toaster />
       </DialogProvider>
     </TooltipProvider>

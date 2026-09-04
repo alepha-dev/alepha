@@ -458,9 +458,7 @@ const ProjectEpics = () => {
                   // action is inert until someone clicks it, and what it
                   // does is write text to the clipboard.
                   label: tr("epic.action.review"),
-                  onClick: async (row: EpicResource) => {
-                    await copyReviewPrompt(row);
-                  },
+                  onClick: (row: EpicResource) => copyReviewPrompt(row),
                 },
                 {
                   icon: Play,
