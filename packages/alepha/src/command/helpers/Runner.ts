@@ -7,8 +7,6 @@ import { $logger } from "alepha/logger";
 import { ShellProvider } from "alepha/system";
 
 import { CommandError } from "../errors/CommandError.ts";
-import { ExclusiveProvider } from "../providers/ExclusiveProvider.ts";
-import { TaskCacheProvider } from "../providers/TaskCacheProvider.ts";
 
 export type Task = {
   name: string;
@@ -30,40 +28,6 @@ export interface RunOptions {
    * Root directory to execute the command in.
    */
   root?: string;
-
-  /**
-   * Hold a machine-wide slot, named by this key, for the duration of the task.
-   *
-   * The same queue `$command`'s `exclusive` option uses, one level down: a
-   * pipeline that contends for something in two of its twelve steps queues for
-   * those two rather than for all twelve. A second process running a task
-   * under the same key waits its turn instead of failing.
-   *
-   * A string only, and never derived: at this level there is no command name
-   * to build a key from, and a key that differed per call site would queue
-   * every caller behind itself and protect nothing. Name the resource, and
-   * namespace it (`myapp:postgres`), because the queue is machine-wide and
-   * shared with every other project on the machine.
-   *
-   * An array of tasks takes ONE slot for the whole group, so tasks meant to
-   * run together still do.
-   */
-  exclusive?: string;
-
-  /**
-   * Skip this task when a task with the same key has already passed.
-   *
-   * The key is the caller's to compute and must cover everything the task
-   * reads: see {@link TaskCacheProvider}. A task that throws is never recorded, so
-   * a red step cannot cache itself green, and an array of tasks is one unit
-   * under one key exactly as `exclusive` is one slot for a group.
-   *
-   * ⚠️ Nothing is restored. This records that a task passed, not what it
-   * produced, so it suits checks and suites rather than anything whose point
-   * is a file on disk. For those, `alepha build --if-stale` compares the
-   * artifact against its sources instead of trusting a record.
-   */
-  cache?: string;
 }
 
 export interface RunnerMethod {
@@ -99,8 +63,6 @@ export class Runner {
   protected readonly startTime: number = this.dateTime.nowMillis();
   protected readonly alepha = $inject(Alepha);
   protected readonly shell = $inject(ShellProvider);
-  protected readonly exclusive = $inject(ExclusiveProvider);
-  protected readonly cache = $inject(TaskCacheProvider);
   public readonly run: RunnerMethod;
 
   constructor() {
@@ -144,51 +106,7 @@ export class Runner {
         tasks = { name, handler };
       }
 
-      const cacheKey = typeof options === "object" ? options.cache : undefined;
-
-      if (cacheKey && (await this.cache.isFresh(cacheKey))) {
-        const name = Array.isArray(tasks)
-          ? tasks.map((it) => it.name).join(" + ")
-          : tasks.name;
-        // Announced, never silent. A skipped step that prints nothing looks
-        // exactly like a step that ran and found nothing to do, and the whole
-        // risk of a cache is that it says a task passed against code it has
-        // never seen.
-        this.log.info(`Skipping '${name}': cached (${cacheKey.slice(0, 12)})`);
-        return "";
-      }
-
-      // Recorded only after the task resolves. Recording up front, or in a
-      // `finally`, turns one red run into a permanently green one.
-      const remember = async <T>(result: Promise<T>): Promise<T> => {
-        const value = await result;
-        if (cacheKey) {
-          await this.cache.record(cacheKey);
-        }
-        return value;
-      };
-
-      const key = typeof options === "object" ? options.exclusive : undefined;
-
-      if (!key) {
-        return await remember(this.execute(tasks));
-      }
-
-      // One slot around the whole group, not one per task: an array is tasks
-      // that were asked to run together, and a ticket each would make the
-      // group wait for itself.
-      const slot = await this.exclusive.acquire(key, {
-        command: Array.isArray(tasks)
-          ? tasks.map((it) => it.name).join(" + ")
-          : tasks.name,
-        cwd: root ?? process.cwd(),
-      });
-
-      try {
-        return await remember(this.execute(tasks));
-      } finally {
-        await slot.release();
-      }
+      return await this.execute(tasks);
     };
 
     runFn.rm = async (
@@ -197,9 +115,10 @@ export class Runner {
     ): Promise<string> => {
       const root = options.root;
 
-      // `options` is forwarded so `exclusive` is honoured here too. `rm` and
-      // `cp` build their own Task, and `rm` used to drop the caller's options
-      // on the floor: the same class of silent no-op that `root` was fixed for.
+      // `options` is forwarded so `alias` and `root` are honoured here too.
+      // `rm` and `cp` build their own Task, and `rm` used to drop the caller's
+      // options on the floor, the same class of silent no-op that `root` was
+      // fixed for.
       if (Array.isArray(files) || files.includes("*")) {
         return runFn(
           {

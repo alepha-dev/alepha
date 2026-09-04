@@ -208,35 +208,6 @@ export interface CommandPrimitiveOptions<
   hide?: boolean;
 
   /**
-   * Ensure only one run of this command executes at a time on the machine.
-   *
-   * A second process running the same command waits its turn in a
-   * first-in-first-out queue rather than failing, and reports who holds the
-   * slot while it waits. The slot covers the pre-hooks, the handler and the
-   * post-hooks as one unit.
-   *
-   * `true` derives the key from the package name at the command's root plus
-   * the command name, so several checkouts of one project (git worktrees, for
-   * instance) share a slot while unrelated projects never block each other.
-   * Pass a string to set the key explicitly, which is also how two commands
-   * share one slot.
-   *
-   * The queue covers one machine, not a cluster. Set `ALEPHA_NO_EXCLUSIVE=1`
-   * to bypass it.
-   *
-   * @example
-   * ```ts
-   * verify = $command({
-   *   exclusive: true,
-   *   handler: async ({ run }) => {
-   *     await run("yarn test");
-   *   }
-   * });
-   * ```
-   */
-  exclusive?: boolean | string;
-
-  /**
    * Adds a `--mode, -m` flag to load environment files.
    *
    * When enabled:

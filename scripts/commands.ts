@@ -1,35 +1,7 @@
 import { connect } from "node:net";
 
-import { $inject, AlephaError, z } from "alepha";
-import { ChangedFiles, WorkspaceGraph } from "alepha/cli";
-import { $command, type RunOptions, TaskCacheProvider } from "alepha/command";
-import { $logger } from "alepha/logger";
-import { FileSystemProvider, ShellProvider } from "alepha/system";
-
-/**
- * What `--affected` decided to run.
- */
-interface AffectedSelection {
-  /**
-   * The workspaces the change can reach: the ones that own a changed file,
-   * plus everything that depends on them.
-   */
-  names: string[];
-
-  /**
-   * Vitest project filters for the affected workspaces that own a config.
-   *
-   * Globbed, because a workspace with browser specs owns `<name>` and
-   * `<name>:jsdom` and only the glob selects the pair.
-   */
-  projects: string[];
-
-  /**
-   * Whether the change reached every workspace, in which case the selection
-   * is not a selection and the pipeline runs whole.
-   */
-  everything: boolean;
-}
+import { AlephaError, z } from "alepha";
+import { $command } from "alepha/command";
 
 /**
  * The repository's own commands: `clean`, `verify` / `v` and `verify:go` /
@@ -45,13 +17,6 @@ interface AffectedSelection {
  * fan-out instead.
  */
 export class AlephaCommands {
-  protected readonly log = $logger();
-  protected readonly graph = $inject(WorkspaceGraph);
-  protected readonly changedFiles = $inject(ChangedFiles);
-  protected readonly fs = $inject(FileSystemProvider);
-  protected readonly shell = $inject(ShellProvider);
-  protected readonly cache = $inject(TaskCacheProvider);
-
   public readonly clean = $command({
     description: "Will remove all generated files.",
     handler: async ({ run }) => {
@@ -88,57 +53,6 @@ export class AlephaCommands {
   });
 
   /**
-   * The machine-wide queue key held by `test` and `test:bun`, the two steps
-   * that cannot overlap between checkouts.
-   *
-   * The service env in `vitest.projects.ts` points every checkout at the same
-   * `compose.yml` services: one postgres, one redis, one s3mock, one emqx.
-   * Postgres already isolates itself per run with a `test_alepha_{epoch}_{rand8}`
-   * schema, and the mqtt specs namespace their own topics with a
-   * `randomUUID()`, so neither needs this queue. Redis (one fixed key prefix,
-   * database 0) and s3mock (one fixed bucket) do not isolate themselves, so
-   * two checkouts testing at once can interleave writes or empty a bucket the
-   * other is still using. This queue is what keeps that from happening, by
-   * making them take turns.
-   *
-   * **Not `e2e`/`e2e-cli`.** Checked rather than assumed: the service
-   * variables live in `vitest.projects.ts`, which Playwright never loads, and
-   * no e2e config or `.env` sets one. `examples/playground` and
-   * `examples/shop` pin `:memory:`; `lore`, `docs` and `examples/ssr` set no
-   * `DATABASE_URL`, so each uses its own checkout's SQLite file; `e2e-cli`
-   * says outright it needs no registry and no Docker. Ports are already
-   * partitioned by checkout in `playwright.port.ts`. Nothing shared, nothing
-   * to queue for.
-   *
-   * Namespaced because the queue is machine-wide: a bare "test" would put this
-   * repo behind any other project on the machine that picked the same word.
-   *
-   * ⚠️ **This queue is expensive, and the cost is what will tempt the next
-   * reader to delete it.** Three worktrees turn three independent runs into
-   * one line: a `yarn v` can sit behind "2 runs ahead of you" for twenty
-   * minutes to reach a step that takes ninety seconds. It was deleted on
-   * 2026-09-04 for exactly that reason and restored the same day.
-   *
-   * Removing it produced a red `playwright.port.spec.ts > keeps stepping while
-   * ports stay busy`, `expected 4581 to be 4571`, and that failure was first
-   * blamed on the removal. It was not. `lsof` found 4561 and 4571 held by two
-   * orphaned `node dist` e2e servers left behind by another worktree's earlier
-   * run. That spec holds its own first two candidates and asserts the third is
-   * free, so ANY squatter on the machine breaks it, with or without this
-   * queue. Do not read that failure as evidence for keeping the queue: it is a
-   * fragility in a spec that binds real sockets, and the fix is to fake the
-   * probe there.
-   *
-   * What the queue actually buys remains only what the paragraphs above say -
-   * redis and s3mock, which do not isolate themselves. The honest way out is
-   * to give those two a per-run key prefix and bucket name the way postgres
-   * and mqtt already do, and then delete this. `ALEPHA_NO_EXCLUSIVE` is the
-   * per-run escape hatch meanwhile, when you know yours is the only checkout
-   * testing.
-   */
-  protected static readonly suites = "alepha:test";
-
-  /**
    * The services `vitest.config.ts` points at, exactly the set `compose.yml`
    * provides. When they are down, the suite fails with hundreds of opaque
    * PostgresError/S3NetworkError lines that name no cause, so `verify` probes
@@ -153,13 +67,6 @@ export class AlephaCommands {
 
   public readonly verify = $command({
     aliases: ["v"],
-    // The machine-wide slot is on the steps that contend, not on this
-    // command: see `suites` above and the `exclusive:` options below.
-    //
-    // It was on the command first. Correct, and far too wide. `lint`,
-    // `typecheck`, `check:*` and `build` share nothing between checkouts, so
-    // a second worktree sat through eight minutes of them before finding out
-    // its own typecheck was broken.
     description:
       "Run linter, checker and tests (JavaScript/TypeScript only, Go lives in `v:go`).",
     flags: z.object({
@@ -167,40 +74,8 @@ export class AlephaCommands {
         .boolean()
         .describe("Skip build + e2e (faster local sanity check).")
         .optional(),
-      // Both default ON, and `--no-affected` / `--no-cache` turn them off:
-      // see `CliProvider.resolveFlagDef`, where `--no-x` exists precisely so a
-      // defaulted-true flag can be switched off.
-      //
-      // They were opt-in first, on the reasoning that this command is the gate
-      // before a commit and a gate should be exact. Two of the three arguments
-      // for that turned out to be wrong. CI does not run this command at all,
-      // it runs the underlying scripts as separate steps, so a default here
-      // cannot weaken it. And `deploy-lore-production` has
-      // `needs: [verify, e2e]`, so a suite missed locally costs a red main and
-      // a blocked deploy, not a bad one.
-      //
-      // What is left is that a speedup you have to remember to type is a
-      // speedup nobody gets.
-      affected: z
-        .boolean()
-        .describe(
-          "Restrict test, build and e2e to the workspaces a change can reach. `--no-affected` runs everything.",
-        )
-        .default(true),
-      since: z
-        .string()
-        .describe("The ref `--affected` compares against.")
-        .optional(),
-      cache: z
-        .boolean()
-        .describe(
-          "Skip steps that already passed against this exact tree, in any checkout. `--no-cache` runs them.",
-        )
-        .default(true),
     }),
     handler: async ({ run, flags }) => {
-      const suites = AlephaCommands.suites;
-
       // We need to force CI environment
       // -> tsdown has different behavior when run in CI
       process.env.CI = "true";
@@ -209,67 +84,6 @@ export class AlephaCommands {
       process.env.YARN_ENABLE_IMMUTABLE_INSTALLS = "false";
       process.env.YARN_ENABLE_HARDENED_MODE = "false";
 
-      // Before the install, so a ref that does not resolve costs two seconds
-      // rather than the whole prologue.
-      const affected = flags.affected
-        ? await this.selectOrRunEverything(flags.since ?? "origin/main")
-        : undefined;
-
-      // One fingerprint for the whole run, taken before anything can modify
-      // the tree. `yarn copy` and `yarn lint` both write, so a per-step
-      // fingerprint would key each step to a tree the previous step produced,
-      // and no two runs would ever agree.
-      //
-      // ⚠️ The constraint that buys: a step which WRITES to the tree must not
-      // change the inputs of a later step that is keyed on the same
-      // fingerprint. Only `copy` qualifies, and it holds, for a reason worth
-      // stating rather than rediscovering. `copy` regenerates the reference
-      // docs and the package READMEs and nothing else, no spec reads those,
-      // and the root `copy` script ends in `yarn lint`, so its own output is
-      // formatted before the pipeline's `lint` step is reached. That is what
-      // makes it safe for the `--fast` and full lanes to share a cached
-      // `lint`, `test` and `test:bun`, which is worth real time: a full run
-      // after a `--fast` one on the same tree skips ~110s of them.
-      //
-      // If `copy` ever writes something a later step reads, that sharing
-      // becomes wrong, and the fix is to put the lane into the key.
-      // A fingerprint that cannot be taken disables the cache for this run
-      // rather than failing it. `treeFingerprint` still raises, because a
-      // fingerprint that quietly fell back to a constant would make every step
-      // of every run a hit; catching it HERE is what keeps that property while
-      // letting a checkout git cannot describe verify normally.
-      let fingerprint: string | undefined;
-      if (flags.cache) {
-        try {
-          fingerprint = await this.treeFingerprint();
-        } catch (error) {
-          this.log.warn(
-            `--cache disabled for this run: ${(error as Error).message}`,
-          );
-        }
-      }
-
-      /**
-       * A step whose result can be remembered for an identical tree.
-       *
-       * Deliberately not used for the install or the cleans below: those exist
-       * for their side effects on a directory the fingerprint does not
-       * describe, and skipping one leaves a later step to run against a tree
-       * that is not there.
-       */
-      const step = (command: string | string[], extra?: RunOptions) =>
-        run(command, {
-          ...(fingerprint
-            ? {
-                cache: this.cache.digest([
-                  fingerprint,
-                  Array.isArray(command) ? command.join(" + ") : command,
-                ]),
-              }
-            : {}),
-          ...extra,
-        });
-
       await run("yarn");
       await run(`yarn clean`);
 
@@ -277,8 +91,8 @@ export class AlephaCommands {
         // No `copy` in this lane, so nothing generated exists to format and
         // `lint` can go first: see the full path below for why the order
         // matters there.
-        await step(`yarn lint`);
-        await step([
+        await run(`yarn lint`);
+        await run([
           `yarn typecheck`,
           `yarn check:deps`,
           `yarn check:conventions`,
@@ -291,16 +105,11 @@ export class AlephaCommands {
         // Sequential, like the full lane below. These two ran as a parallel
         // group here for as long as this lane existed, and that is one
         // process interleaving with itself: `test:bun` drives the same
-        // postgres on 15432 as `test` does, so no queue at any granularity
-        // could have saved it. This is the lane used as the gate before a
-        // commit, which makes it a good suspect for a flake that never
-        // reproduces the same way twice.
-        await this.runStep(
-          (cmd) => step(cmd, { exclusive: suites }),
-          this.testCommand(affected),
-          "test",
-        );
-        await step(`yarn test:bun`, { exclusive: suites });
+        // postgres on 15432 as `test` does. This is the lane used as the gate
+        // before a commit, which makes it a good suspect for a flake that
+        // never reproduces the same way twice.
+        await run(`yarn test`);
+        await run(`yarn test:bun`);
         return;
       }
 
@@ -313,7 +122,7 @@ export class AlephaCommands {
       // buys is timings that no longer mean anything when a step regresses,
       // and memory pressure on the one tool in this repo with a history of
       // exhausting it. The only pairing below that pays is e2e.
-      await step(`yarn copy`);
+      await run(`yarn copy`);
 
       // Redundant in this lane, and kept anyway.
       //
@@ -329,18 +138,18 @@ export class AlephaCommands {
       // seconds. It stays because it is the lint gate the `--fast` lane
       // runs too, and a pipeline whose linting is a side effect of a step
       // named `copy` is one rename away from having none.
-      await step(`yarn lint`);
+      await run(`yarn lint`);
 
       // After `copy` for the same reason: checking before it would validate
       // a stale copy and miss a doc-breaking comment change.
-      await step(`yarn check:docs`);
-      await step(`yarn check:deps`);
-      await step(`yarn check:conventions`);
-      await step(`yarn typecheck`);
+      await run(`yarn check:docs`);
+      await run(`yarn check:deps`);
+      await run(`yarn check:conventions`);
+      await run(`yarn typecheck`);
       await this.assertServicesUp();
 
-      await step(`yarn check:i18n`);
-      await step(`yarn check:migrations`);
+      await run(`yarn check:i18n`);
+      await run(`yarn check:migrations`);
 
       // `test` genuinely does not need `build`, and pairing them still lost:
       // together they took 129.4s against 142.3s serial, because `test` alone
@@ -348,17 +157,12 @@ export class AlephaCommands {
       // is not worth a test run that takes two and a half times as long to
       // tell you it failed.
       //
-      // Still two calls rather than `run([a, b])`, and still for the reason
-      // above rather than for the queue that used to be here: `run([a, b])`
-      // is `Promise.all`, and these two drive the same postgres, so running
-      // them together is one process interleaving with itself.
-      await this.runStep(
-        (cmd) => step(cmd, { exclusive: suites }),
-        this.testCommand(affected),
-        "test",
-      );
-      await step(`yarn test:bun`, { exclusive: suites });
-      await this.runStep(step, this.foreachCommand("build", affected), "build");
+      // Two calls rather than `run([a, b])` for `test` and `test:bun`:
+      // `run([a, b])` is `Promise.all`, and these two drive the same postgres,
+      // so running them together is one process interleaving with itself.
+      await run(`yarn test`);
+      await run(`yarn test:bun`);
+      await run(`yarn build`);
 
       // Give the one dev-mode e2e suite a cold Vite cache. Only
       // `apps/examples/ssr/playwright.dev.config.ts` runs `yarn dev`; every
@@ -378,26 +182,7 @@ export class AlephaCommands {
       // `e2e` serves the playground on its own port (see its
       // playwright.config.ts) and `e2e-cli` exercises a packed tarball with
       // no server at all.
-      //
-      // `e2e-cli` is not in the graph's reach and has to be decided by hand:
-      // it declares no dependency on `alepha`, because what it exercises is a
-      // packed tarball rather than an import. So the graph never marks it
-      // affected, and skipping it on that basis would mean a change to the
-      // CLI never runs the suite that tests the CLI.
-      const e2eSuites: string[] = [];
-      const browserSuite = this.foreachCommand("e2e", affected);
-      if (browserSuite) {
-        e2eSuites.push(browserSuite);
-      }
-      if (this.runsCliSuite(affected)) {
-        e2eSuites.push(`yarn e2e-cli`);
-      }
-
-      if (e2eSuites.length === 0) {
-        this.log.info("--affected: skipping e2e, nothing affected owns it");
-      } else {
-        await step(e2eSuites);
-      }
+      await run([`yarn e2e`, `yarn e2e-cli`]);
 
       // ⚠️ `{ root }`, never `cd X && …`. `shell.run(string)` passes every
       // token through as a LITERAL argument on both runtimes; that is a
@@ -448,235 +233,9 @@ export class AlephaCommands {
       // `test:linux` reproduces the `bay` CI job in a container: gofmt, vet,
       // build, the whole suite, and a cross-compile for both Linux
       // architectures.
-      //
-      // No exclusive slot. It used to share one with `verify` on the grounds
-      // that both saturate the machine, which cost more than it bought: this
-      // lane runs in its own container and touches none of the four services
-      // `verify`'s test steps queue for, so all it did was make one command
-      // wait out the other for no shared resource at all.
       await run(`yarn w bay test:linux`);
     },
   });
-
-  /**
-   * A digest of the exact tree this run is verifying.
-   *
-   * `HEAD^{tree}` covers everything committed; the working tree is added on
-   * top as one hash per dirty or untracked file, because the same file list
-   * can hold different content and a run has to be able to tell an edit from
-   * an edit and back again.
-   *
-   * ⚠️ Raises rather than degrades. Every other failure mode here is a slow
-   * run; this one is a wrong one. A fingerprint that quietly fell back to a
-   * constant would make every step of every run a cache hit, and the pipeline
-   * would report success without executing anything.
-   */
-  protected async treeFingerprint(): Promise<string> {
-    const tree = await this.git(["rev-parse", "HEAD^{tree}"]);
-    const status = await this.git(["status", "--porcelain", "-uall"]);
-
-    const paths: string[] = [];
-    for (const line of status.split("\n").filter(Boolean)) {
-      // Porcelain v1 is two status characters, a space, then the path.
-      const path = line.slice(3);
-      // A rename prints "old -> new" and a deletion has nothing to hash. Both
-      // are already described by the status line itself.
-      if (!path.includes(" -> ") && (await this.fs.exists(path))) {
-        paths.push(path);
-      }
-    }
-
-    const contents =
-      paths.length > 0 ? await this.git(["hash-object", "--", ...paths]) : "";
-
-    return this.cache.digest([tree, status, contents]);
-  }
-
-  /**
-   * One git invocation, or an error naming it.
-   */
-  protected async git(argv: string[]): Promise<string> {
-    const result = await this.shell.capture(["git", ...argv]);
-    if (result.exitCode !== 0) {
-      throw new AlephaError(
-        `Could not fingerprint the tree: \`git ${argv.join(" ")}\` exited ${result.exitCode}. ${result.stderr}`.trim(),
-      );
-    }
-    return result.stdout.trim();
-  }
-
-  /**
-   * {@link selectAffected}, degrading to "run everything" rather than failing.
-   *
-   * The selection is on by default, so it has to be impossible for it to break
-   * a run that would otherwise have worked. A checkout with no `origin/main`,
-   * a remote under another name, a git that will not answer: each used to be a
-   * hard error, which was acceptable while the flag was opt-in and is not now.
-   *
-   * Degrading UPWARDS is the whole point. `ChangedFiles` still raises rather
-   * than reporting an empty change set, because empty means "run nothing" and
-   * then reports success; this turns that raise into the full pipeline, which
-   * is exactly what the command did before the flag existed.
-   */
-  protected async selectOrRunEverything(
-    ref: string,
-  ): Promise<AffectedSelection | undefined> {
-    try {
-      return await this.selectAffected(ref);
-    } catch (error) {
-      this.log.warn(
-        `--affected disabled for this run, verifying everything: ${(error as Error).message}`,
-      );
-      return undefined;
-    }
-  }
-
-  /**
-   * The workspaces a change since `ref` can reach, and how to name them to
-   * the tools that will run them.
-   *
-   * ⚠️ This is a heuristic, and the pipeline says so out loud when it uses
-   * one. It reasons about package boundaries, so it is right about
-   * `dependencies` and blind to everything a package can affect without
-   * declaring it: a shared fixture read by path, a service one suite leaves
-   * dirty for another, an environment variable. `yarn v` without the flag
-   * remains the gate, and CI never passes the flag.
-   *
-   * The reason it can be trusted at all is that its unknowns resolve
-   * generously. A repo-level file selects every workspace, an unplaceable
-   * path selects every workspace, a git that cannot answer raises instead
-   * of reporting an empty change set, and an EMPTY DIFF selects every
-   * workspace rather than none.
-   *
-   * ⚠️ That last one is not symmetry for its own sake, it is the post-pull
-   * trap. `ref` defaults to `origin/main`, and the moment you pull, HEAD IS
-   * `origin/main`, so the diff is empty by construction. The old behaviour
-   * narrowed that to zero workspaces and skipped test, build and e2e, so
-   * `yarn v` straight after a pull exited 0 in seventy seconds having
-   * verified nothing at workspace level - the most dangerous shape a gate
-   * can take, because it looks like a fast green. "Nothing changed" is not
-   * "nothing to check": it means this ref cannot narrow anything, and the
-   * generous reading is the whole repo.
-   */
-  protected async selectAffected(ref: string): Promise<AffectedSelection> {
-    const changed = await this.changedFiles.since(ref);
-    const workspaces = await this.graph.read();
-    const nothingChanged = changed.length === 0;
-    const names = nothingChanged
-      ? workspaces.map((it) => it.name).sort()
-      : [...this.graph.affectedIn(workspaces, changed)].sort();
-    const everything = names.length === workspaces.length;
-
-    const projects: string[] = [];
-    for (const name of names) {
-      const workspace = workspaces.find((it) => it.name === name);
-      if (!workspace) {
-        continue;
-      }
-      const config =
-        workspace.location === "."
-          ? "vitest.config.ts"
-          : `${workspace.location}/vitest.config.ts`;
-      // A workspace with no config owns no project, and naming one that does
-      // not exist fails the whole run with "No projects matched the filter".
-      if (await this.fs.exists(config)) {
-        projects.push(`${name}*`);
-      }
-    }
-
-    if (nothingChanged) {
-      this.log.info(
-        `--affected: nothing changed since ${ref}, so this ref narrows nothing - running the pipeline whole. To verify only what a pull brought in, name the pre-pull commit: --since HEAD@{1}.`,
-      );
-    } else if (everything) {
-      this.log.info(
-        `--affected: ${changed.length} changed file(s) since ${ref} reach every workspace, running the pipeline whole`,
-      );
-    } else {
-      this.log.info(
-        `--affected: ${changed.length} changed file(s) since ${ref} reach ${names.length}/${workspaces.length} workspace(s): ${names.join(", ") || "none"}`,
-      );
-    }
-
-    return { names, projects, everything };
-  }
-
-  /**
-   * The test step, restricted to the affected workspaces.
-   *
-   * `null` means there is nothing to run, which is a different answer from
-   * "run everything" and has to stay different: a change reaching no workspace
-   * that owns specs would otherwise run the whole suite or, worse, be handed
-   * an empty filter that vitest reads as no filter at all.
-   */
-  protected testCommand(affected?: AffectedSelection): string | null {
-    if (!affected || affected.everything) {
-      return `yarn test`;
-    }
-    if (affected.projects.length === 0) {
-      return null;
-    }
-    return `yarn alepha test --project ${affected.projects.join(",")}`;
-  }
-
-  /**
-   * A workspace fan-out, restricted to the affected workspaces.
-   *
-   * `--include` takes one ident per occurrence, so an affected set becomes a
-   * repeated flag rather than one comma-joined value.
-   */
-  protected foreachCommand(
-    script: string,
-    affected?: AffectedSelection,
-  ): string | null {
-    if (!affected || affected.everything) {
-      return `yarn ${script}`;
-    }
-    if (affected.names.length === 0) {
-      return null;
-    }
-    const includes = affected.names
-      .map((name) => `--include ${name}`)
-      .join(" ");
-    return `yarn workspaces foreach -Apt ${includes} run ${script}`;
-  }
-
-  /**
-   * Run a step, or say why it was skipped.
-   *
-   * A skipped step that prints nothing is indistinguishable from a step that
-   * ran and found nothing, which is the whole failure mode an affected-only
-   * pipeline has to avoid reporting as success.
-   */
-  protected async runStep(
-    run: (cmd: string) => Promise<unknown>,
-    command: string | null,
-    skipped: string,
-  ): Promise<void> {
-    if (command === null) {
-      this.log.info(
-        `--affected: skipping ${skipped}, nothing affected owns it`,
-      );
-      return;
-    }
-    await run(command);
-  }
-
-  /**
-   * Whether the packed-CLI suite has to run.
-   *
-   * See the call site: `e2e-cli` has no edge to `alepha` in the graph because
-   * it consumes a tarball, not an import, so it is named here explicitly.
-   */
-  protected runsCliSuite(affected?: AffectedSelection): boolean {
-    if (!affected || affected.everything) {
-      return true;
-    }
-    return (
-      affected.names.includes("alepha") ||
-      affected.names.includes("create-alepha")
-    );
-  }
 
   /**
    * Whether something answers on a local port, within a second.

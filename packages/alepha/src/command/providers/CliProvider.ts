@@ -27,7 +27,6 @@ import {
   type CommandPrimitive,
 } from "../primitives/$command.ts";
 import { ConsoleOutputProvider } from "./ConsoleOutputProvider.ts";
-import { ExclusiveProvider } from "./ExclusiveProvider.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -116,7 +115,6 @@ export class CliProvider {
   protected readonly runner = $inject(Runner);
   protected readonly asker = $inject(Asker);
   protected readonly output = $inject(ConsoleOutputProvider);
-  protected readonly exclusive = $inject(ExclusiveProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly options = $store(cliOptions);
 
@@ -455,44 +453,26 @@ export class CliProvider {
         mode: modeValue,
       };
 
-      // One slot around all three: a pre-hook running outside it would do the
-      // expensive part of the work unserialised.
-      const exclusiveKey = this.exclusive.resolveKey(
-        command.options.exclusive,
-        root,
-        command.name,
-      );
-      const slot = exclusiveKey
-        ? await this.exclusive.acquire(exclusiveKey, {
-            command: command.name,
-            cwd: root,
-          })
-        : undefined;
-
-      try {
-        // Execute pre-hooks
-        const preHooks = this.findPreHooks(command.name);
-        for (const hook of preHooks) {
-          this.log.debug(`Executing pre-hook for '${command.name}'...`);
-          await hook.options.handler(args as CommandHandlerArgs<ZObject>);
-        }
-
-        // Execute main command
-        await command.options.handler(args as CommandHandlerArgs<ZObject>);
-
-        // Execute post-hooks
-        const postHooks = this.findPostHooks(command.name);
-        for (const hook of postHooks) {
-          this.log.debug(`Executing post-hook for '${command.name}'...`);
-          await hook.options.handler(args as CommandHandlerArgs<ZObject>);
-        }
-
-        runner.end();
-
-        this.log.debug(`Command '${command.name}' executed successfully.`);
-      } finally {
-        await slot?.release();
+      // Execute pre-hooks
+      const preHooks = this.findPreHooks(command.name);
+      for (const hook of preHooks) {
+        this.log.debug(`Executing pre-hook for '${command.name}'...`);
+        await hook.options.handler(args as CommandHandlerArgs<ZObject>);
       }
+
+      // Execute main command
+      await command.options.handler(args as CommandHandlerArgs<ZObject>);
+
+      // Execute post-hooks
+      const postHooks = this.findPostHooks(command.name);
+      for (const hook of postHooks) {
+        this.log.debug(`Executing post-hook for '${command.name}'...`);
+        await hook.options.handler(args as CommandHandlerArgs<ZObject>);
+      }
+
+      runner.end();
+
+      this.log.debug(`Command '${command.name}' executed successfully.`);
     });
   }
 

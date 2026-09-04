@@ -30,9 +30,7 @@ Declarative CLI command framework.
 
 - [`CliProvider`](/docs/reference-providers-cliprovider) - CLI provider for parsing and executing commands.
 - [`ConsoleOutputProvider`](/docs/reference-providers-consoleoutputprovider) - What a command _produces_, as opposed to what it _reports_.
-- [`ExclusiveProvider`](/docs/reference-providers-exclusiveprovider) - A machine-wide FIFO queue for CLI commands that must not run concurrently.
 - [`MemoryOutputProvider`](/docs/reference-providers-memoryoutputprovider) - Captures command output instead of writing it to stdout.
-- [`TaskCacheProvider`](/docs/reference-providers-taskcacheprovider) - Remembers that a task passed against a particular set of inputs, so an
 
 ### Environment Variables
 
