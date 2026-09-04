@@ -39,8 +39,8 @@ const DESCRIPTION_DESCRIPTION =
 /**
  * The epic a quest is filed under, carried on `quest_list` / `quest_get`
  * results. Includes the epic's own status (not just its identity) because
- * `quest_list` stays deliberately ungated over MCP (design §5.3): a mixed
- * result can interleave a planned epic's quests with released ones, and
+ * a `quest_list` called with `includePlanned: true`, and `quest_get`
+ * always, can hand back a planned epic's quest next to released ones, and
  * the status is what lets an agent tell them apart instead of reading a
  * flat, undifferentiated list. Absent when the quest is filed under no
  * epic.
@@ -77,7 +77,13 @@ export const questListParamsSchema = projectParamsSchema.extend({
   epic: z
     .integer()
     .describe(
-      "Filter to quests filed under a single epic, by its global id (the `id` field from epic_list / epic_get / epic_create, not the per-project `number`). This tool never hides a planned epic's quests regardless of this filter; see the tool description.",
+      "Filter to quests filed under a single epic, by its global id (the `id` field from epic_list / epic_get / epic_create, not the per-project `number`). An epic-filtered call is never gated: it returns that epic's quests whatever the epic's status, with no need for `includePlanned`.",
+    )
+    .optional(),
+  includePlanned: z
+    .boolean()
+    .describe(
+      "Also return quests filed under `planned` epics. Defaults to false, so this list matches what a member sees in Lore's own backlog: a planned epic's quests are specified but not released, and are hidden here as they are there. Pass true to see everything, or pass `epic:` to read one planned epic's quests directly. A backlog-organisation switch, not a permission: every caller has already passed the membership gate.",
     )
     .optional(),
   limit: z
@@ -418,7 +424,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   epic_number: z
     .integer()
     .describe(
-      "Per-project number of an epic to file this quest under (see epic_list / epic_create). Filing into a `planned` epic keeps the quest out of the human-facing backlog/kanban/reports until the epic is activated; quest_list still returns it, since MCP is deliberately not gated. Owner-only (same gate as every other epic mutation).",
+      "Per-project number of an epic to file this quest under (see epic_list / epic_create). Filing into a `planned` epic keeps the quest out of the human-facing backlog/kanban/reports until the epic is activated, and out of `quest_list`'s default view too: read it back with `quest_list`'s `epic:` filter or `includePlanned: true`. Owner-only (same gate as every other epic mutation).",
     )
     .optional(),
   release_tag: z

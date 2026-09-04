@@ -169,7 +169,7 @@ export class EpicTools {
    */
   epic_create = $tool({
     description:
-      "Create a new epic in the project, in the 'planned' status. Quests filed under a planned epic (quest_create / quest_update's `epic_number`) stay out of the human-facing backlog, kanban and reports until the epic is activated (epic_set_status); quest_list keeps returning them regardless, since MCP is deliberately not gated. Any project member may create one.",
+      "Create a new epic in the project, in the 'planned' status. Quests filed under a planned epic (quest_create / quest_update's `epic_number`) stay out of the human-facing backlog, kanban and reports until the epic is activated (epic_set_status), and out of quest_list's default view; quest_list's `epic:` filter or `includePlanned: true` reads them. Any project member may create one.",
     title: "Create epic",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {

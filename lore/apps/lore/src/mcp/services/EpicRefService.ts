@@ -6,9 +6,10 @@ import type { EpicResource } from "../../api/schemas/epicResourceSchema.ts";
 /**
  * The epic stamped on a quest or folio row over MCP: the `number` an agent
  * addresses it by, its `title`, and its `status`. The status is the one
- * field that is not decoration: neither `quest_list` nor `folio_list` is
- * gated over MCP (design §5.3), so one page can mix a planned epic's rows
- * with released ones, and the status is what lets a caller tell them apart.
+ * field that is not decoration: `folio_list` is never gated, and
+ * `quest_list` is not when called with `includePlanned: true` or an `epic:`
+ * filter, so one page can mix a planned epic's rows with released ones, and
+ * the status is what lets a caller tell them apart.
  */
 export interface EpicRef {
   number: number;

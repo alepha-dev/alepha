@@ -1207,12 +1207,15 @@ export class QuestController {
       // Quests of a `planned` epic are specified but not released into the
       // backlog. This FILTERS; it never mutates a quest row.
       //
-      // Opt-out rather than unconditional, because MCP `quest_list`
-      // (`QuestTools.ts`) calls this same action with `includePlanned: true`
-      // — the spec (§5.3) requires it to stay ungated: an agent that files a
-      // quest into a planned epic must see it in its own next call, or the
-      // tool looks as though it silently failed. The UI never sets it, so
-      // its listing surfaces stay gated.
+      // Two ways past it, and both are deliberate. `includePlanned` is the
+      // explicit opt-out, set by the pickers that need the whole project
+      // (`EpicQuestPicker`, `QuestDependencyPicker`) and, since epic #31,
+      // offered by MCP `quest_list` as an optional parameter that defaults
+      // OFF, so the tool and the UI list the same backlog unless asked
+      // otherwise. `epic` is the implicit one: a caller addressing one epic
+      // is looking at that epic's own quests, planned or not, which is what
+      // lets an agent that just filed a quest into a planned epic read it
+      // back without any flag.
       //
       // `includePlanned` is client-settable and that is fine — every caller
       // has already passed the membership gate, so it exposes nothing the

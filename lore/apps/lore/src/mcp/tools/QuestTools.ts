@@ -332,6 +332,7 @@ export class QuestTools {
   quest_list = $tool({
     description:
       'List quests for the project. Can filter by status (new, accepted, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). Shelved quests — deliberately set aside as out of scope — are hidden unless you pass `status: "shelved"`. ' +
+      "Quests filed under a `planned` epic are hidden too by default, exactly as they are in Lore's own backlog: pass `includePlanned: true` to see them, or `epic:` (an epic's global id) to read one epic's quests whatever its status. Without either, this list is the set of quests that can be accepted: loose ones, and those of active epics. " +
       "Rows carry `updatedAt`, `commentCount` and `lastCommentAt`, and the default order is newest-updated first: keep the timestamp of your last call, and any row whose `lastCommentAt` is later than it means someone spoke since. Read that quest with `quest_get` before writing back to it, or you will answer a conversation you have not seen. " +
       'Descriptions and objectives are NOT inlined by default; pass `detail: "full"` only when you mean to read them all, and `quest_get` when you want one quest in depth.',
     title: "List quests",
@@ -360,11 +361,14 @@ export class QuestTools {
           // `offset: 25, limit: 20` returned rows 20-39 while the tool doc
           // promised 25-44.
           offset: params.offset,
-          // MCP is deliberately NOT gated (spec §5.3): an agent that files a
-          // quest into a planned epic must see it in its own next call, or
-          // this tool looks as though it silently failed. The UI's listing
-          // surfaces never set this — only this tool does.
-          includePlanned: true,
+          // Passed through, default off. This used to be a literal `true`,
+          // on the reasoning that an agent filing a quest into a planned
+          // epic must see it in its own next call. That reasoning is served
+          // by the `epic:` filter, which the controller never gates; what
+          // the literal actually did was make this list disagree with the
+          // backlog a member is looking at, with no parameter to reconcile
+          // the two (84 rows here against 5 in the UI, epic #31).
+          includePlanned: params.includePlanned,
         },
       });
 

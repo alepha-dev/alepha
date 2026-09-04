@@ -229,19 +229,59 @@ describe("Lore MCP — epics", () => {
     expect((await repos.folios.getById(folio.id)).epicId).toBe(epic.id);
   });
 
-  it("quest_list is NOT gated — an agent still sees planned-epic quests", async ({
+  /**
+   * ⚠️ This used to assert the opposite: that `quest_list` is never gated,
+   * so an agent filing into a planned epic sees its quest on the next call.
+   * That default made the tool disagree with the backlog a member looks at
+   * (84 rows here against 5 in the UI on this project), with no parameter to
+   * reconcile the two. Epic #31 flipped it: the default matches the UI, and
+   * the two escape hatches below are what keep the original requirement.
+   */
+  it("quest_list hides a planned epic's quests by default, like the UI", async ({
     expect,
   }) => {
-    // Deliberate asymmetry with the UI. An agent that files a quest into a
-    // planned epic must see it in its own next quest_list call, or the tool
-    // looks as though it silently failed.
     const { alepha, project, questTools, call } = await setup();
     const epic = await createTestEpic(alepha, project, { status: "planned" });
-    const quest = await createTestQuest(alepha, project, { epicId: epic.id });
+    const parked = await createTestQuest(alepha, project, { epicId: epic.id });
+    const loose = await createTestQuest(alepha, project);
 
     const result = await call(questTools.quest_list, { project: project.id });
 
-    expect(result.quests.map((q: any) => q.shortId)).toContain(quest.shortId);
+    const listed = result.quests.map((q: any) => q.shortId);
+    expect(listed).toContain(loose.shortId);
+    expect(listed).not.toContain(parked.shortId);
+  });
+
+  it("quest_list shows them again with includePlanned: true", async ({
+    expect,
+  }) => {
+    const { alepha, project, questTools, call } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "planned" });
+    const parked = await createTestQuest(alepha, project, { epicId: epic.id });
+
+    const result = await call(questTools.quest_list, {
+      project: project.id,
+      includePlanned: true,
+    });
+
+    expect(result.quests.map((q: any) => q.shortId)).toContain(parked.shortId);
+  });
+
+  it("quest_list filtered on an epic is never gated, with no flag", async ({
+    expect,
+  }) => {
+    // The case the old default existed for: an agent that just filed a quest
+    // into a planned epic reads it back by addressing the epic.
+    const { alepha, project, questTools, call } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "planned" });
+    const parked = await createTestQuest(alepha, project, { epicId: epic.id });
+
+    const result = await call(questTools.quest_list, {
+      project: project.id,
+      epic: epic.id,
+    });
+
+    expect(result.quests.map((q: any) => q.shortId)).toContain(parked.shortId);
   });
 
   it("resolves epic_number to the global epic id, scoped to the project", async ({

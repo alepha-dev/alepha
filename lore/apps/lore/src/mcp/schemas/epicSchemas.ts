@@ -159,7 +159,7 @@ export const epicUpdateResultSchema = z.object({
 
 export const epicSetStatusParamsSchema = epicRefSchema.extend({
   status: epicStatusSchema.describe(
-    "New epic status. All transitions between planned/active/done are legal; there is no forbidden edge. Moving to `active` releases the epic's quests into the human-facing backlog/kanban/reports (quest_list already returns them regardless: MCP is not gated).",
+    "New epic status. All transitions between planned/active/done are legal; there is no forbidden edge. Moving to `active` releases the epic's quests into the human-facing backlog/kanban/reports and into quest_list's default view.",
   ),
 });
 
