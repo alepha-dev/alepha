@@ -1427,6 +1427,10 @@ export default {
   "epic.progress.open": "$1 open",
   "epic.progress.shelved": "$1 shelved",
   "epic.action.delete": "Delete",
+  "epic.action.review": "Review",
+  "epic.action.review.copied":
+    "Review prompt for $1 copied. Paste it into Claude Code or Codex.",
+  "epic.action.review.error": "Could not copy the review prompt.",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
     'Its quests and folios stay, detached from "$1". This cannot be undone.',

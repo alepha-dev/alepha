@@ -8,7 +8,14 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { BookOpen, FileText, Pencil, Swords, Workflow } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardCheck,
+  FileText,
+  Pencil,
+  Swords,
+  Workflow,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
@@ -29,6 +36,7 @@ import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
 import ProjectEpicFlow from "./ProjectEpicFlow.tsx";
 import ProjectEpicFolios from "./ProjectEpicFolios.tsx";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
+import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 
 export interface ProjectEpicProps {
   epic: EpicResource;
@@ -59,6 +67,7 @@ type TabKey = "overview" | "quests" | "flow" | "folios";
  */
 const ProjectEpic = (props: ProjectEpicProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const copyReviewPrompt = useEpicReviewPrompt();
   const toaster = useToast();
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
@@ -290,6 +299,20 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       onTabChange={(v) => setTab(v as TabKey)}
       actions={
         <>
+          {/* Same gate and same key as the Epics row menu's Review
+              (feedback #2087): the plan is reviewable while it is still
+              open, and one key means the two surfaces cannot come to call
+              the action different things. */}
+          {epic.status === "planned" && (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => void copyReviewPrompt(epic)}
+            >
+              <ClipboardCheck className="size-4" />
+              {tr("epic.action.review")}
+            </Button>
+          )}
           <Button variant="outline" size="lg" onClick={() => setEditOpen(true)}>
             <Pencil className="size-4" />
             {tr("epic.edit")}

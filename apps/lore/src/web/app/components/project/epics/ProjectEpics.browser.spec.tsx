@@ -234,4 +234,87 @@ describe("ProjectEpics - the status filter", () => {
       expect(items.join(" ")).not.toContain("0.28.0");
     });
   });
+
+  /**
+   * Review (feedback #2087): the row action that puts an agent prompt on the
+   * clipboard. The prompt's own text is pinned by
+   * `prompts/epicReviewPrompt.spec.ts`; what is asserted here is the wiring
+   * and the gate.
+   */
+  describe("the Review row action", () => {
+    /**
+     * A clipboard jsdom does not have. Assigned rather than mocked - the
+     * same substitution the suite already does for `ResizeObserver`, and
+     * the reason `vi.mock` is not needed for it.
+     */
+    const stubClipboard = () => {
+      const written: string[] = [];
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (text: string) => {
+            written.push(text);
+          },
+        },
+      });
+      return written;
+    };
+
+    const openRowMenu = async (name: string) => {
+      const row = screen.getByRole("link", { name }).closest("tr");
+      expect(row).not.toBeNull();
+      fireEvent.click(
+        within(row!).getByRole("button", { name: "Open row actions" }),
+      );
+      return await waitFor(() => {
+        const found = document.querySelectorAll('[role="menuitem"]');
+        if (found.length === 0) throw new Error("not open yet");
+        return [...found];
+      });
+    };
+
+    it("is offered on a planned epic, beside Begin", async () => {
+      await mount();
+
+      const items = (await openRowMenu("#1 - Planned epic")).map(
+        (item) => item.textContent,
+      );
+
+      expect(items.join(" ")).toContain("Review");
+      expect(items.join(" ")).toContain("Begin");
+    });
+
+    it("is not offered once the epic has begun", async () => {
+      await mount();
+
+      // Reviewing a plan is a thing you do while the plan is still open;
+      // after Begin the quest set is what is being worked.
+      const items = (await openRowMenu("#2 - Active epic")).map(
+        (item) => item.textContent,
+      );
+
+      expect(items.join(" ")).not.toContain("Review");
+      expect(items.join(" ")).not.toContain("Begin");
+    });
+
+    it("copies a prompt naming the epic, the URL and the calls that read it", async () => {
+      const written = stubClipboard();
+      await mount();
+
+      const items = await openRowMenu("#1 - Planned epic");
+      const review = items.find((item) => item.textContent?.includes("Review"));
+      expect(review).toBeTruthy();
+      fireEvent.click(review!);
+
+      await waitFor(() => expect(written).toHaveLength(1));
+      const prompt = written[0]!;
+      expect(prompt).toContain("#1");
+      expect(prompt).toContain("Planned epic");
+      expect(prompt).toContain("/epics/1");
+      expect(prompt).toContain("epic_get");
+      expect(prompt).toContain('detail: "full"');
+      // Nothing that is not the four fields the builder takes.
+      expect(prompt).not.toContain("sg_");
+    });
+  });
 });
