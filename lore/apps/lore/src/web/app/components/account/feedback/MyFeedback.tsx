@@ -83,7 +83,6 @@ const MyFeedback = () => {
       <AlephaTable<MyFeedbackResource>
         key={tableKey}
         className="min-h-0 flex-1"
-        defaultSize={20}
         persistenceKey="lor.me.feedback"
         emptyMessage={String(tr("myFeedback.empty"))}
         filters={{

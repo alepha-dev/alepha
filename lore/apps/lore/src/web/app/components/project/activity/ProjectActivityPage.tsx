@@ -141,7 +141,6 @@ const ProjectActivityPage = () => {
     <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
       <AlephaTable<ProjectActivityRow>
         className="min-h-0 flex-1"
-        defaultSize={25}
         persistenceKey={`lor.activity.${project.id}`}
         // Newest first, which is the question somebody opening this page is
         // asking. The column is sortable, so the other direction is one click.

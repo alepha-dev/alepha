@@ -94,7 +94,6 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
           ) : (
             <AlephaTable<QuestResource>
               data={quests}
-              defaultSize={25}
               emptyMessage={tr("epic.quests.empty")}
               // The page-level action, in the slot the table keeps for it.
               // `toolbar` rather than `actions` because this one opens a
