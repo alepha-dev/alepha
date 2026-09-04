@@ -238,6 +238,7 @@ export class InvitationController {
       // the same question asked from either end.
       await this.audits.member.logSuccess("join", {
         ...this.audits.actor(user),
+        ...this.audits.scope(Number(result.resourceId)),
         resourceType: "project",
         resourceId: String(result.resourceId),
       });

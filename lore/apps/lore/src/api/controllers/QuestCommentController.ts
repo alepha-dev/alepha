@@ -10,6 +10,7 @@ import { type Quest, quests } from "../entities/quests.ts";
 import { questCommentResourceSchema } from "../schemas/questCommentResourceSchema.ts";
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 
 /**
  * The Discussion half of a quest: human comments, which the quest page
@@ -35,6 +36,7 @@ export class QuestCommentController {
   comments = $repository(questComments);
   quests = $repository(quests);
   dt = $inject(DateTimeProvider);
+  audits = $inject(LoreAudits);
   owned = $inject(OwnedResourceProvider);
 
   /**
@@ -156,12 +158,30 @@ export class QuestCommentController {
     handler: async ({ body, user }) => {
       const quest = this.owned.get<Quest>();
 
-      return await this.comments.create({
+      const comment = await this.comments.create({
         questId: quest.id,
         authorId: user.id,
         body: body.body,
         source: body.source,
       });
+
+      // Filed under `quest`, not a `comment` type of its own: a reader
+      // filtering the Activity page by "quest" is asking what happened to
+      // the quests, and a comment is one of the things that happens to one.
+      // The link target is the quest for the same reason - there is no page
+      // that shows a comment on its own.
+      await this.audits.quest.logSuccess("comment", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(quest.projectId),
+        resourceType: "quest",
+        resourceId: String(quest.shortId),
+        description: quest.title,
+        // The comment BODY is deliberately absent. It is member-gated behind
+        // the quest, and an audit row outlives the comment's own deletion.
+        metadata: { commentId: comment.id, source: body.source },
+      });
+
+      return comment;
     },
   });
 

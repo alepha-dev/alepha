@@ -96,10 +96,10 @@ export class SigilController {
         // longer than the rest — see `LoreAudits`.
         await this.audits.sigil.logSuccess("create", {
           ...this.audits.actor(user),
+          ...this.audits.scope(params.projectId),
           resourceType: "sigil",
           resourceId: created.id,
           description: created.name,
-          metadata: { projectId: params.projectId },
         });
 
         return { ...this.toResource(created), token: minted.token };
@@ -176,11 +176,11 @@ export class SigilController {
       // after the leak is found.
       await this.audits.sigil.logSuccess("rotate", {
         ...this.audits.actor(user),
+        ...this.audits.scope(params.projectId),
         severity: "warning",
         resourceType: "sigil",
         resourceId: sigil.id,
         description: sigil.name,
-        metadata: { projectId: params.projectId },
       });
 
       return { ...this.toResource(rotated), token: minted.token };
@@ -293,11 +293,11 @@ export class SigilController {
       // on `sigilId`), which is why rotate exists and why this is a warning.
       await this.audits.sigil.logSuccess("delete", {
         ...this.audits.actor(user),
+        ...this.audits.scope(params.projectId),
         severity: "warning",
         resourceType: "sigil",
         resourceId: sigil.id,
         description: sigil.name,
-        metadata: { projectId: params.projectId },
       });
 
       return { ok: true };

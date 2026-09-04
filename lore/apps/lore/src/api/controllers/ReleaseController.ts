@@ -1,7 +1,11 @@
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
-import { OwnedResourceProvider, $secure } from "alepha/security";
+import {
+  OwnedResourceProvider,
+  type UserAccountToken,
+  $secure,
+} from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -36,8 +40,40 @@ export class ReleaseController {
   quests = $repository(quests);
   dt = $inject(DateTimeProvider);
   audits = $inject(LoreAudits);
+
   limits = $inject(ProjectLimits);
   contents = $inject(ReleaseContentService);
+
+  /**
+   * One project-layer audit row for something that happened to a release.
+   *
+   * `resourceId` is the **tag**: a release is addressed by its tag
+   * (`/:projectSlug/releases/0.28.0`), which is what makes this row a link.
+   * `tag` is nullable at the column even though the create schema requires
+   * it, so the number stands in rather than writing a row that resolves to
+   * nothing.
+   */
+  protected async logRelease(
+    action: string,
+    release: {
+      id: number;
+      number: number;
+      tag?: string;
+      title: string;
+      projectId: number;
+    },
+    user: UserAccountToken | undefined,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.audits.release.logSuccess(action, {
+      ...this.audits.actor(user),
+      ...this.audits.scope(release.projectId),
+      resourceType: "release",
+      resourceId: release.tag ?? String(release.number),
+      description: release.title,
+      ...(metadata ? { metadata } : {}),
+    });
+  }
   owned = $inject(OwnedResourceProvider);
 
   /**
@@ -183,7 +219,7 @@ export class ReleaseController {
       }),
       response: releases.schema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
       const tag = this.assertTag(body.tag);
 
       // There is deliberately no "one open at a time" guard: `0.28.0`,
@@ -205,7 +241,7 @@ export class ReleaseController {
       // After the cap, so a refused create does not burn a number.
       const number = await this.releaseNumber.next(String(params.projectId));
 
-      return await this.releases.create({
+      const release = await this.releases.create({
         projectId: params.projectId,
         number,
         tag,
@@ -213,6 +249,9 @@ export class ReleaseController {
         description: body.description ?? "",
         ...(body.targetDate ? { targetDate: body.targetDate } : {}),
       });
+      await this.logRelease("create", release, user);
+
+      return release;
     },
   });
 
@@ -266,13 +305,7 @@ export class ReleaseController {
 
       // Publishing is one-way and freezes the record, which is exactly what
       // makes it worth a row.
-      await this.audits.release.logSuccess("publish", {
-        ...this.audits.actor(user),
-        resourceType: "release",
-        resourceId: String(release.id),
-        description: release.tag ?? release.title,
-        metadata: { projectId: release.projectId },
-      });
+      await this.logRelease("publish", release, user);
 
       return published;
     },
@@ -316,14 +349,7 @@ export class ReleaseController {
 
       // Beside `publish` rather than left out: a release published, reopened
       // and published again reads as one event without this row.
-      await this.audits.release.logSuccess("reopen", {
-        ...this.audits.actor(user),
-        severity: "warning",
-        resourceType: "release",
-        resourceId: String(release.id),
-        description: release.tag ?? release.title,
-        metadata: { projectId: release.projectId },
-      });
+      await this.logRelease("reopen", release, user);
 
       return reopened;
     },
@@ -346,10 +372,10 @@ export class ReleaseController {
       }),
       response: releases.schema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
       this.assertOpen(this.owned.get<Release>());
 
-      return await this.releases.updateById(params.id, {
+      const updated = await this.releases.updateById(params.id, {
         ...(body.tag !== undefined ? { tag: this.assertTag(body.tag) } : {}),
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.description !== undefined
@@ -359,6 +385,11 @@ export class ReleaseController {
           ? { targetDate: body.targetDate ?? null }
           : {}),
       });
+      await this.logRelease("update", updated, user, {
+        fields: Object.keys(body),
+      });
+
+      return updated;
     },
   });
 
@@ -373,7 +404,10 @@ export class ReleaseController {
       }),
       response: okSchema,
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, user }) => {
+      // Read before the row goes - a deleted id names nothing.
+      const release = this.owned.get<Release>();
+
       // Deleting is deliberately cheap. The old guard refused whenever the
       // release's time window had caught any completed quest, which meant a
       // mistyped release locked itself the moment anything completed anywhere
@@ -381,6 +415,7 @@ export class ReleaseController {
       // `quests.releaseId` is `ON DELETE SET NULL`, so nothing is lost here
       // but the row itself.
       await this.releases.deleteById(params.id);
+      await this.logRelease("delete", release, user);
       return { ok: true };
     },
   });

@@ -1,7 +1,11 @@
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
-import { OwnedResourceProvider, $secure } from "alepha/security";
+import {
+  OwnedResourceProvider,
+  type UserAccountToken,
+  $secure,
+} from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type Epic, epics } from "../entities/epics.ts";
@@ -15,6 +19,7 @@ import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { EpicDependencyService } from "../services/EpicDependencyService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 
 /**
@@ -57,7 +62,32 @@ export class EpicController {
   linkService = $inject(FolioLinkService);
   attachment = $inject(ReleaseAttachmentService);
   dependencies = $inject(EpicDependencyService);
+  audits = $inject(LoreAudits);
   owned = $inject(OwnedResourceProvider);
+
+  /**
+   * One project-layer audit row for something that happened to an epic.
+   *
+   * `resourceId` is the epic's per-project **number**, which is what
+   * `/:projectSlug/epics/:epicNumber` takes - the same reasoning as
+   * `QuestController.logEpic`'s shortId. A row id would name a page that does
+   * not exist.
+   */
+  protected async logEpic(
+    action: string,
+    epic: Pick<Epic, "number" | "title" | "projectId">,
+    user: UserAccountToken | undefined,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.audits.epic.logSuccess(action, {
+      ...this.audits.actor(user),
+      ...this.audits.scope(epic.projectId),
+      resourceType: "epic",
+      resourceId: String(epic.number),
+      description: epic.title,
+      ...(metadata ? { metadata } : {}),
+    });
+  }
   bound = $inject(BoundParameters);
 
   /**
@@ -205,7 +235,7 @@ export class EpicController {
       }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
       // No `epicId` yet, so neither a self-reference nor a cycle is possible
       // and only the "same project" half of the check can run.
       const dependsOn = await this.dependencies.resolve(
@@ -224,6 +254,7 @@ export class EpicController {
         ...(dependsOn !== null ? { dependsOn } : {}),
       });
       await this.syncEpicLinks(epic);
+      await this.logEpic("create", epic, user);
 
       return await this.buildEpicResource(epic);
     },
@@ -255,7 +286,7 @@ export class EpicController {
       }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
       const epic = this.owned.get<Epic>();
 
       const releaseId =
@@ -287,6 +318,9 @@ export class EpicController {
         ...(dependsOn !== undefined ? { dependsOn } : {}),
       });
       await this.syncEpicLinks(updated);
+      await this.logEpic("update", updated, user, {
+        fields: Object.keys(body),
+      });
 
       return await this.buildEpicResource(updated);
     },
@@ -314,7 +348,7 @@ export class EpicController {
       }),
       response: epicResourceSchema,
     },
-    handler: async ({ params, body }) => {
+    handler: async ({ params, body, user }) => {
       const epic = this.owned.get<Epic>();
 
       const updated = await this.epics.updateById(params.id, {
@@ -328,6 +362,10 @@ export class EpicController {
         ...(body.status !== "done" && epic.completedAt
           ? { completedAt: null }
           : {}),
+      });
+      await this.logEpic("status", updated, user, {
+        from: epic.status,
+        to: body.status,
       });
 
       return await this.buildEpicResource(updated);
@@ -348,12 +386,15 @@ export class EpicController {
       params: z.object({ id: z.integer() }),
       response: okSchema,
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, user }) => {
+      const epic = this.owned.get<Epic>();
+
       // `folio_links.from_id` is not a foreign key, so the FK cascade this
       // delete relies on for quests and folios does not reach the link
       // graph — see `FolioLinkService.deleteLinksFrom`.
       await this.linkService.deleteLinksFrom({ kind: "epic", id: params.id });
       await this.epics.deleteById(params.id, { force: true });
+      await this.logEpic("delete", epic, user);
 
       return { ok: true };
     },
@@ -366,7 +407,7 @@ export class EpicController {
       body: z.object({ questId: z.integer() }),
       response: epicResourceSchema,
     },
-    handler: async ({ body }) => {
+    handler: async ({ body, user }) => {
       const epic = this.owned.get<Epic>();
 
       // Coherence, not access: `$ownsProject` gated the EPIC, and says
@@ -380,6 +421,9 @@ export class EpicController {
 
       if (quest.epicId !== epic.id) {
         await this.quests.updateById(quest.id, { epicId: epic.id });
+        await this.logEpic("attach", epic, user, {
+          quest: quest.shortId,
+        });
       }
 
       return await this.buildEpicResource(epic);
@@ -392,12 +436,13 @@ export class EpicController {
       params: z.object({ id: z.integer(), questId: z.integer() }),
       response: epicResourceSchema,
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, user }) => {
       const epic = this.owned.get<Epic>();
 
       const quest = await this.quests.getById(params.questId);
       if (quest.epicId === epic.id) {
         await this.quests.updateById(quest.id, { epicId: null });
+        await this.logEpic("detach", epic, user, { quest: quest.shortId });
       }
 
       return await this.buildEpicResource(epic);
@@ -411,7 +456,7 @@ export class EpicController {
       body: z.object({ folioId: z.uuid() }),
       response: epicResourceSchema,
     },
-    handler: async ({ body }) => {
+    handler: async ({ body, user }) => {
       const epic = this.owned.get<Epic>();
 
       // Coherence, not access - see `attachQuest`.
@@ -424,6 +469,7 @@ export class EpicController {
 
       if (folio.epicId !== epic.id) {
         await this.folios.updateById(folio.id, { epicId: epic.id });
+        await this.logEpic("attach", epic, user, { folio: folio.shortId });
       }
 
       return await this.buildEpicResource(epic);
@@ -436,12 +482,13 @@ export class EpicController {
       params: z.object({ id: z.integer(), folioId: z.uuid() }),
       response: epicResourceSchema,
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, user }) => {
       const epic = this.owned.get<Epic>();
 
       const folio = await this.folios.getById(params.folioId);
       if (folio.epicId === epic.id) {
         await this.folios.updateById(folio.id, { epicId: null });
+        await this.logEpic("detach", epic, user, { folio: folio.shortId });
       }
 
       return await this.buildEpicResource(epic);

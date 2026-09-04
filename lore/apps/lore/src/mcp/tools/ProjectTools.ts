@@ -372,10 +372,11 @@ export class ProjectTools {
    */
   project_activity = $tool({
     description:
-      "Everything that happened in a project since a timestamp, in one call: quests filed, accepted, unassigned, completed, shelved or edited, comments posted, feedback reported, folios written. Read-only. " +
+      "Everything that happened in a project since a timestamp, in one call: quests filed, accepted, assigned, completed, shelved, edited or deleted, comments posted, epics and releases moved, folios written, feedback triaged. Read-only. " +
       "Call it at the START of a session with the stamp your last session ended on, and again before writing back to a quest you have not re-read: this is what stops you answering a conversation you never saw. " +
       "Events come back oldest first with an `until` cursor to pass as the next call's `since`; events sharing that exact millisecond are not repeated, so treat the cursor as the boundary it is. " +
-      "Your own events are excluded unless you pass `includeOwn`. For the per-quest version of the same signal while scanning a list, `quest_list` rows carry `lastCommentAt`.",
+      "Your own events are excluded unless you pass `includeOwn`. For the per-quest version of the same signal while scanning a list, `quest_list` rows carry `lastCommentAt`. " +
+      "⚠️ This reads a recorded event log, so it reports only what happened AFTER the log existed. Anything older lives on the entities themselves - a quest's own history, a folio's revisions - and is reached with `quest_get` / `folio_history`.",
     title: "Project activity since",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -387,15 +388,84 @@ export class ProjectTools {
         params.project,
         params.project_name,
       );
+      const me = this.alepha.store.get(currentUserAtom);
 
-      return await this.projectController.getProjectActivity({
+      const size = params.limit ?? 100;
+      const page = await this.projectController.getProjectActivity({
         params: { id: projectId },
         query: {
-          since: params.since,
-          limit: params.limit,
-          includeOwn: params.includeOwn,
+          // Exclusive, which is what makes `since: previous.until` safe.
+          after: params.since,
+          size,
+          // Oldest first, which is what a cursor pages forward through. The
+          // page reads the same endpoint the other way round.
+          sort: "createdAt",
         },
       });
+
+      // `after` has already excluded the boundary at the column's precision.
+      // This second pass excludes it at the CALLER's precision, which is the
+      // millisecond ISO stamp handed out as `until` - the two differ wherever
+      // the column stores more than a millisecond. Without it the same event
+      // arrives on every call, forever.
+      //
+      // The cost is the standard one for a timestamp cursor: two events
+      // sharing an exposed millisecond with `until` are not reported. Stated
+      // in the tool description rather than hidden.
+      const rows = page.content.filter((row) => row.createdAt > params.since);
+      // Filtered here rather than in the query: `auditQuerySchema` has no
+      // "every user but this one" filter, and adding one to the framework to
+      // serve a default nobody asked for would be the wrong place to spend it.
+      // The cursor below is computed from what was READ, not from what was
+      // kept, so an excluded event is never handed out again.
+      const kept =
+        params.includeOwn || !me?.id
+          ? rows
+          : rows.filter((row) => row.userId !== me.id);
+
+      return {
+        events: kept.map((row) => ({
+          createdAt: row.createdAt,
+          type: row.type,
+          action: row.action,
+          userId: row.userId,
+          actor: row.actor,
+          resourceId: row.resourceId,
+          description: row.description,
+          summary: this.activitySummary(row),
+        })),
+        truncated: rows.length >= size,
+        since: params.since,
+        // The last event READ. With nothing to report, the window's own start
+        // is the honest cursor.
+        until: rows.at(-1)?.createdAt ?? params.since,
+      };
     },
   });
+
+  /**
+   * One readable phrase for an event, so an agent does not have to decode
+   * `type` and `action` against each other to know what happened.
+   *
+   * Deliberately generic rather than a per-pair lookup table: there are eight
+   * types and up to fourteen actions each, and a table of a hundred phrases
+   * goes stale the first time somebody adds an action without noticing it.
+   * `"completed quest #208"` from the two columns is worth more than a
+   * hand-written phrase that stops matching.
+   */
+  protected activitySummary(row: {
+    type: string;
+    action: string;
+    resourceId?: string;
+    description?: string;
+  }): string {
+    // `#` reads as an identifier for the numbered kinds and as noise for a
+    // release, whose id is already a tag like `0.28.0`.
+    const numbered = row.type === "quest" || row.type === "epic";
+    const ref = row.resourceId
+      ? ` ${numbered ? "#" : ""}${row.resourceId}`
+      : "";
+    const title = row.description ? ` (${row.description})` : "";
+    return `${row.action} ${row.type}${ref}${title}`;
+  }
 }

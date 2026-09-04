@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -36,6 +37,7 @@ interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
   projectController: ProjectController;
+  questController: QuestController;
   releaseController: ReleaseController;
   feedbackController: FeedbackController;
   sigilController: SigilController;
@@ -66,6 +68,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
+    questController: alepha.inject(QuestController),
     releaseController: alepha.inject(ReleaseController),
     feedbackController: alepha.inject(FeedbackController),
     sigilController: alepha.inject(SigilController),
@@ -274,9 +277,12 @@ describe("Lore domain audits", () => {
       rows
         .map((row) => row.action as string)
         .sort((a, b) => a.localeCompare(b)),
-    ).toEqual(["publish", "reopen"]);
+    ).toEqual(["create", "publish", "reopen"]);
     // The tag, not the id: it is what a release is called everywhere else.
     expect(rows[0]?.description).toBe("0.28.0");
+    // Scoped, so the release's own project's Activity page can find it.
+    expect(rows[0]?.scopeType).toBe("project");
+    expect(rows[0]?.scopeId).toBe(String(project.id));
   });
 
   it("records a triage decision on feedback", async ({ expect }) => {
@@ -307,27 +313,51 @@ describe("Lore domain audits", () => {
     );
 
     const rows = await rowsOf("feedback");
+    // Arrivals as well as decisions: the Activity page's question is what
+    // happened in the project, and a report arriving is one of the things
+    // that happens. Two of each, one per item.
     expect(
       rows
         .map((row) => row.action as string)
         .sort((a, b) => a.localeCompare(b)),
-    ).toEqual(["accept", "reject"]);
-    expect(
-      rows
-        .map((row) => row.description as string)
-        .sort((a, b) => a.localeCompare(b)),
-    ).toEqual(["Not a bug", "Please add dark mode"]);
+    ).toEqual(["accept", "create", "create", "reject"]);
+    expect(new Set(rows.map((row) => row.description as string))).toEqual(
+      new Set(["Not a bug", "Please add dark mode"]),
+    );
   });
 
-  it("writes nothing for a quest, which carries its own history", async ({
+  it("records a quest, which it deliberately used not to", async ({
     expect,
   }) => {
-    // The bar is "an action a project owner would reconstruct months later",
-    // and a quest edit is already visible on the quest. Duplicating it here
-    // buys noise and a second thing to keep true.
+    // ⚠️ This case asserts the OPPOSITE of what it used to, and the reversal
+    // is the point. The old bar was "an action a project owner would
+    // reconstruct months later", read on the admin security log, and a quest
+    // edit did not clear it. The bar is now "an action a project member would
+    // want to see on the Activity page", which it clears easily: quests are
+    // most of what happens in a project, and a feed without them is empty.
     const user = await aUser();
-    await aProject(user);
+    const project = await aProject(user);
 
-    expect(await rowsOf("quest")).toEqual([]);
+    const quest = (
+      await ctx.questController.createQuest.fetch(
+        {
+          body: {
+            projectId: project.id,
+            title: "Wire the pipeline",
+            description: "x",
+            area: "core",
+            priority: "medium",
+          },
+        },
+        { user },
+      )
+    ).data;
+
+    const rows = await rowsOf("quest");
+    expect(rows.map((row) => row.action as string)).toEqual(["create"]);
+    // The shortId, because it is what `/:projectSlug/quests/:shortId` takes.
+    // A row id here would link to a page that does not exist.
+    expect(rows[0]?.resourceId).toBe(String(quest.shortId));
+    expect(rows[0]?.scopeId).toBe(String(project.id));
   });
 });

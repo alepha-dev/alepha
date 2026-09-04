@@ -177,6 +177,15 @@ export class FeedbackController {
         source: this.scrubSource(body.source),
       });
 
+      await this.audits.feedback.logSuccess("create", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(params.projectId),
+        resourceType: "feedback",
+        resourceId: String(created.shortId),
+        description: created.title,
+        metadata: { id: created.id },
+      });
+
       return { id: created.id };
     },
   });
@@ -585,10 +594,13 @@ export class FeedbackController {
       // who decided and when.
       await this.audits.feedback.logSuccess("accept", {
         ...this.audits.actor(user),
+        ...this.audits.scope(params.projectId),
         resourceType: "feedback",
-        resourceId: String(feedback.id),
+        // The shortId, not the row id: it is what the inbox addresses a
+        // feedback item by, so the row carries a link rather than a uuid.
+        resourceId: String(feedback.shortId),
         description: feedback.title,
-        metadata: { projectId: params.projectId, shortId: feedback.shortId },
+        metadata: { id: feedback.id },
       });
 
       return { ok: true };
@@ -621,10 +633,13 @@ export class FeedbackController {
 
       await this.audits.feedback.logSuccess("reject", {
         ...this.audits.actor(user),
+        ...this.audits.scope(params.projectId),
         resourceType: "feedback",
-        resourceId: String(feedback.id),
+        // The shortId, not the row id: it is what the inbox addresses a
+        // feedback item by, so the row carries a link rather than a uuid.
+        resourceId: String(feedback.shortId),
         description: feedback.title,
-        metadata: { projectId: params.projectId, shortId: feedback.shortId },
+        metadata: { id: feedback.id },
       });
 
       return { ok: true };

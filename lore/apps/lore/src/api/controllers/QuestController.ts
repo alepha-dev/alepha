@@ -46,6 +46,7 @@ import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
+import { LoreAudits } from "../services/LoreAudits.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
@@ -124,6 +125,7 @@ export class QuestController {
   epics = $repository(epics);
   releases = $repository(releases);
   dt = $inject(DateTimeProvider);
+  audits = $inject(LoreAudits);
   owned = $inject(OwnedResourceProvider);
   /**
    * Kept for {@link isMemberById} alone - the assignee check in
@@ -213,6 +215,41 @@ export class QuestController {
    */
   mapQuestToResource(quest: Quest): QuestResource {
     return this.questMapper.mapQuestToResource(quest);
+  }
+
+  /**
+   * One project-layer audit row for something that happened to a quest.
+   *
+   * Every quest mutation in this file goes through here rather than calling
+   * `this.audits.quest` directly, because four of the five fields are the same
+   * every time and the one that is not - the scope - is the one a hand-written
+   * call site silently omits. A row without it is written, accepted, and never
+   * appears on the Activity page.
+   *
+   * `resourceId` is the **shortId**, not the row id: it is what
+   * `/:projectSlug/quests/:shortId` takes, so the feed can build a link out of
+   * the row alone.
+   *
+   * Awaited inline, inside the caller's `$transactional()` where there is one,
+   * which is the property worth keeping: a mutation that rolls back takes its
+   * activity row with it, so the feed cannot show something that did not
+   * happen. The cost is that a failing audit insert fails the mutation, which
+   * is the same trade every existing call site in this app already makes.
+   */
+  protected async logQuest(
+    action: string,
+    quest: Pick<Quest, "shortId" | "title" | "projectId">,
+    user: UserAccountToken | undefined,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.audits.quest.logSuccess(action, {
+      ...this.audits.actor(user),
+      ...this.audits.scope(quest.projectId),
+      resourceType: "quest",
+      resourceId: String(quest.shortId),
+      description: quest.title,
+      ...(metadata ? { metadata } : {}),
+    });
   }
 
   /**
@@ -591,6 +628,7 @@ export class QuestController {
           this.dt.nowISOString(),
         ),
       });
+      await this.logQuest("commit", updated, user, { sha: body.sha });
 
       return this.mapQuestToResource(updated);
     },
@@ -703,6 +741,7 @@ export class QuestController {
       });
 
       await this.syncQuestLinks(quest);
+      await this.logQuest("create", quest, user);
 
       return this.mapQuestToResource(quest);
     },
@@ -800,6 +839,7 @@ export class QuestController {
       const updated = await this.quests.updateById(params.id, {
         attachments: [...quest.attachments, body.fileId],
       });
+      await this.logQuest("attachment", updated, user, { added: body.fileId });
 
       return this.mapQuestToResource(updated);
     },
@@ -1017,6 +1057,9 @@ export class QuestController {
 
       const updated = await this.quests.updateById(params.id, {
         attachments: updatedAttachments,
+      });
+      await this.logQuest("attachment", updated, user, {
+        removed: params.fileId,
       });
 
       return this.mapQuestToResource(updated);
@@ -1495,6 +1538,7 @@ export class QuestController {
       });
 
       await this.quests.save(quest);
+      await this.logQuest("unassign", quest, user);
       return this.mapQuestToResource(quest);
     },
   });
@@ -1541,6 +1585,7 @@ export class QuestController {
       });
 
       await this.quests.save(quest);
+      await this.logQuest("shelve", quest, user);
       return this.mapQuestToResource(quest);
     },
   });
@@ -1572,6 +1617,7 @@ export class QuestController {
       });
 
       await this.quests.save(quest);
+      await this.logQuest("unshelve", quest, user);
       return this.mapQuestToResource(quest);
     },
   });
@@ -1636,6 +1682,7 @@ export class QuestController {
       });
 
       await this.quests.save(quest);
+      await this.logQuest("accept", quest, user);
       return this.mapQuestToResource(quest);
     },
   });
@@ -1689,6 +1736,7 @@ export class QuestController {
       });
 
       await this.quests.save(quest);
+      await this.logQuest("reopen", quest, user);
       return this.mapQuestToResource(quest);
     },
   });
@@ -1783,6 +1831,7 @@ export class QuestController {
       });
 
       await this.quests.save(quest);
+      await this.logQuest("assign", quest, user, { assigneeId: body.userId });
       return this.mapQuestToResource(quest);
     },
   });
@@ -2024,6 +2073,7 @@ export class QuestController {
 
       await this.quests.save(quest);
       await this.syncQuestLinks(quest);
+      await this.logQuest("complete", quest, user);
 
       return this.mapQuestToResource(quest);
     },
@@ -2349,6 +2399,14 @@ export class QuestController {
 
       const updated = await this.quests.updateById(params.id, patch);
       await this.syncQuestLinks(updated);
+      // The field NAMES only, never the values. `diffQuest` carries `from` /
+      // `to` for the quest's own history, which is member-gated behind the
+      // quest; an audit row is read on a page listing every project the
+      // reader belongs to, and a description's before-and-after has no
+      // business being duplicated there. The names are what the feed prints.
+      await this.logQuest("update", updated, user, {
+        fields: changes.map((change) => change.field),
+      });
 
       return this.mapQuestToResource(updated);
     },
@@ -2411,6 +2469,10 @@ export class QuestController {
         objectives,
         history,
       });
+      await this.logQuest("objective", updated, user, {
+        objectiveId: target.id,
+        completed: target.completed,
+      });
 
       return this.mapQuestToResource(updated);
     },
@@ -2466,6 +2528,7 @@ export class QuestController {
           },
         ],
       });
+      await this.logQuest("objective", updated, user, { edited: true });
 
       return this.mapQuestToResource(updated);
     },
@@ -2541,6 +2604,9 @@ export class QuestController {
       // what the reader should see.
       await this.linkService.deleteLinksFrom({ kind: "quest", id: params.id });
       await this.quests.deleteById(params.id);
+      // Logged from the row read at the top of the handler: once it is gone,
+      // an id names nothing and the feed has no title to print.
+      await this.logQuest("delete", quest, user);
 
       return { ok: true };
     },
