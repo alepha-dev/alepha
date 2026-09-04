@@ -16,7 +16,7 @@ import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 /**
- * `alepha lore releases publish` against the real Lore app, over HTTP, with a
+ * `lore releases publish` against the real Lore app, over HTTP, with a
  * real API key.
  *
  * `ReleaseCommand.spec.ts` in `@alepha/lore` covers the command's three
@@ -146,7 +146,7 @@ const cliFor = async (ctx: TestContext, token: string, project: string) => {
   };
 };
 
-describe("alepha lore releases publish, against Lore", () => {
+describe("lore releases publish, against Lore", () => {
   let ctx: TestContext;
   const clis: Alepha[] = [];
 

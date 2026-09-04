@@ -6,7 +6,7 @@ import { LoreTokenStore } from "./LoreTokenStore.ts";
 /**
  * The one place that answers "where is Lore, and how do I authenticate to it".
  *
- * Every `alepha lore <cmd>` builds its client from {@link scope}, so the OAuth
+ * Every `lore <cmd>` builds its client from {@link scope}, so the OAuth
  * 2.0 device flow later replaces the `authorization` thunk and nothing else.
  * That containment is the whole reason this is a service rather than a header
  * inlined into whichever command needed one first.
@@ -44,7 +44,7 @@ export class LoreClientService {
   );
 
   /**
-   * The scope every `$client<SomeController>()` in this plugin is built from.
+   * The scope every `$client<SomeController>()` in this package is built from.
    *
    * ⚠️ The credential is a **thunk**, resolved per request rather than here.
    * Two reasons, and the second is why it matters today: a device-flow token
@@ -88,14 +88,14 @@ export class LoreClientService {
    *
    * 1. `LORE_API_KEY`, which is what CI has.
    * 2. A device-flow token cached for this hostname, which is what a laptop
-   *    has after `alepha lore login`.
+   *    has after `lore login`.
    * 3. An error naming both fixes.
    *
    * **Nothing here ever starts a login.** There is no human in CI to approve a
    * device code, so a runner that fell into that flow would poll until it
    * timed out - a job that hangs and then fails for a reason its log does not
    * explain. A missing credential is a fast, legible error instead, and
-   * `alepha lore login` refuses to run in CI at all.
+   * `lore login` refuses to run in CI at all.
    *
    * The key wins over the cached token deliberately. A machine that has both
    * is a developer's laptop with a key exported for a one-off, and the
@@ -113,7 +113,7 @@ export class LoreClientService {
     }
 
     throw new AlephaError(
-      `Not authenticated to ${this.hostname()}. Run \`alepha lore login\` on a machine with a browser, or set LORE_API_KEY (which is what CI does).`,
+      `Not authenticated to ${this.hostname()}. Run \`lore login\` on a machine with a browser, or set LORE_API_KEY (which is what CI does).`,
     );
   }
 

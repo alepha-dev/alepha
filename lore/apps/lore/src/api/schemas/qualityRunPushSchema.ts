@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 /**
- * What `alepha lore quality push` sends: totals, and nothing else.
+ * What `lore quality push` sends: totals, and nothing else.
  *
  * ~200 bytes. It used to also carry `reports`, the raw `json-summary` and
  * vitest report inline, which made the request ~3.1 MB against a 100 KB body

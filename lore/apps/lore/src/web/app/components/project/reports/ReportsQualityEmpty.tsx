@@ -40,7 +40,7 @@ const ReportsQualityEmpty = (props: ReportsQualityEmptyProps) => {
       */}
       <pre className="bg-muted text-muted-foreground w-full overflow-x-auto rounded-md p-3 text-xs">
         <code>
-          {`alepha test --coverage\nalepha lore quality push --project ${props.projectSlug}`}
+          {`alepha test --coverage\nlore quality push --project ${props.projectSlug}`}
         </code>
       </pre>
 

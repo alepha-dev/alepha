@@ -899,7 +899,7 @@ export class AppRouter {
    * Its own tab rather than a card at the bottom of the Dashboard (feedback
    * #2065): a build list is a table, and a table wants a tab's width. NOT
    * gated on beacon, unlike Analytics, Vitals and Explore: artifacts come
-   * from CI through `alepha lore artifacts push`, not from the sigil's
+   * from CI through `lore artifacts push`, not from the sigil's
    * telemetry, so an app that sends no beacon still has a build history.
    */
   appArtifacts = $page({

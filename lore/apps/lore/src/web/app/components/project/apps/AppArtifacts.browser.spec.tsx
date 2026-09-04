@@ -137,7 +137,7 @@ describe("AppArtifacts", () => {
 
     expect(await findByText(/No artifacts pushed yet/)).toBeTruthy();
     expect(getByTestId("app-artifacts").textContent).toContain(
-      "alepha lore artifacts push --project alepha --app docs-production",
+      "lore artifacts push --project alepha --app docs-production",
     );
   });
 

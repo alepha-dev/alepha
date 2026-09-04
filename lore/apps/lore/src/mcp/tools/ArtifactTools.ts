@@ -24,8 +24,8 @@ import { ProjectTools } from "./ProjectTools.ts";
  *
  * Pushing is CI's job and the credential for it lives in CI. A tool that
  * uploaded a tarball out of an agent session would be a surface with no
- * caller, and one holding a project-wide credential at that. `alepha lore
- * artifacts push` is the way in.
+ * caller, and one holding a project-wide credential at that. `lore artifacts
+ * push` is the way in.
  *
  * ## ⚠️ Neither tool ever returns the body
  *

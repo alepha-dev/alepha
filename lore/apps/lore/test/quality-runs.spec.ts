@@ -99,7 +99,7 @@ const createTestUser = async (ctx: TestContext) => {
 };
 
 /**
- * What `alepha lore quality push` sends: the totals extracted from the two
+ * What `lore quality push` sends: the totals extracted from the two
  * vitest reports, and nothing else. ~200 bytes - the reports themselves used
  * to ride along and made the request 31x the server's body limit.
  */

@@ -10,12 +10,12 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 import { QualityReportReader } from "../services/QualityReportReader.ts";
 
 /**
- * `alepha lore quality push` - the command that closes the loop.
+ * `lore quality push` - the command that closes the loop.
  *
  * ```bash
  * alepha test --coverage
  * export LORE_API_KEY=...
- * alepha lore quality push --project alepha
+ * lore quality push --project alepha
  * ```
  *
  * ## ⚠️ The controller types are TYPES, and must stay ones

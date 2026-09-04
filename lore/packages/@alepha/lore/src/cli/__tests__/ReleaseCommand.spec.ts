@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { ReleaseCommand } from "../commands/ReleaseCommand.ts";
 
 /**
- * `alepha lore releases publish`: find the release carrying the tag, publish
+ * `lore releases publish`: find the release carrying the tag, publish
  * it, and stay quiet when there is nothing to do.
  *
  * The three outcomes are asserted on what reaches the server, because the
@@ -47,7 +47,7 @@ class FakeLinkProvider extends LinkProvider {
   }
 }
 
-describe("alepha lore releases publish", () => {
+describe("lore releases publish", () => {
   const setup = async () => {
     const alepha = Alepha.create({
       env: {

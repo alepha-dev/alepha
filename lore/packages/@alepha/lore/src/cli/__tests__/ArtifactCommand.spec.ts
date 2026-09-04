@@ -17,7 +17,7 @@ import {
 } from "../services/ArtifactUploader.ts";
 
 /**
- * `alepha lore artifacts push`: pack what was built, send it, say what it is.
+ * `lore artifacts push`: pack what was built, send it, say what it is.
  *
  * The upload itself is covered against a real server in
  * `ArtifactUploader.spec.ts`. What is worth asserting here is everything
@@ -67,7 +67,7 @@ class FakeLinkProvider extends LinkProvider {
   }
 }
 
-describe("alepha lore artifacts push", () => {
+describe("lore artifacts push", () => {
   const setup = async (
     options: {
       env?: Record<string, string>;

@@ -16,7 +16,7 @@ import { LoreClientService } from "./LoreClientService.ts";
  *
  * ## Why a service rather than a method on the command that needed it first
  *
- * `alepha lore quality push` had this inline. `alepha lore artifacts push`
+ * `lore quality push` had this inline. `lore artifacts push`
  * needs the same translation, and the second copy is where the two would start
  * disagreeing about what `--project` means.
  */

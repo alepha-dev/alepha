@@ -8,12 +8,12 @@ import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
 /**
- * `alepha lore releases publish` - flip the Lore release that carries a
+ * `lore releases publish` - flip the Lore release that carries a
  * version tag to published, from the job that just shipped that version.
  *
  * ```bash
  * export LORE_API_KEY=...
- * alepha lore releases publish --tag 0.28.0
+ * lore releases publish --tag 0.28.0
  * ```
  *
  * ## ⚠️ Not found and already published both exit 0, on purpose

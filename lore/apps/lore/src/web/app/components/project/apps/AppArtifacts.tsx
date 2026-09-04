@@ -13,7 +13,7 @@ import AppArtifactsList from "./AppArtifactsList.tsx";
  * state and the per-tag rows read exactly as they did.
  *
  * Nothing here is gated on beacon. Artifacts arrive through
- * `alepha lore artifacts push` from CI, not through the sigil's telemetry, so
+ * `lore artifacts push` from CI, not through the sigil's telemetry, so
  * an app that collects nothing still has a build history to show.
  */
 const AppArtifacts = () => {

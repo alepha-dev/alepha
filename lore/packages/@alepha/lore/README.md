@@ -150,38 +150,47 @@ by how many distinct faults exist rather than by how much traffic you have.
 
 ## The CLI half
 
-`@alepha/lore/cli` is what a pipeline runs, and it registers from
-`alepha.config.ts` the way any other CLI plugin does:
-
-```ts
-import { lore } from "@alepha/lore/cli";
-
-export default defineConfig({
-  plugins: [lore({ project: "alepha" })],
-});
-```
-
-Config carries the project, `LORE_API_KEY` carries the secret, and `--project`
-overrides the config for one invocation. No credential ever lands in a committed
-file.
+`@alepha/lore` ships a `lore` binary. It is what a pipeline runs, and it needs
+no `alepha.config.ts`, no plugin registration and no project of its own:
 
 ```bash
-alepha lore login                          # sign this machine in
-alepha lore quality push                   # coverage and test totals
-alepha lore artifacts push --tag 1.2.3     # the build itself
+npm i -g "@alepha/lore"
+
+lore login                          # sign this machine in
+lore quality push -p my-project     # coverage and test totals
+lore artifacts push --tag 1.2.3     # the build itself
 ```
+
+`LORE_PROJECT` names the project, `-p` (or `--project`) overrides it for one
+invocation, and `LORE_API_KEY` carries the secret. A CI workflow names the
+project once, at the workflow level, so no step can forget it:
+
+```yaml
+env:
+  LORE_PROJECT: my-project
+```
+
+No credential ever lands in a committed file. The project slug is not a
+credential - it is in every URL Lore serves.
+
+⚠️ It still assumes an **Alepha** project. `quality push` reads the coverage
+and test reports `alepha test --coverage` writes, and `artifacts push` refuses
+a `dist/` with no `manifest.json`. It is not a general-purpose CI reporter.
+
+Inside a repository that already depends on `@alepha/lore`, the package manager
+links the binary and `yarn lore ...` works with no global install.
 
 ### Which credential, in which order
 
 1. `LORE_API_KEY`, which is what CI has.
 2. A device-flow token cached for this hostname, which is what a laptop has
-   after `alepha lore login`.
+   after `lore login`.
 3. An error naming both.
 
 ⚠️ **Nothing ever starts a login on its own.** There is no human on a CI runner
 to approve a device code, so a job that fell into that flow would poll until it
 timed out and then fail for a reason its log does not explain. A missing
-credential is a fast error instead, and `alepha lore login` refuses to run in CI
+credential is a fast error instead, and `lore login` refuses to run in CI
 at all.
 
 The key wins over a cached token on purpose: a machine holding both is a laptop

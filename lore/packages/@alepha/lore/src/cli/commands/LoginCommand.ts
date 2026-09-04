@@ -8,7 +8,7 @@ import { LoreClientService } from "../services/LoreClientService.ts";
 import { type LoreToken, LoreTokenStore } from "../services/LoreTokenStore.ts";
 
 /**
- * `alepha lore login` and `alepha lore logout` - the OAuth 2.0 device flow
+ * `lore login` and `lore logout` - the OAuth 2.0 device flow
  * (RFC 8628), so a laptop can talk to Lore without pasting a token into a
  * shell.
  *
@@ -83,7 +83,7 @@ export class LoginCommand {
     handler: async () => {
       if (this.env.CI) {
         throw new AlephaError(
-          "`alepha lore login` needs a human to approve a code, and CI has none. Set LORE_API_KEY in the job's environment instead.",
+          "`lore login` needs a human to approve a code, and CI has none. Set LORE_API_KEY in the job's environment instead.",
         );
       }
 
@@ -198,7 +198,7 @@ export class LoginCommand {
     }
 
     throw new AlephaError(
-      "The code expired before it was approved. Run `alepha lore login` again.",
+      "The code expired before it was approved. Run `lore login` again.",
     );
   }
 

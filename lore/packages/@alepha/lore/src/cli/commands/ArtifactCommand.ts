@@ -10,12 +10,12 @@ import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
 /**
- * `alepha lore artifacts push` - store what CI just built.
+ * `lore artifacts push` - store what CI just built.
  *
  * ```bash
  * alepha build
  * export LORE_API_KEY=...
- * alepha lore artifacts push --tag 1.2.3 --project alepha
+ * lore artifacts push --tag 1.2.3 --project alepha
  * ```
  *
  * ## It packs for you, and that is not a convenience
@@ -35,7 +35,7 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
  *
  * ## Failing loudly is the design
  *
- * A push that cannot happen exits non-zero, matching `alepha lore quality
+ * A push that cannot happen exits non-zero, matching `lore quality
  * push`. The safety is where the command runs rather than in a flag: the push
  * step is `continue-on-error` and gates no deploy, so a red push is a warning
  * annotation rather than a blocked release.
@@ -221,7 +221,7 @@ export class ArtifactCommand {
       name = pkg.name;
     } catch {
       throw new AlephaError(
-        `Could not read ${path}. Run \`alepha lore artifacts push\` from a workspace directory, or pass --app <name>.`,
+        `Could not read ${path}. Run \`lore artifacts push\` from a workspace directory, or pass --app <name>.`,
       );
     }
     if (!name) {

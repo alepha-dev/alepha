@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { LoreClientService } from "../services/LoreClientService.ts";
 
 /**
- * The seam every `alepha lore <cmd>` sits on: where Lore is, and how to
+ * The seam every `lore <cmd>` sits on: where Lore is, and how to
  * authenticate to it.
  *
  * It is a separate unit from any command because the OAuth 2.0 device flow
