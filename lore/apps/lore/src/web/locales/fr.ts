@@ -1467,6 +1467,11 @@ export default {
   "epic.action.review.copied":
     "Invite de relecture pour $1 copiée. Collez-la dans Claude Code ou Codex.",
   "epic.action.review.error": "Impossible de copier l’invite de relecture.",
+  "epic.action.review.dialog.title": "Faire relire cette épopée par un agent",
+  "epic.action.review.dialog.description":
+    "Ajustez l’invite si besoin, puis copiez-la dans Claude Code ou Codex.",
+  "epic.action.review.dialog.label": "Invite de relecture",
+  "epic.action.review.dialog.copy": "Copier et fermer",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":
     'Ses quêtes et folios sont conservés, détachés de "$1". Cette action est irréversible.',

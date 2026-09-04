@@ -1442,6 +1442,11 @@ export default {
   "epic.action.review.copied":
     "Review prompt for $1 copied. Paste it into Claude Code or Codex.",
   "epic.action.review.error": "Could not copy the review prompt.",
+  "epic.action.review.dialog.title": "Review this epic with an agent",
+  "epic.action.review.dialog.description":
+    "Tweak the prompt if you want, then copy it into Claude Code or Codex.",
+  "epic.action.review.dialog.label": "Review prompt",
+  "epic.action.review.dialog.copy": "Copy and close",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
     'Its quests and folios stay, detached from "$1". This cannot be undone.',
