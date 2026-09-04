@@ -4,10 +4,10 @@ ignores:
   - "@alepha/mantine"
   - "@alepha/mqtt"
   - "@alepha/devtools"
-  # Self-referenced by its own spec, which resolves `@alepha/lore/react`
-  # through the package's `exports` map — the only way to prove that subpath
-  # is reachable outside the `browser` condition. Same treatment as the other
-  # workspace packages above.
+  # The root devDependency is what makes Yarn link `node_modules/.bin/lore`,
+  # so every `yarn lore ...` step in CI stops resolving the moment somebody
+  # deletes it as unused. Nothing at the root imports the package, and
+  # nothing should: `lore` is a binary now, not a plugin.
   - "@alepha/lore"
   # `@alepha/lore` devDepends on `lore` to type `@alepha/lore/cli` against
   # Lore's own controllers. The edge is `import type` and nothing else, so it

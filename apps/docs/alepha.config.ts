@@ -1,4 +1,3 @@
-import { lore } from "@alepha/lore/cli";
 import { defineConfig } from "alepha/cli/config";
 import { platform } from "alepha/cli/platform";
 
@@ -77,13 +76,6 @@ export default defineConfig({
     },
   },
   plugins: [
-    // `alepha lore artifacts push` from the release job. `CliProvider` reads
-    // `alepha.config.ts` from `process.cwd()` only, and the push has to run
-    // inside this app (it packs this `dist/` and reads this `package.json`),
-    // so the root config's registration does not reach it: each app that
-    // pushes an artifact registers the plugin itself. The credential is
-    // `LORE_API_KEY` in the job's environment, never a committed value.
-    lore({ project: "alepha" }),
     platform({
       environments: {
         production: {
