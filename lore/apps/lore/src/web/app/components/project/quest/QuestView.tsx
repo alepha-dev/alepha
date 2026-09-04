@@ -28,6 +28,7 @@ import { useQuestMutations } from "@/web/app/components/shared/useQuestMutations
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
+import { formatReference } from "../../shared/element/typedReference.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import { QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
@@ -207,8 +208,8 @@ const QuestView = (props: QuestViewProps) => {
    */
   const titleContent = (
     <>
-      #{quest.shortId} <span className="text-muted-foreground">-</span>{" "}
-      {quest.title}
+      {formatReference("quest", quest.shortId)}{" "}
+      <span className="text-muted-foreground">-</span> {quest.title}
     </>
   );
 
@@ -250,7 +251,11 @@ const QuestView = (props: QuestViewProps) => {
         title: tr("quest.view.shelve.title"),
         description: blocked.length
           ? tr("quest.view.shelve.confirmWithDependents", {
-              args: [blocked.map((d) => `#${d.shortId}`).join(", ")],
+              args: [
+                blocked
+                  .map((d) => formatReference("quest", d.shortId))
+                  .join(", "),
+              ],
             })
           : tr("quest.view.shelve.confirm"),
         confirmLabel: tr("quest.view.shelve.confirmButton"),

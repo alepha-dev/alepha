@@ -14,6 +14,7 @@ import type { FeedbackController } from "@/api/controllers/FeedbackController.ts
 import type { MyFeedbackResource } from "@/api/schemas/myFeedbackResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import MyFeedbackEditSheet from "./MyFeedbackEditSheet.tsx";
 
@@ -180,7 +181,7 @@ const MyFeedback = () => {
             className: "pl-4",
             cell: (p: MyFeedbackResource) => (
               <span className="text-muted-foreground tabular-nums">
-                #{p.shortId}
+                {formatReference("feedback", p.shortId)}
               </span>
             ),
           },

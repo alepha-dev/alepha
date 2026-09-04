@@ -21,6 +21,7 @@ import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import { releaseBuckets } from "./releaseBuckets.ts";
 import ReleaseProgressBar from "./ReleaseProgressBar.tsx";
 import {
@@ -186,7 +187,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
               artifacts, so it gets display weight rather than the small
               secondary badge it used to wear. */}
           <span className="bg-muted border-border flex h-8 items-center rounded-lg border px-3 font-mono text-[19px] font-semibold tracking-[-0.01em]">
-            {release.tag ?? `#${release.number}`}
+            {release.tag ?? formatReference("release", release.number)}
           </span>
           {/* The SAME chip the Releases table draws, from the same three
               tables in `releaseState.ts`. The design called for a green

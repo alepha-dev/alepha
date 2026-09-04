@@ -32,6 +32,7 @@ import {
 import { spotlightOpenAtom } from "../../../atoms/spotlightOpenAtom.ts";
 import { userProjectsAtom } from "../../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { formatReference } from "../element/typedReference.ts";
 import { matchProjectNav } from "./matchProjectNav.ts";
 
 interface SpotlightHit {
@@ -229,7 +230,7 @@ const Spotlight = (): ReactElement => {
         )}
       </div>
       <span className="text-muted-foreground text-xs tabular-nums">
-        #{hit.shortId}
+        {hit.kind !== "directory" && formatReference(hit.kind, hit.shortId)}
       </span>
     </CommandItem>
   );

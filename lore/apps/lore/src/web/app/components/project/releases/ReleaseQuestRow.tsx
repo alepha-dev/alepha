@@ -4,6 +4,7 @@ import { Link, useRouter } from "alepha/react/router";
 import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import {
   BUCKET_ICON_CLASS,
   BUCKET_ICONS,
@@ -44,7 +45,7 @@ const ReleaseQuestRow = (props: ReleaseQuestRowProps) => {
         aria-hidden
       />
       <span className="text-muted-foreground w-[46px] shrink-0 font-mono text-[11.5px]">
-        #{quest.shortId}
+        {formatReference("quest", quest.shortId)}
       </span>
       <span
         className={cn(

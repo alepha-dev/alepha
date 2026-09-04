@@ -799,7 +799,7 @@ export default {
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Save to Folios",
   "release.changelog.live": "LIVE · $1 quest(s)",
-  "release.changelog.frozen": "#$1 · FROZEN $2",
+  "release.changelog.frozen": "$1 · FROZEN $2",
   "release.changelog.empty":
     "No completed quest is attached to this release yet.",
   "release.changelog.loading": "Loading changelog…",

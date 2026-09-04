@@ -55,6 +55,7 @@ import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { formatReference } from "../shared/element/typedReference.ts";
 import FilterSlot from "../shared/FilterSlot.tsx";
 import { useBulkReport } from "../shared/useBulkReport.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
@@ -580,12 +581,12 @@ const ProjectQuestsTable = () => {
                   })}
                   onClick={(e) => e.stopPropagation()}
                   className={`truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
-                  title={`#${quest.shortId} - ${quest.title}`}
+                  title={`${formatReference("quest", quest.shortId)} - ${quest.title}`}
                 >
                   {/* The id carries the title's own colour: it is part of
                       the name, not an annotation on it. Only the separator
                       is muted, same treatment as the quest header. */}
-                  #{quest.shortId}{" "}
+                  {formatReference("quest", quest.shortId)}{" "}
                   <span className="text-muted-foreground">-</span> {quest.title}
                 </Link>
                 {quest.description && (
@@ -675,7 +676,8 @@ const ProjectQuestsTable = () => {
                       />
                     }
                   >
-                    <Layers className="size-3.5" />#{epic.number}
+                    <Layers className="size-3.5" />
+                    {formatReference("epic", epic.number)}
                   </TooltipTrigger>
                   <TooltipContent>{epic.title}</TooltipContent>
                 </Tooltip>
@@ -694,7 +696,8 @@ const ProjectQuestsTable = () => {
                       <span className="text-muted-foreground inline-flex items-center gap-1 text-xs" />
                     }
                   >
-                    <Link2 className="size-3.5" />#{quest.dependsOn}
+                    <Link2 className="size-3.5" />
+                    {formatReference("quest", quest.dependsOn)}
                   </TooltipTrigger>
                   <TooltipContent>
                     {tr("board.table.linked.tooltip", {
@@ -849,7 +852,9 @@ const ProjectQuestsTable = () => {
                       description: blocked.length
                         ? tr("quest.view.shelve.confirmWithDependents", {
                             args: [
-                              blocked.map((d) => `#${d.shortId}`).join(", "),
+                              blocked
+                                .map((d) => formatReference("quest", d.shortId))
+                                .join(", "),
                             ],
                           })
                         : tr("quest.view.shelve.confirm"),

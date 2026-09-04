@@ -809,7 +809,7 @@ export default {
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Enregistrer dans les Folios",
   "release.changelog.live": "EN DIRECT · $1 quête(s)",
-  "release.changelog.frozen": "#$1 · FIGÉ LE $2",
+  "release.changelog.frozen": "$1 · FIGÉ LE $2",
   "release.changelog.empty":
     "Aucune quête terminée n'est rattachée à cette version.",
   "release.changelog.loading": "Chargement du journal…",

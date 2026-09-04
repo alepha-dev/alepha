@@ -14,6 +14,7 @@ import {
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { type Release, releases } from "../entities/releases.ts";
 import { compareReleaseTags } from "../releaseOrder.ts";
@@ -713,7 +714,7 @@ export class ReleaseController {
     for (const group of groups) {
       lines.push(
         group.kind === "epic"
-          ? `## #${group.ref} ${group.name}`
+          ? `## ${group.ref != null ? formatReference("epic", group.ref) : ""} ${group.name}`
           : `## ${group.name}`,
       );
       lines.push("");

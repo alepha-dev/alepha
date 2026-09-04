@@ -13,6 +13,10 @@ import type {
 import type { AppRouter } from "../../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
+import {
+  formatReference,
+  isReferenceKind,
+} from "../../../shared/element/typedReference.ts";
 
 export interface FolioLinksTabProps {
   /**
@@ -111,7 +115,9 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
               <span className="w-full truncate text-left">{ref.title}</span>
             </span>
             <span className="folio-mono text-muted-foreground shrink-0 text-[10px]">
-              {KIND_PREFIX[ref.kind] ?? ""}#{ref.shortId}
+              {isReferenceKind(ref.kind)
+                ? formatReference(ref.kind, ref.shortId)
+                : ""}
             </span>
           </>
         );
@@ -216,18 +222,3 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
 };
 
 export default FolioLinksTab;
-
-/**
- * One-letter disambiguator before the number in a link row, because the
- * numbers of different kinds overlap freely — folio #3 and epic #3 both
- * exist. A folio takes no prefix: it is what `[[…]]` means unqualified, so
- * a bare `#3` reads as one for the same reason the syntax does.
- */
-const KIND_PREFIX: Record<string, string> = {
-  quest: "Q",
-  comment: "C",
-  epic: "E",
-  blob: "F",
-  feedback: "P",
-  release: "R",
-};

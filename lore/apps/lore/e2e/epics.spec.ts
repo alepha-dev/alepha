@@ -637,7 +637,7 @@ test.describe("Epics — the questline", () => {
     const loose = await seed(`Loose${t}`);
 
     const card = (q: { shortId: number; title: string }) =>
-      page.getByRole("button", { name: `#${q.shortId} ${q.title}` });
+      page.getByRole("button", { name: `#Q${q.shortId} ${q.title}` });
 
     await test.step("every quest is on the board at once", async () => {
       await page.goto(`/${slug}/epics/${epic.number}?tab=flow`);
@@ -695,7 +695,7 @@ test.describe("Epics — the questline", () => {
       // The questline row's own `#id` anchor, not the title's: both are
       // links in this panel, and only this one points at the neighbour.
       await dialog
-        .getByRole("link", { name: `#${left.shortId}`, exact: true })
+        .getByRole("link", { name: `#Q${left.shortId}`, exact: true })
         .click();
 
       await expect(page).toHaveURL(new RegExp(`/quests/${left.shortId}$`), {

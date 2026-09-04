@@ -20,6 +20,7 @@ import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { formatReference } from "../shared/element/typedReference.ts";
 import type { BrokenWikiLinkReason } from "./folioWikiLinkResolver.ts";
 import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
 
@@ -714,7 +715,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline gap-2">
             <span className="text-muted-foreground font-mono text-xs">
-              #{data.shortId}
+              {formatReference("quest", data.shortId)}
             </span>
             <span className="text-sm font-semibold">{data.title}</span>
           </div>
@@ -729,7 +730,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline gap-2">
             <span className="text-muted-foreground font-mono text-xs">
-              #{data.number}
+              {formatReference("epic", data.number)}
             </span>
             <span className="text-sm font-semibold">{data.title}</span>
           </div>
@@ -745,7 +746,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline gap-2">
             <span className="text-muted-foreground font-mono text-xs">
-              #P{data.shortId}
+              {formatReference("feedback", data.shortId)}
             </span>
             <span className="text-sm font-semibold">{data.title}</span>
           </div>
@@ -756,7 +757,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline gap-2">
             <span className="text-muted-foreground font-mono text-xs">
-              #R{data.number}
+              {formatReference("release", data.number)}
             </span>
             <span className="text-sm font-semibold">{data.title}</span>
           </div>

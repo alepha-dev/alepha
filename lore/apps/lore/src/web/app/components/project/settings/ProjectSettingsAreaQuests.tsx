@@ -12,6 +12,8 @@ import type { AreaDetail } from "@/api/schemas/areaResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
+
 export interface ProjectSettingsAreaQuestsProps {
   area: AreaDetail;
 }
@@ -42,7 +44,9 @@ const ProjectSettingsAreaQuests = (props: ProjectSettingsAreaQuestsProps) => {
             })}
             className="flex items-center gap-2 text-sm"
           >
-            <span className="text-muted-foreground">#{quest.shortId}</span>
+            <span className="text-muted-foreground">
+              {formatReference("quest", quest.shortId)}
+            </span>
             <span
               className={quest.completedAt ? "line-through opacity-60" : ""}
             >

@@ -22,6 +22,7 @@ import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { QuestDueDate } from "../project/quest/questDueDate.ts";
 import { TAG_CHIP_CLASS, TAG_CHIP_FALLBACK } from "../shared/areaColor.ts";
+import { formatReference } from "../shared/element/typedReference.ts";
 import type { ProjectUser } from "../shared/useProjectUsers.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
 
@@ -206,7 +207,7 @@ const KanbanCard = (props: KanbanCardProps) => {
           )}
           <div className="flex items-center gap-1 pt-0.5">
             <span className="text-muted-foreground/70 font-mono text-[10px]">
-              #{quest.shortId}
+              {formatReference("quest", quest.shortId)}
             </span>
             {/* The area's colour, the same token the questline map renders. */}
             <span
