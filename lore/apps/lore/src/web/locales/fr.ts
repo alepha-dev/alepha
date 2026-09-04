@@ -1456,6 +1456,10 @@ export default {
   "epic.delete.confirm":
     'Ses quêtes et folios sont conservés, détachés de "$1". Cette action est irréversible.',
   "epic.toast.deleted": "Épopée supprimée.",
+  "epic.bulk.delete.title": "Supprimer $1 épopées ?",
+  "epic.bulk.delete.confirm": "Supprimer $1 épopées",
+  "epic.bulk.delete.description":
+    "Leurs quêtes et folios sont conservés, détachés de celles-ci. Cette action est irréversible.",
   "epic.list.column.status": "Statut",
   "epic.list.column.progress": "Progression",
   "epic.create": "Nouvelle épopée",

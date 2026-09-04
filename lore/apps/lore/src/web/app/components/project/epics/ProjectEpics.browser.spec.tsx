@@ -1,5 +1,11 @@
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -97,7 +103,7 @@ describe("ProjectEpics - the status filter", () => {
     localStorage.clear();
   });
 
-  const mount = async () => {
+  const mount = async (releases: unknown[] = []) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -122,7 +128,7 @@ describe("ProjectEpics - the status filter", () => {
       unlockedFeatures: [],
       unlockHistory: [],
     } as never);
-    alepha.store.set(currentReleasesAtom, [] as never);
+    alepha.store.set(currentReleasesAtom, releases as never);
 
     const view = render(
       <AlephaContext.Provider value={alepha}>
@@ -158,5 +164,74 @@ describe("ProjectEpics - the status filter", () => {
     expect(row("#2 - Active epic")).not.toBeNull();
     // The trigger says how many, the way the Quests list's does.
     expect(status.textContent).toContain("2 status");
+  });
+
+  /**
+   * The selection bar (feedback #2086): two lists of the project's own work,
+   * one of which could be operated on in bulk and one of which could not.
+   */
+  describe("the bulk actions", () => {
+    const aRelease = (id: number, tag: string, released?: string) => ({
+      id,
+      projectId: 1,
+      number: id,
+      tag,
+      title: tag,
+      description: "",
+      releasedAt: released,
+      createdAt: "2026-08-26T10:00:00.000Z",
+      updatedAt: "2026-08-26T10:00:00.000Z",
+      progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
+    });
+
+    // Found through the row's own title anchor rather than the row's
+    // accessible name: the rows carry equal `updatedAt`, so their order is
+    // the sort's business and not this test's.
+    const selectRow = (name: string) => {
+      const row = screen.getByRole("link", { name }).closest("tr");
+      expect(row).not.toBeNull();
+      fireEvent.click(within(row!).getByRole("checkbox"));
+    };
+
+    it("reveals the actions once a row is selected, and not before", async () => {
+      await mount();
+
+      // The checkbox column only exists because `bulkActions` is non-empty,
+      // so its presence is the first half of the assertion.
+      expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+
+      selectRow("#1 - Planned epic");
+
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Delete" })).not.toBeNull(),
+      );
+      expect(
+        screen.getByRole("button", { name: /Add to release/ }),
+      ).toBeTruthy();
+    });
+
+    it("leaves a published release out of the Add to release menu", async () => {
+      await mount([
+        aRelease(7, "0.28.0", "2026-09-03T13:47:42.849Z"),
+        aRelease(8, "0.29.0"),
+      ]);
+
+      selectRow("#1 - Planned epic");
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Add to release/ }),
+      );
+
+      const items = await waitFor(() => {
+        const found = document.querySelectorAll('[role="menuitem"]');
+        if (found.length === 0) throw new Error("not open yet");
+        return [...found].map((item) => item.textContent);
+      });
+
+      // `ReleaseAttachmentService.resolve` refuses a published release
+      // server-side, so an entry for one could only ever fail.
+      expect(items.join(" ")).toContain("0.29.0");
+      expect(items.join(" ")).not.toContain("0.28.0");
+    });
   });
 });
