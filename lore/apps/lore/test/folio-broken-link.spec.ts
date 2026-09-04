@@ -215,3 +215,74 @@ describe("rewriteFolioWikiLinks — epic targets", () => {
     expect(out).toBe("See [\\[\\[#3\\]\\]](#lore-broken:folio-not-found).");
   });
 });
+
+/**
+ * The typed grammar of epic #32. The letter names the kind, so a miss is a
+ * plain not-found for that kind and never a guess across kinds.
+ */
+describe("rewriteFolioWikiLinks — typed references", () => {
+  it("[[#Q2]] → a link to the quest", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[#Q2]].",
+      PROJECT_SLUG,
+      [],
+      [{ shortId: 2, title: "Onboard" }],
+    );
+    expect(out).toBe("See [Onboard](/sds/quests/2).");
+  });
+
+  it("the letter is case-insensitive on the way in", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[#q2]].",
+      PROJECT_SLUG,
+      [],
+      [{ shortId: 2, title: "Onboard" }],
+    );
+    expect(out).toBe("See [Onboard](/sds/quests/2).");
+  });
+
+  it("[[#E3]] → a link to the epic", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[#E3]].",
+      PROJECT_SLUG,
+      [],
+      [],
+      [],
+      [],
+      [{ shortId: 3, title: "Lore Deploy" }],
+    );
+    expect(out).toBe("See [Lore Deploy](/sds/epics/3).");
+  });
+
+  it("[[#F1]] → a link to the folio", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[#F1]].",
+      PROJECT_SLUG,
+      [folio(1, "Roadmap")],
+      [],
+    );
+    expect(out).toBe("See [Roadmap](/sds/folios/1).");
+  });
+
+  it("[[#Q999]] with no such quest → quest-not-found", () => {
+    const out = rewriteFolioWikiLinks(
+      "See [[#Q999]].",
+      PROJECT_SLUG,
+      [],
+      [{ shortId: 2, title: "Onboard" }],
+    );
+    expect(out).toBe("See [\\[\\[#Q999\\]\\]](#lore-broken:quest-not-found).");
+  });
+
+  it("[[#F156]] with no folio 156 but quest 156 → plain folio-not-found, no hint", () => {
+    // The `folio-not-found-quest-exists` diagnosis exists for the legacy bare
+    // `[[#156]]`, where the kind was a guess. `#F156` said "folio".
+    const out = rewriteFolioWikiLinks(
+      "See [[#F156]].",
+      PROJECT_SLUG,
+      [folio(1, "Roadmap")],
+      [{ shortId: 156, title: "Some quest" }],
+    );
+    expect(out).toBe("See [\\[\\[#F156\\]\\]](#lore-broken:folio-not-found).");
+  });
+});
