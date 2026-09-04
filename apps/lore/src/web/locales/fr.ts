@@ -1498,13 +1498,20 @@ export default {
   "epic.begin.title": "Démarrer cette épopée ?",
   "epic.begin.confirm":
     "Démarrer $1 libère ses quêtes dans le backlog, où le reste du projet peut les voir et les prendre.",
-  "epic.returnToPlanning.title": "Remettre cette épopée en préparation ?",
-  "epic.returnToPlanning.confirm":
-    "Remettre $1 en préparation retire à nouveau ses quêtes du backlog. Elles gardent leur statut ; elles cessent d'être listées.",
+  "epic.conclude.title": "Conclure cette épopée ?",
+  "epic.conclude.confirm":
+    "Conclure $1 est définitif. Elle ne pourra ni être rouverte ni revenir en planification. Ce qui reste à faire ira dans une nouvelle épopée qui dépend de celle-ci.",
+  "epic.begin.blocked": "Bloquée par l'épopée $1",
   "epic.status.actions.begin": "Commencer l'épopée",
   "epic.status.actions.conclude": "Conclure l'épopée",
-  "epic.status.actions.returnToPlanning": "Revenir à la planification",
-  "epic.status.actions.reopen": "Rouvrir l'épopée",
+  "epic.aside.predecessor": "Dépend de",
+  "epic.aside.predecessor.after": "Après l'épopée $1",
+  "epic.aside.predecessor.blocked": "Bloquée par l'épopée $1",
+  // Le bouton Accepter de la page de quête, retenu tant que l'épopée n'est pas active.
+  "quest.view.accept.epicPlanned":
+    "L'épopée $1 n'a pas commencé. Démarrez-la d'abord.",
+  "quest.view.accept.epicDone":
+    "L'épopée $1 est conclue. Créez une nouvelle épopée pour cette quête.",
   "epic.tab.overview": "Aperçu",
   "epic.tab.quests": "Quêtes",
   "epic.tab.flow": "Flux",
