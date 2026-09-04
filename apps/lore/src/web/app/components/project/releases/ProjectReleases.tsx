@@ -30,16 +30,27 @@ import {
 const releasesFiltersSchema = z.object({
   search: z.string().optional(),
   /**
-   * An ARRAY, and empty means every state (feedback #2092).
+   * A SCALAR again, and absent means every state.
    *
-   * As a scalar with `clearable`, the clear entry was drawn as a third
-   * SELECTABLE row with a checkmark beside Open and Released, so "All states"
-   * read as a third state a release could be in. A multi-select has no clear
-   * row at all - `control-select` only renders one for a single field - and
-   * shows the same label as its empty-trigger text instead. Same shape the
-   * Quests and Epics filters already use.
+   * ⚠️ This went array and came back, so the round trip is worth stating.
+   * It was made an array by feedback #2092 because a `clearable` scalar drew
+   * its clear entry as a third SELECTABLE row with a check mark beside Open
+   * and Released, so "All states" read as a third state a release could be
+   * in, and a multi-select was the only arity that had no such row.
+   *
+   * #2098 removed the row from `control-select` itself, which took the only
+   * reason with it. What is left is two values that are exhaustive and
+   * mutually exclusive - a release either has a `releasedAt` or does not -
+   * so selecting both was the same query as selecting neither, and the
+   * trigger said "2 states" for what meant "no filter". Apps' `reporting`
+   * filter is the identical shape and stayed a scalar throughout; #1816
+   * flagged the two disagreeing and named this as the fix.
+   *
+   * A stored `["open"]` from the array era survives the change:
+   * `reconcilePersistedFilters` takes the first element when the schema
+   * wants a scalar and finds an array.
    */
-  state: z.array(z.enum(["open", "released"])).optional(),
+  state: z.enum(["open", "released"]).optional(),
 });
 
 /**
@@ -131,15 +142,14 @@ const ProjectReleases = () => {
       params: { projectId: project.id },
     });
 
-    const states =
-      (filters?.state as Array<"open" | "released"> | undefined) ?? [];
+    const state = filters?.state as "open" | "released" | undefined;
     const needle = String(filters?.search ?? "")
       .trim()
       .toLowerCase();
 
     const rows = sortReleases(
       all.filter((release) => {
-        if (states.length > 0 && !states.includes(releaseState(release))) {
+        if (state && releaseState(release) !== state) {
           return false;
         }
         if (!needle) return true;
@@ -222,11 +232,6 @@ const ProjectReleases = () => {
                   clearable
                   icon={CircleDot}
                   clearLabel={tr("release.filter.allStates")}
-                  countLabel={(n) =>
-                    String(
-                      tr("release.filter.stateCount", { args: [String(n)] }),
-                    )
-                  }
                   triggerClassName="w-full"
                   items={[
                     { label: tr("release.group.open"), value: "open" },

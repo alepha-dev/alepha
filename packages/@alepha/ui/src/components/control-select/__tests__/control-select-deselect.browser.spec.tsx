@@ -10,11 +10,15 @@ import { describe, expect, it } from "vitest";
 import { ControlSelect } from "../control-select.tsx";
 
 /**
- * Base UI's single-select `Combobox` re-selects on every item press — it never
- * emits `null` — so a searchable select had no way back to the empty state once
- * a value was picked. The native-`Select` render path has always been able to
- * (its `clearable` row), which made the gap invisible until a field crossed the
+ * Base UI's single-select `Combobox` re-selects on every item press - it never
+ * emits `null` - so a searchable select had no way back to the empty state once
+ * a value was picked. The native-`Select` render path could, through the clear
+ * ROW it injected, which made the gap invisible until a field crossed the
  * option count that switches it to the combobox.
+ *
+ * ⚠️ That row is gone (feedback #2098), so pressing the selected item again
+ * is no longer one of two ways back to empty - it is the only one, on both
+ * paths. These cases are what that now rests on.
  */
 describe("ControlSelect combobox deselection", () => {
   const mount = (alepha: Alepha, ui: ReactNode) =>
@@ -74,21 +78,38 @@ describe("ControlSelect combobox deselection", () => {
     fireEvent.keyDown(ui.getByRole("combobox"), { key: "ArrowDown" });
   };
 
-  it("offers the clearable row so a filter can go back to 'All …'", async () => {
+  /**
+   * ⚠️ This case used to click an "All zones" ROW to get back to empty, and
+   * the reversal is deliberate rather than drift.
+   *
+   * `clearLabel` names the empty state, and the empty state is what the
+   * trigger already shows when nothing is picked. Repeating it as a pickable
+   * option with a check mark made "All zones" read as a third zone rather
+   * than as the absence of a filter, so the list is now the options and
+   * nothing else. The way back is the same gesture on both render paths:
+   * press the chosen row again.
+   */
+  it("goes back to 'All …' by re-pressing, with no clear row to press", async () => {
     const alepha = await start();
     const ui = mount(alepha, <Probe clearable clearLabel="All zones" />);
 
     openPopup(ui);
+    const rows = await ui.findAllByRole("option");
+    expect(rows.map((r) => r.textContent)).toEqual(["docs", "react"]);
+
     fireEvent.click(await ui.findByRole("option", { name: "docs" }));
     await waitFor(() => {
       expect(ui.getByTestId("value").textContent).toBe("docs");
     });
 
     openPopup(ui);
-    fireEvent.click(await ui.findByRole("option", { name: "All zones" }));
+    fireEvent.click(await ui.findByRole("option", { name: "docs" }));
     await waitFor(() => {
       expect(ui.getByTestId("value").textContent).toBe("∅");
     });
+    // And the label it goes back to is on the trigger, which is the one
+    // place it appears now.
+    expect(ui.getByRole("combobox").textContent).toContain("All zones");
   });
 
   it("clears an optional field when the selected row is pressed again", async () => {
