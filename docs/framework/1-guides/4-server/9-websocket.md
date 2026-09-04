@@ -288,6 +288,31 @@ An unauthenticated connection to a `secure: true` endpoint is rejected before th
 
 **What `maxConnectionsPerUser` counts differs by engine.** On Node the server holds every connection, so the cap is per endpoint: three connections total, whichever rooms they joined. On Cloudflare a Durable Object IS one room and only knows its own sockets, so the cap is per room: the same user may hold three in each room they join. Counting across rooms would put a second coordinator object on the path of every upgrade, which is a real cost for a limit that exists to stop one user opening tabs without end. Both engines refuse the same way, closing the socket with code `1008` and the reason `Max connections per user exceeded`, so a client cannot tell them apart. An unauthenticated connection is never capped on either, since there is no identity to count against.
 
+### Authorizing a machine, not a user
+
+`secure` answers "is a person signed in". Some endpoints are opened by a machine holding a secret rather than by a person with a session: a build agent, a fleet of servers reporting in. Give those an `authorize` hook instead:
+
+```typescript
+estates = $websocket({
+  channel: this.channels.estates,
+  handler: async ({ roomId, message }) => {
+    /* ... */
+  },
+  authorize: async ({ headers }) => {
+    const estate = await this.estates.verify(headers.authorization);
+    return estate ? { roomId: estate.id } : undefined;
+  },
+});
+```
+
+Three things follow from returning `{ roomId }` rather than a user:
+
+- The hook runs **before the socket is accepted**, on Node and on Cloudflare alike. Returning `undefined` refuses the handshake with a 401 and no socket ever exists. A hook that throws answers 503 instead: an outage in the credential store is not a revocation, and a client should keep retrying rather than give up.
+- **The room it names replaces the one the URL asked for.** A client's `?roomId=` is ignored on an endpoint with `authorize`, so a caller cannot enter a room its credential does not own, and a room-targeted `emit()` reaches only the sockets the credential put there.
+- The connection has **no `userId`** unless the hook returns one. It never resolves through `alepha/security`, so the secret is not a session and grants nothing on any HTTP endpoint. `emit({ userId })` cannot reach it; `emit({ roomId })` can.
+
+`$room` takes the same hook, and the room it returns is the one the socket joins. Declaring `authorize` together with `secure` on one endpoint is refused at registration: an endpoint has one way in.
+
 ## Node / VPS
 
 On Node, `alepha/websocket` runs on top of the `ws` package, attached to the same HTTP server as the rest of your app. A connection can join multiple rooms at once (e.g. `?roomIds=room-1,room-2`) - `useRoom`/`WebSocketClient` sends all active room subscriptions as query params when it connects.

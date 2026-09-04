@@ -53,6 +53,70 @@ export enum WebSocketState {
 }
 
 /**
+ * What a handshake carries, as the admission decision sees it: the upgrade
+ * URL and the two headers a credential can travel in.
+ *
+ * Browsers cannot set an `Authorization` header on an upgrade, which is why
+ * `cookie` is here; a machine client can, which is why `authorization` is.
+ */
+export interface WebSocketHandshake {
+  url: string;
+  headers: Record<string, string | undefined>;
+}
+
+/**
+ * What an {@link WebSocketAuthorize} hook answers when it lets a handshake
+ * through.
+ *
+ * `roomId` is the room the CREDENTIAL names, and it replaces whatever the
+ * URL asked for. `userId` is optional on purpose: a connection may be
+ * authorized and belong to no user at all, which is exactly the shape a
+ * machine credential wants, since a user id here is what `emit({ userId })`
+ * and `maxConnectionsPerUser` count against.
+ */
+export interface WebSocketAdmission {
+  userId?: string;
+  roomId?: string;
+}
+
+/**
+ * The pre-accept hook for an endpoint whose credential names a machine
+ * rather than a person.
+ *
+ * Runs before any socket exists, on Node and in the generated Cloudflare
+ * worker entry alike. `undefined` refuses the handshake with a 401. A throw
+ * is not a refusal: it propagates and the caller answers 503, because an
+ * outage in whatever the hook consults is not a revocation, and a
+ * well-behaved machine client stops retrying on a 401.
+ *
+ * Never routed through `alepha/security`, so the credential is not a session
+ * and grants nothing on any HTTP endpoint. That is the property the hook
+ * exists for: the only other pre-accept seam, `resolveUserId`, runs the
+ * realm's resolvers, and a principal there is a credential everywhere.
+ */
+export type WebSocketAuthorize = (
+  handshake: WebSocketHandshake,
+) => Promise<WebSocketAdmission | undefined> | WebSocketAdmission | undefined;
+
+/**
+ * The two admission options an endpoint may declare, one of which must be
+ * absent: `authorize` decides on its own, `secure` asks the realm.
+ */
+export interface WebSocketAdmissionOptions {
+  authorize?: WebSocketAuthorize;
+  secure?: boolean;
+}
+
+/**
+ * What {@link WebSocketServerProvider.admit} decides. A `roomId` is present
+ * only when an `authorize` hook named one; the caller keeps the URL's rooms
+ * otherwise.
+ */
+export type WebSocketAdmissionResult =
+  | { accepted: false }
+  | { accepted: true; userId?: string; roomId?: string };
+
+/**
  * WebSocket endpoint configuration (server-side)
  */
 export interface WebSocketPrimitiveOptions<
@@ -114,6 +178,15 @@ export interface WebSocketPrimitiveOptions<
    * Requires alepha/security integration
    */
   secure?: boolean;
+
+  /**
+   * Decide the handshake yourself, and name the room it lands in.
+   *
+   * For a credential that names a machine rather than a person. See
+   * {@link WebSocketAuthorize} for the contract; declaring it together with
+   * `secure` is refused at registration, since an endpoint has one way in.
+   */
+  authorize?: WebSocketAuthorize;
 
   /**
    * Limit number of connections per user (if authenticated)

@@ -1,9 +1,12 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 
 import type { RoomPrimitiveOptions } from "../interfaces/RoomInterfaces.ts";
 import type {
   EmitOptions,
+  WebSocketAdmissionOptions,
+  WebSocketAdmissionResult,
   WebSocketConnection,
+  WebSocketHandshake,
   WebSocketPrimitiveOptions,
 } from "../interfaces/WebSocketInterfaces.ts";
 import type { TWSObject } from "../primitives/$channel.ts";
@@ -165,5 +168,78 @@ export abstract class WebSocketServerProvider {
     } as any);
 
     return user?.id;
+  }
+
+  /**
+   * Decide a handshake before any socket exists, and name the room it lands
+   * in.
+   *
+   * Two ways in, chosen by the endpoint:
+   *
+   * - **`authorize`**: the endpoint's own hook decides. It is for a credential
+   *   that names a machine rather than a person, so it never touches the
+   *   security realm, and the room it returns REPLACES whatever the URL asked
+   *   for. `undefined` is a refusal. A throw is not: it propagates, so the
+   *   caller answers 503 rather than a 401 that a well-behaved machine reads
+   *   as "your credential was revoked, stop retrying".
+   * - otherwise **`resolveUserId`** plus `secure`: the session path, as it
+   *   always was. A resolver failure is logged and read as anonymous, which
+   *   is what the worker entry did before this method existed; on a `secure`
+   *   endpoint anonymous is a refusal anyway.
+   *
+   * One method rather than two call sites agreeing, because the Node upgrade
+   * and the generated Cloudflare worker entry both have to make exactly this
+   * decision, and the worker entry reaches this provider by string injection,
+   * where no type can hold the two in step.
+   *
+   * Public for the same reason {@link resolveUserId} is.
+   */
+  public async admit(
+    endpoint: WebSocketAdmissionOptions | undefined,
+    handshake: WebSocketHandshake,
+  ): Promise<WebSocketAdmissionResult> {
+    if (endpoint?.authorize) {
+      const admission = await endpoint.authorize(handshake);
+      if (!admission) {
+        return { accepted: false };
+      }
+      return {
+        accepted: true,
+        userId: admission.userId,
+        roomId: admission.roomId,
+      };
+    }
+
+    let userId: string | undefined;
+    try {
+      userId = await this.resolveUserId(handshake);
+    } catch (error) {
+      this.alepha.log?.warn("Failed to resolve WebSocket user identity", error);
+    }
+    if (endpoint?.secure && !userId) {
+      return { accepted: false };
+    }
+    return { accepted: true, userId };
+  }
+
+  /**
+   * Refuse an endpoint that declares both ways in.
+   *
+   * `authorize` decides on its own and `secure` asks the realm; one endpoint
+   * with both would have to pick silently, and whichever it picked would be
+   * a surprise to the author of the other. Refused where the endpoint is
+   * registered, so the mistake fails the boot rather than the first client.
+   */
+  protected assertAdmissionOptions(
+    options: WebSocketAdmissionOptions,
+    path: string,
+  ): void {
+    if (options.authorize && options.secure) {
+      throw new AlephaError(
+        `WebSocket endpoint ${path} declares both authorize and secure. ` +
+          "An endpoint has one way in: authorize decides the handshake itself, " +
+          "secure asks alepha/security. Keep one.",
+      );
+    }
   }
 }

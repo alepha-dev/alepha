@@ -194,6 +194,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     config: WebSocketPrimitiveOptions<TClient, TServer>,
   ): void {
     const path = config.channel.options.path;
+    this.assertAdmissionOptions(config, path);
     this.endpoints.set(path, config);
   }
 
@@ -273,6 +274,7 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   // -------------------------------------------------------------------------------------------------------------------
 
   public registerRoom(options: RoomPrimitiveOptions<any, any, any>): void {
+    this.assertAdmissionOptions(options, options.channel.options.path);
     this.roomEndpoints.set(options.channel.options.path, options);
   }
 
@@ -413,22 +415,38 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
 
     this.log.debug(`WebSocket upgrade request: ${path}`);
 
-    const secure = endpoint?.secure ?? roomEndpoint?.secure;
-    const userId = await this.resolveUserIdFromUpgrade(request);
-    if (secure && !userId) {
-      this.log.warn(`Rejected unauthenticated WebSocket upgrade: ${path}`);
+    // One decision for both engines, see `WebSocketServerProvider.admit`: the
+    // endpoint's own `authorize` hook when it has one, the session resolver
+    // plus `secure` otherwise. A hook that throws is an outage, not a
+    // revocation, so it answers 503 rather than the 401 a machine client
+    // reads as "stop retrying".
+    const admission = await this.admit(
+      endpoint ?? roomEndpoint,
+      this.handshakeOf(request),
+    ).catch((error: unknown) => {
+      this.log.error(`WebSocket admission failed on ${path}:`, error);
+      return undefined;
+    });
+    if (!admission) {
+      socket.write("HTTP/1.1 503 Service Unavailable\r\n\r\n");
+      socket.destroy();
+      return false;
+    }
+    if (!admission.accepted) {
+      this.log.warn(`Rejected unauthorized WebSocket upgrade: ${path}`);
       socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
       return false;
     }
+    const { userId, roomId } = admission;
 
     this.wss?.handleUpgrade(request, socket, head, (ws) => {
       if (roomEndpoint) {
         this.trackSocket(ws);
-        this.handleRoomConnection(ws, roomEndpoint, request, userId);
+        this.handleRoomConnection(ws, roomEndpoint, request, userId, roomId);
       } else if (endpoint) {
         this.trackSocket(ws);
-        this.handleConnection(ws, endpoint, request, userId);
+        this.handleConnection(ws, endpoint, request, userId, roomId);
       }
     });
 
@@ -445,11 +463,15 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     endpoint: RoomPrimitiveOptions<any, any, any>,
     request: IncomingMessage,
     userId: string | undefined,
+    admittedRoomId?: string,
   ): void {
     const path = endpoint.channel.options.path;
     const connectionId = this.createConnectionId();
     const url = new URL(request.url || "/", "http://localhost");
-    const roomIds = this.extractRoomIds(url);
+    // The room the credential named wins over the one the URL asked for.
+    const roomIds = admittedRoomId
+      ? [admittedRoomId]
+      : this.extractRoomIds(url);
     const roomId = roomIds[0] ?? "default";
 
     if (!this.roomIdsAccepted(endpoint, roomIds, ws)) {
@@ -599,14 +621,21 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
   protected async resolveUserIdFromUpgrade(
     request: IncomingMessage,
   ): Promise<string | undefined> {
-    const url = `http://${request.headers.host ?? "localhost"}${request.url ?? "/"}`;
-    return this.resolveUserId({
-      url,
+    return this.resolveUserId(this.handshakeOf(request));
+  }
+
+  /**
+   * The minimal shape of a Node upgrade request that admission reads: the
+   * absolute URL and the two headers a credential can arrive in.
+   */
+  protected handshakeOf(request: IncomingMessage) {
+    return {
+      url: `http://${request.headers.host ?? "localhost"}${request.url ?? "/"}`,
       headers: {
         authorization: request.headers.authorization,
         cookie: request.headers.cookie,
       },
-    });
+    };
   }
 
   /**
@@ -631,12 +660,16 @@ export class NodeWebSocketServerProvider extends WebSocketServerProvider {
     endpoint: WebSocketPrimitiveOptions<TClient, TServer>,
     request: IncomingMessage,
     userId: string | undefined,
+    admittedRoomId?: string,
   ): void {
     const connectionId = this.createConnectionId();
 
-    // Extract roomIds from query params (e.g., ?roomId=room1&roomId=room2 or ?roomIds=room1,room2)
+    // Extract roomIds from query params (e.g., ?roomId=room1&roomId=room2 or ?roomIds=room1,room2),
+    // unless `authorize` named the room, in which case the URL's are ignored.
     const url = new URL(request.url || "/", "http://localhost");
-    const roomIds = this.extractRoomIds(url);
+    const roomIds = admittedRoomId
+      ? [admittedRoomId]
+      : this.extractRoomIds(url);
     this.warnMultiRoom(roomIds);
 
     if (!this.roomIdsAccepted(endpoint, roomIds, ws)) {
