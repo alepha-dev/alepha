@@ -11,7 +11,7 @@ import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
  * query path against the real `LoreAnalytics` declarations.
  */
 describe("Lore admin analytics surface", () => {
-  it("lists both sigil datasets with their declared dimensions", async () => {
+  it("lists every sigil dataset with its declared dimensions", async () => {
     const alepha = Alepha.create();
     const analytics = alepha.inject(LoreAnalytics);
     const service = alepha.inject(AdminAnalyticsService);
@@ -21,7 +21,12 @@ describe("Lore admin analytics surface", () => {
       .listDatasets()
       .map((d) => d.name)
       .sort();
-    expect(names).toEqual(["sigil_views", "sigil_vitals"]);
+    // A census, so a dataset added without a thought about the admin surface
+    // is a red test rather than a silent third row. `sigil_errors` joined on
+    // 2026-09-04 (feedback #2085): the error series `sigil_error_groups`
+    // structurally cannot hold, since that table keeps a running all-time
+    // total per fingerprint and never the occurrences.
+    expect(names).toEqual(["sigil_errors", "sigil_views", "sigil_vitals"]);
 
     const views = service.listDatasets().find((d) => d.name === "sigil_views");
     const dimensions = Object.keys(views?.dimensions.properties ?? {}).sort();

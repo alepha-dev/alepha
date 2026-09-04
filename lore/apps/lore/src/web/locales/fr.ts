@@ -1112,6 +1112,15 @@ export default {
   "insights.errors.note":
     "Défaillances distinctes encore actives dans cette app",
   "insights.errors.empty": "Aucune défaillance signalée sur cette période.",
+  "insights.errors.chart.title": "Erreurs dans le temps",
+  "insights.errors.stat.total": "Erreurs sur la période",
+  "insights.errors.stat.client": "Dans le navigateur",
+  "insights.errors.stat.server": "Sur le serveur",
+  "insights.errors.origin.client": "Navigateur",
+  "insights.errors.origin.server": "Serveur",
+  "insights.errors.worst.title": "Les plus fréquentes",
+  "insights.errors.worst.note":
+    "Les compteurs sont le total de chaque défaillance depuis toujours, pas celui de la période. Le graphique ci-dessus, lui, correspond à la période.",
   "app.settings.general": "Général",
   "app.settings.credential": "Accès",
   "app.settings.danger": "Zone dangereuse",

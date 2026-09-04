@@ -117,6 +117,27 @@ class Probe {
       }
     },
   };
+
+  errors = {
+    /**
+     * One `sigil_errors` occurrence bucket.
+     *
+     * ⚠️ A different table from `errorGroups` above, and deliberately so.
+     * That one holds a running ALL-TIME total per fingerprint and cannot
+     * carry a series; this dataset is append-only and is the only thing that
+     * can say WHEN. A fixture written here is invisible to `errorGroups` and
+     * vice versa, which is exactly the separation the assertions rely on.
+     */
+    create: async (sample: {
+      sigilId: string;
+      hour: string;
+      origin?: string;
+      fingerprint?: string;
+      count: number;
+    }): Promise<void> => {
+      await this.datasets.errors.record(sample);
+    },
+  };
 }
 
 interface TestContext {
@@ -1027,6 +1048,199 @@ describe("InsightsController", () => {
       expect(res.data.errorGroups.map((g) => g.fingerprint)).toEqual([
         "fp-mine",
       ]);
+    });
+
+    /**
+     * `origin` has been on the row since the table existed and was never
+     * mapped onto the wire, so the browser/server split the report asked for
+     * (feedback #2085) was a schema field away the whole time.
+     */
+    it("carries each group's origin", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+      for (const [fingerprint, origin, count] of [
+        ["fp-client", "client", 3],
+        ["fp-server", "server", 9],
+      ] as const) {
+        await ctx.probe.errorGroups.create({
+          sigilId,
+          fingerprint,
+          name: "TypeError",
+          message: "boom",
+          stackSample: "TypeError: boom",
+          sourceUrl: "",
+          origin,
+          firstSeenAt: instantUtc(ctx, 1),
+          lastSeenAt: instantUtc(ctx, 0),
+          count,
+        });
+      }
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(
+        res.data.errorGroups.map((g) => [g.fingerprint, g.origin]),
+      ).toEqual([
+        ["fp-server", "server"],
+        ["fp-client", "client"],
+      ]);
+    });
+  });
+
+  /**
+   * The series, which is a different table from the groups above and exists
+   * because that one structurally cannot hold one: it keeps a running
+   * all-time total per fingerprint, never the occurrences.
+   */
+  describe("error series", () => {
+    it("splits the window by day and by origin", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+      await ctx.probe.errors.create({
+        sigilId,
+        hour: hourUtc(ctx, 2, 9),
+        origin: "client",
+        fingerprint: "fp-a",
+        count: 3,
+      });
+      // Same day, same origin, a second bucket: the two have to sum.
+      await ctx.probe.errors.create({
+        sigilId,
+        hour: hourUtc(ctx, 2, 14),
+        origin: "client",
+        fingerprint: "fp-b",
+        count: 4,
+      });
+      await ctx.probe.errors.create({
+        sigilId,
+        hour: hourUtc(ctx, 2, 14),
+        origin: "server",
+        fingerprint: "fp-c",
+        count: 5,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      const day = res.data.errorSeries.find((p) => p.date === dayUtc(ctx, 2));
+      expect(day).toMatchObject({ client: 7, server: 5 });
+    });
+
+    it("zeroes every day in the window, so a quiet week is not a short one", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+      await ctx.probe.errors.create({
+        sigilId,
+        hour: hourUtc(ctx, 1, 9),
+        origin: "server",
+        count: 2,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      // Seven days, every one present, and the six with nothing at zero.
+      expect(res.data.errorSeries).toHaveLength(7);
+      expect(
+        res.data.errorSeries.every(
+          (p) => typeof p.client === "number" && typeof p.server === "number",
+        ),
+      ).toBe(true);
+      expect(
+        res.data.errorSeries.reduce((n, p) => n + p.client + p.server, 0),
+      ).toBe(2);
+    });
+
+    /**
+     * The whole reason this dataset exists. `errorGroups[].count` is a
+     * running ALL-TIME total on a row filtered by `lastSeenAt`, so a group
+     * that has fired 99 times over a year and once yesterday reports 99 in a
+     * 7-day window. Plotting that would be wrong in a way no reader could
+     * detect, which is what the series avoids.
+     */
+    it("does not take its numbers from the groups' all-time counts", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+
+      await ctx.probe.errorGroups.create({
+        sigilId,
+        fingerprint: "fp-ancient",
+        name: "TypeError",
+        message: "boom",
+        stackSample: "TypeError: boom",
+        sourceUrl: "",
+        firstSeenAt: instantUtc(ctx, 300),
+        lastSeenAt: instantUtc(ctx, 1),
+        count: 99,
+      });
+      await ctx.probe.errors.create({
+        sigilId,
+        hour: hourUtc(ctx, 1, 9),
+        origin: "client",
+        fingerprint: "fp-ancient",
+        count: 1,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      // The group still reports its lifetime figure, and the series reports
+      // the window. Both are true; only one of them may be drawn.
+      expect(res.data.errorGroups[0]?.count).toBe(99);
+      expect(
+        res.data.errorSeries.reduce((n, p) => n + p.client + p.server, 0),
+      ).toBe(1);
+    });
+
+    it("never counts another project's errors", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const stranger = await createTestUser(ctx);
+      const mine = await createProject(ctx, owner);
+      const theirs = await createProject(ctx, stranger);
+      const myScope = await createSigil(ctx, mine, "lore-prod", owner);
+      const theirScope = await createSigil(ctx, theirs, "lore-prod", stranger);
+
+      await ctx.probe.errors.create({
+        sigilId: myScope,
+        hour: hourUtc(ctx, 1, 9),
+        origin: "client",
+        count: 1,
+      });
+      await ctx.probe.errors.create({
+        sigilId: theirScope,
+        hour: hourUtc(ctx, 1, 9),
+        origin: "client",
+        count: 50,
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId: mine }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(
+        res.data.errorSeries.reduce((n, p) => n + p.client + p.server, 0),
+      ).toBe(1);
     });
   });
 
