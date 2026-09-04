@@ -4,11 +4,13 @@ import { $repository } from "alepha/orm";
 import { splitMarkdownCode } from "../../web/app/components/folios/markdownCodeSegments.ts";
 import { parseTypedReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Epic, epics } from "../entities/epics.ts";
+import { feedback } from "../entities/feedback.ts";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { type FolioLink, folioLinks } from "../entities/folioLinks.ts";
 import { type Folio, folios } from "../entities/folios.ts";
 import { type Quest, quests } from "../entities/quests.ts";
+import { releases } from "../entities/releases.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { BoundParameters } from "./BoundParameters.ts";
@@ -21,7 +23,9 @@ import { BoundParameters } from "./BoundParameters.ts";
  */
 export interface ParsedToken {
   /**
-   * Target table — `folio` (default), `quest`, `epic` or `blob`.
+   * Target table — `folio` (default), `quest`, `epic`, `blob`, and since
+   * epic #32 `feedback` and `release`, which only the typed grammar
+   * (`#P120`, `#R12`) can name.
    */
   type: LinkTargetKind;
   /**
@@ -70,6 +74,16 @@ interface TokenLookupMaps {
   pathContext?: PathContext;
   blobByShort?: Map<number, string>;
   blobUuids?: Set<string>;
+  /**
+   * `feedback.shortId` → `feedback.id`. Number only: feedback and releases
+   * are reachable through the typed grammar alone, so there is no title
+   * lookup to keep ambiguous.
+   */
+  feedbackByShort?: Map<number, number>;
+  /**
+   * `releases.number` → `releases.id`. The tag is never an address.
+   */
+  releaseByNumber?: Map<number, number>;
 }
 
 /**
@@ -139,6 +153,8 @@ export class FolioLinkService {
   protected readonly epics = $repository(epics);
   protected readonly directories = $repository(folioDirectories);
   protected readonly blobs = $repository(folioBlobs);
+  protected readonly feedbackRows = $repository(feedback);
+  protected readonly releaseRows = $repository(releases);
   protected readonly bound = $inject(BoundParameters);
 
   /**
@@ -263,6 +279,8 @@ export class FolioLinkService {
     const needsQuests = tokens.some((t) => t.type === "quest");
     const needsEpics = tokens.some((t) => t.type === "epic");
     const needsBlobs = tokens.some((t) => t.type === "blob");
+    const needsFeedback = tokens.some((t) => t.type === "feedback");
+    const needsReleases = tokens.some((t) => t.type === "release");
     const needsPaths = tokens.some(
       (t) =>
         t.type === "folio" && t.ref.includes("/") && !t.ref.startsWith("#"),
@@ -378,6 +396,25 @@ export class FolioLinkService {
       }
     }
 
+    // Feedback and releases are addressed by number only (`#P120`, `#R12`),
+    // so one two-column read each and no title map.
+    const feedbackByShort = new Map<number, number>();
+    if (needsFeedback) {
+      const candidates = await this.feedbackRows.findMany({
+        where: { projectId: { eq: projectId } },
+        columns: ["id", "shortId"],
+      });
+      for (const c of candidates) feedbackByShort.set(c.shortId, c.id);
+    }
+    const releaseByNumber = new Map<number, number>();
+    if (needsReleases) {
+      const candidates = await this.releaseRows.findMany({
+        where: { projectId: { eq: projectId } },
+        columns: ["id", "number"],
+      });
+      for (const c of candidates) releaseByNumber.set(c.number, c.id);
+    }
+
     const seen = new Set<string>();
     const resolved: Array<{
       targetType: LinkTargetKind;
@@ -394,6 +431,8 @@ export class FolioLinkService {
         pathContext,
         blobByShort,
         blobUuids,
+        feedbackByShort,
+        releaseByNumber,
       });
       if (!targetId) continue;
       if (token.type === "folio" && targetId === sourceFolioId) continue;
@@ -424,7 +463,20 @@ export class FolioLinkService {
       pathContext,
       blobByShort,
       blobUuids,
+      feedbackByShort,
+      releaseByNumber,
     } = maps;
+    if (token.type === "feedback" || token.type === "release") {
+      // Only the typed grammar produces these, so the ref is always `#N`.
+      if (!token.ref.startsWith("#")) return undefined;
+      const n = Number.parseInt(token.ref.slice(1), 10);
+      if (!Number.isFinite(n)) return undefined;
+      const id =
+        token.type === "feedback"
+          ? feedbackByShort?.get(n)
+          : releaseByNumber?.get(n);
+      return id != null ? String(id) : undefined;
+    }
     if (token.type === "blob") {
       // `blob#42` → shortId 42 in this project. Bare `blob:<uuid>` →
       // UUID lookup (validate it belongs to this project via the
@@ -704,6 +756,49 @@ export class FolioLinkService {
       }),
     );
     return rows.map((r) => ({ id: r.id, shortId: r.number, title: r.title }));
+  }
+
+  /**
+   * Resolve feedback target ids to display refs, the row shape the links
+   * payload uses for every kind.
+   */
+  public async findFeedbackRefs(
+    ids: number[],
+  ): Promise<Array<{ id: number; shortId: number; title: string }>> {
+    return this.bound.collect(ids, (batch) =>
+      this.feedbackRows.findMany({
+        where: { id: { inArray: batch } },
+        columns: ["id", "shortId", "title"],
+      }),
+    );
+  }
+
+  /**
+   * Resolve release target ids to display refs. As with epics, the
+   * per-project `number` rides under `shortId`; the `tag` comes along
+   * because it is what `/releases/:releaseTag` navigates by, and a release
+   * may not have one.
+   */
+  public async findReleaseRefs(ids: number[]): Promise<
+    Array<{
+      id: number;
+      shortId: number;
+      title: string;
+      tag?: string;
+    }>
+  > {
+    const rows = await this.bound.collect(ids, (batch) =>
+      this.releaseRows.findMany({
+        where: { id: { inArray: batch } },
+        columns: ["id", "number", "title", "tag"],
+      }),
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      shortId: r.number,
+      title: r.title,
+      tag: r.tag,
+    }));
   }
 
   /**

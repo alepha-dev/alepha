@@ -4,11 +4,13 @@ import { useMemo } from "react";
 import type { BlobController } from "@/api/controllers/BlobController.ts";
 import type { DirectoryController } from "@/api/controllers/DirectoryController.ts";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
+import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 
 import { currentFolioBlobsAtom } from "../../../atoms/currentFolioBlobsAtom.ts";
+import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { projectDirectoriesAtom } from "../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
 import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
@@ -16,7 +18,9 @@ import type {
   BlobRef,
   DirectoryRef,
   EpicRef,
+  FeedbackRef,
   QuestRef,
+  ReleaseRef,
 } from "../../folios/folioWikiLinkResolver.ts";
 import { rewriteFolioWikiLinks } from "../../folios/rewriteFolioWikiLinks.ts";
 import type { ElementRef } from "./elementRef.ts";
@@ -75,20 +79,51 @@ export const useElementLinks = (
   const epicApi = useClient<EpicController>();
   const directoryApi = useClient<DirectoryController>();
   const blobApi = useClient<BlobController>();
+  const feedbackApi = useClient<FeedbackController>();
 
   const [atomFolios] = useStore(userFoliosAtom);
   const [atomDirectories] = useStore(projectDirectoriesAtom);
   const [atomBlobs] = useStore(currentFolioBlobsAtom);
+  const [atomReleases] = useStore(currentReleasesAtom);
 
   const inFolioWorkspace = element.kind === "folio";
   const { projectId, projectSlug } = element;
 
-  // Only path-style refs (`dir/sub/name`) need the directory map, and only
-  // `blob:` / `![](blob:…)` need the blob list. Both are gated so a plain
-  // `[[#42]]` never pays for them.
+  // Only path-style refs (`dir/sub/name`) need the directory map, only
+  // `blob:` / `![](blob:…)` need the blob list, and only `[[#P120]]` needs
+  // the feedback refs. All three are gated so a plain `[[#Q42]]` never pays
+  // for them.
   const hasPathLinks = /\[\[[^\]\n]*\/[^\]\n]+\]\]/.test(content);
   const hasBlobRefs =
     /\[\[\s*blob:/i.test(content) || /!\[[^\]]*\]\(blob:/i.test(content);
+  const hasFeedbackRefs = /\[\[\s*#p\d+\s*\]\]/i.test(content);
+
+  // The inbox is paged, so a feedback item's title cannot be read off a
+  // list the page already holds the way a release's can. Three columns for
+  // the whole inbox, fetched only when a body names one.
+  const { data: feedbackRefs } = useQuery<FeedbackRef[]>(
+    {
+      key: ["elementLinks:feedback", projectId],
+      enabled: hasFeedbackRefs && projectId > 0,
+      staleTime: [5, "minutes"],
+      handler: async () =>
+        await feedbackApi.listFeedbackRefs({ params: { projectId } }),
+      onError: () => {},
+    },
+    [feedbackApi, projectId, hasFeedbackRefs],
+  );
+
+  // Every release, with its number, tag and title, is already in the
+  // project layout's atom, so `[[#R12]]` costs no request.
+  const releases = useMemo<ReleaseRef[]>(
+    () =>
+      (atomReleases ?? []).map((r) => ({
+        number: r.number,
+        title: r.title,
+        tag: r.tag,
+      })),
+    [atomReleases],
+  );
 
   // Fetched, not atom-read, only outside the folio workspace. `enabled`
   // does the gating so the hook order never changes between renders.
@@ -273,9 +308,21 @@ export const useElementLinks = (
             directories,
             blobs,
             epics ?? [],
+            feedbackRefs ?? [],
+            releases,
           )
         : content,
-    [content, projectSlug, folios, quests, directories, blobs, epics],
+    [
+      content,
+      projectSlug,
+      folios,
+      quests,
+      directories,
+      blobs,
+      epics,
+      feedbackRefs,
+      releases,
+    ],
   );
 
   return { suggestions, rendered };

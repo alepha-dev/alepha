@@ -8,9 +8,11 @@ import { AlephaServer } from "alepha/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { EpicController } from "../src/api/controllers/EpicController.ts";
+import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
+import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { FolioLinkService } from "../src/api/services/FolioLinkService.ts";
 import { createFolioWikiLinkResolver } from "../src/web/app/components/folios/folioWikiLinkResolver.ts";
@@ -30,7 +32,7 @@ const PROJECT_SLUG = "grammar";
  * are folded onto the per-project numbers a person types.
  */
 interface Resolved {
-  kind: "folio" | "quest" | "epic";
+  kind: "folio" | "quest" | "epic" | "feedback" | "release";
   id: number;
 }
 
@@ -39,6 +41,8 @@ interface Seed {
   folio: { id: string; shortId: number; title: string };
   quest: { id: number; shortId: number; title: string };
   epic: { id: number; number: number; title: string };
+  feedback: { id: number; shortId: number; title: string };
+  release: { id: number; number: number; title: string; tag: string };
 }
 
 /**
@@ -115,6 +119,25 @@ describe("the reference grammar is one grammar on both sides", () => {
         { user: owner },
       );
 
+    const feedbackApi = alepha.inject(FeedbackController);
+    const submitted = await feedbackApi.submitFeedback.fetch(
+      {
+        params: { projectId },
+        body: { title: "Wrong colour", description: "The button is red." },
+      },
+      { user: owner },
+    );
+    const feedbackItem = await feedbackApi.getFeedback.fetch(
+      { params: { projectId, feedbackId: submitted.data.id } },
+      { user: owner },
+    );
+    const release = await alepha
+      .inject(ReleaseController)
+      .createRelease.fetch(
+        { params: { projectId }, body: { tag: "0.1.0" } },
+        { user: owner },
+      );
+
     seed = {
       projectId,
       folio: {
@@ -131,6 +154,17 @@ describe("the reference grammar is one grammar on both sides", () => {
         id: epic.data.id,
         number: epic.data.number,
         title: epic.data.title,
+      },
+      feedback: {
+        id: feedbackItem.data.id,
+        shortId: feedbackItem.data.shortId,
+        title: feedbackItem.data.title,
+      },
+      release: {
+        id: release.data.id,
+        number: release.data.number,
+        title: release.data.title,
+        tag: release.data.tag ?? "",
       },
     };
   });
@@ -162,6 +196,12 @@ describe("the reference grammar is one grammar on both sides", () => {
     if (targetType === "epic" && toId === String(seed.epic.id)) {
       return { kind: "epic", id: seed.epic.number };
     }
+    if (targetType === "feedback" && toId === String(seed.feedback.id)) {
+      return { kind: "feedback", id: seed.feedback.shortId };
+    }
+    if (targetType === "release" && toId === String(seed.release.id)) {
+      return { kind: "release", id: seed.release.number };
+    }
     throw new Error(`unexpected server answer ${targetType}:${toId}`);
   };
 
@@ -185,15 +225,42 @@ describe("the reference grammar is one grammar on both sides", () => {
       ],
       quests: [{ shortId: seed.quest.shortId, title: seed.quest.title }],
       epics: [{ shortId: seed.epic.number, title: seed.epic.title }],
+      feedback: [
+        {
+          shortId: seed.feedback.shortId,
+          title: seed.feedback.title,
+          status: "pending",
+        },
+      ],
+      releases: [
+        {
+          number: seed.release.number,
+          title: seed.release.title,
+          tag: seed.release.tag,
+        },
+      ],
     });
 
   /**
-   * The browser's answer is an href; its last segment is the number.
+   * The browser's answer is an href. For a folio, quest or epic its last
+   * segment is the number; a feedback link carries the number in its query,
+   * and a release link carries the tag, folded back onto the number here.
    */
   const inBrowser = (token: string): Resolved | undefined => {
     const target = browserResolver().resolve(token);
     if (!target || target.kind === "broken" || target.kind === "blob") {
       return undefined;
+    }
+    if (target.kind === "feedback") {
+      const match = /feedback=(\d+)$/.exec(target.href);
+      return match
+        ? { kind: "feedback", id: Number.parseInt(match[1], 10) }
+        : undefined;
+    }
+    if (target.kind === "release") {
+      return target.href.endsWith(`/${seed.release.tag}`)
+        ? { kind: "release", id: seed.release.number }
+        : undefined;
     }
     const tail = target.href.split("/").pop() ?? "";
     return { kind: target.kind, id: Number.parseInt(tail, 10) };
@@ -230,8 +297,33 @@ describe("the reference grammar is one grammar on both sides", () => {
       expected: (s) => ({ kind: "folio", id: s.folio.shortId }),
     },
     {
+      label: "#P<n> is the feedback item",
+      token: (s) => `#P${s.feedback.shortId}`,
+      expected: (s) => ({ kind: "feedback", id: s.feedback.shortId }),
+    },
+    {
+      label: "#R<n> is the release, by its number",
+      token: (s) => `#R${s.release.number}`,
+      expected: (s) => ({ kind: "release", id: s.release.number }),
+    },
+    {
+      label: "#r<n> too",
+      token: (s) => `#r${s.release.number}`,
+      expected: (s) => ({ kind: "release", id: s.release.number }),
+    },
+    {
       label: "a typed reference to nothing resolves to nothing",
       token: () => "#Q9999",
+      expected: () => undefined,
+    },
+    {
+      label: "a feedback reference to nothing resolves to nothing",
+      token: () => "#P9999",
+      expected: () => undefined,
+    },
+    {
+      label: "a release reference to nothing resolves to nothing",
+      token: () => "#R9999",
       expected: () => undefined,
     },
     {

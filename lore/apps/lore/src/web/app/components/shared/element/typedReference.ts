@@ -18,23 +18,30 @@ import type { LinkTargetKind } from "@/api/schemas/linkTargetKindSchema.ts";
  * Letters match case-insensitively on the way in (`#q12` works) and are
  * emitted uppercase, always.
  */
-export type ReferenceKind = Extract<LinkTargetKind, "quest" | "epic" | "folio">;
+export type ReferenceKind = Extract<
+  LinkTargetKind,
+  "quest" | "epic" | "folio" | "feedback" | "release"
+>;
 
 /**
- * The letter each kind is addressed by. `F` is the folio, which is what
- * keeps `feedback` on the legacy `P` when it joins.
+ * The letter each kind is addressed by. `F` is the folio, which is why
+ * feedback keeps `P`, the letter it had as Petitions before the 2026-08
+ * rename: the stored kind is `feedback`, only the letter is legacy.
  */
 export const REFERENCE_LETTERS: Record<ReferenceKind, string> = {
   quest: "Q",
   epic: "E",
   folio: "F",
+  feedback: "P",
+  release: "R",
 };
 
 export interface TypedReference {
   kind: ReferenceKind;
   /**
    * The per-project number: `quests.shortId`, `epics.number`,
-   * `folios.shortId`.
+   * `folios.shortId`, `feedback.shortId`, `releases.number`. A release's
+   * tag is a display label and never an address.
    */
   id: number;
 }

@@ -364,6 +364,14 @@ export class FolioController {
     const outBlobIds = out
       .filter((l) => l.targetType === "blob")
       .map((l) => l.toId);
+    const outFeedbackIds = out
+      .filter((l) => l.targetType === "feedback")
+      .map((l) => Number.parseInt(l.toId, 10))
+      .filter((n) => Number.isFinite(n));
+    const outReleaseIds = out
+      .filter((l) => l.targetType === "release")
+      .map((l) => Number.parseInt(l.toId, 10))
+      .filter((n) => Number.isFinite(n));
 
     // Inbound rows are grouped by the kind of element that CONTAINS the
     // reference. `comment` is not resolved — comments do not exist yet, and
@@ -388,6 +396,8 @@ export class FolioController {
       inboundRefs,
       inboundQuestRefs,
       inboundEpicRefs,
+      feedbackRefs,
+      releaseRefs,
     ] = await Promise.all([
       this.bound.collect(outFolioIds, (batch) =>
         this.folios.findMany({
@@ -414,6 +424,8 @@ export class FolioController {
       ),
       this.linkService.findQuestRefs(inboundQuestIds),
       this.linkService.findEpicRefs(inboundEpicIds),
+      this.linkService.findFeedbackRefs(outFeedbackIds),
+      this.linkService.findReleaseRefs(outReleaseIds),
     ]);
 
     // One per-project directory map covers every ref's ancestor walk and
@@ -468,6 +480,8 @@ export class FolioController {
     const inboundById = new Map(inboundRefs.map((r) => [r.id, r]));
     const inboundQuestById = new Map(inboundQuestRefs.map((r) => [r.id, r]));
     const inboundEpicById = new Map(inboundEpicRefs.map((r) => [r.id, r]));
+    const feedbackById = new Map(feedbackRefs.map((r) => [r.id, r]));
+    const releaseById = new Map(releaseRefs.map((r) => [r.id, r]));
 
     /**
      * One inbound row: the element that CONTAINS a reference to this folio.
@@ -483,6 +497,10 @@ export class FolioController {
       shortId: number;
       title: string;
       path?: { shortId: number; name: string }[];
+      /**
+       * Releases only: what `/releases/:releaseTag` navigates by.
+       */
+      tag?: string;
     };
     const outbound: OutRef[] = [];
     for (const l of out) {
@@ -504,6 +522,24 @@ export class FolioController {
             title: ref.title,
             // No folder chain: epics do not live in the folio tree.
             path: undefined,
+          });
+      } else if (l.targetType === "feedback") {
+        const ref = feedbackById.get(Number.parseInt(l.toId, 10));
+        if (ref)
+          outbound.push({
+            kind: "feedback",
+            shortId: ref.shortId,
+            title: ref.title,
+          });
+      } else if (l.targetType === "release") {
+        const ref = releaseById.get(Number.parseInt(l.toId, 10));
+        if (ref)
+          outbound.push({
+            kind: "release",
+            // `findReleaseRefs` maps `number` onto `shortId`, as for epics.
+            shortId: ref.shortId,
+            title: ref.title,
+            tag: ref.tag,
           });
       } else if (l.targetType === "blob") {
         const ref = blobById.get(l.toId);

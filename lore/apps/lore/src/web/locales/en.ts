@@ -125,6 +125,12 @@ export default {
   "folios.wikilink.broken.epicNotFound": "No epic matches this reference.",
   "folios.wikilink.broken.blobNotFound":
     "No folio blob matches this reference.",
+  "folios.wikilink.broken.feedbackNotFound":
+    "No feedback item matches this reference.",
+  "folios.wikilink.broken.releaseNotFound":
+    "No release matches this reference.",
+  "folios.wikilink.release.open": "open",
+  "folios.wikilink.release.released": "released",
   "folios.wikilink.broken.questFormWanted":
     "There is no folio #$1, but quest #$1 exists. Inside [[…]], #N means a folio; write [[quest:#$1]] instead.",
 
