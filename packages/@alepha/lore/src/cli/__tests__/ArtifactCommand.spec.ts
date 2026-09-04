@@ -9,7 +9,6 @@ import {
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
-import { loreOptions } from "../atoms/loreOptions.ts";
 import { ArtifactCommand } from "../commands/ArtifactCommand.ts";
 import {
   type ArtifactUploaded,
@@ -79,6 +78,7 @@ describe("alepha lore artifacts push", () => {
       env: {
         LOG_LEVEL: "error",
         LORE_API_KEY: "lore_secret",
+        LORE_PROJECT: "alepha",
         // Blanked unless a case sets them: GitHub Actions sets both on every
         // job, so a suite that does not clear them reads the real CI commit
         // and asserts nothing. Same trap `QualityCommand.spec.ts` documents.
@@ -93,8 +93,6 @@ describe("alepha lore artifacts push", () => {
       .with({ provide: LinkProvider, use: FakeLinkProvider })
       .with({ provide: ArtifactUploader, use: FakeUploader })
       .with(ArtifactCommand);
-
-    alepha.set(loreOptions, { project: "alepha" });
 
     const fs = alepha.inject(MemoryFileSystemProvider);
     // What `alepha pack` refuses to run without.

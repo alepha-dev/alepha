@@ -9,7 +9,6 @@ import {
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
-import { loreOptions } from "../atoms/loreOptions.ts";
 import { QualityCommand } from "../commands/QualityCommand.ts";
 
 /**
@@ -88,6 +87,7 @@ describe("alepha lore quality push", () => {
     const alepha = Alepha.create({
       env: {
         LORE_API_KEY: "lore_secret",
+        LORE_PROJECT: "alepha",
         // ⚠️ Blanked unless a case sets them, and this is load-bearing rather
         // than tidy: these two are REAL variables in the environment this
         // suite runs in. GitHub Actions sets `GITHUB_SHA` and
@@ -103,8 +103,6 @@ describe("alepha lore quality push", () => {
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
       .with({ provide: LinkProvider, use: FakeLinkProvider });
-
-    alepha.set(loreOptions, { project: "alepha" });
 
     const fs = alepha.inject(MemoryFileSystemProvider);
     const files = options.files ?? {

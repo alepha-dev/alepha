@@ -1,7 +1,6 @@
 import { Alepha } from "alepha";
 import { describe, expect, it } from "vitest";
 
-import { loreOptions } from "../atoms/loreOptions.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
 
 /**
@@ -13,26 +12,26 @@ import { LoreClientService } from "../services/LoreClientService.ts";
  * replacement has to keep true.
  */
 describe("LoreClientService", () => {
-  const create = (
-    env: Record<string, string> = {},
-    options?: { project?: string },
-  ) => {
-    // ⚠️ Both blanked unless a case sets them. They are real variables that a
-    // developer who has ever run this command for real will have exported, and
-    // a spec that reads the ambient environment passes or fails by machine.
-    // Its sibling `QualityCommand.spec.ts` learned this from CI: GitHub
-    // Actions sets `GITHUB_SHA`, so the git-fallback cases there silently
-    // asserted nothing.
+  const create = (env: Record<string, string> = {}) => {
+    // ⚠️ All three blanked unless a case sets them. They are real variables
+    // that a developer who has ever run this command for real will have
+    // exported, and a spec that reads the ambient environment passes or fails
+    // by machine. Its sibling `QualityCommand.spec.ts` learned this from CI:
+    // GitHub Actions sets `GITHUB_SHA`, so the git-fallback cases there
+    // silently asserted nothing.
     const alepha = Alepha.create({
       // `HOME` too, and pointed at a directory that does not exist: the
       // credential lookup now falls back to a device-flow token cached under
       // it, and a spec reading the real home directory would pass or fail by
-      // whether the person running it had ever typed `alepha lore login`.
-      env: { LORE_API_KEY: "", LORE_URL: "", HOME: "/nonexistent", ...env },
+      // whether the person running it had ever typed `lore login`.
+      env: {
+        LORE_API_KEY: "",
+        LORE_URL: "",
+        LORE_PROJECT: "",
+        HOME: "/nonexistent",
+        ...env,
+      },
     });
-    if (options) {
-      alepha.set(loreOptions, options);
-    }
     return alepha.inject(LoreClientService);
   };
 
@@ -101,20 +100,40 @@ describe("LoreClientService", () => {
     });
   });
 
+  /**
+   * Two rungs and a throw, since the config that used to be the second rung
+   * is gone: a workflow sets `LORE_PROJECT` once, and a step that means to
+   * push somewhere else passes `--project`.
+   */
   describe("which project", () => {
-    it("takes the configured project", () => {
-      expect(create({}, { project: "alepha" }).resolveProject()).toBe("alepha");
+    it("takes LORE_PROJECT", () => {
+      expect(create({ LORE_PROJECT: "alepha" }).resolveProject()).toBe(
+        "alepha",
+      );
     });
 
     it("lets --project win for one invocation", () => {
-      expect(create({}, { project: "alepha" }).resolveProject("other")).toBe(
+      expect(create({ LORE_PROJECT: "alepha" }).resolveProject("other")).toBe(
         "other",
+      );
+    });
+
+    /**
+     * ⚠️ `||`, not `??`. A schema default only fills an ABSENT variable, so
+     * `LORE_PROJECT=` in a `.env` file or a CI environment reaches this method
+     * as an empty string that is present. With `??` it would resolve to an
+     * empty slug and the request would go to a URL with a hole in it, instead
+     * of to the error that names the fix.
+     */
+    it("reads an empty LORE_PROJECT as unset, not as a slug", () => {
+      expect(() => create({ LORE_PROJECT: "" }).resolveProject()).toThrowError(
+        /No Lore project named/,
       );
     });
 
     it("names both ways of supplying it when neither is set", () => {
       expect(() => create().resolveProject()).toThrowError(/--project/);
-      expect(() => create().resolveProject()).toThrowError(/alepha.config/);
+      expect(() => create().resolveProject()).toThrowError(/LORE_PROJECT/);
     });
   });
 });

@@ -1,7 +1,6 @@
-import { $env, $inject, $store, AlephaError, z } from "alepha";
+import { $env, $inject, AlephaError, z } from "alepha";
 import type { ClientScope } from "alepha/server/links";
 
-import { loreOptions } from "../atoms/loreOptions.ts";
 import { LoreTokenStore } from "./LoreTokenStore.ts";
 
 /**
@@ -20,7 +19,6 @@ export class LoreClientService {
    */
   public static readonly DEFAULT_HOSTNAME = "https://lore.alepha.dev";
 
-  protected readonly options = $store(loreOptions);
   protected readonly tokens = $inject(LoreTokenStore);
 
   protected readonly env = $env(
@@ -35,6 +33,12 @@ export class LoreClientService {
         secret: false,
         description:
           "Origin of the Lore instance. Defaults to the public one; set it to self-host.",
+      }),
+      LORE_PROJECT: z.text({
+        default: "",
+        secret: false,
+        description:
+          "Default Lore project slug, overridden by --project. A workflow sets it once instead of every step passing a flag.",
       }),
     }),
   );
@@ -116,14 +120,25 @@ export class LoreClientService {
   /**
    * Which project this invocation is about.
    *
-   * `--project` beats the config, so one repository can push into another
-   * project without editing a committed file.
+   * `--project` beats `LORE_PROJECT`, so a workflow names the destination once
+   * and a single step can still send its build somewhere else.
+   *
+   * `||`, not `??`, for the reason {@link hostname} already carries: a schema
+   * default only fills an ABSENT variable, and `LORE_PROJECT=` in a `.env`
+   * file or a CI environment is present and empty. With `??` that resolves to
+   * an empty slug, and the request goes to a URL with a hole in it rather than
+   * to the error below.
+   *
+   * ⚠️ The throw is the thing to get right here, not the lookup. A push with
+   * no project is exactly what cost Lore its own 0.28.0 artifact: this method
+   * threw, the step was `continue-on-error`, and the release went green with a
+   * warning annotation nobody read.
    */
   public resolveProject(flag?: string): string {
-    const project = flag ?? this.options?.project;
+    const project = flag || String(this.env.LORE_PROJECT || "");
     if (!project) {
       throw new AlephaError(
-        'No Lore project named. Pass --project <slug>, or register lore({ project: "<slug>" }) from @alepha/lore/cli in the plugins of alepha.config.ts.',
+        "No Lore project named. Pass --project <slug> (or -p), or set LORE_PROJECT in the environment.",
       );
     }
     return project;

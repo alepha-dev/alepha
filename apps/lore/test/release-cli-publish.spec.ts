@@ -1,4 +1,4 @@
-import { AlephaLoreCli, loreOptions } from "@alepha/lore/cli";
+import { AlephaLoreCli } from "@alepha/lore/cli";
 import { Alepha, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -129,12 +129,11 @@ const cliFor = async (ctx: TestContext, token: string, project: string) => {
       LOG_LEVEL: "error",
       LORE_API_KEY: token,
       LORE_URL: ctx.hostname,
+      LORE_PROJECT: project,
     },
   })
     .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
     .with(AlephaLoreCli);
-
-  cli.set(loreOptions, { project });
 
   const publish = cli
     .primitives<any>("$command")
