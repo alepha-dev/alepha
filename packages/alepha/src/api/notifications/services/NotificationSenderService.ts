@@ -1,14 +1,14 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import { EmailProvider } from "alepha/email";
 import { $logger } from "alepha/logger";
-import { SmsProvider } from "alepha/sms";
 
-import type { NotificationRenderInput } from "../channels/NotificationChannel.ts";
-import { NotificationEmailChannel } from "../channels/NotificationEmailChannel.ts";
-import { NotificationSmsChannel } from "../channels/NotificationSmsChannel.ts";
+import type {
+  NotificationChannel,
+  NotificationRendered,
+} from "../channels/NotificationChannel.ts";
 import { $notification } from "../primitives/$notification.ts";
 import { NotificationPreferenceProvider } from "../providers/NotificationPreferenceProvider.ts";
 import type { NotificationPayload } from "../schemas/notificationPayloadSchema.ts";
+import { NotificationChannelService } from "./NotificationChannelService.ts";
 import { NotificationDeliveryService } from "./NotificationDeliveryService.ts";
 import { NotificationSettings } from "./NotificationSettings.ts";
 import { NotificationSuppressionService } from "./NotificationSuppressionService.ts";
@@ -29,10 +29,7 @@ export interface NotificationSendContext {
 export class NotificationSenderService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly emailProvider = $inject(EmailProvider);
-  protected readonly smsProvider = $inject(SmsProvider);
-  protected readonly emailChannel = $inject(NotificationEmailChannel);
-  protected readonly smsChannel = $inject(NotificationSmsChannel);
+  protected readonly channels = $inject(NotificationChannelService);
   protected readonly suppressions = $inject(NotificationSuppressionService);
   protected readonly preferences = $inject(NotificationPreferenceProvider);
   protected readonly deliveries = $inject(NotificationDeliveryService);
@@ -69,49 +66,38 @@ export class NotificationSenderService {
       return { type: payload.type, to: payload.contact, skipped };
     }
 
-    if (payload.type === "email") {
-      const rendered = await this.renderEmail(payload);
-      const result = await this.attempt(context, payload, () =>
-        this.emailProvider.send(rendered),
-      );
-      this.log.info("Email notification sent", {
-        template: payload.template,
-        contact: payload.contact,
-      });
-      await this.writeReceipt(context, payload, {
-        status: "sent",
-        messageId: result.messageId ?? null,
-        subject: rendered.subject,
-        body: rendered.body,
-      });
-      return {
-        type: "email" as const,
-        to: rendered.to,
-        subject: rendered.subject,
-        body: rendered.body,
-        messageId: result.messageId,
-      };
-    }
+    // One path, whatever the channel. The only thing the sender knows about
+    // a channel is the contract: it renders, it sends, and it says who it
+    // reached. Everything below is channel-agnostic by construction, which
+    // is what makes a plugin's channel a first-class one rather than a
+    // second branch nobody maintains.
+    const channel = this.channels.require(payload.type);
+    const rendered = await channel.render(this.renderInput(payload, channel));
+    const result = await this.attempt(context, payload, () =>
+      channel.send(rendered),
+    );
 
-    if (payload.type === "sms") {
-      const rendered = await this.renderSms(payload);
-      await this.attempt(context, payload, () =>
-        this.smsProvider.send(rendered),
-      );
-      this.log.info("SMS notification sent", {
-        template: payload.template,
-        contact: payload.contact,
-      });
-      await this.writeReceipt(context, payload, {
-        status: "sent",
-        subject: null,
-      });
-      return {
-        type: "sms" as const,
-        to: rendered.to,
-        message: rendered.message,
-      };
-    }
+    this.log.info("Notification sent", {
+      channel: channel.channel,
+      template: payload.template,
+      contact: rendered.recipient,
+    });
+
+    await this.writeReceipt(context, payload, {
+      status: "sent",
+      messageId: result.messageId ?? null,
+      subject: rendered.subject ?? null,
+      body: rendered.body ?? null,
+      recipient: rendered.recipient,
+    });
+
+    return {
+      type: payload.type,
+      to: rendered.recipient,
+      subject: rendered.subject,
+      body: rendered.body,
+      messageId: result.messageId,
+    };
   }
 
   /**
@@ -159,6 +145,13 @@ export class NotificationSenderService {
       subject?: string | null;
       body?: string | null;
       error?: string | null;
+      /**
+       * Who or where the message actually went, straight from the channel.
+       *
+       * Absent when nothing was rendered (a skip, or a render that threw),
+       * in which case the payload's own contact is the best answer there is.
+       */
+      recipient?: string;
     },
   ): Promise<void> {
     if (!context.executionId) {
@@ -176,7 +169,11 @@ export class NotificationSenderService {
         messageId: outcome.messageId ?? null,
         provider: this.providerName(payload.type),
         channel: payload.type,
-        contact: payload.contact,
+        // The channel's answer, never reconstructed here: an addressable
+        // channel returns the address it was given, a sink returns
+        // `discord:releases`. One field, no branch, and the column is
+        // NOT NULL either way.
+        contact: outcome.recipient ?? payload.contact,
         template: payload.template,
         category: payload.category ?? null,
         critical: payload.critical === true,
@@ -201,10 +198,16 @@ export class NotificationSenderService {
     }
   }
 
+  /**
+   * What the receipt records as the provider.
+   *
+   * Asked of the channel, so a receipt keeps naming the transport that
+   * actually sent the message (`BrevoEmailProvider`) rather than the adapter
+   * over it. Falls back to the channel name rather than throwing: this runs
+   * inside {@link writeReceipt}, where a throw costs the receipt.
+   */
   protected providerName(channel: string): string {
-    const provider =
-      channel === "email" ? this.emailProvider : this.smsProvider;
-    return provider.constructor.name;
+    return this.channels.find(channel)?.providerName() ?? channel;
   }
 
   /**
@@ -261,6 +264,21 @@ export class NotificationSenderService {
   }
 
   /**
+   * Re-render one notification without sending it.
+   *
+   * The admin preview is the caller. It returns the contract's base fields
+   * only, which is also what keeps a plugin's secrets out of a preview
+   * response: a sink carries its resolved webhook in its own channel-private
+   * `R`, and nothing here looks past {@link NotificationRendered}.
+   */
+  public async render(
+    payload: NotificationPayload,
+  ): Promise<NotificationRendered> {
+    const channel = this.channels.require(payload.type);
+    return channel.render(this.renderInput(payload, channel));
+  }
+
+  /**
    * Everything a channel needs to render, resolved from the payload.
    *
    * Translation resolution stays here rather than moving into the channels:
@@ -269,29 +287,22 @@ export class NotificationSenderService {
    */
   protected renderInput(
     payload: NotificationPayload,
-  ): NotificationRenderInput<any> {
+    channel: NotificationChannel<any, any>,
+  ) {
     const { variables, template } = this.load(payload);
+    const key = channel.channel;
 
     const message =
-      this.translation(template.options, payload.lang)?.[payload.type] ??
-      (template.options as Record<string, any>)[payload.type];
+      this.translation(template.options, payload.lang)?.[key] ??
+      (template.options as Record<string, any>)[key];
 
     if (!message) {
       throw new AlephaError(
-        `Notification template ${payload.template} has no ${payload.type} defined`,
+        `Notification template ${payload.template} has no ${key} defined`,
       );
     }
 
     return { message, variables, payload };
-  }
-
-  public async renderSms(payload: NotificationPayload) {
-    const rendered = await this.smsChannel.render(this.renderInput(payload));
-    return { to: rendered.to, message: rendered.body };
-  }
-
-  public async renderEmail(payload: NotificationPayload) {
-    return this.emailChannel.render(this.renderInput(payload));
   }
 
   /**

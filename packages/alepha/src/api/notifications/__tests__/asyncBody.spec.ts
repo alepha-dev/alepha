@@ -18,6 +18,10 @@ import {
  *
  * The two sync shapes - a plain string and a function returning a string -
  * keep working untouched: every template in the tree uses one of them.
+ *
+ * Rendering goes through `sender.render()`, which resolves the channel by
+ * name and returns the contract's base fields: `recipient` rather than a
+ * per-channel `to`, and `body` rather than an sms-only `message`.
  */
 class Templates {
   readonly asyncEmail = $notification({
@@ -83,7 +87,7 @@ describe("notification bodies may be asynchronous", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "async-email",
       contact: "alice@example.com",
@@ -92,22 +96,22 @@ describe("notification bodies may be asynchronous", () => {
 
     expect(rendered.body).toBe("Hello Alice");
     expect(rendered.subject).toBe("Async body");
-    expect(rendered.to).toBe("alice@example.com");
+    expect(rendered.recipient).toBe("alice@example.com");
   });
 
   it("resolves an sms message that returns a promise", async ({ expect }) => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderSms({
+    const rendered = await sender.render({
       type: "sms",
       template: "async-sms",
       contact: "+33600000000",
       variables: { name: "Alice" },
     });
 
-    expect(rendered.message).toBe("Hi Alice");
-    expect(rendered.to).toBe("+33600000000");
+    expect(rendered.body).toBe("Hi Alice");
+    expect(rendered.recipient).toBe("+33600000000");
   });
 
   it("delivers an awaited email body end to end", async ({ expect }) => {
@@ -150,7 +154,7 @@ describe("notification bodies may be asynchronous", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "sync-fn-email",
       contact: "carol@example.com",
@@ -164,7 +168,7 @@ describe("notification bodies may be asynchronous", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "string-email",
       contact: "dave@example.com",
@@ -178,13 +182,13 @@ describe("notification bodies may be asynchronous", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderSms({
+    const rendered = await sender.render({
       type: "sms",
       template: "sync-fn-sms",
       contact: "+33600000002",
       variables: { name: "Erin" },
     });
 
-    expect(rendered.message).toBe("Hi Erin");
+    expect(rendered.body).toBe("Hi Erin");
   });
 });
