@@ -2606,6 +2606,11 @@ export class QuestController {
         );
       }
 
+      // The plan freeze (epic #31): a quest leaves a frozen plan by being
+      // shelved, never by being deleted, or "no quest leaves the plan" would
+      // hold against detach and not against delete. Free while planned.
+      await this.epicWorkflow.assertQuestDeletable(quest);
+
       // Clear dependents' `dependsOn` so the dependency graph does not keep
       // edges to a deleted quest. `null`, not `undefined`: the repository
       // strips undefined keys from an update, which made this a no-op.
