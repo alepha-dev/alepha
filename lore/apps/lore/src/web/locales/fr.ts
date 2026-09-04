@@ -1707,7 +1707,6 @@ export default {
   "common.close": "Fermer",
   "common.save": "Enregistrer",
 
-  "activity.title": "Activité",
   "activity.actor.unknown": "Quelqu'un",
   "activity.empty": "Rien d'enregistré pour l'instant.",
   "activity.col.when": "Quand",

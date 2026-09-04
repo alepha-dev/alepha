@@ -55,9 +55,16 @@ test.describe("Activity", () => {
       // not redirect there. A redirect is the shape #156 was about, and a
       // per-project landing setting is the one feedback #2066 removed.
       expect(new URL(page.url()).pathname).toBe(`/${slug}`);
-      await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible(
-        { timeout: 15_000 },
-      );
+      // The BREADCRUMB leaf, not a heading. The page had an `<h1>` reading
+      // Activity until feedback #2090; it was removed precisely because this
+      // crumb already says the word, and no sibling list page carries one.
+      // Asserting here keeps the step proving what it always proved - which
+      // page rendered at the root - from the surface that survived.
+      await expect(
+        page
+          .getByRole("navigation", { name: "breadcrumb" })
+          .getByText("Activity"),
+      ).toBeVisible({ timeout: 15_000 });
     });
 
     await test.step("the quest that was just filed shows up", async () => {
@@ -80,9 +87,12 @@ test.describe("Activity", () => {
     await test.step("the sidebar entry goes back to Activity", async () => {
       await page.locator(`a[href="/${slug}"]`).first().click();
       await page.waitForURL(`**/${slug}`, { timeout: 15_000 });
-      await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible(
-        { timeout: 15_000 },
-      );
+      // The breadcrumb leaf again, for the reason given on the first step.
+      await expect(
+        page
+          .getByRole("navigation", { name: "breadcrumb" })
+          .getByText("Activity"),
+      ).toBeVisible({ timeout: 15_000 });
     });
 
     await test.step("a resource filter re-queries the server and narrows the table", async () => {
