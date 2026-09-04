@@ -11,6 +11,7 @@ import { $action, BadRequestError, okSchema } from "alepha/server";
 import { type Epic, epics } from "../entities/epics.ts";
 import { folios } from "../entities/folios.ts";
 import { quests } from "../entities/quests.ts";
+import { epicRefResourceSchema } from "../schemas/epicRefResourceSchema.ts";
 import {
   type EpicResource,
   epicResourceSchema,
@@ -158,34 +159,47 @@ export class EpicController {
   });
 
   /**
-   * How many epics are still `planned`, for the sidebar's Epics badge.
+   * Every epic in the project, reduced to the four fields another list needs
+   * in order to NAME one. Feeds the project route, which turns it into both
+   * the sidebar's planned-epic badge and the map the quests table's Epic
+   * column resolves against.
    *
-   * Counts the gate itself rather than the work behind it. `countOpenQuests`
-   * runs `applyBacklogGate`, so every quest inside a planned epic is absent
-   * from the Quests badge by design; with no badge here at all, that work had
-   * no representation in the sidebar whatsoever. This number is what says it
-   * exists.
+   * Deliberately not `getEpics`. `epicResourceSchema` is `epics.schema`
+   * extended, so it carries `description` (`size: "rich"`): on this project's
+   * own database that list is 28 rows and 222 KB of JSON, 213 KB of it
+   * descriptions. Every project navigation would pay it, to render a column
+   * that is `defaultHidden` and a badge that is one integer. This projection
+   * is the same 28 rows in under 2 KB.
    *
-   * `planned` and not `active`: an active epic's quests are already counted
-   * next to Quests, so badging those would double-report them.
+   * One query, and no progress rollup: `computeProgressOf`'s two aggregates
+   * are exactly what neither caller reads.
    *
-   * Covered by `epics_project_id_status_idx` on `(project_id, status)`.
+   * ⚠️ The badge this replaces had its own `countPlannedEpics` action, and
+   * its reasoning survives the swap: the badge counts the GATE rather than
+   * the work behind it. `countOpenQuests` runs `applyBacklogGate`, so every
+   * quest inside a planned epic is absent from the Quests badge by design,
+   * and with no badge here at all that work had no representation in the
+   * sidebar whatsoever. `planned` and not `active`, because an active epic's
+   * quests are already counted next to Quests and badging them would
+   * double-report them. The count is now derived client-side from this list,
+   * the same way `ProjectEpics` already derives it.
    */
-  countPlannedEpics = $action({
+  getEpicRefs = $action({
     use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
     schema: {
       params: z.object({
         projectId: z.integer(),
       }),
-      response: z.object({ count: z.integer() }),
+      response: z.array(epicRefResourceSchema),
     },
     handler: async ({ params }) => {
-      const count = await this.epics.count({
-        projectId: { eq: params.projectId },
-        status: { eq: "planned" },
+      return await this.epics.findMany({
+        where: {
+          projectId: { eq: params.projectId },
+        },
+        columns: ["id", "number", "title", "status"],
+        orderBy: [{ column: "number", direction: "asc" }],
       });
-
-      return { count };
     },
   });
 

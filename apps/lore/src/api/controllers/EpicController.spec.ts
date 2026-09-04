@@ -551,7 +551,7 @@ describe("EpicController", () => {
     expect(withQuest.questCount).toBe(1);
   });
 
-  it("counts only planned epics, and only this project's", async ({
+  it("refs carry the status the badge counts, and only this project's", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);
@@ -565,19 +565,45 @@ describe("EpicController", () => {
     const other = await createTestProject(ctx.alepha);
     await createTestEpic(ctx.alepha, other, { status: "planned" });
 
-    expect(
-      await ctx.controller.countPlannedEpics(
-        { params: { projectId: project.id } },
-        { user },
-      ),
-    ).toEqual({ count: 1 });
+    const refs = await ctx.controller.getEpicRefs(
+      { params: { projectId: project.id } },
+      { user },
+    );
+
+    expect(refs).toHaveLength(3);
+    // The planned-epic badge is derived from this list client-side, so the
+    // count it used to fetch is now a property of what comes back.
+    expect(refs.filter((epic) => epic.status === "planned")).toHaveLength(1);
   });
 
-  it("refuses to count planned epics for a non-member", async ({ expect }) => {
+  it("refs carry the four fields and NOT the description", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    await createTestEpic(ctx.alepha, project, { status: "planned" });
+
+    const [ref] = await ctx.controller.getEpicRefs(
+      { params: { projectId: project.id } },
+      { user },
+    );
+
+    // The whole reason this action exists beside `getEpics`: the description
+    // is `size: "rich"` and is 96% of the epic list's payload. A reader that
+    // only needs `#7` must not pay for it on every project navigation.
+    expect(Object.keys(ref!).sort()).toEqual([
+      "id",
+      "number",
+      "status",
+      "title",
+    ]);
+  });
+
+  it("refuses to read epic refs for a non-member", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
 
     await expect(
-      ctx.controller.countPlannedEpics(
+      ctx.controller.getEpicRefs(
         { params: { projectId: project.id } },
         { user: strangerToken() },
       ),

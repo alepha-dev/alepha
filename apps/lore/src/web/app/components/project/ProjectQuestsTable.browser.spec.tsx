@@ -19,17 +19,24 @@ import { defaultProjectFeatures } from "@/api/entities/projects.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
+import { currentEpicsAtom } from "../../atoms/currentEpicsAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { I18n } from "../../services/I18n.ts";
 import ProjectQuestsTable from "./ProjectQuestsTable.tsx";
 
-const questOf = (id: number, title: string, shelved = false): QuestResource =>
+const questOf = (
+  id: number,
+  title: string,
+  shelved = false,
+  epicId?: number,
+): QuestResource =>
   ({
     id,
     shortId: id,
     projectId: 1,
     title,
+    epicId,
     description: "",
     priority: "medium",
     size: 1,
@@ -107,6 +114,15 @@ class Routes {
     path: "/quests/:shortId",
     component: () => null,
   });
+
+  // The Epic column anchors here. ⚠️ The param is `epicNumber` and the path
+  // takes the epic's per-project NUMBER, which is the whole point of the
+  // column resolving the id rather than printing it.
+  epic = $page({
+    name: "projectEpic",
+    path: "/epics/:epicNumber",
+    component: () => null,
+  });
 }
 
 /**
@@ -132,6 +148,10 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
   afterEach(async () => {
     await alepha?.stop();
     alepha = undefined;
+    // AlephaTable persists its visible-column set per `persistenceKey`, and
+    // writes it on every mount. Without this, the set one test seeds is the
+    // set the next one renders with.
+    window.localStorage.clear();
   });
 
   const mount = async (initial?: QuestResource[]) => {
@@ -202,6 +222,12 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     alepha.store.set(currentReleasesAtom, [
       aRelease(7, 1, "0.28.0"),
       aRelease(8, 2, "0.29.0"),
+    ] as never);
+    // ⚠️ `id` and `number` are deliberately far apart. The Epic column reads
+    // `quests.epicId` (42) and must render and link the `number` (7); with
+    // the two equal, printing the raw id would pass every assertion.
+    alepha.store.set(currentEpicsAtom, [
+      { id: 42, number: 7, title: "Epic Workflow", status: "planned" },
     ] as never);
 
     const view = render(
@@ -345,5 +371,73 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     expect(options.join(" ")).toContain("0.28.0");
     // "None" reads as "no filter" in a filter; the label has to say which.
     expect(options[0]).not.toBe("None");
+  });
+
+  /**
+   * The Epic column (feedback #2088). It starts hidden, so these seed the
+   * persisted column set rather than driving the picker's popover: the
+   * question here is what the cell renders, and the picker has its own
+   * coverage in `@alepha/ui`.
+   */
+  describe("the Epic column", () => {
+    const showEpicColumn = () =>
+      window.localStorage.setItem(
+        "lor.board.1.columns",
+        JSON.stringify(["title", "epicId"]),
+      );
+
+    /**
+     * The first row's Epic cell, located by the header's own position rather
+     * than by a hardcoded index: the table prepends a checkbox column
+     * whenever `bulkActions` is passed, which this table does, so the count
+     * moves with a change nothing here is about.
+     */
+    const epicCell = (view: Awaited<ReturnType<typeof mount>>["view"]) => {
+      const headers = [...view.container.querySelectorAll("thead th")];
+      const index = headers.findIndex(
+        (th) => th.textContent?.trim() === "Epic",
+      );
+      expect(index).toBeGreaterThanOrEqual(0);
+      return view.container
+        .querySelectorAll("tbody tr")[0]!
+        .querySelectorAll("td")[index]!;
+    };
+
+    it("renders the epic's number and links to it, never the raw epicId", async () => {
+      showEpicColumn();
+      const { view } = await mount([questOf(1, "Filed quest", false, 42)]);
+
+      const link = within(epicCell(view)).getByRole("link");
+      // `#7`, the per-project number. `#42` would be the database id: a
+      // number nobody recognises, pointing at a different epic or at none.
+      expect(link.textContent).toContain("#7");
+      expect(link.textContent).not.toContain("42");
+      expect(link.getAttribute("href")).toBe("/epics/7");
+    });
+
+    it("wires the number as a tooltip trigger, where a hover reaches the title", async () => {
+      showEpicColumn();
+      const { view } = await mount([questOf(1, "Filed quest", false, 42)]);
+
+      // Base UI mounts the content only once the tooltip opens, and jsdom
+      // does not carry it there, so what is asserted is the WIRING - the
+      // same limit `QuestViewRailCommits.browser.spec.tsx` records for the
+      // commit sha. That the title itself reaches the panel is the tooltip
+      // component's own contract, not this column's.
+      const trigger = epicCell(view).querySelector(
+        '[data-slot="tooltip-trigger"]',
+      );
+      expect(trigger).not.toBeNull();
+      expect(trigger?.textContent).toContain("#7");
+    });
+
+    it("shows a muted dash when the quest has no epic", async () => {
+      showEpicColumn();
+      const { view } = await mount([questOf(1, "Loose quest")]);
+
+      const cell = epicCell(view);
+      expect(within(cell).queryByRole("link")).toBeNull();
+      expect(cell.textContent).toBe("-");
+    });
   });
 });
