@@ -272,5 +272,5 @@ export interface TopicPublishOptions {
   params?: Record<string, string>;
 }
 
-// augmented by provider-specific modules (e.g. MqttTopicProvider)
+// Left open for a provider module to augment with its own options.
 export interface TopicSubscribeOptions {}

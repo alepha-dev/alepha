@@ -555,8 +555,7 @@ export class ReactServerProvider {
             // `user` is declaration-merged onto `ServerRequest` by
             // `alepha/security`, which react cannot import — an optional
             // module must not become a compile-time dependency of the router.
-            // Same pattern as `$topic`'s mqtt cast; the field is real, react
-            // just cannot see it.
+            // Hence the cast: the field is real, react just cannot see it.
             user: (serverRequest as any).user,
             authorization: serverRequest.headers.authorization,
           }),

@@ -65,7 +65,6 @@ export default defineConfig({
         "verifications",
         // published packages
         "devtools",
-        "mqtt",
         "payments-stripe",
         "protobuf",
         "sigil",

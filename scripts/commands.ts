@@ -62,7 +62,6 @@ export class AlephaCommands {
     { name: "postgres", port: 15432 },
     { name: "redis", port: 16379 },
     { name: "s3mock", port: 19090 },
-    { name: "emqx", port: 11883 },
   ];
 
   public readonly verify = $command({
