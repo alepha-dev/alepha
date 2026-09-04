@@ -53,6 +53,32 @@ export interface UseFolioTreeModelInput {
   revealDirectoryShortId?: number;
 }
 
+/**
+ * Everything the tree can DO, separated from everything it currently IS.
+ *
+ * The split exists so `FolioTreeRow` can be `memo`ised. Every command here
+ * closes over `folios` / `directories` / `tree`, so their implementations
+ * change identity on every render; the object a row receives must not, or
+ * the memo can never hold. See `commands` in the hook for how both are true
+ * at once.
+ */
+export interface FolioTreeCommands {
+  toggle: (id: string) => void;
+  select: (node: FolioTreeNode) => void;
+  beginRename: (id: string) => void;
+  commitRename: (id: string, name: string) => Promise<void>;
+  cancelRename: () => void;
+  onDragStart: (id: string) => void;
+  onDragOver: (id: string, position: FolioDropPosition) => void;
+  onDrop: (id: string) => Promise<void>;
+  onDragEnd: () => void;
+  createFolio: (parentId?: string) => Promise<void>;
+  createDirectory: (parentId?: string) => Promise<void>;
+  remove: (node: FolioTreeNode) => Promise<void>;
+  duplicate: (node: FolioTreeNode) => Promise<void>;
+  togglePin: (node: FolioTreeNode) => Promise<void>;
+}
+
 export interface FolioTreeState {
   rows: FolioTreeRow[];
   /**
@@ -68,20 +94,11 @@ export interface FolioTreeState {
   renamingId?: string;
   dragId?: string;
   drop?: { id: string; position: FolioDropPosition };
-  toggle: (id: string) => void;
-  select: (node: FolioTreeNode) => void;
-  beginRename: (id: string) => void;
-  commitRename: (id: string, name: string) => Promise<void>;
-  cancelRename: () => void;
-  onDragStart: (id: string) => void;
-  onDragOver: (id: string, position: FolioDropPosition) => void;
-  onDrop: (id: string) => Promise<void>;
-  onDragEnd: () => void;
-  createFolio: (parentId?: string) => Promise<void>;
-  createDirectory: (parentId?: string) => Promise<void>;
-  remove: (node: FolioTreeNode) => Promise<void>;
-  duplicate: (node: FolioTreeNode) => Promise<void>;
-  togglePin: (node: FolioTreeNode) => Promise<void>;
+  /**
+   * Stable for the life of the hook. A row may hold onto it across any
+   * number of renders without going stale.
+   */
+  commands: FolioTreeCommands;
 }
 
 /**
@@ -725,16 +742,14 @@ export const useFolioTreeModel = (
     await pinAction.run(node);
   };
 
-  return {
-    rows,
-    loading: fetching,
-    collapsed,
-    // The open folio wins: a `?dir=` that survives into a folio navigation
-    // must not keep highlighting the folder instead of the document.
-    selectedId: input.currentFolioId ?? revealedDirectoryId,
-    renamingId,
-    dragId,
-    drop,
+  /**
+   * The current implementation of every command, rebuilt on each render
+   * because each one closes over `folios`, `directories`, `tree` or
+   * `dragId`. Assigned during render, the same way `FolioTree` already
+   * keeps its published actions current.
+   */
+  const implRef = useRef<FolioTreeCommands>(undefined as never);
+  implRef.current = {
     toggle,
     select,
     beginRename: (id: string) => setRenamingId(id),
@@ -749,5 +764,52 @@ export const useFolioTreeModel = (
     remove,
     duplicate,
     togglePin,
+  };
+
+  /**
+   * The same commands behind a facade whose identity NEVER changes.
+   *
+   * This is what makes `memo(FolioTreeRow)` worth anything. Before it, one
+   * toggle re-rendered every visible row: `rows` is memoised, but each row
+   * received the whole state object, and that object was rebuilt on every
+   * render along with all fourteen of its callbacks.
+   *
+   * A facade rather than `useCallback` on each command, because most of
+   * them legitimately change when the data changes - `commitRename` closes
+   * over `folios` - and a row holding last render's copy would write a
+   * stale list back. Reading through the ref means a row can hold this
+   * object forever and still call the current implementation.
+   */
+  const commands = useMemo<FolioTreeCommands>(
+    () => ({
+      toggle: (id) => implRef.current.toggle(id),
+      select: (node) => implRef.current.select(node),
+      beginRename: (id) => implRef.current.beginRename(id),
+      commitRename: (id, name) => implRef.current.commitRename(id, name),
+      cancelRename: () => implRef.current.cancelRename(),
+      onDragStart: (id) => implRef.current.onDragStart(id),
+      onDragOver: (id, position) => implRef.current.onDragOver(id, position),
+      onDrop: (id) => implRef.current.onDrop(id),
+      onDragEnd: () => implRef.current.onDragEnd(),
+      createFolio: (parentId) => implRef.current.createFolio(parentId),
+      createDirectory: (parentId) => implRef.current.createDirectory(parentId),
+      remove: (node) => implRef.current.remove(node),
+      duplicate: (node) => implRef.current.duplicate(node),
+      togglePin: (node) => implRef.current.togglePin(node),
+    }),
+    [],
+  );
+
+  return {
+    rows,
+    loading: fetching,
+    collapsed,
+    // The open folio wins: a `?dir=` that survives into a folio navigation
+    // must not keep highlighting the folder instead of the document.
+    selectedId: input.currentFolioId ?? revealedDirectoryId,
+    renamingId,
+    dragId,
+    drop,
+    commands,
   };
 };

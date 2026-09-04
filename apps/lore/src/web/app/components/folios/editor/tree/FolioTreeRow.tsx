@@ -15,6 +15,7 @@ import {
 import {
   type DragEvent,
   type KeyboardEvent,
+  memo,
   type MouseEvent,
   type ReactElement,
   useEffect,
@@ -24,13 +25,34 @@ import {
 
 import FolioTreeContextMenu from "./FolioTreeContextMenu.tsx";
 import type { FolioDropPosition, FolioTreeNode } from "./folioTreeModel.ts";
-import type { FolioTreeState } from "./useFolioTreeModel.ts";
+import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeRowProps {
   node: FolioTreeNode;
   depth: number;
-  tree: FolioTreeState;
+  /**
+   * Stable for the life of the tree, which is what lets this component be
+   * memoised at all. See `useFolioTreeModel`'s `commands`.
+   */
+  commands: FolioTreeCommands;
   projectSlug: string;
+  /**
+   * The four state flags and the drop marker are passed as PRIMITIVES
+   * rather than derived from the tree state here. That is the whole reason
+   * the memo below holds: a toggle changes `rows` and `collapsed`, so any
+   * prop carrying the state object would change identity on every row.
+   */
+  isCollapsed: boolean;
+  isSelected: boolean;
+  isRenaming: boolean;
+  isDragging: boolean;
+  /**
+   * Whether ANY row of this tree is being dragged, which is not the same
+   * question as `isDragging`. `handleDragOver` needs it to tell an internal
+   * drag from an external one that carries no files.
+   */
+  isDragActive: boolean;
+  dropHere?: FolioDropPosition;
 }
 
 /**
@@ -48,14 +70,9 @@ export interface FolioTreeRowProps {
  */
 const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   const node = props.node;
-  const tree = props.tree;
+  const tree = props.commands;
   const isDirectory = node.kind === "directory";
-  const isCollapsed = tree.collapsed.has(node.id);
-  const isSelected = tree.selectedId === node.id;
-  const isRenaming = tree.renamingId === node.id;
-  const isDragging = tree.dragId === node.id;
-  const dropHere = tree.drop?.id === node.id ? tree.drop.position : undefined;
-  // The directory a file drop on THIS row would land in: itself when it is a
+  const { isCollapsed, isSelected, isRenaming, isDragging, dropHere } = props;
 
   const [draftName, setDraftName] = useState(node.name);
   // Guards against a native `blur` fired by React unmounting the input on
@@ -64,11 +81,6 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   // mistaken for a user-initiated blur-to-commit.
   const cancelledRef = useRef(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
-  // Holds a directory row's deferred toggle so the double click can cancel
-  // it. See `handleClick`.
-  const clickTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  useEffect(() => () => clearTimeout(clickTimerRef.current), []);
   // React-documented "adjust state during render" pattern: reset the draft
   // to the CURRENT name exactly on the OFF→ON transition into rename mode,
   // not just at this row's mount. `useState(node.name)`'s initializer only
@@ -108,25 +120,29 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
       return;
     }
 
-    // A directory's row-body toggle is the one action that has to wait.
-    // `onDoubleClick` fires only AFTER both clicks, so toggling on the
-    // first one would expand and collapse the disclosure on the way to the
-    // rename. Deferring by the double-click window is what keeps that from
-    // being visible.
+    // A directory opens on the first click too, optimistically.
     //
-    // The chevron is deliberately NOT deferred: it stops propagation, so it
-    // can never be the first half of a row double click, which leaves it as
-    // the zero-latency way to open a directory.
-    clearTimeout(clickTimerRef.current);
-    clickTimerRef.current = setTimeout(
-      () => tree.select(node),
-      DOUBLE_CLICK_WINDOW_MS,
-    );
+    // It used to wait 250ms for a possible second click, because
+    // `onDoubleClick` fires only AFTER both and toggling on the first one
+    // would expand the disclosure on the way to a rename. That defer was
+    // the whole of the "opening a directory takes too many ms" report
+    // (feedback #2089): expanding fetches nothing, the tree is built from
+    // two atoms already in the store, so the latency was a timer and not a
+    // cost. It also made the tree inconsistent with itself, since the
+    // chevron beside it was already instant.
+    //
+    // `handleDoubleClick` reverts it instead. Toggling is cheap and
+    // idempotent, so paying it twice on the rarer gesture is the right way
+    // round.
+    tree.select(node);
   };
 
   const handleDoubleClick = (): void => {
     if (isRenaming) return;
-    clearTimeout(clickTimerRef.current);
+    // Undo what the first click of this burst just did, so a double click
+    // still ends with the directory where it started. `toggle` flips, so a
+    // second flip restores it.
+    if (isDirectory) tree.toggle(node.id);
     tree.beginRename(node.id);
   };
 
@@ -152,7 +168,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
       e.dataTransfer.dropEffect = "none";
       return;
     }
-    if (!tree.dragId || tree.dragId === node.id) return;
+    if (!props.isDragActive || isDragging) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const position: FolioDropPosition = isDirectory
@@ -224,15 +240,48 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
             onDoubleClick={handleDoubleClick}
             className={cn(
               "hover:bg-muted/60 relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm select-none",
+              // ⚠️ Named properties, never `transition-all`. This element is
+              // an HTML5 drag SOURCE that already animates `opacity` while
+              // dragging and carries the ring and line drop markers; a
+              // blanket transition puts all three on a timer, so the drop
+              // indicator lags the pointer it is supposed to track.
+              "transition-[background-color,transform] duration-150",
+              // The press. Suppressed while dragging, because a transform on
+              // a drag source moves the browser's own drag image with it.
+              !isDragging && !isRenaming && "active:translate-y-px",
               isSelected && "bg-muted font-medium",
               isDragging && "opacity-45",
               dropHere === "inside" &&
                 "bg-primary/10 ring-primary/60 ring-1 ring-inset",
             )}
-            style={{ paddingLeft: `${8 + props.depth * 13}px` }}
+            style={{
+              paddingLeft: `${INDENT_BASE_PX + props.depth * INDENT_STEP_PX}px`,
+              // Indent guides, as pure CSS: one hairline per ancestor level,
+              // painted as a repeating gradient clipped to the indent area so
+              // it can never run under the label. A background IMAGE, so the
+              // row's background COLOUR (hover, selection) still shows
+              // through underneath.
+              ...(props.depth > 0 && {
+                backgroundImage:
+                  "repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px " +
+                  `${INDENT_STEP_PX}px)`,
+                backgroundPosition: `${INDENT_BASE_PX}px 0`,
+                backgroundSize: `${props.depth * INDENT_STEP_PX}px 100%`,
+                backgroundRepeat: "no-repeat",
+              }),
+            }}
           />
         }
       >
+        {isSelected && (
+          // The accent bar. A selected row used to differ from its
+          // neighbours by a background tint alone, which several of the six
+          // themes render almost invisibly.
+          <span
+            aria-hidden
+            className="bg-primary pointer-events-none absolute inset-y-0 left-0 w-0.5"
+          />
+        )}
         {dropHere === "before" && (
           <div className="bg-primary pointer-events-none absolute inset-x-0 top-0 h-0.5" />
         )}
@@ -261,7 +310,17 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
         <Icon
           className={cn(
             "size-3.5 shrink-0",
-            isDirectory ? "text-primary" : "text-muted-foreground",
+            // ⚠️ Theme tokens, not hardcoded hexes. The reference this was
+            // taken from (`apps/docs`'s file tree) is a single dark theme
+            // and spells its amber and cyan literally; Lore has six themes,
+            // and a literal pair is wrong in five of them. `--chart-*` was
+            // considered and rejected for the same reason: it is defined in
+            // `@alepha/ui`'s base `:root` / `.dark` only, so it is
+            // light/dark aware but NOT theme aware. These two are defined
+            // once per theme in `main.css`.
+            isDirectory
+              ? "text-[var(--folio-tree-directory)]"
+              : "text-[var(--folio-tree-folio)]",
           )}
         />
         {isRenaming ? (
@@ -287,7 +346,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
       </ContextMenuTrigger>
       <FolioTreeContextMenu
         node={node}
-        tree={tree}
+        commands={tree}
         projectSlug={props.projectSlug}
       />
     </ContextMenu>
@@ -295,15 +354,19 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
 };
 
 /**
- * How long a directory row's toggle waits to see whether a second click is
- * coming. There is no way to read the platform's real double-click interval
- * from the web, so this is the conventional 250ms every file tree uses. Too
- * short and a slow double click expands the directory before renaming it;
- * too long and clicking a directory feels broken.
+ * How far one level of nesting indents a row, in pixels.
  *
- * Only directory ROWS pay it. See `handleClick`.
+ * Shared by the row's own left padding and by the indent guides drawn
+ * behind it, so the two cannot drift: a guide that does not line up with
+ * the icon it belongs to is worse than no guide.
  */
-const DOUBLE_CLICK_WINDOW_MS = 250;
+const INDENT_STEP_PX = 13;
+
+/**
+ * Where the first level's guide sits, which is also the row's own base
+ * padding.
+ */
+const INDENT_BASE_PX = 8;
 
 /**
  * Whether a drag carries OS files rather than one of this tree's own rows.
@@ -320,4 +383,19 @@ const isFileDrag = (e: DragEvent<HTMLElement>): boolean =>
 
 export { isFileDrag };
 
-export default FolioTreeRow;
+/**
+ * Memoised, and the props above are shaped so that the DEFAULT shallow
+ * comparison is enough: every one of them is a primitive, a node the tree
+ * model memoises, or the command facade that never changes identity.
+ *
+ * Before this, one toggle re-rendered every visible row along with its drag
+ * handlers and its context menu: `rows` was already memoised, but each row
+ * received the whole tree-state object, which is rebuilt on every render
+ * along with all fourteen of its callbacks. Now a toggle re-renders only
+ * the rows whose own props changed - the directory that opened, plus the
+ * rows that appeared or disappeared beneath it.
+ *
+ * ⚠️ A prop added here must be shallow-comparable, or the memo silently
+ * stops holding and nothing goes red.
+ */
+export default memo(FolioTreeRow);

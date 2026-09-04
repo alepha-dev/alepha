@@ -158,6 +158,36 @@ body::before {
   --shadow-alpha: 0.08;
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+ * Folio tree icon colours.
+ *
+ * A semantic pair, defined once per theme, warm for a directory and cool
+ * for a folio. Feedback #2089 asked for the colour of `apps/docs`'s file
+ * explorer, which spells its amber and cyan as literal hexes in a single
+ * dark theme; Lore has six themes and a literal pair is wrong in five of
+ * them.
+ *
+ * ⚠️ `--chart-1..5` was the obvious candidate and does NOT work: it is
+ * declared in `@alepha/ui`'s base `:root` / `.dark` only, so it is
+ * light/dark aware but not THEME aware, and every Lore theme inherits the
+ * same five. Verified before choosing this route.
+ *
+ * These two sit BEFORE the theme blocks on purpose. `:root` and
+ * `.theme-sylvan` both score (0,1,0) against `<html>`, so on a tie the
+ * later rule wins - putting the defaults after the themes would silently
+ * override all six.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --folio-tree-directory: oklch(0.66 0.145 72);
+  --folio-tree-folio: oklch(0.58 0.105 232);
+}
+
+.dark {
+  --folio-tree-directory: oklch(0.8 0.135 78);
+  --folio-tree-folio: oklch(0.72 0.105 232);
+}
+
 /**
  * Theme-tinted shadows. Each theme sets --shadow-color (RGB triplet) +
  * --shadow-alpha so Cards/Buttons pick up a flavor matching the palette.
@@ -210,6 +240,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.27 0.012 250);
   --sidebar-border: oklch(0.87 0.012 240);
   --sidebar-ring: oklch(0.55 0.18 250);
+  --folio-tree-directory: oklch(0.65 0.14 68);
+  --folio-tree-folio: oklch(0.58 0.12 250);
 }
 
 .dark.theme-twilight,
@@ -243,6 +275,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.96 0.012 240);
   --sidebar-border: oklch(0.33 0.015 250);
   --sidebar-ring: oklch(0.68 0.16 245);
+  --folio-tree-directory: oklch(0.8 0.13 74);
+  --folio-tree-folio: oklch(0.74 0.12 248);
 }
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -286,6 +320,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.26 0.05 145);
   --sidebar-border: oklch(0.8 0.06 140);
   --sidebar-ring: oklch(0.45 0.13 145);
+  --folio-tree-directory: oklch(0.62 0.13 88);
+  --folio-tree-folio: oklch(0.52 0.1 195);
 }
 
 .dark.theme-sylvan,
@@ -317,6 +353,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.9 0.04 130);
   --sidebar-border: oklch(0.32 0.06 145);
   --sidebar-ring: oklch(0.65 0.16 140);
+  --folio-tree-directory: oklch(0.79 0.13 90);
+  --folio-tree-folio: oklch(0.73 0.1 190);
 }
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -358,6 +396,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.23 0.05 290);
   --sidebar-border: oklch(0.82 0.05 290);
   --sidebar-ring: oklch(0.5 0.21 290);
+  --folio-tree-directory: oklch(0.66 0.15 62);
+  --folio-tree-folio: oklch(0.58 0.16 300);
 }
 
 .dark.theme-arcane,
@@ -389,6 +429,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.92 0.03 290);
   --sidebar-border: oklch(0.31 0.08 290);
   --sidebar-ring: oklch(0.68 0.22 290);
+  --folio-tree-directory: oklch(0.8 0.14 68);
+  --folio-tree-folio: oklch(0.74 0.16 300);
 }
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -430,6 +472,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.23 0.04 250);
   --sidebar-border: oklch(0.82 0.035 235);
   --sidebar-ring: oklch(0.52 0.15 235);
+  --folio-tree-directory: oklch(0.65 0.13 70);
+  --folio-tree-folio: oklch(0.55 0.12 235);
 }
 
 .dark.theme-frost,
@@ -461,6 +505,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.92 0.025 235);
   --sidebar-border: oklch(0.32 0.05 240);
   --sidebar-ring: oklch(0.7 0.15 230);
+  --folio-tree-directory: oklch(0.8 0.13 76);
+  --folio-tree-folio: oklch(0.74 0.12 232);
 }
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -538,6 +584,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.236 0.004 95);
   --sidebar-border: oklch(0.875 0.015 95);
   --sidebar-ring: oklch(0.566 0.138 38.2);
+  --folio-tree-directory: oklch(0.6 0.115 95);
+  --folio-tree-folio: oklch(0.55 0.085 232);
 }
 
 /*
@@ -577,6 +625,8 @@ body::before {
   --sidebar-accent-foreground: oklch(0.966 0.008 99);
   --sidebar-border: oklch(0.362 0.007 106);
   --sidebar-ring: oklch(0.69 0.131 38.8);
+  --folio-tree-directory: oklch(0.78 0.11 96);
+  --folio-tree-folio: oklch(0.71 0.085 232);
 }
 
 /* ────────────────────────────────────────────────────────────────────────
