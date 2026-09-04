@@ -547,7 +547,7 @@ test.describe("Quest", () => {
       await page.goto(`/${projectSlug}/quests/${follower.shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(
-        page.getByText(new RegExp(`unblocked.*#${predecessor.shortId}`, "i")),
+        page.getByText(new RegExp(`unblocked.*#Q${predecessor.shortId}`, "i")),
       ).toBeVisible({ timeout: 10_000 });
     });
 
@@ -664,7 +664,7 @@ test.describe("Quest", () => {
       // the rail's Questline row.
       await expect(
         page
-          .getByText(new RegExp(`blocked by.*#${predecessor.shortId}`, "i"))
+          .getByText(new RegExp(`blocked by.*#Q${predecessor.shortId}`, "i"))
           .first(),
       ).toBeVisible({ timeout: 10_000 });
     });

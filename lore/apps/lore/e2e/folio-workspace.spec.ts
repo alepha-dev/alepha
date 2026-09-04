@@ -1242,7 +1242,13 @@ test.describe("Folio workspace", () => {
       // rather than after a click that no longer exists. `waitForResponse`
       // cannot be armed here (the edit that triggered the save is in the
       // previous step), so poll the stored content instead of racing it.
+      //
+      // Polled for the token the picker inserted, not for any `[[`: the body
+      // this folio was created with already carries two, so a bare `[[` is
+      // true before the autosave lands and the assertions below would read
+      // the content from before it.
       const shortId = Number(hostUrl.split("/").pop());
+      const inserted = `[[#F${Number(folioUrl.split("/").pop())}]]`;
       await expect
         .poll(
           async () =>
@@ -1258,7 +1264,7 @@ test.describe("Folio workspace", () => {
             ),
           { timeout: 15_000 },
         )
-        .toContain("[[");
+        .toContain(inserted);
 
       const content = await page.evaluate(
         async ({ pid, sid }) => {
