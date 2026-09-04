@@ -113,6 +113,28 @@ attempt _n_ waits a uniformly random time in
 retrying row in the system shares one `scheduledAt` and they all hit a
 struggling downstream together.
 
+A job can carry its own curve when the global one does not fit: `retry.backoff`
+replaces the base, the factor and the cap for that job. A settlement that polls
+a payment provider wants minutes between attempts, not seconds:
+
+```typescript
+reconcile = $job({
+  schema: z.object({ sessionId: z.uuid() }),
+  retry: {
+    retries: 3,
+    backoff: { initial: [1, "minute"], factor: 4, max: [30, "minute"] },
+  },
+  handler: async ({ payload }) => {
+    await this.payments.sync(payload.sessionId);
+  },
+});
+```
+
+Attempt _n_ waits `initial * factor^(n-1)`, capped by `max` (default: the
+global `retryBackoffMax`), then jittered the same way: `jitter` is on by default
+and means the full jitter above. `jitter: false` gives the exact curve, which is
+what a test asserting on `scheduledAt` wants.
+
 The row's `scheduledAt` is the truth and the sweep is the backstop, so nothing
 can lose a retry. What varies by runtime is only **how soon** something looks
 at it:
@@ -170,6 +192,76 @@ delayed job is real heap on a large backlog.
 Its scan only runs when the list is empty, so a busy queue pays no extra round
 trip for the tier at all. `ZREM` is the claim, so two pollers racing the same
 due message agree on an owner instead of delivering it twice.
+
+## Waiting between stages: `reschedule`
+
+Some work is a sequence with waits in it: remind after an hour, remind again a
+day later, give up after another. One job carries the whole sequence when its
+handler calls `reschedule()` instead of returning: the same execution row goes
+back to `scheduled` with a new `scheduledAt` and a new payload, keeps its `id`
+and its `key`, and its `attempt` starts over. A stage in the payload is what the
+handler switches on:
+
+```typescript
+cartRecovery = $job({
+  schema: z.object({
+    cartId: z.uuid(),
+    stage: z.enum(["remind", "remindAgain", "abandon"]).optional(),
+  }),
+  retry: { retries: 3, backoff: { initial: [1, "minute"], factor: 4 } },
+  handler: async ({ payload, reschedule }) => {
+    if (!(await this.carts.isRecoverable(payload.cartId))) {
+      return; // converted or gone: the sequence ends here
+    }
+    switch (payload.stage ?? "remind") {
+      case "remind":
+        await this.mailer.remind(payload.cartId, 1);
+        reschedule({
+          delay: [23, "hour"],
+          payload: { ...payload, stage: "remindAgain" },
+        });
+        return;
+      case "remindAgain":
+        await this.mailer.remind(payload.cartId, 2);
+        reschedule({
+          delay: [24, "hour"],
+          payload: { ...payload, stage: "abandon" },
+        });
+        return;
+      case "abandon":
+        await this.carts.markAbandoned(payload.cartId);
+    }
+  },
+});
+
+// One push starts the sequence; the key makes a second push land on it.
+await this.cartRecovery.push({ cartId }, { key: cartId, delay: [1, "hour"] });
+```
+
+The wait is persisted before any timer is armed, so a redeploy inside it loses
+nothing: the row's `scheduledAt` is the truth and the sweep is the backstop,
+exactly as for a delayed push. Each stage gets the job's full retry budget,
+because `attempt` resets.
+
+A durable loop is the same shape with an iteration counter instead of a stage:
+the handler does its round, then reschedules itself with `iteration + 1` until
+it reaches its limit.
+
+The rules that keep it honest:
+
+- `reschedule()` records an intent; the row is written when the handler
+  resolves. A handler that **throws** after calling it takes the retry path on
+  the old payload, and the intent is discarded. Called twice, the last call
+  wins.
+- The write is guarded on `running`: a `cancel()` that lands while the handler
+  is finishing wins, and nothing is dispatched.
+- The new payload is validated against the schema when `reschedule()` is
+  called, so a bad one fails the run there rather than parking garbage.
+- A rescheduled run emits `job:end` but not `job:success`; the execution is not
+  over. `record` and `keep` only apply to the stage that completes.
+- It throws from a cron tick (no row to park) and from an
+  [`inline`](#inline-when-a-retry-is-worse-than-a-failure) push (the caller is
+  waiting for an outcome).
 
 ## `inline`: when a retry is worse than a failure
 
@@ -246,7 +338,18 @@ report = $job({
 });
 ```
 
-`await job.cancel(executionId)` cancels a pending or running execution.
+`await job.cancel(executionId)` cancels a pending, scheduled or running
+execution; pass `{ cancelledBy, cancelledByName }` to say who did, the admin
+shows it.
+
+`await job.cancelByKey(key)` cancels the execution parked under a `key` and
+returns its id, or `null` when nothing is parked. It is the disarm half of a
+keyed push: an order that pays cancels the cart's reminder sequence by the cart
+id. Only a `pending` or `scheduled` row is cancelled; a `running` one is left to
+finish, because a listener reacting to an event cannot know whether that event
+is the running handler's own doing (a reconciliation stage that settles a
+checkout emits the very event that would cancel it). The handler's own re-check
+at its next stage is the right place for that decision.
 
 ## Dispatch modes
 

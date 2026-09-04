@@ -11,6 +11,7 @@ import {
 import type { DateTime, DurationLike } from "alepha/datetime";
 
 import {
+  type CancelContext,
   JobProvider,
   type JobTriggerContext,
   type PushManyItem,
@@ -39,11 +40,80 @@ export interface JobHandlerArgs<T extends ZType = ZType> {
   now: DateTime;
   signal: AbortSignal;
   executionId: string;
+  /**
+   * Park this execution again instead of completing it.
+   *
+   * Records an intent; nothing is written until the handler resolves. Then,
+   * in place of the success write, the row goes back to `scheduled` with the
+   * new `scheduledAt` and payload, `attempt` reset to 0, the same `id` and
+   * `key`, and is dispatched delayed like a push with `delay`. A stage or
+   * iteration counter in the payload is what turns a multi-step process into
+   * one job switching on `payload.stage`, and a durable loop into a handler
+   * that reschedules itself until its limit.
+   *
+   * - The write is guarded on `running`: a cancel that landed during the
+   *   handler wins and the reschedule is dropped.
+   * - A handler that throws after calling it takes the retry path on the
+   *   OLD payload; the intent is discarded. Called twice, the last call wins.
+   * - `payload` is validated against the job schema at call time.
+   * - `job:success` is not emitted for a rescheduled run; `job:end` is.
+   * - Throws from a cron tick (no row to park) and from an `inline` push
+   *   (the caller is waiting for an outcome).
+   */
+  reschedule: (options: JobRescheduleOptions<T>) => void;
+}
+
+export interface JobRescheduleOptions<T extends ZType = ZType> {
+  /**
+   * Wait this long before the next run. One of `delay` or `scheduledAt` is
+   * required.
+   */
+  delay?: DurationLike;
+  /**
+   * Run at this instant instead of after `delay`.
+   */
+  scheduledAt?: Date;
+  /**
+   * The payload the next run receives. Omitted, the current payload is kept;
+   * spread the current one yourself when only a field changes.
+   */
+  payload?: Infer<T>;
 }
 
 export interface JobRetryOptions {
   retries: number;
   when?: (error: Error) => boolean;
+  /**
+   * The job's own backoff curve, replacing the global `retryBackoffBase`,
+   * the doubling and `retryBackoffMax` for this job. Attempt n waits
+   * `initial * factor^(n-1)`, capped by `max`, then jittered. See
+   * {@link JobRetryBackoff}.
+   */
+  backoff?: JobRetryBackoff;
+}
+
+/**
+ * A per-job retry curve.
+ *
+ * `jitter` defaults to true and means the module's full jitter, uniform in
+ * `[0, computed]`: one jitter policy for every job, because spreading a
+ * retrying population matters more than the curve itself. `jitter: false`
+ * gives the exact curve, which tests want.
+ */
+export interface JobRetryBackoff {
+  initial: DurationLike;
+  /**
+   * @default 2
+   */
+  factor?: number;
+  /**
+   * @default the global `retryBackoffMax` (30 minutes)
+   */
+  max?: DurationLike;
+  /**
+   * @default true
+   */
+  jitter?: boolean;
 }
 
 export type JobPriority = "critical" | "high" | "normal" | "low";
@@ -234,10 +304,34 @@ export class JobPrimitive<T extends ZType = ZType> extends PipelinePrimitive<
   }
 
   /**
-   * Cancel a pending or running execution.
+   * Cancel a pending, scheduled or running execution.
    */
-  public async cancel(executionId: string): Promise<void> {
-    return this.jobProvider.cancel(executionId);
+  public async cancel(
+    executionId: string,
+    context?: CancelContext,
+  ): Promise<void> {
+    return this.jobProvider.cancel(executionId, context);
+  }
+
+  /**
+   * Cancel the execution parked under `key`, if there is one.
+   *
+   * Only a `pending` or `scheduled` row is cancelled; a `running` one is left
+   * to finish and `null` comes back. A listener reacting to an event cannot
+   * know whether that event is the running handler's own doing (a
+   * reconciliation stage that settles a checkout emits the very event that
+   * would cancel it), so the handler's own re-check at its next stage is the
+   * right place for that decision. The admin's {@link cancel} still aborts a
+   * running row.
+   *
+   * Returns the cancelled execution id, or `null` when nothing was parked
+   * under that key.
+   */
+  public async cancelByKey(
+    key: string,
+    context?: CancelContext,
+  ): Promise<string | null> {
+    return this.jobProvider.cancelByKey(this.name, key, context);
   }
 
   /**
