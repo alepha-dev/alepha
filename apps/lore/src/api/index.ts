@@ -52,6 +52,7 @@ import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
+import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -116,6 +117,10 @@ export const LoreApi = $module({
     ReleaseContentService,
     RoadmapService,
     EpicDependencyService,
+    // The one place the epic workflow's refusals are written (epic #31):
+    // which quest action is allowed in which epic phase, and the words a
+    // refusal carries. Injected by the quest and epic controllers.
+    EpicWorkflowService,
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,
