@@ -28,6 +28,17 @@ const SILENT_AFTER_MS = 24 * 60 * 60 * 1000;
 
 const filtersSchema = z.object({
   search: z.string().optional(),
+  /**
+   * A SCALAR, deliberately, while Releases, Blights, Feedback and Activity
+   * all moved to arrays with feedback #2092.
+   *
+   * Two mutually exclusive and exhaustive values: an app is reporting or it
+   * is silent. Selecting both is identical to selecting neither, so a
+   * multi-select would add a state that means nothing and a count label that
+   * can only ever read "2 selected" for "no filter". Single plus `clearable`
+   * is the right shape here, and this note is what stops the next sweep
+   * "finishing the job".
+   */
   reporting: z.enum(["reporting", "silent"]).optional(),
 });
 

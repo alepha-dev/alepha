@@ -29,7 +29,17 @@ import {
 
 const releasesFiltersSchema = z.object({
   search: z.string().optional(),
-  state: z.enum(["open", "released"]).optional(),
+  /**
+   * An ARRAY, and empty means every state (feedback #2092).
+   *
+   * As a scalar with `clearable`, the clear entry was drawn as a third
+   * SELECTABLE row with a checkmark beside Open and Released, so "All states"
+   * read as a third state a release could be in. A multi-select has no clear
+   * row at all - `control-select` only renders one for a single field - and
+   * shows the same label as its empty-trigger text instead. Same shape the
+   * Quests and Epics filters already use.
+   */
+  state: z.array(z.enum(["open", "released"])).optional(),
 });
 
 /**
@@ -121,14 +131,17 @@ const ProjectReleases = () => {
       params: { projectId: project.id },
     });
 
-    const state = filters?.state as "open" | "released" | undefined;
+    const states =
+      (filters?.state as Array<"open" | "released"> | undefined) ?? [];
     const needle = String(filters?.search ?? "")
       .trim()
       .toLowerCase();
 
     const rows = sortReleases(
       all.filter((release) => {
-        if (state && releaseState(release) !== state) return false;
+        if (states.length > 0 && !states.includes(releaseState(release))) {
+          return false;
+        }
         if (!needle) return true;
         return (
           (release.tag ?? "").toLowerCase().includes(needle) ||
@@ -209,6 +222,11 @@ const ProjectReleases = () => {
                   clearable
                   icon={CircleDot}
                   clearLabel={tr("release.filter.allStates")}
+                  countLabel={(n) =>
+                    String(
+                      tr("release.filter.stateCount", { args: [String(n)] }),
+                    )
+                  }
                   triggerClassName="w-full"
                   items={[
                     { label: tr("release.group.open"), value: "open" },

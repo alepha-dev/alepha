@@ -35,12 +35,23 @@ import type { I18n } from "../../../services/I18n.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 
 /**
- * Filter form, owned by AlephaTable: a status select (open / resolved / all)
- * and a sigil select (`"all"` or a sigil id). Both filters are applied
- * client-side over the already-fetched list.
+ * Filter form, owned by AlephaTable: a status multi-select (open / resolved,
+ * empty meaning both) and a sigil select (`"all"` or a sigil id). Both are
+ * applied client-side over the already-fetched list.
  */
 const blightsFiltersSchema = z.object({
-  status: z.enum(["open", "resolved", "all"]).optional(),
+  /**
+   * An ARRAY, and empty means every status (feedback #2092).
+   *
+   * ⚠️ `all` left the ENUM, not just the dropdown. It was a value standing in
+   * for the absence of a filter, which the convention expresses as an empty
+   * selection - and while it was a state, `fetchBlights` had to branch on it
+   * as though a blight could BE "all".
+   *
+   * The default is still `["open"]`, so the inbox opens on the triage queue
+   * rather than on its whole history.
+   */
+  status: z.array(z.enum(["open", "resolved"])).optional(),
   sigilId: z.string().optional(),
 });
 
@@ -108,12 +119,15 @@ const ProjectBlights = () => {
     if (!project) {
       return emptyPage(page, size);
     }
-    // "open" (default) hides resolved/forwarded rows server-side; "resolved"
-    // and "all" fetch the full set, with "resolved" narrowed client-side.
-    const status = (filters?.status as string) ?? "open";
+    // Open-only (the default) hides resolved and forwarded rows server-side.
+    // Anything else needs the full set, with `resolved` narrowed client-side:
+    // an empty selection now means every status, which is the case the old
+    // `"all"` value used to name.
+    const statuses = (filters?.status as string[] | undefined) ?? [];
+    const openOnly = statuses.length === 1 && statuses[0] === "open";
     const res = await blightApi.listBlights({
       params: { projectId: project.id },
-      query: { includeResolved: status !== "open" },
+      query: { includeResolved: !openOnly },
     });
     // Push the freshest open-count to the sidebar badge atom. Write-only:
     // this component never reads the badge, so it must NOT subscribe to it —
@@ -124,10 +138,10 @@ const ProjectBlights = () => {
     setSigilOptions(res.sigils);
 
     const sigilId = (filters?.sigilId as string) ?? "all";
-    const statusFiltered =
-      status === "resolved"
-        ? res.items.filter((b) => b.status === "resolved")
-        : res.items;
+    const resolvedOnly = statuses.length === 1 && statuses[0] === "resolved";
+    const statusFiltered = resolvedOnly
+      ? res.items.filter((b) => b.status === "resolved")
+      : res.items;
     const filtered =
       sigilId === "all"
         ? statusFiltered
@@ -160,19 +174,25 @@ const ProjectBlights = () => {
         emptyMessage={tr("blights.empty")}
         filters={{
           schema: blightsFiltersSchema,
-          initialValues: { status: "open", sigilId: "all" },
+          initialValues: { status: ["open"], sigilId: "all" },
           render: (form) => (
             <div className="flex gap-2">
               <FilterSlot>
                 <Control
                   input={form.input.status}
                   label=""
+                  clearable
                   icon={CircleDot}
+                  clearLabel={tr("blights.filter.all")}
+                  countLabel={(n) =>
+                    String(
+                      tr("blights.filter.statusCount", { args: [String(n)] }),
+                    )
+                  }
                   triggerClassName="w-full"
                   items={[
                     { label: tr("blights.filter.open"), value: "open" },
                     { label: tr("blights.filter.resolved"), value: "resolved" },
-                    { label: tr("blights.filter.all"), value: "all" },
                   ]}
                 />
               </FilterSlot>
