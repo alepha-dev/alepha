@@ -1,5 +1,7 @@
 import type { Folio } from "@/api/entities/folios.ts";
 
+import { parseTypedReference } from "../shared/element/typedReference.ts";
+
 /**
  * Flat folio-directory row used for path-style link resolution. Same
  * shape `DirectoryController.listAllDirectories` returns.
@@ -191,6 +193,10 @@ export const formatBlobBytes = (bytes: number): string => {
  *
  * Supported forms:
  *
+ *  - `[[#Q12]]` / `[[#E3]]` / `[[#F42]]` → the typed grammar (epic #32): the
+ *    letter names the kind, the number is its per-project id. Tried first,
+ *    case-insensitive, and read through `typedReference.ts`, the module the
+ *    server parser reads it through.
  *  - `[[#42]]` → folio shortId 42 in the same project.
  *  - `[[dir/sub/name]]` → folio `name` inside the directory chain `dir/sub`.
  *    Tries anchored-at-root first; falls back to unique suffix match (last
@@ -310,37 +316,47 @@ export const createFolioWikiLinkResolver = (
     const trimmed = body.trim();
     if (!trimmed) return undefined;
 
-    // Type prefix (folio | quest | epic | blob). Bare token = folio.
     let type: "folio" | "quest" | "epic" | "blob" = "folio";
     let rest = trimmed;
-    const colonIdx = rest.indexOf(":");
-    if (colonIdx > 0) {
-      const prefix = rest.slice(0, colonIdx).trim().toLowerCase();
-      if (
-        prefix === "quest" ||
-        prefix === "folio" ||
-        prefix === "epic" ||
-        prefix === "blob"
-      ) {
-        type = prefix;
-        rest = rest.slice(colonIdx + 1).trim();
-      }
-    }
-
-    // Anchors are folio-only for v1 (matches the server parser).
     let anchor = "";
-    if (type === "folio") {
-      if (rest.startsWith("#")) {
-        const second = rest.indexOf("#", 1);
-        if (second !== -1) {
-          anchor = rest.slice(second + 1).trim();
-          rest = rest.slice(0, second);
+    // The typed grammar first, read through the module the server parser
+    // reads it through. Under the legacy rules `#Q12` is a folio whose
+    // number is `Q12`, which resolves to nothing, so the branch only claims
+    // tokens that were broken before it existed.
+    const typed = parseTypedReference(trimmed);
+    if (typed) {
+      type = typed.kind;
+      rest = `#${typed.id}`;
+    } else {
+      // Type prefix (folio | quest | epic | blob). Bare token = folio.
+      const colonIdx = rest.indexOf(":");
+      if (colonIdx > 0) {
+        const prefix = rest.slice(0, colonIdx).trim().toLowerCase();
+        if (
+          prefix === "quest" ||
+          prefix === "folio" ||
+          prefix === "epic" ||
+          prefix === "blob"
+        ) {
+          type = prefix;
+          rest = rest.slice(colonIdx + 1).trim();
         }
-      } else {
-        const hashIdx = rest.indexOf("#");
-        if (hashIdx !== -1) {
-          anchor = rest.slice(hashIdx + 1).trim();
-          rest = rest.slice(0, hashIdx).trim();
+      }
+
+      // Anchors are folio-only for v1 (matches the server parser).
+      if (type === "folio") {
+        if (rest.startsWith("#")) {
+          const second = rest.indexOf("#", 1);
+          if (second !== -1) {
+            anchor = rest.slice(second + 1).trim();
+            rest = rest.slice(0, second);
+          }
+        } else {
+          const hashIdx = rest.indexOf("#");
+          if (hashIdx !== -1) {
+            anchor = rest.slice(hashIdx + 1).trim();
+            rest = rest.slice(0, hashIdx).trim();
+          }
         }
       }
     }
@@ -428,9 +444,10 @@ export const createFolioWikiLinkResolver = (
     }
     if (!folio) {
       if (folioAmbiguous) return brokenTarget(body, "ambiguous-title");
-      // Only for the `#N` form. A bare title that matches no folio says
-      // nothing about quests — the two namespaces are unrelated.
-      if (rest.startsWith("#")) {
+      // Only for the legacy `#N` form. A bare title that matches no folio
+      // says nothing about quests, and a typed `#F12` already named its
+      // kind, so neither gets the "did you mean the quest" diagnosis.
+      if (!typed && rest.startsWith("#")) {
         const n = Number.parseInt(rest.slice(1), 10);
         if (Number.isFinite(n) && questByShort.has(n)) {
           return brokenTarget(body, "folio-not-found-quest-exists", n);

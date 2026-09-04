@@ -1,6 +1,8 @@
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
+import { splitMarkdownCode } from "../../web/app/components/folios/markdownCodeSegments.ts";
+import { parseTypedReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Epic, epics } from "../entities/epics.ts";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
@@ -99,6 +101,10 @@ interface PathContext {
  *
  * Resolution rules (scoped to the folio's project — folios are
  * project-shared, so any member's folio is a valid target):
+ * - `[[#Q12]]`, `[[#E3]]`, `[[#F12]]` are the typed grammar (epic #32): the
+ *   letter names the kind, the number is its per-project id. Tried first,
+ *   and read through `typedReference.ts`, the same module the browser
+ *   resolver reads it through.
  * - `[[#12]]` matches the folio with `shortId = 12`.
  * - `[[dir/sub/name]]` matches by folio path. Tried anchored at the
  *   project root first (`dir` is a root directory, `sub` is its child,
@@ -141,24 +147,33 @@ export class FolioLinkService {
    * runaway note can't cost unbounded resolution work. Dedupes by
    * normalized (type, ref, anchor) so the same token written twice
    * produces one link.
+   *
+   * Fenced blocks and inline code spans are held out. A regex cannot see a
+   * fence, and the reader has skipped code since #1261
+   * (`rewriteFolioWikiLinks`); until this side did the same, a token quoted
+   * inside backticks wrote an edge into the graph that no page ever showed
+   * as a link. Same splitter as the reader, so the two agree on what code is.
    */
   public parseTokens(content: string): ParsedToken[] {
     const out: ParsedToken[] = [];
     if (!content) return out;
     const seen = new Set<string>();
-    const re = /\[\[([^\]\n]+)\]\]/g;
-    let match: RegExpExecArray | null = re.exec(content);
-    while (match !== null) {
-      const parsed = this.parseToken(match[1]);
-      if (parsed) {
-        const dedupKey = `${parsed.type}:${parsed.ref}#${parsed.anchor ?? ""}`;
-        if (!seen.has(dedupKey)) {
-          seen.add(dedupKey);
-          out.push(parsed);
-          if (out.length >= this.MAX_LINKS_PER_FOLIO) break;
+    for (const segment of splitMarkdownCode(content)) {
+      if (segment.code) continue;
+      const re = /\[\[([^\]\n]+)\]\]/g;
+      let match: RegExpExecArray | null = re.exec(segment.text);
+      while (match !== null) {
+        const parsed = this.parseToken(match[1]);
+        if (parsed) {
+          const dedupKey = `${parsed.type}:${parsed.ref}#${parsed.anchor ?? ""}`;
+          if (!seen.has(dedupKey)) {
+            seen.add(dedupKey);
+            out.push(parsed);
+            if (out.length >= this.MAX_LINKS_PER_FOLIO) return out;
+          }
         }
+        match = re.exec(segment.text);
       }
-      match = re.exec(content);
     }
     return out;
   }
@@ -168,14 +183,22 @@ export class FolioLinkService {
    * structured target. Returns `undefined` on empty input.
    *
    * Syntax precedence:
-   * 1. Optional `type:` prefix (`quest:`). Bare ref keeps the folio
+   * 1. The typed grammar, `#Q12` / `#E3` / `#F12` (`typedReference.ts`).
+   * 2. Optional `type:` prefix (`quest:`). Bare ref keeps the folio
    *    default for backwards compatibility.
-   * 2. Optional `#anchor` suffix on folio refs only (anchors on
+   * 3. Optional `#anchor` suffix on folio refs only (anchors on
    *    typed entities are deferred per the spec).
    */
   public parseToken(raw: string): ParsedToken | undefined {
     const trimmed = raw.trim();
     if (!trimmed) return undefined;
+
+    // Under the legacy rules below the same string reads as a folio ref
+    // whose number is `Q12`, which parses to nothing, so this branch only
+    // ever claims tokens that resolved to nothing before it existed. The
+    // ref keeps the `#N` shape the resolver already matches on per kind.
+    const typed = parseTypedReference(trimmed);
+    if (typed) return { type: typed.kind, ref: `#${typed.id}`, raw: trimmed };
 
     let type: LinkTargetKind = "folio";
     let body = trimmed;

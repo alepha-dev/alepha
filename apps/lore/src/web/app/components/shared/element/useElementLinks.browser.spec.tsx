@@ -97,6 +97,25 @@ describe("useElementLinks — a planned epic's quest is direct addressing", () =
     );
   });
 
+  it("resolves the typed [[#Q<n>]] form the same way", async ({ expect }) => {
+    const { fake, wrapper } = setup();
+    fake.quests = [{ id: 1, shortId: 7, title: "Deploy pipeline", epicId: 99 }];
+    fake.plannedEpicIds = new Set([99]);
+
+    const { result } = renderHook(
+      () =>
+        useElementLinks(
+          { kind: "quest", projectId: 1, projectSlug: "acme" },
+          "See [[#Q7]] for details.",
+        ),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.rendered).toContain("(/acme/quests/7)");
+    });
+  });
+
   it("offers that same quest in the [[ picker", async ({ expect }) => {
     const { fake, wrapper } = setup();
     fake.quests = [{ id: 1, shortId: 7, title: "Deploy pipeline", epicId: 99 }];
