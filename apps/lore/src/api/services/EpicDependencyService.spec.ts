@@ -20,10 +20,12 @@ import { EpicDependencyService } from "./EpicDependencyService.ts";
  * `epics.dependsOn`: what it refuses, and the order it puts epics in.
  *
  * ⚠️ Read the column's own comment in `epics.ts` before changing anything
- * here. The field is **advisory** - no status transition is refused because
- * of it, deliberately - while **cycles are refused**, which is a different
- * question with a different answer. A spec that starts asserting the first
- * one is a design change, not a test.
+ * here. The field is a **gate** since epic #31: `setEpicStatus` refuses
+ * Begin while the predecessor is not done. It was **advisory** for three
+ * days before that, deliberately, and this file held a test whose whole job
+ * was to go red when the gate arrived; it did, and was rewritten into its
+ * opposite rather than deleted. **Cycles are refused** on write, which was
+ * always a different question with a different answer.
  */
 
 interface TestContext {
@@ -89,8 +91,10 @@ describe("EpicDependencyService", () => {
       );
 
       expect(updated.dependsOn).toBe(first.id);
-      // Resolved to the `#N` every human-facing surface names an epic by.
+      // Resolved to the `#N` every human-facing surface names an epic by,
+      // with the predecessor's status beside it, since it gates Begin.
       expect(updated.dependsOnNumber).toBe(first.number);
+      expect(updated.dependsOnStatus).toBe("planned");
     });
 
     /**
@@ -122,7 +126,9 @@ describe("EpicDependencyService", () => {
       const predecessor = listed.find((epic) => epic.id === first.id);
       const dependent = listed.find((epic) => epic.id === second.id);
       expect(predecessor?.dependsOnNumber).toBeUndefined();
+      expect(predecessor?.dependsOnStatus).toBeUndefined();
       expect(dependent?.dependsOnNumber).toBe(first.number);
+      expect(dependent?.dependsOnStatus).toBe("planned");
     });
 
     it("refuses an epic in another project", async ({ expect }) => {
@@ -254,13 +260,15 @@ describe("EpicDependencyService", () => {
     });
 
     /**
-     * ⚠️ **Advisory, not a gate.** Activating an epic whose predecessor is
-     * still `planned` is allowed, on purpose: epics overlap by design and a
-     * refusal there would make people stop setting the field. This test is
-     * the record of that decision - if it ever goes red, read the column
-     * comment in `epics.ts` before "fixing" it.
+     * ⚠️ This test used to be "does not refuse activating an epic whose
+     * predecessor is planned", written on 2026-09-01 specifically to go RED
+     * when somebody added the gate without reading the reasoning on the
+     * column. Epic #31 added the gate three days later, with the reasoning
+     * read and replaced: the advisory channel had measured zero (epic #27
+     * went to 9 of 9 while planned). It went red as designed, and is now its
+     * own opposite, not deleted. The column comment holds both decisions.
      */
-    it("does not refuse activating an epic whose predecessor is planned", async ({
+    it("refuses activating an epic whose predecessor is not done, and allows it once it is", async ({
       expect,
     }) => {
       const project = await createTestProject(ctx.alepha);
@@ -273,6 +281,25 @@ describe("EpicDependencyService", () => {
         { user },
       );
 
+      await expect(
+        ctx.controller.setEpicStatus(
+          { params: { id: second.id }, body: { status: "active" } },
+          { user },
+        ),
+      ).rejects.toThrow(
+        `Cannot begin Epic #${second.number}: it depends on Epic #${first.number}, which is not concluded.`,
+      );
+      expect((await ctx.repos.epics.getById(second.id)).status).toBe("planned");
+
+      // Walk the predecessor to done through the ratchet, then Begin passes.
+      await ctx.controller.setEpicStatus(
+        { params: { id: first.id }, body: { status: "active" } },
+        { user },
+      );
+      await ctx.controller.setEpicStatus(
+        { params: { id: first.id }, body: { status: "done" } },
+        { user },
+      );
       const activated = await ctx.controller.setEpicStatus(
         { params: { id: second.id }, body: { status: "active" } },
         { user },

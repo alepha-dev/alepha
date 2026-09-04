@@ -51,6 +51,26 @@ export const epicResourceSchema = epics.schema.extend({
    * not survive a delete, but a soft-deleted one would.
    */
   dependsOnNumber: z.integer().optional(),
+  /**
+   * The predecessor's status, beside its number, present exactly when
+   * `dependsOnNumber` is.
+   *
+   * It exists because `dependsOn` is a gate since epic #31: Begin is refused
+   * while the predecessor is not `done`, and a Begin refused for a predecessor
+   * nobody can see reads as a bug. With this, the epic page can say "Blocked
+   * by Epic 7" on the disabled button and "After Epic 7" once the predecessor
+   * concludes, without holding the epic list to look the status up.
+   *
+   * Computed, never stored: both resource builders already hold the
+   * predecessor row for its number (`buildEpicResource` fetches it,
+   * `getEpics` has every predecessor in hand), so it costs no query and no
+   * migration.
+   *
+   * ⚠️ NOT picked into `roadmapEpicSchema`. The roadmap draws order, may be
+   * public, and its key set is pinned; the predecessor may sit in no release
+   * at all, and its status is not the roadmap's to disclose.
+   */
+  dependsOnStatus: epics.schema.shape.status.optional(),
 });
 
 export type EpicResource = Infer<typeof epicResourceSchema>;
