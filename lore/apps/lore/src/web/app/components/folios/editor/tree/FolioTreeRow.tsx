@@ -103,47 +103,39 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
     }
   }, [isRenaming]);
 
+  /**
+   * One gesture, one meaning: a click opens the row it is on.
+   *
+   * ⚠️ There is no double-click handler any more, and the machinery that
+   * disambiguated one gesture from the other went with it (feedback #2101).
+   * Renaming is the context menu's job, which is where it already was.
+   *
+   * The history is worth keeping, because it is a story about a defer that
+   * was never paying for anything real. A directory used to wait 250ms for
+   * a possible second click, since `dblclick` fires only after both and
+   * toggling on the first one would expand the disclosure on the way to a
+   * rename. That timer was the whole of the "opening a directory takes too
+   * many ms" report (feedback #2089): expanding fetches nothing, the tree
+   * is built from two atoms already in the store, so the latency was the
+   * timer and not a cost, and the chevron beside it was already instant.
+   *
+   * Quest #1800 replaced that defer with an optimistic toggle plus a
+   * REVERT on the double click, which traded the delay for about a frame of
+   * flicker. Dropping the gesture removes both: there is nothing to revert,
+   * so there is nothing to flicker.
+   *
+   * ⚠️ The `e.detail` guard STAYS, though the quest that removed the rest
+   * listed it for deletion "if nothing else needs them". Something does. A
+   * real double click fires click, click, then dblclick, so without it the
+   * two clicks toggle a directory twice and it ends collapsed - a different
+   * outcome from the single click that shares its first half, reached by
+   * doing the same thing faster. It costs no timer and no latency: `detail`
+   * is the browser's own counter for the burst, already on the event.
+   */
   const handleClick = (e: MouseEvent): void => {
     if (isRenaming) return;
-    // The second click of a double click must not repeat the first one's
-    // action. `detail` is the browser's own click counter for the burst, so
-    // this costs no timer and no latency.
     if (e.detail > 1) return;
-
-    if (!isDirectory) {
-      // A folio opens on the first click, immediately. Opening a folio is
-      // the tree's most common action and must not pay the double-click
-      // window; the row survives the navigation (same `$page`, different
-      // param), so the rename input `onDoubleClick` opens is not unmounted
-      // by it.
-      tree.select(node);
-      return;
-    }
-
-    // A directory opens on the first click too, optimistically.
-    //
-    // It used to wait 250ms for a possible second click, because
-    // `onDoubleClick` fires only AFTER both and toggling on the first one
-    // would expand the disclosure on the way to a rename. That defer was
-    // the whole of the "opening a directory takes too many ms" report
-    // (feedback #2089): expanding fetches nothing, the tree is built from
-    // two atoms already in the store, so the latency was a timer and not a
-    // cost. It also made the tree inconsistent with itself, since the
-    // chevron beside it was already instant.
-    //
-    // `handleDoubleClick` reverts it instead. Toggling is cheap and
-    // idempotent, so paying it twice on the rarer gesture is the right way
-    // round.
     tree.select(node);
-  };
-
-  const handleDoubleClick = (): void => {
-    if (isRenaming) return;
-    // Undo what the first click of this burst just did, so a double click
-    // still ends with the directory where it started. `toggle` flips, so a
-    // second flip restores it.
-    if (isDirectory) tree.toggle(node.id);
-    tree.beginRename(node.id);
   };
 
   const handleToggle = (e: MouseEvent): void => {
@@ -237,7 +229,6 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
             onDrop={handleDrop}
             onDragEnd={handleDragEnd}
             onClick={handleClick}
-            onDoubleClick={handleDoubleClick}
             className={cn(
               "hover:bg-muted/60 relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm select-none",
               // ⚠️ Named properties, never `transition-all`. This element is
@@ -292,10 +283,6 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
           <button
             type="button"
             onClick={handleToggle}
-            // `handleToggle` stops the click, but `dblclick` is a separate
-            // event that would still reach the row and open a rename nobody
-            // asked for on a fast double toggle.
-            onDoubleClick={(e) => e.stopPropagation()}
             className="flex size-3.5 shrink-0 items-center justify-center"
           >
             {isCollapsed ? (
@@ -331,10 +318,6 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
             onKeyDown={handleRenameKeyDown}
             onBlur={commit}
             onClick={(e) => e.stopPropagation()}
-            // Double clicking a word to select it is a normal thing to do in
-            // a text input, and must not read as a rename request on the row
-            // underneath.
-            onDoubleClick={(e) => e.stopPropagation()}
             className="border-primary bg-background min-w-0 flex-1 rounded border px-1 text-sm outline-none"
           />
         ) : (
