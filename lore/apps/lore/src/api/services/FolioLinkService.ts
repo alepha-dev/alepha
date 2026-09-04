@@ -181,7 +181,7 @@ export class FolioLinkService {
       while (match !== null) {
         const parsed = this.parseToken(match[1]);
         if (parsed) {
-          const dedupKey = `${parsed.type}:${parsed.ref}#${parsed.anchor ?? ""}`;
+          const dedupKey = this.tokenKey(parsed);
           if (!seen.has(dedupKey)) {
             seen.add(dedupKey);
             out.push(parsed);
@@ -274,7 +274,67 @@ export class FolioLinkService {
     sourceFolioId: string,
   ): Promise<Array<{ targetType: LinkTargetKind; toId: string }>> {
     if (tokens.length === 0) return [];
+    const maps = await this.buildLookupMaps(tokens, projectId);
 
+    const seen = new Set<string>();
+    const resolved: Array<{
+      targetType: LinkTargetKind;
+      toId: string;
+    }> = [];
+    for (const token of tokens) {
+      const targetId = this.resolveParsedToken(token, maps);
+      if (!targetId) continue;
+      if (token.type === "folio" && targetId === sourceFolioId) continue;
+      const dedupKey = `${token.type}:${targetId}`;
+      if (seen.has(dedupKey)) continue;
+      seen.add(dedupKey);
+      resolved.push({ targetType: token.type, toId: targetId });
+    }
+    return resolved;
+  }
+
+  /**
+   * Resolve tokens one by one and keep the pairing, keyed by
+   * {@link FolioLinkService.tokenKey}. What the reference converter of epic
+   * #32 needs: it rewrites each token in place and has to know which target
+   * THAT token reached, where {@link FolioLinkService.resolveTokenIds}
+   * answers with the deduped set of targets a body reaches. The lookup
+   * tables are read once for the whole list, so a caller collects every
+   * token of a project before asking.
+   */
+  public async resolveTokensEach(
+    tokens: ParsedToken[],
+    projectId: number,
+  ): Promise<Map<string, { targetType: LinkTargetKind; toId: string }>> {
+    const out = new Map<string, { targetType: LinkTargetKind; toId: string }>();
+    if (tokens.length === 0) return out;
+    const maps = await this.buildLookupMaps(tokens, projectId);
+    for (const token of tokens) {
+      const key = this.tokenKey(token);
+      if (out.has(key)) continue;
+      const toId = this.resolveParsedToken(token, maps);
+      if (toId) out.set(key, { targetType: token.type, toId });
+    }
+    return out;
+  }
+
+  /**
+   * The identity of a token for dedup and lookup: same kind, same
+   * reference, same anchor. What `parseTokens` dedupes on.
+   */
+  public tokenKey(token: ParsedToken): string {
+    return `${token.type}:${token.ref}#${token.anchor ?? ""}`;
+  }
+
+  /**
+   * Read every lookup table a list of tokens can need, once. Which tables
+   * is decided by the token kinds present, so a body with only `#Q` refs
+   * never reads folios or directories.
+   */
+  protected async buildLookupMaps(
+    tokens: ParsedToken[],
+    projectId: number,
+  ): Promise<TokenLookupMaps> {
     const needsFolios = tokens.some((t) => t.type === "folio");
     const needsQuests = tokens.some((t) => t.type === "quest");
     const needsEpics = tokens.some((t) => t.type === "epic");
@@ -415,33 +475,19 @@ export class FolioLinkService {
       for (const c of candidates) releaseByNumber.set(c.number, c.id);
     }
 
-    const seen = new Set<string>();
-    const resolved: Array<{
-      targetType: LinkTargetKind;
-      toId: string;
-    }> = [];
-    for (const token of tokens) {
-      const targetId = this.resolveParsedToken(token, {
-        folioById,
-        folioByTitle,
-        questById,
-        questByTitle,
-        epicByNumber,
-        epicByTitle,
-        pathContext,
-        blobByShort,
-        blobUuids,
-        feedbackByShort,
-        releaseByNumber,
-      });
-      if (!targetId) continue;
-      if (token.type === "folio" && targetId === sourceFolioId) continue;
-      const dedupKey = `${token.type}:${targetId}`;
-      if (seen.has(dedupKey)) continue;
-      seen.add(dedupKey);
-      resolved.push({ targetType: token.type, toId: targetId });
-    }
-    return resolved;
+    return {
+      folioById,
+      folioByTitle,
+      questById,
+      questByTitle,
+      epicByNumber,
+      epicByTitle,
+      pathContext,
+      blobByShort,
+      blobUuids,
+      feedbackByShort,
+      releaseByNumber,
+    };
   }
 
   /**
@@ -689,6 +735,34 @@ export class FolioLinkService {
       fromType: { eq: source.kind },
       fromId: { eq: String(source.id) },
     });
+  }
+
+  /**
+   * How many link rows point at a kind of target, across every project.
+   * The dry run of the reference converter (epic #32) reports it before
+   * {@link FolioLinkService.deleteLinksTo} removes them.
+   */
+  public async countLinksTo(targetType: LinkTargetKind): Promise<number> {
+    const rows = await this.links.findMany({
+      where: { targetType: { eq: targetType } },
+      columns: ["fromId"],
+    });
+    return rows.length;
+  }
+
+  /**
+   * Drop every link row pointing at a kind of target, across every project,
+   * and answer how many went. Exists for the `blob` rows: the purge of epic
+   * #32 removes that literal from `linkTargetKindSchema`, and a stored value
+   * the enum no longer has fails validation on read, so the rows must be
+   * gone before the literal is.
+   */
+  public async deleteLinksTo(targetType: LinkTargetKind): Promise<number> {
+    const count = await this.countLinksTo(targetType);
+    if (count > 0) {
+      await this.links.deleteMany({ targetType: { eq: targetType } });
+    }
+    return count;
   }
 
   /**
