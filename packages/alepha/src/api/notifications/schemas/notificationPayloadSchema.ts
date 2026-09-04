@@ -10,7 +10,20 @@ export const notificationPayloadSchema = z.object({
    */
   type: z.text({ maxLength: 32 }),
   template: z.text(),
-  contact: z.text(),
+  /**
+   * Who this message is for, on an addressable channel.
+   *
+   * Optional because a sink channel has no recipient: it fires at a
+   * destination named in the template, and the destination never travels in
+   * the payload (a webhook is a secret, and an outbox row is not where a
+   * secret belongs). `$notification.push()` still requires a contact at the
+   * type level unless every channel the template declares is a sink.
+   *
+   * Making a required field optional is backward compatible for rows already
+   * queued: this schema validates the job payload, and every existing row
+   * carries one.
+   */
+  contact: z.text().optional(),
   variables: z.record(z.text(), z.any()).optional(),
   category: z.text().optional(),
   critical: z.boolean().optional(),

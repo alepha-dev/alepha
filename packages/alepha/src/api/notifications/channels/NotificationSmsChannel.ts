@@ -50,13 +50,14 @@ export class NotificationSmsChannel extends NotificationChannel<
     input: NotificationRenderInput<NotificationSmsMessage>,
   ): Promise<NotificationSmsRendered> {
     const { message: sms, variables, payload } = input;
+    const contact = this.requireContact(payload);
 
     const body =
       typeof sms.message === "function"
         ? await sms.message(variables as any)
         : sms.message;
 
-    return { recipient: payload.contact, to: payload.contact, body };
+    return { recipient: contact, to: contact, body };
   }
 
   public async send(rendered: NotificationSmsRendered) {

@@ -1,3 +1,5 @@
+import { AlephaError } from "alepha";
+
 import type { NotificationPayload } from "../schemas/notificationPayloadSchema.ts";
 
 /**
@@ -142,5 +144,26 @@ export abstract class NotificationChannel<
    */
   public providerName(): string {
     return this.constructor.name;
+  }
+
+  /**
+   * The contact this message is addressed to.
+   *
+   * For an addressable channel only: `contact` is optional on the payload
+   * because a sink has none, and a channel that needs one would otherwise
+   * have to widen `recipient` to `string | undefined` and push the problem
+   * into the receipt's NOT NULL column.
+   *
+   * The sender refuses an addressable send with no contact before it ever
+   * gets here, so reaching this throw means a payload built by hand.
+   */
+  protected requireContact(payload: NotificationPayload): string {
+    const contact = payload.contact;
+    if (!contact) {
+      throw new AlephaError(
+        `Notification "${payload.template}" has no contact, which channel "${this.channel}" needs.`,
+      );
+    }
+    return contact;
   }
 }

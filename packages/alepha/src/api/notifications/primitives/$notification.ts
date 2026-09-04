@@ -167,7 +167,11 @@ export class NotificationPrimitive<
   protected payloadFor(
     type: string,
     entry: {
-      contact: string;
+      /**
+       * Absent for a sink-only template: the destination is in the template,
+       * and a webhook has no business travelling in an outbox row.
+       */
+      contact?: string;
       variables: Infer<T>;
       lang?: string;
       attachments?: NotificationAttachment[];
@@ -203,7 +207,7 @@ export class NotificationPrimitive<
     return key ? `${key}:${type}` : undefined;
   }
 
-  public async push(options: NotificationPushOptions<T>) {
+  public async push(options: NotificationPushOptions<T, O>) {
     const lang = this.resolveLang(options.lang);
     // Tag the outbox row with the owning tenant so the notification admin list
     // stays org-scoped (the outbox is shared by every tenant in a pooled
@@ -285,9 +289,50 @@ $notification[KIND] = NotificationPrimitive;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface NotificationPushOptions<T extends ZObject> {
+/**
+ * The channel keys a template's options actually declare.
+ */
+export type NotificationDeclaredChannels<O> = Extract<
+  keyof O,
+  keyof NotificationChannels<any>
+>;
+
+/**
+ * True when every channel the template declares is a sink.
+ *
+ * The tuple wrapper is load-bearing: a bare `DeclaredChannels<O> extends
+ * keyof NotificationSinkChannels` distributes over the union, so a mixed
+ * email-and-discord template would answer "true" for its discord half and
+ * lose the required `contact`.
+ */
+export type NotificationAllSinks<O> = [
+  NotificationDeclaredChannels<O>,
+] extends [keyof NotificationSinkChannels]
+  ? true
+  : false;
+
+export type NotificationPushOptions<
+  T extends ZObject,
+  O = NotificationPrimitiveOptions<T>,
+> = NotificationPushOptionsBase<T> &
+  (NotificationAllSinks<O> extends true
+    ? {
+        /**
+         * Optional here, because every channel this template declares is a
+         * sink: the destination comes from the template, not the caller.
+         */
+        contact?: string;
+      }
+    : {
+        /**
+         * Who to send to. Required, because at least one of this template's
+         * channels addresses a person.
+         */
+        contact: string;
+      });
+
+export interface NotificationPushOptionsBase<T extends ZObject> {
   variables: Infer<T>;
-  contact: string;
   /**
    * Recipient language (e.g. "fr"); defaults to the current request's.
    */

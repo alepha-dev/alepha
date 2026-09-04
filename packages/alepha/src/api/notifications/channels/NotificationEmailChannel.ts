@@ -73,7 +73,7 @@ export class NotificationEmailChannel extends NotificationChannel<
     input: NotificationRenderInput<NotificationEmailMessage>,
   ): Promise<NotificationEmailRendered> {
     const { message: email, variables, payload } = input;
-    const contact = payload.contact;
+    const contact = this.requireContact(payload);
 
     // A critical template carries no unsubscribe link: there is nothing to
     // opt out of, and offering one would suggest a password reset can be

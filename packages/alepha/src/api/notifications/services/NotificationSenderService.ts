@@ -45,36 +45,50 @@ export class NotificationSenderService {
       contact: payload.contact,
     });
 
-    // The gate, and the only one. It runs at SEND time rather than at push
-    // time on purpose: a suppression can land in between, and the send-time
-    // answer is the authoritative one.
-    const skipped = await this.gate(payload);
-    if (skipped) {
-      // A skipped send is not a failure. Returning rather than throwing is
-      // what makes the job row end `ok`, so retries never fight the gate and
-      // a suppressed contact is not mailed on attempt two.
-      this.log.info("Notification skipped", {
-        type: payload.type,
-        template: payload.template,
-        contact: payload.contact,
-        skipped,
-      });
-      await this.writeReceipt(context, payload, {
-        status: "skipped",
-        skipReason: skipped,
-      });
-      return { type: payload.type, to: payload.contact, skipped };
-    }
-
     // One path, whatever the channel. The only thing the sender knows about
     // a channel is the contract: it renders, it sends, and it says who it
     // reached. Everything below is channel-agnostic by construction, which
     // is what makes a plugin's channel a first-class one rather than a
     // second branch nobody maintains.
     const channel = this.channels.require(payload.type);
+
+    // ⚠️ **Addressable channels only.** A sink fires at a destination named
+    // in the template: there is nobody to suppress, nothing to opt out of
+    // and no unsubscribe token to mint. Running the gate on a destination
+    // string would let a bounce on somebody's address silence an ops alert,
+    // and a suppression row spelled `discord:alerts` would be indelible.
+    //
+    // The gate itself runs at SEND time rather than at push time on purpose:
+    // a suppression can land in between, and the send-time answer is the
+    // authoritative one.
+    if (channel.addressable) {
+      const contact = this.requireContact(payload, channel.channel);
+      const skipped = await this.gate(payload, contact);
+      if (skipped) {
+        // A skipped send is not a failure. Returning rather than throwing is
+        // what makes the job row end `ok`, so retries never fight the gate
+        // and a suppressed contact is not mailed on attempt two.
+        this.log.info("Notification skipped", {
+          type: payload.type,
+          template: payload.template,
+          contact,
+          skipped,
+        });
+        await this.writeReceipt(context, payload, {
+          status: "skipped",
+          skipReason: skipped,
+          recipient: contact,
+        });
+        return { type: payload.type, to: contact, skipped };
+      }
+    }
+
     const rendered = await channel.render(this.renderInput(payload, channel));
-    const result = await this.attempt(context, payload, () =>
-      channel.send(rendered),
+    const result = await this.attempt(
+      context,
+      payload,
+      rendered.recipient,
+      () => channel.send(rendered),
     );
 
     this.log.info("Notification sent", {
@@ -113,6 +127,7 @@ export class NotificationSenderService {
   protected async attempt<R>(
     context: NotificationSendContext,
     payload: NotificationPayload,
+    recipient: string,
     call: () => Promise<R>,
   ): Promise<R> {
     try {
@@ -121,6 +136,7 @@ export class NotificationSenderService {
       await this.writeReceipt(context, payload, {
         status: "failed",
         error: error instanceof Error ? error.message : String(error),
+        recipient,
       });
       throw error;
     }
@@ -146,12 +162,15 @@ export class NotificationSenderService {
       body?: string | null;
       error?: string | null;
       /**
-       * Who or where the message actually went, straight from the channel.
+       * Who or where the message went, straight from the channel.
        *
-       * Absent when nothing was rendered (a skip, or a render that threw),
-       * in which case the payload's own contact is the best answer there is.
+       * Required, and never reconstructed from the payload: an addressable
+       * channel returns the address it was given, a sink returns
+       * `discord:releases`, and the receipt's `contact` column is NOT NULL
+       * for both. Every call site has one, including the skip path, where
+       * the gate has already established the contact.
        */
-      recipient?: string;
+      recipient: string;
     },
   ): Promise<void> {
     if (!context.executionId) {
@@ -169,11 +188,7 @@ export class NotificationSenderService {
         messageId: outcome.messageId ?? null,
         provider: this.providerName(payload.type),
         channel: payload.type,
-        // The channel's answer, never reconstructed here: an addressable
-        // channel returns the address it was given, a sink returns
-        // `discord:releases`. One field, no branch, and the column is
-        // NOT NULL either way.
-        contact: outcome.recipient ?? payload.contact,
+        contact: outcome.recipient,
         template: payload.template,
         category: payload.category ?? null,
         critical: payload.critical === true,
@@ -232,11 +247,12 @@ export class NotificationSenderService {
    */
   protected async gate(
     payload: NotificationPayload,
+    contact: string,
   ): Promise<"suppressed" | "declined" | undefined> {
     const channel = payload.type;
 
     const suppressed = await this.suppressions.isSuppressed({
-      contact: payload.contact,
+      contact,
       channel,
       // From the payload, never from `currentTenantAtom`: this runs inside a
       // job and there is no request to read a tenant from.
@@ -249,7 +265,7 @@ export class NotificationSenderService {
     }
 
     const allowed = await this.preferences.allows({
-      contact: payload.contact,
+      contact,
       channel,
       template: payload.template,
       category: payload.category,
@@ -322,9 +338,29 @@ export class NotificationSenderService {
     return base ? (options.translations[base] as any) : undefined;
   }
 
+  /**
+   * The contact an addressable channel is about to write to.
+   *
+   * `push()` makes this unreachable through the type system unless every
+   * channel the template declares is a sink. It is still checked here,
+   * because a payload can be built by hand (an admin resend, a row queued by
+   * an older version), and sending to `undefined` is worse than failing.
+   */
+  protected requireContact(
+    payload: NotificationPayload,
+    channel: string,
+  ): string {
+    const contact = payload.contact;
+    if (!contact) {
+      throw new AlephaError(
+        `Notification "${payload.template}" has no contact, which channel "${channel}" needs.`,
+      );
+    }
+    return contact;
+  }
+
   protected load(payload: NotificationPayload) {
     const variables = payload.variables || {};
-    const contact = payload.contact;
     const template = this.alepha
       .primitives($notification)
       .find((it) => it.name === payload.template);
@@ -335,6 +371,6 @@ export class NotificationSenderService {
       );
     }
 
-    return { template, variables, contact };
+    return { template, variables };
   }
 }

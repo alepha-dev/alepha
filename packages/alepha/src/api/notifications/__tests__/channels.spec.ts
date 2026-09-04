@@ -43,7 +43,7 @@ class FaxChannel extends NotificationChannel<FaxMessage> {
 
   public async render(input: NotificationRenderInput<FaxMessage>) {
     return {
-      recipient: input.payload.contact,
+      recipient: this.requireContact(input.payload),
       body: await input.message.message(input.variables),
     };
   }
