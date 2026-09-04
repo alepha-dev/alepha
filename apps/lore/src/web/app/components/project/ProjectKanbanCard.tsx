@@ -7,7 +7,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
-import QuestView from "./quest/QuestView.tsx";
+import LazyQuestView from "./quest/LazyQuestView.tsx";
 
 export interface ProjectKanbanCardProps {
   quest: QuestResource;
@@ -49,7 +49,7 @@ const ProjectKanbanCard = (props: ProjectKanbanCardProps) => {
         showCloseButton={false}
         className="w-full p-0 data-[side=right]:sm:max-w-[50vw]"
       >
-        <QuestView
+        <LazyQuestView
           quest={quest}
           context="card"
           onClose={close}
