@@ -41,9 +41,9 @@ interface AttachmentMeta {
  * and pushes the upload chip along. Appending keeps the row stable, so a
  * file added earlier does not move every time another arrives.
  *
- * The file input accepts everything. The server's `mimeTypes` list is the
- * real gate and rejects what it will not serve safely, so restating a
- * narrower list in `accept` would only hide formats that upload fine.
+ * The file input accepts everything, and so does the bucket behind it: the
+ * only server-side limit on a quest attachment is its size. An `accept`
+ * list here would refuse files the server is happy to take.
  */
 const QuestAttachments = (props: QuestAttachmentsProps) => {
   const questApi = useClient<QuestController>();

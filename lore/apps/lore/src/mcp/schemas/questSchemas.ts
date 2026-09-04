@@ -271,7 +271,7 @@ export const questAttachmentAddParamsSchema = entityRefSchema.extend({
   mimeType: z
     .string()
     .describe(
-      "One of: image/png, image/jpeg, image/webp, image/gif, text/plain, text/csv, text/markdown, application/json. Anything else is refused, so that everything an agent can attach, an agent can also read back with `quest_attachment_get`.",
+      "The file's media type, e.g. `text/html`, `image/png`, `application/pdf`. Any type is accepted; only the shape is checked, since this is what the download is later served as. It decides how `quest_attachment_get` answers: images inline, text-like decoded, anything else a note naming the file.",
     ),
   data: z
     .string()
@@ -280,7 +280,7 @@ export const questAttachmentAddParamsSchema = entityRefSchema.extend({
     // checked too; this only keeps an absurd payload from being parsed.
     .max(2_900_000)
     .describe(
-      "The file's bytes, base64-encoded. Capped at 2 MB decoded: this is for screenshots and logs, not binaries.",
+      "The file's bytes, base64-encoded. Capped at 2 MB decoded: anything bigger belongs somewhere else, with a link to it on the quest.",
     ),
 });
 

@@ -70,27 +70,28 @@ export class QuestTools {
   protected readonly projectTools = $inject(ProjectTools);
 
   /**
-   * What `quest_attachment_add` accepts.
+   * What a `mimeType` has to look like.
    *
-   * Not the storage's own list, which is far wider: this one is exactly the
-   * set `quest_attachment_get` can render back inline, so an agent can
-   * always read what an agent wrote. Everything here is also inert when
-   * served from `/api/files/:id`, which is the property the storage's list
-   * is really protecting.
+   * There is no type allowlist here any more. It used to be the eight types
+   * `quest_attachment_get` renders back inline, so that an agent could
+   * always read what an agent wrote; what it actually did was refuse the
+   * files a quest is worked from, an HTML mockup being the case that
+   * retired it. Read-back is a property of the type, not a reason to reject
+   * the upload: an agent that attaches a zip knows it is attaching a zip,
+   * and the human on the other end is the one who opens it.
+   *
+   * The shape check is not decoration. This value is stored and later
+   * handed straight back as the download's `Content-Type`, so a media type
+   * carrying a separator or a control character has no business reaching
+   * storage. What may be served, and why that is safe, is on the bucket in
+   * `QuestController`.
    */
-  protected readonly attachableMimeTypes = [
-    "image/png",
-    "image/jpeg",
-    "image/webp",
-    "image/gif",
-    "text/plain",
-    "text/csv",
-    "text/markdown",
-    "application/json",
-  ];
+  protected readonly mimeTypePattern =
+    /^[a-z0-9][a-z0-9!#$&^_.+-]{0,126}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$/i;
 
   /**
-   * 2 MB decoded. Screenshots and logs, not binaries.
+   * 2 MB decoded. The type is open, the size is not: base64 through a
+   * JSON-RPC frame is the wrong way to move anything larger.
    */
   protected readonly maxAttachmentBytes = 2 * 1024 * 1024;
 
@@ -859,8 +860,8 @@ export class QuestTools {
    */
   quest_attachment_add = $tool({
     description:
-      "Attach a file to a quest: a screenshot, a probe log, a CSV of measurements. Use it when you have evidence rather than a claim, since a file on the quest is something the owner can look at where numbers pasted into a comment are something they have to take your word for. " +
-      "For screenshots and logs only, capped at 2 MB decoded, and restricted to the types `quest_attachment_get` can read back inline (png, jpeg, webp, gif, plain text, csv, markdown, json). Allowed on completed quests: evidence usually arrives at the end.",
+      "Attach a file to a quest: a screenshot, a probe log, a CSV of measurements, an HTML mockup the next agent or the owner will open. Use it when you have evidence or material rather than a claim, since a file on the quest is something the owner can look at where numbers pasted into a comment are something they have to take your word for. " +
+      "Any file type, capped at 2 MB decoded, so put anything bigger where it belongs and link to it. What comes back from `quest_attachment_get` depends on the type: images inline, text-like payloads (html, plain, csv, markdown, json) decoded, anything else a note naming the file. Allowed on completed quests: evidence usually arrives at the end.",
     title: "Attach a file to a quest",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -870,16 +871,16 @@ export class QuestTools {
     handler: async ({ params }) => {
       const id = await this.resolveQuestId(params);
 
-      if (!this.attachableMimeTypes.includes(params.mimeType)) {
+      if (!this.mimeTypePattern.test(params.mimeType)) {
         throw new BadRequestError(
-          `mimeType "${params.mimeType}" is not accepted here. Use one of: ${this.attachableMimeTypes.join(", ")}.`,
+          `mimeType "${params.mimeType}" is not a media type. Send one shaped like "text/html" or "image/png".`,
         );
       }
 
       const bytes = this.decodeBase64(params.data);
       if (bytes.byteLength > this.maxAttachmentBytes) {
         throw new BadRequestError(
-          `Attachment is ${bytes.byteLength} bytes decoded, over the ${this.maxAttachmentBytes} byte limit. This is for screenshots and logs; put anything larger somewhere it belongs and link to it.`,
+          `Attachment is ${bytes.byteLength} bytes decoded, over the ${this.maxAttachmentBytes} byte limit. Put anything larger somewhere it belongs and link to it from the quest.`,
         );
       }
 

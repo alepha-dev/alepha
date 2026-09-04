@@ -145,67 +145,34 @@ export class QuestController {
     // Megabytes. This read `10 * 1024 * 1024`, i.e. a ten-million-megabyte
     // cap — no cap at all.
     maxSize: 10,
-    // Any format a quest might reasonably carry, and `application/octet-stream`
-    // as the catch-all so an unrecognised binary still uploads.
+    // No `mimeTypes`, on purpose: a quest carries whatever the work needs,
+    // an HTML mockup included. `$storage` reads an absent list as "any
+    // type", the same as the folio blob bucket. A member is someone the
+    // project already trusts; feedback attachments come from anyone with an
+    // account and keep their own narrow list.
     //
-    // NOT an open list, and the exclusions are the point. `/api/files/:id`
-    // serves a file INLINE, from this origin, with the content type it was
-    // stored under, and nothing sets `Content-Disposition: attachment`. So
-    // the type accepted here is the type the browser will execute: allowing
-    // `text/html` or `image/svg+xml` would turn an attachment into stored XSS
-    // against the project members who open it, with their session attached.
+    // This was a closed list until 2026-09-04, excluding `text/html` and
+    // `image/svg+xml` on the grounds that `/api/files/:id` serves a file
+    // inline with the type it was stored under, which would make an
+    // attachment stored XSS against the members who open it. That premise
+    // was already false when it was written: `serializeResponse` sets
+    // `Content-Disposition: attachment` on every `z.file()` response, so
+    // the browser saves the file instead of rendering it, whatever the type
+    // claims to be (`ServerRouterProvider`, pinned by
+    // `ServerRouterProvider-serializeResponse.spec.ts`).
     //
-    // `$storage` calls this "a usability guard, not a security control"
-    // because the type is client-supplied and spoofable. True for the file's
-    // CONTENT: an attacker can upload HTML declaring `image/png`. It is then
-    // served as `image/png`, which is exactly why that does not execute. The
-    // guard is on the served type, and that is the half that matters here.
-    mimeTypes: [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-      "image/avif",
-      "image/bmp",
-      "image/tiff",
-      "image/heic",
-      "application/pdf",
-      "text/plain",
-      "text/csv",
-      "text/markdown",
-      "application/json",
-      // YAML in all three spellings browsers use. `.yml` only slipped
-      // through the `application/octet-stream` catch-all on machines whose
-      // OS has no mapping for it; anywhere the browser DOES recognise the
-      // extension it sent a real type and the upload was refused. Neither
-      // renders as markup, so none of them reopens the inline-serving hole
-      // the exclusions below guard.
-      "text/yaml",
-      "text/x-yaml",
-      "application/x-yaml",
-      "application/yaml",
-      "text/tab-separated-values",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-powerpoint",
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "application/vnd.oasis.opendocument.text",
-      "application/vnd.oasis.opendocument.spreadsheet",
-      "application/zip",
-      "application/gzip",
-      "application/x-tar",
-      "application/x-7z-compressed",
-      "application/vnd.rar",
-      "audio/mpeg",
-      "audio/wav",
-      "audio/ogg",
-      "video/mp4",
-      "video/webm",
-      "video/quicktime",
-      "application/octet-stream",
-    ],
+    // So the served DISPOSITION is what guards this bucket, not the list.
+    // What to check before changing any of it:
+    //
+    // - Serve an attachment without that header, or with `inline`, and every
+    //   markup type here becomes executable in this origin. A download route
+    //   that writes its own headers is the thing to watch for.
+    // - The lightbox renders images through `<img>` and everything else as
+    //   highlighted source (`questAttachmentPreview`). `<img>` does not run
+    //   an SVG's scripts; an `<iframe>` or a `dangerouslySetInnerHTML` over
+    //   attachment bytes would.
+    // - `LoreFileAccessProvider` gates reads on project membership, so a
+    //   file uploaded here is never reachable by a stranger holding the id.
   });
 
   /**

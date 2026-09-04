@@ -29,6 +29,11 @@ const PNG_BYTES = Buffer.from(
   "base64",
 );
 
+// The file this surface was reopened for: an agent writes the mockup, the
+// next agent reads it, the owner downloads it and opens it locally.
+const MOCKUP_HTML =
+  "<!doctype html><title>Mockup</title><main><h1>Quest board</h1></main>";
+
 const setup = async () => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
@@ -197,17 +202,62 @@ describe("Lore MCP: quest attachments", () => {
     expect(res.attachments.map((a: any) => a.id)).toEqual([added.id]);
   });
 
-  it("refuses a type it could not read back", async () => {
+  it("round-trips an HTML mockup, decoded on the way back", async () => {
     const { questTools, quest, call } = await setup();
 
+    const added = await call(questTools.quest_attachment_add, {
+      id: quest.id,
+      name: "Mockup.html",
+      mimeType: "text/html",
+      data: Buffer.from(MOCKUP_HTML, "utf8").toString("base64"),
+    });
+    expect(added.mimeType).toBe("text/html");
+
+    const opened = await call(questTools.quest_attachment_get, {
+      id: quest.id,
+      attachmentId: added.id,
+    });
+    expect(opened.content[0].type).toBe("text");
+    expect(opened.content[0].text).toContain("<h1>Quest board</h1>");
+  });
+
+  it("takes a type it cannot render inline, and says so on read", async () => {
+    const { questTools, quest, call } = await setup();
+
+    // This used to be "refuses a type it could not read back": the tool held
+    // an eight-type allowlist so that everything an agent could attach, an
+    // agent could also read. It cost the quest the files it is worked from
+    // to buy a property nobody needed, since an agent attaching a zip knows
+    // it attached a zip and the human on the other end is who opens it.
+    const added = await call(questTools.quest_attachment_add, {
+      id: quest.id,
+      name: "bundle.zip",
+      mimeType: "application/zip",
+      data: PNG_BYTES.toString("base64"),
+    });
+    expect(added.mimeType).toBe("application/zip");
+
+    const opened = await call(questTools.quest_attachment_get, {
+      id: quest.id,
+      attachmentId: added.id,
+    });
+    expect(opened.content[0].text).toContain("not inline-viewable");
+  });
+
+  it("refuses a mimeType that is not a media type", async () => {
+    const { questTools, quest, call } = await setup();
+
+    // The shape is checked because this value is stored and later handed
+    // back as the download's `Content-Type`. A header separator in it has
+    // no business reaching storage.
     await expect(
       call(questTools.quest_attachment_add, {
         id: quest.id,
-        name: "bundle.zip",
-        mimeType: "application/zip",
-        data: PNG_BYTES.toString("base64"),
+        name: "Mockup.html",
+        mimeType: "text/html\r\nX-Injected: 1",
+        data: Buffer.from(MOCKUP_HTML, "utf8").toString("base64"),
       }),
-    ).rejects.toThrowError(/not accepted here/i);
+    ).rejects.toThrowError(/not a media type/i);
   });
 
   it("refuses a payload that is not base64", async () => {
