@@ -1,7 +1,7 @@
-import { $context, $module } from "alepha";
+import { $module } from "alepha";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
-import { type LoreOptions, loreOptions } from "./atoms/loreOptions.ts";
+import { loreOptions } from "./atoms/loreOptions.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
@@ -79,21 +79,6 @@ export const AlephaLoreCli = $module({
     LoginCommand,
   ],
 });
-
-/**
- * Register this module into an app's own CLI container, from
- * `alepha.config.ts`.
- *
- * ⚠️ On its way out. The binary is the supported entry point, and the four
- * configs in this repo that still call this lose it in the next step; the
- * export goes with them. It exists here only so no commit in between is red.
- */
-export const lore = (options: LoreOptions = {}) => {
-  return () => {
-    const { alepha } = $context();
-    alepha.with(AlephaLoreCli).set(loreOptions, options);
-  };
-};
 
 // ---------------------------------------------------------------------------
 
