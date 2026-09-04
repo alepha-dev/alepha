@@ -1160,14 +1160,30 @@ test.describe("Epics — the release control", () => {
     });
 
     await test.step("detaching goes back to the none label", async () => {
+      // ⚠️ Detaching used to be a "No release" ROW at the top of the list.
+      // Feedback #2098 deleted that row from `control-select` - it drew the
+      // empty state as a third pickable release with a check mark - and put
+      // an `x` on the trigger in its place. This step is the reason the `x`
+      // had to exist at all: the row was this control's only local way to
+      // say "no release", and unlike a table filter it has no "Reset
+      // filters" entry to fall back on.
       const saved = written();
-      await control.click();
-      await page.getByRole("option", { name: /^No release$/ }).click();
+      await page
+        .locator("aside")
+        .getByRole("button", {
+          name: "Clear selection",
+        })
+        .click();
 
       await expect(control).toContainText("No release", { timeout: 15_000 });
       expect((await saved).status()).toBe(200);
       await page.reload();
       await expect(control).toContainText("No release", { timeout: 15_000 });
+      // And with nothing attached there is nothing to clear, so the button
+      // is gone rather than sitting there offering the state it is in.
+      await expect(
+        page.locator("aside").getByRole("button", { name: "Clear selection" }),
+      ).toHaveCount(0);
     });
 
     await test.step("a published release still names itself", async () => {
