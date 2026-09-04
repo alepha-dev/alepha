@@ -68,13 +68,13 @@ class FailingAttachEpicController extends EpicController {
 }
 
 /**
- * The epic surface over MCP, plus the gap it closes: Task 2 made the
- * backlog gate default-on inside `QuestController.getQuests`, and
- * `QuestTools.quest_list` called that same action — so before this file,
- * MCP `quest_list` was gated too, contradicting spec §5.3. That asymmetry
- * is deliberate the other way: the human's backlog stays clean, but an
- * agent that files a quest into a planned epic must see it in its own next
- * `quest_list` call, or the tool looks as though it silently failed.
+ * The epic surface over MCP.
+ *
+ * `quest_list` and the backlog gate have a history here. This file used to
+ * pin that MCP `quest_list` was NEVER gated, so an agent filing a quest into
+ * a planned epic would see it on its next call; epic #31 reversed that (the
+ * default matches the UI's backlog, `includePlanned: true` and `epic:` are
+ * the two ways past it) and the cases below pin the new contract.
  *
  * Pinned, like every other lore spec: the ROOT vitest config — the one CI
  * runs — sets `DATABASE_URL` to a Postgres URL, which this app's SQLite
@@ -282,6 +282,34 @@ describe("Lore MCP — epics", () => {
     });
 
     expect(result.quests.map((q: any) => q.shortId)).toContain(parked.shortId);
+  });
+
+  it("quest_create with accept: true into a planned epic creates the quest and reports the refusal", async ({
+    expect,
+  }) => {
+    // The common `acceptNote` case since epic #31: the quest is filed, the
+    // accept is refused by the epic phase gate, and the note is the server's
+    // own message, which names the fix.
+    const { alepha, repos, project, questTools, call } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "planned" });
+
+    const created = await call(questTools.quest_create, {
+      project: project.id,
+      title: "Parked on arrival",
+      description: "",
+      area: "Deploy",
+      priority: "medium",
+      epic_number: epic.number,
+      accept: true,
+    });
+
+    expect(created.acceptedAt).toBeUndefined();
+    expect(created.acceptNote).toBe(
+      `Cannot accept quest #${created.shortId}: Epic #${epic.number} is planned. Begin it first.`,
+    );
+    const row = await repos.quests.getById(created.id);
+    expect(row.epicId).toBe(epic.id);
+    expect(row.acceptedAt).toBeUndefined();
   });
 
   it("resolves epic_number to the global epic id, scoped to the project", async ({
