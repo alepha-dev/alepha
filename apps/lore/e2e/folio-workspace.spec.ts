@@ -823,10 +823,9 @@ test.describe("Folio workspace", () => {
     await expect(tree).toBeVisible({ timeout: 15_000 });
 
     // Rename the OPEN folio from the tree, the way the report does: its row
-    // is the one the workspace is already showing. Deliberately the
-    // right-click path even though a double click now opens the same
-    // rename (09f): this test is about the SAVE that follows, so it should
-    // keep exercising the entry point the original report used.
+    // is the one the workspace is already showing. The right-click path is
+    // the only one there is since feedback #2101 removed the double click
+    // (09f); this test is about the SAVE that follows either way.
     const row = tree.getByText(original, { exact: true });
     await expect(row).toBeVisible({ timeout: 15_000 });
     await row.click({ button: "right" });
@@ -872,18 +871,26 @@ test.describe("Folio workspace", () => {
   });
 
   /**
-   * Double click on a tree row opens the same inline rename the context
-   * menu does.
+   * Double click on a tree row does NOTHING of its own.
    *
-   * The directory half is the reason this is an e2e rather than a component
-   * spec. `onDoubleClick` fires only AFTER both clicks, and a directory
-   * row's single click toggles its disclosure, so the naive wiring expands
-   * and collapses the directory on the way to the rename. What is asserted
-   * here is the ABSENCE of that: the child folio must never become visible.
-   * Only a real browser produces the click / click / dblclick sequence with
-   * the `detail` counter the fix reads.
+   * ⚠️ This test used to assert the opposite, and it is kept rather than
+   * deleted because the reversal is the point. Double click WAS the rename
+   * gesture; feedback #2101 removed it ("remove double-click for rename.
+   * It's not nice. we will keep right-click to rename action for that"), so
+   * the row now has one gesture with one meaning and the context menu owns
+   * renaming.
+   *
+   * It stays an e2e for the same reason it was one before: only a real
+   * browser produces the click / click / dblclick sequence with the
+   * `detail` counter `handleClick` reads. What changed is which outcome
+   * that sequence has to produce. A directory row's click toggles its
+   * disclosure, so the burst's two clicks would toggle twice and land it
+   * back closed - the same thing, done faster, giving the opposite answer.
+   * The `detail` guard is what stops that, and the child folio staying
+   * VISIBLE is the witness. It was the witness for the absence of the
+   * toggle before; it is now the witness for exactly one.
    */
-  test("09f - double click on a tree row renames it", async () => {
+  test("09f - double click on a tree row does not rename, and toggles once", async () => {
     const stampf = `${stamp}f`;
     const folioTitle = `Dbl-${stampf}`.slice(0, 24);
     const dirTitle = `DblDir-${stampf}`.slice(0, 24);
@@ -932,31 +939,24 @@ test.describe("Folio workspace", () => {
     await expect(row(insideTitle)).toHaveCount(0);
 
     await row(dirTitle).dblclick();
-    await expect(tree.getByRole("textbox")).toBeVisible({ timeout: 10_000 });
-    await expect(tree.getByRole("textbox")).toHaveValue(dirTitle);
 
-    // The whole point: the deferred toggle was cancelled, so the directory
-    // never opened. Past the 250ms window, so a late timer would have run.
-    await page.waitForTimeout(600);
-    await expect(row(insideTitle)).toHaveCount(0);
-
-    await tree.getByRole("textbox").press("Escape");
+    // No rename, from either click of the burst.
     await expect(tree.getByRole("textbox")).toHaveCount(0);
-
-    // ── Single click still means what it meant ────────────────────────
-    // One click on the same directory row toggles it open (after the
-    // double-click window it now waits out).
-    await row(dirTitle).click();
+    // Toggled exactly once, so the directory is where a single click leaves
+    // it. Without the `detail` guard the second click closes it again.
     await expect(row(insideTitle)).toBeVisible({ timeout: 10_000 });
+    // And it stays there: the old wiring cancelled a 250ms timer, so waiting
+    // past that window is what proves nothing is still queued.
+    await page.waitForTimeout(600);
+    await expect(row(insideTitle)).toBeVisible();
+    await expect(tree.getByRole("textbox")).toHaveCount(0);
 
     // ── A folio row ───────────────────────────────────────────────────
     // ⚠️ Open the folio BEFORE double-clicking its row. A folio row's first
     // click navigates, and this test does not want to measure that: on a
-    // slow runner the workspace was still mounting when the rename input
-    // appeared, so the input Playwright had hold of was detached under it
-    // and `press` retried until the test timeout. Opening first makes the
-    // first click a same-route no-op, which is also the case the report
-    // describes: renaming the folio you are looking at.
+    // slow runner the workspace was still mounting when the assertion ran.
+    // Opening first makes the first click a same-route no-op, which is also
+    // the case the report describes: the folio you are looking at.
     await row(folioTitle).click();
     await expect(page).toHaveURL(/\/folios\/\d+$/, { timeout: 15_000 });
     await expect(page.getByTestId("markdown-mode-toggle")).toBeVisible({
@@ -964,10 +964,18 @@ test.describe("Folio workspace", () => {
     });
 
     await row(folioTitle).dblclick();
+    await page.waitForTimeout(600);
+    await expect(tree.getByRole("textbox")).toHaveCount(0);
+
+    // ── The gesture that replaced it ──────────────────────────────────
+    // Right-click to Rename is what the report kept, so the guarantees that
+    // used to be asserted on the double click move here rather than being
+    // dropped: the current name, fully selected, and Escape cancels.
+    await row(folioTitle).click({ button: "right" });
+    await page.getByRole("menuitem", { name: /rename|renommer/i }).click();
 
     const box = tree.getByRole("textbox");
     await expect(box).toBeVisible({ timeout: 10_000 });
-    // Opens on the CURRENT name, fully selected, so typing replaces it.
     await expect(box).toHaveValue(folioTitle);
     expect(
       await box.evaluate((el: HTMLInputElement) => [
@@ -976,7 +984,6 @@ test.describe("Folio workspace", () => {
       ]),
     ).toEqual([0, folioTitle.length]);
 
-    // Escape cancels, exactly as it does from the context-menu path.
     await box.press("Escape");
     await expect(tree.getByRole("textbox")).toHaveCount(0);
     await expect(row(folioTitle)).toBeVisible();
