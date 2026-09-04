@@ -475,16 +475,8 @@ Cron Trigger.
 
 | Atom                                           | Key                      | Default        | Bounded by                                           |
 | ---------------------------------------------- | ------------------------ | -------------- | ---------------------------------------------------- |
-| `workflowConfig` (`alepha/api/workflows`)      | `timeoutCron`            | `*/15 * * * *` | How late a workflow's `timeout` is enforced          |
-|                                                | `recoveryCron`           | `*/15 * * * *` | `recovery.staleThreshold` (30 min)                   |
-|                                                | `purgeCron`              | `0 3 * * *`    | `retentionDays`                                      |
 | `paymentsConfig` (`alepha/api/payments`)       | `expireStaleIntentsCron` | `*/15 * * * *` | The 30-minute intent cutoff                          |
 | `checkoutConfig` (`@alepha/commerce/checkout`) | `stockSweepCron`         | `*/15 * * * *` | Nothing - `reserved()` excludes holds by `expiresAt` |
-
-`timeoutCron` is the one to reconsider if you rely on tight workflow deadlines:
-a workflow past its deadline keeps running until the next tick, so a 15-minute
-tick can let a workflow with a 5-minute timeout run for 20. Set it to
-`* * * * *` if deadlines must bite promptly, and accept the extra trigger.
 
 ## Multi-replica deployments
 
