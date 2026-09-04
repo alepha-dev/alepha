@@ -13,6 +13,7 @@ import { BlobController } from "./controllers/BlobController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
+import { EstateCommandController } from "./controllers/EstateCommandController.ts";
 import { EstateController } from "./controllers/EstateController.ts";
 import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
@@ -36,6 +37,7 @@ import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
+import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
@@ -54,6 +56,8 @@ import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
+import { EstateCommandService } from "./services/EstateCommandService.ts";
+import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
 import { EstateService } from "./services/EstateService.ts";
 import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
@@ -140,6 +144,7 @@ export const LoreApi = $module({
     BlightJobs,
     SigilJobs,
     QualityJobs,
+    EstateCommandJobs,
     UserDeletionHook,
     QuestNotifications,
     InvitationNotifications,
@@ -189,6 +194,12 @@ export const LoreApi = $module({
     // and mean different things.
     EstateTokenService,
     EstateService,
+    // The queue behind the connection, and the seam the websocket endpoint
+    // fills in. This default transport reaches nothing, which is the correct
+    // behaviour of a Lore with no socket wired: commands wait as `pending`
+    // for the machine's next connect.
+    EstateCommandTransport,
+    EstateCommandService,
     // Controllers
     QuestController,
     QuestCommentController,
@@ -214,6 +225,7 @@ export const LoreApi = $module({
     SigilIngestController,
     EstateController,
     ProjectEstateController,
+    EstateCommandController,
     SigilAnalyticsController,
     InsightsController,
     BlightController,
