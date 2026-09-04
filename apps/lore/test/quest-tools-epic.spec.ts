@@ -15,13 +15,16 @@ import { LoreMcp } from "../src/mcp/index.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 
 /**
- * Finding 3 of the whole-branch review: `quest_list` / `quest_get` are
- * deliberately NOT gated for a planned epic's quests (design §5.3), but
- * before this fix they were also silent about WHICH epic a quest belongs
- * to and whether that epic is planned. A `quest_list` result mixing a
- * planned epic's quests with released ones read as undifferentiated noise
- * — this guards that both tools now carry `{ number, title, status }` for
- * the quest's epic.
+ * Finding 3 of the whole-branch review: `quest_list` and `quest_get` used to
+ * be silent about WHICH epic a quest belongs to and whether that epic is
+ * planned. A result mixing a planned epic's quests with released ones read
+ * as undifferentiated noise. This guards that both tools carry
+ * `{ number, title, status }` for the quest's epic.
+ *
+ * Since epic #31, `quest_list` hides a planned epic's quests by default,
+ * like the UI does; the stamping is asserted through `includePlanned: true`,
+ * which is what brings them back. `quest_get` is direct addressing and
+ * always resolves.
  */
 
 const setup = async () => {
@@ -88,12 +91,17 @@ describe("Lore MCP — quest_list / quest_get carry the quest's epic", () => {
   it("quest_list stamps a planned-epic quest with its epic and that epic's status", async () => {
     const { questTools, project, plannedEpic, quest, call } = await setup();
 
-    const res = await call(questTools.quest_list, { project: project.id });
+    // Hidden by default, present once asked for: the default is the UI's.
+    const gated = await call(questTools.quest_list, { project: project.id });
+    expect(gated.quests.find((q: any) => q.id === quest.id)).toBeUndefined();
+
+    const res = await call(questTools.quest_list, {
+      project: project.id,
+      includePlanned: true,
+    });
 
     const listed = res.quests.find((q: any) => q.id === quest.id);
     expect(listed).toBeDefined();
-    // quest_list stays ungated over MCP (design §5.3) — the planned quest
-    // must be present at all, not just carry the right epic field.
     expect(listed.epic).toEqual({
       number: plannedEpic.number,
       title: "Deploy pipeline",
