@@ -348,16 +348,34 @@ roadmap sorts each release's epics so a predecessor comes above what depends
 on it and renders an "After Epic N" chip. It replaced prose: "Depends on epic
 #14 landing first" in a description cannot be rendered, sorted or checked.
 
-⚠️ **It is ADVISORY, and `quests.dependsOn` is not.** A quest's predecessor
-gates `acceptQuest`; an epic's gates nothing - `setEpicStatus` still has no
-forbidden edge. Epics overlap by design, and a refusal there would make people
-stop setting the field rather than start respecting it. The reasoning is
-written up on the column itself, and `EpicDependencyService.spec.ts` has a
-test whose whole job is to go red if somebody adds the gate without reading it.
-**Cycles ARE refused**, which is a different question: `A → B → A` is a graph
-the roadmap cannot draw. MCP speaks in per-project numbers
-(`dependsOn_number`, `0` clears), the HTTP API in ids, the same split
+⚠️ **It is a GATE since epic #31 (2026-09-04), like `quests.dependsOn`.**
+`setEpicStatus` refuses Begin while the predecessor is not `done`
+(`EpicWorkflowService.assertCanBegin`). It shipped advisory on 2026-09-01,
+on the reasoning that epics overlap by design and a refusal would make people
+stop setting the field; three days later the advisory channel had measured
+zero (epic #27 was worked to 9 of 9 while `planned`, by an agent told the
+status on every call), and the column comment now records both decisions.
+`EpicDependencyService.spec.ts`'s test that was written to go red when the
+gate arrived went red as designed and is its own opposite now. **Cycles ARE
+refused** on write, which was always a different question: `A → B → A` is a
+graph the roadmap cannot draw. The roadmap chip still says "After Epic N",
+because it draws order and cannot see the predecessor's status; the epic
+page says "Blocked by" off `dependsOnStatus`. MCP speaks in per-project
+numbers (`dependsOn_number`, `0` clears), the HTTP API in ids, the same split
 `quest_*` makes.
+
+**An epic's status is the permission (epic #31).** `planned | active | done`
+is a one-way ratchet (`EpicController.setEpicStatus`, Begin then Conclude,
+`done` terminal, same status a no-op), and every phase rule lives on
+`EpicWorkflowService`, once: a quest is accepted, assigned, completed or
+reopened only while its epic is `active`; it enters, leaves or is deleted
+only while the epic is `planned` (no carve-out for completed quests, by
+decision); Begin needs the predecessor `done`; Conclude needs every quest
+completed or shelved. Shelve and unassign are never refused by phase, and
+unshelve is refused only under `done`. Folios attach in every phase. The
+refusal strings are the interface an agent reads, so they name the epic and
+the fix; folio #1197 is the review that closed the plan, and the pinned
+vocabulary folio (#1002) carries the matrix in its first section.
 
 ⚠️ **Publishing a roadmap publishes the titles of epics nobody has
 announced.** Planned epics are shown on purpose: an epic that is specified and

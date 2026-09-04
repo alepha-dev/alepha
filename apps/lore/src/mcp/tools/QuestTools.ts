@@ -561,7 +561,7 @@ export class QuestTools {
    */
   quest_accept = $tool({
     description:
-      "Accept a quest to start working on it. This assigns the quest to you.",
+      "Accept a quest to start working on it. This assigns the quest to you. A quest filed under an epic can be accepted only while that epic is 'active': under a planned epic the answer is 'Begin it first' (epic_set_status), and under a concluded one 'File this in a new epic'. A loose quest, which is most of them, is unaffected.",
     title: "Accept quest",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -619,7 +619,7 @@ export class QuestTools {
    */
   quest_unshelve = $tool({
     description:
-      "Bring a shelved quest back into the backlog as 'new'. Use `quest_list` with `status: \"shelved\"` to see what is currently on the shelf.",
+      "Bring a shelved quest back into the backlog as 'new'. Use `quest_list` with `status: \"shelved\"` to see what is currently on the shelf. Refused inside a concluded epic, where nothing reopens; allowed while the epic is planned (that edits an open plan) or active.",
     title: "Unshelve quest",
     annotations: {
       readOnlyHint: false,
@@ -686,7 +686,7 @@ export class QuestTools {
    */
   quest_complete = $tool({
     description:
-      "Mark a quest as complete. Every objective must be either ticked or waived. Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `project_context` so future agents working on this project can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session. " +
+      "Mark a quest as complete. Every objective must be either ticked or waived, and a quest filed under an epic completes only while that epic is 'active' (the same rule as quest_accept). Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `project_context` so future agents working on this project can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session. " +
       "An objective you did not do is waived with a reason, never ticked: pass it in `waive` and it stays unticked with the reason shown on the quest. Ticking it instead would be indistinguishable from work that actually happened. " +
       "If you know what shipped, pass `commits` too; `quest_commit_add` records any sha that turns up after the merge.",
     title: "Complete quest",
@@ -1001,7 +1001,7 @@ export class QuestTools {
    */
   quest_update = $tool({
     description:
-      "Update a quest's properties. Non-completed quests accept any field. A COMPLETED quest freezes its BODY - title, description, objectives - as an audit record of what was closed, and accepts everything that is not the body: `completionMessage`, `release_tag`, `feedback_shortId`, `area`, `tags` and `epic_number`. Which feedback the work turned out to resolve, and how it should be classified for reporting, are usually only settled afterwards, so freezing them made the history less accurate rather than more. Refused on a completed quest: `priority`, `size`, `estimateMinutes`, `dueAt` and `dependsOn_shortId`, which record what was planned at the time. Omitted fields stay unchanged. " +
+      "Update a quest's properties. Non-completed quests accept any field. A COMPLETED quest freezes its BODY - title, description, objectives - as an audit record of what was closed, and accepts everything that is not the body: `completionMessage`, `release_tag`, `feedback_shortId`, `area`, `tags` and `epic_number`. Which feedback the work turned out to resolve, and how it should be classified for reporting, are usually only settled afterwards, so freezing them made the history less accurate rather than more. `epic_number` has one more gate, the epic's own: a quest enters or leaves an epic only while that epic is 'planned', whatever the quest's status. A completed quest cannot be re-filed into an active or concluded epic after the fact; that was allowed until epic #31 and was deliberately closed with the plan freeze. Refused on a completed quest: `priority`, `size`, `estimateMinutes`, `dueAt` and `dependsOn_shortId`, which record what was planned at the time. Omitted fields stay unchanged. " +
       "Passing `objectives` REPLACES the entire array, so fetch the quest first and pass back the full list, each surviving item carrying the `id` it already had. That path is for rewording, reordering, adding or removing objectives; to tick or untick one, call `quest_objective_set` instead of resending everything. " +
       "Nothing here stops you overwriting an edit someone made while you were working: pass `expectedUpdatedAt` from your last `quest_get` and a 409 will tell you to re-read instead.",
     title: "Update quest",
@@ -1169,7 +1169,7 @@ export class QuestTools {
    */
   quest_delete = $tool({
     description:
-      "Permanently delete a quest. Use this to clean up mistakenly-created quests. Only the quest creator or project owner can delete. Cannot be undone.",
+      "Permanently delete a quest. Use this to clean up mistakenly-created quests. Only the quest creator or project owner can delete. Cannot be undone. Refused inside an 'active' or 'done' epic, whose quest set is frozen: a quest that will not be done there is shelved (quest_shelve), which keeps the record that it was specified and declined.",
     title: "Delete quest",
     annotations: {
       destructiveHint: true,

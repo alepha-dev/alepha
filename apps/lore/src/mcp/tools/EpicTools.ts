@@ -171,7 +171,7 @@ export class EpicTools {
    */
   epic_create = $tool({
     description:
-      "Create a new epic in the project, in the 'planned' status. Quests filed under a planned epic (quest_create / quest_update's `epic_number`) stay out of the human-facing backlog, kanban and reports until the epic is activated (epic_set_status), and out of quest_list's default view; quest_list's `epic:` filter or `includePlanned: true` reads them. Any project member may create one.",
+      "Create a new epic in the project, in the 'planned' status. The status IS the permission: while planned, quests are filed into it (quest_create / quest_update's `epic_number`) and stay out of the human-facing backlog, kanban, reports and quest_list's default view (quest_list's `epic:` filter or `includePlanned: true` reads them), and none of them can be accepted. epic_set_status 'active' (Begin) freezes the quest set and releases it for work; 'done' (Conclude) is terminal. Anything discovered after Begin is an objective on a quest already in the epic, or a new epic with dependsOn_number pointing at this one. Any project member may create one.",
     title: "Create epic",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -212,7 +212,7 @@ export class EpicTools {
    */
   epic_update = $tool({
     description:
-      "Update an epic's title or description. Omitted fields stay unchanged.",
+      "Update an epic's title, description or predecessor. Omitted fields stay unchanged. Allowed in every phase, 'done' included: the description is the account of what happened and project memory is meant to be curated. Only the quest set and the status are gated by phase (see quest_create, quest_update and epic_set_status).",
     title: "Update epic",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {

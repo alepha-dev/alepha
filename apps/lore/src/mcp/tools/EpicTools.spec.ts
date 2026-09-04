@@ -523,18 +523,23 @@ describe("Lore MCP — epics", () => {
   });
 
   describe("project_context — epic index", () => {
-    it("lists every epic with number, title, status and questCount", async ({
+    it("lists every epic with number, title, status, questCount and completed", async ({
       expect,
     }) => {
       // Without this index a project with a planned epic's worth of quests
       // shows up as unrelated noise — no signal they're one parked subject.
+      // `completed` is what tells "planned, 2 specified" from "planned, 2
+      // shipped" at orientation (epic #27 was the second and nobody saw).
       const { alepha, project, projectTools, call } = await setup();
       const epic = await createTestEpic(alepha, project, {
         title: "Lore Deploy",
         status: "planned",
       });
       await createTestQuest(alepha, project, { epicId: epic.id });
-      await createTestQuest(alepha, project, { epicId: epic.id });
+      await createTestQuest(alepha, project, {
+        epicId: epic.id,
+        completedAt: "2026-09-04T00:00:00.000Z",
+      });
 
       const result = await call(projectTools.project_context, {
         project: project.id,
@@ -546,6 +551,7 @@ describe("Lore MCP — epics", () => {
           title: "Lore Deploy",
           status: "planned",
           questCount: 2,
+          completed: 1,
         },
       ]);
     });
