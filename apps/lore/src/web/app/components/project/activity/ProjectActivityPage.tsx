@@ -133,8 +133,12 @@ const ProjectActivityPage = () => {
   }
 
   return (
+    // No heading, deliberately. The breadcrumb leaf already reads Activity,
+    // and no sibling list page has one: Quests, Epics, Blights and Folios all
+    // open straight into their toolbar (feedback #2090). If that pattern is
+    // ever revisited the answer is a visually-hidden heading, not this one
+    // back.
     <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
-      <h1 className="mb-4 text-xl font-medium">{tr("activity.title")}</h1>
       <AlephaTable<ProjectActivityRow>
         className="min-h-0 flex-1"
         defaultSize={25}

@@ -1680,7 +1680,6 @@ export default {
   "common.close": "Close",
   "common.save": "Save",
 
-  "activity.title": "Activity",
   "activity.actor.unknown": "Someone",
   "activity.empty": "Nothing recorded yet.",
   "activity.col.when": "When",
