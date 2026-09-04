@@ -623,17 +623,50 @@ const writePersisted = (key: string, suffix: string, value: unknown): void => {
  */
 export const PAGE_SIZES = [10, 20, 50, 100];
 
+/**
+ * The three persisted preferences, read for one `persistenceKey`.
+ *
+ * Factored out because they are read from TWO places now: once at mount, and
+ * again whenever the key changes under a mounted table. Inline in `useState`
+ * they could only be read once, and a second copy of each rule is how the
+ * scope-change path would come to disagree with the mount path about what a
+ * stored value means.
+ */
+const persistedSort = (
+  key: string | undefined,
+  fallback: SortState | null | undefined,
+): SortState | null => {
+  const stored = key ? readPersisted<SortState>(key, "sort") : undefined;
+  return stored ?? fallback ?? null;
+};
+
+const persistedSize = (
+  key: string | undefined,
+  fallback: number | undefined,
+): number => {
+  const stored = key ? readPersisted<number>(key, "size") : undefined;
+  return stored ?? fallback ?? 20;
+};
+
+const persistedColumns = <T,>(
+  key: string | undefined,
+  columns: Record<string, ColumnDef<T>>,
+): Set<string> => {
+  const stored = key ? readPersisted<string[]>(key, "columns") : undefined;
+  if (stored) {
+    return new Set(stored.filter((k) => k in columns));
+  }
+  return new Set(
+    Object.keys(columns).filter((k) => !columns[k]!.defaultHidden),
+  );
+};
+
 export function AlephaTable<T>(props: AlephaTableProps<T>) {
   // State, not a constant. It was `props.defaultSize ?? 20` read once, so a
   // reader had no way to see more rows than the call site had decided for
   // them. Already in `load`'s dependency array, so changing it refetches.
-  const [size, setSize] = useState<number>(
-    () =>
-      (props.persistenceKey
-        ? readPersisted<number>(props.persistenceKey, "size")
-        : undefined) ??
-      props.defaultSize ??
-      20,
+  const [size, setSize] = useState<number>(() =>
+    persistedSize(props.persistenceKey, props.defaultSize),
   );
   const pageSizes = props.pageSizes ?? PAGE_SIZES;
   const alepha = useAlepha();
@@ -716,13 +749,9 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     onChange: (_key, next) => changeSize(next as number),
   });
 
-  const [sort, setSort] = useState<SortState | null>(() => {
-    if (props.persistenceKey) {
-      const persisted = readPersisted<SortState>(props.persistenceKey, "sort");
-      if (persisted) return persisted;
-    }
-    return props.defaultSort ?? null;
-  });
+  const [sort, setSort] = useState<SortState | null>(() =>
+    persistedSort(props.persistenceKey, props.defaultSort),
+  );
   const [fetchedData, setData] = useState<T[]>([]);
   const [fetchedMeta, setMeta] = useState<Page<T>["page"] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1045,20 +1074,54 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     [props.columns],
   );
 
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
-    if (props.persistenceKey) {
-      const persisted = readPersisted<string[]>(
-        props.persistenceKey,
-        "columns",
-      );
-      if (persisted) {
-        return new Set(persisted.filter((k) => k in props.columns));
-      }
-    }
-    return new Set(
-      allColumnKeys.filter((k) => !props.columns[k].defaultHidden),
-    );
-  });
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() =>
+    persistedColumns(props.persistenceKey, props.columns),
+  );
+
+  /**
+   * ⚠️ A changed `persistenceKey` is a changed SCOPE, and this is where that
+   * is handled.
+   *
+   * Every caller encodes its scope in that key - `lor.activity.${project.id}`,
+   * `lor.epics.${project.id}` - so switching project changes it. Nothing acted
+   * on that before, and `load` re-runs only on `[page, size, sortParam,
+   * refreshKey, form, alepha]`, none of which a project switch touches. The
+   * router does not remount on a param-only navigation either, so the table
+   * kept serving the PREVIOUS project's rows under the new project's name
+   * (feedback #2096).
+   *
+   * `refreshKey` is bumped rather than relying on the re-read: two projects
+   * can share a stored sort and size, and then no dependency of `load` would
+   * change and nothing would refetch. That equality is the bug's whole
+   * mechanism, so the refetch cannot be a side effect of the values moving.
+   *
+   * ⚠️ Adjusted during RENDER, not in an effect, and that is load-bearing.
+   * The sort and columns effects below are keyed on `persistenceKey` too, so
+   * on the render where it changes they would fire in the same flush and
+   * write the OUTGOING scope's state under the INCOMING key - silently
+   * overwriting the project you just opened with the one you just left. React
+   * re-renders before committing this, so by the time those effects run the
+   * state is already the new scope's and they write back what was just read.
+   *
+   * ⚠️ `props.fetch` is still NOT a dependency of `load`. That is the loop
+   * `fetchRef` exists to prevent, and several callers write a store atom from
+   * inside their fetcher.
+   *
+   * Filter VALUES are deliberately not reset here: `useForm` captures its
+   * `initialValues` once, so resetting them is form surgery rather than a
+   * state assignment. They are also not clobbered - the filter-persist effect
+   * writes only on `form:change` / `form:submit:success`, never on mount - so
+   * the stored filters of the project you left stay its own.
+   */
+  const scopeRef = useRef(props.persistenceKey);
+  if (scopeRef.current !== props.persistenceKey) {
+    scopeRef.current = props.persistenceKey;
+    setPage(0);
+    setSize(persistedSize(props.persistenceKey, props.defaultSize));
+    setSort(persistedSort(props.persistenceKey, props.defaultSort));
+    setVisibleColumns(persistedColumns(props.persistenceKey, props.columns));
+    setRefreshKey((k) => k + 1);
+  }
 
   useEffect(() => {
     if (!props.persistenceKey) return;
