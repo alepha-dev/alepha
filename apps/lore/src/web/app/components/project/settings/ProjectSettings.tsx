@@ -16,6 +16,7 @@ import {
   Layers,
   type LucideIcon,
   MapPin,
+  Server,
   Stamp,
   Swords,
   Users,
@@ -35,6 +36,7 @@ type RouteName =
   | "projectSettingsEpics"
   | "projectSettingsFeedback"
   | "projectSettingsSigils"
+  | "projectSettingsEstates"
   | "projectSettingsReleases"
   | "projectSettingsQuality"
   | "projectSettingsQuests";
@@ -48,6 +50,7 @@ type NavLabelKey =
   | "project.settings.nav.epics"
   | "project.settings.nav.feedback"
   | "project.settings.nav.sigils"
+  | "project.settings.nav.estates"
   | "project.settings.nav.releases"
   | "project.settings.nav.quality"
   | "project.settings.nav.quests";
@@ -117,6 +120,11 @@ const NAV_GROUPS: NavGroup[] = [
         route: "projectSettingsSigils",
         labelKey: "project.settings.nav.sigils",
         icon: Stamp,
+      },
+      {
+        route: "projectSettingsEstates",
+        labelKey: "project.settings.nav.estates",
+        icon: Server,
       },
       {
         route: "projectSettingsReleases",

@@ -1,12 +1,7 @@
 import { $inject, z } from "alepha";
-import { $repository, DbConflictError } from "alepha/orm";
+import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
-import {
-  $action,
-  BadRequestError,
-  ConflictError,
-  okSchema,
-} from "alepha/server";
+import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { ESTATE_TYPES, estates } from "../entities/estates.ts";
 import {
@@ -65,10 +60,9 @@ export class EstateController {
   /**
    * Enrol a machine, and hand back its secret once.
    *
-   * `(ownerUserId, slug)` is unique. The duplicate is refused twice, on
-   * purpose: the `findOne` names the clash in a message the owner reads, and
-   * the `DbConflictError` catch covers the window between that read and the
-   * insert. The index is what guarantees integrity; the check explains it.
+   * The minting itself is `EstateService.createBay`, shared with the
+   * create-from-inside-a-project flow (#1837), so the two cannot disagree
+   * about normalisation, uniqueness or the audit row.
    */
   createEstate = $action({
     use: [$secure({ permissions: ["estate:create"] })],
@@ -93,34 +87,8 @@ export class EstateController {
         );
       }
 
-      const slug = await this.claimSlug(user.id, body.slug);
-      const minted = this.tokens.mint();
-      try {
-        const created = await this.estates.create({
-          ownerUserId: user.id,
-          type,
-          slug,
-          label: body.label?.trim() || undefined,
-          secretHash: minted.hash,
-          secretPrefix: minted.prefix,
-        });
-
-        // An estate is a credential, so its whole life is audited and kept
-        // longer than the rest, see `LoreAudits`.
-        await this.audits.estate.logSuccess("create", {
-          ...this.audits.actor(user),
-          resourceType: "estate",
-          resourceId: created.id,
-          description: created.slug,
-        });
-
-        return { ...this.service.toResource(created), secret: minted.secret };
-      } catch (error) {
-        if (error instanceof DbConflictError) {
-          throw new ConflictError(await this.explainConflict(user.id, slug));
-        }
-        throw error;
-      }
+      const { estate, secret } = await this.service.createBay(user, body);
+      return { ...this.service.toResource(estate), secret };
     },
   });
 
@@ -294,38 +262,4 @@ export class EstateController {
     },
     handler: async ({ user }) => this.service.countOwned(user.id),
   });
-
-  /**
-   * Normalises a slug and proves it is free for this owner.
-   */
-  protected async claimSlug(ownerUserId: string, raw: string): Promise<string> {
-    const slug = this.service.normalizeSlug(raw);
-    const clash = await this.estates.findOne({
-      where: { ownerUserId: { eq: ownerUserId }, slug: { eq: slug } },
-    });
-    if (clash) {
-      throw new ConflictError(`You already have an estate named "${slug}"`);
-    }
-    return slug;
-  }
-
-  /**
-   * Works out which unique index refused the insert, and says so.
-   *
-   * `estates` carries two: `(ownerUserId, slug)` and `secretHash`. The first
-   * says "you already have this estate", the second says "try again and you
-   * will get a different secret", and answering the first to the second case
-   * would send an owner looking for an estate that does not exist.
-   */
-  protected async explainConflict(
-    ownerUserId: string,
-    slug: string,
-  ): Promise<string> {
-    const clash = await this.estates.findOne({
-      where: { ownerUserId: { eq: ownerUserId }, slug: { eq: slug } },
-    });
-    return clash
-      ? `You already have an estate named "${slug}"`
-      : "Could not mint a unique secret for this estate, retry.";
-  }
 }

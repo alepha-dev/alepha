@@ -1,9 +1,10 @@
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { $repository } from "alepha/orm";
+import { $repository, DbConflictError } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { BadRequestError, NotFoundError } from "alepha/server";
+import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
+import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, type EstateType, estates } from "../entities/estates.ts";
 import {
   type EstateResource,
@@ -13,18 +14,24 @@ import {
   ESTATE_SLUG_MAX_LENGTH,
   ESTATE_SLUG_PATTERN,
 } from "../schemas/estateSlugSchema.ts";
+import { EstateTokenService } from "./EstateTokenService.ts";
+import { LoreAudits } from "./LoreAudits.ts";
 
 /**
  * What an estate IS, stated once: which runtimes its type runs, when it
- * counts as online, what may be read off it, and what stands in the way of
- * deleting it.
+ * counts as online, what may be read off it, how one is minted, and what
+ * stands in the way of deleting it.
  *
  * The rules here are the ones folio #1194 fixed on 2026-09-04, and the
- * controller, the admin backstop (#1838), the lending (#1837) and epic #1's
- * environments (#1810) all read them from here rather than restating them.
+ * owner's controller, the project-side lending (#1837), the admin backstop
+ * (#1838) and epic #1's environments (#1810) all read them from here rather
+ * than restating them.
  */
 export class EstateService {
   protected readonly estates = $repository(estates);
+  protected readonly grants = $repository(estateProjects);
+  protected readonly tokens = $inject(EstateTokenService);
+  protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -65,7 +72,7 @@ export class EstateService {
   }
 
   /**
-   * Projects a row into what a reader may see. `secretHash` never crosses:
+   * Projects a row into what its owner may see. `secretHash` never crosses:
    * the resource schema omits it and parsing strips it, so no future field
    * added to the row reaches a browser by accident.
    */
@@ -75,6 +82,51 @@ export class EstateService {
       online: this.isOnline(estate),
       acceptedRuntimes: this.acceptedRuntimes(estate.type),
     });
+  }
+
+  /**
+   * Mints a `bay` estate for its owner, and hands back the only cleartext
+   * copy of its secret that will ever exist.
+   *
+   * One path for the account page and for "create it from inside a project"
+   * (#1837), so the two cannot disagree about normalisation, uniqueness or
+   * the audit row. `(ownerUserId, slug)` is unique: the `findOne` in
+   * {@link claimSlug} names the clash in a message the owner reads, and the
+   * `DbConflictError` catch covers the window between that read and the
+   * insert. The index guarantees integrity; the check explains it.
+   */
+  async createBay(
+    user: UserAccountToken,
+    input: { slug: string; label?: string },
+  ): Promise<{ estate: Estate; secret: string }> {
+    const slug = await this.claimSlug(user.id, input.slug);
+    const minted = this.tokens.mint();
+    try {
+      const estate = await this.estates.create({
+        ownerUserId: user.id,
+        type: "bay",
+        slug,
+        label: input.label?.trim() || undefined,
+        secretHash: minted.hash,
+        secretPrefix: minted.prefix,
+      });
+
+      // An estate is a credential, so its whole life is audited and kept
+      // longer than the rest, see `LoreAudits`.
+      await this.audits.estate.logSuccess("create", {
+        ...this.audits.actor(user),
+        resourceType: "estate",
+        resourceId: estate.id,
+        description: estate.slug,
+      });
+
+      return { estate, secret: minted.secret };
+    } catch (error) {
+      if (error instanceof DbConflictError) {
+        throw new ConflictError(await this.explainConflict(user.id, slug));
+      }
+      throw error;
+    }
   }
 
   /**
@@ -145,18 +197,59 @@ export class EstateService {
   }
 
   /**
-   * What an account deletion takes with it, for the confirmation dialog.
-   *
-   * `projects` is how many projects lose a deploy destination, which #1837
-   * fills in from the lending join; until then it is zero, and it is stated
-   * as a number rather than omitted so the dialog's shape does not change.
+   * What an account deletion takes with it, for the confirmation dialog:
+   * the estates the account owns, and how many projects lose a deploy
+   * destination when they go.
    */
   async countOwned(
     userId: string,
   ): Promise<{ estates: number; projects: number }> {
+    const owned = await this.estates.findMany({
+      where: { ownerUserId: { eq: userId } },
+    });
+    if (owned.length === 0) {
+      return { estates: 0, projects: 0 };
+    }
+    const grants = await this.grants.findMany({
+      where: { estateId: { inArray: owned.map((estate) => estate.id) } },
+    });
     return {
-      estates: await this.estates.count({ ownerUserId: { eq: userId } }),
-      projects: 0,
+      estates: owned.length,
+      projects: new Set(grants.map((grant) => grant.projectId)).size,
     };
+  }
+
+  /**
+   * Normalises a slug and proves it is free for this owner.
+   */
+  protected async claimSlug(ownerUserId: string, raw: string): Promise<string> {
+    const slug = this.normalizeSlug(raw);
+    const clash = await this.estates.findOne({
+      where: { ownerUserId: { eq: ownerUserId }, slug: { eq: slug } },
+    });
+    if (clash) {
+      throw new ConflictError(`You already have an estate named "${slug}"`);
+    }
+    return slug;
+  }
+
+  /**
+   * Works out which unique index refused the insert, and says so.
+   *
+   * `estates` carries two: `(ownerUserId, slug)` and `secretHash`. The first
+   * says "you already have this estate", the second says "try again and you
+   * will get a different secret", and answering the first to the second case
+   * would send an owner looking for an estate that does not exist.
+   */
+  protected async explainConflict(
+    ownerUserId: string,
+    slug: string,
+  ): Promise<string> {
+    const clash = await this.estates.findOne({
+      where: { ownerUserId: { eq: ownerUserId }, slug: { eq: slug } },
+    });
+    return clash
+      ? `You already have an estate named "${slug}"`
+      : "Could not mint a unique secret for this estate, retry.";
   }
 }

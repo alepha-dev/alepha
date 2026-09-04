@@ -601,6 +601,7 @@ export default {
   "project.settings.nav.epics": "Épopées",
   "project.settings.nav.feedback": "Retours",
   "project.settings.nav.sigils": "Sigils",
+  "project.settings.nav.estates": "Domaines",
   "project.settings.nav.releases": "Versions",
   "project.settings.nav.quests": "Quêtes",
   "project.settings.nav.quality": "Qualité",
@@ -1316,6 +1317,48 @@ export default {
   "sigils.toast.rotated": "Jeton renouvelé",
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
+
+  "estates.project.title": "Domaines",
+  "estates.project.description":
+    "Où ce projet peut déployer. Un domaine est une machine ou un compte que quelqu'un possède et a prêté à ce projet.",
+  "estates.project.empty":
+    "Aucun domaine prêté pour l'instant. Tant qu'il n'y en a pas, ce projet n'a nulle part où déployer.",
+  "estates.project.add": "Ajouter un domaine",
+  "estates.project.ownerOnly":
+    "Seul le propriétaire du projet peut ajouter un domaine.",
+  "estates.project.lentBy": "prêté par $1",
+  "estates.online": "en ligne",
+  "estates.offline": "hors ligne",
+  "estates.deploys.allowed": "déploiements autorisés",
+  "estates.deploys.statsOnly": "statistiques seulement",
+  "estates.lastSeen": "vu $1",
+  "estates.neverSeen": "jamais connecté",
+  "estates.add.title": "Ajouter un domaine à $1",
+  "estates.add.description":
+    "Choisissez un de vos domaines, ou créez-en un ici.",
+  "estates.add.existing": "Un des miens",
+  "estates.add.new": "En créer un nouveau",
+  "estates.add.none": "Vous n'avez plus de domaine à prêter. Créez-en un.",
+  "estates.add.slug": "Identifiant du domaine",
+  "estates.add.slugPlaceholder": "ovh-1",
+  "estates.add.invalid": "Lettres minuscules, chiffres et tirets, comme ovh-1.",
+  "estates.add.trust":
+    "Toute personne pouvant déployer dans $1 pourra exécuter du code sur la machine derrière $2, avec tout ce que cette machine contient. Rien n'est retiré du déploiement ici, et vous pouvez reprendre le prêt à tout moment.",
+  "estates.add.submit": "Le prêter à ce projet",
+  "estates.add.submitNew": "Créer et prêter",
+  "estates.detach.action": "Retirer",
+  "estates.detach.confirmTitle": "Retirer $1 de ce projet ?",
+  "estates.detach.confirmDescription":
+    "Le projet ne pourra plus déployer par ce domaine. Rien de déjà déployé n'est touché : la machine continue de faire tourner ce qu'elle fait tourner.",
+  "estates.detach.confirm": "Retirer",
+  "estates.secret.title":
+    "Le secret de votre domaine. Il n'est affiché qu'une fois : lancez `bay connector set <url-lore> <secret>` sur la machine.",
+  "estates.secret.copy": "Copier le secret",
+  "estates.secret.done": "Terminé",
+  "estates.toast.attached": "Domaine prêté à ce projet",
+  "estates.toast.created": "Domaine créé et prêté",
+  "estates.toast.detached": "Domaine retiré",
+  "estates.toast.copied": "Secret copié",
 
   "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",

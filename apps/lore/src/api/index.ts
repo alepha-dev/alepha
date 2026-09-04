@@ -21,6 +21,7 @@ import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
+import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
@@ -212,6 +213,7 @@ export const LoreApi = $module({
     SigilController,
     SigilIngestController,
     EstateController,
+    ProjectEstateController,
     SigilAnalyticsController,
     InsightsController,
     BlightController,
