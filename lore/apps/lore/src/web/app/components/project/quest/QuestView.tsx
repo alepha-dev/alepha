@@ -365,12 +365,12 @@ const QuestView = (props: QuestViewProps) => {
               {statusLabel}
             </Badge>
 
+            {/* `feedbackId` is the feedback row's database id, not its `#P`
+                number, so the badge names no number (epic #32). */}
             {quest.feedbackId != null && (
               <Badge variant="secondary" className="text-muted-foreground">
                 <Inbox className="size-3" />
-                {tr("quest.view.fromFeedback", {
-                  args: [String(quest.feedbackId)],
-                })}
+                {tr("quest.view.fromFeedback")}
               </Badge>
             )}
 

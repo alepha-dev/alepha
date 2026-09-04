@@ -157,12 +157,10 @@ const predicate = (
   tr: Tr,
   entry: Extract<QuestDiscussionEntry, { kind: "event" }>,
 ): string => {
+  // `feedbackId` is the feedback row's database id, not the `#P` number a
+  // reader knows, so the line names no number (epic #32).
   if (entry.action === "created" && entry.feedbackId != null) {
-    return String(
-      tr("quest.event.createdFromFeedback", {
-        args: [String(entry.feedbackId)],
-      }),
-    );
+    return String(tr("quest.event.createdFromFeedback"));
   }
   if (entry.action === "objective_completed" && entry.subject) {
     return String(
