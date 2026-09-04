@@ -1452,6 +1452,10 @@ export default {
   "epic.progress.open": "$1 ouvertes",
   "epic.progress.shelved": "$1 en veille",
   "epic.action.delete": "Supprimer",
+  "epic.action.review": "Relire",
+  "epic.action.review.copied":
+    "Invite de relecture pour $1 copiée. Collez-la dans Claude Code ou Codex.",
+  "epic.action.review.error": "Impossible de copier l’invite de relecture.",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":
     'Ses quêtes et folios sont conservés, détachés de "$1". Cette action est irréversible.',

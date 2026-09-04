@@ -12,7 +12,15 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleDot, Flag, Play, Plus, Search, Trash2 } from "lucide-react";
+import {
+  CircleDot,
+  ClipboardCheck,
+  Flag,
+  Play,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
@@ -31,6 +39,7 @@ import { useBulkReport } from "../../shared/useBulkReport.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
+import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 
 /**
  * Filter form, owned by AlephaTable: free-text over title + description,
@@ -102,6 +111,7 @@ const ProjectEpics = () => {
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);
   const reportBulk = useBulkReport();
+  const copyReviewPrompt = useEpicReviewPrompt();
   const alepha = useAlepha();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -434,6 +444,25 @@ const ProjectEpics = () => {
           // not a thing to offer.
           ...(epic.status === "planned"
             ? [
+                {
+                  icon: ClipboardCheck,
+                  // Beside Begin, under the same gate, and for the same
+                  // reason (feedback #2087): reviewing a plan is a thing you
+                  // do while the plan is still open. After Begin the quest
+                  // set is what is being worked, not what is being written.
+                  //
+                  // Shipped unflagged despite being called a beta feature in
+                  // the report. A `features.*` key would owe its own
+                  // settings page in the same commit - folio #1172, where
+                  // the Quality tab shipped gated on a flag no UI could set
+                  // and stayed invisible - and a flag buys nothing here: the
+                  // action is inert until someone clicks it, and what it
+                  // does is write text to the clipboard.
+                  label: tr("epic.action.review"),
+                  onClick: async (row: EpicResource) => {
+                    await copyReviewPrompt(row);
+                  },
+                },
                 {
                   icon: Play,
                   label: tr("epic.status.actions.begin"),
