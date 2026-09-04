@@ -417,6 +417,62 @@ describe("EpicController", () => {
     expect(sealed.completedAt).toBe("2026-09-04T01:00:00.000Z");
   });
 
+  it("refuses to conclude while a quest is open, and concludes once every quest is resolved", async ({
+    expect,
+  }) => {
+    // The clean-conclude rule (epic #31). The count and the wording are
+    // pinned on `EpicWorkflowService.spec.ts`; this is about the refusal
+    // reaching the handler, the status not moving, and the way out being
+    // the resolution the message names rather than a status flip.
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const epic = await createTestEpic(ctx.alepha, project, {
+      status: "active",
+      activatedAt: "2026-09-04T00:00:00.000Z",
+    });
+    const open = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+    });
+    const held = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+      acceptedAt: "2026-09-04T00:00:00.000Z",
+      acceptedBy: project.createdBy,
+    });
+    await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+      acceptedAt: "2026-09-04T00:00:00.000Z",
+      completedAt: "2026-09-04T01:00:00.000Z",
+    });
+
+    await expect(
+      ctx.controller.setEpicStatus(
+        { params: { id: epic.id }, body: { status: "done" } },
+        { user },
+      ),
+    ).rejects.toThrow(
+      `Cannot conclude Epic #${epic.number}: 2 quests are still open. Complete or shelve each one. An accepted quest is unassigned first, then shelved.`,
+    );
+    const still = await ctx.repos.epics.getById(epic.id);
+    expect(still.status).toBe("active");
+    expect(still.completedAt).toBeUndefined();
+
+    // Resolve both the way the message says: shelve the untouched one,
+    // complete the accepted one.
+    await ctx.repos.quests.updateById(open.id, {
+      shelvedAt: "2026-09-04T02:00:00.000Z",
+    });
+    await ctx.repos.quests.updateById(held.id, {
+      completedAt: "2026-09-04T02:00:00.000Z",
+    });
+
+    const done = await ctx.controller.setEpicStatus(
+      { params: { id: epic.id }, body: { status: "done" } },
+      { user },
+    );
+    expect(done.status).toBe("done");
+    expect(done.completedAt).toBeDefined();
+  });
+
   it("treats the same status as a no-op that writes nothing", async ({
     expect,
   }) => {
