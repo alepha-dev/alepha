@@ -1,16 +1,17 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import { EmailProvider, EmailTextRenderer } from "alepha/email";
 import { $logger } from "alepha/logger";
-import { SmsProvider } from "alepha/sms";
 
+import type {
+  NotificationChannel,
+  NotificationRendered,
+} from "../channels/NotificationChannel.ts";
 import { $notification } from "../primitives/$notification.ts";
 import { NotificationPreferenceProvider } from "../providers/NotificationPreferenceProvider.ts";
 import type { NotificationPayload } from "../schemas/notificationPayloadSchema.ts";
-import { NotificationAttachmentService } from "./NotificationAttachmentService.ts";
+import { NotificationChannelService } from "./NotificationChannelService.ts";
 import { NotificationDeliveryService } from "./NotificationDeliveryService.ts";
 import { NotificationSettings } from "./NotificationSettings.ts";
 import { NotificationSuppressionService } from "./NotificationSuppressionService.ts";
-import { NotificationUnsubscribeService } from "./NotificationUnsubscribeService.ts";
 
 /**
  * What the caller knows about the delivery attempt that the payload does
@@ -25,29 +26,14 @@ export interface NotificationSendContext {
   executionId?: string;
 }
 
-type NotificationMessageEmail = {
-  subject: string;
-  body: string | ((variables: any) => string | Promise<string>);
-  text?: string | ((variables: any) => string | Promise<string>);
-};
-type NotificationMessageSms = {
-  message: string | ((variables: any) => string | Promise<string>);
-};
-
 export class NotificationSenderService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly emailProvider = $inject(EmailProvider);
-  protected readonly smsProvider = $inject(SmsProvider);
-  protected readonly textRenderer = $inject(EmailTextRenderer);
+  protected readonly channels = $inject(NotificationChannelService);
   protected readonly suppressions = $inject(NotificationSuppressionService);
   protected readonly preferences = $inject(NotificationPreferenceProvider);
-  protected readonly unsubscribeTokens = $inject(
-    NotificationUnsubscribeService,
-  );
   protected readonly deliveries = $inject(NotificationDeliveryService);
   protected readonly settings = $inject(NotificationSettings);
-  protected readonly attachmentService = $inject(NotificationAttachmentService);
 
   public async send(
     payload: NotificationPayload,
@@ -59,70 +45,73 @@ export class NotificationSenderService {
       contact: payload.contact,
     });
 
-    // The gate, and the only one. It runs at SEND time rather than at push
-    // time on purpose: a suppression can land in between, and the send-time
-    // answer is the authoritative one.
-    const skipped = await this.gate(payload);
-    if (skipped) {
-      // A skipped send is not a failure. Returning rather than throwing is
-      // what makes the job row end `ok`, so retries never fight the gate and
-      // a suppressed contact is not mailed on attempt two.
-      this.log.info("Notification skipped", {
-        type: payload.type,
-        template: payload.template,
-        contact: payload.contact,
-        skipped,
-      });
-      await this.writeReceipt(context, payload, {
-        status: "skipped",
-        skipReason: skipped,
-      });
-      return { type: payload.type, to: payload.contact, skipped };
+    // One path, whatever the channel. The only thing the sender knows about
+    // a channel is the contract: it renders, it sends, and it says who it
+    // reached. Everything below is channel-agnostic by construction, which
+    // is what makes a plugin's channel a first-class one rather than a
+    // second branch nobody maintains.
+    const channel = this.channels.require(payload.type);
+
+    // ⚠️ **Addressable channels only.** A sink fires at a destination named
+    // in the template: there is nobody to suppress, nothing to opt out of
+    // and no unsubscribe token to mint. Running the gate on a destination
+    // string would let a bounce on somebody's address silence an ops alert,
+    // and a suppression row spelled `discord:alerts` would be indelible.
+    //
+    // The gate itself runs at SEND time rather than at push time on purpose:
+    // a suppression can land in between, and the send-time answer is the
+    // authoritative one.
+    if (channel.addressable) {
+      const contact = this.requireContact(payload, channel.channel);
+      const skipped = await this.gate(payload, contact);
+      if (skipped) {
+        // A skipped send is not a failure. Returning rather than throwing is
+        // what makes the job row end `ok`, so retries never fight the gate
+        // and a suppressed contact is not mailed on attempt two.
+        this.log.info("Notification skipped", {
+          type: payload.type,
+          template: payload.template,
+          contact,
+          skipped,
+        });
+        await this.writeReceipt(context, payload, {
+          status: "skipped",
+          skipReason: skipped,
+          recipient: contact,
+        });
+        return { type: payload.type, to: contact, skipped };
+      }
     }
 
-    if (payload.type === "email") {
-      const rendered = await this.renderEmail(payload);
-      const result = await this.attempt(context, payload, () =>
-        this.emailProvider.send(rendered),
-      );
-      this.log.info("Email notification sent", {
-        template: payload.template,
-        contact: payload.contact,
-      });
-      await this.writeReceipt(context, payload, {
-        status: "sent",
-        messageId: result.messageId ?? null,
-        subject: rendered.subject,
-        body: rendered.body,
-      });
-      return {
-        type: "email" as const,
-        to: rendered.to,
-        subject: rendered.subject,
-        body: rendered.body,
-        messageId: result.messageId,
-      };
-    }
+    const rendered = await channel.render(this.renderInput(payload, channel));
+    const result = await this.attempt(
+      context,
+      payload,
+      rendered.recipient,
+      () => channel.send(rendered),
+    );
 
-    if (payload.type === "sms") {
-      const rendered = await this.renderSms(payload);
-      await this.attempt(context, payload, () =>
-        this.smsProvider.send(rendered),
-      );
-      this.log.info("SMS notification sent", {
-        template: payload.template,
-        contact: payload.contact,
-      });
-      await this.writeReceipt(context, payload, {
-        status: "sent",
-        subject: null,
-      });
-      return {
-        type: "sms" as const,
-        to: rendered.to,
-        message: rendered.message,
-      };
-    }
+    this.log.info("Notification sent", {
+      channel: channel.channel,
+      template: payload.template,
+      contact: rendered.recipient,
+    });
+
+    await this.writeReceipt(context, payload, {
+      status: "sent",
+      messageId: result.messageId ?? null,
+      subject: rendered.subject ?? null,
+      body: rendered.body ?? null,
+      recipient: rendered.recipient,
+    });
+
+    return {
+      type: payload.type,
+      to: rendered.recipient,
+      subject: rendered.subject,
+      body: rendered.body,
+      messageId: result.messageId,
+    };
   }
 
   /**
@@ -138,6 +127,7 @@ export class NotificationSenderService {
   protected async attempt<R>(
     context: NotificationSendContext,
     payload: NotificationPayload,
+    recipient: string,
     call: () => Promise<R>,
   ): Promise<R> {
     try {
@@ -146,6 +136,7 @@ export class NotificationSenderService {
       await this.writeReceipt(context, payload, {
         status: "failed",
         error: error instanceof Error ? error.message : String(error),
+        recipient,
       });
       throw error;
     }
@@ -170,6 +161,16 @@ export class NotificationSenderService {
       subject?: string | null;
       body?: string | null;
       error?: string | null;
+      /**
+       * Who or where the message went, straight from the channel.
+       *
+       * Required, and never reconstructed from the payload: an addressable
+       * channel returns the address it was given, a sink returns
+       * `discord:releases`, and the receipt's `contact` column is NOT NULL
+       * for both. Every call site has one, including the skip path, where
+       * the gate has already established the contact.
+       */
+      recipient: string;
     },
   ): Promise<void> {
     if (!context.executionId) {
@@ -187,7 +188,7 @@ export class NotificationSenderService {
         messageId: outcome.messageId ?? null,
         provider: this.providerName(payload.type),
         channel: payload.type,
-        contact: payload.contact,
+        contact: outcome.recipient,
         template: payload.template,
         category: payload.category ?? null,
         critical: payload.critical === true,
@@ -212,10 +213,16 @@ export class NotificationSenderService {
     }
   }
 
-  protected providerName(channel: "email" | "sms"): string {
-    const provider =
-      channel === "email" ? this.emailProvider : this.smsProvider;
-    return provider.constructor.name;
+  /**
+   * What the receipt records as the provider.
+   *
+   * Asked of the channel, so a receipt keeps naming the transport that
+   * actually sent the message (`BrevoEmailProvider`) rather than the adapter
+   * over it. Falls back to the channel name rather than throwing: this runs
+   * inside {@link writeReceipt}, where a throw costs the receipt.
+   */
+  protected providerName(channel: string): string {
+    return this.channels.find(channel)?.providerName() ?? channel;
   }
 
   /**
@@ -240,11 +247,12 @@ export class NotificationSenderService {
    */
   protected async gate(
     payload: NotificationPayload,
+    contact: string,
   ): Promise<"suppressed" | "declined" | undefined> {
     const channel = payload.type;
 
     const suppressed = await this.suppressions.isSuppressed({
-      contact: payload.contact,
+      contact,
       channel,
       // From the payload, never from `currentTenantAtom`: this runs inside a
       // job and there is no request to read a tenant from.
@@ -257,7 +265,7 @@ export class NotificationSenderService {
     }
 
     const allowed = await this.preferences.allows({
-      contact: payload.contact,
+      contact,
       channel,
       template: payload.template,
       category: payload.category,
@@ -271,97 +279,46 @@ export class NotificationSenderService {
     return undefined;
   }
 
-  public async renderSms(payload: NotificationPayload) {
-    const { variables, contact, template } = this.load(payload);
-
-    const sms =
-      this.translation(template.options, payload.lang)?.sms ??
-      template.options.sms;
-    if (!sms) {
-      throw new AlephaError(
-        `Notification template ${payload.template} has no sms defined`,
-      );
-    }
-
-    const message =
-      typeof sms.message === "function"
-        ? await sms.message(variables as any)
-        : sms.message;
-
-    return { to: contact, message };
+  /**
+   * Re-render one notification without sending it.
+   *
+   * The admin preview is the caller. It returns the contract's base fields
+   * only, which is also what keeps a plugin's secrets out of a preview
+   * response: a sink carries its resolved webhook in its own channel-private
+   * `R`, and nothing here looks past {@link NotificationRendered}.
+   */
+  public async render(
+    payload: NotificationPayload,
+  ): Promise<NotificationRendered> {
+    const channel = this.channels.require(payload.type);
+    return channel.render(this.renderInput(payload, channel));
   }
 
-  public async renderEmail(payload: NotificationPayload) {
-    const { variables, contact, template } = this.load(payload);
+  /**
+   * Everything a channel needs to render, resolved from the payload.
+   *
+   * Translation resolution stays here rather than moving into the channels:
+   * picking `translations["fr"]` is channel-agnostic, and every channel
+   * would otherwise reimplement the same two-step fallback.
+   */
+  protected renderInput(
+    payload: NotificationPayload,
+    channel: NotificationChannel<any, any>,
+  ) {
+    const { variables, template } = this.load(payload);
+    const key = channel.channel;
 
-    const email =
-      this.translation(template.options, payload.lang)?.email ??
-      template.options.email;
-    if (!email) {
+    const message =
+      this.translation(template.options, payload.lang)?.[key] ??
+      (template.options as Record<string, any>)[key];
+
+    if (!message) {
       throw new AlephaError(
-        `Notification template ${payload.template} has no email defined`,
+        `Notification template ${payload.template} has no ${key} defined`,
       );
     }
 
-    // A critical template carries no unsubscribe link: there is nothing to
-    // opt out of, and offering one would suggest a password reset can be
-    // switched off. Undefined also when PUBLIC_URL is unset.
-    const unsubscribeUrl = payload.critical
-      ? undefined
-      : this.unsubscribeTokens.urlFor({
-          contact: contact,
-          channel: "email",
-          category: payload.category,
-          template: payload.template,
-          organizationId: payload.organizationId,
-        });
-
-    // The body sees it as one more variable, so an app can put a visible
-    // link in its own footer. The framework never injects markup into a body
-    // it does not own.
-    const renderVariables = { ...(variables as object), unsubscribeUrl };
-
-    // Resolved here rather than above the unsubscribe block so it sees the
-    // same values the body does.
-    const subject =
-      typeof email.subject === "function"
-        ? await email.subject(renderVariables as any)
-        : email.subject;
-
-    const body =
-      typeof email.body === "function"
-        ? await email.body(renderVariables as any)
-        : email.body;
-
-    // A template's own text always wins. Deriving one when it is absent is
-    // what gets every existing template a plain-text part without any of
-    // them being rewritten, which is the whole point: an HTML-only message
-    // scores worse with every spam filter.
-    const declared =
-      typeof email.text === "function"
-        ? await email.text(renderVariables as any)
-        : email.text;
-    const text = declared ?? this.textRenderer.fromHtml(body);
-
-    // Framework-set, never caller-set, so there is nothing for the header
-    // policy to refuse here. It guards `$email.send()`, where the map does
-    // come from a caller.
-    const headers = unsubscribeUrl
-      ? {
-          "List-Unsubscribe": `<${unsubscribeUrl}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        }
-      : undefined;
-
-    // Bytes are fetched here and nowhere earlier. A missing object throws,
-    // which fails the send rather than quietly delivering an invoice email
-    // with no invoice.
-    const attachments = await this.attachmentService.resolve(
-      payload.attachments,
-      { organizationId: payload.organizationId },
-    );
-
-    return { to: contact, subject, body, text, headers, attachments };
+    return { message, variables, payload };
   }
 
   /**
@@ -371,16 +328,9 @@ export class NotificationSenderService {
    * (template-level) message.
    */
   protected translation(
-    options: {
-      translations?: Record<
-        string,
-        { email?: unknown; sms?: unknown } | undefined
-      >;
-    },
+    options: { translations?: Record<string, object | undefined> },
     lang?: string,
-  ):
-    | { email?: NotificationMessageEmail; sms?: NotificationMessageSms }
-    | undefined {
+  ): Record<string, any> | undefined {
     if (!lang || !options.translations) return undefined;
     const exact = options.translations[lang];
     if (exact) return exact as any;
@@ -388,9 +338,29 @@ export class NotificationSenderService {
     return base ? (options.translations[base] as any) : undefined;
   }
 
+  /**
+   * The contact an addressable channel is about to write to.
+   *
+   * `push()` makes this unreachable through the type system unless every
+   * channel the template declares is a sink. It is still checked here,
+   * because a payload can be built by hand (an admin resend, a row queued by
+   * an older version), and sending to `undefined` is worse than failing.
+   */
+  protected requireContact(
+    payload: NotificationPayload,
+    channel: string,
+  ): string {
+    const contact = payload.contact;
+    if (!contact) {
+      throw new AlephaError(
+        `Notification "${payload.template}" has no contact, which channel "${channel}" needs.`,
+      );
+    }
+    return contact;
+  }
+
   protected load(payload: NotificationPayload) {
     const variables = payload.variables || {};
-    const contact = payload.contact;
     const template = this.alepha
       .primitives($notification)
       .find((it) => it.name === payload.template);
@@ -401,6 +371,6 @@ export class NotificationSenderService {
       );
     }
 
-    return { template, variables, contact };
+    return { template, variables };
   }
 }

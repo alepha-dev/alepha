@@ -194,10 +194,10 @@ export class AdminNotificationController {
       name: template.name,
       category: template.options.category,
       description: template.options.description,
-      channels: [
-        ...(template.options.email ? (["email"] as const) : []),
-        ...(template.options.sms ? (["sms"] as const) : []),
-      ],
+      // The primitive's own intersection of declared blocks and registered
+      // channels, so a plugin's channel reaches the filter bar without this
+      // list knowing it exists.
+      channels: template.channels(),
       critical: template.options.critical === true,
       sensitive: template.options.sensitive === true,
     }));
@@ -347,40 +347,36 @@ export class AdminNotificationController {
       return unavailable("sensitive");
     }
 
-    // Names, not bytes. `renderEmail` resolves attachments through storage
-    // and throws on a missing object, so previewing an old notification
-    // whose attachment was purged would be a 500 instead of a picture.
+    // Names, not bytes. The email channel resolves attachments through
+    // storage and throws on a missing object, so previewing an old
+    // notification whose attachment was purged would be a 500 instead of a
+    // picture.
     const attachments: string[] = (payload.attachments ?? []).map(
       (attachment: { fileId: string }) => attachment.fileId,
     );
     const renderable = { ...payload, attachments: undefined };
 
     try {
-      if (receipt.channel === "sms") {
-        const rendered = await this.sender.renderSms(renderable as any);
-        return {
-          available: true,
-          channel: "sms" as const,
-          message: rendered.message,
-          attachments,
-          source: "live" as const,
-        };
-      }
+      // The base fields only, and no branch on which channel produced them.
+      // That is also what keeps a plugin's secrets out of an admin response:
+      // a sink carries its resolved webhook in its own channel-private `R`,
+      // and nothing here reads past `NotificationRendered`.
+      const rendered = await this.sender.render(renderable as any);
 
-      const rendered = await this.sender.renderEmail(renderable as any);
       return {
         available: true,
-        channel: "email" as const,
-        subject: rendered.subject,
-        html: rendered.body,
-        text: rendered.text,
+        channel: receipt.channel,
+        subject: rendered.subject ?? undefined,
+        body: rendered.body ?? undefined,
+        text: rendered.text ?? undefined,
         attachments,
         source: "live" as const,
       };
     } catch (error) {
-      // The template was renamed or removed from the code since the send.
-      // That is a real state an operator can reach and not a server fault,
-      // so it gets its own reason rather than a 500.
+      // The template was renamed or removed from the code since the send, or
+      // its channel's plugin is no longer registered. All of those are real
+      // states an operator can reach and not server faults, so they get a
+      // reason rather than a 500.
       this.log.debug("Notification preview could not render", {
         id,
         template: receipt.template,

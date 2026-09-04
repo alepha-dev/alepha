@@ -1,0 +1,62 @@
+{
+  "name": "@alepha/discord",
+  "private": true,
+  "description": "Discord notification channel for alepha/api/notifications.",
+  "keywords": [
+    "alepha",
+    "discord",
+    "notifications",
+    "typescript"
+  ],
+  "homepage": "https://alepha.dev",
+  "license": "MIT",
+  "author": "Nicolas Foures",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alepha-dev/alepha.git"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "main": "./src/core/index.ts",
+  "types": "./src/core/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/core/index.ts",
+      "import": "./src/core/index.ts",
+      "default": "./src/core/index.ts"
+    }
+  },
+  "publishConfig": {
+    "main": "./dist/core/index.js",
+    "types": "./dist/core/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/core/index.d.ts",
+        "import": "./dist/core/index.js",
+        "default": "./dist/core/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "lint": "alepha lint && yarn build:check",
+    "typecheck": "alepha typecheck",
+    "test": "alepha test",
+    "build": "node ../../alepha/scripts/build.ts",
+    "build:check": "node ../../alepha/scripts/build.ts --check"
+  },
+  "devDependencies": {
+    "alepha": "0.28.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  },
+  "peerDependencies": {
+    "alepha": "^0.28.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "llms": "https://alepha.dev/llms.txt"
+}

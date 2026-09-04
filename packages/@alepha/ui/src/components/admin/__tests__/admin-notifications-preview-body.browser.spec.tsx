@@ -81,7 +81,7 @@ describe("AdminNotificationsPreviewBody", () => {
       available: true,
       channel: "email",
       subject: "Welcome",
-      html: "<p>Hi Ada</p>",
+      body: "<p>Hi Ada</p>",
     });
 
     const frame = container.querySelector("iframe");
@@ -99,7 +99,7 @@ describe("AdminNotificationsPreviewBody", () => {
     const { container } = mount({
       available: true,
       channel: "email",
-      html: "<p>x</p>",
+      body: "<p>x</p>",
     });
     expect(container.textContent).toContain("Re-rendered from the template");
   });
@@ -108,18 +108,34 @@ describe("AdminNotificationsPreviewBody", () => {
     const { container } = mount({
       available: true,
       channel: "sms",
-      message: "Your code is 123456",
+      body: "Your code is 123456",
     });
 
     expect(container.querySelector("iframe")).toBeNull();
     expect(container.textContent).toContain("Your code is 123456");
   });
 
+  /**
+   * The component must be generic, not merely still correct for the two
+   * channels the framework ships. A plugin's channel renders as text through
+   * the same flat `body` an sms uses, with no entry anywhere that names it.
+   */
+  it("renders an unknown channel as text, through the same flat body", () => {
+    const { container } = mount({
+      available: true,
+      channel: "discord",
+      body: "shipped v1.2.3",
+    });
+
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(container.textContent).toContain("shipped v1.2.3");
+  });
+
   it("lists attachment names without trying to load them", () => {
     const { container } = mount({
       available: true,
       channel: "email",
-      html: "<p>x</p>",
+      body: "<p>x</p>",
       attachments: ["invoice-2026-08.pdf"],
     });
 

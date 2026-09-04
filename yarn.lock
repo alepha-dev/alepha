@@ -48,6 +48,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alepha/discord@workspace:packages/@alepha/discord":
+  version: 0.0.0-use.local
+  resolution: "@alepha/discord@workspace:packages/@alepha/discord"
+  dependencies:
+    alepha: "npm:0.28.0"
+    typescript: "npm:^7.0.2"
+    vitest: "npm:^4.1.11"
+  peerDependencies:
+    alepha: ^0.28.0
+  languageName: unknown
+  linkType: soft
+
 "@alepha/lore@workspace:*, @alepha/lore@workspace:packages/@alepha/lore":
   version: 0.0.0-use.local
   resolution: "@alepha/lore@workspace:packages/@alepha/lore"

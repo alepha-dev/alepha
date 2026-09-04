@@ -70,7 +70,7 @@ describe("notification email carries a plain-text part", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "derived-text",
       contact: "alice@example.com",
@@ -88,7 +88,7 @@ describe("notification email carries a plain-text part", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "declared-text",
       contact: "alice@example.com",
@@ -102,7 +102,7 @@ describe("notification email carries a plain-text part", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "declared-static-text",
       contact: "alice@example.com",

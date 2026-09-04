@@ -12,7 +12,7 @@ export const notificationSuppressionResourceSchema = z.object({
   createdAt: z.datetime(),
   organizationId: z.uuid().nullable().optional(),
   contact: z.text(),
-  channel: z.enum(["email", "sms"]),
+  channel: z.text({ maxLength: 32 }),
   reason: z.enum(["unsubscribed", "bounced", "complained"]),
   /**
    * The category this applies to, or `*` for every category.

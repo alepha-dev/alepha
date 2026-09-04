@@ -263,8 +263,46 @@ export class DocsCommand {
       ),
     );
     if (!m) return [];
-    const body = this.findInterfaceBody(content, m[1]);
-    return body ? this.parseInterfaceFields(body) : [];
+
+    // `options: O & { schema: T }` names a type PARAMETER, not an interface,
+    // so the table has to follow it to its constraint. Without this,
+    // `$notification`'s options table silently vanished the day the
+    // primitive grew a second type parameter: nothing errors, the section is
+    // simply absent from the generated page.
+    const named = this.findInterfaceBody(content, m[1]);
+    if (named) return this.parseInterfaceFields(named);
+
+    const constraint = this.constraintOf(content, primitiveName, m[1]);
+    const bound = constraint
+      ? this.findInterfaceBody(content, constraint)
+      : null;
+    return bound ? this.parseInterfaceFields(bound) : [];
+  }
+
+  /**
+   * The upper bound of one of a primitive factory's type parameters.
+   *
+   * Only the bare name is read: `O extends NotificationPrimitiveOptions<T>`
+   * resolves to `NotificationPrimitiveOptions`, which is what
+   * {@link findInterfaceBody} looks for anyway, since it matches an
+   * interface by name and ignores its generics.
+   */
+  constraintOf(
+    content: string,
+    primitiveName: string,
+    parameter: string,
+  ): string | null {
+    const escaped = primitiveName.replace("$", "\\$");
+    const declaration = content.match(
+      new RegExp(
+        `export (?:const|function) ${escaped}[^<(]*<([\\s\\S]*?)>\\s*\\(`,
+      ),
+    );
+    if (!declaration) return null;
+    const bound = declaration[1].match(
+      new RegExp(`\\b${parameter}\\s+extends\\s+(\\w+)`),
+    );
+    return bound ? bound[1] : null;
   }
 
   async extractPrimitiveDoc(
@@ -478,7 +516,7 @@ export class DocsCommand {
   ): Promise<ModuleData> {
     const notSpec = (n: string) =>
       !/\.(spec|browser)\.tsx?$/.test(n) && !n.endsWith(".browser.ts");
-    const [description, primitives, hooks, providers, envVars] =
+    const [description, primitives, hooks, providers, channels, envVars] =
       await Promise.all([
         // Try index.ts then Alepha.ts for @module description
         this.extractModuleDescription(join(sourcePath, "index.ts")).then(
@@ -500,10 +538,26 @@ export class DocsCommand {
           (n) => notSpec(n),
           (p) => this.extractProviderInfo(p, srcDir, importMap),
         ),
+        // `channels/` holds the same kind of thing as `providers/`: an
+        // abstract class an application or a plugin implements. Without it
+        // `NotificationChannel` - the whole extension point of the
+        // notifications module - had no reference page at all, and an
+        // extension point nobody can find is not one.
+        this.readDir(
+          join(sourcePath, "channels"),
+          (n) => notSpec(n),
+          (p) => this.extractProviderInfo(p, srcDir, importMap),
+        ),
         this.getEnvInfo(sourcePath),
       ]);
 
-    return { description, primitives, hooks, providers, envVars };
+    return {
+      description,
+      primitives,
+      hooks,
+      providers: [...providers, ...channels],
+      envVars,
+    };
   }
 
   extractModules(pkgJson: any, packagePath: string): ModuleInfo[] | null {

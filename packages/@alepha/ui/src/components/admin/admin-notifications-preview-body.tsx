@@ -90,13 +90,18 @@ export const AdminNotificationsPreviewBody = (
         </div>
       ) : null}
 
+      {/* One flat body, and one question about it: is it HTML? Email is the
+          only channel whose body is a document, so it is the only one that
+          gets the sandboxed frame. Everything else - sms today, a chat sink
+          tomorrow - is text and renders as text, with no per-channel branch
+          to add. */}
       {preview.channel === "email" ? (
         <div className="min-h-96 flex-1 overflow-hidden rounded border">
-          <EmailBodyFrame html={preview.html ?? ""} />
+          <EmailBodyFrame html={preview.body ?? ""} />
         </div>
       ) : (
         <div className="bg-muted rounded p-3 text-sm whitespace-pre-wrap">
-          {preview.message}
+          {preview.body}
         </div>
       )}
     </div>

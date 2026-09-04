@@ -9,6 +9,7 @@ import { describe, it } from "vitest";
 import {
   $notification,
   AlephaApiNotifications,
+  type NotificationEmailRendered,
   NotificationSenderService,
   NotificationSuppressionService,
   NotificationUnsubscribeService,
@@ -187,11 +188,19 @@ describe("unsubscribe route", () => {
   });
 });
 
+/**
+ * The sender renders through the channel contract, which returns the base
+ * fields only. `headers` is the email channel's own, so this spec asks for
+ * that shape once rather than casting at every call site.
+ */
+const renderEmail = (sender: NotificationSenderService, payload: any) =>
+  sender.render(payload) as Promise<NotificationEmailRendered>;
+
 describe("List-Unsubscribe headers", () => {
   it("is set on a non-critical template", async ({ expect }) => {
     const { sender, alepha } = await boot();
 
-    const rendered = await sender.renderEmail({
+    const rendered = await renderEmail(sender, {
       type: "email",
       template: "unsub-reminder",
       contact: "a@example.com",
@@ -212,7 +221,7 @@ describe("List-Unsubscribe headers", () => {
   it("is absent on a critical template", async ({ expect }) => {
     const { sender, alepha } = await boot();
 
-    const rendered = await sender.renderEmail({
+    const rendered = await renderEmail(sender, {
       type: "email",
       template: "unsub-reset",
       contact: "a@example.com",
@@ -231,7 +240,7 @@ describe("List-Unsubscribe headers", () => {
   }) => {
     const { sender, alepha } = await boot({ PUBLIC_URL: "" });
 
-    const rendered = await sender.renderEmail({
+    const rendered = await renderEmail(sender, {
       type: "email",
       template: "unsub-reminder",
       contact: "a@example.com",
@@ -247,7 +256,7 @@ describe("List-Unsubscribe headers", () => {
   it("hands the same url to the body as unsubscribeUrl", async ({ expect }) => {
     const { sender, alepha } = await boot();
 
-    const rendered = await sender.renderEmail({
+    const rendered = await renderEmail(sender, {
       type: "email",
       template: "unsub-reminder",
       contact: "a@example.com",
@@ -268,7 +277,7 @@ describe("List-Unsubscribe headers", () => {
   }) => {
     const { sender, alepha } = await boot();
 
-    const rendered = await sender.renderEmail({
+    const rendered = await renderEmail(sender, {
       type: "email",
       template: "unsub-reminder",
       contact: "a@example.com",

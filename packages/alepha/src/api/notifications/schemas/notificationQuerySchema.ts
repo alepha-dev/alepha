@@ -40,7 +40,7 @@ export const notificationQuerySchema = pageQuerySchema.extend({
 
   template: z.text().optional(),
 
-  channel: z.enum(["email", "sms"]).optional(),
+  channel: z.text({ maxLength: 32 }).optional(),
 
   category: z.text().optional(),
 

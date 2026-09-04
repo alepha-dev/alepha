@@ -6,6 +6,7 @@ import { projects as shop } from "./apps/examples/shop/vitest.config.ts";
 import { projects as lore } from "./apps/lore/vitest.config.ts";
 import { projects as commerce } from "./packages/@alepha/commerce/vitest.config.ts";
 import { projects as devtools } from "./packages/@alepha/devtools/vitest.config.ts";
+import { projects as discord } from "./packages/@alepha/discord/vitest.config.ts";
 import { projects as loreSdk } from "./packages/@alepha/lore/vitest.config.ts";
 import { projects as mqtt } from "./packages/@alepha/mqtt/vitest.config.ts";
 import { projects as paymentsMollie } from "./packages/@alepha/payments-mollie/vitest.config.ts";
@@ -90,6 +91,7 @@ export default defineConfig({
       ...commerce,
       ...createAlepha,
       ...devtools,
+      ...discord,
       ...docs,
       ...lore,
       ...loreSdk,

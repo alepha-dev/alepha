@@ -2,6 +2,8 @@ import { $module } from "alepha";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaApiParameters } from "alepha/api/parameters";
 
+import { NotificationEmailChannel } from "./channels/NotificationEmailChannel.ts";
+import { NotificationSmsChannel } from "./channels/NotificationSmsChannel.ts";
 import { AdminNotificationController } from "./controllers/AdminNotificationController.ts";
 import { NotificationUnsubscribeController } from "./controllers/NotificationUnsubscribeController.ts";
 import { NotificationWebhookController } from "./controllers/NotificationWebhookController.ts";
@@ -10,6 +12,7 @@ import { $notification } from "./primitives/$notification.ts";
 import { NotificationPreferenceProvider } from "./providers/NotificationPreferenceProvider.ts";
 import type { NotificationDeliveryEvent } from "./schemas/notificationDeliveryEventSchema.ts";
 import { NotificationAttachmentService } from "./services/NotificationAttachmentService.ts";
+import { NotificationChannelService } from "./services/NotificationChannelService.ts";
 import { NotificationDeliveryService } from "./services/NotificationDeliveryService.ts";
 import { NotificationIngestService } from "./services/NotificationIngestService.ts";
 import { NotificationSenderService } from "./services/NotificationSenderService.ts";
@@ -19,6 +22,9 @@ import { NotificationUnsubscribeService } from "./services/NotificationUnsubscri
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+export * from "./channels/NotificationChannel.ts";
+export * from "./channels/NotificationEmailChannel.ts";
+export * from "./channels/NotificationSmsChannel.ts";
 export * from "./controllers/AdminNotificationController.ts";
 export * from "./controllers/NotificationUnsubscribeController.ts";
 export * from "./controllers/NotificationWebhookController.ts";
@@ -38,6 +44,7 @@ export * from "./schemas/notificationResourceSchema.ts";
 export * from "./schemas/notificationSuppressionResourceSchema.ts";
 export * from "./schemas/notificationTemplateResourceSchema.ts";
 export * from "./services/NotificationAttachmentService.ts";
+export * from "./services/NotificationChannelService.ts";
 export * from "./services/NotificationDeliveryService.ts";
 export * from "./services/NotificationIngestService.ts";
 export * from "./services/NotificationSenderService.ts";
@@ -89,6 +96,13 @@ export const AlephaApiNotifications = $module({
   imports: [AlephaApiJobs, AlephaApiParameters],
   primitives: [$notification],
   services: [
+    // ⚠️ The two built-in channels are listed HERE, not merely exported.
+    // `alepha.services()` filters instantiated services, so a channel nobody
+    // injects is invisible to the registry and the boot check fires against
+    // the framework's own templates.
+    NotificationEmailChannel,
+    NotificationSmsChannel,
+    NotificationChannelService,
     NotificationSenderService,
     NotificationSettings,
     NotificationSuppressionService,

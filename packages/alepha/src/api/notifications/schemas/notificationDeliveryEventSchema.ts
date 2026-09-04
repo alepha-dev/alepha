@@ -20,7 +20,7 @@ export const notificationDeliveryEventSchema = z.object({
    */
   messageId: z.text(),
   contact: z.text(),
-  channel: z.enum(["email", "sms"]),
+  channel: z.text({ maxLength: 32 }),
   status: z.enum([
     "delivered",
     "deferred",

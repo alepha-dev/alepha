@@ -99,7 +99,7 @@ describe("a notification subject may be built from the variables", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "subject-code",
       contact: "alice@example.com",
@@ -113,7 +113,7 @@ describe("a notification subject may be built from the variables", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "subject-async",
       contact: "alice@example.com",
@@ -131,7 +131,7 @@ describe("a notification subject may be built from the variables", () => {
 
     // Resolving the subject before `renderVariables` was built would leave
     // the extras out of it, which is the ordering this pins.
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "subject-unsubscribe",
       contact: "alice@example.com",
@@ -148,7 +148,7 @@ describe("a notification subject may be built from the variables", () => {
     const { alepha } = await boot();
     const sender = alepha.inject(NotificationSenderService);
 
-    const rendered = await sender.renderEmail({
+    const rendered = await sender.render({
       type: "email",
       template: "subject-string",
       contact: "bob@example.com",

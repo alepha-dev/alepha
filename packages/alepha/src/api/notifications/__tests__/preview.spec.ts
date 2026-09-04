@@ -128,7 +128,7 @@ describe("admin notification preview", () => {
     expect(preview.available).toBe(true);
     expect(preview.channel).toBe("email");
     expect(preview.subject).toBe("Welcome");
-    expect(preview.html).toContain("Hi Ada");
+    expect(preview.body).toContain("Hi Ada");
     expect(preview.source).toBe("live");
 
     await alepha.stop();
@@ -136,7 +136,7 @@ describe("admin notification preview", () => {
 
   /**
    * The bug this exists for, found by opening the page rather than by any
-   * test here: `html` was a bare `z.text()`, which caps at 255 characters
+   * test here: the body field was a bare `z.text()`, which caps at 255 characters
    * (`Z_LIMITS.regular`). Calling the handler directly never crosses the
    * route, so every assertion above passed while the real endpoint rejected
    * its own response and the Preview tab rendered blank behind a
@@ -156,7 +156,7 @@ describe("admin notification preview", () => {
     );
     const preview = await controller.previewOne(receipt!.id);
 
-    expect(preview.html!.length).toBeGreaterThan(5_000);
+    expect(preview.body!.length).toBeGreaterThan(5_000);
     expect(() =>
       alepha.codec.validate(notificationPreviewResourceSchema, preview),
     ).not.toThrow();
@@ -180,8 +180,10 @@ describe("admin notification preview", () => {
 
     expect(preview.available).toBe(true);
     expect(preview.channel).toBe("sms");
-    expect(preview.message).toBe("Your code is 123456");
-    expect(preview.html).toBeUndefined();
+    expect(preview.body).toBe("Your code is 123456");
+    // One flat shape, whatever the channel: an sms simply has no subject,
+    // rather than a separate `message` key the UI has to switch on.
+    expect(preview.subject).toBeUndefined();
 
     await alepha.stop();
   });
@@ -199,7 +201,7 @@ describe("admin notification preview", () => {
 
     expect(preview.available).toBe(false);
     expect(preview.reason).toBe("sensitive");
-    expect(preview.html).toBeUndefined();
+    expect(preview.body).toBeUndefined();
     expect(preview.subject).toBeUndefined();
 
     await alepha.stop();
@@ -254,7 +256,7 @@ describe("admin notification preview", () => {
     const preview = await controller.previewOne(receipt!.id);
 
     expect(preview.available).toBe(true);
-    expect(preview.html).toContain("Hi Ada");
+    expect(preview.body).toContain("Hi Ada");
     expect(preview.attachments).toEqual([fileId]);
 
     await alepha.stop();

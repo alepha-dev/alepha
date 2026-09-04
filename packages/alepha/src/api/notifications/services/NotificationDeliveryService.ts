@@ -215,7 +215,7 @@ export interface NotificationDeliveryRecord {
   organizationId?: string | null;
   messageId?: string | null;
   provider: string;
-  channel: "email" | "sms";
+  channel: string;
   contact: string;
   template: string;
   category?: string | null;

@@ -30,7 +30,7 @@ export class NotificationSuppressionService {
    */
   public async suppress(options: {
     contact: string;
-    channel: "email" | "sms";
+    channel: string;
     reason: "unsubscribed" | "bounced" | "complained";
     category?: string;
     source: string;
@@ -99,7 +99,7 @@ export class NotificationSuppressionService {
   public async list(options: {
     organizationId?: string;
     contact?: string;
-    channel?: "email" | "sms";
+    channel?: string;
   }): Promise<NotificationSuppressionEntity[]> {
     // Never pass undefined into a where-filter: it throws. Build the filter
     // from the keys that were actually given.
@@ -155,7 +155,7 @@ export class NotificationSuppressionService {
    */
   public async isSuppressed(options: {
     contact: string;
-    channel: "email" | "sms";
+    channel: string;
     organizationId?: string;
     category?: string;
     critical?: boolean;
