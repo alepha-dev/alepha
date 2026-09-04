@@ -1,5 +1,10 @@
 /**
- * What an attachment can be shown as inside the preview dialog.
+ * What an attachment can be shown as.
+ *
+ * Shared, and deliberately not under `project/quest/`: the feedback inbox
+ * classifies its attachments with the same rule (feedback #2091), and a
+ * second `mimeType.startsWith("image/")` written inline next to it is how
+ * two views start disagreeing about what an image is.
  *
  * Driven by MIME type first and extension second, because the browser sets
  * `type` from the OS and gets it wrong or blank often enough that the name

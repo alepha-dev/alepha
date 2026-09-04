@@ -64,6 +64,26 @@ const pendingFeedback: FeedbackResource = {
   tags: [],
 };
 
+const withAttachments: FeedbackResource = {
+  ...pendingFeedback,
+  attachmentUrls: [
+    {
+      id: "00000000-0000-4000-8000-00000000000a",
+      name: "screenshot.png",
+      url: "/api/files/00000000-0000-4000-8000-00000000000a",
+      mimeType: "image/png",
+      size: 20480,
+    },
+    {
+      id: "00000000-0000-4000-8000-00000000000b",
+      name: "server.log",
+      url: "/api/files/00000000-0000-4000-8000-00000000000b",
+      mimeType: "text/plain",
+      size: 4096,
+    },
+  ],
+} as FeedbackResource;
+
 /**
  * Regression guard for the stale pending row: accepting from this pane
  * commits the triage immediately and then opens the create-a-quest sheet.
@@ -153,5 +173,94 @@ describe("ProjectFeedbackDetail - accept then dismiss", () => {
     );
 
     await waitFor(() => expect(changes).toEqual([1]));
+  });
+});
+
+/**
+ * A triage inbox whose attachments are almost always screenshots showed none
+ * of them: every attachment rendered as a paperclip, a filename and a size,
+ * so finding out what was reported meant opening a tab (feedback #2091).
+ */
+describe("ProjectFeedbackDetail - attachment previews", () => {
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as never;
+  });
+
+  const show = async (feedback: FeedbackResource) => {
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactI18n)
+      .with(AlephaReactRouter);
+    await alepha.start();
+    alepha.store.set(currentProjectAtom, {
+      id: 1,
+      createdAt: "2026-08-26T10:00:00.000Z",
+      updatedAt: "2026-08-26T10:00:00.000Z",
+      title: "Lore",
+      slug: "lore",
+      createdBy: "00000000-0000-4000-8000-000000000001",
+      areas: [],
+      features: defaultProjectFeatures,
+      kanbanColumns: ["In Progress"],
+      unlockedFeatures: [],
+      unlockHistory: [],
+    } as never);
+
+    return render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectFeedbackDetail feedback={feedback} onChanged={() => {}} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+  };
+
+  it("wraps an image attachment in a hover trigger, and leaves other kinds alone", async ({
+    expect,
+  }) => {
+    const view = await show(withAttachments);
+
+    const image = await view.findByText("screenshot.png");
+    const log = view.getByText("server.log");
+
+    // The classifier decides, and only the image row becomes a trigger.
+    expect(image.closest('[data-slot="hover-card-trigger"]')).not.toBeNull();
+    expect(log.closest('[data-slot="hover-card-trigger"]')).toBeNull();
+  });
+
+  it("keeps every row a real link to the full file", async ({ expect }) => {
+    const view = await show(withAttachments);
+
+    // The hover card must not swallow the click: opening the full image in
+    // a tab is how the owner actually reads it.
+    for (const [name, id] of [
+      ["screenshot.png", "00000000-0000-4000-8000-00000000000a"],
+      ["server.log", "00000000-0000-4000-8000-00000000000b"],
+    ] as const) {
+      const anchor = (await view.findByText(name)).closest("a");
+      expect(anchor?.getAttribute("href")).toBe(`/api/files/${id}`);
+      expect(anchor?.getAttribute("target")).toBe("_blank");
+    }
+  });
+
+  it("fetches no image until the card opens", async ({ expect }) => {
+    const view = await show(withAttachments);
+
+    await view.findByText("screenshot.png");
+    // The preview lives in a portalled popup that Base UI mounts on open, so
+    // an inbox row with five screenshots costs no requests to draw.
+    expect(view.baseElement.querySelectorAll("img").length).toBe(0);
+    expect(
+      view.baseElement.querySelector(
+        '[data-testid="feedback-attachment-preview"]',
+      ),
+    ).toBeNull();
   });
 });

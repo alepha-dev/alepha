@@ -1,6 +1,11 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@alepha/ui/components/ui/hover-card";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -21,6 +26,7 @@ import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { attachmentPreview } from "../../shared/attachmentPreview.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
 import FeedbackThread from "./FeedbackThread.tsx";
 
@@ -177,8 +183,11 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               {tr("feedback.attachments")}
             </h3>
             <ul className="flex flex-col gap-1">
-              {feedback.attachmentUrls.map((a) => (
-                <li key={a.id}>
+              {feedback.attachmentUrls.map((a) => {
+                // The row, unchanged. It stays a real anchor so opening the
+                // full image in a tab keeps working, which the hover card
+                // must not swallow.
+                const row = (
                   <a
                     href={a.url}
                     target="_blank"
@@ -186,13 +195,46 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                     className="inline-flex items-center gap-2 text-sm hover:underline"
                   >
                     <Paperclip className="size-3.5" />
+                    {/* Reporter-supplied, and escaped text. A preview must
+                        not become a second place where it is interpreted. */}
                     <span className="truncate">{a.name}</span>
                     <span className="text-muted-foreground text-xs">
                       ({Math.round(a.size / 1024)} KB)
                     </span>
                   </a>
-                </li>
-              ))}
+                );
+
+                // The shared classifier, not an inline mime test: it answers
+                // on the extension when the browser's `type` is blank or
+                // wrong, which it often is.
+                const isImage =
+                  attachmentPreview(a.name, a.mimeType).kind === "image";
+                if (!isImage) {
+                  return <li key={a.id}>{row}</li>;
+                }
+
+                return (
+                  <li key={a.id}>
+                    <HoverCard>
+                      <HoverCardTrigger render={row} />
+                      {/* The content is portalled and mounts only once the
+                          card opens, so a row with five screenshots fetches
+                          nothing until one is hovered. */}
+                      <HoverCardContent
+                        className="w-auto p-1"
+                        data-testid="feedback-attachment-preview"
+                      >
+                        <img
+                          src={a.url}
+                          alt={a.name}
+                          loading="lazy"
+                          className="max-h-64 max-w-80 rounded object-contain"
+                        />
+                      </HoverCardContent>
+                    </HoverCard>
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}

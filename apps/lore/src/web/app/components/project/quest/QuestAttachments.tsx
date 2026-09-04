@@ -8,9 +8,9 @@ import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { attachmentPreview } from "../../shared/attachmentPreview.ts";
 import QuestAttachmentChip from "./QuestAttachmentChip.tsx";
 import QuestAttachmentLightbox from "./QuestAttachmentLightbox.tsx";
-import { attachmentPreview } from "./questAttachmentPreview.ts";
 import { useExclusiveWindowPaste } from "./useExclusiveWindowPaste.ts";
 
 export interface QuestAttachmentsProps {
