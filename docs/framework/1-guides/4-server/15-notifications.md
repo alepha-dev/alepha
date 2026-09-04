@@ -358,6 +358,157 @@ Use `$sms` directly for a transactional string a person is waiting on right now
 reasonably want to turn off, because that is what the preference and suppression
 machinery exists for.
 
+## 12. Writing a channel
+
+`email` and `sms` are not special. Each is a `NotificationChannel` service
+registered in the notifications module, and a package outside the framework
+adds its own the same way. `@alepha/discord` is the worked example: it posts
+an ops message into a Discord room through an incoming webhook, and it is
+about two hundred lines.
+
+A channel is **three** declarations, and missing one of them is the usual
+mistake.
+
+### The class
+
+```typescript check
+import {
+  NotificationChannel,
+  type NotificationRendered,
+  type NotificationRenderInput,
+} from "alepha/api/notifications";
+
+interface PagerMessage {
+  to?: string;
+  message: (variables: Record<string, unknown>) => string | Promise<string>;
+}
+
+export class PagerChannel extends NotificationChannel<PagerMessage> {
+  public readonly channel = "pager";
+  public readonly addressable = false;
+
+  public async render(input: NotificationRenderInput<PagerMessage>) {
+    const to = input.message.to ?? "ops";
+    return {
+      recipient: `pager:${to}`,
+      body: await input.message.message(input.variables),
+    };
+  }
+
+  public async send(rendered: NotificationRendered) {
+    // POST it somewhere. Throwing is how a failure is reported: the sender
+    // writes a `failed` receipt and the job retries.
+    return { messageId: undefined };
+  }
+}
+```
+
+`render` and `send` are split because the admin preview renders without
+sending. There is no target parameter: an addressable channel's recipient is
+on the payload, and a sink's destination comes from its own option block.
+
+### The two declaration merges
+
+```typescript
+declare module "alepha/api/notifications" {
+  interface NotificationChannels<V> {
+    pager?: {
+      to?: string;
+      message: (variables: V) => string | Promise<string>;
+    };
+  }
+
+  interface NotificationSinkChannels {
+    pager: true;
+  }
+}
+```
+
+The first is what makes `$notification({ pager })` typecheck, and the generic
+`V` is what lets `message` see the template's own variables. The second says
+this channel is a **sink**, and it is the one people forget: without it,
+`push()` on a pager-only template still demands a `contact` for a message
+going to a room.
+
+Put both in the package's single entry point. An augmentation applies only
+where it is in scope, so a subpath export makes "import the module, get the
+types" quietly untrue.
+
+### The registration
+
+```typescript
+export const AlephaPagerNotifications = $module({
+  name: "alepha.notifications.pager",
+  imports: [AlephaApiNotifications],
+  services: [PagerChannel],
+});
+```
+
+> ⚠️ **`services[]`, not merely `export`.** Discovery is
+> `alepha.services(NotificationChannel)`, which filters **instantiated**
+> services, so a channel nobody injects is invisible to the registry. The
+> symptom is confusing: the framework's boot check refuses a template that
+> declares your own channel.
+
+### Addressable, or a sink
+
+|                               | `addressable: true` | `addressable: false`          |
+| ----------------------------- | ------------------- | ----------------------------- |
+| goes to                       | a person            | a place named in the template |
+| `contact` on `push()`         | required            | optional                      |
+| suppression list              | checked             | skipped                       |
+| preference provider           | asked               | skipped                       |
+| unsubscribe token and headers | minted              | none                          |
+| `recipient`                   | the contact         | `<channel>:<destination>`     |
+
+The gate is skipped for a sink deliberately. A suppression row spelled
+`discord:alerts` would be indelible: nobody can click an unsubscribe link for
+a chatroom, so one stray bounce would silence an ops alert for good.
+
+### Two members that look optional and are not
+
+`render()` must return a **`recipient`**. It is written straight into the
+delivery receipt's `contact` column, which is `NOT NULL`, and it is the whole
+reason the sender never branches on the kind of channel.
+
+**`providerName()`** should be overridden by a channel that is an adapter over
+a swappable transport, so a receipt names the transport rather than the
+adapter. The default is the channel's own class name, which is right for a
+channel that IS its transport. `NotificationEmailChannel` overrides it so a
+receipt keeps saying `BrevoEmailProvider`; nothing asserts on that field by
+default, so getting it wrong degrades the audit trail silently.
+
+### Configuration belongs in an atom
+
+A sink's destination is usually a credential. Keep it in an `$atom`, never in
+template code: the template names a destination, and the channel resolves it.
+
+```typescript
+alepha.set(discordOptions, {
+  destinations: {
+    alerts: { webhook: process.env.DISCORD_ALERTS!, default: true },
+    releases: { webhook: process.env.DISCORD_RELEASES! },
+  },
+});
+```
+
+A receipt then records `discord:releases`, and the webhook reaches neither the
+outbox row nor the admin preview. The preview cannot leak it by construction:
+a channel carries whatever it likes in its own private rendered type, and the
+controller returns only `NotificationRendered`'s base fields.
+
+`to` should be a literal string, never a function. Dynamic routing reduces a
+boot check to "the map is not empty" and puts a typo'd destination back at
+3am. A template that needs two rooms declares two channel blocks.
+
+### Fail at boot, not at 3am
+
+The framework refuses to boot when a template declares a channel nothing
+provides, naming the template, the channel and the module to import. A plugin
+should add its own half in a `$hook({ on: "start" })`: that every destination
+exists, that at most one is flagged `default`, and that every `to` a template
+names is configured.
+
 ## See also
 
 - [Authentication](/docs/guides-server-authentication) explains why a

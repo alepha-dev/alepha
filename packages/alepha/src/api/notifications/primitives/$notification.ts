@@ -15,10 +15,18 @@ import { NotificationJobs } from "../jobs/NotificationJobs.ts";
 import type { NotificationAttachment } from "../schemas/notificationAttachmentSchema.ts";
 
 /**
- * Creates a notification primitive for managing email/SMS notification templates.
+ * Creates a notification primitive: a delivery template, pushed through a
+ * durable outbox.
  *
- * Provides type-safe, reusable notification templates with multi-language support,
- * variable substitution, and categorization for different notification channels.
+ * Provides type-safe, reusable notification templates with multi-language
+ * support, variable substitution, and categorization.
+ *
+ * **The channel set is open.** `email` and `sms` are the two the framework
+ * ships, and each is one `NotificationChannel` service among however many the
+ * container registers. A package outside the framework adds its own key by
+ * declaration merging on {@link NotificationChannels}, and a template that
+ * names a channel nothing provides refuses to boot rather than silently
+ * sending nothing.
  *
  * @example
  * ```ts

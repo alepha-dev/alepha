@@ -34,11 +34,14 @@ Direct mode is the recommended default for small / cheap deployments
 
 ### Primitives
 
-- [`$notification`](/docs/reference-primitives-$notification) - Creates a notification primitive for managing email/SMS notification templates.
+- [`$notification`](/docs/reference-primitives-$notification) - Creates a notification primitive: a delivery template, pushed through a
 
 ### Providers
 
 - [`NotificationPreferenceProvider`](/docs/reference-providers-notificationpreferenceprovider) - The seam through which an app answers "does this contact accept this
+- [`NotificationChannel`](/docs/reference-providers-notificationchannel) - One delivery channel, and the extension point of the whole module.
+- [`NotificationEmailChannel`](/docs/reference-providers-notificationemailchannel) - Email, as the first implementation of the channel contract.
+- [`NotificationSmsChannel`](/docs/reference-providers-notificationsmschannel) - SMS, as the second implementation of the channel contract.
 
 ### Environment Variables
 
