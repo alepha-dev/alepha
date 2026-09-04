@@ -78,7 +78,6 @@ const ProjectApps = () => {
     >
       <AlephaTable<SigilResource>
         className="min-h-0 flex-1"
-        defaultSize={25}
         // `undefined` is "the read failed", `[]` is "none enrolled". Only the
         // second is an empty state; the first is handled by the sidebar's own
         // "Couldn't load apps" entry, and an empty table here would claim a

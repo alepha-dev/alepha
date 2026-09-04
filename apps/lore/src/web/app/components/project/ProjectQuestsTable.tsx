@@ -349,7 +349,6 @@ const ProjectQuestsTable = () => {
         // route the app is already showing would otherwise change nothing.
         key={`${project.id}:${seededStatus ?? ""}`}
         className="min-h-0 flex-1"
-        defaultSize={25}
         emptyMessage={tr("common.noResults")}
         // AlephaTable owns the filter form + toolbar, and persists filter
         // values, column visibility, and sort under this key (replaces the

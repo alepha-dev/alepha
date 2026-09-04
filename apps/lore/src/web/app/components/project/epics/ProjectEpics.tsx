@@ -289,7 +289,6 @@ const ProjectEpics = () => {
     <div className="flex min-h-0 flex-1 flex-col p-4">
       <AlephaTable<EpicResource>
         className="min-h-0 flex-1"
-        defaultSize={20}
         persistenceKey={`lor.epics.${project.id}`}
         bulkActions={bulkActions}
         defaultSort={{ field: "updatedAt", direction: "desc" }}

@@ -155,7 +155,6 @@ const ProjectBlights = () => {
     <div className="flex min-h-0 flex-1 flex-col p-4">
       <AlephaTable<BlightResource>
         className="min-h-0 flex-1"
-        defaultSize={20}
         persistenceKey={project ? `lor.blights.${project.id}` : "lor.blights"}
         defaultSort={{ field: "count", direction: "desc" }}
         emptyMessage={tr("blights.empty")}

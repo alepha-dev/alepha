@@ -167,7 +167,6 @@ const ProjectReleases = () => {
 
       <AlephaTable<ReleaseResource>
         className="min-h-0 flex-1"
-        defaultSize={20}
         persistenceKey={`lor.releases.${project.id}`}
         defaultSort={{ field: "tag", direction: "desc" }}
         // The full empty state rather than `emptyMessage`, so the page that
