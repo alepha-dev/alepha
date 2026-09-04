@@ -822,6 +822,55 @@ describe("sigil ingest", () => {
     expect(inbox[0].status).toBe("open");
   });
 
+  /**
+   * The third write, and the one neither upsert can stand in for.
+   *
+   * Both tables above keep ONE row per fingerprint with a running total, so
+   * neither can say when the occurrences happened. `sigil_errors` is
+   * append-only and is what the App ▸ Errors chart reads (feedback #2085).
+   */
+  it("also records the occurrences as a series, split by origin", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    await post({
+      errors: [
+        anError({ count: 3, name: "TypeError", origin: "client" }),
+        anError({ count: 5, name: "DbError", origin: "server" }),
+      ],
+    });
+
+    const result = await analytics.errors.query({
+      since: "2000-01-01",
+      where: { sigilId: { inArray: [sigil.id] } },
+      groupBy: ["origin"],
+      select: { count: "sum" },
+    });
+    const byOrigin = new Map(
+      (result.rows as unknown as Array<{ origin: string; count: number }>).map(
+        (row) => [row.origin, Number(row.count)],
+      ),
+    );
+
+    expect(byOrigin.get("client")).toBe(3);
+    expect(byOrigin.get("server")).toBe(5);
+  });
+
+  it("records nothing for a batch that carries no errors", async () => {
+    const { analytics, sigil, post } = await setup();
+
+    // The series must not gain a zero-count row for every view batch: the
+    // chart reads this dataset directly, and a row per envelope would make
+    // an app with no failures look like one reporting constantly.
+    await post({ views: [{ path: "/home" }] });
+
+    const result = await analytics.errors.query({
+      since: "2000-01-01",
+      where: { sigilId: { inArray: [sigil.id] } },
+      select: { count: "sum" },
+    });
+    expect(Number(result.rows[0]?.count ?? 0)).toBe(0);
+  });
+
   it("adds up two reports of one fingerprint inside a single batch", async () => {
     const { probe, project, sigil, post } = await setup();
 

@@ -350,6 +350,30 @@ export class SigilIngestService {
         },
       },
     );
+
+    // The series the two upserts above structurally cannot hold: both keep
+    // one row per fingerprint with a running total, so neither can say WHEN
+    // the occurrences happened (feedback #2085).
+    //
+    // One `recordMany` for the whole envelope, and the rows are the same
+    // `folded` list the upserts used - the sender already collapsed a window
+    // of identical failures into a count, and `foldByFingerprint` collapsed
+    // again. On Workers this is a `writeDataPoint` per row into Analytics
+    // Engine rather than a D1 round trip, which is what keeps it off the
+    // latency budget this method was rewritten for.
+    //
+    // Left to throw, like the views and vitals writes: there is no other
+    // copy of this batch's timing, so swallowing a failure would lose it
+    // silently.
+    await this.datasets.errors.recordMany(
+      folded.map((error) => ({
+        sigilId: sigil.id,
+        origin: error.origin,
+        fingerprint: error.fingerprint,
+        count: error.count,
+        hour: this.hourBucket(now),
+      })),
+    );
   }
 
   /**

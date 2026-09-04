@@ -349,6 +349,7 @@ export class InsightsController {
           vitals: summariseVitals({}),
           timeline: this.zeroTimeline(anchor, days),
           errorGroups: [],
+          errorSeries: this.zeroErrorSeries(anchor, days),
           // Nothing was asked of a dataset, so there is nothing to have
           // sampled. `false` is also what the relational backend Lore runs
           // today would have answered anyway.
@@ -403,6 +404,7 @@ export class InsightsController {
         topBrowserResult,
         topSystemResult,
         timelineResult,
+        errorSeriesResult,
         vitalsResult,
       ] = await Promise.all([
         this.analytics.uniqueVisitors(window),
@@ -504,6 +506,25 @@ export class InsightsController {
           select: { count: "sum" },
           orderBy: { key: "day", direction: "asc" },
         }),
+        // The error series. Grouped by day AND origin, so one query answers
+        // both axes of the chart.
+        //
+        // ⚠️ Scoped to the apps and NOTHING else, deliberately, which is the
+        // same rule `readErrorGroups` already follows and the reason stated
+        // where `filters` is built: an error is not a view, and a crawler's
+        // crash is still this app's crash. Passing `analyticsWhere` here
+        // looked right and is not - `sigil_errors` declares `sigilId`,
+        // `origin` and `fingerprint` and nothing else, so a `path` term is a
+        // REJECTED query rather than a narrower answer, and the whole
+        // Insights read 500s. `whereFor` exists for exactly this and would
+        // have made it silent instead; the filters simply do not apply here.
+        this.datasets.errors.query({
+          since,
+          until,
+          where: { sigilId: { inArray: sigilIds } },
+          groupBy: ["day", "origin"],
+          select: { count: "sum" },
+        }),
         this.datasets.vitals.query({
           since,
           until,
@@ -589,6 +610,27 @@ export class InsightsController {
         histograms[metric] = bucket;
       }
       const vitals = summariseVitals(histograms);
+
+      // `(day, origin) -> count` folded onto the zeroed calendar, so every
+      // day in the window is drawn even where nothing was recorded. An
+      // origin the dataset does not know is ignored rather than guessed at:
+      // the column is a two-value claim from the reporting app, and a third
+      // value means that app is sending something this sink has no name for.
+      const byDayOrigin = new Map<string, { client: number; server: number }>();
+      for (const row of errorSeriesResult.rows) {
+        const date = String(row.day);
+        const bucket = byDayOrigin.get(date) ?? { client: 0, server: 0 };
+        const origin = String(row.origin);
+        if (origin === "server") bucket.server += Number(row.count);
+        else if (origin === "client") bucket.client += Number(row.count);
+        byDayOrigin.set(date, bucket);
+      }
+      const errorSeries = this.zeroErrorSeries(anchor, days).map((point) => ({
+        date: point.date,
+        client: byDayOrigin.get(point.date)?.client ?? 0,
+        server: byDayOrigin.get(point.date)?.server ?? 0,
+      }));
+
       const errorGroups = await this.readErrorGroups(
         sigilIds,
         labels,
@@ -632,6 +674,7 @@ export class InsightsController {
         vitals,
         timeline,
         errorGroups,
+        errorSeries,
         estimated: viewsTotal.estimated,
         sampleInterval: viewsTotal.sampleInterval,
       };
@@ -1030,6 +1073,7 @@ export class InsightsController {
       fingerprint: row.fingerprint,
       name: row.name,
       message: row.message,
+      origin: row.origin,
       count: row.count ?? 1,
       firstSeenAt: row.firstSeenAt,
       lastSeenAt: row.lastSeenAt,
@@ -1251,6 +1295,24 @@ export class InsightsController {
       const day = new Date(anchor);
       day.setUTCDate(day.getUTCDate() - (days - 1 - index));
       return { date: day.toISOString().slice(0, 10), views: 0 };
+    });
+  }
+
+  /**
+   * The window's calendar with both origins at zero.
+   *
+   * The same reasoning as `zeroTimeline`, and the same reason it is not
+   * folded into it: a chart that skips the days with no rows draws a
+   * quiet week as a shorter week.
+   */
+  protected zeroErrorSeries(
+    anchor: Date,
+    days: number,
+  ): Array<{ date: string; client: number; server: number }> {
+    return Array.from({ length: days }, (_, index) => {
+      const day = new Date(anchor);
+      day.setUTCDate(day.getUTCDate() - (days - 1 - index));
+      return { date: day.toISOString().slice(0, 10), client: 0, server: 0 };
     });
   }
 }

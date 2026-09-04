@@ -291,11 +291,48 @@ export const insightsResourceSchema = z.object({
       name: z.string(),
       message: z.string(),
       /**
+       * Where the failure was raised: `client` in a browser, `server` in the
+       * app's own process.
+       *
+       * It has been on the row since the table existed and was simply never
+       * mapped onto the wire (feedback #2085 asked for the split and it cost
+       * a schema field and one line of the read path). Written by the
+       * reporting app, so it is a claim like every other field here - but a
+       * closed two-value one, unlike `name` and `message`.
+       */
+      origin: z.enum(["client", "server"]),
+      /**
        * Occurrences in this app, summed across every batch.
+       *
+       * ⚠️ ALL-TIME, not the window's. The read filters on `lastSeenAt` and
+       * this column is a running total, so a group last seen inside the
+       * window reports every occurrence it has ever had. The UI labels it as
+       * such; `errorSeries` is the number that respects the window.
        */
       count: z.integer(),
       firstSeenAt: z.string(),
       lastSeenAt: z.string(),
+    }),
+  ),
+  /**
+   * Error occurrences per day over the window, split by origin.
+   *
+   * ⚠️ This, and NOT `errorGroups[].count`, is the number a chart may plot.
+   * `errorGroups` carries each group's all-time total and is filtered on
+   * `lastSeenAt`, so summing it would draw lifetime figures against a window.
+   *
+   * Every day in the window is present, zeroed where nothing was recorded,
+   * the same shape as `timeline` - a chart must not draw a gap as a dip.
+   *
+   * Empty for a window that predates the `sigil_errors` dataset: it is
+   * append-only, and nothing backfills it from the aggregate table (there is
+   * nothing to backfill FROM - individual occurrences were never stored).
+   */
+  errorSeries: z.array(
+    z.object({
+      date: z.string(),
+      client: z.integer(),
+      server: z.integer(),
     }),
   ),
   /**

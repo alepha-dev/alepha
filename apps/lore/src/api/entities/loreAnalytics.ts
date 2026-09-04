@@ -5,14 +5,19 @@ import { db } from "alepha/orm";
 import { sigils } from "./sigils.ts";
 
 /**
- * Lore's two portable analytics datasets.
+ * Lore's three portable analytics datasets.
  *
- * Views and vitals only. Unique visitors stay in `sigilUniquesDaily` because a
- * distinct count cannot survive sampling or a rollup, and error groups stay in
- * `sigilErrorGroups` because they keep the *first* stack sample, which needs a
- * read before every write.
+ * Views, vitals and errors. Unique visitors stay in `sigilUniquesDaily`
+ * because a distinct count cannot survive sampling or a rollup.
  *
- * `sigilId` is the index dimension on both: Analytics Engine samples equitably
+ * ⚠️ `errors` here does NOT replace `sigilErrorGroups`. That table keeps the
+ * *first* stack sample, which needs a read before every write, and holds one
+ * row per `(sigilId, fingerprint)` with a running all-time total. This
+ * dataset is the series that table cannot hold, because individual
+ * occurrences are never stored there. Both are written from `absorbErrors`
+ * and both are read; see `errors` below.
+ *
+ * `sigilId` is the index dimension on all three: Analytics Engine samples equitably
  * per index value, and per-app is the granularity every Insights read filters
  * on. It is also a real `db.ref` into `sigils`, `onDelete: "cascade"` — the
  * same shape `sigilErrorGroups` uses. Without it, once the legacy aggregate
@@ -246,6 +251,77 @@ export class LoreAnalytics {
     slots: {
       dimensions: ["bucket", "metric", "path", "sigilId"],
       measures: ["samples"],
+    },
+    retention: { hot: "30d", rollup: "day", cold: "400d" },
+  });
+
+  /**
+   * Error occurrences over time, which `sigilErrorGroups` structurally
+   * cannot answer.
+   *
+   * That table holds ONE row per `(sigilId, fingerprint)` with a running
+   * total, deliberately: individual occurrences are never kept, so there is
+   * no series in it to plot. Its `count` is the group's ALL-TIME total, and
+   * `readErrorGroups` filters on `lastSeenAt`, so a chart fed from it would
+   * plot lifetime totals against a window and be wrong in a way no reader
+   * could detect. Feedback #2085 asked for "a graph of count of errors,
+   * typed by server/browser"; this dataset is what makes that a true graph.
+   *
+   * It does NOT replace `sigilErrorGroups`. That table keeps the first stack
+   * sample, which needs a read before every write, and an append-only
+   * dataset cannot do that. The two answer different questions and both are
+   * written from `absorbErrors`.
+   *
+   * Cheap by construction: the sender already folds a window of identical
+   * failures and sends a `count`, `absorbErrors` folds again by fingerprint,
+   * and `recordMany` takes the whole envelope at once. On Workers that is
+   * one `writeDataPoint` per row into Analytics Engine, not a D1 round trip
+   * - which matters, because ingest latency on this path was already
+   * measured as almost entirely time spent waiting (folio #1151).
+   *
+   * ⚠️ Both traps the other two datasets document apply here from the
+   * start. Every dimension carries a NON-NULL DEFAULT, because on the
+   * relational backend a later addition is `ALTER TABLE … ADD x text NOT
+   * NULL`, which SQLite refuses outright on a table that already holds rows.
+   * And `sigilId` is a real `db.ref` with `onDelete: "cascade"`, so deleting
+   * a sigil erases its error history instead of orphaning it - the same
+   * shape `views`, `vitals` and `sigilErrorGroups` all use, and the reason
+   * the UI can keep telling operators to rotate rather than delete.
+   */
+  public readonly errors = $analytics({
+    name: "sigil_errors",
+    index: "sigilId",
+    dimensions: z.object({
+      sigilId: db.ref(z.uuid(), () => sigils.cols.id, {
+        onDelete: "cascade",
+      }),
+      /**
+       * `client` or `server`, which is the split the report asked for. A
+       * dimension rather than a measure because it groups; the count is what
+       * is summed.
+       */
+      origin: z.string().default("client"),
+      /**
+       * Which distinct failure. Carried so the worst-offenders list can one
+       * day come from here too, and so a single runaway fingerprint is
+       * visible as one rather than smeared across the origin totals.
+       *
+       * ⚠️ Unbounded cardinality in principle. Analytics Engine samples
+       * equitably per INDEX value and the index is `sigilId`, so this does
+       * not fragment the sampling; it does mean a `groupBy: ["fingerprint"]`
+       * read wants a `limit`, exactly like `path` on `views`.
+       */
+      fingerprint: z.string().default(""),
+    }),
+    measures: z.object({ count: z.number() }),
+    /**
+     * Pinned from the first commit, so this dataset never has to learn the
+     * lesson `views` learned twice. A new dimension goes on the END of this
+     * list, whatever it is called, and moves nothing.
+     */
+    slots: {
+      dimensions: ["fingerprint", "origin", "sigilId"],
+      measures: ["count"],
     },
     retention: { hot: "30d", rollup: "day", cold: "400d" },
   });
