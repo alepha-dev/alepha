@@ -130,8 +130,8 @@ export class LoreTokenStore {
    * The file, or an empty one.
    *
    * A file that cannot be parsed reads as empty rather than throwing. The
-   * failure it would otherwise cause is the worst kind: every command in this
-   * plugin stops working because of a stray byte in a cache, and the fix -
+   * failure it would otherwise cause is the worst kind: every `lore` command
+   * stops working because of a stray byte in a cache, and the fix -
    * delete the file - is not something the error would suggest.
    */
   protected async load(): Promise<LoreCredentialsFile> {

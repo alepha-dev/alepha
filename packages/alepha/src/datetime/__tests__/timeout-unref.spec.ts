@@ -5,7 +5,7 @@ import { DateTimeProvider } from "../providers/DateTimeProvider.ts";
 
 /**
  * A timeout holds the event loop open until it fires, which is right for work
- * and wrong for housekeeping. `alepha lore quality push` finished its push in
+ * and wrong for housekeeping. `lore quality push` finished its push in
  * 3 seconds and then sat there for 5 minutes, because one cached GET had armed
  * a refed eviction timer for the 300s default TTL.
  *

@@ -8,7 +8,7 @@ npm install @alepha/lore
 
 ## Overview
 
-CLI plugin for talking to a Lore instance from a build or a CI job.
+What the `lore` binary is made of.
 
 The other half of this package reports from a running app; this half is what
 a pipeline runs. It lives here rather than in `alepha/cli` because Lore is a
@@ -16,19 +16,25 @@ superset of Alepha and no Lore code belongs inside the framework, and it is
 a subpath rather than a package of its own so that both halves share one
 answer to "where is Lore, and how do I authenticate to it".
 
-Registered from `alepha.config.ts`, the same way `alepha/cli/vendor` is:
-
-```typescript
-import { lore } from "@alepha/lore/cli";
-
-export default defineConfig({
-  plugins: [lore({ project: "alepha" })],
-});
+```bash
+npm i -g "@alepha/lore"
+lore login
+lore quality push -p alepha
 ```
 
-Config carries the project, env carries the secret (`LORE_API_KEY`), and
-`--project` overrides the config for one invocation. No credential ever
-lands in a committed file.
+## ⚠️ Five top-level commands, and no root of its own
+
+`quality`, `artifacts`, `releases`, `login` and `logout` register at the top
+level, because the binary IS the root. A `lore` command inside a `lore`
+binary reads `lore lore quality push`.
+
+That also means nothing here may inject a command from `alepha/cli`:
+`Alepha.inject` registers the module that declares a service, so one such
+injection would hand this container every Alepha CLI command under a second
+name. `commandSurface.spec.ts` is what keeps that true.
+
+The project comes from `-p`, and the secret from `LORE_API_KEY`. No
+credential ever lands in a committed file.
 
 ## Why `AlephaServerLinksClient` and not `AlephaServer`
 

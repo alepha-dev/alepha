@@ -13,7 +13,7 @@ export class TestCommand {
    * written where every Alepha project already ignores them: `coverage/` is
    * vitest's own `reportsDirectory` and is gitignored by the templates.
    *
-   * This is the convention half of `alepha lore quality push`: the command
+   * This is the convention half of `lore quality push`: the command
    * finds these two files without being told where they are, which is the
    * only reason it does not need a path argument.
    *

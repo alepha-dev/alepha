@@ -41,7 +41,7 @@ the JSON test reporter replaces the default one, so a CI job that spelled this
 itself would trade every readable failure for a file nobody reads on a green run.
 
 The paths are fixed rather than configurable, because they are a convention that
-other tools read. `alepha lore quality push` finds both files without being told
+other tools read. `lore quality push` finds both files without being told
 where they are.
 
 `VITEST_ARGS` is appended after everything above, so an explicit caller flag

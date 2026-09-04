@@ -96,7 +96,7 @@ describe("the Quality tab's two ingested-data states", () => {
 
       const code = view.container.querySelector("code")?.textContent ?? "";
       expect(code).toContain("alepha test --coverage");
-      expect(code).toContain("alepha lore quality push --project lore");
+      expect(code).toContain("lore quality push --project lore");
     });
 
     it("names the credential the push needs", async ({ expect }) => {

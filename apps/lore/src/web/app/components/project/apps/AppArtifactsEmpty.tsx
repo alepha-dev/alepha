@@ -41,7 +41,7 @@ const AppArtifactsEmpty = (props: AppArtifactsEmptyProps) => {
       */}
       <pre className="bg-muted text-muted-foreground w-full overflow-x-auto rounded-md p-3 text-xs">
         <code>
-          {`alepha build\nalepha lore artifacts push --project ${props.projectSlug} --app ${props.appName}`}
+          {`alepha build\nlore artifacts push --project ${props.projectSlug} --app ${props.appName}`}
         </code>
       </pre>
 

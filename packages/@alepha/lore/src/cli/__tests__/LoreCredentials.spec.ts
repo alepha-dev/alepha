@@ -11,8 +11,8 @@ import { LoreTokenStore } from "../services/LoreTokenStore.ts";
  *
  * ⚠️ The precedence is the half that can hang a CI job. There is no human on a
  * runner to approve a device code, so a missing key must be a fast error and
- * never a login: `authorization()` NEVER starts a flow, and `alepha lore
- * login` refuses to run in CI at all.
+ * never a login: `authorization()` NEVER starts a flow, and `lore login`
+ * refuses to run in CI at all.
  */
 describe("Lore credentials", () => {
   const setup = async (env: Record<string, string> = {}) => {
@@ -179,7 +179,7 @@ describe("Lore credentials", () => {
       const ctx = await setup();
 
       await expect(ctx.client.authorization()).rejects.toThrowError(
-        /alepha lore login[\s\S]*LORE_API_KEY/,
+        /lore login[\s\S]*LORE_API_KEY/,
       );
     });
 

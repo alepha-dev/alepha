@@ -76,7 +76,7 @@ const testResults = {
   ],
 };
 
-describe("alepha lore quality push", () => {
+describe("lore quality push", () => {
   const setup = async (
     options: {
       files?: Record<string, string>;

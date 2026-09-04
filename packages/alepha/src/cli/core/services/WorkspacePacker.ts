@@ -37,7 +37,7 @@ export interface WorkspacePackOptions {
    *
    * Optional because the caller decides whether the tar deserves a line of
    * its own: `alepha pack` is the whole command so it does, while
-   * `alepha lore artifacts push` packs as one step among several.
+   * `lore artifacts push` packs as one step among several.
    */
   run?: RunnerMethod;
 }

@@ -65,7 +65,7 @@ export default defineConfig({
         //
         // `packages/alepha/src/cli` is deliberately NOT here. It was, until
         // `alepha test --coverage` started publishing this number to Lore:
-        // the CLI is where that command and `alepha lore quality push` live,
+        // the CLI is where that command and `lore quality push` live,
         // so excluding it would have made the published figure blind to the
         // code that produces it. `vite` and `bin` stay out, so the number
         // reads as "coverage of the alepha framework".

@@ -9,7 +9,7 @@ import { LoginCommand } from "../commands/LoginCommand.ts";
 import { LoreTokenStore } from "../services/LoreTokenStore.ts";
 
 /**
- * `alepha lore login` - the OAuth 2.0 device flow, from the client side.
+ * `lore login` - the OAuth 2.0 device flow, from the client side.
  *
  * The server half is `alepha/api/oauth` and is not retested here. What is
  * worth asserting is the loop: RFC 8628 §3.5 answers "not approved yet" with a
@@ -60,7 +60,7 @@ class FakeAuthServer {
   });
 }
 
-describe("alepha lore login", () => {
+describe("lore login", () => {
   const setup = async (env: Record<string, string> = {}) => {
     const server = Alepha.create({
       env: { LOG_LEVEL: "error", SERVER_PORT: 0 },

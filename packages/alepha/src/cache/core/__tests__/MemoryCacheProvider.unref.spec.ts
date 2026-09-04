@@ -15,7 +15,7 @@ class TestMemoryCacheProvider extends MemoryCacheProvider {
 }
 
 /**
- * The CI symptom this pins: `alepha lore quality push` pushed in 3.2s and then
+ * The CI symptom this pins: `lore quality push` pushed in 3.2s and then
  * held the runner for 5 more minutes. `HttpClient` caches any GET carrying an
  * `etag`, `$cache` gave it the 300s default TTL, and the refed eviction timer
  * kept Node's event loop alive for the whole of it — once per push, in front of

@@ -490,7 +490,7 @@ export class DateTimeProvider {
    * the right default — a timeout carrying real work must keep the process
    * alive until it has run — but a housekeeping timer that does is a process
    * that will not exit, and the wait is as long as the TTL. A 5-minute cache
-   * TTL kept `alepha lore quality push` alive for 5 minutes after its work,
+   * TTL kept `lore quality push` alive for 5 minutes after its work,
    * once per CI run, delaying every deploy gated on it.
    */
   public createTimeout(
