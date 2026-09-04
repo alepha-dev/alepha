@@ -67,8 +67,9 @@ export class ReleaseCommand {
     flags: z.object({
       project: z
         .text({
+          aliases: ["p"],
           description:
-            "Lore project slug, overriding the one in alepha.config.ts for this invocation",
+            "Lore project slug, overriding LORE_PROJECT for this invocation",
         })
         .optional(),
       tag: z.text({

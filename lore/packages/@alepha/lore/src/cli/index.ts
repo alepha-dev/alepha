@@ -1,7 +1,6 @@
 import { $module } from "alepha";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
-import { loreOptions } from "./atoms/loreOptions.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
@@ -61,7 +60,6 @@ import { QualityReportReader } from "./services/QualityReportReader.ts";
 export const AlephaLoreCli = $module({
   name: "alepha.lore.cli",
   imports: [AlephaServerLinksClient],
-  atoms: [loreOptions],
   services: [
     LoreClientService,
     QualityReportReader,
@@ -82,7 +80,6 @@ export const AlephaLoreCli = $module({
 
 // ---------------------------------------------------------------------------
 
-export * from "./atoms/loreOptions.ts";
 export * from "./services/GitContextService.ts";
 export * from "./services/LoreClientService.ts";
 export * from "./services/LoreTokenStore.ts";

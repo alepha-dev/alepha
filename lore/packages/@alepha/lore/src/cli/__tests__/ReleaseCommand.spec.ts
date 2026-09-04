@@ -9,7 +9,6 @@ import {
 } from "alepha/system";
 import { describe, expect, it } from "vitest";
 
-import { loreOptions } from "../atoms/loreOptions.ts";
 import { ReleaseCommand } from "../commands/ReleaseCommand.ts";
 
 /**
@@ -51,14 +50,16 @@ class FakeLinkProvider extends LinkProvider {
 describe("alepha lore releases publish", () => {
   const setup = async () => {
     const alepha = Alepha.create({
-      env: { LOG_LEVEL: "error", LORE_API_KEY: "lore_secret" },
+      env: {
+        LOG_LEVEL: "error",
+        LORE_API_KEY: "lore_secret",
+        LORE_PROJECT: "alepha",
+      },
     })
       .with({ provide: FileSystemProvider, use: MemoryFileSystemProvider })
       .with({ provide: ShellProvider, use: MemoryShellProvider })
       .with({ provide: LinkProvider, use: FakeLinkProvider })
       .with(ReleaseCommand);
-
-    alepha.set(loreOptions, { project: "alepha" });
 
     return {
       alepha,
