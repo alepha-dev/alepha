@@ -53,12 +53,34 @@ export interface EpicRef {
   title: string;
 }
 
+/**
+ * A feedback item, addressed as `#P120` by its `shortId`. Served by
+ * `FeedbackController.listFeedbackRefs`, three columns for the whole inbox.
+ */
+export interface FeedbackRef {
+  shortId: number;
+  title: string;
+  status?: string;
+}
+
+/**
+ * A release, addressed as `#R12` by its `number`. The tag is what the
+ * release page is reached by, and a release may have none.
+ */
+export interface ReleaseRef {
+  number: number;
+  title: string;
+  tag?: string;
+}
+
 export type BrokenWikiLinkReason =
   | "folio-not-found"
   | "ambiguous-title"
   | "quest-not-found"
   | "epic-not-found"
   | "blob-not-found"
+  | "feedback-not-found"
+  | "release-not-found"
   /**
    * `[[#N]]` matched no folio, but quest #N exists — almost certainly a quest
    * reference written in the folio form.
@@ -109,6 +131,8 @@ export type WikiLinkTarget =
   | { kind: "quest"; href: string; label: string }
   | { kind: "epic"; href: string; label: string }
   | { kind: "blob"; href: string; label: string }
+  | { kind: "feedback"; href: string; label: string }
+  | { kind: "release"; href: string; label: string }
   | {
       kind: "broken";
       href: string;
@@ -128,6 +152,12 @@ export interface FolioWikiLinkResolverInput {
   epics?: EpicRef[];
   directories?: DirectoryRef[];
   blobs?: BlobRef[];
+  /**
+   * Same rule as `epics`: absent means every `#P` resolves to
+   * `feedback-not-found`, and every `#R` to `release-not-found`.
+   */
+  feedback?: FeedbackRef[];
+  releases?: ReleaseRef[];
 }
 
 export interface FolioWikiLinkResolver {
@@ -193,10 +223,13 @@ export const formatBlobBytes = (bytes: number): string => {
  *
  * Supported forms:
  *
- *  - `[[#Q12]]` / `[[#E3]]` / `[[#F42]]` → the typed grammar (epic #32): the
- *    letter names the kind, the number is its per-project id. Tried first,
- *    case-insensitive, and read through `typedReference.ts`, the module the
- *    server parser reads it through.
+ *  - `[[#Q12]]` / `[[#E3]]` / `[[#F42]]` / `[[#P120]]` / `[[#R12]]` → the
+ *    typed grammar (epic #32): the letter names the kind, the number is its
+ *    per-project id. Tried first, case-insensitive, and read through
+ *    `typedReference.ts`, the module the server parser reads it through.
+ *    Feedback and releases have no other form: `#P120` links to the inbox
+ *    naming the item (feedback has no page of its own), `#R12` resolves the
+ *    number and navigates by the release's tag.
  *  - `[[#42]]` → folio shortId 42 in the same project.
  *  - `[[dir/sub/name]]` → folio `name` inside the directory chain `dir/sub`.
  *    Tries anchored-at-root first; falls back to unique suffix match (last
@@ -218,6 +251,10 @@ export const createFolioWikiLinkResolver = (
   const epics = input.epics ?? [];
   const directories = input.directories ?? [];
   const blobs = input.blobs ?? [];
+  const feedbackByShort = new Map<number, FeedbackRef>();
+  for (const f of input.feedback ?? []) feedbackByShort.set(f.shortId, f);
+  const releaseByNumber = new Map<number, ReleaseRef>();
+  for (const r of input.releases ?? []) releaseByNumber.set(r.number, r);
 
   const folioByShort = new Map<number, Folio>();
   const folioByTitle = new Map<string, { folio: Folio; count: number }>();
@@ -316,7 +353,8 @@ export const createFolioWikiLinkResolver = (
     const trimmed = body.trim();
     if (!trimmed) return undefined;
 
-    let type: "folio" | "quest" | "epic" | "blob" = "folio";
+    let type: "folio" | "quest" | "epic" | "blob" | "feedback" | "release" =
+      "folio";
     let rest = trimmed;
     let anchor = "";
     // The typed grammar first, read through the module the server parser
@@ -359,6 +397,36 @@ export const createFolioWikiLinkResolver = (
           }
         }
       }
+    }
+
+    if (type === "feedback") {
+      const n = Number.parseInt(rest.slice(1), 10);
+      const item = Number.isFinite(n) ? feedbackByShort.get(n) : undefined;
+      if (!item) return brokenTarget(body, "feedback-not-found");
+      return {
+        kind: "feedback",
+        // Feedback has no page of its own, so the inbox is the closest
+        // surface. The query names the item, which is what the hover card
+        // reads to preview it (and what a later inbox can open on).
+        href: `/${projectSlug}/feedback?feedback=${item.shortId}`,
+        label: item.title,
+      };
+    }
+
+    if (type === "release") {
+      const n = Number.parseInt(rest.slice(1), 10);
+      const release = Number.isFinite(n) ? releaseByNumber.get(n) : undefined;
+      if (!release) return brokenTarget(body, "release-not-found");
+      return {
+        kind: "release",
+        // Addressed by number, navigated by tag: `/releases/:releaseTag` is
+        // the route. A release with no tag still resolves and shows its
+        // title, and links to the list, since no URL names it.
+        href: release.tag
+          ? `/${projectSlug}/releases/${encodeURIComponent(release.tag)}`
+          : `/${projectSlug}/releases`,
+        label: release.title,
+      };
     }
 
     if (type === "blob") {

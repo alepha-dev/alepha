@@ -286,3 +286,57 @@ describe("rewriteFolioWikiLinks — typed references", () => {
     expect(out).toBe("See [\\[\\[#F156\\]\\]](#lore-broken:folio-not-found).");
   });
 });
+
+/**
+ * Feedback and releases, the two kinds only the typed grammar can name
+ * (epic #32, quest #1805). Feedback has no page of its own, so `#P` links
+ * to the inbox naming the item; a release is addressed by number and
+ * navigated by tag.
+ */
+describe("rewriteFolioWikiLinks — feedback and release targets", () => {
+  const feedback = [{ shortId: 120, title: "Wrong colour", status: "pending" }];
+  const releases = [
+    { number: 12, title: "0.28.0", tag: "0.28.0" },
+    { number: 13, title: "Untagged", tag: undefined },
+  ];
+  const rewrite = (content: string) =>
+    rewriteFolioWikiLinks(
+      content,
+      PROJECT_SLUG,
+      [],
+      [],
+      [],
+      [],
+      [],
+      feedback,
+      releases,
+    );
+
+  it("[[#P120]] → the inbox, naming the item", () => {
+    expect(rewrite("See [[#P120]].")).toBe(
+      "See [Wrong colour](/sds/feedback?feedback=120).",
+    );
+  });
+
+  it("[[#P999]] → feedback-not-found", () => {
+    expect(rewrite("See [[#P999]].")).toBe(
+      "See [\\[\\[#P999\\]\\]](#lore-broken:feedback-not-found).",
+    );
+  });
+
+  it("[[#R12]] → the release, by its tag", () => {
+    expect(rewrite("See [[#R12]].")).toBe(
+      "See [0.28.0](/sds/releases/0.28.0).",
+    );
+  });
+
+  it("[[#R13]] with no tag → resolved, linking to the list", () => {
+    expect(rewrite("See [[#R13]].")).toBe("See [Untagged](/sds/releases).");
+  });
+
+  it("[[#R999]] → release-not-found", () => {
+    expect(rewrite("See [[#R999]].")).toBe(
+      "See [\\[\\[#R999\\]\\]](#lore-broken:release-not-found).",
+    );
+  });
+});

@@ -123,6 +123,12 @@ export default {
     "Aucune épopée ne correspond à cette référence.",
   "folios.wikilink.broken.blobNotFound":
     "Aucun fichier de folio ne correspond à cette référence.",
+  "folios.wikilink.broken.feedbackNotFound":
+    "Aucun retour ne correspond à cette référence.",
+  "folios.wikilink.broken.releaseNotFound":
+    "Aucune release ne correspond à cette référence.",
+  "folios.wikilink.release.open": "ouverte",
+  "folios.wikilink.release.released": "publiée",
   "folios.wikilink.broken.questFormWanted":
     "Le folio #$1 n'existe pas, mais la quête #$1 existe. Dans [[…]], #N désigne un folio ; écrivez plutôt [[quest:#$1]].",
 

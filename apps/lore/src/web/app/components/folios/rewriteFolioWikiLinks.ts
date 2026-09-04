@@ -6,9 +6,11 @@ import {
   createFolioWikiLinkResolver,
   type DirectoryRef,
   type EpicRef,
+  type FeedbackRef,
   formatBlobBytes,
   isImageBlob,
   type QuestRef,
+  type ReleaseRef,
 } from "./folioWikiLinkResolver.ts";
 import { outsideMarkdownCode } from "./markdownCodeSegments.ts";
 
@@ -17,6 +19,8 @@ export {
   BROKEN_HREF_PREFIX,
   type DirectoryRef,
   type EpicRef,
+  type FeedbackRef,
+  type ReleaseRef,
 } from "./folioWikiLinkResolver.ts";
 
 /**
@@ -45,6 +49,8 @@ export const rewriteFolioWikiLinks = (
   directories: DirectoryRef[] = [],
   blobs: BlobRef[] = [],
   epics: EpicRef[] = [],
+  feedback: FeedbackRef[] = [],
+  releases: ReleaseRef[] = [],
 ): string => {
   if (!content) return content;
   const hasWiki = content.includes("[[");
@@ -59,6 +65,8 @@ export const rewriteFolioWikiLinks = (
     epics,
     directories,
     blobs,
+    feedback,
+    releases,
   });
 
   // Every pass below is a regex over a raw string, and a regex cannot see a
