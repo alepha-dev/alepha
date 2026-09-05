@@ -481,6 +481,69 @@ jobs:
         working-directory: apps/docs
         run: yarn alepha platform up --env production --prebuilt
 
+  # ---------------------------------------------------------------------------
+  # Cloudflare Workers deploy of the component showcase at `ui.alepha.dev`.
+  #
+  # A Custom Domain rather than a Worker Route, which is the opposite of the
+  # docs job above. Docs needs a Route because the apex still holds the GitHub
+  # Pages A and AAAA records and a Custom Domain owns its DNS record, so
+  # Cloudflare would refuse to create one without deleting those first.
+  # `ui.alepha.dev` is a fresh subdomain with nothing to preserve, so the simpler
+  # form applies and Cloudflare manages the record and the certificate. That
+  # choice lives in `apps/ui/alepha.config.ts` as the ABSENCE of a `zone`.
+  #
+  # Gated on `verify` only, like docs and unlike Lore: the showcase has no
+  # database, no auth and no migrations, so an e2e failure elsewhere in the
+  # repository should not hold a documentation site.
+  # ---------------------------------------------------------------------------
+  deploy-ui-production:
+    needs: [verify]
+    # Deploying is a real side effect, so it must not fire for a proposed
+    # change. Phrased as "not a PR" for the same reason the docs job is: this
+    # also has to keep working on the `workflow_run` (Release) trigger.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Scopes the app's own secrets to this job. Without it `secrets.SIGIL_*`
+    # resolve to empty and the deploy pushes nothing - the worker keeps whatever
+    # it had, so the failure is a site that silently stops reporting rather than
+    # anything that goes red.
+    environment: ui-production
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # The key is the whole enrolment: it authorises the reporting and names
+      # the project, so nothing has to be kept in sync with it. Absent, the
+      # sigil module goes inert rather than failing, so a missing one here costs
+      # telemetry and nothing else.
+      SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
+      SIGIL_CONFIG: ${{ secrets.SIGIL_CONFIG }}
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # This job's artifact is deployed, and `alepha.meta.version` reads the
+          # git tag on the built commit. The default checkout fetches shallow
+          # and passes --no-tags, so without this every deploy would report
+          # "latest".
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Prepare
+        run: yarn copy
+
+      # Built and deployed in one step, unlike the docs job. That one splits
+      # them because `gen:llms` writes into `dist/public` after the bundle and
+      # `platform up` cleans `dist/` before building; nothing writes into this
+      # app's output after its build, so there is nothing to protect.
+      - name: Deploy
+        working-directory: apps/ui
+        run: yarn alepha platform up --env production
+
   deploy-lore-production:
     needs: [verify, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
