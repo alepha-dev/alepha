@@ -193,12 +193,3 @@ func (m *Manifest) validate() error {
 func (m *Manifest) IsStatic() bool {
 	return m.Runtime == RuntimeStatic
 }
-
-// SleepEligible reports whether the app may be scaled to zero.
-//
-// An app that declares crons runs them in-process (Alepha's $job), so putting it
-// to sleep would silently stop them. The manifest makes this decidable without
-// Bay knowing anything about cron syntax.
-func (m *Manifest) SleepEligible() bool {
-	return len(m.Cron) == 0
-}

@@ -206,26 +206,6 @@ func TestMissingManifestIsAnError(t *testing.T) {
 	}
 }
 
-func TestSleepEligibility(t *testing.T) {
-	// An app with crons runs them in-process; sleeping it would silently stop
-	// them. The manifest makes that decidable without Bay parsing cron at all.
-	withCron, err := read(t, `{"project":"a","crons":["0 3 * * *"]}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if withCron.SleepEligible() {
-		t.Fatal("an app declaring crons must never be scaled to zero")
-	}
-
-	without, err := read(t, `{"project":"a","crons":[]}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !without.SleepEligible() {
-		t.Fatal("an app without crons should be sleep eligible")
-	}
-}
-
 func TestLegacyReleaseNamesTheMigration(t *testing.T) {
 	// A release unpacked by an older Bay has a hand-written manifest at the
 	// archive root. Without this the message is "read manifest: no such file",

@@ -1008,12 +1008,11 @@ func (s *server) handleDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"app":           out.Result.App,
-		"release":       out.Result.Release,
-		"url":           "https://" + out.Result.App.Domain() + "/",
-		"sleepEligible": out.Result.Manifest.SleepEligible(),
-		"restore":       out.Restore,
-		"pruned":        out.Pruned,
+		"app":     out.Result.App,
+		"release": out.Result.Release,
+		"url":     "https://" + out.Result.App.Domain() + "/",
+		"restore": out.Restore,
+		"pruned":  out.Pruned,
 	})
 }
 
