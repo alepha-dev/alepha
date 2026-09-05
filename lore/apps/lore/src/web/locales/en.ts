@@ -817,8 +817,11 @@ export default {
 
   "release.tab.overview": "Overview",
   "release.tab.contents": "Contents",
+  "release.tab.flow": "Flow",
   "release.tab.changelog": "Changelog",
   "release.tab.artifacts": "Artifacts",
+  "release.flow.empty":
+    "Attach epics and quests to see the order they ship in.",
 
   "release.plate.frozen": "Frozen at publish",
   "release.meta.target": "target $1",
@@ -1514,6 +1517,10 @@ export default {
   "questline.state.ready": "Ready",
   "questline.state.waiting": "Waiting",
   "questline.state.shelved": "Shelved",
+  "questline.zoom.label": "Zoom",
+  "questline.zoom.in": "Zoom in",
+  "questline.zoom.out": "Zoom out",
+  "questline.zoom.fit": "Fit to view",
   "epic.description.title": "Description",
   "epic.description.empty": "No description yet.",
   "epic.folios.title": "Folios",

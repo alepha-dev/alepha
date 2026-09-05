@@ -828,8 +828,11 @@ export default {
 
   "release.tab.overview": "Vue d'ensemble",
   "release.tab.contents": "Contenu",
+  "release.tab.flow": "Flux",
   "release.tab.changelog": "Changelog",
   "release.tab.artifacts": "Artefacts",
+  "release.flow.empty":
+    "Associez des épopées et des quêtes pour voir l'ordre de livraison.",
 
   "release.plate.frozen": "Figé à la publication",
   "release.meta.target": "visée le $1",
@@ -1540,6 +1543,10 @@ export default {
   "questline.state.ready": "Prête",
   "questline.state.waiting": "En attente",
   "questline.state.shelved": "Mise de côté",
+  "questline.zoom.label": "Zoom",
+  "questline.zoom.in": "Agrandir",
+  "questline.zoom.out": "Réduire",
+  "questline.zoom.fit": "Ajuster à la vue",
   "epic.description.title": "Description",
   "epic.description.empty": "Aucune description pour le moment.",
   "epic.folios.title": "Folios",

@@ -14,7 +14,7 @@ export interface QuestlineDialogProps {
   /**
    * The quest on show, or `null` when the dialog is closed.
    */
-  node: QuestlineNode | null;
+  node: QuestlineNode<QuestResource> | null;
   onClose: () => void;
   onQuestChange: (quest: QuestResource) => void;
 }

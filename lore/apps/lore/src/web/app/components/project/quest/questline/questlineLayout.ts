@@ -1,4 +1,4 @@
-import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import type { QuestStatus } from "@/api/schemas/questResourceSchema.ts";
 
 /**
  * Geometry shared by the renderer and its edge layer. Every number here is
@@ -20,6 +20,27 @@ const HANDLE_R = 5;
  */
 const ELBOW = 32;
 
+/**
+ * What the layout and the card read off a quest. A `QuestResource`
+ * satisfies it, and so does a release-contents row, which is why one map
+ * draws both without the release endpoint shipping whole resources.
+ *
+ * The lifecycle status is deliberately NOT here: a resource carries it under
+ * `metadata`, a release row derives it from three timestamps, and the layout
+ * asks for it through `statusOf` rather than guessing where it lives.
+ */
+export interface QuestlineItem {
+  id: number;
+  shortId: number;
+  title: string;
+  area?: string;
+  dependsOn?: number | null;
+}
+
+export type QuestlineStatusOf<T extends QuestlineItem> = (
+  item: T,
+) => QuestStatus;
+
 export type QuestlineState =
   | "done"
   | "running"
@@ -27,8 +48,8 @@ export type QuestlineState =
   | "waiting"
   | "shelved";
 
-export interface QuestlineNode {
-  quest: QuestResource;
+export interface QuestlineNode<T extends QuestlineItem = QuestlineItem> {
+  quest: T;
   state: QuestlineState;
   /**
    * Column, 0-based: the distance from this questline's root.
@@ -46,9 +67,9 @@ export interface QuestlineNode {
   nextIds: number[];
 }
 
-export interface QuestlineTrack {
+export interface QuestlineTrack<T extends QuestlineItem = QuestlineItem> {
   rootId: number;
-  nodes: QuestlineNode[];
+  nodes: QuestlineNode<T>[];
   /**
    * Elbow paths, in the track's own coordinate space.
    */
@@ -69,11 +90,18 @@ export interface QuestlineTrack {
  * root, but it is never called ready: its blocker is real, we just cannot
  * see it from here, and "ready" would be a claim the data does not support.
  */
-export class QuestlineLayout {
-  build(quests: QuestResource[]): QuestlineTrack[] {
+export class QuestlineLayout<T extends QuestlineItem> {
+  /**
+   * @param statusOf where the lifecycle status lives on this row. Under
+   *   `metadata` on a `QuestResource`; derived from the three timestamps on
+   *   a release row. The layout never reads it any other way.
+   */
+  constructor(protected readonly statusOf: QuestlineStatusOf<T>) {}
+
+  build(quests: T[]): QuestlineTrack<T>[] {
     const byId = new Map(quests.map((q) => [q.id, q]));
     const childrenOf = new Map<number, number[]>();
-    const roots: QuestResource[] = [];
+    const roots: T[] = [];
 
     for (const quest of quests) {
       const parent =
@@ -93,9 +121,9 @@ export class QuestlineLayout {
     }
     roots.sort((a, b) => a.shortId - b.shortId);
 
-    const tracks: QuestlineTrack[] = [];
+    const tracks: QuestlineTrack<T>[] = [];
     const covered = new Set<number>();
-    const collect = (root: QuestResource) => {
+    const collect = (root: T) => {
       const track = this.track(root, byId, childrenOf);
       if (track.nodes.length === 0) return;
       for (const node of track.nodes) covered.add(node.quest.id);
@@ -119,7 +147,7 @@ export class QuestlineLayout {
     );
   }
 
-  protected depthOf(track: QuestlineTrack): number {
+  protected depthOf(track: QuestlineTrack<T>): number {
     return track.nodes.reduce((max, node) => Math.max(max, node.depth), 0) + 1;
   }
 
@@ -129,11 +157,11 @@ export class QuestlineLayout {
    * linear chain, which is the common shape, puts every node on row 0.
    */
   protected track(
-    root: QuestResource,
-    byId: Map<number, QuestResource>,
+    root: T,
+    byId: Map<number, T>,
     childrenOf: Map<number, number[]>,
-  ): QuestlineTrack {
-    const nodes: QuestlineNode[] = [];
+  ): QuestlineTrack<T> {
+    const nodes: QuestlineNode<T>[] = [];
     const rowOf = new Map<number, number>();
     // A corrupt dependsOn cycle would otherwise recurse forever.
     const seen = new Set<number>();
@@ -189,14 +217,14 @@ export class QuestlineLayout {
    * One elbow per parent. A single child is a straight line; several turn a
    * corner inside the column gap and fan out vertically from it.
    */
-  protected edges(nodes: QuestlineNode[]): string[] {
+  protected edges(nodes: QuestlineNode<T>[]): string[] {
     const byId = new Map(nodes.map((node) => [node.quest.id, node]));
     const paths: string[] = [];
 
     for (const parent of nodes) {
       const children = parent.nextIds
         .map((id) => byId.get(id))
-        .filter((node): node is QuestlineNode => node != null);
+        .filter((node): node is QuestlineNode<T> => node != null);
       if (children.length === 0) continue;
 
       const fromX = parent.x + CARD_W + HANDLE_R;
@@ -221,11 +249,8 @@ export class QuestlineLayout {
    * when nothing stands in front of it, which is a fact about its
    * predecessor rather than about itself.
    */
-  protected stateOf(
-    quest: QuestResource,
-    byId: Map<number, QuestResource>,
-  ): QuestlineState {
-    const status = quest.metadata.status;
+  protected stateOf(quest: T, byId: Map<number, T>): QuestlineState {
+    const status = this.statusOf(quest);
     if (status === "completed") return "done";
     if (status === "accepted") return "running";
     if (status === "shelved") return "shelved";
@@ -233,6 +258,6 @@ export class QuestlineLayout {
     const parent = byId.get(quest.dependsOn);
     // Outside this set: the blocker exists, we just cannot see it.
     if (!parent) return "waiting";
-    return parent.metadata.status === "completed" ? "ready" : "waiting";
+    return this.statusOf(parent) === "completed" ? "ready" : "waiting";
   }
 }
