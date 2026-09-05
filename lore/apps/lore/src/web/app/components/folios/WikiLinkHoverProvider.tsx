@@ -80,7 +80,7 @@ type HoverTarget =
   // takes, and the preview finds the release by it.
   | { kind: "release"; tag: string }
   | { kind: "blob"; fileId: string }
-  | { kind: "broken"; reason: BrokenReason; hint?: string };
+  | { kind: "broken"; reason: BrokenReason };
 
 interface HoverState {
   target: HoverTarget;
@@ -121,16 +121,10 @@ const parseHref = (
 ): HoverTarget | null => {
   if (!href) return null;
   if (href.startsWith(BROKEN_HREF_PREFIX)) {
-    // `reason[:hint]` — no reason contains a colon, so the first one splits.
-    const rest = href.slice(BROKEN_HREF_PREFIX.length);
-    const sep = rest.indexOf(":");
-    return sep === -1
-      ? { kind: "broken", reason: rest as BrokenReason }
-      : {
-          kind: "broken",
-          reason: rest.slice(0, sep) as BrokenReason,
-          hint: rest.slice(sep + 1),
-        };
+    return {
+      kind: "broken",
+      reason: href.slice(BROKEN_HREF_PREFIX.length) as BrokenReason,
+    };
   }
   // Strip protocol/host if present (markdown links are typically root-relative
   // but a user could paste an absolute URL into a wiki body).
@@ -163,19 +157,18 @@ const parseHref = (
 const targetKey = (t: HoverTarget): string => {
   if (t.kind === "blob") return `blob:${t.fileId}`;
   if (t.kind === "release") return `release:${t.tag}`;
-  if (t.kind === "broken") return `broken:${t.reason}:${t.hint ?? ""}`;
+  if (t.kind === "broken") return `broken:${t.reason}`;
   return `${t.kind}:${t.shortId}`;
 };
 
 const BROKEN_REASON_KEY: Record<BrokenReason, string> = {
+  "not-a-reference": "folios.wikilink.broken.notAReference",
   "folio-not-found": "folios.wikilink.broken.folioNotFound",
-  "ambiguous-title": "folios.wikilink.broken.ambiguous",
   "quest-not-found": "folios.wikilink.broken.questNotFound",
   "epic-not-found": "folios.wikilink.broken.epicNotFound",
   "blob-not-found": "folios.wikilink.broken.blobNotFound",
   "feedback-not-found": "folios.wikilink.broken.feedbackNotFound",
   "release-not-found": "folios.wikilink.broken.releaseNotFound",
-  "folio-not-found-quest-exists": "folios.wikilink.broken.questFormWanted",
 };
 
 const formatBytes = (bytes: number | undefined): string => {
@@ -681,9 +674,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             {tr("folios.wikilink.broken.title")}
           </span>
           <span className="text-muted-foreground text-xs">
-            {tr(BROKEN_REASON_KEY[state.target.reason], {
-              args: [state.target.hint ?? ""],
-            })}
+            {tr(BROKEN_REASON_KEY[state.target.reason])}
           </span>
         </div>
       ) : loading ? (

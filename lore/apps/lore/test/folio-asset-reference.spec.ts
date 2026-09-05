@@ -47,7 +47,6 @@ describe("folio asset references round-trip through the reader", () => {
         PROJECT_SLUG,
         [],
         [],
-        [],
         [blobNamed(name)],
       );
 
@@ -71,7 +70,6 @@ describe("folio asset references round-trip through the reader", () => {
     const out = rewriteFolioWikiLinks(
       "![](assets/my photo.webp)",
       PROJECT_SLUG,
-      [],
       [],
       [],
       [blobNamed("my photo.webp")],

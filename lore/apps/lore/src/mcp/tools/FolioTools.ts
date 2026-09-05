@@ -7,7 +7,6 @@ import { DirectoryController } from "../../api/controllers/DirectoryController.t
 import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
-import { FolioLinkService } from "../../api/services/FolioLinkService.ts";
 import { DIAGRAM_CAPABILITY } from "../schemas/diagramCapability.ts";
 import {
   folioEpicRefSchema,
@@ -59,7 +58,6 @@ export class FolioTools {
   protected readonly folioController = $inject(FolioController);
   protected readonly projectController = $inject(ProjectController);
   protected readonly directoryController = $inject(DirectoryController);
-  protected readonly folioLinkService = $inject(FolioLinkService);
   protected readonly blobController = $inject(BlobController);
   protected readonly epicController = $inject(EpicController);
   protected readonly epicRefs = $inject(EpicRefService);
@@ -263,7 +261,7 @@ export class FolioTools {
 
   folio_get = $tool({
     description:
-      "Get the full content of a folio (markdown) plus its wiki-style links — `outbound` (folios this one references via `[[...]]`) and `inbound` (folios that link back here). Outbound entries also include `quest` and `blob` kinds when the folio references quests (`[[quest:#N]]`) or blobs (`[[blob:#N]]`, `[[blob:<uuid>]]`, or `![alt](blob:#N)`). Use the `inbound` list as a backlink panel: it surfaces folios that may carry related context. Accepts either the global UUID `id` or the per-project `shortId` (with `project` / `project_name`).",
+      "Get the full content of a folio (markdown) plus its links: `outbound` is what this folio references with the typed grammar (`[[#F12]]` a folio, `[[#Q12]]` a quest, `[[#E3]]` an epic, `[[#P120]]` a feedback item, `[[#R12]]` a release; the number is the per-project id, and nothing else between `[[` and `]]` is a reference), `inbound` is the folios, quests and epics that reference this one. Use `inbound` as a backlink panel: it surfaces context that may be related. Accepts either the global UUID `id` or the per-project `shortId` (with `project` / `project_name`).",
     title: "Get folio",
     annotations: {
       readOnlyHint: true,
@@ -598,53 +596,6 @@ export class FolioTools {
     },
   });
 
-  folio_links_tidy = $tool({
-    description:
-      "Walk every folio in the project and rewrite stale `[[dir/sub/name]]` path tokens whose path no longer matches the target folio's current location. Only touches folio-type, slash-bearing, non-shortId refs that still resolve to a real folio; dangling references and `[[#N]]` / bare title refs are left alone. Targets at the project root get their path stripped (`[[name]]`); targets inside a directory get the full current chain (`[[dir/sub/name]]`). Preserves any `folio:` prefix and `#anchor` suffix verbatim. Each rewritten folio is saved as a single edit (one `folio_revisions` row). Pass `dryRun: true` to preview the change set without writing.",
-    title: "Tidy stale folio path links",
-    annotations: { destructiveHint: false, idempotentHint: true },
-    schema: {
-      params: z.object({
-        project: z.integer().optional(),
-        project_name: z.string().optional(),
-        dryRun: z.boolean().optional(),
-      }),
-      result: z.object({
-        scanned: z.integer(),
-        rewritten: z.integer(),
-        dryRun: z.boolean(),
-        changes: z.array(
-          z.object({
-            folioShortId: z.integer(),
-            tokens: z.array(
-              z.object({
-                before: z.string(),
-                after: z.string(),
-                count: z.integer(),
-              }),
-            ),
-          }),
-        ),
-      }),
-    },
-    handler: async ({ params }) => {
-      const projectId = await this.resolveProjectId(
-        params.project,
-        params.project_name,
-      );
-      const dryRun = params.dryRun === true;
-      return this.folioLinkService.tidyStalePaths(projectId, {
-        dryRun,
-        updateContent: async (folioId, newContent) => {
-          await this.folioController.update({
-            params: { id: folioId },
-            body: { content: newContent },
-          });
-        },
-      });
-    },
-  });
-
   folio_delete = $tool({
     description: "Delete a folio. This cannot be undone.",
     title: "Delete folio",
@@ -863,13 +814,14 @@ export class FolioTools {
   });
 
   // ---------------------------------------------------------------------------
-  // blob_* tools
+  // blob_* tools: a folio's attachments
   //
-  // Blob *uploads* are out of MCP scope for v1 — agents can't post bytes
-  // efficiently through the JSON-RPC channel. The list / rename / move /
-  // delete tools are the meaningful surface: agents inspect what
-  // humans uploaded, organize it, and embed it inline via the markdown
-  // embed syntax (`![alt](blob:#N)` — quest #67).
+  // Uploads are out of MCP scope — agents can't post bytes efficiently
+  // through the JSON-RPC channel. The list / rename / delete tools are the
+  // meaningful surface: agents inspect what humans uploaded and organize
+  // it. Markdown reaches an attachment as `![name](assets/<name>)` for an
+  // image or `[name](assets/<name>)` for anything else; the old `blob:`
+  // embed and wiki-link forms are gone (epic #32).
   // ---------------------------------------------------------------------------
 
   blob_list = $tool({

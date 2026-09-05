@@ -52,12 +52,12 @@ export interface MarkdownEditorInnerProps {
    *
    * The folio workspace passes `value` run through `rewriteFolioWikiLinks`,
    * which turns `[[…]]` into real links and `assets/<name>` into
-   * `/api/files/<id>`. Without it a folio in View mode shows `[[Some
-   * Folio]]` as literal text and every attachment as a broken image, since
-   * a relative `assets/` path resolves to nothing against the app's URL.
+   * `/api/files/<id>`. Without it a folio in View mode shows `[[#F12]]` as
+   * literal text and every attachment as a broken image, since a relative
+   * `assets/` path resolves to nothing against the app's URL.
    *
    * A separate prop rather than a transform applied here, because the
-   * lookups it needs (folios, quests, directories, blobs) belong to the
+   * lookups it needs (folios, quests, epics, attachments) belong to the
    * caller — the quest surfaces have none of them and pass nothing.
    */
   viewContent?: string;

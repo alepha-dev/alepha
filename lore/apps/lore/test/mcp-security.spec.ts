@@ -818,7 +818,7 @@ describe("MCP Security Integration", () => {
       content: string;
       links?: {
         outbound: Array<{
-          kind: "folio" | "quest" | "blob";
+          kind: "folio" | "quest" | "epic";
           shortId: number;
           title: string;
         }>;
@@ -848,7 +848,7 @@ describe("MCP Security Integration", () => {
       return parseToolPayload<FolioGetResult>(result.data);
     };
 
-    it("resolves [[Title]] and [[#shortId]] to outbound + inbound refs", async ({
+    it("resolves [[#F<n>]] to outbound + inbound refs, once per target", async ({
       expect,
     }) => {
       const owner = await createTestUser(ctx);
@@ -872,7 +872,7 @@ describe("MCP Security Integration", () => {
           body: {
             projectId,
             title: "Beta",
-            content: `See [[Alpha]] for context, and [[#${alpha.data.shortId}]] again.`,
+            content: `See [[#F${alpha.data.shortId}]] for context, and [[#f${alpha.data.shortId}]] again.`,
           },
         },
         { user: owner },
@@ -917,7 +917,7 @@ describe("MCP Security Integration", () => {
           body: {
             projectId,
             title: "Beta",
-            content: "See [[Alpha]].",
+            content: `See [[#F${alpha.data.shortId}]].`,
           },
         },
         { user: owner },
@@ -958,8 +958,10 @@ describe("MCP Security Integration", () => {
           body: {
             projectId,
             title: "Solo",
-            // Self-link [[Solo]] and a dangling [[Missing]] reference.
-            content: "[[Solo]] [[Missing Note]] hello",
+            // The first folio of a fresh project is #F1: a self-link, then
+            // a number nothing answers to, then a title, which is not a
+            // reference at all since epic #32.
+            content: "[[#F1]] [[#F9999]] [[Missing Note]] hello",
           },
         },
         { user: owner },

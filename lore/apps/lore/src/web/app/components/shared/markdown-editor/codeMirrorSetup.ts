@@ -47,7 +47,7 @@ export interface MarkdownExtensionOptions {
    * Numbers count SOURCE lines, not visual rows — `EditorView.lineWrapping`
    * is mounted, so a wrapped paragraph shows one number and blank gutter
    * space for each continuation row. That is the honest mapping: the number
-   * is what a `[[folio#L12]]`-style reference or an error would name.
+   * is what an error, or a person pointing at a line, would name.
    */
   lineNumbers?: boolean;
 }
