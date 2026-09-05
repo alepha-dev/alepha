@@ -26,6 +26,7 @@ import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import { compareReleaseTags } from "@/api/releaseOrder.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import { QUEST_RELEASE_NONE } from "@/api/schemas/questReleaseFilter.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
@@ -54,6 +55,20 @@ import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 const epicsFiltersSchema = z.object({
   search: z.string().optional(),
   status: z.array(z.enum(["planned", "active", "done"])).optional(),
+  /**
+   * Release ids as strings, plus the `QUEST_RELEASE_NONE` sentinel, exactly
+   * like the Quests table's (feedback #2102).
+   *
+   * ⚠️ Strings rather than numbers even though a release id is an integer:
+   * the sentinel shares the list, which is what lets "unassigned, or 0.29.0"
+   * be one selection. Two fields would AND where a multi-select ORs.
+   *
+   * Unlike the Quests table's, this one never leaves the browser -
+   * `getEpics` answers with the project's whole list, so the predicate sits
+   * beside `search` and `status` in `fetchEpics` rather than in a query
+   * parameter.
+   */
+  release: z.array(z.string()).optional(),
 });
 
 /**
@@ -155,6 +170,14 @@ const ProjectEpics = () => {
 
     const statuses =
       (filters?.status as EpicResource["status"][] | undefined) ?? [];
+    const picked = (filters?.release as string[] | undefined) ?? [];
+    // The selections OR together, and the sentinel is one of them: an epic
+    // matches if it is attached to a picked release, or if "No release" is
+    // picked and it is attached to nothing.
+    const wantsUnattached = picked.includes(QUEST_RELEASE_NONE);
+    const wantedIds = new Set(
+      picked.filter((v) => v !== QUEST_RELEASE_NONE).map(Number),
+    );
     const needle = String(filters?.search ?? "")
       .trim()
       .toLowerCase();
@@ -162,6 +185,15 @@ const ProjectEpics = () => {
       all.filter((epic) => {
         if (statuses.length > 0 && !statuses.includes(epic.status)) {
           return false;
+        }
+        if (picked.length > 0) {
+          // `!= null` covers both spellings of "not attached" and narrows
+          // the id in the same breath, so no cast is needed here.
+          const match =
+            epic.releaseId != null
+              ? wantedIds.has(epic.releaseId)
+              : wantsUnattached;
+          if (!match) return false;
         }
         if (!needle) return true;
         // `#E3`, `#3` and `3` all reach the number; `needle` is lowercased,
@@ -209,6 +241,36 @@ const ProjectEpics = () => {
   // survives a delete points at rows that no longer exist. `ctx.refresh()`
   // is also what repaints the sidebar's planned-epic badge, since
   // `fetchEpics` pushes that count on every fetch.
+  /**
+   * Every release, published included, led by a sentinel.
+   *
+   * ⚠️ Read this beside the bulk `Add to release` menu below, which filters
+   * the SAME list the opposite way. The two rules are genuinely opposite and
+   * that is why this list is built here rather than shared:
+   *
+   * - a FILTER reads history, so hiding what has shipped would leave the
+   *   table unable to answer "what went into 0.28.0";
+   * - the MENU is a picker for a write, and `ReleaseAttachmentService`
+   *   refuses a published release server-side, so an entry for one could
+   *   only ever fail.
+   *
+   * "No release" leads, because "which epics are still unassigned" is the
+   * question a release planner asks most and every option being a release
+   * left it unanswerable. Named that rather than "None", which in a filter
+   * reads as "no filter". Same two decisions the Quests table already made
+   * (feedback #2102).
+   */
+  const releaseOptions = [
+    {
+      value: QUEST_RELEASE_NONE,
+      label: String(tr("board.filter.noRelease")),
+    },
+    ...(releases ?? []).map((release) => ({
+      value: String(release.id),
+      label: release.tag ?? release.title,
+    })),
+  ];
+
   const bulkActions: Array<
     BulkAction<EpicResource> | BulkMenuAction<EpicResource>
   > = [];
@@ -329,6 +391,29 @@ const ProjectEpics = () => {
                   inputProps={{ "aria-label": tr("epic.filter.status") }}
                 />
               </FilterSlot>
+              {/* Hidden until the project has a release, the way the Quests
+                  table hides it: with none, the only option would be the
+                  sentinel, and a filter offering one value that matches
+                  everything is a control with nothing to do. */}
+              {(releases ?? []).length > 0 && (
+                <FilterSlot>
+                  <Control
+                    input={form.input.release}
+                    label=""
+                    clearable
+                    icon={Flag}
+                    clearLabel={tr("board.filter.allReleases")}
+                    countLabel={(n) =>
+                      String(
+                        tr("board.filter.releaseCount", { args: [String(n)] }),
+                      )
+                    }
+                    triggerClassName="w-full"
+                    items={releaseOptions}
+                    inputProps={{ "aria-label": tr("board.filter.release") }}
+                  />
+                </FilterSlot>
+              )}
             </>
           ),
         }}

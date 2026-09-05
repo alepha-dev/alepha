@@ -28,6 +28,7 @@ const epicOf = (
   number: number,
   title: string,
   status: EpicResource["status"],
+  releaseId?: number,
 ): EpicResource =>
   ({
     id: number,
@@ -36,6 +37,7 @@ const epicOf = (
     title,
     description: "",
     status,
+    releaseId,
     createdAt: "2026-09-01T10:00:00.000Z",
     updatedAt: "2026-09-01T10:00:00.000Z",
     progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
@@ -104,7 +106,7 @@ describe("ProjectEpics - the status filter", () => {
     localStorage.clear();
   });
 
-  const mount = async (releases: unknown[] = []) => {
+  const mount = async (releases: unknown[] = [], epics?: EpicResource[]) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -130,6 +132,10 @@ describe("ProjectEpics - the status filter", () => {
       unlockHistory: [],
     } as never);
     alepha.store.set(currentReleasesAtom, releases as never);
+    // Injected AFTER `start` and before `render`, so a case can bring its own
+    // fixture without a second provider class. The default set is what every
+    // other case in this file relies on, so it is left alone unless asked.
+    if (epics) alepha.inject(FakeLinkProvider).epics = epics;
 
     const view = render(
       <AlephaContext.Provider value={alepha}>
@@ -142,7 +148,11 @@ describe("ProjectEpics - the status filter", () => {
         </DialogProvider>
       </AlephaContext.Provider>,
     );
-    await view.findByRole("link", { name: "#E1 - Planned epic" });
+    await view.findByRole("link", {
+      name: `#E${(epics ?? [])[0]?.number ?? 1} - ${
+        (epics ?? [])[0]?.title ?? "Planned epic"
+      }`,
+    });
     return view;
   };
 
@@ -169,6 +179,119 @@ describe("ProjectEpics - the status filter", () => {
     expect(row("#E2 - Active epic")).not.toBeNull();
     // The trigger says how many, the way the Quests list's does.
     expect(status.textContent).toContain("2 status");
+  });
+
+  /**
+   * The Release filter (feedback #2102): the Epics list could SHOW which
+   * release an epic ships in, and sort by it, but not narrow by it - which
+   * is the question anyone planning a release opens this page to ask.
+   *
+   * Two decisions are pinned here rather than left to the reader, because
+   * the same page carries the opposite rule fifty lines away in the bulk
+   * `Add to release` menu, and copying the wrong one is silent.
+   */
+  describe("the release filter", () => {
+    // `currentReleasesAtom` is schema-validated, so a release here is the
+    // whole row and not the three fields this describe reads.
+    const aRelease = (id: number, tag: string, released?: string) => ({
+      id,
+      projectId: 1,
+      number: id,
+      tag,
+      title: tag,
+      description: "",
+      releasedAt: released,
+      createdAt: "2026-08-26T10:00:00.000Z",
+      updatedAt: "2026-08-26T10:00:00.000Z",
+      progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
+    });
+
+    const RELEASES = [
+      aRelease(7, "0.28.0", "2026-09-03T00:00:00.000Z"),
+      aRelease(8, "0.29.0"),
+    ];
+
+    const EPICS = [
+      epicOf(1, "Shipped epic", "done", 7),
+      epicOf(2, "Next epic", "active", 8),
+      epicOf(3, "Unassigned epic", "planned"),
+    ];
+
+    const openFilter = async () => {
+      const trigger = screen.getByRole("combobox", { name: "Release" });
+      fireEvent.keyDown(trigger, { key: "ArrowDown" });
+      return trigger;
+    };
+
+    it("is absent while the project has no release", async () => {
+      await mount();
+
+      // One value that matches everything is a control with nothing to do.
+      expect(screen.queryByRole("combobox", { name: "Release" })).toBeNull();
+    });
+
+    it("narrows to the epics attached to the picked release", async () => {
+      await mount(RELEASES, EPICS);
+
+      await openFilter();
+      fireEvent.click(await screen.findByRole("option", { name: "0.29.0" }));
+
+      await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
+      expect(row("#E2 - Next epic")).not.toBeNull();
+      expect(row("#E3 - Unassigned epic")).toBeNull();
+    });
+
+    /**
+     * ⚠️ The opposite of the bulk menu's rule, deliberately. A published
+     * release is excluded THERE because attaching to one is refused server
+     * side, so the entry could only ever fail. It is included HERE because a
+     * filter reads history, and "what went into 0.28.0" is a question the
+     * table has to be able to answer after 0.28.0 has shipped.
+     */
+    it("offers a published release, which the Add to release menu does not", async () => {
+      await mount(RELEASES, EPICS);
+
+      await openFilter();
+      fireEvent.click(await screen.findByRole("option", { name: "0.28.0" }));
+
+      await waitFor(() => expect(row("#E2 - Next epic")).toBeNull());
+      expect(row("#E1 - Shipped epic")).not.toBeNull();
+    });
+
+    it("answers which epics are unassigned, through the No release entry", async () => {
+      await mount(RELEASES, EPICS);
+
+      await openFilter();
+      fireEvent.click(
+        await screen.findByRole("option", { name: "No release" }),
+      );
+
+      await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
+      expect(row("#E2 - Next epic")).toBeNull();
+      expect(row("#E3 - Unassigned epic")).not.toBeNull();
+    });
+
+    /**
+     * The sentinel shares the list with the ids so that this is expressible
+     * in one selection. Two fields would AND where a multi-select ORs.
+     */
+    it("ORs the sentinel with a release rather than ANDing them", async () => {
+      await mount(RELEASES, EPICS);
+
+      await openFilter();
+      fireEvent.click(
+        await screen.findByRole("option", { name: "No release" }),
+      );
+      fireEvent.click(await screen.findByRole("option", { name: "0.29.0" }));
+
+      await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
+      expect(row("#E2 - Next epic")).not.toBeNull();
+      expect(row("#E3 - Unassigned epic")).not.toBeNull();
+      // The trigger counts, the way its neighbour does.
+      expect(
+        screen.getByRole("combobox", { name: "Release" }).textContent,
+      ).toContain("2 releases");
+    });
   });
 
   /**
