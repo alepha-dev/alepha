@@ -457,6 +457,11 @@ export class ProjectController {
           resourceId: row.resourceId,
           description: row.description,
           metadata: row.metadata,
+          // A coalesced burst and its span (#1872). Defaulted rather than
+          // passed through, because rows written before the column existed
+          // read as null and every consumer would need the same guard.
+          eventCount: row.eventCount ?? 1,
+          updatedAt: row.updatedAt,
           actor: row.userId
             ? displayName(
                 people.find((person) => person.id === row.userId),

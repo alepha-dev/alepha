@@ -198,4 +198,42 @@ describe("ProjectActivityPage", () => {
     // page behind it does not, and a link to a 404 is worse than no link.
     expect(screen.getByText(/A deleted quest/).closest("button")).toBeNull();
   });
+
+  /**
+   * A coalesced burst (#1872). Ten edits to one folio in twenty minutes used
+   * to be ten near-identical rows, and a reader learned nothing from the
+   * ninth. `$audit`'s `coalesce` folds them on the write side, so the feed
+   * has to say how many the row stands for - otherwise it reads as one edit
+   * and the other nine have silently vanished.
+   */
+  it("prints the count on a row that stands for several events", async ({
+    expect,
+  }) => {
+    const screen = await show([
+      row({
+        action: "update",
+        eventCount: 10,
+        updatedAt: "2026-09-02T10:23:00.000Z",
+        description: "An edited quest",
+      }),
+    ]);
+
+    await waitFor(() => {
+      expect(screen.getByText("update")).toBeTruthy();
+    });
+    expect(screen.getByText("×10")).toBeTruthy();
+  });
+
+  it("says nothing about a count on an ordinary single event", async ({
+    expect,
+  }) => {
+    // `eventCount` is 1 on every row an app that never opted in writes, so a
+    // badge here would be permanent noise on most feeds.
+    const screen = await show([row({ action: "create", eventCount: 1 })]);
+
+    await waitFor(() => {
+      expect(screen.getByText("create")).toBeTruthy();
+    });
+    expect(screen.queryByText(/^×/)).toBeNull();
+  });
 });

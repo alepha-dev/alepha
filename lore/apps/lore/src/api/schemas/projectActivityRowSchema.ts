@@ -52,6 +52,20 @@ export const projectActivityRowSchema = audits.schema
      */
     description: true,
     metadata: true,
+    /**
+     * How many identical events this row stands for.
+     *
+     * Always at least 1. Above 1 the row is a burst that `$audit`'s
+     * `coalesce` folded, and the table prints the count beside the verb -
+     * `update x10` - rather than repeating the row ten times (#1872).
+     */
+    eventCount: true,
+    /**
+     * When the last event in the burst landed, so the row can name its own
+     * span. Absent on a row that stands for one event, where `createdAt`
+     * already says everything.
+     */
+    updatedAt: true,
   })
   .extend({
     /**
