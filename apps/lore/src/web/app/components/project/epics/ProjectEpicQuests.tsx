@@ -15,11 +15,13 @@ import { Link, useRouter } from "alepha/react/router";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
 
+import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_RANK,
@@ -31,6 +33,13 @@ import EpicQuestPicker from "./EpicQuestPicker.tsx";
 
 export interface ProjectEpicQuestsProps {
   projectId: number;
+  /**
+   * The epic these quests belong to, for its status: the quest set can be
+   * edited only while the epic is `planned` (epic #31), and the server
+   * refuses attach, detach and create-into once it is not. The affordances
+   * disappear with the permission rather than answering 400.
+   */
+  epic: EpicResource;
   /**
    * `null` means "not loaded yet" (in flight, or the last fetch failed) —
    * distinct from a successfully resolved `[]`, so a failed reload never
@@ -77,6 +86,9 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const attachedIds = new Set((quests ?? []).map((q) => q.id));
   // The create sheet, opened from the toolbar beside Attach (feedback #2057).
   const [creating, setCreating] = useState(false);
+  // The plan freeze (epic #31): once the epic has begun, the quest set is
+  // what was committed. Create, Attach and Detach all go with it.
+  const planEditable = props.epic.status === "planned";
 
   return (
     /*
@@ -131,25 +143,30 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
               // popover of its own: `actions` is for icon buttons that do
               // something on click.
               toolbar={
-                <>
-                  {/* The page's primary action (quest #1682's form): a new
-                      quest filed straight under this epic. Attach stays
-                      outline beside it, for a quest that already exists. */}
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={!project}
-                    onClick={() => setCreating(true)}
-                  >
-                    <Plus className="size-4" />
-                    {tr("epic.quests.create")}
-                  </Button>
-                  <EpicQuestPicker
-                    projectId={props.projectId}
-                    attachedIds={attachedIds}
-                    onAttach={props.onAttach}
-                  />
-                </>
+                planEditable ? (
+                  <>
+                    {/* The page's primary action (quest #1682's form): a new
+                        quest filed straight under this epic. Attach stays
+                        outline beside it, for a quest that already exists.
+                        Neither once the plan is frozen: the route for new
+                        work is an objective on a quest already here, or a
+                        new epic. */}
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!project}
+                      onClick={() => setCreating(true)}
+                    >
+                      <Plus className="size-4" />
+                      {tr("epic.quests.create")}
+                    </Button>
+                    <EpicQuestPicker
+                      projectId={props.projectId}
+                      attachedIds={attachedIds}
+                      onAttach={props.onAttach}
+                    />
+                  </>
+                ) : undefined
               }
               // Per project, not per epic: how the reader likes this table
               // sorted is a preference about quests, not about one epic.
@@ -203,9 +220,9 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                       })}
                       onClick={(e) => e.stopPropagation()}
                       className={`block truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
-                      title={`#${quest.shortId} - ${quest.title}`}
+                      title={`${formatReference("quest", quest.shortId)} - ${quest.title}`}
                     >
-                      #{quest.shortId}{" "}
+                      {formatReference("quest", quest.shortId)}{" "}
                       <span className="text-muted-foreground">-</span>{" "}
                       {quest.title}
                     </Link>
@@ -242,17 +259,21 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                   ),
                 },
               }}
-              rowActions={(quest) => [
-                {
-                  icon: X,
-                  label: tr("epic.quests.detach"),
-                  destructive: true,
-                  // No `ctx.refresh()`: these rows are `ProjectEpic`'s state.
-                  // `onDetach` reloads it, and the table re-renders from the
-                  // new array on its own.
-                  onClick: () => props.onDetach(quest),
-                },
-              ]}
+              rowActions={(quest) =>
+                planEditable
+                  ? [
+                      {
+                        icon: X,
+                        label: tr("epic.quests.detach"),
+                        destructive: true,
+                        // No `ctx.refresh()`: these rows are `ProjectEpic`'s
+                        // state. `onDetach` reloads it, and the table
+                        // re-renders from the new array on its own.
+                        onClick: () => props.onDetach(quest),
+                      },
+                    ]
+                  : []
+              }
             />
           )}
         </CardContent>

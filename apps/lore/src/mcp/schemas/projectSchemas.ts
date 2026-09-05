@@ -113,11 +113,14 @@ export const projectContextResultSchema = z.object({
   /**
    * The project's epic index — every epic, planned/active/done alike (this
    * is never gated, same as an epic's own view of itself). Kept to number,
-   * title, status and questCount deliberately: this is paid for on every
-   * `project_context` call, and its whole job is to make a parked subject
-   * legible in one round-trip, not to replace `epic_list` / `epic_get`.
-   * Without it, a project with thirteen quests parked under one epic shows
-   * up as thirteen unrelated quests, with no signal they are one subject.
+   * title, status, questCount and completed deliberately: this is paid for
+   * on every `project_context` call, and its whole job is to make a parked
+   * subject legible in one round-trip, not to replace `epic_list` /
+   * `epic_get`. Without it, a project with thirteen quests parked under one
+   * epic shows up as thirteen unrelated quests, with no signal they are one
+   * subject. `completed` joined the four in epic #31: without it "planned,
+   * 9 specified" and "planned, 9 shipped" read the same, and epic #27 was
+   * the second for a day before anyone noticed.
    */
   epics: z.array(
     z.object({
@@ -125,6 +128,11 @@ export const projectContextResultSchema = z.object({
       title: z.string(),
       status: epicStatusSchema,
       questCount: z.integer(),
+      completed: z
+        .integer()
+        .describe(
+          "How many of questCount are completed. Equal to questCount on an epic whose work is done, whatever its status says.",
+        ),
     }),
   ),
   /**

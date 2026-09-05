@@ -758,39 +758,49 @@ export class BuildCloudflareTask extends BuildTask {
           return new Response("Internal Server Error", { status: 500 });
         }
 
-        const roomId =
-          url.searchParams.get("roomId") ||
-          (url.searchParams.get("roomIds") || "").split(",")[0].trim() ||
-          "default";
-
         const wsProvider = __alepha.inject("WebSocketServerProvider");
 
-        let userId = "";
+        // \`getEndpoint\` covers \`$websocket\` endpoints; a \`$room\` registers on
+        // the provider's room registry instead, so fall back to
+        // \`getRoomEndpoint\`. Without it, \`$room({ secure })\` was silently
+        // unenforced. Both return their primitive options object directly
+        // (see registerEndpoint/registerRoom in the providers), which is the
+        // shape \`admit\` reads.
+        const endpoint =
+          wsProvider.getEndpoint(url.pathname) ??
+          wsProvider.getRoomEndpoint(url.pathname);
+
+        // One decision for both engines, see WebSocketServerProvider.admit:
+        // the endpoint's own \`authorize\` hook when it has one (a machine
+        // credential, which names its room and never touches the security
+        // realm), the session resolver plus \`secure\` otherwise. A hook that
+        // throws is an outage, not a revocation, so it answers 503 rather
+        // than the 401 a machine client reads as "stop retrying".
+        let admission;
         try {
-          const resolved = await wsProvider.resolveUserId({
+          admission = await wsProvider.admit(endpoint, {
             url: request.url,
             headers: {
               authorization: request.headers.get("authorization") || undefined,
               cookie: request.headers.get("cookie") || undefined,
             },
           });
-          userId = resolved || "";
         } catch (err) {
-          __alepha.log.warn("Failed to resolve WebSocket user identity", err);
+          __alepha.log.error("WebSocket admission failed", err);
+          return new Response("Service Unavailable", { status: 503 });
         }
-
-        // \`getEndpoint\` covers \`$websocket\` endpoints; a \`$room\` registers on
-        // the provider's room registry instead, so fall back to
-        // \`getRoomEndpoint\` — without it, \`$room({ secure })\` was silently
-        // unenforced. Both return their primitive options object directly
-        // (see registerEndpoint/registerRoom in the providers) — \`secure\` is
-        // a top-level field, there is no \`.options\` wrapper on it.
-        const endpoint =
-          wsProvider.getEndpoint(url.pathname) ??
-          wsProvider.getRoomEndpoint(url.pathname);
-        if (endpoint && endpoint.secure && !userId) {
+        if (!admission.accepted) {
           return new Response("Unauthorized", { status: 401 });
         }
+        const userId = admission.userId || "";
+
+        // The room the credential named wins over the one the URL asked for,
+        // which is what keeps a client out of a room it does not own.
+        const roomId =
+          admission.roomId ||
+          url.searchParams.get("roomId") ||
+          (url.searchParams.get("roomIds") || "").split(",")[0].trim() ||
+          "default";
 
         const connectionId = "ws-" + crypto.randomUUID();
         const ns = env.ALEPHA_WEBSOCKET;

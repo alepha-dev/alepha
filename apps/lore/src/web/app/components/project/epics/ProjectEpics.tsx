@@ -35,10 +35,16 @@ import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { settleBulk } from "../../shared/bulkOutcome.ts";
+import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import { useBulkReport } from "../../shared/useBulkReport.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
-import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
+import {
+  epicBlockedBy,
+  STATUS_ICONS,
+  STATUS_LABEL_KEYS,
+  STATUS_TONE,
+} from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
 import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 
@@ -84,13 +90,15 @@ const epicsFiltersSchema = z.object({
  * (this comment used to say the menu offers Delete and nothing else), and
  * it is a deliberate reversal rather than drift.
  *
- * Only Begin, out of `EpicStatusControl`'s four verbs, and the reason is
+ * Only Begin, out of `EpicStatusControl`'s two verbs, and the reason is
  * what you are doing when you are looking at this page. Scanning a backlog
  * and starting the next thing is a list-shaped action. Concluding an epic
- * is a judgement about whether its quests are actually finished, and
- * Reopen and Return to Planning are corrections: all three want the epic's
- * own page, where its progress is in front of you. A row menu that carried
- * all four would be the detail page's control, drawn worse.
+ * is a judgement about whether its quests are actually finished, and since
+ * epic #31 it is final, so it wants the epic's own page, where its progress
+ * is in front of you. (Reopen and Return to Planning were the other two
+ * verbs until epic #31 made the lifecycle a one-way ratchet.) Begin is
+ * disabled here with the blocking epic named when the predecessor is not
+ * done, the same way the detail page's button is.
  *
  * The label comes from `epic.status.actions.begin`, the same key the detail
  * page's button uses, so the two surfaces cannot come to call it different
@@ -195,10 +203,12 @@ const ProjectEpics = () => {
           if (!match) return false;
         }
         if (!needle) return true;
+        // `#E3`, `#3` and `3` all reach the number; `needle` is lowercased,
+        // so the letter is.
         return (
           epic.title.toLowerCase().includes(needle) ||
           epic.description.toLowerCase().includes(needle) ||
-          String(epic.number) === needle.replace(/^#/, "")
+          String(epic.number) === needle.replace(/^#e?/, "")
         );
       }),
       sort,
@@ -472,12 +482,12 @@ const ProjectEpics = () => {
                   })}
                   onClick={(e) => e.stopPropagation()}
                   className="truncate text-sm font-medium"
-                  title={`#${epic.number} - ${epic.title}`}
+                  title={`${formatReference("epic", epic.number)} - ${epic.title}`}
                 >
                   {/* The number carries the title's own colour: it is part
                       of the name, not an annotation on it. Only the
                       separator is muted. */}
-                  #{epic.number}{" "}
+                  {formatReference("epic", epic.number)}{" "}
                   <span className="text-muted-foreground">-</span> {epic.title}
                 </Link>
                 {epic.description ? (
@@ -547,7 +557,21 @@ const ProjectEpics = () => {
                 },
                 {
                   icon: Play,
-                  label: tr("epic.status.actions.begin"),
+                  // `dependsOn` is a gate since epic #31: Begin is refused
+                  // while the predecessor is not done. The entry stays on the
+                  // row, disabled, and its label names the blocking epic, so
+                  // the reason sits where the click would have been rather
+                  // than in a 400 after it.
+                  label:
+                    epicBlockedBy(epic) !== undefined
+                      ? String(
+                          tr("epic.begin.blocked", {
+                            args: [String(epicBlockedBy(epic))],
+                          }),
+                        )
+                      : tr("epic.status.actions.begin"),
+                  disabled: (row: EpicResource) =>
+                    epicBlockedBy(row) !== undefined,
                   onClick: async (
                     row: EpicResource,
                     { refresh }: { refresh: () => void },

@@ -1228,8 +1228,10 @@ test.describe("Folio workspace", () => {
 
       // The picker only ever inserts plain `[[token]]` text — which is why
       // the assertion is on the DOCUMENT, not on any decoration. There is no
-      // decoration anymore; the token is markdown like everything else.
-      await expect(editor).toContainText(`[[${folioTitle}]]`, {
+      // decoration anymore; the token is markdown like everything else. The
+      // token is the typed `#F<n>` form (epic #32), never the title.
+      const targetShortId = Number(folioUrl.split("/").pop());
+      await expect(editor).toContainText(`[[#F${targetShortId}]]`, {
         timeout: 10_000,
       });
     });
@@ -1240,7 +1242,13 @@ test.describe("Folio workspace", () => {
       // rather than after a click that no longer exists. `waitForResponse`
       // cannot be armed here (the edit that triggered the save is in the
       // previous step), so poll the stored content instead of racing it.
+      //
+      // Polled for the token the picker inserted, not for any `[[`: the body
+      // this folio was created with already carries two, so a bare `[[` is
+      // true before the autosave lands and the assertions below would read
+      // the content from before it.
       const shortId = Number(hostUrl.split("/").pop());
+      const inserted = `[[#F${Number(folioUrl.split("/").pop())}]]`;
       await expect
         .poll(
           async () =>
@@ -1256,7 +1264,7 @@ test.describe("Folio workspace", () => {
             ),
           { timeout: 15_000 },
         )
-        .toContain("[[");
+        .toContain(inserted);
 
       const content = await page.evaluate(
         async ({ pid, sid }) => {
@@ -1273,6 +1281,8 @@ test.describe("Folio workspace", () => {
       // drops the project's whole link graph on the next save.
       expect(content).toContain(`[[${folioTitle}]]`);
       expect(content).toContain(`[[No Such Folio ${stamp}]]`);
+      // And what the picker inserted in the previous step.
+      expect(content).toContain(`[[#F${Number(folioUrl.split("/").pop())}]]`);
     });
   });
 

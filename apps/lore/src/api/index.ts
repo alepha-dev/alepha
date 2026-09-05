@@ -4,8 +4,11 @@ import {
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
 import { AlephaApiInvitations } from "alepha/api/invitations";
+import { AlephaWebSocket } from "alepha/websocket";
 
+import { AdminEstateController } from "./controllers/AdminEstateController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AdminReferenceController } from "./controllers/AdminReferenceController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
@@ -13,6 +16,10 @@ import { BlobController } from "./controllers/BlobController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
+import { EstateCommandController } from "./controllers/EstateCommandController.ts";
+import { EstateController } from "./controllers/EstateController.ts";
+import { EstatePullController } from "./controllers/EstatePullController.ts";
+import { EstateSocketController } from "./controllers/EstateSocketController.ts";
 import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
@@ -20,6 +27,7 @@ import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
+import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
@@ -34,6 +42,7 @@ import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
+import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
@@ -52,6 +61,12 @@ import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
+import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
+import { EstateCommandService } from "./services/EstateCommandService.ts";
+import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
+import { EstateService } from "./services/EstateService.ts";
+import { EstateStatsService } from "./services/EstateStatsService.ts";
+import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
@@ -72,6 +87,7 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
+import { ReferenceConversionService } from "./services/ReferenceConversionService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
@@ -79,6 +95,7 @@ import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
+import { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
@@ -102,6 +119,11 @@ export const LoreApi = $module({
     AlephaApiAnalyticsAdmin,
     AlephaApiInvitations,
     LoreDashboardCatalog,
+    // The estates websocket (epic #20). The first websocket in Lore: on
+    // Cloudflare the build derives the Durable Object binding and its
+    // migration from the `$websocket` below, and the `workerd` export
+    // condition picks the Durable Object provider over the Node one.
+    AlephaWebSocket,
   ],
   services: [
     // Declares the `$realm`. Nothing injects it — it must be listed here
@@ -116,6 +138,10 @@ export const LoreApi = $module({
     ReleaseContentService,
     RoadmapService,
     EpicDependencyService,
+    // The one place the epic workflow's refusals are written (epic #31):
+    // which quest action is allowed in which epic phase, and the words a
+    // refusal carries. Injected by the quest and epic controllers.
+    EpicWorkflowService,
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,
@@ -128,6 +154,9 @@ export const LoreApi = $module({
     FolioBlobService,
     FolioHistoryService,
     FolioLinkService,
+    // The one-shot reference converter of epic #32; goes with its admin
+    // controller once the old grammar is purged (quest #1808).
+    ReferenceConversionService,
     // Declares the `$invitationResource` for `resourceType: "project"`.
     // Nothing injects it, so like `AppSecurityProvider` it has to be listed
     // or the resolver is never registered and every invitation 404s.
@@ -136,6 +165,7 @@ export const LoreApi = $module({
     BlightJobs,
     SigilJobs,
     QualityJobs,
+    EstateCommandJobs,
     UserDeletionHook,
     QuestNotifications,
     InvitationNotifications,
@@ -179,6 +209,22 @@ export const LoreApi = $module({
     // `FrozenSigilAnalyticsTables` above — names it.
     SigilTokenService,
     SigilIngestService,
+    // The deploy-destination half: a machine's secret and what an estate is.
+    // `EstateTokenService` is deliberately not `SigilTokenService` with a
+    // different table, see its doc: the two credentials are one grep apart
+    // and mean different things.
+    EstateTokenService,
+    EstateService,
+    // The queue behind the connection, and the seam the websocket endpoint
+    // fills in. This default transport reaches nothing, which is the correct
+    // behaviour of a Lore with no socket wired: commands wait as `pending`
+    // for the machine's next connect.
+    EstateCommandTransport,
+    EstateCommandService,
+    EstateStatsService,
+    // The real transport, substituted for `EstateCommandTransport` in
+    // `main.server.ts`. Listed so DI scanning sees the class.
+    WebSocketEstateCommandTransport,
     // Controllers
     QuestController,
     QuestCommentController,
@@ -194,6 +240,7 @@ export const LoreApi = $module({
     ProjectQuestPortabilityController,
     InvitationController,
     AdminProjectController,
+    AdminReferenceController,
     KanbanController,
     FolioController,
     DirectoryController,
@@ -202,6 +249,12 @@ export const LoreApi = $module({
     FeedbackController,
     SigilController,
     SigilIngestController,
+    EstateController,
+    ProjectEstateController,
+    EstateCommandController,
+    EstateSocketController,
+    EstatePullController,
+    AdminEstateController,
     SigilAnalyticsController,
     InsightsController,
     BlightController,

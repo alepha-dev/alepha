@@ -27,7 +27,7 @@ test.describe("Account area", () => {
     await expect(page.getByText(email, { exact: true })).toBeVisible();
 
     // The rail is derived from route `nav` metadata, so this asserts the five
-    // built-ins AND that `$pageAccount` put Lore's two in the same tree.
+    // built-ins AND that `$pageAccount` put Lore's three in the same tree.
     for (const label of [
       "Profile",
       "Security",
@@ -36,6 +36,7 @@ test.describe("Account area", () => {
       "Connected apps",
       "Invitations",
       "Feedback",
+      "Estates",
     ]) {
       await expect(
         page.getByRole("link", { name: label, exact: true }),
@@ -70,6 +71,7 @@ test.describe("Account area", () => {
       ["/account/connections", "Connected apps"],
       ["/account/invitations", "Invitations"],
       ["/account/feedback", "Feedback"],
+      ["/account/estates", "Estates"],
     ];
 
     for (const [path, label] of expected) {

@@ -537,12 +537,49 @@ describe("BuildCloudflareTask", () => {
         expect(fs.wasWrittenMatching(ENTRY, /idFromName/)).toBe(true);
         // The registered channel path must be baked into the routing guard.
         expect(fs.wasWrittenMatching(ENTRY, /\["\/ws\/chat"\]/)).toBe(true);
-        // Regression guard for the brief's incorrect `endpoint.options.secure`
-        // shape: `getEndpoint` returns `WebSocketPrimitiveOptions` directly,
-        // so `secure` is a top-level field.
-        expect(fs.wasWrittenMatching(ENTRY, /endpoint\.secure/)).toBe(true);
+        // The endpoint's options object is handed to the provider's `admit`
+        // whole: `getEndpoint` returns `WebSocketPrimitiveOptions` directly,
+        // so there is no `.options` wrapper to reach through, and the entry
+        // reads neither `secure` nor `authorize` itself.
+        expect(
+          fs.wasWrittenMatching(ENTRY, /wsProvider\.admit\(endpoint,/),
+        ).toBe(true);
         expect(fs.wasWrittenMatching(ENTRY, /endpoint\.options\.secure/)).toBe(
           false,
+        );
+      });
+
+      /**
+       * An endpoint's `authorize` hook names the room the credential owns,
+       * and the entry must forward THAT room to the Durable Object, ahead of
+       * the `?roomId=` the client asked for. Otherwise a signed-in user could
+       * open somebody else's room and receive its messages before anything
+       * post-accept could refuse them.
+       */
+      it("takes the room from the admission before the URL, and answers 503 when admission fails", async () => {
+        const { task, fs } = createTaskWithFs();
+        task.setHasWebSocket(true);
+        task.setWebsocketPaths(["/ws/estates"]);
+
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+
+        const content = fs.getFileContent(ENTRY) ?? "";
+        const admitIndex = content.indexOf("wsProvider.admit(endpoint,");
+        const admittedRoomIndex = content.indexOf("admission.roomId ||");
+        const urlRoomIndex = content.indexOf('url.searchParams.get("roomId")');
+        const forwardIndex = content.indexOf(
+          'forward.headers.set("x-alepha-ws-room", roomId)',
+        );
+
+        expect(admitIndex).toBeGreaterThan(-1);
+        expect(admittedRoomIndex).toBeGreaterThan(admitIndex);
+        expect(urlRoomIndex).toBeGreaterThan(admittedRoomIndex);
+        expect(forwardIndex).toBeGreaterThan(urlRoomIndex);
+        expect(content).toContain(
+          'new Response("Unauthorized", { status: 401 })',
+        );
+        expect(content).toContain(
+          'new Response("Service Unavailable", { status: 503 })',
         );
       });
 

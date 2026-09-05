@@ -85,6 +85,7 @@ export class EpicTools {
           // numbers, the same split `quest_*` makes with `dependsOn_shortId`.
           // `buildEpicResource` is what resolves it.
           dependsOn_number: epic.dependsOnNumber,
+          dependsOn_status: epic.dependsOnStatus,
         })),
       };
     },
@@ -131,6 +132,7 @@ export class EpicTools {
         activatedAt: epic.activatedAt,
         completedAt: epic.completedAt,
         dependsOn_number: epic.dependsOnNumber,
+        dependsOn_status: epic.dependsOnStatus,
         folios: folios.map((folio) => ({
           shortId: folio.shortId,
           title: folio.title,
@@ -169,7 +171,7 @@ export class EpicTools {
    */
   epic_create = $tool({
     description:
-      "Create a new epic in the project, in the 'planned' status. Quests filed under a planned epic (quest_create / quest_update's `epic_number`) stay out of the human-facing backlog, kanban and reports until the epic is activated (epic_set_status); quest_list keeps returning them regardless, since MCP is deliberately not gated. Any project member may create one.",
+      "Create a new epic in the project, in the 'planned' status. The status IS the permission: while planned, quests are filed into it (quest_create / quest_update's `epic_number`) and stay out of the human-facing backlog, kanban, reports and quest_list's default view (quest_list's `epic:` filter or `includePlanned: true` reads them), and none of them can be accepted. epic_set_status 'active' (Begin) freezes the quest set and releases it for work; 'done' (Conclude) is terminal. Anything discovered after Begin is an objective on a quest already in the epic, or a new epic with dependsOn_number pointing at this one. Any project member may create one.",
     title: "Create epic",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -210,7 +212,7 @@ export class EpicTools {
    */
   epic_update = $tool({
     description:
-      "Update an epic's title or description. Omitted fields stay unchanged.",
+      "Update an epic's title, description or predecessor. Omitted fields stay unchanged. Allowed in every phase, 'done' included: the description is the account of what happened and project memory is meant to be curated. Only the quest set and the status are gated by phase (see quest_create, quest_update and epic_set_status).",
     title: "Update epic",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -253,7 +255,7 @@ export class EpicTools {
    */
   epic_set_status = $tool({
     description:
-      "Change an epic's status: planned, active, or done. All transitions are legal; there is no forbidden edge. Moving to 'active' for the first time stamps activatedAt (kept across later swings; it marks when the epic began, not when it was last active); moving to 'done' stamps completedAt; moving away from 'done' clears it. Never writes to any quest row. This only changes what the backlog gate matches.",
+      "Move an epic forward through its lifecycle, one way: 'planned' to 'active' (Begin), then 'active' to 'done' (Conclude). Every other edge is refused: 'done' is terminal, and the way forward from a concluded epic is a new epic with dependsOn_number pointing at it; an active epic cannot return to planning, since its quest set is frozen. Asking for the status the epic already has is a no-op. Begin stamps activatedAt, Conclude stamps completedAt. Never writes to any quest row: Begin releases the epic's quests because the backlog gate stops matching them.",
     title: "Set epic status",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {

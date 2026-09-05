@@ -221,6 +221,16 @@ jobs:
         timeout-minutes: 20
         run: yarn e2e
 
+      # The Bay end-to-end in e2e-cli builds the real bay binary natively
+      # (apps/e2e-cli/src/bay.e2e.spec.ts) and fails loudly without go, on
+      # purpose: a skipped Go test is how a green run lies. The bay job has Go
+      # and no Node, this one has Node and no Go, so Go is added here.
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/bay/go.mod
+          cache-dependency-path: apps/bay/go.sum
+
       # Its own step: `e2e-cli` packs the workspace with `yarn pack` and
       # installs the tarball into a throwaway project, so a failure here means
       # a packaging bug rather than a UI one.

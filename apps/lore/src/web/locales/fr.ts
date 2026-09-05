@@ -123,6 +123,12 @@ export default {
     "Aucune épopée ne correspond à cette référence.",
   "folios.wikilink.broken.blobNotFound":
     "Aucun fichier de folio ne correspond à cette référence.",
+  "folios.wikilink.broken.feedbackNotFound":
+    "Aucun retour ne correspond à cette référence.",
+  "folios.wikilink.broken.releaseNotFound":
+    "Aucune release ne correspond à cette référence.",
+  "folios.wikilink.release.open": "ouverte",
+  "folios.wikilink.release.released": "publiée",
   "folios.wikilink.broken.questFormWanted":
     "Le folio #$1 n'existe pas, mais la quête #$1 existe. Dans [[…]], #N désigne un folio ; écrivez plutôt [[quest:#$1]].",
 
@@ -290,7 +296,7 @@ export default {
   "board.filter.noRelease": "Sans version",
   "board.table.epic": "Épopée",
   "board.table.linked": "Liée",
-  "board.table.linked.tooltip": "Bloquée par la quête #$1",
+  "board.table.linked.tooltip": "Bloquée par une autre quête",
   "board.table.priority": "Priorité",
   "board.table.size": "Taille",
   "board.table.area": "Domaine",
@@ -368,7 +374,7 @@ export default {
   "quest.view.questline.open": "Ouvrir la chaîne",
   "quest.discussion.title": "Discussion",
   "quest.discussion.composer.placeholder":
-    "Laissez un commentaire. Mentionnez un membre avec @, liez un folio avec [[…]], ou pointez une autre quête avec #1204.",
+    "Laissez un commentaire. Mentionnez un membre avec @, liez un folio avec [[…]], ou pointez une autre quête avec #Q1204.",
   "quest.discussion.composer.markdown": "Markdown pris en charge",
   "quest.discussion.composer.submit": "Commenter",
   "quest.discussion.commented": "a commenté",
@@ -380,7 +386,7 @@ export default {
   "quest.discussion.empty": "Il ne s'est encore rien passé sur cette quête.",
   "quest.discussion.waived": 'Passé "$1" :',
   "quest.event.created": "a créé la quête",
-  "quest.event.createdFromFeedback": "a créé la quête depuis le retour #$1",
+  "quest.event.createdFromFeedback": "a créé la quête depuis un retour",
   "quest.event.assigned": "a pris la quête",
   "quest.event.unassigned": "s'est désassigné de la quête",
   "quest.event.completed": "a terminé la quête",
@@ -478,7 +484,7 @@ export default {
   "quest.view.objectives.waived": "Passé :",
   "quest.view.objectivesProgress": "$1 sur $2",
   "quest.view.updated": "modifié $1",
-  "quest.view.fromFeedback": "issu du retour #$1",
+  "quest.view.fromFeedback": "issu d'un retour",
   "quest.view.due": "Échéance $1 · $2",
   "quest.view.attach": "Joindre",
   "quest.view.attachHint":
@@ -601,6 +607,7 @@ export default {
   "project.settings.nav.epics": "Épopées",
   "project.settings.nav.feedback": "Retours",
   "project.settings.nav.sigils": "Sigils",
+  "project.settings.nav.estates": "Domaines",
   "project.settings.nav.releases": "Versions",
   "project.settings.nav.quests": "Quêtes",
   "project.settings.nav.quality": "Qualité",
@@ -802,7 +809,7 @@ export default {
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Enregistrer dans les Folios",
   "release.changelog.live": "EN DIRECT · $1 quête(s)",
-  "release.changelog.frozen": "#$1 · FIGÉ LE $2",
+  "release.changelog.frozen": "$1 · FIGÉ LE $2",
   "release.changelog.empty":
     "Aucune quête terminée n'est rattachée à cette version.",
   "release.changelog.loading": "Chargement du journal…",
@@ -813,17 +820,20 @@ export default {
   "release.folio.description":
     "Le journal est enregistré comme folio de ce projet, lisible par tous les membres, et par tout agent via MCP.",
   "release.folio.title": "Titre du folio",
-  "release.folio.defaultTitle": "Version #$1 : $2",
+  "release.folio.defaultTitle": "Version $1 : $2",
   "release.folio.save": "Enregistrer",
   "release.folio.saved": "Journal enregistré dans les Folios",
   "release.folio.error": "Impossible d'enregistrer le journal.",
   "release.folio.summary":
-    "Journal de la version #$1 : $2 quête(s) enregistrée(s).",
+    "Journal de la version $1 : $2 quête(s) enregistrée(s).",
 
   "release.tab.overview": "Vue d'ensemble",
   "release.tab.contents": "Contenu",
+  "release.tab.flow": "Flux",
   "release.tab.changelog": "Changelog",
   "release.tab.artifacts": "Artefacts",
+  "release.flow.empty":
+    "Associez des épopées et des quêtes pour voir l'ordre de livraison.",
 
   "release.plate.frozen": "Figé à la publication",
   "release.meta.target": "visée le $1",
@@ -1258,7 +1268,7 @@ export default {
   "blights.action.deleteSelected": "Supprimer la sélection",
   "blights.action.viewStack": "Voir la stack trace",
   "blights.toast.resolved": "Fléau résolu",
-  "blights.toast.forwarded": "Quête #$1 créée depuis le fléau",
+  "blights.toast.forwarded": "Quête $1 créée depuis le fléau",
   "blights.toast.deleted": "Fléau supprimé",
   "blights.toast.deletedMany": "$1 fléaux supprimés",
   "blights.deleteConfirm": "Supprimer définitivement ce fléau ?",
@@ -1278,7 +1288,7 @@ export default {
   "blights.rules.toast.added": "Règle d'exclusion ajoutée",
   "blights.rules.toast.removed": "Règle d'exclusion supprimée",
   "blights.status.resolved": "Résolu",
-  "blights.status.quest": "Quête #$1",
+  "blights.status.quest": "Transmis à une quête",
 
   "sigils.title": "Applications",
   "sigils.empty":
@@ -1315,6 +1325,104 @@ export default {
   "sigils.toast.rotated": "Jeton renouvelé",
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
+
+  "estates.project.title": "Domaines",
+  "estates.project.description":
+    "Où ce projet peut déployer. Un domaine est une machine ou un compte que quelqu'un possède et a prêté à ce projet.",
+  "estates.project.empty":
+    "Aucun domaine prêté pour l'instant. Tant qu'il n'y en a pas, ce projet n'a nulle part où déployer.",
+  "estates.project.add": "Ajouter un domaine",
+  "estates.project.ownerOnly":
+    "Seul le propriétaire du projet peut ajouter un domaine.",
+  "estates.project.lentBy": "prêté par $1",
+  "estates.online": "en ligne",
+  "estates.offline": "hors ligne",
+  "estates.deploys.allowed": "déploiements autorisés",
+  "estates.deploys.statsOnly": "statistiques seulement",
+  "estates.lastSeen": "vu $1",
+  "estates.neverSeen": "jamais connecté",
+  "estates.add.title": "Ajouter un domaine à $1",
+  "estates.add.description":
+    "Choisissez un de vos domaines, ou créez-en un ici.",
+  "estates.add.existing": "Un des miens",
+  "estates.add.new": "En créer un nouveau",
+  "estates.add.none": "Vous n'avez plus de domaine à prêter. Créez-en un.",
+  "estates.add.slug": "Identifiant du domaine",
+  "estates.add.slugPlaceholder": "ovh-1",
+  "estates.add.invalid": "Lettres minuscules, chiffres et tirets, comme ovh-1.",
+  "estates.add.trust":
+    "Toute personne pouvant déployer dans $1 pourra exécuter du code sur la machine derrière $2, avec tout ce que cette machine contient. Rien n'est retiré du déploiement ici, et vous pouvez reprendre le prêt à tout moment.",
+  "estates.add.submit": "Le prêter à ce projet",
+  "estates.add.submitNew": "Créer et prêter",
+  "estates.detach.action": "Retirer",
+  "estates.detach.confirmTitle": "Retirer $1 de ce projet ?",
+  "estates.detach.confirmDescription":
+    "Le projet ne pourra plus déployer par ce domaine. Rien de déjà déployé n'est touché : la machine continue de faire tourner ce qu'elle fait tourner.",
+  "estates.detach.confirm": "Retirer",
+  "estates.secret.title":
+    "Le secret de votre domaine. Il n'est affiché qu'une fois : lancez `bay connector set <url-lore> <secret>` sur la machine.",
+  "estates.secret.copy": "Copier le secret",
+  "estates.secret.done": "Terminé",
+  "estates.toast.attached": "Domaine prêté à ce projet",
+  "estates.toast.created": "Domaine créé et prêté",
+  "estates.toast.detached": "Domaine retiré",
+  "estates.toast.copied": "Secret copié",
+
+  "account.estates.title": "Domaines",
+  "account.estates.description":
+    "Les machines et comptes que vous possédez et prêtez aux projets comme destinations de déploiement. Chacun se connecte avec un secret affiché une seule fois, à la création et à la rotation.",
+  "account.estates.empty":
+    "Vous ne possédez encore aucun domaine. Créez-en un, puis lancez `bay connector set` sur la machine avec le secret affiché.",
+  "account.estates.create": "Créer un domaine",
+  "account.estates.create.description":
+    "Un domaine bay : une machine qui exécute `bay serve`. Il démarre en statistiques seules, déploiements désactivés, jusqu'à ce que vous les autorisiez.",
+  "account.estates.create.submit": "Créer",
+  "account.estates.secretPrefix": "secret $1…",
+  "account.estates.gauge": "CPU $1 % · mémoire $2 %",
+  "account.estates.gauge.none": "pas encore de statistiques",
+  "account.estates.switch.deploys": "Autoriser les déploiements",
+  "account.estates.switch.deploys.description":
+    "Désactivé signifie statistiques seules : aucun projet ne peut déployer via ce domaine, quel que soit le prêt.",
+  "account.estates.switch.series":
+    "Conserver un historique du CPU et de la mémoire",
+  "account.estates.switch.series.description":
+    "La jauge en direct ci-dessus est toujours conservée. Ceci écrit aussi chaque relevé dans la série que lisent les graphiques.",
+  "account.estates.interval": "Intervalle des statistiques",
+  "account.estates.interval.description":
+    "La fréquence à laquelle la machine rapporte sa jauge. Prise en compte à sa prochaine connexion.",
+  "account.estates.interval.minutes": "$1 min",
+  "account.estates.interval.hours": "$1 h",
+  "account.estates.loans.none": "Prêté à aucun projet.",
+  "account.estates.loans.label": "Prêté à",
+  "account.estates.detach.confirmTitle": "Retirer $1 de $2 ?",
+  "account.estates.commands.title": "Commandes",
+  "account.estates.commands.empty": "Aucune commande pour l'instant.",
+  "account.estates.commands.restart": "Redémarrer",
+  "account.estates.commands.app": "application",
+  "account.estates.commands.environment": "environnement",
+  "account.estates.commands.status.pending": "en attente",
+  "account.estates.commands.status.sent": "envoyée",
+  "account.estates.commands.status.running": "en cours",
+  "account.estates.commands.status.done": "terminée",
+  "account.estates.commands.status.failed": "échouée",
+  "account.estates.rotate": "Changer le secret",
+  "account.estates.rotate.confirmTitle": "Changer le secret de $1 ?",
+  "account.estates.rotate.confirmDescription":
+    "Le secret actuel cesse de fonctionner dès que vous confirmez. La machine est refusée à sa prochaine connexion tant que vous n'avez pas lancé `bay connector set` avec le nouveau, affiché une seule fois.",
+  "account.estates.rotate.confirm": "Changer",
+  "account.estates.delete": "Supprimer",
+  "account.estates.delete.confirmTitle": "Supprimer $1 ?",
+  "account.estates.delete.confirmDescription":
+    "Rien n'est dédéployé : la machine continue d'exécuter ce qu'elle exécute, et Lore perd seulement la possibilité d'inspecter, redéployer ou revenir en arrière via ce domaine. Un secret bay est révoqué. Un identifiant cloudflare n'est pas révoqué chez Cloudflare ; faites-le là-bas. Chaque projet auquel il est prêté le perd.",
+  "account.estates.delete.confirm": "Supprimer",
+  "account.estates.toast.created": "Domaine créé",
+  "account.estates.toast.rotated": "Secret changé",
+  "account.estates.toast.deleted": "Domaine supprimé",
+  "account.estates.toast.restartQueued": "Redémarrage en file",
+  "account.delete.estates.one":
+    "1 domaine que vous possédez sera également supprimé et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
+  "account.delete.estates.many":
+    "$1 domaines que vous possédez seront également supprimés et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
 
   "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",
@@ -1497,13 +1605,20 @@ export default {
   "epic.begin.title": "Démarrer cette épopée ?",
   "epic.begin.confirm":
     "Démarrer $1 libère ses quêtes dans le backlog, où le reste du projet peut les voir et les prendre.",
-  "epic.returnToPlanning.title": "Remettre cette épopée en préparation ?",
-  "epic.returnToPlanning.confirm":
-    "Remettre $1 en préparation retire à nouveau ses quêtes du backlog. Elles gardent leur statut ; elles cessent d'être listées.",
+  "epic.conclude.title": "Conclure cette épopée ?",
+  "epic.conclude.confirm":
+    "Conclure $1 est définitif. Elle ne pourra ni être rouverte ni revenir en planification. Ce qui reste à faire ira dans une nouvelle épopée qui dépend de celle-ci.",
+  "epic.begin.blocked": "Bloquée par l'épopée $1",
   "epic.status.actions.begin": "Commencer l'épopée",
   "epic.status.actions.conclude": "Conclure l'épopée",
-  "epic.status.actions.returnToPlanning": "Revenir à la planification",
-  "epic.status.actions.reopen": "Rouvrir l'épopée",
+  "epic.aside.predecessor": "Dépend de",
+  "epic.aside.predecessor.after": "Après l'épopée $1",
+  "epic.aside.predecessor.blocked": "Bloquée par l'épopée $1",
+  // Le bouton Accepter de la page de quête, retenu tant que l'épopée n'est pas active.
+  "quest.view.accept.epicPlanned":
+    "L'épopée $1 n'a pas commencé. Démarrez-la d'abord.",
+  "quest.view.accept.epicDone":
+    "L'épopée $1 est conclue. Créez une nouvelle épopée pour cette quête.",
   "epic.tab.overview": "Aperçu",
   "epic.tab.quests": "Quêtes",
   "epic.tab.flow": "Flux",
@@ -1527,6 +1642,10 @@ export default {
   "questline.state.ready": "Prête",
   "questline.state.waiting": "En attente",
   "questline.state.shelved": "Mise de côté",
+  "questline.zoom.label": "Zoom",
+  "questline.zoom.in": "Agrandir",
+  "questline.zoom.out": "Réduire",
+  "questline.zoom.fit": "Ajuster à la vue",
   "epic.description.title": "Description",
   "epic.description.empty": "Aucune description pour le moment.",
   "epic.folios.title": "Folios",

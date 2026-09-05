@@ -55,6 +55,7 @@ import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import { descriptionSnippet } from "../../services/descriptionSnippet.ts";
 import { displayName } from "../../services/displayName.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { formatReference } from "../shared/element/typedReference.ts";
 import FilterSlot from "../shared/FilterSlot.tsx";
 import { useBulkReport } from "../shared/useBulkReport.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
@@ -580,12 +581,12 @@ const ProjectQuestsTable = () => {
                   })}
                   onClick={(e) => e.stopPropagation()}
                   className={`truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
-                  title={`#${quest.shortId} - ${quest.title}`}
+                  title={`${formatReference("quest", quest.shortId)} - ${quest.title}`}
                 >
                   {/* The id carries the title's own colour: it is part of
                       the name, not an annotation on it. Only the separator
                       is muted, same treatment as the quest header. */}
-                  #{quest.shortId}{" "}
+                  {formatReference("quest", quest.shortId)}{" "}
                   <span className="text-muted-foreground">-</span> {quest.title}
                 </Link>
                 {quest.description && (
@@ -675,7 +676,8 @@ const ProjectQuestsTable = () => {
                       />
                     }
                   >
-                    <Layers className="size-3.5" />#{epic.number}
+                    <Layers className="size-3.5" />
+                    {formatReference("epic", epic.number)}
                   </TooltipTrigger>
                   <TooltipContent>{epic.title}</TooltipContent>
                 </Tooltip>
@@ -686,6 +688,11 @@ const ProjectQuestsTable = () => {
             label: tr("board.table.linked"),
             // Niche column — starts hidden; users opt in via the column picker.
             defaultHidden: true,
+            // ⚠️ `quest.dependsOn` is the predecessor's database id, not its
+            // per-project number, and the row carries nothing else about it.
+            // This column used to print that id after a `#`, a reference to a
+            // quest nobody has, so it now says only that a predecessor exists
+            // (epic #32). The quest page names it.
             cell: (quest: QuestResource) =>
               quest.dependsOn ? (
                 <Tooltip>
@@ -694,12 +701,10 @@ const ProjectQuestsTable = () => {
                       <span className="text-muted-foreground inline-flex items-center gap-1 text-xs" />
                     }
                   >
-                    <Link2 className="size-3.5" />#{quest.dependsOn}
+                    <Link2 className="size-3.5" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    {tr("board.table.linked.tooltip", {
-                      args: [String(quest.dependsOn)],
-                    })}
+                    {tr("board.table.linked.tooltip")}
                   </TooltipContent>
                 </Tooltip>
               ) : (
@@ -783,11 +788,11 @@ const ProjectQuestsTable = () => {
             icon: Hash,
             label: tr("board.action.copyId"),
             onClick: async () => {
-              // The `#N` reference, not the row id. That is the form the
-              // whole app already speaks: quest titles, `[[quest:#12]]` over
-              // MCP, and what someone types into a commit message. The row
-              // id is a database detail nobody pastes anywhere.
-              const reference = `#${quest.shortId}`;
+              // The `#Q12` reference, not the row id. That is the form the
+              // whole app speaks: quest titles, `[[#Q12]]` over MCP, and what
+              // someone types into a commit message. The row id is a
+              // database detail nobody pastes anywhere.
+              const reference = formatReference("quest", quest.shortId);
               try {
                 await navigator.clipboard.writeText(reference);
                 toaster.success(
@@ -849,7 +854,9 @@ const ProjectQuestsTable = () => {
                       description: blocked.length
                         ? tr("quest.view.shelve.confirmWithDependents", {
                             args: [
-                              blocked.map((d) => `#${d.shortId}`).join(", "),
+                              blocked
+                                .map((d) => formatReference("quest", d.shortId))
+                                .join(", "),
                             ],
                           })
                         : tr("quest.view.shelve.confirm"),

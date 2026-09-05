@@ -81,8 +81,14 @@ export const folioLinks = $entity({
      * stringified per table, so quest 5 and epic 5 are BOTH `"5"`. Without
      * the discriminator they would collide on this unique index and the
      * second one to sync would fail.
+     *
+     * `targetType` is in it for the same reason on the other side (epic
+     * #32): a body that links quest 1 and epic 1 produced two rows with the
+     * same `toId`, and the insert failed, so the body could not be saved at
+     * all. Feedback and releases joined the same integer id space, which
+     * made the collision a matter of when.
      */
-    { columns: ["fromType", "fromId", "toId"], unique: true },
+    { columns: ["fromType", "fromId", "targetType", "toId"], unique: true },
     /**
      * Look up backlinks — every folio that points TO this one.
      */

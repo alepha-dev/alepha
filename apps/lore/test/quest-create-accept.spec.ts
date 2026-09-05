@@ -234,7 +234,7 @@ describe("quest_create — accept flag", () => {
     expect(quest.id).toBeGreaterThan(0);
     // ...but the accept half was refused and reported, not thrown.
     expect(quest.acceptedAt).toBeUndefined();
-    expect(quest.acceptNote).toContain(`#${predShortId}`);
+    expect(quest.acceptNote).toContain(`#Q${predShortId}`);
 
     const got = await mcpCall(ctx.baseUrl, token, "quest_get", {
       id: quest.id,
