@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alepha/bay/internal/connector"
 	"github.com/alepha/bay/internal/control"
 	"github.com/alepha/bay/internal/deploy"
 	"github.com/alepha/bay/internal/health"
@@ -176,6 +177,8 @@ func main() {
 		default:
 			err = errors.New("usage: bay env (set <name/env> - | list <name/env>)")
 		}
+	case "connector":
+		err = cmdConnector(os.Args[2:])
 	case "backup":
 		err = cmdBackup(os.Args[2:])
 	case "backups":
@@ -270,6 +273,16 @@ func usageText() string {
   bay backup  <name/env>          # snapshot + verify + upload
   bay backups <name/env>          # list what is stored
   bay restore <name/env> [--key K] # destructive; keeps the old db aside
+  bay connector set <lore-url> <secret>
+                # enrol this machine as an ESTATE of a Lore instance: "bay
+                # serve" dials wss://<host>/ws/estates with the secret and holds
+                # it open, so restarts and deploys arrive the instant Lore queues
+                # them. The secret is stored 0600 beside state.json and never
+                # printed again; http:// is accepted for a loopback host only.
+                # Takes effect without restarting "bay serve". Edits the file
+                # directly, so it takes --root (or $BAY_ROOT), not the socket.
+  bay connector show              # sink, estate, connection state; never the secret
+  bay connector clear             # forget the sink and the secret: dials nobody
 
 Every command except "serve" is a thin client of the control API. There is no
 second code path.
@@ -359,6 +372,12 @@ type server struct {
 	// read a root-owned 0600 document, and it needs the server up regardless
 	// - every one of its numbers comes from `GET /apps`.
 	backupInterval time.Duration
+	// connectorStatus is what the dial loop knows about its connection, read
+	// by `GET /connector`; connectorReload wakes that loop after a `bay
+	// connector set` or `clear`. Both nil in the CLI paths that never serve,
+	// where there is no loop to report on and none to wake.
+	connectorStatus *connector.Status
+	connectorReload chan struct{}
 	// watches holds the cancel of each app's in-flight rollback watch, so a new
 	// deploy can supersede the previous one's. See beginWatch.
 	watchMu sync.Mutex
@@ -498,7 +517,8 @@ func cmdServe(args []string) error {
 	srv := &server{root: root, runtimes: runtimesDir, store: store, runner: sup,
 		isolated: isolated, log: log, controlSocket: controlSocket,
 		keepReleases: keepReleases, backupInterval: backupInterval,
-		probe: &health.Probe{}}
+		probe:           &health.Probe{},
+		connectorStatus: connector.NewStatus(), connectorReload: make(chan struct{}, 1)}
 
 	router := proxy.New(root, store, log)
 	srv.router = router
@@ -835,6 +855,7 @@ func (s *server) controlMux() *http.ServeMux {
 	s.registerBackupRoutes(mux)
 	s.registerStorageRoutes(mux)
 	s.registerEnvRoutes(mux)
+	s.registerConnectorRoutes(mux)
 	return mux
 }
 
