@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -130,7 +135,7 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	case actionRestart:
 		status, step, reason = a.restart(cmd)
 	case actionDeploy:
-		status, step, reason = a.deploy(ctx, cmd)
+		status, step, reason = a.deploy(ctx, cmd, send)
 	}
 	if status == "done" {
 		log.Info("lore command done")
@@ -189,10 +194,155 @@ func (a *actions) restart(cmd connector.Command) (status, step, reason string) {
 	return "done", "", ""
 }
 
-// deploy is #1622. Until it lands, a deploy command is a reported failure,
-// so the wire contract is exercisable end to end and nothing is silently
-// dropped.
-func (a *actions) deploy(_ context.Context, cmd connector.Command) (status, step, reason string) {
-	_ = cmd
-	return "failed", "", "deploy is not available in this bay build yet"
+/*
+deploy pulls the artifact the command names, verifies it, and hands it to the
+deploy path every other deploy goes through.
+
+Bay does not build and does not choose. The command names one artifact by
+digest, there is no "latest" on this side, and the bytes and the secret set
+are pulled from the sink by this command's id under the estate secret. Three
+digests must agree before anything is unpacked (the command's, the sink's
+header, the bytes as they arrive); a mismatch is a reported failure that
+leaves nothing on disk; and an artifact already held at that digest is not
+downloaded again, which is what makes a redeploy and a rollback cheap.
+
+The estate's deploy switch is honoured here too, from the welcome frame and
+before any fetch. Lore refuses at enqueue, and a Lore-side bug must still not
+turn a stats-only machine into a deploy target.
+
+A deploy is the one action with a progress story: `running` with the step as
+each begins, then the terminal outcome. Secrets reach the instance env the way
+`bay deploy --secrets-file` delivers them and nowhere else: never a log line,
+never an ack.
+*/
+func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(connector.Ack) error) (status, step, reason string) {
+	if !a.latestWelcome().DeployAllowed {
+		return "failed", "", "this estate does not accept deploys: its owner has not allowed them, and the welcome frame said so"
+	}
+	if cmd.Artifact == nil || len(cmd.Artifact.SHA256) != 64 {
+		return "failed", "", connector.ErrNoArtifact.Error()
+	}
+	cfg, ok, err := connector.NewStore(a.s.root).Load()
+	if err != nil || !ok {
+		return "failed", "", "no connector is configured on this bay, so there is nothing to pull from"
+	}
+	progress := func(step string) { _ = send(connector.NewAck(cmd.ID, "running", step, "")) }
+	client := &http.Client{Timeout: connector.FetchTimeout}
+
+	want := strings.ToLower(cmd.Artifact.SHA256)
+	dir := filepath.Join(a.s.root, "artifacts")
+	dest := filepath.Join(dir, want+".tar.gz")
+	if connector.ArtifactCached(dest, want) {
+		a.s.log.Info("artifact already held, skipping the download", "command", cmd.ID, "sha256", want[:12])
+	} else {
+		step = "downloading"
+		progress(step)
+		if err := connector.PullArtifact(ctx, client, cfg, cmd.ID, want, dest, func() {
+			step = "verifying"
+			progress(step)
+		}); err != nil {
+			return "failed", step, err.Error()
+		}
+	}
+
+	progress("deploying")
+	secrets, err := connector.PullSecrets(ctx, client, cfg, cmd.ID)
+	if err != nil {
+		return "failed", "deploying", "could not pull the secret set: " + err.Error()
+	}
+	secretsFile, err := a.writeSecretsFile(secrets)
+	if err != nil {
+		return "failed", "deploying", err.Error()
+	}
+	out, derr := a.s.deployArtifact(ctx, deployArtifactOptions{
+		Artifact: dest, Name: cmd.App, Env: cmd.Environment, SecretsFile: secretsFile,
+	})
+	if derr != nil {
+		return "failed", "deploying", derr.Error()
+	}
+	a.s.log.Info("lore deploy served", "command", cmd.ID, "release", out.Result.Release)
+	a.pruneArtifacts(dir, keepArtifacts)
+	return "done", "", ""
+}
+
+// keepArtifacts bounds the local cache under <root>/artifacts: enough for a
+// rollback to the last few releases to cost no download, small enough that
+// the cache never becomes the thing filling the disk.
+const keepArtifacts = 5
+
+/*
+writeSecretsFile stages the pulled set the way the deploying user stages
+`--secrets-file`: a 0600 regular file under the Bay root, which
+`deploy.ConsumeSecretsFile` reads, validates and unlinks on every path out.
+Nothing else ever holds the values: not this function's error, not a log.
+
+Values are written literally, one per line, which is what ParseAssignments
+reads; a value with a line break cannot be carried that way and is refused by
+name rather than mangled.
+*/
+func (a *actions) writeSecretsFile(secrets map[string]string) (string, error) {
+	if len(secrets) == 0 {
+		return "", nil
+	}
+	keys := make([]string, 0, len(secrets))
+	for k := range secrets {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	for _, k := range keys {
+		v := secrets[k]
+		if strings.ContainsAny(v, "\r\n") {
+			return "", fmt.Errorf("secret %s holds a line break, which the instance env cannot carry", k)
+		}
+		b.WriteString(k)
+		b.WriteString("=")
+		b.WriteString(v)
+		b.WriteString("\n")
+	}
+	// CreateTemp creates the file 0600, which is the mode ConsumeSecretsFile
+	// requires and the only one a secrets file may have.
+	f, err := os.CreateTemp(a.s.root, ".deploy-secrets-*")
+	if err != nil {
+		return "", err
+	}
+	if _, err := f.WriteString(b.String()); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), nil
+}
+
+// pruneArtifacts keeps the newest `keep` cached artifacts and removes the
+// rest. Never fatal: a cache that could not be trimmed is disk used, not a
+// deploy that failed.
+func (a *actions) pruneArtifacts(dir string, keep int) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	type cached struct {
+		name string
+		mod  time.Time
+	}
+	var files []cached
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".tar.gz") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		files = append(files, cached{e.Name(), info.ModTime()})
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].mod.After(files[j].mod) })
+	for _, f := range files[min(keep, len(files)):] {
+		_ = os.Remove(filepath.Join(dir, f.name))
+	}
 }
