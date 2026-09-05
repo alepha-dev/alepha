@@ -1,96 +1,110 @@
 import { AppShell } from "@alepha/ui/components/app-shell/app-shell";
 import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
+import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useStore } from "alepha/react";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
-  BookOpen,
-  FileSearch,
   Home as HomeIcon,
   LayoutDashboard,
-  ListChecks,
   MessageSquareWarning,
   MousePointerClick,
+  PanelsTopLeft,
+  ShieldCheck,
   SlidersHorizontal,
   Table2,
-  UsersIcon,
-  CreditCard,
-  ChartLine,
-  Bell,
-  FilesIcon,
-  KeyRound,
-  MonitorSmartphone,
-  Zap,
+  UserCog,
 } from "lucide-react";
-import type { ComponentType, SVGProps } from "react";
+import { type ComponentType, type SVGProps, useEffect, useState } from "react";
 
-interface NavItem {
+import { ShellTweak } from "@/web/components/ShellTweak.tsx";
+import { SHELL_PREFS_DEFAULT, shellPrefsAtom } from "@/web/shellPrefsAtom.ts";
+
+interface NavLeaf {
   href: string;
   label: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  icon?: ComponentType<SVGProps<SVGSVGElement>>;
+}
+
+interface NavEntry {
+  label: string;
+  icon?: ComponentType<SVGProps<SVGSVGElement>>;
+  href?: string;
+  children?: NavLeaf[];
 }
 
 interface NavGroup {
   label: string;
-  items: NavItem[];
+  items: NavEntry[];
 }
 
+/**
+ * ⚠️ An entry with `children` becomes a COLLAPSIBLE group and its own `href` is
+ * ignored, so a parent must never be a destination. That is what keeps this
+ * readable at 25+ pages: three flat groups would be a wall.
+ */
 const NAV: NavGroup[] = [
   {
     label: "Overview",
+    items: [{ href: "/", label: "Home", icon: HomeIcon }],
+  },
+  {
+    label: "Blocks",
     items: [
-      { href: "/", label: "Home", icon: HomeIcon },
-      { href: "/primitives", label: "Primitives", icon: BookOpen },
+      {
+        label: "Layout",
+        icon: PanelsTopLeft,
+        children: [
+          { href: "/blocks/shell", label: "App shell" },
+          { href: "/blocks/sidebar", label: "Sidebar" },
+        ],
+      },
+      {
+        label: "Forms",
+        icon: SlidersHorizontal,
+        children: [
+          { href: "/blocks/controls", label: "Controls" },
+          { href: "/blocks/select", label: "Select" },
+          { href: "/blocks/auto-form", label: "AutoForm" },
+        ],
+      },
+      { href: "/blocks/table", label: "AlephaTable", icon: Table2 },
+      {
+        href: "/blocks/feedback",
+        label: "Toasts & dialogs",
+        icon: MessageSquareWarning,
+      },
+      { href: "/blocks/buttons", label: "Buttons", icon: MousePointerClick },
+    ],
+  },
+  {
+    label: "Auth",
+    items: [
+      { href: "/blocks/auth", label: "Sign in & register", icon: ShieldCheck },
+      { href: "/blocks/account", label: "Account", icon: UserCog },
     ],
   },
   {
     label: "Admin",
     items: [
       {
-        href: "/blocks/admin/dashboard",
-        label: "Dashboard",
+        label: "Admin surface",
         icon: LayoutDashboard,
-      },
-      { href: "/blocks/admin/users", label: "Users", icon: UsersIcon },
-      { href: "/blocks/admin/jobs", label: "Jobs", icon: Zap },
-      {
-        href: "/blocks/admin/sessions",
-        label: "Sessions",
-        icon: MonitorSmartphone,
-      },
-      { href: "/blocks/admin/keys", label: "API keys", icon: KeyRound },
-      { href: "/blocks/admin/files", label: "Files", icon: FilesIcon },
-      {
-        href: "/blocks/admin/notifications",
-        label: "Notifications",
-        icon: Bell,
-      },
-      {
-        href: "/blocks/admin/parameters",
-        label: "Parameters",
-        icon: SlidersHorizontal,
-      },
-      { href: "/blocks/admin/analytics", label: "Analytics", icon: ChartLine },
-      { href: "/blocks/admin/payments", label: "Payments", icon: CreditCard },
-      { href: "/blocks/admin/audits", label: "Audit log", icon: FileSearch },
-    ],
-  },
-  {
-    label: "Blocks",
-    items: [
-      { href: "/blocks/table", label: "AlephaTable", icon: Table2 },
-      { href: "/blocks/controls", label: "Controls", icon: SlidersHorizontal },
-      { href: "/blocks/auto-form", label: "AutoForm", icon: ListChecks },
-      {
-        href: "/blocks/feedback",
-        label: "Toasts & dialogs",
-        icon: MessageSquareWarning,
-      },
-      {
-        href: "/blocks/buttons",
-        label: "Buttons",
-        icon: MousePointerClick,
+        children: [
+          { href: "/blocks/admin/dashboard", label: "Dashboard" },
+          { href: "/blocks/admin/users", label: "Users" },
+          { href: "/blocks/admin/sessions", label: "Sessions" },
+          { href: "/blocks/admin/keys", label: "API keys" },
+          { href: "/blocks/admin/jobs", label: "Jobs" },
+          { href: "/blocks/admin/files", label: "Files" },
+          { href: "/blocks/admin/notifications", label: "Notifications" },
+          { href: "/blocks/admin/parameters", label: "Parameters" },
+          { href: "/blocks/admin/analytics", label: "Analytics" },
+          { href: "/blocks/admin/payments", label: "Payments" },
+          { href: "/blocks/admin/audits", label: "Audit log" },
+        ],
       },
     ],
   },
@@ -98,38 +112,71 @@ const NAV: NavGroup[] = [
 
 const findCrumbs = (pathname: string): { label: string; href?: string }[] => {
   for (const group of NAV) {
-    const match = group.items.find((it) => it.href === pathname);
-    if (match) {
-      return [{ label: group.label }, { label: match.label }];
+    for (const entry of group.items) {
+      if (entry.href === pathname) {
+        return [{ label: group.label }, { label: entry.label }];
+      }
+      const child = entry.children?.find((c) => c.href === pathname);
+      if (child) {
+        return [
+          { label: group.label },
+          { label: entry.label },
+          { label: child.label },
+        ];
+      }
     }
   }
   return [];
 };
 
+const isActive = (href: string, pathname: string) => href === pathname;
+
 /**
- * The shell, and itself a specimen: `AppShell` in `floating` variant is what
- * every page here is framed by, so a regression in it is visible on all of
- * them at once.
+ * The shell, and itself a specimen.
  *
- * No `ButtonUser` and no sign-in affordance, unlike the playground's shell.
- * This app has no realm and no session, so an account menu would be a control
- * that cannot do anything.
+ * Its variant comes from a `persist: "localStorage"` atom the reader drives
+ * from the top bar, so `AppShell`'s three layouts can be compared on a real
+ * page rather than described. See `ShellTweak`.
  *
- * `ButtonDark` rather than `ButtonTheme`: the theme picker reads its list from
- * `uiThemeListAtom` and renders NOTHING while that list has fewer than two
- * entries, so using it here left the top bar with no colour control at all.
+ * `ButtonTheme` is back in the top bar beside `ButtonDark`, because `UiThemes`
+ * now registers six themes: the picker hides itself below two, which is why an
+ * earlier version of this file had to use `ButtonDark` alone.
  */
 export const Layout = () => {
   const state = useRouterState();
-  const crumbs = findCrumbs(state.url.pathname);
+  const [stored] = useStore(shellPrefsAtom);
+
+  // ⚠️ First client render MUST match the server, which never saw localStorage.
+  // Reading the stored value straight away produces a different tree and React
+  // refuses to patch the difference up, leaving `data-variant` disagreeing with
+  // what React thinks it rendered. So the default paints once, then the stored
+  // preference lands on the next pass.
+  const [hydrated, setHydrated] = useState(false);
+  // Deliberate, and the rule's own escape: an effect is right "when
+  // synchronizing with an external system", and web storage is one that does
+  // not exist until the browser takes over. The extra render IS the mechanism -
+  // it is what makes the first pass match the server.
+  // oxlint-disable-next-line react/set-state-in-effect
+  useEffect(() => setHydrated(true), []);
+  const prefs = hydrated ? stored : SHELL_PREFS_DEFAULT;
+
+  const pathname = state.url.pathname;
+  const crumbs = findCrumbs(pathname);
 
   return (
     <TooltipProvider>
       <DialogProvider>
         <ColorScheme />
         <AppShell
-          variant="floating"
-          topbarActions={<ButtonDark />}
+          variant={prefs.variant}
+          headerOutside={prefs.headerOutside}
+          topbarActions={
+            <>
+              <ShellTweak />
+              <ButtonTheme />
+              <ButtonDark />
+            </>
+          }
           brand={
             <a
               href="/"
@@ -145,14 +192,32 @@ export const Layout = () => {
           }
           nav={NAV.map((group) => ({
             label: group.label,
-            items: group.items.map((it) => ({
-              href: it.href,
-              label: it.label,
-              icon: it.icon,
-              active: it.href === state.url.pathname,
-            })),
+            items: group.items.map((entry) =>
+              entry.children
+                ? {
+                    label: entry.label,
+                    icon: entry.icon,
+                    // Open when the reader is inside it, so a deep link does
+                    // not land on a collapsed group with no visible context.
+                    defaultOpen: entry.children.some((c) =>
+                      isActive(c.href, pathname),
+                    ),
+                    children: entry.children.map((c) => ({
+                      href: c.href,
+                      label: c.label,
+                      icon: c.icon,
+                      active: isActive(c.href, pathname),
+                    })),
+                  }
+                : {
+                    href: entry.href,
+                    label: entry.label,
+                    icon: entry.icon,
+                    active: isActive(entry.href ?? "", pathname),
+                  },
+            ),
           }))}
-          breadcrumbs={crumbs.length ? crumbs : undefined}
+          breadcrumbs={prefs.breadcrumbs && crumbs.length ? crumbs : undefined}
         >
           <NestedView />
         </AppShell>

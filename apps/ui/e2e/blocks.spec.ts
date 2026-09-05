@@ -92,14 +92,14 @@ test.describe("blocks", () => {
     await expect(page.getByLabel("Age")).toBeVisible();
   });
 
-  test("the primitives inventory links upstream", async ({ page }) => {
-    await page.goto("/primitives");
+  test("the select page offers every shape of the control", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/select");
 
-    await expect(
-      page.getByText("43 primitives.", { exact: false }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "button", exact: true }),
-    ).toHaveAttribute("href", /ui\.shadcn\.com/);
+    // The live Showcase and the specimens below it.
+    await expect(page.getByText("Every switch, live")).toBeVisible();
+    await expect(page.getByLabel("Fruit (a bare enum)")).toBeVisible();
+    await expect(page.getByText("Clearable", { exact: true })).toBeVisible();
   });
 });

@@ -45,10 +45,20 @@ const ENTRIES: Entry[] = [
     description: "Theme, language and brand affordances for an app shell.",
   },
   {
-    href: "/primitives",
-    title: "Primitives",
+    href: "/blocks/select",
+    title: "Select",
     description:
-      "The 43 shadcn primitives @alepha/ui ships, and where they come from.",
+      "Every shape one control takes: segmented, searchable, async, clearable.",
+  },
+  {
+    href: "/blocks/shell",
+    title: "App shell",
+    description: "The three layouts, and the sidebar that goes in them.",
+  },
+  {
+    href: "/blocks/auth",
+    title: "Auth & account",
+    description: "Sign in, register, reset, and the account settings pages.",
   },
 ];
 

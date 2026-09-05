@@ -16,7 +16,9 @@ export class AppRouter {
     component: Layout,
     children: (): any[] => [
       this.home,
-      this.primitives,
+      this.blocksSelect,
+      this.blocksAuth,
+      this.blocksAccount,
       this.blocksTable,
       this.blocksControls,
       this.blocksAutoForm,
@@ -47,11 +49,25 @@ export class AppRouter {
     lazy: () => import("./pages/Home.tsx"),
   });
 
-  primitives = $page({
-    path: "/primitives",
+  blocksAccount = $page({
+    path: "/blocks/account",
     static: true,
-    head: { title: "Primitives - Alepha UI" },
-    lazy: () => import("./pages/Primitives.tsx"),
+    head: { title: "Account - Alepha UI" },
+    lazy: () => import("./pages/blocks/Account.tsx"),
+  });
+
+  blocksAuth = $page({
+    path: "/blocks/auth",
+    static: true,
+    head: { title: "Auth - Alepha UI" },
+    lazy: () => import("./pages/blocks/Auth.tsx"),
+  });
+
+  blocksSelect = $page({
+    path: "/blocks/select",
+    static: true,
+    head: { title: "Select - Alepha UI" },
+    lazy: () => import("./pages/blocks/Select.tsx"),
   });
 
   blocksTable = $page({

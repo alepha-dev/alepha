@@ -4,6 +4,7 @@ import { AlephaReactUi } from "alepha/react/ui";
 
 import { AppRouter } from "./AppRouter.tsx";
 import { UiI18n } from "./UiI18n.ts";
+import { UiThemes } from "./UiThemes.ts";
 
 /**
  * No `AlephaReactAuth`, no `AuthRouter`, no `AdminRouter` yet.
@@ -15,5 +16,5 @@ import { UiI18n } from "./UiI18n.ts";
 export const UiWeb = $module({
   name: "ui.web",
   imports: [AlephaReactI18n, AlephaReactUi],
-  services: [AppRouter, UiI18n],
+  services: [AppRouter, UiI18n, UiThemes],
 });
