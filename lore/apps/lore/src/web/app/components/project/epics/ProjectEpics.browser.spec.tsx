@@ -149,7 +149,7 @@ describe("ProjectEpics - the status filter", () => {
       </AlephaContext.Provider>,
     );
     await view.findByRole("link", {
-      name: `#${(epics ?? [])[0]?.number ?? 1} - ${
+      name: `#E${(epics ?? [])[0]?.number ?? 1} - ${
         (epics ?? [])[0]?.title ?? "Planned epic"
       }`,
     });
@@ -161,9 +161,9 @@ describe("ProjectEpics - the status filter", () => {
   it("shows every status while nothing is selected", async () => {
     await mount();
 
-    expect(row("#1 - Planned epic")).not.toBeNull();
-    expect(row("#2 - Active epic")).not.toBeNull();
-    expect(row("#3 - Done epic")).not.toBeNull();
+    expect(row("#E1 - Planned epic")).not.toBeNull();
+    expect(row("#E2 - Active epic")).not.toBeNull();
+    expect(row("#E3 - Done epic")).not.toBeNull();
   });
 
   it("keeps Planned and Active when both are selected, and hides Done", async () => {
@@ -174,9 +174,9 @@ describe("ProjectEpics - the status filter", () => {
     fireEvent.click(await screen.findByRole("option", { name: /Planned/ }));
     fireEvent.click(await screen.findByRole("option", { name: /Active/ }));
 
-    await waitFor(() => expect(row("#3 - Done epic")).toBeNull());
-    expect(row("#1 - Planned epic")).not.toBeNull();
-    expect(row("#2 - Active epic")).not.toBeNull();
+    await waitFor(() => expect(row("#E3 - Done epic")).toBeNull());
+    expect(row("#E1 - Planned epic")).not.toBeNull();
+    expect(row("#E2 - Active epic")).not.toBeNull();
     // The trigger says how many, the way the Quests list's does.
     expect(status.textContent).toContain("2 status");
   });
@@ -236,9 +236,9 @@ describe("ProjectEpics - the status filter", () => {
       await openFilter();
       fireEvent.click(await screen.findByRole("option", { name: "0.29.0" }));
 
-      await waitFor(() => expect(row("#1 - Shipped epic")).toBeNull());
-      expect(row("#2 - Next epic")).not.toBeNull();
-      expect(row("#3 - Unassigned epic")).toBeNull();
+      await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
+      expect(row("#E2 - Next epic")).not.toBeNull();
+      expect(row("#E3 - Unassigned epic")).toBeNull();
     });
 
     /**
@@ -254,8 +254,8 @@ describe("ProjectEpics - the status filter", () => {
       await openFilter();
       fireEvent.click(await screen.findByRole("option", { name: "0.28.0" }));
 
-      await waitFor(() => expect(row("#2 - Next epic")).toBeNull());
-      expect(row("#1 - Shipped epic")).not.toBeNull();
+      await waitFor(() => expect(row("#E2 - Next epic")).toBeNull());
+      expect(row("#E1 - Shipped epic")).not.toBeNull();
     });
 
     it("answers which epics are unassigned, through the No release entry", async () => {
@@ -266,9 +266,9 @@ describe("ProjectEpics - the status filter", () => {
         await screen.findByRole("option", { name: "No release" }),
       );
 
-      await waitFor(() => expect(row("#1 - Shipped epic")).toBeNull());
-      expect(row("#2 - Next epic")).toBeNull();
-      expect(row("#3 - Unassigned epic")).not.toBeNull();
+      await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
+      expect(row("#E2 - Next epic")).toBeNull();
+      expect(row("#E3 - Unassigned epic")).not.toBeNull();
     });
 
     /**
@@ -284,9 +284,9 @@ describe("ProjectEpics - the status filter", () => {
       );
       fireEvent.click(await screen.findByRole("option", { name: "0.29.0" }));
 
-      await waitFor(() => expect(row("#1 - Shipped epic")).toBeNull());
-      expect(row("#2 - Next epic")).not.toBeNull();
-      expect(row("#3 - Unassigned epic")).not.toBeNull();
+      await waitFor(() => expect(row("#E1 - Shipped epic")).toBeNull());
+      expect(row("#E2 - Next epic")).not.toBeNull();
+      expect(row("#E3 - Unassigned epic")).not.toBeNull();
       // The trigger counts, the way its neighbour does.
       expect(
         screen.getByRole("combobox", { name: "Release" }).textContent,
@@ -328,7 +328,7 @@ describe("ProjectEpics - the status filter", () => {
       // so its presence is the first half of the assertion.
       expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
 
-      selectRow("#1 - Planned epic");
+      selectRow("#E1 - Planned epic");
 
       await waitFor(() =>
         expect(screen.queryByRole("button", { name: "Delete" })).not.toBeNull(),
@@ -344,7 +344,7 @@ describe("ProjectEpics - the status filter", () => {
         aRelease(8, "0.29.0"),
       ]);
 
-      selectRow("#1 - Planned epic");
+      selectRow("#E1 - Planned epic");
 
       fireEvent.click(
         await screen.findByRole("button", { name: /Add to release/ }),
@@ -404,7 +404,7 @@ describe("ProjectEpics - the status filter", () => {
     it("is offered on a planned epic, beside Begin", async () => {
       await mount();
 
-      const items = (await openRowMenu("#1 - Planned epic")).map(
+      const items = (await openRowMenu("#E1 - Planned epic")).map(
         (item) => item.textContent,
       );
 
@@ -417,7 +417,7 @@ describe("ProjectEpics - the status filter", () => {
 
       // Reviewing a plan is a thing you do while the plan is still open;
       // after Begin the quest set is what is being worked.
-      const items = (await openRowMenu("#2 - Active epic")).map(
+      const items = (await openRowMenu("#E2 - Active epic")).map(
         (item) => item.textContent,
       );
 
@@ -433,7 +433,7 @@ describe("ProjectEpics - the status filter", () => {
     it("opens the prompt, prefilled with the epic, the URL and the calls that read it", async () => {
       await mount();
 
-      const items = await openRowMenu("#1 - Planned epic");
+      const items = await openRowMenu("#E1 - Planned epic");
       const review = items.find((item) => item.textContent?.includes("Review"));
       expect(review).toBeTruthy();
       fireEvent.click(review!);
@@ -442,7 +442,7 @@ describe("ProjectEpics - the status filter", () => {
         "epic-review-prompt-text",
       )) as HTMLTextAreaElement;
       const prompt = editor.value;
-      expect(prompt).toContain("#1");
+      expect(prompt).toContain("#E1");
       expect(prompt).toContain("Planned epic");
       expect(prompt).toContain("/epics/1");
       expect(prompt).toContain("epic_get");
@@ -457,7 +457,7 @@ describe("ProjectEpics - the status filter", () => {
       const written = stubClipboard();
       await mount();
 
-      const items = await openRowMenu("#1 - Planned epic");
+      const items = await openRowMenu("#E1 - Planned epic");
       fireEvent.click(
         items.find((item) => item.textContent?.includes("Review"))!,
       );
@@ -482,7 +482,7 @@ describe("ProjectEpics - the status filter", () => {
       const written = stubClipboard();
       await mount();
 
-      const items = await openRowMenu("#1 - Planned epic");
+      const items = await openRowMenu("#E1 - Planned epic");
       fireEvent.click(
         items.find((item) => item.textContent?.includes("Review"))!,
       );

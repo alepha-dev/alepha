@@ -1,29 +1,36 @@
+import {
+  formatReference,
+  parseTypedReference,
+} from "../../shared/element/typedReference.ts";
+
 /**
  * Expands the two reference shapes that belong to comments alone, into
  * markdown the shared element-link resolver already understands.
  *
  * ## Why not extend the resolver itself
  *
- * `useElementLinks` / `rewriteFolioWikiLinks` render `[[...]]` for folios,
- * quests, epics and blobs, on every element that carries markdown. Teaching
- * THAT to rewrite a bare `#1204` would turn every `#5` in every folio's prose
- * into a link — a folio is a document, and documents say "#5" meaning
- * nothing. The bare form is a convention of conversation, so it is expanded
- * here, on the way in, and handed to the same resolver as `[[quest:#1204]]`.
- * One resolver, two entry points. Nothing is forked.
+ * `useElementLinks` / `rewriteFolioWikiLinks` render `[[...]]` on every
+ * element that carries markdown. Teaching THAT to rewrite a bare `#Q1204`
+ * would turn every reference quoted in a folio's prose into a link, and a
+ * document quotes a reference without pointing at it. The bare form is a
+ * convention of conversation, so it is expanded here, on the way in, and
+ * handed to the same resolver as `[[#Q1204]]`. One resolver, two entry
+ * points. Nothing is forked.
  *
  * ## What is left alone
  *
  * Code spans and fenced blocks pass through untouched: a comment explaining
  * `#include` or an `@decorator` must not sprout links. So does anything
- * already inside a markdown link's target or a `[[...]]` of its own.
+ * already inside a markdown link's target or a `[[...]]` of its own. And an
+ * untyped `#1204` is plain text now: it names no kind, and guessing "quest"
+ * was the ambiguity epic #32 removed.
  */
 export const expandCommentReferences = (
   body: string,
   options: CommentReferenceOptions,
 ): string => {
   return outsideProtected(body, (segment) =>
-    expandMentions(expandQuestRefs(segment), options),
+    expandMentions(expandTypedRefs(segment), options),
   );
 };
 
@@ -56,17 +63,28 @@ const outsideProtected = (
     .join("");
 
 /**
- * `#1204` becomes `[[quest:#1204]]`, which the shared resolver turns into a
- * real link with the quest's title.
+ * A bare typed reference (`#Q1204`, `#E3`, `#F12`, `#P120`, `#R7`) becomes
+ * `[[#Q1204]]`, which the shared resolver turns into a real link carrying
+ * the target's title. The letter is what makes it safe to expand, and the
+ * letter set is the grammar's own (`typedReference.ts`), so a kind added
+ * there is expandable here without a second list. Case-insensitive on the
+ * way in, uppercase on the way out, like the bracketed form.
  *
+ * This is the one place the `#F12` hex-colour collision is real: a colour
+ * typed bare in comment prose becomes a folio link. Code spans are held out,
+ * and the epic accepts the rest.
  */
-const expandQuestRefs = (segment: string): string =>
+const expandTypedRefs = (segment: string): string =>
   segment.replace(
-    // A heading is `#` followed by a space, so a digit right after it is a
-    // reference either way. The two shapes that would otherwise match —
-    // `[[quest:#12]]` and `](#12)` — are held out by `outsideProtected`.
-    /(^|[^\w#/])#(\d+)\b/g,
-    (_match, prefix: string, id: string) => `${prefix}[[quest:#${id}]]`,
+    // A heading is `#` followed by a space, so a letter right after it is a
+    // reference either way. The two shapes that would otherwise match,
+    // `[[#Q12]]` and `](#Q12)`, are held out by `outsideProtected`.
+    /(^|[^\w#/])#([A-Za-z])(\d+)\b/g,
+    (match, prefix: string, letter: string, id: string) => {
+      const typed = parseTypedReference(`#${letter}${id}`);
+      if (!typed) return match;
+      return `${prefix}[[${formatReference(typed.kind, typed.id)}]]`;
+    },
   );
 
 /**

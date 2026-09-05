@@ -21,6 +21,8 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
+
 export interface EpicQuestPickerProps {
   projectId: number;
   /**
@@ -64,7 +66,8 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
   }, [open, props.projectId, questApi]);
 
   const available = quests.filter((q) => !props.attachedIds.has(q.id));
-  const labelOf = (q: QuestResource) => `#${q.shortId} ${q.title}`;
+  const labelOf = (q: QuestResource) =>
+    `${formatReference("quest", q.shortId)} ${q.title}`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -90,7 +93,7 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
                   }}
                 >
                   <span className="text-muted-foreground shrink-0 font-mono text-xs">
-                    #{q.shortId}
+                    {formatReference("quest", q.shortId)}
                   </span>
                   <span className="truncate">{q.title}</span>
                 </CommandItem>

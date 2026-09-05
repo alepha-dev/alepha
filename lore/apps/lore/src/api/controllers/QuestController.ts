@@ -17,6 +17,7 @@ import {
   okSchema,
 } from "alepha/server";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
@@ -291,7 +292,7 @@ export class QuestController {
     if (!allowed.includes(status)) {
       const expected = allowed.map((s) => `"${s}"`).join(" or ");
       throw new BadRequestError(
-        `Cannot ${action} quest #${quest.shortId}: it is "${status}", expected ${expected}.`,
+        `Cannot ${action} quest ${formatReference("quest", quest.shortId)}: it is "${status}", expected ${expected}.`,
       );
     }
 
@@ -529,7 +530,9 @@ export class QuestController {
     const rows = await this.epics
       .findMany({ where: { id: { inArray: unique } } })
       .catch(() => []);
-    return new Map(rows.map((row) => [row.id, `#${row.number}`]));
+    return new Map(
+      rows.map((row) => [row.id, formatReference("epic", row.number)]),
+    );
   }
 
   /**
@@ -1681,7 +1684,7 @@ export class QuestController {
         });
         if (predecessor && !predecessor.completedAt) {
           throw new BadRequestError(
-            `Cannot accept quest: blocked by #${predecessor.shortId}`,
+            `Cannot accept quest: blocked by ${formatReference("quest", predecessor.shortId)}`,
           );
         }
       }
@@ -2039,7 +2042,7 @@ export class QuestController {
         const target = objectives.find((o) => o.id === waiver.objectiveId);
         if (!target) {
           throw new BadRequestError(
-            `Cannot waive objective ${waiver.objectiveId}: quest #${quest.shortId} has no such objective.`,
+            `Cannot waive objective ${waiver.objectiveId}: quest ${formatReference("quest", quest.shortId)} has no such objective.`,
           );
         }
         if (target.completed) {
@@ -2251,7 +2254,7 @@ export class QuestController {
       ) {
         const last = quest.history.at(-1);
         throw new ConflictError(
-          `Quest #${quest.shortId} changed since you read it: its updatedAt is ${quest.updatedAt}, you passed ${body.expectedUpdatedAt}${
+          `Quest ${formatReference("quest", quest.shortId)} changed since you read it: its updatedAt is ${quest.updatedAt}, you passed ${body.expectedUpdatedAt}${
             last ? ` (last change: ${last.action})` : ""
           }. Re-read the quest before writing.`,
         );

@@ -123,6 +123,12 @@ export default {
     "Aucune épopée ne correspond à cette référence.",
   "folios.wikilink.broken.blobNotFound":
     "Aucun fichier de folio ne correspond à cette référence.",
+  "folios.wikilink.broken.feedbackNotFound":
+    "Aucun retour ne correspond à cette référence.",
+  "folios.wikilink.broken.releaseNotFound":
+    "Aucune release ne correspond à cette référence.",
+  "folios.wikilink.release.open": "ouverte",
+  "folios.wikilink.release.released": "publiée",
   "folios.wikilink.broken.questFormWanted":
     "Le folio #$1 n'existe pas, mais la quête #$1 existe. Dans [[…]], #N désigne un folio ; écrivez plutôt [[quest:#$1]].",
 
@@ -290,7 +296,7 @@ export default {
   "board.filter.noRelease": "Sans version",
   "board.table.epic": "Épopée",
   "board.table.linked": "Liée",
-  "board.table.linked.tooltip": "Bloquée par la quête #$1",
+  "board.table.linked.tooltip": "Bloquée par une autre quête",
   "board.table.priority": "Priorité",
   "board.table.size": "Taille",
   "board.table.area": "Domaine",
@@ -368,7 +374,7 @@ export default {
   "quest.view.questline.open": "Ouvrir la chaîne",
   "quest.discussion.title": "Discussion",
   "quest.discussion.composer.placeholder":
-    "Laissez un commentaire. Mentionnez un membre avec @, liez un folio avec [[…]], ou pointez une autre quête avec #1204.",
+    "Laissez un commentaire. Mentionnez un membre avec @, liez un folio avec [[…]], ou pointez une autre quête avec #Q1204.",
   "quest.discussion.composer.markdown": "Markdown pris en charge",
   "quest.discussion.composer.submit": "Commenter",
   "quest.discussion.commented": "a commenté",
@@ -380,7 +386,7 @@ export default {
   "quest.discussion.empty": "Il ne s'est encore rien passé sur cette quête.",
   "quest.discussion.waived": 'Passé "$1" :',
   "quest.event.created": "a créé la quête",
-  "quest.event.createdFromFeedback": "a créé la quête depuis le retour #$1",
+  "quest.event.createdFromFeedback": "a créé la quête depuis un retour",
   "quest.event.assigned": "a pris la quête",
   "quest.event.unassigned": "s'est désassigné de la quête",
   "quest.event.completed": "a terminé la quête",
@@ -478,7 +484,7 @@ export default {
   "quest.view.objectives.waived": "Passé :",
   "quest.view.objectivesProgress": "$1 sur $2",
   "quest.view.updated": "modifié $1",
-  "quest.view.fromFeedback": "issu du retour #$1",
+  "quest.view.fromFeedback": "issu d'un retour",
   "quest.view.due": "Échéance $1 · $2",
   "quest.view.attach": "Joindre",
   "quest.view.attachHint":
@@ -802,7 +808,7 @@ export default {
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Enregistrer dans les Folios",
   "release.changelog.live": "EN DIRECT · $1 quête(s)",
-  "release.changelog.frozen": "#$1 · FIGÉ LE $2",
+  "release.changelog.frozen": "$1 · FIGÉ LE $2",
   "release.changelog.empty":
     "Aucune quête terminée n'est rattachée à cette version.",
   "release.changelog.loading": "Chargement du journal…",
@@ -813,12 +819,12 @@ export default {
   "release.folio.description":
     "Le journal est enregistré comme folio de ce projet, lisible par tous les membres, et par tout agent via MCP.",
   "release.folio.title": "Titre du folio",
-  "release.folio.defaultTitle": "Version #$1 : $2",
+  "release.folio.defaultTitle": "Version $1 : $2",
   "release.folio.save": "Enregistrer",
   "release.folio.saved": "Journal enregistré dans les Folios",
   "release.folio.error": "Impossible d'enregistrer le journal.",
   "release.folio.summary":
-    "Journal de la version #$1 : $2 quête(s) enregistrée(s).",
+    "Journal de la version $1 : $2 quête(s) enregistrée(s).",
 
   "release.tab.overview": "Vue d'ensemble",
   "release.tab.contents": "Contenu",
@@ -1258,7 +1264,7 @@ export default {
   "blights.action.deleteSelected": "Supprimer la sélection",
   "blights.action.viewStack": "Voir la stack trace",
   "blights.toast.resolved": "Fléau résolu",
-  "blights.toast.forwarded": "Quête #$1 créée depuis le fléau",
+  "blights.toast.forwarded": "Quête $1 créée depuis le fléau",
   "blights.toast.deleted": "Fléau supprimé",
   "blights.toast.deletedMany": "$1 fléaux supprimés",
   "blights.deleteConfirm": "Supprimer définitivement ce fléau ?",
@@ -1278,7 +1284,7 @@ export default {
   "blights.rules.toast.added": "Règle d'exclusion ajoutée",
   "blights.rules.toast.removed": "Règle d'exclusion supprimée",
   "blights.status.resolved": "Résolu",
-  "blights.status.quest": "Quête #$1",
+  "blights.status.quest": "Transmis à une quête",
 
   "sigils.title": "Applications",
   "sigils.empty":

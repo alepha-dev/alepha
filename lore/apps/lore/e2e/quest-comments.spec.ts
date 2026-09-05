@@ -282,7 +282,7 @@ test.describe("Quest comments", () => {
     await test.step("type and send", async () => {
       const box = page.getByRole("textbox", { name: /leave a comment/i });
       await expect(box).toBeVisible({ timeout: 10_000 });
-      await box.fill(`Blocked by #${other.shortId}, see there.`);
+      await box.fill(`Blocked by #Q${other.shortId}, see there.`);
       await page.getByRole("button", { name: /^comment$/i }).click();
 
       // The feed takes the posted comment without a reload. Assert on the
@@ -295,8 +295,8 @@ test.describe("Quest comments", () => {
       await expect(box).toHaveValue("");
     });
 
-    await test.step("the bare #N became a real link to that quest", async () => {
-      // Expanded into `[[quest:#N]]` on the way into the shared resolver —
+    await test.step("the bare #Q<n> became a real link to that quest", async () => {
+      // Expanded into `[[#Q<n>]]` on the way into the shared resolver, which is
       // the same one that renders a description's wiki links.
       const link = page.getByRole("link", {
         name: new RegExp(`Referenced${t}`),

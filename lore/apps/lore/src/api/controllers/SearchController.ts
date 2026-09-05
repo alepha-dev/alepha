@@ -3,6 +3,7 @@ import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
+import { parseTypedReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
 import { quests } from "../entities/quests.ts";
@@ -82,18 +83,32 @@ export class SearchController {
       // Added to each table's text search rather than replacing it: the
       // body matches are not wrong, only less likely, so they stay
       // underneath. `orderSearchHits` pins the exact hits above them.
-      const idMatch = raw.match(/^#?(\d+)$/);
-      const id = idMatch ? Number.parseInt(idMatch[1], 10) : undefined;
+      //
+      // The typed form (epic #32), `#Q42` or `#F42`, names the kind as well
+      // and restricts the id match to that one table: it is the very
+      // ambiguity the palette used to show, taken on the way in. A letter
+      // for a kind this search does not index matches nothing by id. The
+      // untyped `#42` and `42` keep reaching all three tables, so nobody is
+      // made to type the letter to search.
+      const typed = parseTypedReference(raw);
+      const idMatch = typed ? undefined : raw.match(/^#?(\d+)$/);
+      const untypedId = idMatch ? Number.parseInt(idMatch[1], 10) : undefined;
+      const idFor = (kind: "quest" | "folio" | "directory") =>
+        typed ? (typed.kind === kind ? typed.id : undefined) : untypedId;
+      const questId = idFor("quest");
+      const folioId = idFor("folio");
+      const directoryId = idFor("directory");
+      const id = typed?.id ?? untypedId;
 
       const [questRows, folioRows, directoryRows] = await Promise.all([
         this.quests.findMany({
           where: {
             projectId: { eq: params.projectId },
-            ...(id === undefined
+            ...(questId === undefined
               ? { title: { ilike: `%${raw}%` } }
               : {
                   or: [
-                    { shortId: { eq: id } },
+                    { shortId: { eq: questId } },
                     { title: { ilike: `%${raw}%` } },
                   ],
                 }),
@@ -103,11 +118,11 @@ export class SearchController {
         this.folios.findMany({
           where: {
             projectId: { eq: params.projectId },
-            ...(id === undefined
+            ...(folioId === undefined
               ? { searchText: { like: `%${needle}%` } }
               : {
                   or: [
-                    { shortId: { eq: id } },
+                    { shortId: { eq: folioId } },
                     { searchText: { like: `%${needle}%` } },
                   ],
                 }),
@@ -117,10 +132,13 @@ export class SearchController {
         this.directories.findMany({
           where: {
             projectId: { eq: params.projectId },
-            ...(id === undefined
+            ...(directoryId === undefined
               ? { name: { like: `%${raw}%` } }
               : {
-                  or: [{ shortId: { eq: id } }, { name: { like: `%${raw}%` } }],
+                  or: [
+                    { shortId: { eq: directoryId } },
+                    { name: { like: `%${raw}%` } },
+                  ],
                 }),
           },
           limit,

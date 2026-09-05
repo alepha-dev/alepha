@@ -237,7 +237,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
         </DialogProvider>
       </AlephaContext.Provider>,
     );
-    await view.findByRole("link", { name: /^#1 - / });
+    await view.findByRole("link", { name: /^#Q1 - / });
     return { view, links: alepha.inject(FakeLinkProvider) };
   };
 
@@ -289,7 +289,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     // The sheet closes, the list refetches, and the row is there: no
     // navigation to the quest's own page.
     await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
-    await view.findByRole("link", { name: "#2 - Quest from the toolbar" });
+    await view.findByRole("link", { name: "#Q2 - Quest from the toolbar" });
     expect(links.fetches).toBeGreaterThan(fetchesBefore);
     expect(
       alepha!.store.get("alepha.react.router.state" as never) as
@@ -307,7 +307,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
   // checkbox's own "Select row"; the checkbox itself is only "Select row".
   const selectRow = (shortId: number) => {
     const row = screen.getByRole("row", {
-      name: new RegExp(`^Select row - #${shortId} `),
+      name: new RegExp(`^Select row - #Q${shortId} `),
     });
     fireEvent.click(within(row).getByRole("checkbox"));
   };
@@ -410,7 +410,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       const link = within(epicCell(view)).getByRole("link");
       // `#7`, the per-project number. `#42` would be the database id: a
       // number nobody recognises, pointing at a different epic or at none.
-      expect(link.textContent).toContain("#7");
+      expect(link.textContent).toContain("#E7");
       expect(link.textContent).not.toContain("42");
       expect(link.getAttribute("href")).toBe("/epics/7");
     });
@@ -428,7 +428,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
         '[data-slot="tooltip-trigger"]',
       );
       expect(trigger).not.toBeNull();
-      expect(trigger?.textContent).toContain("#7");
+      expect(trigger?.textContent).toContain("#E7");
     });
 
     it("shows a muted dash when the quest has no epic", async () => {

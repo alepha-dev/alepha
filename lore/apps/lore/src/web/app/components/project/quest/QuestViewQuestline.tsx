@@ -8,6 +8,8 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
+
 /**
  * The questline as `QuestView` already fetched it — passed down rather than
  * re-fetched, so opening a quest still costs one `getQuestLine`.
@@ -101,7 +103,7 @@ const QuestViewQuestline = (props: QuestViewQuestlineProps) => {
         href={questHref(shortId)}
         className="bg-background/40 shrink-0 rounded-sm px-1.5 py-0.5 font-mono text-xs hover:underline"
       >
-        #{shortId}
+        {formatReference("quest", shortId)}
       </Link>
       <span className="text-muted-foreground min-w-0 truncate">{title}</span>
       <Link

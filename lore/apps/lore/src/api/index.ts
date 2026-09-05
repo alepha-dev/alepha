@@ -6,6 +6,7 @@ import {
 import { AlephaApiInvitations } from "alepha/api/invitations";
 
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AdminReferenceController } from "./controllers/AdminReferenceController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
@@ -73,6 +74,7 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
+import { ReferenceConversionService } from "./services/ReferenceConversionService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
@@ -133,6 +135,9 @@ export const LoreApi = $module({
     FolioBlobService,
     FolioHistoryService,
     FolioLinkService,
+    // The one-shot reference converter of epic #32; goes with its admin
+    // controller once the old grammar is purged (quest #1808).
+    ReferenceConversionService,
     // Declares the `$invitationResource` for `resourceType: "project"`.
     // Nothing injects it, so like `AppSecurityProvider` it has to be listed
     // or the resolver is never registered and every invitation 404s.
@@ -199,6 +204,7 @@ export const LoreApi = $module({
     ProjectQuestPortabilityController,
     InvitationController,
     AdminProjectController,
+    AdminReferenceController,
     KanbanController,
     FolioController,
     DirectoryController,

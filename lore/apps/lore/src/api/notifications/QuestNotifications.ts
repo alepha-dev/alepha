@@ -1,6 +1,8 @@
 import { z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
+
 /**
  * Email templates for the Quest module. Currently just the per-quest
  * reminder (see Lore quest #42). Frequency and trigger time live on the
@@ -36,7 +38,7 @@ export class QuestNotifications {
         return `
         <h1>${projectTitle} — Quest reminder</h1>
         <p>Hi ${recipientName},</p>
-        <p>You accepted the quest <strong>${questTitle}</strong> (#${it.shortId}) and haven't completed it yet. Just a nudge while it's still open.</p>
+        <p>You accepted the quest <strong>${questTitle}</strong> (${formatReference("quest", it.shortId)}) and haven't completed it yet. Just a nudge while it's still open.</p>
         <p>
           <a href="${questUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px;">
             Open quest

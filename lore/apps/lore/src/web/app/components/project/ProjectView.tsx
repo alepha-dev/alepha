@@ -38,6 +38,7 @@ import { currentSigilAtom } from "../../atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "../../atoms/currentSigilsAtom.ts";
 import { questLogCollapsedAtom } from "../../atoms/questLogCollapsedAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { formatReference } from "../shared/element/typedReference.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
@@ -364,13 +365,13 @@ const ProjectView = () => {
   // few pixels apart. The identifier and the name are split across the two,
   // one each.
   if (name === "projectEpic" && epic) {
-    breadcrumbs.push({ label: `#${epic.number}` });
+    breadcrumbs.push({ label: formatReference("epic", epic.number) });
   }
   // Same shape for the quest detail page: `#1208` as an inert leaf. The
   // number, not the title — the title is already the first thing on the page,
   // and a long one would push the crumbs off the bar.
   if (name === "projectQuest" && quest) {
-    breadcrumbs.push({ label: `#${quest.shortId}` });
+    breadcrumbs.push({ label: formatReference("quest", quest.shortId) });
   }
   // And the release detail page contributes its TAG, which is the one leaf
   // on this bar that is not a `#number`.

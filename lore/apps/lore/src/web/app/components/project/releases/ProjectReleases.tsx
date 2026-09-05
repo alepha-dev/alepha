@@ -17,6 +17,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
 import ReleaseProgress from "./ReleaseProgress.tsx";
@@ -311,7 +312,7 @@ const ProjectReleases = () => {
                     </Link>
                   ) : (
                     <span className="text-muted-foreground truncate font-mono text-sm">
-                      #{release.number}
+                      {formatReference("release", release.number)}
                     </span>
                   )}
                   {/* Only when it says something the tag does not. `title`

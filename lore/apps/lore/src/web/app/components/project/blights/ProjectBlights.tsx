@@ -32,6 +32,7 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 
 /**
@@ -98,14 +99,11 @@ const ProjectBlights = () => {
     if (status === "resolved") {
       return <Badge variant="secondary">{tr("blights.status.resolved")}</Badge>;
     }
+    // The status carries the quest's database id after the prefix, not its
+    // per-project number, so the badge says only that it was forwarded
+    // (epic #32): a `#` before a database id read as a reference nobody had.
     if (status.startsWith(QUEST_STATUS_PREFIX)) {
-      return (
-        <Badge variant="outline">
-          {tr("blights.status.quest", {
-            args: [status.slice(QUEST_STATUS_PREFIX.length)],
-          })}
-        </Badge>
-      );
+      return <Badge variant="outline">{tr("blights.status.quest")}</Badge>;
     }
     return null;
   };
@@ -374,7 +372,7 @@ const ProjectBlights = () => {
                         });
                         toaster.success(
                           tr("blights.toast.forwarded", {
-                            args: [String(res.questShortId)],
+                            args: [formatReference("quest", res.questShortId)],
                           }),
                         );
                         refresh();

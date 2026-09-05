@@ -206,7 +206,7 @@ describe("ProjectEpicQuests - columns", () => {
     await mount([questOf(12, "Ship the thing", "high")]);
 
     const link = await screen.findByRole("link", {
-      name: "#12 - Ship the thing",
+      name: "#Q12 - Ship the thing",
     });
     expect(link.getAttribute("href")).toBe("/quests/12");
     // Only the separator is muted: the number carries the title's colour.
@@ -219,7 +219,7 @@ describe("ProjectEpicQuests - columns", () => {
   it("shows the priority chip and the relative update time under their own headers", async () => {
     await mount([questOf(12, "Ship the thing", "high")]);
 
-    await screen.findByRole("link", { name: "#12 - Ship the thing" });
+    await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
     expect(screen.getByText("Priority")).toBeTruthy();
     expect(screen.getByText("Updated")).toBeTruthy();
     expect(screen.getByText("high")).toBeTruthy();
@@ -230,7 +230,7 @@ describe("ProjectEpicQuests - columns", () => {
   it("keeps the detach row action", async () => {
     const { detached } = await mount([questOf(12, "Ship the thing", "low")]);
 
-    await screen.findByRole("link", { name: "#12 - Ship the thing" });
+    await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
     // The row menu is a per-row control; the action inside it is the one
     // named in the catalogue.
     const menus = screen.getAllByRole("button", { name: /actions|menu/i });

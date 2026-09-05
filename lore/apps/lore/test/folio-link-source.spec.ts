@@ -250,6 +250,29 @@ describe("quests and epics as link sources, through their controllers", () => {
     expect(inbound[0].fromType).toBe("quest");
   });
 
+  it("the typed [[#F<n>]] form reaches the backlinks the same way", async () => {
+    const { owner, projectId, target } = await seedTarget();
+
+    await ctx.questController.createQuest.fetch(
+      {
+        body: {
+          projectId,
+          title: "Wire the thing, typed",
+          description: `Per [[#F${target.shortId}]], do the thing.`,
+          area: "orm",
+          priority: "high",
+          objectives: [],
+          attachments: [],
+        },
+      },
+      { user: owner },
+    );
+
+    const inbound = await ctx.folioLinkService.findInbound(target.id);
+    expect(inbound).toHaveLength(1);
+    expect(inbound[0].fromType).toBe("quest");
+  });
+
   it("a link in a completion summary counts too, and does not evict the description's", async () => {
     const { owner, projectId, target } = await seedTarget();
     const second = await ctx.folioController.create.fetch(

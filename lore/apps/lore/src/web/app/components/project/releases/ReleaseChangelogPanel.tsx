@@ -6,6 +6,7 @@ import { BookMarked, Copy, Download, ScrollText } from "lucide-react";
 import type { ReleaseChangelogGroup } from "@/api/schemas/releaseChangelogGroupSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import ReleaseChangelogRow from "./ReleaseChangelogRow.tsx";
 
 export interface ReleaseChangelogPanelProps {
@@ -95,7 +96,9 @@ const ReleaseChangelogPanel = (props: ReleaseChangelogPanelProps) => {
                       is the headline and a loose quest is a line item. */}
                   {group.kind === "epic" && (
                     <span className="text-muted-foreground font-mono text-[11px] font-medium">
-                      #{group.ref}
+                      {group.ref != null
+                        ? formatReference("epic", group.ref)
+                        : ""}
                     </span>
                   )}
                   <span

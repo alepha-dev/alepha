@@ -1,3 +1,4 @@
+import { formatReference } from "../../shared/element/typedReference.ts";
 import ReleasePriorityPill from "./ReleasePriorityPill.tsx";
 
 export interface ReleaseChangelogRowProps {
@@ -14,7 +15,7 @@ export interface ReleaseChangelogRowProps {
 const ReleaseChangelogRow = (props: ReleaseChangelogRowProps) => (
   <div className="flex items-center gap-3 px-0.5 py-[7px]">
     <span className="text-muted-foreground w-9 shrink-0 font-mono text-[11px]">
-      #{props.shortId}
+      {formatReference("quest", props.shortId)}
     </span>
     <span className="min-w-0 flex-1 text-[13.5px]">{props.title}</span>
     <ReleasePriorityPill priority={props.priority} />

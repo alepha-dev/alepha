@@ -10,6 +10,7 @@ import { QuestController } from "../../api/controllers/QuestController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 // Same helper the UI labels a user with, so a name reads identically over
 // MCP and on the page. Precedent for reaching across: `FolioBlobService`
 // imports `folioAssetPath` from the same tree. It is a pure function with no
@@ -976,7 +977,7 @@ export class QuestTools {
       const target = quest.objectives.find((o) => o.id === params.objectiveId);
       if (!target) {
         throw new NotFoundError(
-          `Objective ${params.objectiveId} not found on quest #${quest.shortId}.`,
+          `Objective ${params.objectiveId} not found on quest ${formatReference("quest", quest.shortId)}.`,
         );
       }
 
@@ -1043,7 +1044,7 @@ export class QuestTools {
         current.updatedAt !== params.expectedUpdatedAt
       ) {
         throw new ConflictError(
-          `Quest #${current.shortId} changed since you read it: its updatedAt is ${current.updatedAt}, you passed ${params.expectedUpdatedAt}. Re-read the quest before writing.`,
+          `Quest ${formatReference("quest", current.shortId)} changed since you read it: its updatedAt is ${current.updatedAt}, you passed ${params.expectedUpdatedAt}. Re-read the quest before writing.`,
         );
       }
 

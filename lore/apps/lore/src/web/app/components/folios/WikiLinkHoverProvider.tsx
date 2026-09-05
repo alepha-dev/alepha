@@ -1,5 +1,5 @@
 import { FileImage } from "@alepha/ui/components/file-image/file-image";
-import { useClient } from "alepha/react";
+import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   type RefObject,
@@ -11,12 +11,16 @@ import {
 } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
+import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 
+import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import { formatReference } from "../shared/element/typedReference.ts";
 import type { BrokenWikiLinkReason } from "./folioWikiLinkResolver.ts";
 import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
 
@@ -29,6 +33,10 @@ import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
  * - `/<projectSlug>/folios/<shortId>` → folio preview
  * - `/<projectSlug>/quests/<shortId>` → quest preview
  * - `/<projectSlug>/epics/<number>` → epic preview
+ * - `/<projectSlug>/feedback?feedback=<shortId>` → feedback preview (the
+ *   inbox is the only page feedback has; the query names the item)
+ * - `/<projectSlug>/releases/<tag>` → release preview, read off the
+ *   project's own release list rather than fetched
  * - `/api/files/<uuid>` → blob preview (the rewriter only emits this
  *   URL for resolved blob refs, so the false-positive risk on a
  *   user-typed link is negligible)
@@ -67,6 +75,10 @@ type HoverTarget =
   // `shortId` on an epic is its per-project `number` — one field name
   // across the union so `targetKey` and the fetch switch stay uniform.
   | { kind: "epic"; shortId: number }
+  | { kind: "feedback"; shortId: number }
+  // A release link carries its tag, not its number: that is what the route
+  // takes, and the preview finds the release by it.
+  | { kind: "release"; tag: string }
   | { kind: "blob"; fileId: string }
   | { kind: "broken"; reason: BrokenReason; hint?: string };
 
@@ -84,6 +96,8 @@ interface HoverState {
 const FOLIO_RE = /^\/([^/]+)\/folios\/(\d+)(?:[#?]|$)/;
 const QUEST_RE = /^\/([^/]+)\/quests\/(\d+)(?:[#?]|$)/;
 const EPIC_RE = /^\/([^/]+)\/epics\/(\d+)(?:[#?]|$)/;
+const FEEDBACK_RE = /^\/([^/]+)\/feedback\?feedback=(\d+)(?:[#&]|$)/;
+const RELEASE_RE = /^\/([^/]+)\/releases\/([^/?#]+)(?:[#?]|$)/;
 const BLOB_RE = /^\/api\/files\/([a-f0-9-]{36})(?:[#?]|$)/i;
 
 /**
@@ -133,6 +147,14 @@ const parseHref = (
   if (quest && quest[1] === projectSlug) {
     return { kind: "quest", shortId: Number(quest[2]) };
   }
+  const feedback = FEEDBACK_RE.exec(path);
+  if (feedback && feedback[1] === projectSlug) {
+    return { kind: "feedback", shortId: Number(feedback[2]) };
+  }
+  const release = RELEASE_RE.exec(path);
+  if (release && release[1] === projectSlug) {
+    return { kind: "release", tag: decodeURIComponent(release[2]) };
+  }
   const blob = BLOB_RE.exec(path);
   if (blob) return { kind: "blob", fileId: blob[1] };
   return null;
@@ -140,6 +162,7 @@ const parseHref = (
 
 const targetKey = (t: HoverTarget): string => {
   if (t.kind === "blob") return `blob:${t.fileId}`;
+  if (t.kind === "release") return `release:${t.tag}`;
   if (t.kind === "broken") return `broken:${t.reason}:${t.hint ?? ""}`;
   return `${t.kind}:${t.shortId}`;
 };
@@ -150,6 +173,8 @@ const BROKEN_REASON_KEY: Record<BrokenReason, string> = {
   "quest-not-found": "folios.wikilink.broken.questNotFound",
   "epic-not-found": "folios.wikilink.broken.epicNotFound",
   "blob-not-found": "folios.wikilink.broken.blobNotFound",
+  "feedback-not-found": "folios.wikilink.broken.feedbackNotFound",
+  "release-not-found": "folios.wikilink.broken.releaseNotFound",
   "folio-not-found-quest-exists": "folios.wikilink.broken.questFormWanted",
 };
 
@@ -189,11 +214,11 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
   const epicApi = useClient<EpicController>();
+  const feedbackApi = useClient<FeedbackController>();
+  const [releases] = useStore(currentReleasesAtom);
 
   const [hover, setHover] = useState<HoverState | null>(null);
-  const cache = useRef(
-    new Map<string, FolioPreview | QuestPreview | EpicPreview | BlobPreview>(),
-  );
+  const cache = useRef(new Map<string, Preview>());
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
@@ -378,6 +403,8 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
           folioApi={folioApi}
           questApi={questApi}
           epicApi={epicApi}
+          feedbackApi={feedbackApi}
+          releases={releases ?? []}
           cardRef={cardRef}
           onEnter={cancelClose}
           onLeave={scheduleClose}
@@ -427,14 +454,43 @@ interface BlobPreview {
   fileId: string;
 }
 
+interface FeedbackPreview {
+  kind: "feedback";
+  title: string;
+  status: string;
+  shortId: number;
+}
+
+interface ReleasePreview {
+  kind: "release";
+  title: string;
+  number: number;
+  tag?: string;
+  released: boolean;
+}
+
+type Preview =
+  | FolioPreview
+  | QuestPreview
+  | EpicPreview
+  | BlobPreview
+  | FeedbackPreview
+  | ReleasePreview;
+
 interface HoverCardPopoverProps {
   state: HoverState;
   projectId: number;
   blobByUuid: Map<string, BlobRef>;
-  cache: Map<string, FolioPreview | QuestPreview | EpicPreview | BlobPreview>;
+  cache: Map<string, Preview>;
   folioApi: ReturnType<typeof useClient<FolioController>>;
   questApi: ReturnType<typeof useClient<QuestController>>;
   epicApi: ReturnType<typeof useClient<EpicController>>;
+  feedbackApi: ReturnType<typeof useClient<FeedbackController>>;
+  /**
+   * The project's releases, from the layout's atom: a release preview is a
+   * lookup by tag, never a fetch.
+   */
+  releases: ReleaseResource[];
   /**
    * Handed up so the delegated leave check can exempt the card: it is rendered
    * inside the pane but positioned `fixed` over it, and crossing into it must
@@ -446,13 +502,22 @@ interface HoverCardPopoverProps {
 }
 
 const HoverCardPopover = (props: HoverCardPopoverProps) => {
-  const { state, projectId, blobByUuid, cache, folioApi, questApi, epicApi } =
-    props;
+  const {
+    state,
+    projectId,
+    blobByUuid,
+    cache,
+    folioApi,
+    questApi,
+    epicApi,
+    feedbackApi,
+    releases,
+  } = props;
   const { tr } = useI18n<I18n, "en">();
   const key = targetKey(state.target);
-  const [data, setData] = useState<
-    FolioPreview | QuestPreview | EpicPreview | BlobPreview | null
-  >(() => cache.get(key) ?? null);
+  const [data, setData] = useState<Preview | null>(
+    () => cache.get(key) ?? null,
+  );
   const [loading, setLoading] = useState(!cache.has(key));
 
   useEffect(() => {
@@ -517,6 +582,34 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
           };
           cache.set(key, preview);
           if (alive) setData(preview);
+        } else if (state.target.kind === "feedback") {
+          const item = await feedbackApi.getFeedbackByShortId({
+            params: { projectId, shortId: state.target.shortId },
+          });
+          const preview: FeedbackPreview = {
+            kind: "feedback",
+            title: item.title,
+            status: item.status,
+            shortId: item.shortId,
+          };
+          cache.set(key, preview);
+          if (alive) setData(preview);
+        } else if (state.target.kind === "release") {
+          const tag = state.target.tag;
+          const release = releases.find((r) => r.tag === tag);
+          if (!release) {
+            if (alive) setData(null);
+            return;
+          }
+          const preview: ReleasePreview = {
+            kind: "release",
+            title: release.title,
+            number: release.number,
+            tag: release.tag,
+            released: release.releasedAt != null,
+          };
+          cache.set(key, preview);
+          if (alive) setData(preview);
         } else if (state.target.kind === "blob") {
           const blob = blobByUuid.get(state.target.fileId);
           if (!blob) {
@@ -546,7 +639,18 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
     return () => {
       alive = false;
     };
-  }, [key, state.target, projectId, blobByUuid, cache, folioApi, questApi]);
+  }, [
+    key,
+    state.target,
+    projectId,
+    blobByUuid,
+    cache,
+    folioApi,
+    questApi,
+    epicApi,
+    feedbackApi,
+    releases,
+  ]);
 
   // Position: anchor's bounding rect, popover below the link with a
   // small gap. Fixed positioning + viewport math so it stays put on
@@ -611,7 +715,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline gap-2">
             <span className="text-muted-foreground font-mono text-xs">
-              #{data.shortId}
+              {formatReference("quest", data.shortId)}
             </span>
             <span className="text-sm font-semibold">{data.title}</span>
           </div>
@@ -626,7 +730,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline gap-2">
             <span className="text-muted-foreground font-mono text-xs">
-              #{data.number}
+              {formatReference("epic", data.number)}
             </span>
             <span className="text-sm font-semibold">{data.title}</span>
           </div>
@@ -634,6 +738,38 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             <span>{data.status}</span>
             <span>
               · {data.progress.completed}/{data.progress.total}
+            </span>
+          </div>
+        </div>
+      )}
+      {data?.kind === "feedback" && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-baseline gap-2">
+            <span className="text-muted-foreground font-mono text-xs">
+              {formatReference("feedback", data.shortId)}
+            </span>
+            <span className="text-sm font-semibold">{data.title}</span>
+          </div>
+          <div className="text-muted-foreground text-xs">{data.status}</div>
+        </div>
+      )}
+      {data?.kind === "release" && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-baseline gap-2">
+            <span className="text-muted-foreground font-mono text-xs">
+              {formatReference("release", data.number)}
+            </span>
+            <span className="text-sm font-semibold">{data.title}</span>
+          </div>
+          <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
+            {data.tag && <span>{data.tag}</span>}
+            <span>
+              {data.tag ? "· " : ""}
+              {tr(
+                data.released
+                  ? "folios.wikilink.release.released"
+                  : "folios.wikilink.release.open",
+              )}
             </span>
           </div>
         </div>
