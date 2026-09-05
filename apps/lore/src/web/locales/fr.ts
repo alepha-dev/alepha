@@ -1636,6 +1636,8 @@ export default {
   "epic.aside.created": "Créée le",
   "epic.flow.empty": "Associez des quêtes pour voir leurs dépendances.",
   "questline.stat.quests": "quêtes",
+  "questline.stat.area": "domaine",
+  "questline.stat.areas": "domaines",
   "questline.state.done": "Terminée",
   "questline.state.running": "En cours",
   "questline.state.ready": "Prête",

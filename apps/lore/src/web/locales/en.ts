@@ -1607,6 +1607,8 @@ export default {
   "epic.aside.created": "Created",
   "epic.flow.empty": "Attach quests to see how they depend on each other.",
   "questline.stat.quests": "quests",
+  "questline.stat.area": "area",
+  "questline.stat.areas": "areas",
   "questline.state.done": "Done",
   "questline.state.running": "Running",
   "questline.state.ready": "Ready",
