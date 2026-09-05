@@ -145,6 +145,28 @@ describe("ControlSelect clear label", () => {
    * is the answer the quest named ahead of time: an `x` on the trigger, not
    * the row coming back.
    */
+  /**
+   * Why this button exists, stated properly.
+   *
+   * ⚠️ An earlier version of the component's own comment said the `x` had to
+   * exist because `epics.spec.ts` went red when the injected "No release" row
+   * was deleted. That is circular, and it is corrected in
+   * `control-select.tsx` and in that spec: it went red because its SELECTOR
+   * named a deleted node, and re-clicking the selected release would have
+   * fixed it in one line. A broken locator is not a usability finding.
+   *
+   * The reasons that hold:
+   *
+   * - re-click-to-deselect is counter-conventional, not merely quiet - in a
+   *   native `select` and in almost every combobox, clicking the chosen
+   *   option confirms and closes;
+   * - "Reset filters" is all or nothing, and there is no per-filter escape;
+   * - it costs nothing at rest, which the first case below pins.
+   *
+   * The last case pins the asymmetry rather than hiding it: `deselectable` is
+   * `clearable || !meta.required`, so optional fields accept re-click and
+   * show no `x`. `clearable` is the caller saying empty is worth ADVERTISING.
+   */
   describe("the clear button", () => {
     it("appears only once something is chosen", async () => {
       const alepha = await start();
