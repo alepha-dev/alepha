@@ -4,38 +4,72 @@
     {
       "name": "docs",
       "runtimeExecutable": "yarn",
-      "runtimeArgs": ["w", "docs", "dev"],
+      "runtimeArgs": [
+        "w",
+        "docs",
+        "dev"
+      ],
       "port": 3302
     },
     {
       "name": "lore",
       "runtimeExecutable": "yarn",
-      "runtimeArgs": ["w", "lore", "dev"],
+      "runtimeArgs": [
+        "w",
+        "lore",
+        "dev"
+      ],
       "port": 3303
     },
     {
       "name": "playground",
       "runtimeExecutable": "yarn",
-      "runtimeArgs": ["w", "playground", "dev"],
+      "runtimeArgs": [
+        "w",
+        "playground",
+        "dev"
+      ],
       "port": 3304
     },
     {
       "name": "shop",
       "runtimeExecutable": "yarn",
-      "runtimeArgs": ["w", "shop", "dev"],
+      "runtimeArgs": [
+        "w",
+        "shop",
+        "dev"
+      ],
       "port": 3305
     },
     {
       "name": "errors",
       "runtimeExecutable": "yarn",
-      "runtimeArgs": ["w", "errors", "dev"],
+      "runtimeArgs": [
+        "w",
+        "errors",
+        "dev"
+      ],
       "port": 3306
     },
     {
       "name": "totp",
       "runtimeExecutable": "yarn",
-      "runtimeArgs": ["w", "totp-example", "dev"],
+      "runtimeArgs": [
+        "w",
+        "totp-example",
+        "dev"
+      ],
       "port": 3307
+    },
+    {
+      "name": "ui",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": [
+        "w",
+        "ui",
+        "dev"
+      ],
+      "port": 3308
     }
   ]
 }

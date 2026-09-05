@@ -153,6 +153,7 @@ export const E2E_SLOTS = {
   shop: 3,
   ssr: 4,
   "ssr-dev": 5,
+  ui: 6,
 } as const;
 
 export type E2eApp = keyof typeof E2E_SLOTS;
