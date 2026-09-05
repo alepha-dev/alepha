@@ -1,8 +1,9 @@
 import { $pageAccount } from "@alepha/ui/components/account/account-router-page";
 import { $client } from "alepha/server/links";
-import { FolderKanban, Mail, MessageSquareWarning } from "lucide-react";
+import { FolderKanban, Mail, MessageSquareWarning, Server } from "lucide-react";
 import { createElement } from "react";
 
+import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
 
@@ -30,6 +31,7 @@ import type { InvitationController } from "@/api/controllers/InvitationControlle
 export class LoreAccountRouter {
   protected readonly invitationApi = $client<InvitationController>();
   protected readonly feedbackApi = $client<FeedbackController>();
+  protected readonly estateApi = $client<EstateController>();
 
   /**
    * The complete project list, behind Home's and the switcher's five.
@@ -95,5 +97,26 @@ export class LoreAccountRouter {
       order: 102,
     },
     lazy: () => import("./feedback/MyFeedback.tsx"),
+  });
+
+  /**
+   * The estates the caller owns (#1838): the machines lent to projects as
+   * deploy destinations, with the switches and the secret no project page
+   * shows because neither belongs to a project. Gated on the list action
+   * like the two above. Order 103: the next free slot in the Lore group,
+   * never below 100.
+   */
+  estates = $pageAccount({
+    path: "/estates",
+    name: "accountEstates",
+    head: { title: "Estates" },
+    can: () => this.estateApi.listMyEstates.can(),
+    nav: {
+      label: "Estates",
+      icon: createElement(Server),
+      group: "Lore",
+      order: 103,
+    },
+    lazy: () => import("./MyEstates.tsx"),
   });
 }

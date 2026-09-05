@@ -1,0 +1,7 @@
+{
+  "type": "ack",
+  "id": "3e9a1c7b-5d2f-4b8a-9c6e-7f1d2a3b4c5d",
+  "status": "failed",
+  "step": "verifying",
+  "reason": "artifact digest mismatch: got 0123456789ab…, expected 9f86d081884c…"
+}

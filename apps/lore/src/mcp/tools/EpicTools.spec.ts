@@ -68,13 +68,13 @@ class FailingAttachEpicController extends EpicController {
 }
 
 /**
- * The epic surface over MCP, plus the gap it closes: Task 2 made the
- * backlog gate default-on inside `QuestController.getQuests`, and
- * `QuestTools.quest_list` called that same action — so before this file,
- * MCP `quest_list` was gated too, contradicting spec §5.3. That asymmetry
- * is deliberate the other way: the human's backlog stays clean, but an
- * agent that files a quest into a planned epic must see it in its own next
- * `quest_list` call, or the tool looks as though it silently failed.
+ * The epic surface over MCP.
+ *
+ * `quest_list` and the backlog gate have a history here. This file used to
+ * pin that MCP `quest_list` was NEVER gated, so an agent filing a quest into
+ * a planned epic would see it on its next call; epic #31 reversed that (the
+ * default matches the UI's backlog, `includePlanned: true` and `epic:` are
+ * the two ways past it) and the cases below pin the new contract.
  *
  * Pinned, like every other lore spec: the ROOT vitest config — the one CI
  * runs — sets `DATABASE_URL` to a Postgres URL, which this app's SQLite
@@ -229,19 +229,87 @@ describe("Lore MCP — epics", () => {
     expect((await repos.folios.getById(folio.id)).epicId).toBe(epic.id);
   });
 
-  it("quest_list is NOT gated — an agent still sees planned-epic quests", async ({
+  /**
+   * ⚠️ This used to assert the opposite: that `quest_list` is never gated,
+   * so an agent filing into a planned epic sees its quest on the next call.
+   * That default made the tool disagree with the backlog a member looks at
+   * (84 rows here against 5 in the UI on this project), with no parameter to
+   * reconcile the two. Epic #31 flipped it: the default matches the UI, and
+   * the two escape hatches below are what keep the original requirement.
+   */
+  it("quest_list hides a planned epic's quests by default, like the UI", async ({
     expect,
   }) => {
-    // Deliberate asymmetry with the UI. An agent that files a quest into a
-    // planned epic must see it in its own next quest_list call, or the tool
-    // looks as though it silently failed.
     const { alepha, project, questTools, call } = await setup();
     const epic = await createTestEpic(alepha, project, { status: "planned" });
-    const quest = await createTestQuest(alepha, project, { epicId: epic.id });
+    const parked = await createTestQuest(alepha, project, { epicId: epic.id });
+    const loose = await createTestQuest(alepha, project);
 
     const result = await call(questTools.quest_list, { project: project.id });
 
-    expect(result.quests.map((q: any) => q.shortId)).toContain(quest.shortId);
+    const listed = result.quests.map((q: any) => q.shortId);
+    expect(listed).toContain(loose.shortId);
+    expect(listed).not.toContain(parked.shortId);
+  });
+
+  it("quest_list shows them again with includePlanned: true", async ({
+    expect,
+  }) => {
+    const { alepha, project, questTools, call } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "planned" });
+    const parked = await createTestQuest(alepha, project, { epicId: epic.id });
+
+    const result = await call(questTools.quest_list, {
+      project: project.id,
+      includePlanned: true,
+    });
+
+    expect(result.quests.map((q: any) => q.shortId)).toContain(parked.shortId);
+  });
+
+  it("quest_list filtered on an epic is never gated, with no flag", async ({
+    expect,
+  }) => {
+    // The case the old default existed for: an agent that just filed a quest
+    // into a planned epic reads it back by addressing the epic.
+    const { alepha, project, questTools, call } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "planned" });
+    const parked = await createTestQuest(alepha, project, { epicId: epic.id });
+
+    const result = await call(questTools.quest_list, {
+      project: project.id,
+      epic: epic.id,
+    });
+
+    expect(result.quests.map((q: any) => q.shortId)).toContain(parked.shortId);
+  });
+
+  it("quest_create with accept: true into a planned epic creates the quest and reports the refusal", async ({
+    expect,
+  }) => {
+    // The common `acceptNote` case since epic #31: the quest is filed, the
+    // accept is refused by the epic phase gate, and the note is the server's
+    // own message, which names the fix.
+    const { alepha, repos, project, questTools, call } = await setup();
+    const epic = await createTestEpic(alepha, project, { status: "planned" });
+
+    const created = await call(questTools.quest_create, {
+      project: project.id,
+      title: "Parked on arrival",
+      description: "",
+      area: "Deploy",
+      priority: "medium",
+      epic_number: epic.number,
+      accept: true,
+    });
+
+    expect(created.acceptedAt).toBeUndefined();
+    expect(created.acceptNote).toBe(
+      `Cannot accept quest #Q${created.shortId}: Epic #E${epic.number} is planned. Begin it first.`,
+    );
+    const row = await repos.quests.getById(created.id);
+    expect(row.epicId).toBe(epic.id);
+    expect(row.acceptedAt).toBeUndefined();
   });
 
   it("resolves epic_number to the global epic id, scoped to the project", async ({
@@ -455,18 +523,23 @@ describe("Lore MCP — epics", () => {
   });
 
   describe("project_context — epic index", () => {
-    it("lists every epic with number, title, status and questCount", async ({
+    it("lists every epic with number, title, status, questCount and completed", async ({
       expect,
     }) => {
       // Without this index a project with a planned epic's worth of quests
       // shows up as unrelated noise — no signal they're one parked subject.
+      // `completed` is what tells "planned, 2 specified" from "planned, 2
+      // shipped" at orientation (epic #27 was the second and nobody saw).
       const { alepha, project, projectTools, call } = await setup();
       const epic = await createTestEpic(alepha, project, {
         title: "Lore Deploy",
         status: "planned",
       });
       await createTestQuest(alepha, project, { epicId: epic.id });
-      await createTestQuest(alepha, project, { epicId: epic.id });
+      await createTestQuest(alepha, project, {
+        epicId: epic.id,
+        completedAt: "2026-09-04T00:00:00.000Z",
+      });
 
       const result = await call(projectTools.project_context, {
         project: project.id,
@@ -478,6 +551,7 @@ describe("Lore MCP — epics", () => {
           title: "Lore Deploy",
           status: "planned",
           questCount: 2,
+          completed: 1,
         },
       ]);
     });

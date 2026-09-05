@@ -6,12 +6,22 @@ import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
   BookOpen,
+  FileSearch,
   Home as HomeIcon,
+  LayoutDashboard,
   ListChecks,
   MessageSquareWarning,
   MousePointerClick,
   SlidersHorizontal,
   Table2,
+  UsersIcon,
+  CreditCard,
+  ChartLine,
+  Bell,
+  FilesIcon,
+  KeyRound,
+  MonitorSmartphone,
+  Zap,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -32,6 +42,38 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/", label: "Home", icon: HomeIcon },
       { href: "/primitives", label: "Primitives", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      {
+        href: "/blocks/admin/dashboard",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+      },
+      { href: "/blocks/admin/users", label: "Users", icon: UsersIcon },
+      { href: "/blocks/admin/jobs", label: "Jobs", icon: Zap },
+      {
+        href: "/blocks/admin/sessions",
+        label: "Sessions",
+        icon: MonitorSmartphone,
+      },
+      { href: "/blocks/admin/keys", label: "API keys", icon: KeyRound },
+      { href: "/blocks/admin/files", label: "Files", icon: FilesIcon },
+      {
+        href: "/blocks/admin/notifications",
+        label: "Notifications",
+        icon: Bell,
+      },
+      {
+        href: "/blocks/admin/parameters",
+        label: "Parameters",
+        icon: SlidersHorizontal,
+      },
+      { href: "/blocks/admin/analytics", label: "Analytics", icon: ChartLine },
+      { href: "/blocks/admin/payments", label: "Payments", icon: CreditCard },
+      { href: "/blocks/admin/audits", label: "Audit log", icon: FileSearch },
     ],
   },
   {

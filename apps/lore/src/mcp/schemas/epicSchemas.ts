@@ -48,7 +48,12 @@ export const epicListResultSchema = z.object({
       dependsOn_number: z
         .integer()
         .describe(
-          "Per-project number of the epic that has to come first, if any. ADVISORY: nothing refuses a status change because of it. It is what the roadmap draws the order from - see `epics.dependsOn`.",
+          "Per-project number of the epic that has to come first, if any. A gate: epic_set_status refuses 'active' while that epic is not 'done'. It is also what the roadmap draws the order from - see `epics.dependsOn`.",
+        )
+        .optional(),
+      dependsOn_status: epicStatusSchema
+        .describe(
+          "The predecessor's status, present exactly when dependsOn_number is. Anything but 'done' means this epic cannot begin yet.",
         )
         .optional(),
     }),
@@ -78,7 +83,12 @@ export const epicGetResultSchema = z.object({
   dependsOn_number: z
     .integer()
     .describe(
-      "Per-project number of the epic that has to come first, if any. ADVISORY: nothing refuses a status change because of it - it is what the roadmap draws the order from.",
+      "Per-project number of the epic that has to come first, if any. A gate: epic_set_status refuses 'active' while that epic is not 'done'. It is also what the roadmap draws the order from.",
+    )
+    .optional(),
+  dependsOn_status: epicStatusSchema
+    .describe(
+      "The predecessor's status, present exactly when dependsOn_number is. Anything but 'done' means this epic cannot begin yet.",
     )
     .optional(),
   /**
@@ -112,7 +122,7 @@ export const epicCreateParamsSchema = projectParamsSchema.extend({
   dependsOn_number: z
     .integer()
     .describe(
-      "Per-project number of an epic that has to come first. ADVISORY - unlike a quest's `dependsOn_shortId`, this refuses nothing: epics overlap by design, and the roadmap draws the order rather than enforcing it. Cycles ARE refused. Write the order here instead of in the description; prose cannot be rendered or sorted.",
+      "Per-project number of an epic that has to come first. A gate, like a quest's `dependsOn_shortId`: epic_set_status refuses 'active' while that epic is not 'done', so record a predecessor only when this epic genuinely cannot start before it concludes. Cycles are refused on write. Write the order here instead of in the description; prose cannot be rendered, sorted or enforced.",
     )
     .optional(),
 });
@@ -140,7 +150,7 @@ export const epicUpdateParamsSchema = epicRefSchema.extend({
   dependsOn_number: z
     .integer()
     .describe(
-      "Reparent the epic's predecessor to the epic with this per-project number. Pass 0 to clear it. ADVISORY: nothing is refused because of it, but cycles are.",
+      "Reparent the epic's predecessor to the epic with this per-project number. Pass 0 to clear it. A gate: epic_set_status refuses 'active' while the predecessor is not 'done'. Writable in every phase; the gate is evaluated at Begin only. Cycles are refused on write.",
     )
     .optional(),
 });
@@ -159,7 +169,7 @@ export const epicUpdateResultSchema = z.object({
 
 export const epicSetStatusParamsSchema = epicRefSchema.extend({
   status: epicStatusSchema.describe(
-    "New epic status. All transitions between planned/active/done are legal; there is no forbidden edge. Moving to `active` releases the epic's quests into the human-facing backlog/kanban/reports (quest_list already returns them regardless: MCP is not gated).",
+    "New epic status. Only two edges are legal: `active` from `planned` (Begin), and `done` from `active` (Conclude); `done` is terminal, and the same status again is a no-op. Moving to `active` releases the epic's quests into the human-facing backlog/kanban/reports and into quest_list's default view.",
   ),
 });
 

@@ -84,21 +84,23 @@ const ProjectEpic = (props: ProjectEpicProps) => {
    * Keep the sidebar's planned-epic badge honest when the status changes
    * here rather than on the list.
    *
-   * Releasing an epic is the main way that badge goes DOWN, and it happens
+   * Releasing an epic is the only way that badge goes DOWN, and it happens
    * on this page. `ProjectEpics` recounts from `getEpics` on every fetch,
    * but that only helps once the user navigates back to the list.
    *
    * A delta, not a count: this page knows one epic, never the project total.
    * Read through `store.get` instead of `useStore` so the badge stays
-   * write-only here, exactly as it is in the list.
+   * write-only here, exactly as it is in the list. Since epic #31 the
+   * lifecycle is a ratchet, so the only edge that leaves `planned` is Begin
+   * and nothing ever comes back: the delta is minus one on that edge and
+   * nothing otherwise. Kept as a comparison rather than a literal so a
+   * response that echoes the same status moves the badge by nothing.
    */
   const applyStatusChange = (updated: EpicResource) => {
-    const wasPlanned = epic.status === "planned";
-    const isPlanned = updated.status === "planned";
-    if (wasPlanned !== isPlanned) {
+    if (epic.status === "planned" && updated.status !== "planned") {
       const current = alepha.store.get(currentEpicCountAtom)?.count ?? 0;
       alepha.store.set(currentEpicCountAtom, {
-        count: Math.max(0, current + (isPlanned ? 1 : -1)),
+        count: Math.max(0, current - 1),
       });
     }
     setEpic(updated);
@@ -326,6 +328,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       {tab === "quests" && (
         <ProjectEpicQuests
           projectId={project.id}
+          epic={epic}
           quests={quests}
           onAttach={handleAttachQuest}
           onDetach={handleDetachQuest}

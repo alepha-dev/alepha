@@ -53,6 +53,7 @@ export class CloudflareDurableObjectWebSocketServerProvider extends WebSocketSer
   public registerEndpoint<TClient extends TWSObject, TServer extends TWSObject>(
     config: WebSocketPrimitiveOptions<TClient, TServer>,
   ): void {
+    this.assertAdmissionOptions(config, config.channel.options.path);
     this.endpoints.set(config.channel.options.path, config);
   }
 
@@ -105,6 +106,7 @@ export class CloudflareDurableObjectWebSocketServerProvider extends WebSocketSer
   >();
 
   public registerRoom(options: RoomPrimitiveOptions<any, any, any>): void {
+    this.assertAdmissionOptions(options, options.channel.options.path);
     this.roomEndpoints.set(options.channel.options.path, options);
   }
 

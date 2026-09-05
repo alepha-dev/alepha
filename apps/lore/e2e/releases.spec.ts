@@ -148,20 +148,24 @@ test.describe("Releases", () => {
 
     const inEpicDone = await createQuest(page, projectId, `Done${t}`);
     const inEpicOpen = await createQuest(page, projectId, `Open${t}`);
-    for (const quest of [inEpicDone, inEpicOpen]) {
+    // The same quest reachable BOTH ways: in the release's epic AND named
+    // directly. It must still count once.
+    const both = await createQuest(page, projectId, `Both${t}`);
+    // Every quest goes in while the epic is planned, then the epic begins,
+    // then one of them is worked: since epic #31 the quest set freezes at
+    // Begin, and a quest can be accepted only inside an active epic. This
+    // seed used to accept inside a planned epic, which is now the refusal
+    // "Begin it first".
+    for (const quest of [inEpicDone, inEpicOpen, both]) {
       await post(page, `/api/attachQuest/${epic.id}`, { questId: quest.id });
     }
+    await post(page, `/api/setEpicStatus/${epic.id}`, { status: "active" });
     await completeQuest(page, inEpicDone.id);
 
     const loose = await createQuest(page, projectId, `Loose${t}`);
     await post(page, `/api/updateQuestById/${loose.id}`, {
       releaseId: first.id,
     });
-
-    // The same quest reachable BOTH ways: in the release's epic AND named
-    // directly. It must still count once.
-    const both = await createQuest(page, projectId, `Both${t}`);
-    await post(page, `/api/attachQuest/${epic.id}`, { questId: both.id });
     await post(page, `/api/updateQuestById/${both.id}`, {
       releaseId: first.id,
     });
@@ -186,6 +190,40 @@ test.describe("Releases", () => {
 
     // The plate reads the same release from the store, with no round-trip.
     await expect(page.getByText("0.1.0").first()).toBeVisible();
+
+    // ── The Flow tab draws the order the epics ship in ────────────────────
+    // A second epic in the same release, after the first. The edge between
+    // the two clusters exists only if `getReleaseContents` projects
+    // `dependsOn`, which its response schema alone decides: the entity has
+    // carried the column all along and drew nothing. The follow-up holds no
+    // quest, so the counts asserted below are untouched.
+    const followUp = await post<{ id: number; number: number }>(
+      page,
+      `/api/createEpic/${projectId}`,
+      { title: "The follow-up" },
+    );
+    await post(page, `/api/updateEpic/${followUp.id}`, {
+      releaseId: first.id,
+      dependsOn: epic.id,
+    });
+    await page.goto(`/${slug}/releases/0.1.0?tab=flow`);
+    await expect(
+      page.getByRole("link", { name: /The big feature/ }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("link", { name: /The follow-up/ }),
+    ).toBeVisible();
+    // A quest inside an epic and the loose one both draw as cards, and a
+    // card here is a link to the quest, not a dialog.
+    await expect(
+      page.getByRole("link", { name: `#Q${inEpicOpen.shortId} Open${t}` }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: `#Q${loose.shortId} Loose${t}` }),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="release-flow-edges"] path'),
+    ).not.toHaveCount(0);
 
     // ── Publishing freezes the changelog AND the counts ───────────────────
     await post(page, `/api/publishRelease/${first.id}`, {});

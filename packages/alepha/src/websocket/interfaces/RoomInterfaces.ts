@@ -1,6 +1,7 @@
 import type { Infer } from "alepha";
 
 import type { ChannelPrimitive, TWSObject } from "../primitives/$channel.ts";
+import type { WebSocketAuthorize } from "./WebSocketInterfaces.ts";
 
 /**
  * A pluggable timer, so the {@link RoomEngine} tick loop is driven the same way
@@ -210,6 +211,15 @@ export interface RoomPrimitiveOptions<
    * Enforce authentication on the handshake (via alepha/security).
    */
   secure?: boolean;
+
+  /**
+   * Decide the handshake yourself, and name the room the socket joins.
+   *
+   * The room it returns replaces the URL's `?roomId=`, which is what makes a
+   * machine credential unable to join a room it does not own. Refused
+   * together with `secure` at registration. See {@link WebSocketAuthorize}.
+   */
+  authorize?: WebSocketAuthorize;
 
   /**
    * Cap simultaneous connections per authenticated user.

@@ -6,6 +6,7 @@ import {
   CircleDotDashed,
 } from "lucide-react";
 
+import type { QuestStatus } from "@/api/schemas/questResourceSchema.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 
 /**
@@ -163,3 +164,21 @@ export const questBucket = (quest: {
       : quest.acceptedAt
         ? "inProgress"
         : "open";
+
+/**
+ * The same three timestamps read as the quest status enum, for the surface
+ * the release page shares with the epic's questline: `QuestlineLayout` asks
+ * each row for its status, and a `QuestResource` answers from `metadata`
+ * while a release row answers from here. `open` is `new` and `inProgress`
+ * is `accepted`; the other two are spelled the same on both sides.
+ */
+export const questStatus = (quest: {
+  completedAt?: string;
+  acceptedAt?: string;
+  shelvedAt?: string;
+}): QuestStatus => {
+  const bucket = questBucket(quest);
+  if (bucket === "open") return "new";
+  if (bucket === "inProgress") return "accepted";
+  return bucket;
+};

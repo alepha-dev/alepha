@@ -270,3 +270,33 @@ describe("WebSocketRoom room id validation", () => {
     expect(room.lastServer?.closedWith).toBeUndefined();
   });
 });
+
+/**
+ * The worker entry decides the room (through the provider's `admit`, which
+ * lets an endpoint's `authorize` hook name it) and forwards it on the
+ * trusted `x-alepha-ws-room` header. The Durable Object must read that
+ * header and nothing else: a `?roomId=` that survived into the attachment
+ * would let a client into a room its credential never named.
+ */
+describe("WebSocketRoom trusts the worker's room header", () => {
+  it("takes the room from the header, never from the URL's roomId", async () => {
+    const room = await setup([]);
+
+    await room.fetch(
+      new Request(`https://do.internal${PLAIN_PATH}?roomId=forged`, {
+        headers: {
+          "x-alepha-ws-channel": PLAIN_PATH,
+          "x-alepha-ws-room": "real",
+          "x-alepha-ws-conn": "c-1",
+        },
+      }),
+    );
+
+    const attachment = room.lastServer?.deserializeAttachment() as {
+      roomId?: string;
+      userId?: string;
+    };
+    expect(attachment.roomId).toBe("real");
+    expect(attachment.userId).toBeUndefined();
+  });
+});

@@ -7,14 +7,21 @@ import { Progress } from "@alepha/ui/components/ui/progress";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { Link, useRouter } from "alepha/react/router";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import EpicReleaseControl from "./EpicReleaseControl.tsx";
-import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
+import {
+  epicBlockedBy,
+  STATUS_ICONS,
+  STATUS_LABEL_KEYS,
+  STATUS_TONE,
+} from "./epicStatus.ts";
 
 export interface ProjectEpicAsideProps {
   epic: EpicResource;
@@ -44,9 +51,11 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
   const i18n = useI18n<I18n, "en">();
   const { tr } = i18n;
   const dt = useInject(DateTimeProvider);
+  const router = useRouter<AppRouter>();
   const { completed, total } = props.epic.progress;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   const StatusIcon = STATUS_ICONS[props.epic.status];
+  const blockedBy = epicBlockedBy(props.epic);
 
   const rows: DetailAsideRow[] = [
     {
@@ -67,6 +76,33 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
         </Badge>
       ),
     },
+    // The predecessor, which this page never showed before epic #31 made
+    // the field a gate (`EpicCreateSheet` has no field for it; only MCP and
+    // the API write it). "Blocked by" while it is not done and Begin would
+    // be refused, "After" once it is; the roadmap keeps "After" throughout,
+    // because it draws order and cannot see the predecessor's status.
+    ...(props.epic.dependsOnNumber !== undefined
+      ? [
+          {
+            label: String(tr("epic.aside.predecessor")),
+            value: (
+              <Link
+                href={router.path("projectEpic", {
+                  params: { epicNumber: String(props.epic.dependsOnNumber) },
+                })}
+                className="text-sm underline-offset-4 hover:underline"
+              >
+                {tr(
+                  blockedBy !== undefined
+                    ? "epic.aside.predecessor.blocked"
+                    : "epic.aside.predecessor.after",
+                  { args: [String(props.epic.dependsOnNumber)] },
+                )}
+              </Link>
+            ),
+          },
+        ]
+      : []),
     {
       label: String(tr("epic.aside.release")),
       // A control, not a label. Attaching from the release side is #1559; the

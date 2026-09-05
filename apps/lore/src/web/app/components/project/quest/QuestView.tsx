@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentEpicsAtom } from "@/web/app/atoms/currentEpicsAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "@/web/app/atoms/currentQuestAtom.ts";
 import { useQuestMutations } from "@/web/app/components/shared/useQuestMutations.ts";
@@ -126,6 +127,28 @@ const QuestView = (props: QuestViewProps) => {
   }, [quest.id]);
 
   const [project] = useStore(currentProjectAtom);
+  const [epics] = useStore(currentEpicsAtom);
+
+  // The epic phase gate (epic #31): a quest can be accepted only while its
+  // epic is active, and this page reaches a planned epic's quest by direct
+  // URL, where the backlog's own gate never applied. The refs the project
+  // route already holds carry the epic's status, so Accept can say why it
+  // is withheld instead of answering 400.
+  const questEpic =
+    quest.epicId != null
+      ? epics?.find((e) => e.id === quest.epicId)
+      : undefined;
+  const acceptWithheld =
+    questEpic && questEpic.status !== "active"
+      ? String(
+          tr(
+            questEpic.status === "planned"
+              ? "quest.view.accept.epicPlanned"
+              : "quest.view.accept.epicDone",
+            { args: [String(questEpic.number)] },
+          ),
+        )
+      : undefined;
 
   const context: QuestViewContext = props.context ?? "page";
 
@@ -505,7 +528,11 @@ const QuestView = (props: QuestViewProps) => {
                   <Button
                     type="button"
                     className="bg-blue-600 text-white hover:bg-blue-700"
-                    disabled={!questApi.acceptQuest.can()}
+                    disabled={
+                      !questApi.acceptQuest.can() ||
+                      acceptWithheld !== undefined
+                    }
+                    title={acceptWithheld}
                     onClick={async () => {
                       const updatedQuest = await questMutations.accept(
                         quest.id,

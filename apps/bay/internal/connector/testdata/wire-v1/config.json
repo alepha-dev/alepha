@@ -1,0 +1,7 @@
+{
+  "type": "config",
+  "protocol": 1,
+  "estate": { "id": "6f1c2f9a-2b5e-4c1d-9a3e-8d7b6c5a4f30", "slug": "ovh-1" },
+  "deployAllowed": true,
+  "statsIntervalSeconds": 300
+}

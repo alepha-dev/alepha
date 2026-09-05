@@ -77,6 +77,12 @@ export interface ReleaseContentsEpic {
   number: number;
   title: string;
   status: string;
+  /**
+   * The predecessor epic's id, when set. Read by the Flow tab only, which
+   * draws it as the edge between two clusters when both are in this
+   * release. A predecessor outside the release is laid out as a root.
+   */
+  dependsOn?: number;
   quests: ReleaseContentQuest[];
 }
 

@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { quests } from "../entities/quests.ts";
+
 /**
  * One quest row of `getReleaseContents`, under an epic or loose beside them.
  *
@@ -24,6 +26,15 @@ export const releaseContentQuestSchema = z.object({
   title: z.string(),
   area: z.string().optional(),
   priority: z.string(),
+  /**
+   * The predecessor's id, when the quest has one. A raw id rather than a
+   * `shortId`, because this endpoint answers ids everywhere else and the
+   * release Flow only needs it to find the other row in the same payload.
+   *
+   * ⚠️ Declared here because the response schema is what serializes. The
+   * entity has carried the column all along and the Flow drew nothing.
+   */
+  dependsOn: quests.schema.shape.dependsOn,
   completedAt: z.datetime().optional(),
   acceptedAt: z.datetime().optional(),
   shelvedAt: z.datetime().optional(),

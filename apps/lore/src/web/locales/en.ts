@@ -599,6 +599,7 @@ export default {
   "project.settings.nav.epics": "Epics",
   "project.settings.nav.feedback": "Feedback",
   "project.settings.nav.sigils": "Sigils",
+  "project.settings.nav.estates": "Estates",
   "project.settings.nav.releases": "Releases",
   "project.settings.nav.quests": "Quests",
   "project.settings.nav.quality": "Quality",
@@ -817,8 +818,11 @@ export default {
 
   "release.tab.overview": "Overview",
   "release.tab.contents": "Contents",
+  "release.tab.flow": "Flow",
   "release.tab.changelog": "Changelog",
   "release.tab.artifacts": "Artifacts",
+  "release.flow.empty":
+    "Attach epics and quests to see the order they ship in.",
 
   "release.plate.frozen": "Frozen at publish",
   "release.meta.target": "target $1",
@@ -1300,6 +1304,102 @@ export default {
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",
 
+  "estates.project.title": "Estates",
+  "estates.project.description":
+    "Where this project can deploy. An estate is a machine or an account somebody owns and has lent to this project.",
+  "estates.project.empty":
+    "No estate lent yet. Until one is, this project has nowhere to deploy.",
+  "estates.project.add": "Add an estate",
+  "estates.project.ownerOnly": "Only the project owner can add an estate.",
+  "estates.project.lentBy": "lent by $1",
+  "estates.online": "online",
+  "estates.offline": "offline",
+  "estates.deploys.allowed": "deploys allowed",
+  "estates.deploys.statsOnly": "stats only",
+  "estates.lastSeen": "last seen $1",
+  "estates.neverSeen": "never connected",
+  "estates.add.title": "Add an estate to $1",
+  "estates.add.description":
+    "Pick one of your own estates, or create a new one here.",
+  "estates.add.existing": "Use one of mine",
+  "estates.add.new": "Create a new one",
+  "estates.add.none": "You have no estate left to lend. Create one instead.",
+  "estates.add.slug": "Estate slug",
+  "estates.add.slugPlaceholder": "ovh-1",
+  "estates.add.invalid": "Lowercase letters, digits and hyphens, like ovh-1.",
+  "estates.add.trust":
+    "Everyone who can deploy in $1 will be able to run code on the machine behind $2, with everything that machine holds. Nothing here undeploys, and you can withdraw the loan at any time.",
+  "estates.add.submit": "Lend it to this project",
+  "estates.add.submitNew": "Create and lend",
+  "estates.detach.action": "Detach",
+  "estates.detach.confirmTitle": "Detach $1 from this project?",
+  "estates.detach.confirmDescription":
+    "The project can no longer deploy through it. Nothing already deployed is touched: the machine keeps running whatever it runs.",
+  "estates.detach.confirm": "Detach",
+  "estates.secret.title":
+    "Your estate's secret. It is shown once: run `bay connector set <lore-url> <secret>` on the machine.",
+  "estates.secret.copy": "Copy secret",
+  "estates.secret.done": "Done",
+  "estates.toast.attached": "Estate lent to this project",
+  "estates.toast.created": "Estate created and lent",
+  "estates.toast.detached": "Estate detached",
+  "estates.toast.copied": "Secret copied",
+
+  "account.estates.title": "Estates",
+  "account.estates.description":
+    "The machines and accounts you own and lend to projects as deploy destinations. Each one dials in with a secret shown once, at creation and at rotation.",
+  "account.estates.empty":
+    "You own no estate yet. Create one, then run `bay connector set` on the machine with the secret it shows.",
+  "account.estates.create": "Create an estate",
+  "account.estates.create.description":
+    "A bay estate: a machine running `bay serve`. It starts stats-only, with deploys off, until you allow them.",
+  "account.estates.create.submit": "Create",
+  "account.estates.secretPrefix": "secret $1…",
+  "account.estates.gauge": "CPU $1% · memory $2%",
+  "account.estates.gauge.none": "no stats yet",
+  "account.estates.switch.deploys": "Allow deploys",
+  "account.estates.switch.deploys.description":
+    "Off means stats only: no project can deploy through this estate, whatever it was lent.",
+  "account.estates.switch.series": "Keep a history of CPU and memory",
+  "account.estates.switch.series.description":
+    "The live gauge above is always kept. This also writes each reading to the series the charts read.",
+  "account.estates.interval": "Stats interval",
+  "account.estates.interval.description":
+    "How often the machine reports its gauge. Reaches it on its next connect.",
+  "account.estates.interval.minutes": "$1 min",
+  "account.estates.interval.hours": "$1 h",
+  "account.estates.loans.none": "Not lent to any project.",
+  "account.estates.loans.label": "Lent to",
+  "account.estates.detach.confirmTitle": "Withdraw $1 from $2?",
+  "account.estates.commands.title": "Commands",
+  "account.estates.commands.empty": "No command yet.",
+  "account.estates.commands.restart": "Restart",
+  "account.estates.commands.app": "app",
+  "account.estates.commands.environment": "environment",
+  "account.estates.commands.status.pending": "pending",
+  "account.estates.commands.status.sent": "sent",
+  "account.estates.commands.status.running": "running",
+  "account.estates.commands.status.done": "done",
+  "account.estates.commands.status.failed": "failed",
+  "account.estates.rotate": "Rotate secret",
+  "account.estates.rotate.confirmTitle": "Rotate the secret of $1?",
+  "account.estates.rotate.confirmDescription":
+    "The current secret stops working the moment you confirm. The machine is refused on its next dial until you run `bay connector set` with the new one, which is shown once.",
+  "account.estates.rotate.confirm": "Rotate",
+  "account.estates.delete": "Delete",
+  "account.estates.delete.confirmTitle": "Delete $1?",
+  "account.estates.delete.confirmDescription":
+    "Nothing is undeployed: the machine keeps running whatever it runs, and Lore only loses the ability to inspect, redeploy or roll back through it. A bay secret is revoked. A cloudflare credential is not revoked at Cloudflare; do that there. Every project it is lent to loses it.",
+  "account.estates.delete.confirm": "Delete",
+  "account.estates.toast.created": "Estate created",
+  "account.estates.toast.rotated": "Secret rotated",
+  "account.estates.toast.deleted": "Estate deleted",
+  "account.estates.toast.restartQueued": "Restart queued",
+  "account.delete.estates.one":
+    "1 estate you own will also be deleted and its secret revoked; $1 project(s) it is lent to lose their deploy destination.",
+  "account.delete.estates.many":
+    "$1 estates you own will also be deleted and their secrets revoked; $2 project(s) they are lent to lose a deploy destination.",
+
   "feedback.list.showMore": "Show more",
   "feedback.list.loadingMore": "Loading…",
   "feedback.empty.pending": "No pending feedback.",
@@ -1478,13 +1578,19 @@ export default {
   "epic.begin.title": "Begin this epic?",
   "epic.begin.confirm":
     "Beginning $1 releases its quests into the backlog, where the rest of the project can see and pick them up.",
-  "epic.returnToPlanning.title": "Return this epic to planning?",
-  "epic.returnToPlanning.confirm":
-    "Returning $1 to planning withdraws its quests from the backlog again. They keep their status; they stop being listed.",
+  "epic.conclude.title": "Conclude this epic?",
+  "epic.conclude.confirm":
+    "Concluding $1 is final. It cannot be reopened or returned to planning. Anything left to do goes in a new epic that depends on this one.",
+  "epic.begin.blocked": "Blocked by Epic $1",
   "epic.status.actions.begin": "Begin the Epic",
   "epic.status.actions.conclude": "Conclude the Epic",
-  "epic.status.actions.returnToPlanning": "Return to Planning",
-  "epic.status.actions.reopen": "Reopen the Epic",
+  "epic.aside.predecessor": "Depends on",
+  "epic.aside.predecessor.after": "After Epic $1",
+  "epic.aside.predecessor.blocked": "Blocked by Epic $1",
+  // The quest page's Accept, withheld while the quest's epic is not active.
+  "quest.view.accept.epicPlanned": "Epic $1 has not begun. Begin it first.",
+  "quest.view.accept.epicDone":
+    "Epic $1 is concluded. File this in a new epic.",
   "epic.tab.overview": "Overview",
   "epic.tab.quests": "Quests",
   "epic.tab.flow": "Flow",
@@ -1508,6 +1614,10 @@ export default {
   "questline.state.ready": "Ready",
   "questline.state.waiting": "Waiting",
   "questline.state.shelved": "Shelved",
+  "questline.zoom.label": "Zoom",
+  "questline.zoom.in": "Zoom in",
+  "questline.zoom.out": "Zoom out",
+  "questline.zoom.fit": "Fit to view",
   "epic.description.title": "Description",
   "epic.description.empty": "No description yet.",
   "epic.folios.title": "Folios",
