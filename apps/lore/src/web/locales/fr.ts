@@ -113,24 +113,22 @@ export default {
   "folios.history.action.revert": "Restauré",
 
   "folios.wikilink.broken.title": "Lien cassé",
+  "folios.wikilink.broken.notAReference":
+    "Ce n'est pas une référence. Dans [[…]], écrivez #F12 pour un folio, #Q12 pour une quête, #E3 pour une épopée, #P120 pour un retour ou #R12 pour une release.",
   "folios.wikilink.broken.folioNotFound":
-    "Aucun folio ne correspond à cette référence. Dans [[…]], #N désigne un folio ; pour une quête, écrivez [[quest:#N]].",
-  "folios.wikilink.broken.ambiguous":
-    "Plusieurs entrées portent ce titre. Utilisez la forme explicite #N pour lever l'ambiguïté.",
+    "Aucun folio ne correspond à cette référence.",
   "folios.wikilink.broken.questNotFound":
     "Aucune quête ne correspond à cette référence.",
   "folios.wikilink.broken.epicNotFound":
     "Aucune épopée ne correspond à cette référence.",
-  "folios.wikilink.broken.blobNotFound":
-    "Aucun fichier de folio ne correspond à cette référence.",
+  "folios.wikilink.broken.attachmentNotFound":
+    "Aucune pièce jointe de ce folio ne correspond à cette référence.",
   "folios.wikilink.broken.feedbackNotFound":
     "Aucun retour ne correspond à cette référence.",
   "folios.wikilink.broken.releaseNotFound":
     "Aucune release ne correspond à cette référence.",
   "folios.wikilink.release.open": "ouverte",
   "folios.wikilink.release.released": "publiée",
-  "folios.wikilink.broken.questFormWanted":
-    "Le folio #$1 n'existe pas, mais la quête #$1 existe. Dans [[…]], #N désigne un folio ; écrivez plutôt [[quest:#$1]].",
 
   "folios.editor.menu.folio": "Folio",
   "folios.editor.menu.edit": "Édition",

@@ -22,120 +22,86 @@ const folio = (shortId: number, title: string) =>
     searchText: "",
   }) as never;
 
+/**
+ * Broken-link markers (#107): a reference that resolves to nothing renders
+ * as a link whose href carries the reason, never as prose. Since the purge
+ * of epic #32 (quest #1808) a well-formed `#<LETTER><integer>` that misses
+ * keeps its per-kind reason, and anything else between the brackets is
+ * `not-a-reference`.
+ */
 describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
-  it("unresolved folio shortId → folio-not-found marker", () => {
+  it("unresolved folio number → folio-not-found marker", () => {
     const out = rewriteFolioWikiLinks(
-      "See [[#999]].",
+      "See [[#F999]].",
       PROJECT_SLUG,
       [folio(1, "Roadmap")],
       [],
     );
-    expect(out).toBe("See [\\[\\[#999\\]\\]](#lore-broken:folio-not-found).");
+    expect(out).toBe("See [\\[\\[#F999\\]\\]](#lore-broken:folio-not-found).");
   });
 
-  it("[[#N]] with no folio N but a quest N → names the quest form (#192)", () => {
+  it("[[#F156]] with no folio 156 but quest 156 → plain folio-not-found, no guess", () => {
+    // The letter said "folio". Resolving across kinds would make a link's
+    // destination depend on which folios happen to exist.
     const out = rewriteFolioWikiLinks(
-      "See [[#156]].",
+      "See [[#F156]].",
       PROJECT_SLUG,
       [folio(1, "Roadmap")],
       [{ shortId: 156, title: "Some quest" }],
     );
-    // Still broken on purpose — resolving it to the quest would make a link's
-    // destination depend on which folios happen to exist. The shortId rides
-    // along so the hover card can name `[[quest:#156]]`.
-    expect(out).toBe(
-      "See [\\[\\[#156\\]\\]](#lore-broken:folio-not-found-quest-exists:156).",
-    );
+    expect(out).toBe("See [\\[\\[#F156\\]\\]](#lore-broken:folio-not-found).");
   });
 
-  it("[[#N]] with neither a folio nor a quest N → plain folio-not-found", () => {
+  it("unresolved quest number → quest-not-found marker", () => {
     const out = rewriteFolioWikiLinks(
-      "See [[#156]].",
-      PROJECT_SLUG,
-      [folio(1, "Roadmap")],
-      [{ shortId: 7, title: "Unrelated" }],
-    );
-    expect(out).toBe("See [\\[\\[#156\\]\\]](#lore-broken:folio-not-found).");
-  });
-
-  it("an unresolved TITLE never suggests a quest — the namespaces are unrelated", () => {
-    const out = rewriteFolioWikiLinks(
-      "Cf. [[Some quest]].",
-      PROJECT_SLUG,
-      [folio(1, "Roadmap")],
-      [{ shortId: 156, title: "Some quest" }],
-    );
-    expect(out).toBe(
-      "Cf. [\\[\\[Some quest\\]\\]](#lore-broken:folio-not-found).",
-    );
-  });
-
-  it("unresolved folio title → folio-not-found marker", () => {
-    const out = rewriteFolioWikiLinks(
-      "Cf. [[Nonexistent]].",
-      PROJECT_SLUG,
-      [folio(1, "Roadmap")],
-      [],
-    );
-    expect(out).toBe(
-      "Cf. [\\[\\[Nonexistent\\]\\]](#lore-broken:folio-not-found).",
-    );
-  });
-
-  it("ambiguous folio title → ambiguous-title marker", () => {
-    const out = rewriteFolioWikiLinks(
-      "Cf. [[Notes]].",
-      PROJECT_SLUG,
-      [folio(1, "Notes"), folio(2, "Notes")],
-      [],
-    );
-    expect(out).toBe("Cf. [\\[\\[Notes\\]\\]](#lore-broken:ambiguous-title).");
-  });
-
-  it("unresolved quest shortId → quest-not-found marker", () => {
-    const out = rewriteFolioWikiLinks(
-      "Cf. [[quest:#999]].",
+      "Cf. [[#Q999]].",
       PROJECT_SLUG,
       [],
       [{ shortId: 1, title: "Onboard" }],
     );
+    expect(out).toBe("Cf. [\\[\\[#Q999\\]\\]](#lore-broken:quest-not-found).");
+  });
+
+  it("the legacy bare number is not a reference", () => {
+    // `[[#156]]` used to mean folio 156. The kind is no longer guessed: the
+    // token breaks visibly, whatever folios or quests exist.
+    const out = rewriteFolioWikiLinks(
+      "See [[#156]].",
+      PROJECT_SLUG,
+      [folio(156, "Roadmap")],
+      [{ shortId: 156, title: "Some quest" }],
+    );
+    expect(out).toBe("See [\\[\\[#156\\]\\]](#lore-broken:not-a-reference).");
+  });
+
+  it("a title is not a reference, even one that names a folio", () => {
+    const out = rewriteFolioWikiLinks(
+      "Cf. [[Roadmap]] and [[Nonexistent]].",
+      PROJECT_SLUG,
+      [folio(1, "Roadmap")],
+      [],
+    );
     expect(out).toBe(
-      "Cf. [\\[\\[quest:#999\\]\\]](#lore-broken:quest-not-found).",
+      "Cf. [\\[\\[Roadmap\\]\\]](#lore-broken:not-a-reference) and [\\[\\[Nonexistent\\]\\]](#lore-broken:not-a-reference).",
     );
   });
 
-  it("ambiguous quest title → ambiguous-title marker", () => {
+  it("the prefixed, path and anchored forms are not references", () => {
     const out = rewriteFolioWikiLinks(
-      "Cf. [[quest:Fix]].",
+      "[[quest:#2]] [[epic:#3]] [[blob:#4]] [[specs/roadmap]] [[#F1#intro]]",
       PROJECT_SLUG,
+      [folio(1, "Roadmap")],
+      [{ shortId: 2, title: "Onboard" }],
       [],
-      [
-        { shortId: 1, title: "Fix" },
-        { shortId: 2, title: "Fix" },
-      ],
+      [{ shortId: 3, title: "Lore Deploy" }],
     );
-    expect(out).toBe(
-      "Cf. [\\[\\[quest:Fix\\]\\]](#lore-broken:ambiguous-title).",
-    );
-  });
-
-  it("unresolved blob shortId → blob-not-found marker", () => {
-    const out = rewriteFolioWikiLinks(
-      "Cf. [[blob:#999]].",
-      PROJECT_SLUG,
-      [],
-      [],
-      [],
-      [],
-    );
-    expect(out).toBe(
-      "Cf. [\\[\\[blob:#999\\]\\]](#lore-broken:blob-not-found).",
-    );
+    expect(out.match(/#lore-broken:not-a-reference/g)).toHaveLength(5);
+    expect(out).not.toContain("/sds/");
   });
 
   it("resolved links are NOT rewritten with broken markers", () => {
     const out = rewriteFolioWikiLinks(
-      "Cf. [[#1]] and [[quest:#2]].",
+      "Cf. [[#F1]] and [[#Q2]].",
       PROJECT_SLUG,
       [folio(1, "Roadmap")],
       [{ shortId: 2, title: "Onboard" }],
@@ -152,31 +118,17 @@ describe("rewriteFolioWikiLinks — broken-link markers (#107)", () => {
 });
 
 /**
- * Epics as a link target. The `epic:` prefix resolves against the epic's
- * per-project `number` — the field it is addressed by everywhere else — and
- * the rewrite emits a `/epics/:number` href, not a `/quests/` one.
+ * Epics as a link target. `#E3` resolves against the epic's per-project
+ * `number` — the field it is addressed by everywhere else — and the rewrite
+ * emits a `/epics/:number` href, not a `/quests/` one.
  */
 describe("rewriteFolioWikiLinks — epic targets", () => {
   const epics = [{ shortId: 3, title: "Lore Deploy" }];
 
-  it("[[epic:#3]] → a link to the epic", () => {
+  it("[[#E3]] → a link to the epic", () => {
     const out = rewriteFolioWikiLinks(
-      "See [[epic:#3]].",
+      "See [[#E3]].",
       PROJECT_SLUG,
-      [],
-      [],
-      [],
-      [],
-      epics,
-    );
-    expect(out).toBe("See [Lore Deploy](/sds/epics/3).");
-  });
-
-  it("[[epic:Title]] resolves by title when unique", () => {
-    const out = rewriteFolioWikiLinks(
-      "See [[epic:Lore Deploy]].",
-      PROJECT_SLUG,
-      [],
       [],
       [],
       [],
@@ -187,32 +139,14 @@ describe("rewriteFolioWikiLinks — epic targets", () => {
 
   it("an unknown epic gets its own broken reason, not the folio one", () => {
     const out = rewriteFolioWikiLinks(
-      "See [[epic:#99]].",
+      "See [[#E99]].",
       PROJECT_SLUG,
-      [],
       [],
       [],
       [],
       epics,
     );
-    expect(out).toBe(
-      "See [\\[\\[epic:#99\\]\\]](#lore-broken:epic-not-found).",
-    );
-  });
-
-  it("a bare [[#3]] stays a FOLIO ref even when epic 3 exists", () => {
-    // Same rule the quest form follows: inferring across kinds would make a
-    // link's destination depend on which folios happen to exist.
-    const out = rewriteFolioWikiLinks(
-      "See [[#3]].",
-      PROJECT_SLUG,
-      [],
-      [],
-      [],
-      [],
-      epics,
-    );
-    expect(out).toBe("See [\\[\\[#3\\]\\]](#lore-broken:folio-not-found).");
+    expect(out).toBe("See [\\[\\[#E99\\]\\]](#lore-broken:epic-not-found).");
   });
 });
 
@@ -241,19 +175,6 @@ describe("rewriteFolioWikiLinks — typed references", () => {
     expect(out).toBe("See [Onboard](/sds/quests/2).");
   });
 
-  it("[[#E3]] → a link to the epic", () => {
-    const out = rewriteFolioWikiLinks(
-      "See [[#E3]].",
-      PROJECT_SLUG,
-      [],
-      [],
-      [],
-      [],
-      [{ shortId: 3, title: "Lore Deploy" }],
-    );
-    expect(out).toBe("See [Lore Deploy](/sds/epics/3).");
-  });
-
   it("[[#F1]] → a link to the folio", () => {
     const out = rewriteFolioWikiLinks(
       "See [[#F1]].",
@@ -262,28 +183,6 @@ describe("rewriteFolioWikiLinks — typed references", () => {
       [],
     );
     expect(out).toBe("See [Roadmap](/sds/folios/1).");
-  });
-
-  it("[[#Q999]] with no such quest → quest-not-found", () => {
-    const out = rewriteFolioWikiLinks(
-      "See [[#Q999]].",
-      PROJECT_SLUG,
-      [],
-      [{ shortId: 2, title: "Onboard" }],
-    );
-    expect(out).toBe("See [\\[\\[#Q999\\]\\]](#lore-broken:quest-not-found).");
-  });
-
-  it("[[#F156]] with no folio 156 but quest 156 → plain folio-not-found, no hint", () => {
-    // The `folio-not-found-quest-exists` diagnosis exists for the legacy bare
-    // `[[#156]]`, where the kind was a guess. `#F156` said "folio".
-    const out = rewriteFolioWikiLinks(
-      "See [[#F156]].",
-      PROJECT_SLUG,
-      [folio(1, "Roadmap")],
-      [{ shortId: 156, title: "Some quest" }],
-    );
-    expect(out).toBe("See [\\[\\[#F156\\]\\]](#lore-broken:folio-not-found).");
   });
 });
 
@@ -303,7 +202,6 @@ describe("rewriteFolioWikiLinks — feedback and release targets", () => {
     rewriteFolioWikiLinks(
       content,
       PROJECT_SLUG,
-      [],
       [],
       [],
       [],

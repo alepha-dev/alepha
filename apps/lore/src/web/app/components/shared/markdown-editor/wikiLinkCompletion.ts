@@ -32,7 +32,7 @@ export type SyncCompletionSource = (
  * The `[[` picker as a CodeMirror completion source.
  *
  * Suggestions are read through a getter rather than captured, because the
- * project's folio / quest / blob lists change while the editor stays mounted
+ * project's folio / quest / epic lists change while the editor stays mounted
  * — a folio is created in the tree, a file is uploaded — and a captured
  * array would freeze at first render. The deleted Lexical plugin took its
  * context through a ref for exactly the same reason.
@@ -43,7 +43,7 @@ export const createWikiLinkCompletion = (
   return (context: CompletionContext): CompletionResult | null => {
     // `[[` followed by anything that is not a closing bracket or a newline.
     // Excluding `]` is what stops the picker reopening over an already
-    // complete `[[Some Folio]]`; excluding `\n` keeps an unclosed `[[` at
+    // complete `[[#F12]]`; excluding `\n` keeps an unclosed `[[` at
     // the end of a line from swallowing the paragraph below it.
     const before = context.matchBefore(/\[\[[^\]\n]*/);
     if (!before) return null;

@@ -12,7 +12,7 @@ import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
 import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 // Same helper the UI labels a user with, so a name reads identically over
-// MCP and on the page. Precedent for reaching across: `FolioBlobService`
+// MCP and on the page. Precedent for reaching across: `FolioAttachmentService`
 // imports `folioAssetPath` from the same tree. It is a pure function with no
 // imports of its own.
 import { displayName } from "../../web/app/services/displayName.ts";

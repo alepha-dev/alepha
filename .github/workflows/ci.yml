@@ -51,10 +51,11 @@ jobs:
   # below. Named to match: a red `verify` here is the same red you would
   # have got locally.
   #
-  # Coverage is measured here rather than in a second job running the same
-  # 850 files a second time. Instrumentation costs roughly two minutes on top
-  # of the plain run, which is cheaper than the duplicate suite it replaces,
-  # and it means one red X per broken test instead of two.
+  # Coverage is NOT measured here. It lives in `coverage.yml`, nightly, and
+  # that file carries the reasoning: Lore keeps one quality row per branch per
+  # day, so eighteen of the ~19 pushes a day were overwritten before anyone
+  # read them, and the instrumentation was costing ~2min on the critical path
+  # to the deploys to produce them. Read `coverage.yml` before moving it back.
   # ──────────────────────────────────────────────────────────────────────
   verify:
     runs-on: ubuntu-latest
@@ -117,39 +118,14 @@ jobs:
       - name: Docs Check
         run: yarn check:docs
 
-      # Writes coverage/coverage-summary.json and coverage/test-results.json.
-      # Those paths are the convention the push step below reads; neither is
-      # passed as an argument.
+      # No `--coverage`. That flag is what `coverage.yml` runs nightly, and it
+      # carries five of the nine numbers Lore stores, not four: it also turns
+      # on the JSON test reporter. Nothing in this job reads either report.
       - name: Test Project
-        run: yarn alepha test --coverage
+        run: yarn alepha test
 
       - name: Test Bun Providers
         run: yarn test:bun
-
-      # This repository is public and CI runs on `pull_request`. Fork PRs get
-      # no secrets, so the push would fail on a missing LORE_API_KEY by
-      # construction. Same guard `deploy-docs-production` uses.
-      #
-      # The credential is on THIS step only. A job-wide `env:` would put a
-      # full-admin Lore key in the environment of the test run itself, which
-      # executes every spec in the repository.
-      # Never fatal. This step RECORDS what landed; it must not decide what
-      # lands, and it is the last step of the job both deploys gate on.
-      #
-      # It deadlocked exactly once, which is what this line is for: the push
-      # calls `pushQualityRun` on the deployed Lore, that endpoint ships with
-      # Lore, and Lore ships from `deploy-lore-production` - which needs this
-      # job green. A missing endpoint failed the push, the push failed the job,
-      # the job skipped the deploy, and the deploy was the only thing that
-      # could have created the endpoint. Nothing in the loop could break it.
-      #
-      # A failure now shows as a warning annotation on an otherwise green run.
-      - name: Push Coverage To Lore
-        if: github.event_name != 'pull_request'
-        continue-on-error: true
-        run: yarn lore quality push
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
   # ──────────────────────────────────────────────────────────────────────
   # Build + E2E. The long pole, and the half of `yarn v` the job above skips.

@@ -1,22 +1,19 @@
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useMemo } from "react";
 
-import type { BlobController } from "@/api/controllers/BlobController.ts";
-import type { DirectoryController } from "@/api/controllers/DirectoryController.ts";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
+import type { FolioAttachmentController } from "@/api/controllers/FolioAttachmentController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 
-import { currentFolioBlobsAtom } from "../../../atoms/currentFolioBlobsAtom.ts";
+import { currentFolioAttachmentsAtom } from "../../../atoms/currentFolioAttachmentsAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
-import { projectDirectoriesAtom } from "../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
 import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
 import type {
-  BlobRef,
-  DirectoryRef,
+  AttachmentRef,
   EpicRef,
   FeedbackRef,
   QuestRef,
@@ -55,9 +52,9 @@ export interface ElementLinks {
  * ## Where the folio list comes from depends on the element
  *
  * A `folio` element is only ever rendered inside the folios workspace, whose
- * route loader has already filled `userFoliosAtom`, `projectDirectoriesAtom`
- * and `currentFolioBlobsAtom` — the tree pane is built from them. Reading
- * the atoms there rather than fetching is what keeps opening a folio at one
+ * route loader has already filled `userFoliosAtom` and
+ * `currentFolioAttachmentsAtom` — the tree pane is built from them. Reading the
+ * atoms there rather than fetching is what keeps opening a folio at one
  * request instead of four. Every other element is rendered somewhere those
  * atoms are empty, so it fetches.
  *
@@ -77,25 +74,20 @@ export const useElementLinks = (
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
   const epicApi = useClient<EpicController>();
-  const directoryApi = useClient<DirectoryController>();
-  const blobApi = useClient<BlobController>();
+  const attachmentApi = useClient<FolioAttachmentController>();
   const feedbackApi = useClient<FeedbackController>();
 
   const [atomFolios] = useStore(userFoliosAtom);
-  const [atomDirectories] = useStore(projectDirectoriesAtom);
-  const [atomBlobs] = useStore(currentFolioBlobsAtom);
+  const [atomAttachments] = useStore(currentFolioAttachmentsAtom);
   const [atomReleases] = useStore(currentReleasesAtom);
 
   const inFolioWorkspace = element.kind === "folio";
   const { projectId, projectSlug } = element;
 
-  // Only path-style refs (`dir/sub/name`) need the directory map, only
-  // `blob:` / `![](blob:…)` need the blob list, and only `[[#P120]]` needs
-  // the feedback refs. All three are gated so a plain `[[#Q42]]` never pays
-  // for them.
-  const hasPathLinks = /\[\[[^\]\n]*\/[^\]\n]+\]\]/.test(content);
-  const hasBlobRefs =
-    /\[\[\s*blob:/i.test(content) || /!\[[^\]]*\]\(blob:/i.test(content);
+  // Only an `assets/<name>` reference needs the attachment list, and only
+  // `[[#P120]]` needs the feedback refs. Both are gated so a plain
+  // `[[#Q42]]` never pays for them.
+  const hasAssets = /\]\(assets\//i.test(content);
   const hasFeedbackRefs = /\[\[\s*#p\d+\s*\]\]/i.test(content);
 
   // The inbox is paged, so a feedback item's title cannot be read off a
@@ -186,31 +178,17 @@ export const useElementLinks = (
     [epicApi, projectId],
   );
 
-  const { data: fetchedDirectories } = useQuery<DirectoryRef[]>(
+  // Attachments hang off ONE folio, so an `assets/` reference is only
+  // resolvable for a folio element. Outside the workspace that means
+  // fetching by id; a quest or epic body's `assets/` path stays unresolved
+  // rather than being looked up project-wide, which is not a thing.
+  const { data: fetchedAttachments } = useQuery<AttachmentRef[]>(
     {
-      key: ["elementLinks:directories", projectId],
-      enabled: !inFolioWorkspace && hasPathLinks && projectId > 0,
-      staleTime: [5, "minutes"],
-      handler: async () =>
-        await directoryApi.listAllDirectories({
-          params: { projectId },
-        }),
-      onError: () => {},
-    },
-    [directoryApi, projectId, inFolioWorkspace, hasPathLinks],
-  );
-
-  // Blobs hang off ONE folio, so they are only resolvable for a folio
-  // element. Outside the workspace that means fetching by id; a quest or
-  // epic body's `blob:` ref stays unresolved rather than being looked up
-  // project-wide, which is not a thing.
-  const { data: fetchedBlobs } = useQuery<BlobRef[]>(
-    {
-      key: ["elementLinks:blobs", String(element.id ?? "")],
-      enabled: !inFolioWorkspace && hasBlobRefs && element.id !== undefined,
+      key: ["elementLinks:attachments", String(element.id ?? "")],
+      enabled: !inFolioWorkspace && hasAssets && element.id !== undefined,
       staleTime: [1, "minutes"],
       handler: async () => {
-        const rows = await blobApi.listBlobs({
+        const rows = await attachmentApi.listAttachments({
           params: { folioId: String(element.id) },
         });
         return rows.map((b) => ({
@@ -223,25 +201,22 @@ export const useElementLinks = (
       },
       onError: () => {},
     },
-    [blobApi, element.id, inFolioWorkspace, hasBlobRefs],
+    [attachmentApi, element.id, inFolioWorkspace, hasAssets],
   );
 
   const folios = inFolioWorkspace ? atomFolios : (fetchedFolios ?? []);
-  const directories = inFolioWorkspace
-    ? atomDirectories
-    : (fetchedDirectories ?? []);
-  const blobs = useMemo<BlobRef[]>(
+  const attachments = useMemo<AttachmentRef[]>(
     () =>
       inFolioWorkspace
-        ? atomBlobs.map((b) => ({
+        ? atomAttachments.map((b) => ({
             fileId: b.id,
             shortId: b.shortId,
             name: b.name,
             size: b.size,
             mime: b.mimeType,
           }))
-        : (fetchedBlobs ?? []),
-    [inFolioWorkspace, atomBlobs, fetchedBlobs],
+        : (fetchedAttachments ?? []),
+    [inFolioWorkspace, atomAttachments, fetchedAttachments],
   );
 
   /**
@@ -257,8 +232,8 @@ export const useElementLinks = (
    * to select the type, so every quest link the picker ever wrote was a
    * broken folio reference (epic #32).
    *
-   * Attachments are not offered. `[[blob:#N]]` is dead: a file is embedded
-   * as `![name](assets/<name>)` from the Attachments tab or by dropping it
+   * Attachments are not offered: a file is embedded as
+   * `![name](assets/<name>)` from the Attachments tab or by dropping it
    * into the editor, never through a wiki-link.
    */
   const suggestions = useMemo<WikiLinkSuggestion[]>(
@@ -305,8 +280,7 @@ export const useElementLinks = (
             projectSlug,
             folios,
             quests ?? [],
-            directories,
-            blobs,
+            attachments,
             epics ?? [],
             feedbackRefs ?? [],
             releases,
@@ -317,8 +291,7 @@ export const useElementLinks = (
       projectSlug,
       folios,
       quests,
-      directories,
-      blobs,
+      attachments,
       epics,
       feedbackRefs,
       releases,

@@ -30,11 +30,11 @@ export const folioRefSchema = z.object({
 });
 
 /**
- * Wiki-link ref returned alongside a folio. `shortId` is the per-project
- * `#N` identifier — agents follow up via `folio_get` or `quest_get` +
- * `shortId` depending on `kind`. For `blob` refs the `title` is the
- * blob's display name (e.g. `diagram.png`) and the bytes are served at
- * `/api/files/<uuid>`; there is no MCP-side fetch tool for them.
+ * Reference returned alongside a folio. `shortId` is the per-project number
+ * the kind is addressed by, the one after the letter in `[[#F12]]`,
+ * `[[#Q12]]`, `[[#E3]]`, `[[#P120]]`, `[[#R12]]`. Follow up via `folio_get`,
+ * `quest_get`, `epic_get`, `feedback_get` or `release_get` depending on
+ * `kind`.
  */
 const folioLinkRefSchema = z.object({
   kind: linkTargetKindSchema,

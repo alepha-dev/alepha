@@ -4,12 +4,12 @@ import { $entity, db } from "alepha/orm";
 import { projects } from "./projects.ts";
 
 /**
- * Directory node in the per-project folio tree (folios + blobs +
+ * Directory node in the per-project folio tree (folios + attachments +
  * directories under one roof, gdrive-style). `parent_id = null` is the
  * project root. Cycle prevention is enforced at the service layer on
  * every reparent (same pattern the old folio-tree from #45 used).
  *
- * Quest [[#66]] introduces this table; folios + blobs hang off it via
+ * Quest #Q66 introduces this table; folios + attachments hang off it via
  * their own `directoryId` FK columns. Names are unique per-parent
  * across all three node types — enforced via the `folio_names`
  * reservation table (separate file), so this entity stays simple.
@@ -32,7 +32,7 @@ export const folioDirectories = $entity({
     /**
      * Parent directory. `undefined` means "project root". Cascade-delete
      * on parent removal — wiping a directory wipes everything underneath
-     * (including blobs and folios via their own CASCADE refs to this
+     * (including attachments and folios via their own CASCADE refs to this
      * table). Cycle prevention is service-side; the schema doesn't
      * enforce it.
      */

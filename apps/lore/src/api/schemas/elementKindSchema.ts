@@ -13,8 +13,8 @@ import { type Infer, z } from "alepha";
  * buys nothing — the union only has to exist where link handling and the
  * editor are generic. A quest stays a quest everywhere else.
  *
- * Distinct from {@link linkTargetKindSchema}, which is this plus `blob`: a
- * blob can be POINTED AT but has no body, so it is a link target and never
+ * Distinct from {@link linkTargetKindSchema}, which is this plus `feedback`
+ * and `release`: both can be POINTED AT but have no body, so they are link targets and never
  * a link source.
  *
  * ⚠️ **This is NOT the set of things that can CONTAIN a link.** A comment

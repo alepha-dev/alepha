@@ -177,7 +177,7 @@ test.describe("Folio workspace", () => {
 
   test("04 — inspector Links shows a backlink from another folio", async () => {
     const shortId = folioUrl.split("/").pop();
-    await createFolio(otherTitle, `A pointer to [[#${shortId}]] and nothing.`);
+    await createFolio(otherTitle, `A pointer to [[#F${shortId}]] and nothing.`);
 
     await page.goto(folioUrl);
     await inspector()
@@ -360,7 +360,7 @@ test.describe("Folio workspace", () => {
    *
    * It used to cost three. The route loader batched `getByShortId` +
    * `list` + `listAllDirectories` into one `/api/_batch`, then fired
-   * `listBlobs` on its own (it needs the folio's `id`, which only exists
+   * `listAttachments` on its own (it needs the folio's `id`, which only exists
    * after the batch resolves, so it could never join the 10ms
    * `BatchCollector` window), and `FolioHistoryTab` fired `listHistory`
    * from a mount effect — a whole request returning up to ten FULL
@@ -420,7 +420,7 @@ test.describe("Folio workspace", () => {
       calls,
       `expected one request, got:\n${calls.join("\n")}`,
     ).toHaveLength(1);
-    expect(calls[0]).toContain("withBlobs=true");
+    expect(calls[0]).toContain("withAttachments=true");
   });
 
   test("09 — /folios opens with nothing selected", async () => {
@@ -1106,7 +1106,7 @@ test.describe("Folio workspace", () => {
     const fileName = `attached-${stamp}.txt`;
     const registered = page.waitForResponse(
       (r) =>
-        new URL(r.url()).pathname.endsWith("/folio/blobs") &&
+        new URL(r.url()).pathname.endsWith("/folio/attachments") &&
         r.request().method() === "POST" &&
         r.status() === 200,
       { timeout: 20_000 },
@@ -1129,10 +1129,13 @@ test.describe("Folio workspace", () => {
           credentials: "include",
         });
         const folio = (await folioRes.json()) as { id: string };
-        const blobsRes = await fetch(`/api/folios/${folio.id}/blobs`, {
-          credentials: "include",
-        });
-        return ((await blobsRes.json()) as Array<{ name: string }>).map(
+        const attachmentsRes = await fetch(
+          `/api/folios/${folio.id}/attachments`,
+          {
+            credentials: "include",
+          },
+        );
+        return ((await attachmentsRes.json()) as Array<{ name: string }>).map(
           (b) => b.name,
         );
       },
@@ -1154,15 +1157,16 @@ test.describe("Folio workspace", () => {
     // told apart.
     //
     // ⚠️ This asserts VIEW mode, and the behaviour changed with the editor.
-    // Lexical decorated `[[Title]]` in place — the token kept its source
-    // text and carried the target on `data-wiki-href`. There is no in-place
+    // Lexical decorated the token in place — it kept its source text and
+    // carried the target on `data-wiki-href`. There is no in-place
     // decoration now: View mode renders `rewriteFolioWikiLinks`'s output, so
     // a reference is an ordinary `<a href>` whose text is the RESOLVED
-    // title. Edit mode shows the raw `[[Title]]` token, unstyled, because
+    // title. Edit mode shows the raw `[[#F<n>]]` token, unstyled, because
     // that is what is stored.
+    const targetShortId = Number(folioUrl.split("/").pop());
     const hostUrl = await createFolio(
       `Refs-${stamp}`.slice(0, 24),
-      `Points at [[${folioTitle}]] and at [[No Such Folio ${stamp}]].`,
+      `Points at [[#F${targetShortId}]] and at [[#F999999]].`,
     );
     await page.goto(hostUrl);
 
@@ -1194,7 +1198,7 @@ test.describe("Folio workspace", () => {
     // keeps it verbatim, colons and all. `#lore-broken:` costs nothing
     // anywhere else. See `folioWikiLinkResolver.BROKEN_HREF_PREFIX`.
     const brokenLink = body.getByRole("link", {
-      name: `[[No Such Folio ${stamp}]]`,
+      name: "[[#F999999]]",
     });
     await expect(brokenLink).toHaveCount(1);
     await expect(brokenLink).toHaveAttribute(
@@ -1229,11 +1233,17 @@ test.describe("Folio workspace", () => {
       // The picker only ever inserts plain `[[token]]` text — which is why
       // the assertion is on the DOCUMENT, not on any decoration. There is no
       // decoration anymore; the token is markdown like everything else. The
-      // token is the typed `#F<n>` form (epic #32), never the title.
-      const targetShortId = Number(folioUrl.split("/").pop());
+      // token is the typed `#F<n>` form (epic #32), never the title. The body
+      // already carries one such token, so this asserts on the count.
       await expect(editor).toContainText(`[[#F${targetShortId}]]`, {
         timeout: 10_000,
       });
+      await expect
+        .poll(async () => {
+          const text = await editor.textContent();
+          return text?.split(`[[#F${targetShortId}]]`).length ?? 0;
+        })
+        .toBe(3);
     });
 
     await test.step("the markdown round-trip keeps the brackets", async () => {
@@ -1243,28 +1253,29 @@ test.describe("Folio workspace", () => {
       // cannot be armed here (the edit that triggered the save is in the
       // previous step), so poll the stored content instead of racing it.
       //
-      // Polled for the token the picker inserted, not for any `[[`: the body
-      // this folio was created with already carries two, so a bare `[[` is
-      // true before the autosave lands and the assertions below would read
-      // the content from before it.
+      // Polled for the SECOND occurrence of the token the picker inserted,
+      // not for any `[[`: the body this folio was created with already
+      // carries the same token once, so a single match is true before the
+      // autosave lands and the assertions below would read the content from
+      // before it.
       const shortId = Number(hostUrl.split("/").pop());
-      const inserted = `[[#F${Number(folioUrl.split("/").pop())}]]`;
+      const inserted = `[[#F${targetShortId}]]`;
       await expect
         .poll(
           async () =>
             page.evaluate(
-              async ({ pid, sid }) => {
+              async ({ pid, sid, token }) => {
                 const r = await fetch(`/api/projects/${pid}/folios/${sid}`, {
                   credentials: "include",
                 });
                 const folio = (await r.json()) as { content?: string };
-                return folio.content ?? "";
+                return (folio.content ?? "").split(token).length - 1;
               },
-              { pid: projectId, sid: shortId },
+              { pid: projectId, sid: shortId, token: inserted },
             ),
           { timeout: 15_000 },
         )
-        .toContain(inserted);
+        .toBe(2);
 
       const content = await page.evaluate(
         async ({ pid, sid }) => {
@@ -1279,10 +1290,10 @@ test.describe("Folio workspace", () => {
       // Not `\[\[…\]\]`: MDXEditor escapes brackets on the way out and
       // `normalizeEditorMarkdown` repairs them. A regression there silently
       // drops the project's whole link graph on the next save.
-      expect(content).toContain(`[[${folioTitle}]]`);
-      expect(content).toContain(`[[No Such Folio ${stamp}]]`);
-      // And what the picker inserted in the previous step.
-      expect(content).toContain(`[[#F${Number(folioUrl.split("/").pop())}]]`);
+      expect(content).toContain("[[#F999999]]");
+      // The token the body was created with, and the one the picker
+      // inserted in the previous step.
+      expect(content.split(`[[#F${targetShortId}]]`)).toHaveLength(3);
     });
   });
 

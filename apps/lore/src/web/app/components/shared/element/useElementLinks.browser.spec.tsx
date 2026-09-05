@@ -36,8 +36,7 @@ class FakeLinkProvider extends LinkProvider {
   override client(): any {
     return {
       list: async () => [],
-      listAllDirectories: async () => [],
-      listBlobs: async () => [],
+      listAttachments: async () => [],
       getEpics: async () => this.epics,
       getQuests: async (config: { query?: { includePlanned?: boolean } }) => {
         const includePlanned = config?.query?.includePlanned === true;
@@ -70,7 +69,7 @@ const setup = () => {
  * both, so one spec asserts both.
  */
 describe("useElementLinks — a planned epic's quest is direct addressing", () => {
-  it("resolves [[quest:#N]] into a real link even when the epic is planned", async ({
+  it("resolves [[#Q<n>]] into a real link even when the epic is planned", async ({
     expect,
   }) => {
     const { fake, wrapper } = setup();
@@ -81,7 +80,7 @@ describe("useElementLinks — a planned epic's quest is direct addressing", () =
       () =>
         useElementLinks(
           { kind: "quest", projectId: 1, projectSlug: "acme" },
-          "See [[quest:#7]] for details.",
+          "See [[#Q7]] for details.",
         ),
       { wrapper },
     );
@@ -178,7 +177,7 @@ describe("useElementLinks — a planned epic's quest is direct addressing", () =
       () =>
         useElementLinks(
           { kind: "epic", projectId: 1, projectSlug: "acme" },
-          "See [[epic:#3]].",
+          "See [[#E3]].",
         ),
       { wrapper },
     );
