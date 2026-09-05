@@ -11,12 +11,16 @@ import {
   mintedEstateSchema,
 } from "../schemas/estateResourceSchema.ts";
 import { estateSlugSchema } from "../schemas/estateSlugSchema.ts";
+import {
+  type OwnedEstateResource,
+  ownedEstateResourceSchema,
+} from "../schemas/ownedEstateResourceSchema.ts";
 import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
-export type { EstateResource, MintedEstate };
+export type { EstateResource, MintedEstate, OwnedEstateResource };
 
 /**
  * Owner-facing CRUD for estates: the deploy destinations a user owns, across
@@ -41,21 +45,23 @@ export class EstateController {
   protected readonly audits = $inject(LoreAudits);
 
   /**
-   * Every estate the caller owns, newest first.
+   * Every estate the caller owns, newest first, each with the projects it
+   * is lent to: the one fact the owner's page needs that the row does not
+   * hold (#1838).
    */
   listMyEstates = $action({
     use: [$secure({ permissions: ["estate:read"] })],
     method: "GET",
     path: "/estates",
     schema: {
-      response: z.object({ items: z.array(estateResourceSchema) }),
+      response: z.object({ items: z.array(ownedEstateResourceSchema) }),
     },
     handler: async ({ user }) => {
       const items = await this.estates.findMany({
         where: { ownerUserId: { eq: user.id } },
         orderBy: [{ column: "createdAt", direction: "desc" }],
       });
-      return { items: items.map((estate) => this.service.toResource(estate)) };
+      return { items: await this.service.withLoans(items) };
     },
   });
 

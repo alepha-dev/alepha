@@ -6,6 +6,7 @@ import {
 import { AlephaApiInvitations } from "alepha/api/invitations";
 import { AlephaWebSocket } from "alepha/websocket";
 
+import { AdminEstateController } from "./controllers/AdminEstateController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
@@ -242,6 +243,7 @@ export const LoreApi = $module({
     EstateCommandController,
     EstateSocketController,
     EstatePullController,
+    AdminEstateController,
     SigilAnalyticsController,
     InsightsController,
     BlightController,
