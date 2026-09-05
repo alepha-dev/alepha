@@ -877,7 +877,7 @@ describe("BuildCloudflareTask", () => {
       task.testWarnUnreachableTimeouts({
         manifest: manifest({
           jobs: [
-            { name: "api:workflows:dispatchStep", timeoutMs: 600_000 },
+            { name: "reports:render", timeoutMs: 600_000 },
             { name: "quick", timeoutMs: 5_000 },
             { name: "untimed" },
           ],
@@ -885,7 +885,7 @@ describe("BuildCloudflareTask", () => {
       } as any);
 
       expect(task.warnings).toHaveLength(1);
-      expect(task.warnings[0]).toMatch(/api:workflows:dispatchStep \(600s\)/);
+      expect(task.warnings[0]).toMatch(/reports:render \(600s\)/);
       // The other two are reachable and must not be named.
       expect(task.warnings[0]).not.toMatch(/quick/);
       expect(task.warnings[0]).not.toMatch(/untimed/);

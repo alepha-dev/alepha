@@ -126,9 +126,9 @@ export class RemotePrimitiveProvider {
    * Fetch a remote's link registry, retrying transient failures.
    *
    * Ten attempts, exponential backoff from one second, capped at ten
-   * seconds. This is the one place the framework retries in-process: jobs,
-   * queues and workflows persist their attempts instead, which is why the
-   * former `alepha/retry` module had no other caller.
+   * seconds. This is the one place the framework retries in-process: jobs
+   * and queues persist their attempts instead, which is why the former
+   * `alepha/retry` module had no other caller.
    */
   protected async fetchLinks(
     opts: FetchLinksOptions,

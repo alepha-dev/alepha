@@ -25,7 +25,7 @@ yarn v
 `yarn v` runs: clean → copy → lint → check:docs → check:deps → check:conventions →
 typecheck → check:i18n → check:migrations → test → test:bun → build → e2e →
 clean. If it passes, you're good. It needs
-[Docker](https://www.docker.com/) running, for the Postgres, Redis, S3 and MQTT
+[Docker](https://www.docker.com/) running, for the Postgres, Redis and S3
 containers the integration tests use, and it should finish inside 10 minutes.
 
 Two narrower entry points, for when the full run is more than you need:

@@ -247,7 +247,7 @@ export interface TopicPrimitiveOptions<T extends TopicMessageSchema> {
    * When enabled, the provider stores the last message for this topic.
    * New subscribers immediately receive the retained message upon subscribing.
    *
-   * Supported by Memory, Redis, and MQTT providers.
+   * Supported by the Memory and Redis providers.
    *
    * @default false
    */
@@ -280,24 +280,16 @@ export class TopicPrimitive<T extends TopicMessageSchema> extends Primitive<
       payload,
       {
         retain: this.options.retain,
-        mqtt: (this.options as any).mqtt,
         params,
       } as TopicPublishOptions,
     );
   }
 
-  /**
-   * `mqtt` is declaration-merged onto `TopicPrimitiveOptions` by
-   * `@alepha/mqtt`, which core cannot import — an optional satellite must not
-   * become a compile-time dependency of the module that declares the base
-   * interface. Hence the cast: the field is real, core just cannot see it.
-   */
   public async subscribe(handler: TopicHandler<T>): Promise<UnSubscribeFn> {
     return this.provider.subscribeHandler<T>(
       this.name,
       this.options.schema.payload,
       handler,
-      { mqtt: (this.options as any).mqtt },
     );
   }
 
