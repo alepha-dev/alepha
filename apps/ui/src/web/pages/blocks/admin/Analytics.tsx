@@ -14,13 +14,9 @@ import { Specimen } from "@/web/components/Specimen.tsx";
 const Analytics = () => (
   <BlockPage
     title="Admin: analytics"
-    source="@alepha/ui/components/admin/admin-analytics"
-    description="An explorer over declared datasets: pick dimensions to group by, measures to sum, and a window. The dataset's dimensions and measures arrive as JSON Schema and the form is rebuilt from them."
+    description="An explorer over declared datasets."
   >
-    <Specimen
-      title="AdminAnalytics"
-      description="Change the grouping and the table changes with it. The result also carries whether it was estimated and at what sampling interval, which the UI is free to surface or ignore, visibly."
-    >
+    <Specimen title="AdminAnalytics">
       <AdminAnalytics />
     </Specimen>
   </BlockPage>

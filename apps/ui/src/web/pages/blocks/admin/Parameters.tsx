@@ -12,13 +12,9 @@ import { Specimen } from "@/web/components/Specimen.tsx";
 const Parameters = () => (
   <BlockPage
     title="Admin: parameters"
-    source="@alepha/ui/components/admin/admin-parameters"
-    description="Runtime configuration, versioned. Each setting keeps a history, so a change can be scheduled ahead of time and rolled back afterwards, and two versions can be diffed."
+    description="Runtime configuration, versioned."
   >
-    <Specimen
-      title="AdminParameters"
-      description="One branch is an orphan: rows exist and no $parameter declares the name any more, which a rename or a removal leaves behind. The tree renders that differently, and it is never deleted on its own."
-    >
+    <Specimen title="AdminParameters">
       <AdminParameters />
     </Specimen>
   </BlockPage>

@@ -3,29 +3,28 @@ import type { ReactNode } from "react";
 export interface BlockPageProps {
   title: string;
   /**
-   * The import specifier a reader would copy. Shown verbatim, because finding
-   * out where a component lives is most of what brings anyone to a catalogue.
+   * One short line, or nothing. The components below are the documentation;
+   * a paragraph here only pushes them off the screen.
    */
-  source: string;
-  description: string;
+  description?: string;
   children: ReactNode;
 }
 
 /**
- * The shell every block page shares: a title, the import path, and the
- * specimens below it.
+ * The shell every block page shares.
+ *
+ * Full width on purpose: the widest things here are shells, tables and split
+ * auth screens, and a centred column made every one of them render in a letter
+ * box on a large display.
  */
 export const BlockPage = (props: BlockPageProps) => (
-  <div className="mx-auto w-full max-w-5xl space-y-6 p-6">
-    <header className="space-y-2">
-      <h1 className="text-2xl font-semibold tracking-tight">{props.title}</h1>
-      <p className="text-muted-foreground max-w-2xl text-sm">
-        {props.description}
-      </p>
-      <code className="bg-muted text-muted-foreground inline-block rounded px-2 py-1 font-mono text-xs">
-        {props.source}
-      </code>
+  <div className="w-full space-y-4 p-6">
+    <header>
+      <h1 className="text-xl font-semibold tracking-tight">{props.title}</h1>
+      {props.description ? (
+        <p className="text-muted-foreground text-sm">{props.description}</p>
+      ) : null}
     </header>
-    <div className="space-y-6">{props.children}</div>
+    <div className="space-y-4">{props.children}</div>
   </div>
 );

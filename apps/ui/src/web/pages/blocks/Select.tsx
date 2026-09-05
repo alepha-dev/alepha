@@ -74,14 +74,10 @@ const SelectPage = () => {
   ]);
 
   return (
-    <BlockPage
-      title="Select"
-      source="@alepha/ui/components/control-select/control-select"
-      description="One component behind every kind of choice: a segmented group, a select, a searchable popup, an async combobox. Which one you get is decided by the item count and by the switches below."
-    >
+    <BlockPage title="Select" description="Every shape one control takes.">
       <Showcase
         title="Every switch, live"
-        description="Turn one and the control changes shape. Above roughly 20 items it becomes a combobox on its own, which is why the item count is a knob rather than a fixed list."
+        description="Turn one and the control changes shape."
         schema={KNOBS}
         initialValues={{
           itemCount: "8",
@@ -110,7 +106,7 @@ const SelectPage = () => {
 
       <Specimen
         title="Chosen for you, by the data"
-        description="No switches on any of these. The schema alone decides: an enum becomes a select, a short list drops the search box, a long one gains it."
+        description="No switches on any of these."
       >
         <Control input={statics.input.fruit} />
         <Control input={statics.input.size} />
@@ -119,7 +115,7 @@ const SelectPage = () => {
 
       <Specimen
         title="Rich items"
-        description="An item carries a value, a label, and optionally a description and a tag. The same shape renders with or without the search field."
+        description="Items carry a description and a tag."
       >
         <Control input={statics.input.role} />
         <Control input={statics.input.roleSearchable} />
@@ -127,28 +123,28 @@ const SelectPage = () => {
 
       <Specimen
         title="Multiple, and inventing a value"
-        description="An array schema becomes a multi-select. `createNewEntry` adds a 'Create' row so a reader can add a value the list never had."
+        description="An array schema becomes a multi-select."
       >
         <Control input={statics.input.tags} />
       </Specimen>
 
       <Specimen
         title="Async"
-        description="`items` as a function is called with the query and may return a promise, so a large or remote list is fetched as the reader types rather than shipped up front."
+        description="Items as a function, called with the query."
       >
         <Control input={statics.input.country} />
       </Specimen>
 
       <Specimen
         title="Clearable"
-        description="The filter-chip shape: the clear label IS the placeholder, and an x returns to it. There is no 'none' row in the list, because an empty choice is not a choice."
+        description="The clear label is the placeholder."
       >
         <Control input={statics.input.region} />
       </Specimen>
 
       <Specimen
         title="Overriding the automatic choice"
-        description="`searchable` forces the search field on for a short list and off for a long one, which is the escape hatch when the item count is a bad proxy for how hard the list is to scan."
+        description="Force the search field on or off."
       >
         <Control input={statics.input.shortSearchable} />
         <Control input={statics.input.longUnsearchable} />

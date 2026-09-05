@@ -11,15 +11,8 @@ import { Specimen } from "@/web/components/Specimen.tsx";
  * the column picker worth opening.
  */
 const Users = () => (
-  <BlockPage
-    title="Admin: users"
-    source="@alepha/ui/components/admin/admin-users"
-    description="The user directory: server-paged, searchable, filterable by status, with an inline roles picker and bulk actions. Every mutation here is accepted and discarded, because the site is one shared page."
-  >
-    <Specimen
-      title="AdminUsers"
-      description="Roles come from findRoles and are editable inline. Use the column picker to bring back the two columns hidden by defaultHiddenColumns."
-    >
+  <BlockPage title="Admin: users" description="The user directory.">
+    <Specimen title="AdminUsers">
       <AdminUsers defaultHiddenColumns={["firstName", "lastName"]} />
     </Specimen>
   </BlockPage>

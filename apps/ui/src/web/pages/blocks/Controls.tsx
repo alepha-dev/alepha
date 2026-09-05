@@ -43,13 +43,9 @@ const Controls = () => {
   return (
     <BlockPage
       title="Controls"
-      source="@alepha/ui/components/control/control"
-      description="One component per field, picked from the schema. Control reads the zod type and its meta to decide what to render, and every choice it makes can be forced with a prop."
+      description="One component per field, picked from the schema."
     >
-      <Specimen
-        title="Text"
-        description="Inferred from z.string(). `area` forces a textarea, `password` a masked input."
-      >
+      <Specimen title="Text" description="Inferred from z.string().">
         <Control input={form.input.email} icon={Mail} />
         <Control input={form.input.bio} area description="Multi-line." />
         <Control input={form.input.password} password />
@@ -63,16 +59,13 @@ const Controls = () => {
         <Control input={form.input.newsletter} />
       </Specimen>
 
-      <Specimen
-        title="Select"
-        description="A z.enum() becomes a select. Above a size threshold it gains a search box."
-      >
+      <Specimen title="Select" description="A z.enum() becomes a select.">
         <Control input={form.input.role} />
       </Specimen>
 
       <Specimen
         title="Date and time"
-        description="Driven entirely by the JSON-Schema `format`: date, date-time, or time."
+        description="Driven by the JSON-Schema format."
       >
         <Control input={form.input.birthday} />
         <Control input={form.input.meetingAt} />

@@ -65,12 +65,11 @@ const Table = () => {
   return (
     <BlockPage
       title="AlephaTable"
-      source="@alepha/ui/components/alepha-table/alepha-table"
-      description="A table that pages, sorts and filters on the server. Filters are a zod schema rendered into a toolbar, selection drives bulk actions, and the column picker is built in."
+      description="Server-paged, filtered and sortable tables."
     >
       <Specimen
         title="Server-paged, filtered and sortable"
-        description="Backed by a fetcher. Paging, sorting and both filters are resolved by the transport, not in the browser."
+        description="Backed by a fetcher."
       >
         <AlephaTable<ShowcaseMember>
           className="min-h-0"

@@ -13,13 +13,9 @@ import { Specimen } from "@/web/components/Specimen.tsx";
 const Jobs = () => (
   <BlockPage
     title="Admin: jobs"
-    source="@alepha/ui/components/admin/admin-jobs"
-    description="Registered jobs with their schedule, priority and recent success and error counts. Selecting a job opens its execution history, where a failed run offers a retry and a running one a cancel."
+    description="Registered jobs and their executions."
   >
-    <Specimen
-      title="AdminJobs"
-      description="Triggering a job, retrying and cancelling are all accepted and discarded here. The execution rows carry a `can` block, which is what decides whether a row shows retry or cancel."
-    >
+    <Specimen title="AdminJobs">
       <AdminJobs />
     </Specimen>
   </BlockPage>

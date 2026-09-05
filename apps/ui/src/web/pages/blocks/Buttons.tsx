@@ -13,14 +13,10 @@ import { Specimen } from "@/web/components/Specimen.tsx";
  * than showing an empty box.
  */
 const Buttons = () => (
-  <BlockPage
-    title="Buttons"
-    source="@alepha/ui/components/button-dark, button-theme, button-language, brand-icon"
-    description="Drop-in top-bar controls. They own their own state and take no required props, which is why the shell around this page uses the same ButtonDark you see here."
-  >
+  <BlockPage title="Buttons" description="Drop-in top-bar controls.">
     <Specimen
       title="Colour mode"
-      description="ButtonDark toggles light and dark. Pass withSystem to cycle light, dark and system instead."
+      description="ButtonDark toggles light and dark."
       inline
     >
       <ButtonDark />
@@ -30,7 +26,7 @@ const Buttons = () => (
 
     <Specimen
       title="Theme picker"
-      description="ButtonTheme renders nothing here, and that is the component behaving correctly: it reads its list from uiThemeListAtom and hides itself when the list has fewer than two entries. This site registers no themes."
+      description="Hidden until uiThemeListAtom holds two entries."
     >
       <pre className="bg-muted overflow-x-auto rounded-md p-3 font-mono text-xs">
         {`alepha.store.set(uiThemeListAtom, [
@@ -42,7 +38,7 @@ const Buttons = () => (
 
     <Specimen
       title="Language picker"
-      description="ButtonLanguage hides itself the same way, returning null while one dictionary or fewer is registered. This site ships English only."
+      description="Hidden while one dictionary or fewer is registered."
     >
       <pre className="bg-muted overflow-x-auto rounded-md p-3 font-mono text-xs">
         {`export class AppI18n {
@@ -54,7 +50,7 @@ const Buttons = () => (
 
     <Specimen
       title="Brand icons"
-      description="The identity-provider marks the auth block's social buttons use. An unknown provider falls back to a generic globe rather than rendering nothing."
+      description="The identity-provider marks the auth block's social buttons use."
       inline
     >
       <BrandIcon provider="github" className="size-6" />

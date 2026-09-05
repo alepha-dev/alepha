@@ -60,17 +60,16 @@ const AutoFormBlock = () => {
   return (
     <BlockPage
       title="AutoForm"
-      source="@alepha/ui/components/auto-form/auto-form"
-      description="A whole form rendered from a zod schema: layout, labels, validation and the submit bar. Fields can appear and disappear as values change, without any branching in the component."
+      description="A whole form rendered from a zod schema."
     >
       <Specimen
         title="Schema-driven, with a conditional field"
-        description="Switch Role to admin and the Api Token field appears. Submit to see the parsed values."
+        description="Switch Role to admin and the Api Token field appears."
       >
         <AutoForm
           form={form}
           title="Project settings"
-          description="Every field, its width and its validation come from the schema above."
+          description="Width and validation come from the schema."
           submitLabel="Save settings"
         />
       </Specimen>

@@ -9,15 +9,8 @@ import { Specimen } from "@/web/components/Specimen.tsx";
  * visibly fake on purpose: the point is the one-time reveal, not a credential.
  */
 const Keys = () => (
-  <BlockPage
-    title="Admin: API keys"
-    source="@alepha/ui/components/admin/admin-keys"
-    description="Programmatic access tokens, shown by prefix and suffix because the key itself is displayed exactly once, at creation. One row is revoked and one expires, so both states are visible."
-  >
-    <Specimen
-      title="AdminKeys"
-      description="Holds two clients: the admin one lists and revokes, the user-facing one mints. Creating a key opens the reveal dialog with a deliberately fake token."
-    >
+  <BlockPage title="Admin: API keys" description="Programmatic access tokens.">
+    <Specimen title="AdminKeys">
       <AdminKeys />
     </Specimen>
   </BlockPage>

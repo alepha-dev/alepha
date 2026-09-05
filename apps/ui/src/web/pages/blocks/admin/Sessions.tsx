@@ -12,13 +12,9 @@ import { Specimen } from "@/web/components/Specimen.tsx";
 const Sessions = () => (
   <BlockPage
     title="Admin: sessions"
-    source="@alepha/ui/components/admin/admin-sessions"
-    description="Active sessions with their owner, origin, device and last sign of life. Revoking is accepted and discarded here."
+    description="Active sessions, and how to end them."
   >
-    <Specimen
-      title="AdminSessions"
-      description="The row carries no refresh token, and that is the real projection rather than a showcase simplification: exposing one would hand over full impersonation."
-    >
+    <Specimen title="AdminSessions">
       <AdminSessions />
     </Specimen>
   </BlockPage>

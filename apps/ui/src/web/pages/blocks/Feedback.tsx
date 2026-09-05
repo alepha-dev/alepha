@@ -22,12 +22,11 @@ const Feedback = () => {
   return (
     <BlockPage
       title="Toasts and dialogs"
-      source="@alepha/ui/components/use-toast/use-toast, @alepha/ui/components/use-dialog/use-dialog"
-      description="Transient feedback and blocking questions. Both are hooks returning an imperative API, so neither needs state or a mounted component at the call site."
+      description="Transient feedback and blocking questions."
     >
       <Specimen
         title="Toast tones"
-        description="Stacked, auto-dismissed, and safe to fire from anywhere."
+        description="Stacked and auto-dismissed."
         inline
       >
         <Button onClick={() => toast.success("Settings saved")}>Success</Button>
@@ -48,11 +47,7 @@ const Feedback = () => {
         </Button>
       </Specimen>
 
-      <Specimen
-        title="Dialogs"
-        description="Each returns a promise. confirm resolves to a boolean, prompt to the string or null."
-        inline
-      >
+      <Specimen title="Dialogs" description="Each returns a promise." inline>
         <Button
           onClick={async () => {
             const ok = await dialog.confirm({

@@ -16,6 +16,8 @@ export class AppRouter {
     component: Layout,
     children: (): any[] => [
       this.home,
+      this.blocksShell,
+      this.blocksSidebar,
       this.blocksSelect,
       this.blocksAuth,
       this.blocksAccount,
@@ -25,6 +27,7 @@ export class AppRouter {
       this.blocksFeedback,
       this.blocksButtons,
       this.adminUsers,
+      this.adminUserDetail,
       this.adminAudits,
       this.adminJobs,
       this.adminSessions,
@@ -61,6 +64,20 @@ export class AppRouter {
     static: true,
     head: { title: "Auth - Alepha UI" },
     lazy: () => import("./pages/blocks/Auth.tsx"),
+  });
+
+  blocksShell = $page({
+    path: "/blocks/shell",
+    static: true,
+    head: { title: "App shell - Alepha UI" },
+    lazy: () => import("./pages/blocks/Shell.tsx"),
+  });
+
+  blocksSidebar = $page({
+    path: "/blocks/sidebar",
+    static: true,
+    head: { title: "Sidebar - Alepha UI" },
+    lazy: () => import("./pages/blocks/SidebarPage.tsx"),
   });
 
   blocksSelect = $page({
@@ -103,6 +120,19 @@ export class AppRouter {
     static: true,
     head: { title: "Admin dashboard - Alepha UI" },
     lazy: () => import("./pages/blocks/admin/Dashboard.tsx"),
+  });
+
+  /**
+   * ⚠️ NOT under `/blocks`. `AdminUsers` navigates to this exact path with a
+   * hardcoded push, so anything else leaves every row linking to a 404.
+   *
+   * Not `static`: the id is a route param, so there is no fixed set of pages
+   * to prerender.
+   */
+  adminUserDetail = $page({
+    path: "/admin/users/:userId",
+    head: { title: "User - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/UserDetail.tsx"),
   });
 
   adminUsers = $page({

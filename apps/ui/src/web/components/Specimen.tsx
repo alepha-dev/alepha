@@ -3,30 +3,27 @@ import type { ReactNode } from "react";
 
 export interface SpecimenProps {
   title: string;
+  /**
+   * One short line, or nothing.
+   */
   description?: string;
   children: ReactNode;
   /**
-   * Lays the variants out in a wrapping row instead of a column. For anything
-   * small enough to compare side by side - buttons, badges, switches - seeing
-   * them on one line is the whole value of a specimen.
+   * Lays the variants out in a wrapping row instead of a column, for anything
+   * small enough to compare side by side.
    */
   inline?: boolean;
 }
 
 /**
- * One labelled group of variants.
- *
- * The showcase is a reference, so every specimen states what it is showing.
- * A wall of unlabelled components is a screenshot, not a catalogue.
+ * One labelled group of variants, full width.
  */
 export const Specimen = (props: SpecimenProps) => (
   <section className="border-border/60 rounded-lg border">
-    <header className="border-border/60 border-b px-4 py-3">
+    <header className="border-border/60 border-b px-4 py-2">
       <h3 className="text-sm font-medium">{props.title}</h3>
       {props.description ? (
-        <p className="text-muted-foreground mt-0.5 text-xs">
-          {props.description}
-        </p>
+        <p className="text-muted-foreground text-xs">{props.description}</p>
       ) : null}
     </header>
     <div

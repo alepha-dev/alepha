@@ -36,12 +36,11 @@ const PROFILE: MyProfile = {
 const Account = () => (
   <BlockPage
     title="Account"
-    source="@alepha/ui/components/account/*"
-    description="What a signed-in person manages about themselves: their profile, where they are signed in, the API keys they minted, and the applications holding OAuth access."
+    description="What a signed-in person manages about themselves."
   >
     <Specimen
       title="AccountProfile"
-      description="The avatar control crops and resizes in the browser before upload. Whether a username field appears at all is decided by the realm, not by this component."
+      description="The avatar is cropped in the browser."
     >
       {/*
         Typed as `MyProfile` rather than cast. The first draft used `as never`
@@ -55,7 +54,7 @@ const Account = () => (
 
     <Specimen
       title="AccountSessions"
-      description="Revoking one session is unconfirmed; signing out everywhere else is confirmed. The difference is reach: one session comes back by signing in again, the bulk action has no undo."
+      description="Revoke one, or sign out everywhere else."
     >
       <AccountSessions
         sessions={
@@ -85,7 +84,7 @@ const Account = () => (
 
     <Specimen
       title="AccountKeys"
-      description="A freshly minted token is shown exactly once, in a dialog that stays open until dismissed, because the server keeps only a hash and can never show it again."
+      description="The token is shown exactly once."
     >
       <AccountKeys
         apiKeys={
@@ -115,7 +114,7 @@ const Account = () => (
 
     <Specimen
       title="AccountConnections"
-      description="Applications holding OAuth access: an MCP client, a CLI, an integration. Revoking is confirmed, because unlike a session it does not come back by signing in."
+      description="Applications holding OAuth access."
     >
       <AccountConnections
         connections={

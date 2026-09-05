@@ -34,7 +34,7 @@ const Dashboard = () => {
       render: () => (
         <AdminDashboardCountCard
           label="Users"
-          description="Accounts in this realm"
+          description="The admin landing page."
           icon={<UsersIcon className="size-4" />}
           href="/blocks/admin/users"
           load={() => count("findUsers")}
@@ -99,13 +99,9 @@ const Dashboard = () => {
   return (
     <BlockPage
       title="Admin: dashboard"
-      source="@alepha/ui/components/admin/admin-dashboard"
-      description="The admin landing page: whatever cards survive their own gate, ordered. A fifth card is defined here and gated off, so what you see is four."
+      description="Whatever cards survive their own gate."
     >
-      <Specimen
-        title="AdminDashboard"
-        description="Each tile loads its own count. A card's `can` returning false removes it, and a failed count renders a dash rather than an error."
-      >
+      <Specimen title="AdminDashboard">
         <AdminDashboard cards={cards} />
       </Specimen>
     </BlockPage>

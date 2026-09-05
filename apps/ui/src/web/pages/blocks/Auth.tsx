@@ -29,12 +29,11 @@ const KNOBS = z.object({
 const Auth = () => (
   <BlockPage
     title="Sign in & register"
-    source="@alepha/ui/components/auth/*"
-    description="The four screens behind /auth: login, register, reset password and verify email. Which credential fields and which social buttons appear is decided entirely by the realm config handed in as a prop."
+    description="Sign in, register and reset, against a fixture realm."
   >
     <Showcase
       title="AuthLogin"
-      description="`split` puts a branded panel beside the form on large screens and collapses back to centered on small ones. The two links are optional: omit the path and the link disappears."
+      description="Centered, or split with a branded panel."
       schema={KNOBS}
       initialValues={{
         variant: "centered",
@@ -57,14 +56,14 @@ const Auth = () => (
 
     <Specimen
       title="AuthRegister"
-      description="The fields come from the realm's own requirements, and the password rules are enforced against its policy rather than a hardcoded regex."
+      description="Fields and password rules come from the realm."
     >
       <AuthRegister realmConfig={SHOWCASE_REALM} loginPath="/blocks/auth" />
     </Specimen>
 
     <Specimen
       title="AuthResetPassword"
-      description="Three steps in one component: ask for the address, take the code, set the new password. It walks them itself rather than needing three routes."
+      description="Three steps in one component."
     >
       <AuthResetPassword
         realmConfig={SHOWCASE_REALM}

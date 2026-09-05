@@ -9,15 +9,8 @@ import { Specimen } from "@/web/components/Specimen.tsx";
  * the filter offer a bucket nothing belongs to, which reads as a broken filter.
  */
 const Files = () => (
-  <BlockPage
-    title="Admin: files"
-    source="@alepha/ui/components/admin/admin-files"
-    description="Stored files across buckets, with size, type and uploader. Uploading is accepted and stores nothing; deleting is accepted and removes nothing."
-  >
-    <Specimen
-      title="AdminFiles"
-      description="Two clients feed this: the file controller lists and mutates, the stats controller populates the bucket filter."
-    >
+  <BlockPage title="Admin: files" description="Stored files across buckets.">
+    <Specimen title="AdminFiles">
       <AdminFiles />
     </Specimen>
   </BlockPage>

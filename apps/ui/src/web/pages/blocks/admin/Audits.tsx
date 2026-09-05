@@ -13,15 +13,8 @@ import { Specimen } from "@/web/components/Specimen.tsx";
  * `ShowcaseAuditsController` answers.
  */
 const Audits = () => (
-  <BlockPage
-    title="Admin: audit log"
-    source="@alepha/ui/components/admin/admin-audits"
-    description="The audit trail as the admin surface shows it: server-paged, filterable by type, action and layer, with bulk selection. Every row here is a fixture, and deleting one is accepted and ignored."
-  >
-    <Specimen
-      title="AdminAudits"
-      description="Takes no props. It loads its filter's type:action pairs on mount, then pages the log through the same client any application would use."
-    >
+  <BlockPage title="Admin: audit log" description="The audit trail.">
+    <Specimen title="AdminAudits">
       <AdminAudits />
     </Specimen>
   </BlockPage>

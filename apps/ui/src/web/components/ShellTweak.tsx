@@ -114,10 +114,6 @@ export const ShellTweak = () => {
               }
             />
           </div>
-
-          <p className="text-muted-foreground border-t pt-2 text-[11px]">
-            Stored in localStorage, so it survives a reload.
-          </p>
         </div>
       </PopoverContent>
     </Popover>

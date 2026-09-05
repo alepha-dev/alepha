@@ -1,6 +1,22 @@
 @import "@alepha/ui/styles.css";
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * Fonts, self-hosted via @fontsource - no third-party CDN, so a visitor's IP
+ * never reaches a font host. The same approach `apps/docs` takes.
+ *
+ * Importing all three costs nothing up front: a browser downloads a face only
+ * when something actually renders in it, so a reader who never picks Amber
+ * never fetches Spectral. That is what makes a font per theme affordable.
+ * ────────────────────────────────────────────────────────────────────────── */
+@import "@fontsource/spectral/400.css";
+@import "@fontsource/spectral/600.css";
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+
+/* ──────────────────────────────────────────────────────────────────────────
  * Themes.
  *
  * `ColorScheme` puts `theme-<id>` on the root element for every theme except
@@ -80,6 +96,8 @@
 
 .theme-amber {
   --radius: 0.75rem;
+  --font-sans: "Spectral", "Iowan Old Style", Georgia, serif;
+  --font-display: "Spectral", "Iowan Old Style", Georgia, serif;
   --background: oklch(0.98 0.018 85);
   --foreground: oklch(0.28 0.04 60);
   --card: oklch(0.995 0.01 85);
@@ -140,6 +158,8 @@
 
 .theme-violet {
   --radius: 1rem;
+  --font-sans: "Space Grotesk", "Avenir Next", system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Avenir Next", system-ui, sans-serif;
   --background: oklch(0.975 0.012 300);
   --foreground: oklch(0.26 0.05 300);
   --card: oklch(0.995 0.006 300);
@@ -200,6 +220,8 @@
 
 .theme-teal {
   --radius: 0.375rem;
+  --font-sans: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
   --background: oklch(0.975 0.015 190);
   --foreground: oklch(0.25 0.04 200);
   --card: oklch(0.995 0.008 190);

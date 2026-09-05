@@ -11,15 +11,8 @@ import { Specimen } from "@/web/components/Specimen.tsx";
  * actually moved.
  */
 const Payments = () => (
-  <BlockPage
-    title="Admin: payments"
-    source="@alepha/ui/components/admin/admin-payments"
-    description="Payment intents with their amount, currency, status and payer. Amounts are stored in minor units, so 4250 is 42.50."
-  >
-    <Specimen
-      title="AdminPayments"
-      description="The statuses cover the settled-but-not-clean cases a happy-path dataset never shows: partially refunded, voided, cancelled and failed."
-    >
+  <BlockPage title="Admin: payments" description="Payment intents.">
+    <Specimen title="AdminPayments">
       <AdminPayments />
     </Specimen>
   </BlockPage>

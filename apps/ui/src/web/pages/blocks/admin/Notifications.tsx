@@ -11,15 +11,8 @@ import { Specimen } from "@/web/components/Specimen.tsx";
  * disables Resend rather than offering an action that can only fail.
  */
 const Notifications = () => (
-  <BlockPage
-    title="Admin: notifications"
-    source="@alepha/ui/components/admin/admin-notifications"
-    description="The delivery log: what was sent, on which channel, to whom, and what the transport said about it. Opening a row shows the rendered message, or the reason there is none."
-  >
-    <Specimen
-      title="AdminNotifications"
-      description="A preview answers `available: false` with a reason as a normal 200, because a purged outbox row and a sensitive template are both states to draw rather than errors."
-    >
+  <BlockPage title="Admin: notifications" description="The delivery log.">
+    <Specimen title="AdminNotifications">
       <AdminNotifications />
     </Specimen>
   </BlockPage>
