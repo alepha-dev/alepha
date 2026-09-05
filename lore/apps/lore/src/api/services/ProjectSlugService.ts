@@ -33,6 +33,12 @@ export class ProjectSlugService {
     "p",
     "q",
     "sigils",
+    // The machine-facing roots: the estates websocket lives under /ws and the
+    // artifact and secret pulls under /estates (epic #20). Both are server
+    // routes, never pages, so a project slugged "ws" or "estates" would have
+    // those paths answered by the server before its own pages.
+    "ws",
+    "estates",
     "assets",
     "static",
     "public",
