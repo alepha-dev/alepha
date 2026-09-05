@@ -13,7 +13,7 @@ import { expect, test } from "@playwright/test";
  *     calling useDialog threw on sight.
  *
  * So each spec asserts CONTENT from the fixtures, never a status code, and the
- * shell assertion is what catches the second failure: `Admin` in the sidebar
+ * shell assertion is what catches the second failure: the `Pages` group label
  * only exists when the page is inside the layout.
  */
 const PAGES = [
@@ -34,12 +34,12 @@ const PAGES = [
   { path: "audits", heading: "Admin: audit log", content: "user:login" },
 ] as const;
 
-test.describe("admin blocks", () => {
+test.describe("admin pages", () => {
   for (const page of PAGES) {
     test(`${page.path} renders inside the shell, with fixture data`, async ({
       page: browser,
     }) => {
-      await browser.goto(`/blocks/admin/${page.path}`);
+      await browser.goto(`/pages/admin/${page.path}`);
 
       await expect(
         browser.getByRole("heading", { name: page.heading }),
@@ -50,7 +50,7 @@ test.describe("admin blocks", () => {
       // the providers the layout mounts.
       await expect(
         browser.locator('[data-sidebar="group-label"]').filter({
-          hasText: "Admin",
+          hasText: "Pages",
         }),
       ).toBeVisible();
 
@@ -61,7 +61,7 @@ test.describe("admin blocks", () => {
   test("a job's executions load with retry and cancel affordances", async ({
     page,
   }) => {
-    await page.goto("/blocks/admin/jobs");
+    await page.goto("/pages/admin/jobs");
     await page.getByText("ShowcaseJobs.sendDigest").click();
 
     // `can.retry` / `can.cancel` decide these, so a fixture without a failed
@@ -71,11 +71,22 @@ test.describe("admin blocks", () => {
   });
 
   test("a parameter opens its version history", async ({ page }) => {
-    await page.goto("/blocks/admin/parameters");
+    await page.goto("/pages/admin/parameters");
     await page.getByText("Limits", { exact: true }).click();
 
     // One version per status the panel draws differently.
     await expect(page.getByText("Current").first()).toBeVisible();
     await expect(page.getByText("Expired").first()).toBeVisible();
+  });
+
+  test("a user row reaches its detail page", async ({ page }) => {
+    await page.goto("/pages/admin/users");
+    await page.getByText("ada@alepha.dev").first().click();
+
+    // `AdminUsers` pushes a HARDCODED /admin/users/:id, which is why that
+    // route is registered outside /pages. A crawl found nine dangling links
+    // the first time it was not.
+    await expect(page).toHaveURL(/\/admin\/users\//);
+    await expect(page.getByText("ada@alepha.dev").first()).toBeVisible();
   });
 });

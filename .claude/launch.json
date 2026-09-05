@@ -22,16 +22,6 @@
       "port": 3303
     },
     {
-      "name": "playground",
-      "runtimeExecutable": "yarn",
-      "runtimeArgs": [
-        "w",
-        "playground",
-        "dev"
-      ],
-      "port": 3304
-    },
-    {
       "name": "shop",
       "runtimeExecutable": "yarn",
       "runtimeArgs": [

@@ -52,11 +52,12 @@ import { dirname, join } from "node:path";
  * @param app the suite's key in {@link E2E_SLOTS}.
  */
 export const e2ePort = (app: E2eApp): number => {
-  // Memoised through the environment, not a module variable, because
-  // `apps/examples/playground` calls this from BOTH its config and its `global-setup.ts`
-  // and the two must agree. Under the old fixed port they agreed by arithmetic;
-  // now the first call binds the answer and the second reads it back. This also
-  // reaches the `webServer` child, which inherits `process.env`.
+  // Memoised through the environment, not a module variable, because a suite
+  // may call this from BOTH its config and its setup, and the two must agree
+  // (`apps/e2e-cli/src/bay.e2e.spec.ts` depends on exactly that). Under the old
+  // fixed port they agreed by arithmetic; now the first call binds the answer
+  // and the second reads it back. This also reaches the `webServer` child,
+  // which inherits `process.env`.
   if (process.env.E2E_PORT) {
     return Number(process.env.E2E_PORT);
   }
@@ -144,12 +145,16 @@ export const E2E_BAND_END = 4999;
  * The previous scheme derived the slot from the app's dev port (`default % 100`)
  * and so depended on two unrelated numbers staying coordinated by comment. An
  * explicit registry cannot drift: a new suite either appears here or does not
- * typecheck. Slot 9 is free; past that, raise {@link STRIDE} and the band.
+ * typecheck. Slots 2 and 9 are free; past that, raise {@link STRIDE} and the
+ * band.
+ *
+ * ⚠️ Numbers are not reshuffled when a suite goes away. Slot 2 was
+ * `apps/examples/playground`, retired once `apps/ui` replaced it; renumbering
+ * the survivors would move every other suite's derived port for no gain.
  */
 export const E2E_SLOTS = {
   docs: 0,
   lore: 1,
-  playground: 2,
   shop: 3,
   ssr: 4,
   "ssr-dev": 5,

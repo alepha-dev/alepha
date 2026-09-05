@@ -15,6 +15,9 @@
   "dependencies": {
     "@alepha/lore": "workspace:*",
     "@alepha/ui": "workspace:^",
+    "@fontsource/ibm-plex-mono": "^5.2.5",
+    "@fontsource/space-grotesk": "^5.2.5",
+    "@fontsource/spectral": "^5.2.5",
     "alepha": "workspace:^",
     "lucide-react": "^1.38.0",
     "react": "^19.2.8",

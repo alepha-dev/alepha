@@ -30,6 +30,22 @@ export class ShowcaseUsersController {
     handler: ({ query }) => this.users.paginate(query as any),
   });
 
+  /**
+   * Needed by `AdminUserDetail`, which the users table links to. Without it
+   * that page renders a permanent skeleton, and the row click looks broken.
+   */
+  public readonly getUser = $action({
+    path: "/admin/users/:id",
+    schema: {
+      params: z.object({ id: z.text() }),
+      query: z.object({ userRealmName: z.string().optional() }),
+      response: userResourceSchema,
+    },
+    handler: ({ params }) =>
+      (this.users.rows().find((u) => u.id === params.id) ??
+        this.users.rows()[0]) as any,
+  });
+
   public readonly findRoles = $action({
     path: "/admin/users/metadata/roles",
     schema: {

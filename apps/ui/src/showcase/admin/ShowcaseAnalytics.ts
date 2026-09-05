@@ -55,7 +55,7 @@ export class ShowcaseAnalytics {
     const limit = query.limit ?? 50;
 
     const values: Record<string, string[]> = {
-      path: ["/", "/primitives", "/blocks/table", "/blocks/controls"],
+      path: ["/", "/blocks/select", "/blocks/table", "/blocks/controls"],
       country: ["FR", "GB", "US", "NL"],
       device: ["desktop", "mobile", "tablet"],
     };

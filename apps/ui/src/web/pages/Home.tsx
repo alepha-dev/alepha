@@ -1,7 +1,5 @@
-import { Badge } from "@alepha/ui/components/ui/badge";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -14,94 +12,111 @@ interface Entry {
   description: string;
 }
 
-const ENTRIES: Entry[] = [
+const BLOCKS: Entry[] = [
   {
-    href: "/blocks/table",
-    title: "AlephaTable",
-    description:
-      "Server-paged and static tables, with filters, sorting and a column picker.",
+    href: "/blocks/shell",
+    title: "App shell",
+    description: "The frame, in three variants.",
+  },
+  {
+    href: "/blocks/sidebar",
+    title: "Sidebar",
+    description: "The navigation tree.",
   },
   {
     href: "/blocks/controls",
     title: "Controls",
-    description:
-      "The Control family: text, number, password, select, date, array and object.",
+    description: "One component per field.",
+  },
+  {
+    href: "/blocks/select",
+    title: "Select",
+    description: "Every shape one control takes.",
   },
   {
     href: "/blocks/auto-form",
     title: "AutoForm",
-    description:
-      "A whole form derived from a zod schema, conditionals and all.",
+    description: "A form from a schema.",
   },
   {
-    href: "/blocks/feedback",
-    title: "Toasts and dialogs",
-    description:
-      "useToast and the imperative useDialog API that replaces window.confirm.",
+    href: "/blocks/table",
+    title: "Table",
+    description: "Server-paged and filtered.",
   },
+  {
+    href: "/blocks/dialog",
+    title: "Dialog",
+    description: "Blocking questions, as promises.",
+  },
+  { href: "/blocks/toast", title: "Toast", description: "Transient feedback." },
   {
     href: "/blocks/buttons",
     title: "Buttons",
-    description: "Theme, language and brand affordances for an app shell.",
+    description: "Every variant and size.",
+  },
+];
+
+const PAGES: Entry[] = [
+  {
+    href: "/pages/auth",
+    title: "Auth",
+    description: "Sign in, register, reset, verify.",
   },
   {
-    href: "/primitives",
-    title: "Primitives",
-    description:
-      "The 43 shadcn primitives @alepha/ui ships, and where they come from.",
+    href: "/pages/account",
+    title: "Account",
+    description: "Profile, sessions, keys.",
+  },
+  {
+    href: "/pages/admin/dashboard",
+    title: "Admin",
+    description: "Eleven pages, from fixtures.",
   },
 ];
 
 const Home = () => {
   const router = useRouter();
 
+  const grid = (entries: Entry[]) => (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {entries.map((e) => (
+        <Card
+          key={e.href}
+          className="hover:border-primary/50 cursor-pointer transition-colors"
+          onClick={() => router.push(e.href)}
+        >
+          <CardHeader>
+            <CardTitle className="text-base">{e.title}</CardTitle>
+            <CardDescription>{e.description}</CardDescription>
+          </CardHeader>
+        </Card>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8 p-6">
-      <header className="space-y-3">
-        <Badge variant="secondary">@alepha/ui</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">
+    <div className="w-full space-y-8 overflow-auto p-6">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">
           Every component, with its variants.
         </h1>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          A live reference for the components Alepha ships. Each page renders
-          the real component, not a screenshot, so what you see here is what the
-          current build does.
+          A live reference for what Alepha ships. Each page renders the real
+          component, so what you see is what the current build does. No
+          database, no auth: the data-driven blocks are fed by a handful of
+          actions over in-memory arrays.
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {ENTRIES.map((entry) => (
-          <Card
-            key={entry.href}
-            className="hover:border-primary/50 cursor-pointer transition-colors"
-            onClick={() => router.push(entry.href)}
-          >
-            <CardHeader>
-              <CardTitle className="text-base">{entry.title}</CardTitle>
-              <CardDescription>{entry.description}</CardDescription>
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium">Blocks</h2>
+        {grid(BLOCKS)}
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">No backend</CardTitle>
-          <CardDescription>
-            This site ships no database, no migrations and no auth. The blocks
-            that normally talk to a server are fed by a handful of actions over
-            an in-memory dataset, so every screen is the real component with
-            real data, and nothing here can be signed into.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          Source lives in the Alepha monorepo under{" "}
-          <code className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">
-            apps/ui
-          </code>
-          .
-        </CardContent>
-      </Card>
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium">Pages</h2>
+        {grid(PAGES)}
+      </section>
     </div>
   );
 };

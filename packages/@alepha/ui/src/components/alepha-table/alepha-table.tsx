@@ -1136,18 +1136,26 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     setRefreshKey((k) => k + 1);
   }
 
-  useEffect(() => {
-    if (!props.persistenceKey) return;
-    writePersisted(props.persistenceKey, "columns", [...visibleColumns]);
-  }, [props.persistenceKey, visibleColumns]);
-
+  /**
+   * Written on a TOGGLE, never on mount - the same rule the filter-persist
+   * effect follows above, and for the same reason.
+   *
+   * As a mount effect this stamped the current set into storage on first
+   * paint, which froze the column layout of every reader who had merely
+   * OPENED the table. A `defaultHidden` added to a column afterwards then did
+   * nothing for them, permanently and with no way to notice: the stored set
+   * had no `defaultHidden` in it to be out of date. It also made
+   * `defaultHidden` unusable as a controlled prop, since a remount read back
+   * what the previous mount had written rather than the new default.
+   */
   const toggleColumn = (id: string) => {
-    setVisibleColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const next = new Set(visibleColumns);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setVisibleColumns(next);
+    if (props.persistenceKey) {
+      writePersisted(props.persistenceKey, "columns", [...next]);
+    }
   };
 
   // -- Render ---------------------------------------------------------------

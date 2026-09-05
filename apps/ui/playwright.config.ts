@@ -42,7 +42,7 @@ export default defineConfig({
       APP_SECRET: "e2e-test-secret",
       SERVER_PORT: String(port),
       // No DATABASE_URL: this app has no ORM. If one ever appears here, it
-      // needs `:memory:` the way playground and shop inject it.
+      // needs `:memory:` the way shop injects it.
     },
     timeout: 180_000,
     stdout: "ignore",

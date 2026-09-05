@@ -132,7 +132,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   # No service containers, deliberately. Only `vitest.config.ts` points at
   # them, and that is `verify` above: every app this job builds is SQLite or
-  # nothing (playground and shop inject `:memory:`, lore and docs inject no
+  # nothing (shop injects `:memory:`, lore and docs inject no
   # `DATABASE_URL` at all, and `alepha/orm` picks SQLite unless the URL starts
   # with `d1:`). Nothing here references REDIS_URL or S3_ENDPOINT, and
   # `node dist` does not read `.env`, so the containers were unreachable

@@ -4,8 +4,8 @@ import { platform } from "alepha/cli/platform";
 
 export default defineConfig({
   // Dev ports live in the 33xx band, which `playwright.port.ts` keeps strictly
-  // DISJOINT from the 4300-4999 e2e band. 3302 docs, 3303 lore, 3304
-  // playground, 3305 shop, 3306 errors, 3311 ssr, so this one takes 3307.
+  // DISJOINT from the 4300-4999 e2e band. 3302 docs, 3303 lore, 3305 shop,
+  // 3306 errors, 3308 ui, 3311 ssr, so this one takes 3307.
   dev: { port: 3307 },
   plugins: [
     /*

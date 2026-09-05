@@ -7,6 +7,7 @@ import { ShowcaseAudits } from "./admin/ShowcaseAudits.ts";
 import { ShowcaseAuditsController } from "./admin/ShowcaseAuditsController.ts";
 import { ShowcaseFiles } from "./admin/ShowcaseFiles.ts";
 import { ShowcaseFilesController } from "./admin/ShowcaseFilesController.ts";
+import { ShowcaseIdentitiesController } from "./admin/ShowcaseIdentitiesController.ts";
 import { ShowcaseJobs } from "./admin/ShowcaseJobs.ts";
 import { ShowcaseJobsController } from "./admin/ShowcaseJobsController.ts";
 import { ShowcaseKeys } from "./admin/ShowcaseKeys.ts";
@@ -65,5 +66,6 @@ export const UiShowcase = $module({
     ShowcaseAnalyticsController,
     ShowcasePayments,
     ShowcasePaymentsController,
+    ShowcaseIdentitiesController,
   ],
 });

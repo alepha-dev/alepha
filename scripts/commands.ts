@@ -178,9 +178,8 @@ export class AlephaCommands {
       await run.rm([`apps/examples/ssr/node_modules/.vite`]);
 
       // Both need `build` and neither needs the other. They do not collide:
-      // `e2e` serves the playground on its own port (see its
-      // playwright.config.ts) and `e2e-cli` exercises a packed tarball with
-      // no server at all.
+      // `e2e` gives each suite its own port (see `playwright.port.ts`) and
+      // `e2e-cli` exercises a packed tarball with no server at all.
       await run([`yarn e2e`, `yarn e2e-cli`]);
 
       // ⚠️ `{ root }`, never `cd X && …`. `shell.run(string)` passes every

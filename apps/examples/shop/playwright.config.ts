@@ -60,7 +60,7 @@ export default defineConfig({
     env: {
       SERVER_PORT: `${port}`,
       /*
-       * In memory, like `apps/examples/playground`. A file on disk was the first attempt
+       * In memory. A file on disk was the first attempt
        * and it cost two whole runs: `node_modules/.alepha/` is created by the dev
        * server, not by `yarn start`, so the built server either found no
        * directory or inherited a file it could not write ("attempt to write a
