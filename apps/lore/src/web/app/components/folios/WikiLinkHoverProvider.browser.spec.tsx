@@ -30,13 +30,6 @@ describe("broken wiki-link hrefs survive the markdown renderer", () => {
     expect(hrefOf(`[[[Missing]]](${href})`)).toBe(href);
   });
 
-  it("keeps the hint a reason carries after its colon", ({ expect }) => {
-    // `folio-not-found-quest-exists` appends the quest shortId, which is what
-    // lets the card say "there is no folio by that name, but quest #42 is".
-    const href = `${BROKEN_HREF_PREFIX}folio-not-found-quest-exists:42`;
-    expect(hrefOf(`[[[Missing]]](${href})`)).toBe(href);
-  });
-
   it("is a fragment, which is why the transform keeps it", ({ expect }) => {
     // The regression this file exists for: a bare `lore-broken:` reads as a
     // scheme, and every scheme outside the transform's safe list is dropped.

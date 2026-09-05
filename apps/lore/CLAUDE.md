@@ -557,7 +557,7 @@ Since the 2026-08 great rename, Folios also absorbed the standalone **Archive** 
 - One topic per folio. The title is the topic and the `summary` is the taxonomy — folios carry no tags (the tag feature was removed in feedback #62; `folios.tags` survives as a frozen dead column because dropping it would rebuild a table three others cascade from). Say what kind of note it is in the summary's first clause, since that is the line `project_context` shows.
 - Keep folios short and self-contained. A folio that needs scrolling is two folios.
 - When an agent creates a folio via MCP, it should always provide a `summary` (1-2 sentences, ~200 chars) so future `folio_list` / `folio_search` calls stay precise and `project_context` returns a self-explanatory index. It is the only orientation field there is now. Web-created folios may leave `summary` empty — the index falls back to the title.
-- Use `[[Folio Title]]` or `[[#shortId]]` syntax inside a folio's markdown to cross-link other folios. Links re-sync on every save; agents see them as `links.outbound` / `links.inbound` on `folio_get` and humans see a Connections panel under the folio view.
+- Cross-link with the typed grammar of epic #32, and nothing else: `[[#F12]]` a folio, `[[#Q12]]` a quest, `[[#E3]]` an epic, `[[#P120]]` a feedback item, `[[#R12]]` a release, the number being the per-project id. A title, a path, a `quest:` prefix or a `#anchor` between the brackets is not a reference and renders as a broken link. Links re-sync on every save; agents see them as `links.outbound` / `links.inbound` on `folio_get` and humans see them in the Links tab of the inspector.
 
 **MCP orientation flow** (every AI client should follow this on a fresh task):
 

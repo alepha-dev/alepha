@@ -30,8 +30,6 @@ export const folioLinksSchema = z.object({
       // `shortId`, an epic's `number`. One field across every kind so the
       // Links tab renders one row shape.
       shortId: z.integer(),
-      // For elements this is the entity title. For blobs it's the blob's
-      // display name (e.g. "diagram.png").
       title: z.string(),
       path: folioRefPathSchema.optional(),
       // Releases only: what `/releases/:releaseTag` navigates by. Absent on

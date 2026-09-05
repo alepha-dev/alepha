@@ -117,22 +117,19 @@ export default {
   "folios.history.action.revert": "Reverted",
 
   "folios.wikilink.broken.title": "Broken link",
-  "folios.wikilink.broken.folioNotFound":
-    "No folio matches this reference. Inside [[…]], #N means a folio; a quest is [[quest:#N]].",
-  "folios.wikilink.broken.ambiguous":
-    "Several entries share this title. Use the explicit #N form to disambiguate.",
+  "folios.wikilink.broken.notAReference":
+    "Not a reference. Inside [[…]], write #F12 for a folio, #Q12 for a quest, #E3 for an epic, #P120 for a feedback item or #R12 for a release.",
+  "folios.wikilink.broken.folioNotFound": "No folio matches this reference.",
   "folios.wikilink.broken.questNotFound": "No quest matches this reference.",
   "folios.wikilink.broken.epicNotFound": "No epic matches this reference.",
   "folios.wikilink.broken.blobNotFound":
-    "No folio blob matches this reference.",
+    "No attachment of this folio matches this reference.",
   "folios.wikilink.broken.feedbackNotFound":
     "No feedback item matches this reference.",
   "folios.wikilink.broken.releaseNotFound":
     "No release matches this reference.",
   "folios.wikilink.release.open": "open",
   "folios.wikilink.release.released": "released",
-  "folios.wikilink.broken.questFormWanted":
-    "There is no folio #$1, but quest #$1 exists. Inside [[…]], #N means a folio; write [[quest:#$1]] instead.",
 
   "folios.editor.menu.folio": "Folio",
   "folios.editor.menu.edit": "Edit",

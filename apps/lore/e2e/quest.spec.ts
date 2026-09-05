@@ -760,7 +760,7 @@ test.describe("Quest", () => {
 
   /**
    * Wiki-links in quest descriptions (Tier 1). A description carrying
-   * `[[#N]]` (folio) and `[[quest:#N]]` (quest) renders the resolved
+   * `[[#F<n>]]` (folio) and `[[#Q<n>]]` (quest) renders the resolved
    * targets as clickable links — the same `[[...]]` syntax folios
    * already support, now applied to the read-only description render.
    */
@@ -780,14 +780,14 @@ test.describe("Quest", () => {
       projectTitle,
     );
 
-    // A folio to link to via the bare `[[#N]]` form.
+    // A folio to link to via the `[[#F<n>]]` form.
     const folio = await apiPost<{ shortId: number }>(page, "create", {
       title: `Lore${t}`,
       projectId,
       content: "",
     });
 
-    // A quest to link to via the `[[quest:#N]]` form.
+    // A quest to link to via the `[[#Q<n>]]` form.
     const target = await apiPost<{ id: number; shortId: number }>(
       page,
       "createQuest",
@@ -809,7 +809,7 @@ test.describe("Quest", () => {
       {
         projectId,
         title: `Host${t}`,
-        description: `See folio [[#${folio.shortId}]] and quest [[quest:#${target.shortId}]].`,
+        description: `See folio [[#F${folio.shortId}]] and quest [[#Q${target.shortId}]].`,
         area: "Main",
         priority: "low",
         objectives: [],

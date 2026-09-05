@@ -45,7 +45,8 @@ export const folioBlobs = $entity({
   schema: z.object({
     fileId: db.primaryKey(z.uuid()),
     /**
-     * Per-project sequential id. URL form is `blob:#42`.
+     * Per-project sequential id: the `#42` the Attachments tab and the
+     * `blob_*` MCP tools address an attachment by.
      */
     shortId: z.integer().min(1),
     createdAt: db.createdAt(),

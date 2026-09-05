@@ -9,7 +9,7 @@ import { projects } from "./projects.ts";
  * project root. Cycle prevention is enforced at the service layer on
  * every reparent (same pattern the old folio-tree from #45 used).
  *
- * Quest [[#66]] introduces this table; folios + blobs hang off it via
+ * Quest #Q66 introduces this table; folios + blobs hang off it via
  * their own `directoryId` FK columns. Names are unique per-parent
  * across all three node types — enforced via the `folio_names`
  * reservation table (separate file), so this entity stays simple.
