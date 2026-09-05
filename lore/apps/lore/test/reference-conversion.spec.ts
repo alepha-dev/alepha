@@ -375,6 +375,55 @@ describe("the reference converter", () => {
     expect(again.projects[0].rewritten).toBe(0);
   });
 
+  it("write: a page at a time, in a fixed order, until nothing is left", async () => {
+    const s = await seed();
+    const t = s.target.shortId;
+
+    // Six changed bodies. A page of two takes the two folios (first in the
+    // order) and leaves the quest, the epic, the comment and the release.
+    const first = (
+      await ctx.admin.convertReferences.fetch(
+        { body: { dryRun: false, projectId: s.projectId, limit: 2 } },
+        { user: s.admin },
+      )
+    ).data;
+    expect(first.remaining).toBe(4);
+    expect(first.projects[0].rewritten).toBe(2);
+    expect(first.projects[0].remaining).toBe(4);
+    expect(
+      first.projects[0].rows
+        .filter((r) => r.tokens.length > 0)
+        .map((r) => r.kind),
+    ).toEqual(["folio", "folio"]);
+    const quest = await ctx.rows.quests.findOne({
+      where: { id: { eq: s.quest.id } },
+    });
+    expect(quest?.description).toBe("Per [[Design Notes]], do it.");
+
+    // The next call starts where the first stopped: the scan is idempotent.
+    const second = (
+      await ctx.admin.convertReferences.fetch(
+        { body: { dryRun: false, projectId: s.projectId, limit: 100 } },
+        { user: s.admin },
+      )
+    ).data;
+    expect(second.projects[0].rewritten).toBe(4);
+    expect(second.remaining).toBe(0);
+    const questAfter = await ctx.rows.quests.findOne({
+      where: { id: { eq: s.quest.id } },
+    });
+    expect(questAfter?.description).toBe(`Per [[#F${t}]], do it.`);
+
+    const again = (
+      await ctx.admin.convertReferences.fetch(
+        { body: { dryRun: true, projectId: s.projectId } },
+        { user: s.admin },
+      )
+    ).data;
+    expect(again.remaining).toBe(0);
+    expect(again.projects[0].rewritten).toBe(0);
+  });
+
   it("refuses a caller without the admin permission", async () => {
     const s = await seed();
     await expect(

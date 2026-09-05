@@ -12,10 +12,14 @@ import {
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import { folioBlobs } from "../entities/folioBlobs.ts";
-import { buildFolioSearchText, folios } from "../entities/folios.ts";
+import {
+  type Folio,
+  buildFolioSearchText,
+  folios,
+} from "../entities/folios.ts";
 import { projects } from "../entities/projects.ts";
 import { questComments } from "../entities/questComments.ts";
-import { quests } from "../entities/quests.ts";
+import { type Quest, quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 import type {
   ProjectReferenceConversion,
@@ -23,7 +27,11 @@ import type {
 } from "../schemas/referenceConversionReportSchema.ts";
 import { BoundParameters } from "./BoundParameters.ts";
 import { FolioHistoryService } from "./FolioHistoryService.ts";
-import { FolioLinkService, type ParsedToken } from "./FolioLinkService.ts";
+import {
+  FolioLinkService,
+  type ParsedToken,
+  type TokenLookupMaps,
+} from "./FolioLinkService.ts";
 
 /**
  * A row the converter read, with the one markdown field it is about.
@@ -103,6 +111,19 @@ interface Outcome {
  * form the editor writes; anywhere else (another folio, a quest, an epic, a
  * comment, a release) it becomes the served `/api/files/<uuid>` URL, which
  * is what the renderer emitted for it, so nothing a reader sees changes.
+ *
+ * ## Why a write is paged
+ *
+ * The first production run (2026-09-05) wrote every changed row of every
+ * project in one request. Each rewritten row re-read the project's folio,
+ * quest and epic tables to re-sync its links, so on D1 the run took twenty
+ * minutes over 161 folios and was cut off on the next one, with that row's
+ * links deleted and not yet re-inserted. Now the lookup tables are read
+ * once per project and handed to every re-sync, and a call writes at most
+ * `limit` changed rows, reporting how many are left, so the operator's page
+ * loops over short requests instead of holding one open for the whole job.
+ * The scan is idempotent: a row written by an earlier call is no longer
+ * changed, so the next call starts where the last one stopped.
  */
 export class ReferenceConversionService {
   protected readonly projects = $repository(projects);
@@ -119,7 +140,15 @@ export class ReferenceConversionService {
 
   public async convertProject(
     projectId: number,
-    options: { dryRun: boolean; byUserId: string },
+    options: {
+      dryRun: boolean;
+      byUserId: string;
+      /**
+       * At most this many changed rows are written by one call; the rest
+       * are reported as `remaining`. Omitted: every changed row.
+       */
+      limit?: number;
+    },
   ): Promise<ProjectReferenceConversion> {
     const project = await this.projects.findOne({
       where: { id: { eq: projectId } },
@@ -219,7 +248,14 @@ export class ReferenceConversionService {
     }
 
     const allTokens = sources.flatMap((s) => this.links.parseTokens(s.text));
-    const resolved = await this.links.resolveTokensEach(allTokens, projectId);
+    // One set of lookup tables for the whole project: the resolver reads it
+    // here and every link re-sync of the write reuses it.
+    const maps = await this.links.lookupMaps(allTokens, projectId);
+    const resolved = await this.links.resolveTokensEach(
+      allTokens,
+      projectId,
+      maps,
+    );
 
     // The resolver answers with row ids; the typed form wants the number a
     // person types. One inverse map per kind, from the rows already read.
@@ -273,6 +309,7 @@ export class ReferenceConversionService {
     };
 
     const rows: ReferenceRowConversion[] = [];
+    const sourceOfRow = new Map<ReferenceRowConversion, Source>();
     const outcomes = new Map<Source, Outcome>();
     for (const source of sources) {
       const outcome = this.rewrite(source.text, rewriter, source.folioId);
@@ -280,7 +317,7 @@ export class ReferenceConversionService {
         continue;
       }
       outcomes.set(source, outcome);
-      rows.push({
+      const row: ReferenceRowConversion = {
         kind: source.kind,
         id: String(source.id),
         number: source.number,
@@ -288,45 +325,81 @@ export class ReferenceConversionService {
         tokens: outcome.tokens,
         anchorsDropped: outcome.anchorsDropped,
         unresolved: outcome.unresolved,
-      });
+      };
+      rows.push(row);
+      sourceOfRow.set(row, source);
     }
 
-    if (!options.dryRun) {
-      await this.write(projectId, sources, outcomes, options.byUserId);
-    }
+    const isChanged = (s: Source): boolean =>
+      (outcomes.get(s)?.tokens.length ?? 0) > 0;
+    const changed = sources.filter(isChanged);
+    const written = options.dryRun
+      ? new Set<Source>()
+      : await this.write(projectId, changed, outcomes, {
+          byUserId: options.byUserId,
+          limit: options.limit,
+          maps,
+          folioRows,
+          questRows,
+        });
+
+    // A dry run reports every row a write would touch. A write reports the
+    // rows it wrote this call and the rows no write ever touches (tokens
+    // left verbatim, nothing to rewrite); a changed row left for the next
+    // call is counted in `remaining` and shown when that call writes it.
+    const reported = rows.filter((row) => {
+      const source = sourceOfRow.get(row);
+      if (!source) return false;
+      return options.dryRun || written.has(source) || !isChanged(source);
+    });
 
     return {
       projectId,
       slug: project.slug ?? String(projectId),
       scanned: sources.length,
-      rewritten: rows.filter((r) => r.tokens.length > 0).length,
+      rewritten: options.dryRun ? changed.length : written.size,
+      remaining: changed.length - written.size,
       skippedProtected,
-      anchorsDropped: rows.reduce((n, r) => n + r.anchorsDropped, 0),
+      anchorsDropped: reported.reduce((n, r) => n + r.anchorsDropped, 0),
       unresolved: rows.reduce((n, r) => n + r.unresolved.length, 0),
-      rows,
+      rows: reported,
     };
   }
 
   /**
-   * Persist every changed body, grouped by row so a quest with two changed
-   * fields is one update and one re-sync.
+   * Persist changed bodies, at most `limit` of them, grouped by row so a
+   * quest with two changed fields is one update and one re-sync. The row is
+   * the unit the page never splits, so a page may run a field past `limit`,
+   * never a row. Rows are taken in a fixed order (folios, quests, epics,
+   * comments, releases) so consecutive calls walk the project once.
+   *
+   * The rows come from the scan that produced `changed`, not from a second
+   * read: nothing else writes these bodies while the operator's page loops,
+   * and a read per row was a third of the first run's cost.
    */
   protected async write(
     projectId: number,
-    sources: Source[],
+    changed: Source[],
     outcomes: Map<Source, Outcome>,
-    byUserId: string,
-  ): Promise<void> {
-    const changed = sources.filter((s) => {
-      const outcome = outcomes.get(s);
-      return outcome !== undefined && outcome.tokens.length > 0;
-    });
+    options: {
+      byUserId: string;
+      limit?: number;
+      maps: TokenLookupMaps;
+      folioRows: Folio[];
+      questRows: Quest[];
+    },
+  ): Promise<Set<Source>> {
+    const { byUserId, maps } = options;
     const text = (s: Source): string => outcomes.get(s)?.content ?? s.text;
+    const foliosById = new Map(options.folioRows.map((f) => [f.id, f]));
+    const questsById = new Map(options.questRows.map((q) => [q.id, q]));
+    const written = new Set<Source>();
+    const budget = options.limit ?? Number.POSITIVE_INFINITY;
+    const full = (): boolean => written.size >= budget;
 
     for (const source of changed.filter((s) => s.kind === "folio")) {
-      const row = await this.folios.findOne({
-        where: { id: { eq: String(source.id) } },
-      });
+      if (full()) break;
+      const row = foliosById.get(String(source.id));
       if (!row) continue;
       const content = text(source);
       const updated = await this.folios.updateById(row.id, {
@@ -341,20 +414,27 @@ export class ReferenceConversionService {
       await this.links.syncLinks(
         { kind: "folio", id: row.id, projectId },
         content,
+        maps,
       );
+      written.add(source);
     }
 
-    const questIds = new Set(
-      changed.filter((s) => s.kind === "quest").map((s) => Number(s.id)),
-    );
+    const questIds = [
+      ...new Set(
+        changed.filter((s) => s.kind === "quest").map((s) => Number(s.id)),
+      ),
+    ];
     for (const questId of questIds) {
-      const row = await this.quests.findOne({ where: { id: { eq: questId } } });
+      if (full()) break;
+      const row = questsById.get(questId);
       if (!row) continue;
+      const fields = changed.filter(
+        (s) => s.kind === "quest" && Number(s.id) === questId,
+      );
       const patch: Partial<
         Record<"description" | "note" | "completionMessage", string>
       > = {};
-      for (const source of changed) {
-        if (source.kind !== "quest" || Number(source.id) !== questId) continue;
+      for (const source of fields) {
         patch[source.field as keyof typeof patch] = text(source);
       }
       await this.quests.updateById(questId, patch);
@@ -364,27 +444,38 @@ export class ReferenceConversionService {
         [next.description, next.note, next.completionMessage]
           .filter(Boolean)
           .join("\n\n"),
+        maps,
       );
+      for (const source of fields) written.add(source);
     }
 
     for (const source of changed.filter((s) => s.kind === "epic")) {
+      if (full()) break;
       const description = text(source);
       await this.epics.updateById(Number(source.id), { description });
       await this.links.syncLinks(
         { kind: "epic", id: Number(source.id), projectId },
         description,
+        maps,
       );
+      written.add(source);
     }
 
     for (const source of changed.filter((s) => s.kind === "comment")) {
+      if (full()) break;
       await this.comments.updateById(Number(source.id), { body: text(source) });
+      written.add(source);
     }
 
     for (const source of changed.filter((s) => s.kind === "release")) {
+      if (full()) break;
       await this.releases.updateById(Number(source.id), {
         description: text(source),
       });
+      written.add(source);
     }
+
+    return written;
   }
 
   /**

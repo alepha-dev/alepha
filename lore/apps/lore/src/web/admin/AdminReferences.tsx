@@ -8,17 +8,30 @@ import type { AdminReferenceController } from "@/api/controllers/AdminReferenceC
 import type { ReferenceConversionReport } from "@/api/schemas/referenceConversionReportSchema.ts";
 
 /**
+ * Changed rows one write request may touch. The first production run put
+ * every row of every project in one request and was cut off after twenty
+ * minutes; a page this size is a few seconds on D1.
+ */
+const PAGE = 25;
+
+/**
  * The operator's page for the one-shot reference converter of epic #32.
  *
  * Two buttons and a report. Dry run first, read the report, then Convert,
- * which asks for confirmation naming the bookmark to take. English only,
- * like the rest of the admin shell: this page exists for one operator on
- * one instance and is deleted with the converter (quest #1808).
+ * which asks for confirmation naming the bookmark to take. Convert is a
+ * loop: a dry run for the plan, then one project at a time, a page of rows
+ * per request until that project reports nothing left, then one write over
+ * every project, which is the call that deletes the blob link rows. A
+ * request that fails stops the loop where it is; the scan is idempotent,
+ * so Convert again continues from there. English only, like the rest of
+ * the admin shell: this page exists for one operator on one instance and
+ * is deleted with the converter (quest #1808).
  */
 export const AdminReferences = () => {
   const client = useClient<AdminReferenceController>();
   const [report, setReport] = useState<ReferenceConversionReport | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
 
   const dryRun = async (): Promise<void> => {
     setBusy(true);
@@ -41,10 +54,34 @@ export const AdminReferences = () => {
       handler: async () => {
         setBusy(true);
         try {
+          const plan = await client.convertReferences({
+            body: { dryRun: true },
+          });
+          setReport(plan);
+          for (const project of plan.projects) {
+            let remaining = project.rewritten;
+            // Bounded, so a project whose count never reaches 0 (a row the
+            // write cannot store) ends the loop instead of holding it.
+            for (let page = 0; remaining > 0 && page < 400; page++) {
+              setProgress(`${project.slug}: ${remaining} rows to write`);
+              const step = await client.convertReferences({
+                body: {
+                  dryRun: false,
+                  projectId: project.projectId,
+                  limit: PAGE,
+                },
+              });
+              remaining = step.remaining;
+            }
+          }
+          setProgress("Checking every project and deleting the blob link rows");
           setReport(
-            await client.convertReferences({ body: { dryRun: false } }),
+            await client.convertReferences({
+              body: { dryRun: false, limit: PAGE },
+            }),
           );
         } finally {
+          setProgress(null);
           setBusy(false);
         }
       },
@@ -96,6 +133,11 @@ export const AdminReferences = () => {
             Convert
           </Button>
         </div>
+        {progress && (
+          <p className="text-muted-foreground text-sm" aria-live="polite">
+            {progress}
+          </p>
+        )}
         {report && totals && (
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium">
@@ -103,7 +145,13 @@ export const AdminReferences = () => {
               {totals.scanned} bodies rewritten, {totals.skippedProtected}{" "}
               protected folios skipped, {totals.anchorsDropped} anchors dropped,{" "}
               {totals.unresolved} tokens left verbatim, {report.blobLinks} blob
-              link rows {report.dryRun ? "to delete" : "deleted"}.
+              link rows{" "}
+              {report.dryRun
+                ? "to delete"
+                : report.remaining === 0
+                  ? "deleted"
+                  : "kept until nothing is left"}
+              {report.dryRun ? "" : `, ${report.remaining} rows left to write`}.
             </p>
             <div className="overflow-x-auto">
               <table className="text-sm">
