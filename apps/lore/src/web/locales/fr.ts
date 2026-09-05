@@ -1377,6 +1377,10 @@ export default {
   "estates.detach.confirmDescription":
     "Le projet ne pourra plus déployer par ce domaine. Rien de déjà déployé n'est touché : la machine continue de faire tourner ce qu'elle fait tourner.",
   "estates.detach.confirm": "Retirer",
+  "account.estates.create.cancel": "Annuler",
+  "estates.secret.description":
+    "C'est la seule fois où il est affiché. Conservez-le en lieu sûr avant de fermer cette fenêtre.",
+  "estates.secret.copied": "Copié",
   "estates.secret.title":
     "Le secret de votre domaine. Il n'est affiché qu'une fois : lancez `bay connector set <url-lore> <secret>` sur la machine.",
   "estates.secret.copy": "Copier le secret",
@@ -1395,6 +1399,7 @@ export default {
   "account.estates.create.description":
     "Un domaine bay : une machine qui exécute `bay serve`. Il démarre en statistiques seules, déploiements désactivés, jusqu'à ce que vous les autorisiez.",
   "account.estates.create.submit": "Créer",
+  "account.estates.new": "Nouveau domaine",
   "account.estates.secretPrefix": "secret $1…",
   "account.estates.gauge": "CPU $1 % · mémoire $2 %",
   "account.estates.gauge.none": "pas encore de statistiques",
