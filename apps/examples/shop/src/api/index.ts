@@ -11,7 +11,6 @@ import { AlephaApiFiles, FileAccessProvider } from "alepha/api/files";
 import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaApiNotifications } from "alepha/api/notifications";
 import { AlephaApiUsers } from "alepha/api/users";
-import { AlephaApiWorkflows } from "alepha/api/workflows";
 import { AlephaOrm } from "alepha/orm";
 
 import { EngravedKindHandler } from "./EngravedKindHandler.ts";
@@ -44,10 +43,10 @@ export const ShopApi = $module({
     AlephaCommerceShipping,
     AlephaCommerceInvoicing,
     AlephaCommerceNotifications,
-    // The durable paid-path: invoice + confirmation as a $workflow. Invoicing
-    // and notifications do nothing on the paid transition without it.
+    // The durable paid-path: invoice + confirmation as one keyed $job.
+    // Invoicing and notifications do nothing on the paid transition without it.
     AlephaCommerceSettlement,
-    // Abandoned-cart reminders, riding the same workflow engine.
+    // Abandoned-cart reminders, one self-rescheduling $job per cart.
     AlephaCommerceRecovery,
     AlephaCommerceAdmin,
     /*
@@ -56,14 +55,13 @@ export const ShopApi = $module({
      *
      * Each admin page hides itself when the action behind it is absent from
      * `/api/_links`, so before this the shop's sidebar simply had no Jobs,
-     * Notifications, Audit log or Workflows entry — the pages have always
-     * existed in `@alepha/ui`, they had no backend here to read. Registering
-     * the modules is the whole of "adding" those screens.
+     * Notifications or Audit log entry: the pages have always existed in
+     * `@alepha/ui`, they had no backend here to read. Registering the modules
+     * is the whole of "adding" those screens.
      */
     AlephaApiAudits,
     AlephaApiJobs,
     AlephaApiNotifications,
-    AlephaApiWorkflows,
   ],
   /*
    * `FactureController` is listed here, and forgetting to list it is why the

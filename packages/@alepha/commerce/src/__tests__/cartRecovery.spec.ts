@@ -1,12 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
+import { jobExecutionEntity } from "alepha/api/jobs";
 import { PaymentService } from "alepha/api/payments";
-import {
-  WorkflowProvider,
-  workflowExecutions,
-  workflowStepExecutions,
-} from "alepha/api/workflows";
 import { DateTimeProvider } from "alepha/datetime";
 import { MemoryEmailProvider } from "alepha/email";
 import { $repository } from "alepha/orm";
@@ -19,6 +15,8 @@ import { CheckoutService } from "../checkout/services/CheckoutService.ts";
 import { AlephaCommerceRecovery } from "../recovery/index.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { StockService } from "../services/StockService.ts";
+
+const JOB = "CartRecoveryJobs.cartRecovery";
 
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
@@ -40,34 +38,29 @@ async function waitFor<T>(
 }
 
 class RecoveryProbe {
-  executions = $repository(workflowExecutions);
-  steps = $repository(workflowStepExecutions);
+  executions = $repository(jobExecutionEntity);
   sessions = $repository(checkoutSessions);
 }
 
 /**
- * Wait until `stepName` is parked (pending, not-before time stamped).
- * travel() only releases timers that already exist — each step's timer is
- * born a beat after the previous step completes, so a travel issued
- * before the stamp would fire into a void. (Production doesn't care: the
- * recovery sweep re-derives due work from the rows; a frozen test clock
- * never reaches the next sweep.)
+ * Wait until the sequence is parked on `stage`: the row is `scheduled` with
+ * that stage in its payload (the first reminder carries no stage yet).
+ * travel() only fires timers that already exist, and the next stage's timer
+ * is armed after the previous handler resolves, so a travel issued before the
+ * park would compute the next delay from the travelled clock.
  */
 const waitForParked = async (
   probe: RecoveryProbe,
   executionId: string,
-  stepName: string,
+  stage: string | undefined,
 ) => {
   await waitFor(
-    () =>
-      probe.steps.findOne({
-        where: {
-          workflowExecutionId: { eq: executionId },
-          stepName: { eq: stepName },
-        },
-      }),
-    (s) => s?.status === "pending" && Boolean(s?.scheduledAt),
-    { label: `step ${stepName} parked` },
+    () => probe.executions.findById(executionId),
+    (r) =>
+      r?.status === "scheduled" &&
+      (r.payload as { stage?: string })?.stage === stage &&
+      Boolean(r.scheduledAt),
+    { label: `sequence parked on ${stage ?? "the first reminder"}` },
   );
 };
 
@@ -93,7 +86,7 @@ const setup = async () => {
 
 /**
  * Open a checkout and return its cart id. `email: null` opens one with no
- * email on file — `undefined` would trip the default-parameter value.
+ * email on file, since `undefined` would trip the default-parameter value.
  */
 const openCheckout = async (
   ctx: Awaited<ReturnType<typeof setup>>,
@@ -116,13 +109,14 @@ const openCheckout = async (
   return { cartId: cart.id, sessionId: opened.id };
 };
 
+/**
+ * The sequence for a cart, matched on the payload rather than the key: the
+ * key is released when the row ends, so `key = cartId` only matches live
+ * rows.
+ */
 const recoveryFor = (probe: RecoveryProbe, cartId: string) =>
   probe.executions
-    .findMany({
-      where: {
-        workflowName: { eq: "CartRecoveryWorkflows.cartRecovery" },
-      },
-    })
+    .findMany({ where: { jobName: { eq: JOB } } })
     .then((rows) =>
       rows.find((r) => (r.payload as { cartId?: string })?.cartId === cartId),
     );
@@ -137,40 +131,32 @@ describe("cart recovery sequence", () => {
       const ctx = await setup();
       const { cartId, sessionId } = await openCheckout(ctx);
 
-      // The sequence exists and is parked on its first delay.
+      // The sequence exists and is parked on its first delay: no mail yet.
       const parked = await waitFor(
         () => recoveryFor(ctx.probe, cartId),
         (e) => Boolean(e),
         { label: "recovery sequence started" },
       );
-      // Running, with its first step parked on the delay — no mail yet.
-      expect(parked?.status).toBe("running");
+      expect(parked?.status).toBe("scheduled");
+      expect(parked?.key).toBe(cartId);
       expect(ctx.mail.records).toHaveLength(0);
 
       // First reminder after ~1h.
-      await waitForParked(ctx.probe, parked!.id, "firstReminder");
+      await waitForParked(ctx.probe, parked!.id, undefined);
       await ctx.dt.travel([61, "minute"]);
-      // Post-travel the clock is frozen: nudge the sweep while polling, so
-      // a delivery lost to the travel storm is re-derived from the rows.
       await waitFor(
-        async () => {
-          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-          return ctx.mail.records.length;
-        },
+        () => ctx.mail.records.length,
         (n) => n >= 1,
         { label: "first reminder sent", interval: 100 },
       );
       expect(ctx.mail.records[0]!.to).toBe("camille@example.com");
       expect(ctx.mail.records[0]!.subject).toContain("panier");
 
-      // Second reminder after ~23h more.
+      // Second reminder after ~23h more: the same row, rescheduled.
       await waitForParked(ctx.probe, parked!.id, "secondReminder");
       await ctx.dt.travel([24, "hour"]);
       await waitFor(
-        async () => {
-          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-          return ctx.mail.records.length;
-        },
+        () => ctx.mail.records.length,
         (n) => n >= 2,
         { label: "second reminder sent", interval: 100 },
       );
@@ -179,20 +165,17 @@ describe("cart recovery sequence", () => {
       await waitForParked(ctx.probe, parked!.id, "markAbandoned");
       await ctx.dt.travel([25, "hour"]);
       await waitFor(
-        async () => {
-          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-          return (await ctx.probe.sessions.findById(sessionId))?.status;
-        },
+        async () => (await ctx.probe.sessions.findById(sessionId))?.status,
         (s) => s === "abandoned",
         { label: "session marked abandoned", interval: 100 },
       );
 
       const done = await waitFor(
-        () => recoveryFor(ctx.probe, cartId),
-        (e) => e?.status === "completed",
+        () => ctx.probe.executions.findById(parked!.id),
+        (e) => e?.status === "ok",
         { label: "recovery sequence completed" },
       );
-      expect(done?.status).toBe("completed");
+      expect(done?.status).toBe("ok");
       expect(ctx.mail.records).toHaveLength(2);
     },
   );
@@ -213,11 +196,12 @@ describe("cart recovery sequence", () => {
     });
     await ctx.payments.handleWebhookEvent(handoff.intentId, "captured");
 
-    await waitFor(
+    const cancelled = await waitFor(
       () => recoveryFor(ctx.probe, cartId),
       (e) => e?.status === "cancelled",
       { label: "recovery sequence cancelled on conversion" },
     );
+    expect(cancelled?.cancelledByName).toBe("checkout converted");
 
     // Even a long travel produces no reminder afterwards.
     await ctx.dt.travel([3, "day"]);
@@ -248,7 +232,7 @@ describe("cart recovery sequence", () => {
     );
 
     const rows = await ctx.probe.executions.findMany({
-      where: { workflowName: { eq: "CartRecoveryWorkflows.cartRecovery" } },
+      where: { jobName: { eq: JOB } },
     });
     const forThisCart = rows.filter(
       (r) => (r.payload as { cartId?: string })?.cartId === cartId,

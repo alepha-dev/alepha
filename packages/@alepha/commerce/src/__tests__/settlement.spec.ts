@@ -1,13 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
+import { jobExecutionEntity } from "alepha/api/jobs";
 import { PaymentService } from "alepha/api/payments";
-import {
-  WorkflowProvider,
-  workflowExecutions,
-  workflowStepExecutions,
-} from "alepha/api/workflows";
-import { DateTimeProvider } from "alepha/datetime";
 import { MemoryEmailProvider } from "alepha/email";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
@@ -21,6 +16,8 @@ import { AlephaCommerceNotifications } from "../notifications/index.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { StockService } from "../services/StockService.ts";
 import { AlephaCommerceSettlement } from "../settlement/index.ts";
+
+const JOB = "SettlementJobs.orderSettlement";
 
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
@@ -42,18 +39,17 @@ async function waitFor<T>(
 }
 
 class SettlementProbe {
-  executions = $repository(workflowExecutions);
-  steps = $repository(workflowStepExecutions);
+  executions = $repository(jobExecutionEntity);
 }
 
 /**
- * Find the settlement execution for an order. Matched on the payload,
- * not the dedup key — the engine clears the key when the execution
- * reaches a terminal status, so `key = orderId` only matches live rows.
+ * Find the settlement execution for an order. Matched on the payload, not
+ * the dedup key: the key is released when the row ends, so `key = orderId`
+ * only matches live rows.
  */
 async function findSettlement(probe: SettlementProbe, orderId: string) {
   const rows = await probe.executions.findMany({
-    where: { workflowName: { eq: "SettlementWorkflows.orderSettlement" } },
+    where: { jobName: { eq: JOB } },
   });
   return rows.find(
     (r) => (r.payload as { orderId?: string })?.orderId === orderId,
@@ -61,8 +57,8 @@ async function findSettlement(probe: SettlementProbe, orderId: string) {
 }
 
 /**
- * Drive a real cart → checkout → captured-webhook flow and return the
- * order id the settlement workflow was started for.
+ * Drive a real cart, checkout, captured-webhook flow and return the order
+ * id the settlement job was pushed for.
  */
 async function payOneOrder(ctx: {
   catalog: CatalogService;
@@ -112,7 +108,7 @@ const injectCtx = (alepha: Alepha) => ({
   probe: alepha.inject(SettlementProbe),
 });
 
-describe("commerce settlement workflow", () => {
+describe("commerce settlement job", () => {
   it("issues the invoice and sends the confirmation, durably", async ({
     expect,
   }) => {
@@ -124,10 +120,11 @@ describe("commerce settlement workflow", () => {
 
     const exec = await waitFor(
       () => findSettlement(ctx.probe, orderId),
-      (e) => e?.status === "completed",
+      (e) => e?.status === "ok",
       { label: "settlement completed" },
     );
-    expect(exec?.workflowName).toBe("SettlementWorkflows.orderSettlement");
+    expect(exec?.jobName).toBe(JOB);
+    expect(exec?.attempt).toBe(1);
 
     const invoices = await alepha.inject(InvoiceService).listForOrder(orderId);
     expect(invoices).toHaveLength(1);
@@ -140,7 +137,7 @@ describe("commerce settlement workflow", () => {
   });
 
   it(
-    "retries a failed invoice step instead of losing the invoice",
+    "retries a failed invoice stage instead of losing the invoice",
     {
       timeout: 20_000,
     },
@@ -169,43 +166,21 @@ describe("commerce settlement workflow", () => {
 
       const orderId = await payOneOrder(ctx);
 
-      // First attempt fails; the retry is scheduled with backoff. Wait for
-      // the retry to be PARKED (pending + scheduledAt) before travelling —
-      // travel() only releases timers that already exist, and the retry's
-      // timer is born a beat after the failing handler returns.
-      const failing = await waitFor(
-        () => findSettlement(ctx.probe, orderId),
-        (e) => Boolean(e),
-        { label: "settlement execution exists" },
-      );
-      await waitFor(
-        () =>
-          ctx.probe.steps.findOne({
-            where: {
-              workflowExecutionId: { eq: failing!.id },
-              stepName: { eq: "issueInvoice" },
-            },
-          }),
-        (s) => s?.status === "pending" && Boolean(s?.scheduledAt),
-        { label: "invoice retry parked" },
-      );
-      await alepha.inject(DateTimeProvider).travel([2, "minute"]);
-
-      // Post-travel the clock is frozen: nudge the sweep while polling, so
-      // a retry delivery lost to the travel storm is re-derived from rows.
+      // The first attempt fails and the retry lands on the job's own curve:
+      // one second at most for the first retry, so no travel is needed.
       const exec = await waitFor(
-        async () => {
-          await alepha.inject(WorkflowProvider).recoverySweep();
-          return findSettlement(ctx.probe, orderId);
-        },
-        (e) => e?.status === "completed",
+        () => findSettlement(ctx.probe, orderId),
+        (e) => e?.status === "ok",
         {
           label: "settlement completed after retry",
           timeout: 18_000,
           interval: 100,
         },
       );
-      expect(exec?.status).toBe("completed");
+      expect(exec?.attempt).toBe(2);
+      expect(
+        (alepha.inject(InvoiceService) as FlakyInvoiceService).failures,
+      ).toBe(1);
 
       const invoices = await alepha
         .inject(InvoiceService)
@@ -225,14 +200,14 @@ describe("commerce settlement workflow", () => {
 
     await waitFor(
       () => findSettlement(ctx.probe, orderId),
-      (e) => e?.status === "completed",
+      (e) => e?.status === "ok",
       { label: "settlement completed" },
     );
 
     // Redeliver: markPaid's transition guard means no second event, and
-    // the workflow key would dedup one anyway.
+    // the job key would dedup one anyway.
     const rows = await ctx.probe.executions.findMany({
-      where: { workflowName: { eq: "SettlementWorkflows.orderSettlement" } },
+      where: { jobName: { eq: JOB } },
     });
     const forThisOrder = rows.filter(
       (r) => (r.payload as { orderId?: string })?.orderId === orderId,
@@ -243,7 +218,7 @@ describe("commerce settlement workflow", () => {
     expect(invoices).toHaveLength(1);
   });
 
-  it("skips the confirmation step when notifications are not loaded", async ({
+  it("skips the confirmation stage when notifications are not loaded", async ({
     expect,
   }) => {
     const alepha = Alepha.create()
@@ -257,10 +232,10 @@ describe("commerce settlement workflow", () => {
 
     const exec = await waitFor(
       () => findSettlement(ctx.probe, orderId),
-      (e) => e?.status === "completed",
+      (e) => e?.status === "ok",
       { label: "settlement completed without notifications" },
     );
-    expect(exec?.status).toBe("completed");
+    expect(exec?.status).toBe("ok");
 
     const invoices = await alepha.inject(InvoiceService).listForOrder(orderId);
     expect(invoices).toHaveLength(1);

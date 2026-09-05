@@ -53,7 +53,7 @@ declare module "alepha" {
     /**
      * A checkout was handed to the payment rail: session `paying`, order
      * pending, intent created. The settlement module keys its
-     * reconciliation workflow off this — the buyer may never come back.
+     * reconciliation job off this: the buyer may never come back.
      */
     "commerce:checkout:paying": {
       sessionId: string;
