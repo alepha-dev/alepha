@@ -177,7 +177,7 @@ test.describe("Folio workspace", () => {
 
   test("04 — inspector Links shows a backlink from another folio", async () => {
     const shortId = folioUrl.split("/").pop();
-    await createFolio(otherTitle, `A pointer to [[#${shortId}]] and nothing.`);
+    await createFolio(otherTitle, `A pointer to [[#F${shortId}]] and nothing.`);
 
     await page.goto(folioUrl);
     await inspector()
