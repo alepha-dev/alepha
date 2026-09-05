@@ -16,8 +16,13 @@ import {
  * one area and with twelve - a property no screenshot of one questline can
  * show, and one that no unit render can either, since it needs real layout.
  *
- * Driven on the EPIC's Flow tab, which is the narrower of the two surfaces
- * that share this bar and therefore the one that decides.
+ * Driven on all THREE surfaces the bar reaches, because it has two
+ * independent consumers: `Questline` (the epic Flow tab and the quest
+ * questline) and `ReleaseFlow` (a release's Flow tab). They pass the same
+ * props today, which is exactly why it is worth an assertion rather than an
+ * assumption. The quest questline is the narrow one, rendered inside a panel
+ * rather than across the page, and it is the surface the bar's own comment
+ * was already worrying about.
  */
 test.describe("the questline stat bar", () => {
   test("is the same height however many areas the questline touches", async ({
@@ -150,6 +155,117 @@ test.describe("the questline stat bar", () => {
           { timeout: 10_000 },
         );
       }
+    });
+
+    await test.step("the quest questline, which is the narrower surface", async () => {
+      // The bar is shared, and the quest questline renders it inside a panel
+      // rather than across the page - which is the surface the bar's own
+      // comment was already worrying about, and so the one that decides.
+      // It needs a LOOSE quest: `projectQuestGraph` redirects a quest that
+      // belongs to an epic to that epic's Flow tab.
+      const root = await apiPost<{ id: number; shortId: number }>(
+        page,
+        "createQuest",
+        {
+          projectId,
+          title: `Root${t}`,
+          description: "Seeded for the narrow questline",
+          area: "alepha/cli",
+          priority: "medium",
+          objectives: [],
+          attachments: [],
+        },
+      );
+      await apiPost(page, "createQuest", {
+        projectId,
+        title: `Child${t}`,
+        description: "Seeded for the narrow questline",
+        area: "lore/ui",
+        priority: "medium",
+        objectives: [],
+        attachments: [],
+        dependsOn: root.id,
+      });
+
+      await page.goto(`/${slug}/quests/${root.shortId}/graph`);
+      await page.waitForLoadState("domcontentloaded");
+      await expect(page.getByTestId("questline-zoom-level")).toBeVisible({
+        timeout: 20_000,
+      });
+
+      const narrow = await page.evaluate(() => {
+        const level = document.querySelector(
+          "[data-testid=questline-zoom-level]",
+        );
+        const bar = level?.closest("div.sticky") as HTMLElement | null;
+        return {
+          height: bar ? Math.round(bar.getBoundingClientRect().height) : -1,
+          width: bar ? Math.round(bar.getBoundingClientRect().width) : -1,
+          text: bar?.textContent ?? "",
+        };
+      });
+
+      // Narrower than the epic's Flow tab, and the same height as it.
+      expect(narrow.height).toBe(withOneArea);
+      expect(narrow.text).toContain("2");
+      // The areas are behind the trigger here too, not spelled out.
+      expect(narrow.text).not.toContain("alepha/cli");
+    });
+
+    await test.step("the Release Flow tab, the bar's other call site", async () => {
+      // `Questline` and `ReleaseFlow` are two independent consumers of this
+      // bar - the first serves the epic Flow tab AND the quest questline, the
+      // second serves a release. Same props today, which is exactly why it is
+      // worth an assertion rather than an assumption.
+      await page.evaluate(
+        async ({ projectId, epicId }) => {
+          const created = await fetch(`/api/createRelease/${projectId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ tag: "9.9.9" }),
+          });
+          if (!created.ok) {
+            throw new Error(`createRelease ${created.status}`);
+          }
+          const release = (await created.json()) as { id: number };
+          // `updateEpic` is the one write path for membership - there is no
+          // attach/detach pair, on purpose.
+          const attached = await fetch(`/api/updateEpic/${epicId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ releaseId: release.id }),
+          });
+          if (!attached.ok) {
+            throw new Error(`updateEpic ${attached.status}`);
+          }
+        },
+        { projectId, epicId: wide.id },
+      );
+
+      await page.goto(`/${slug}/releases/9.9.9?tab=flow`);
+      await page.waitForLoadState("domcontentloaded");
+      await expect(page.getByTestId("questline-zoom-level")).toBeVisible({
+        timeout: 20_000,
+      });
+
+      const onRelease = await page.evaluate(() => {
+        const level = document.querySelector(
+          "[data-testid=questline-zoom-level]",
+        );
+        const bar = level?.closest("div.sticky") as HTMLElement | null;
+        return {
+          height: bar ? Math.round(bar.getBoundingClientRect().height) : -1,
+          text: bar?.textContent ?? "",
+        };
+      });
+
+      expect(onRelease.height).toBe(withOneArea);
+      expect(onRelease.text).not.toContain("alepha/cli");
+      await expect(
+        page.getByRole("button", { name: /12\s*areas/i }),
+      ).toBeVisible();
     });
   });
 });
