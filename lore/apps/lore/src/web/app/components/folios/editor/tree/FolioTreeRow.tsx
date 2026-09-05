@@ -256,7 +256,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
                 backgroundImage:
                   "repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px " +
                   `${INDENT_STEP_PX}px)`,
-                backgroundPosition: `${INDENT_BASE_PX}px 0`,
+                backgroundPosition: `${INDENT_GUIDE_ORIGIN_PX}px 0`,
                 backgroundSize: `${props.depth * INDENT_STEP_PX}px 100%`,
                 backgroundRepeat: "no-repeat",
               }),
@@ -283,7 +283,8 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
           <button
             type="button"
             onClick={handleToggle}
-            className="flex size-3.5 shrink-0 items-center justify-center"
+            className="flex h-3.5 shrink-0 items-center justify-center"
+            style={{ width: DISCLOSURE_BOX_PX }}
           >
             {isCollapsed ? (
               <ChevronRight className="size-3 opacity-60" />
@@ -292,7 +293,10 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
             )}
           </button>
         ) : (
-          <span className="inline-block w-3.5 shrink-0" />
+          <span
+            className="inline-block shrink-0"
+            style={{ width: DISCLOSURE_BOX_PX }}
+          />
         )}
         <Icon
           className={cn(
@@ -339,17 +343,49 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
 /**
  * How far one level of nesting indents a row, in pixels.
  *
- * Shared by the row's own left padding and by the indent guides drawn
- * behind it, so the two cannot drift: a guide that does not line up with
- * the icon it belongs to is worse than no guide.
+ * Shared by the row's own left padding and by the indent guides drawn behind
+ * it, so the two cannot drift: a guide that does not line up with the column
+ * it belongs to is worse than no guide.
  */
 const INDENT_STEP_PX = 13;
 
 /**
- * Where the first level's guide sits, which is also the row's own base
- * padding.
+ * The row's own base padding: where a depth-0 row's content starts.
  */
 const INDENT_BASE_PX = 8;
+
+/**
+ * The width of the disclosure column - the chevron button on a directory, and
+ * the spacer that stands in for it on a leaf.
+ *
+ * Applied as a style rather than a `w-3.5` class **on purpose**: it is also
+ * half of {@link INDENT_GUIDE_ORIGIN_PX}, so a class here would let the box
+ * be resized while the guides stayed where they were. One number, two
+ * consumers, no way to move one without the other.
+ */
+const DISCLOSURE_BOX_PX = 14;
+
+/**
+ * Where the first level's guide is painted.
+ *
+ * ⚠️ **Not the same as {@link INDENT_BASE_PX}, and it used to be.** The rule
+ * is not "the same number twice" but "a guide is centred on the disclosure
+ * column of the level it marks", which is what a reader perceives as aligned.
+ * Sharing the row's base padding put every guide 7px to the LEFT of its own
+ * chevron, at every depth (feedback #2108).
+ *
+ * Derived rather than typed, because the correction is exactly half the
+ * disclosure box: the report's eyeballed 14 and the computed 15 are both
+ * within a pixel of right, and only one of them survives the chevron
+ * changing size.
+ *
+ * ⚠️ The gradient paints its hairline from this x, so the 1px line occupies
+ * `[15, 16)` and its own centre is half a pixel right of the chevron's.
+ * Deliberate: `14.5` would centre the line exactly and cost the hairline its
+ * crispness on a 1x display, which is a worse trade for a 1px rule than half
+ * a pixel of offset. Known, not overlooked.
+ */
+const INDENT_GUIDE_ORIGIN_PX = INDENT_BASE_PX + DISCLOSURE_BOX_PX / 2;
 
 /**
  * Whether a drag carries OS files rather than one of this tree's own rows.
