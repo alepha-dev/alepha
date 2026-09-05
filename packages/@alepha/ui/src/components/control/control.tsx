@@ -715,6 +715,26 @@ export const Control = (props: ControlProps) => {
             reserveGutter && "pr-9",
           )}
           onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            merged.inputProps?.onKeyDown?.(e);
+            if (e.defaultPrevented || e.key !== "Enter") return;
+            // The commit the auto-save effect deliberately withholds from a
+            // text field on every keystroke. Its comment offers "Enter or the
+            // inline tick button" as the two ways to commit - and only the
+            // tick ever existed. `AutoForm` in auto-save mode renders no
+            // submit button, so the browser's implicit submission never fires
+            // and Enter did nothing at all, on every text field in every
+            // auto-saving form.
+            //
+            // Guarded on `showSave` so it is inert outside auto-save mode and
+            // on a pristine field, where a normal form's own Enter handling
+            // must keep working.
+            if (!showSave) return;
+            e.preventDefault();
+            // `props.input.form`, the same handle the tick button submits
+            // through. The local `form` is only the `dirty` / `error` slice.
+            void props.input.form.submit();
+          }}
         />
         {showSave && (
           <button
