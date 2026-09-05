@@ -206,24 +206,80 @@ describe("FolioTree", () => {
   });
 
   /**
-   * The gesture the 250ms defer existed to protect. It still works, and the
-   * directory ends where it started: the first click of the burst toggled
-   * it, and `handleDoubleClick` toggles it back.
+   * ⚠️ This case used to assert the OPPOSITE, and the reversal is deliberate
+   * rather than drift.
+   *
+   * Double click WAS the rename gesture, and the 250ms defer, then the
+   * optimistic-toggle revert that replaced it, existed only to keep the
+   * first click of that burst from expanding a directory on the way to a
+   * rename. Feedback #2101 removed the gesture ("remove double-click for
+   * rename. It's not nice. we will keep right-click to rename action for
+   * that"), which takes the revert with it, and the frame of flicker the
+   * revert cost.
+   *
+   * So the double click is now simply a click that happened twice, and the
+   * two halves of this are what that has to mean: no rename, and the same
+   * directory state the single click below it produces. The second half is
+   * why `handleClick` keeps its `e.detail` guard - without it the burst's
+   * two clicks toggle twice and land collapsed.
+   *
+   * Driven as a real burst rather than a bare `doubleClick`: the browser
+   * fires click, click, then dblclick, and it is the SECOND click that the
+   * guard exists for, so firing only the dblclick would test nothing.
+   *
+   * ⚠️ Each click gets its OWN `await act`, and that is load-bearing rather
+   * than tidiness. The collapse set lives in an atom that notifies in a
+   * microtask, so two clicks inside one `act` both read the pre-burst value
+   * and the second toggle recomputes the first one's answer - the test
+   * passes with the guard deleted, which is the one thing it exists to
+   * catch. Separate flushes are what a real burst does anyway: the browser
+   * re-renders between them.
    */
-  it("still opens the inline rename on a double click, leaving the directory as it was", async () => {
+  it("does not open a rename on a double click, and leaves the directory open", async () => {
     const view = await mount();
 
     const row = rowFor("Framework");
-    await click(row);
+    await act(async () => {
+      fireEvent.click(row, { detail: 1 });
+    });
+    await act(async () => {
+      fireEvent.click(row, { detail: 2 });
+    });
     await act(async () => {
       fireEvent.doubleClick(row);
+    });
+
+    expect(view.container.querySelector("input")).toBeNull();
+    // Exactly where one click leaves it.
+    expect(screen.getByText("Inside A")).not.toBeNull();
+  });
+
+  /**
+   * The gesture that replaced it, asserted here rather than only in the
+   * context menu's own file: the report kept right-click to Rename, and
+   * removing the double click makes it the only way in.
+   */
+  it("still opens the inline rename from the context menu", async () => {
+    const view = await mount();
+
+    await act(async () => {
+      fireEvent.contextMenu(rowFor("Framework"));
+    });
+
+    const rename = await screen.findByText("Rename");
+    await act(async () => {
+      fireEvent.click(rename);
     });
 
     await waitFor(() =>
       expect(view.container.querySelector("input")).not.toBeNull(),
     );
-    // Reverted: opened by the first click, closed again by the second.
-    expect(screen.queryByText("Inside A")).toBeNull();
+    // And it is focused with its text selected, which is what the a11y fix
+    // that removed `autoFocus` had to put back by hand.
+    const input = view.container.querySelector("input")!;
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe(input.value.length);
   });
 
   it("marks the chevron and the row as separate targets, so the chevron still toggles", async () => {

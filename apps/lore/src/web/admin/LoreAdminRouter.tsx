@@ -1,9 +1,10 @@
 import { $pageAdmin } from "@alepha/ui/components/admin/admin-router-page";
 import { $client } from "alepha/server/links";
-import { FolderKanban, Server } from "lucide-react";
+import { FolderKanban, Link2, Server } from "lucide-react";
 
 import type { AdminEstateController } from "@/api/controllers/AdminEstateController.ts";
 import type { AdminProjectController } from "@/api/controllers/AdminProjectController.ts";
+import type { AdminReferenceController } from "@/api/controllers/AdminReferenceController.ts";
 
 /**
  * Lore's own pages inside the shared admin shell.
@@ -21,6 +22,24 @@ import type { AdminProjectController } from "@/api/controllers/AdminProjectContr
 export class LoreAdminRouter {
   protected readonly projectApi = $client<AdminProjectController>();
   protected readonly estateApi = $client<AdminEstateController>();
+  protected readonly referenceApi = $client<AdminReferenceController>();
+
+  /**
+   * The one-shot reference converter of epic #32. Deleted with the
+   * converter once the old grammar is purged (quest #1808).
+   */
+  adminReferences = $pageAdmin({
+    path: "/references",
+    head: { title: "References" },
+    nav: {
+      label: "References",
+      icon: <Link2 />,
+      group: "Lore",
+      order: 101,
+    },
+    can: () => this.referenceApi.convertReferences.can(),
+    lazy: () => import("./AdminReferences.tsx"),
+  });
 
   /**
    * Gated on the action rather than on `admin:project:read` alone. The
@@ -53,7 +72,7 @@ export class LoreAdminRouter {
       label: "Estates",
       icon: <Server />,
       group: "Lore",
-      order: 101,
+      order: 102,
     },
     can: () => this.estateApi.findEstates.can(),
     lazy: () => import("./AdminEstates.tsx"),

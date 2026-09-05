@@ -117,7 +117,7 @@ const schema = z.object({
     })
     .describe(">20 items → switches to Combobox automatically.")
     .optional(),
-  // 8. Clearable — the filter-chip shape, on a list big enough to be a combobox
+  // 8. Clearable - the filter-chip shape, on a list big enough to be a combobox
   region: z
     .string()
     .meta({
@@ -129,7 +129,9 @@ const schema = z.object({
         width: 50,
       },
     })
-    .describe("$control.clearable → an explicit 'All regions' row.")
+    .describe(
+      "$control.clearable → 'All regions' as the placeholder, plus an x to get back to it. No row in the list.",
+    )
     .optional(),
   // 9. Short list, every per-option feature — no search box, same control
   role: z

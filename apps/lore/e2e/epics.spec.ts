@@ -465,7 +465,9 @@ test.describe("Epics — the list", () => {
       const option = page.getByRole("option", { name: `Q${t}` }).first();
       await expect(option).toBeVisible({ timeout: 15_000 });
       await option.click();
-      await expect(editor).toContainText("[[quest#", { timeout: 10_000 });
+      // The typed form (epic #32). This used to pin `[[quest#`, a token
+      // neither parser read as a quest.
+      await expect(editor).toContainText("[[#Q", { timeout: 10_000 });
 
       // This step navigated to the epic's own page; the steps after it act
       // on the LIST's toolbar, which does not exist here.
@@ -635,7 +637,7 @@ test.describe("Epics — the questline", () => {
     const loose = await seed(`Loose${t}`);
 
     const card = (q: { shortId: number; title: string }) =>
-      page.getByRole("button", { name: `#${q.shortId} ${q.title}` });
+      page.getByRole("button", { name: `#Q${q.shortId} ${q.title}` });
 
     await test.step("every quest is on the board at once", async () => {
       await page.goto(`/${slug}/epics/${epic.number}?tab=flow`);
@@ -650,6 +652,23 @@ test.describe("Epics — the questline", () => {
       await expect(page.getByText("4", { exact: true }).first()).toBeVisible();
       await expect(page.getByText("2 ready")).toBeVisible();
       await expect(page.getByText("2 waiting")).toBeVisible();
+    });
+
+    await test.step("the zoom control moves the map, and fit brings it back", async () => {
+      // The board is a transform layer now, not a scroller. The math is
+      // proven in `questlineViewport.spec.ts`; what only a browser can show
+      // is that the control is wired to it, and that the click the next
+      // step makes on a card still lands after the pan-versus-click
+      // threshold went in.
+      const level = page.getByTestId("questline-zoom-level");
+      await expect(level).toHaveText(/^\d+%$/);
+      const fitted = (await level.textContent()) ?? "";
+
+      await page.getByRole("button", { name: "Zoom in" }).click();
+      await expect(level).not.toHaveText(fitted);
+
+      await page.getByRole("button", { name: "Fit to view" }).click();
+      await expect(level).toHaveText(fitted);
     });
 
     await test.step("opening the fork names both ways onward", async () => {
@@ -693,7 +712,7 @@ test.describe("Epics — the questline", () => {
       // The questline row's own `#id` anchor, not the title's: both are
       // links in this panel, and only this one points at the neighbour.
       await dialog
-        .getByRole("link", { name: `#${left.shortId}`, exact: true })
+        .getByRole("link", { name: `#Q${left.shortId}`, exact: true })
         .click();
 
       await expect(page).toHaveURL(new RegExp(`/quests/${left.shortId}$`), {
@@ -1158,14 +1177,30 @@ test.describe("Epics — the release control", () => {
     });
 
     await test.step("detaching goes back to the none label", async () => {
+      // ⚠️ Detaching used to be a "No release" ROW at the top of the list.
+      // Feedback #2098 deleted that row from `control-select` - it drew the
+      // empty state as a third pickable release with a check mark - and put
+      // an `x` on the trigger in its place. This step is the reason the `x`
+      // had to exist at all: the row was this control's only local way to
+      // say "no release", and unlike a table filter it has no "Reset
+      // filters" entry to fall back on.
       const saved = written();
-      await control.click();
-      await page.getByRole("option", { name: /^No release$/ }).click();
+      await page
+        .locator("aside")
+        .getByRole("button", {
+          name: "Clear selection",
+        })
+        .click();
 
       await expect(control).toContainText("No release", { timeout: 15_000 });
       expect((await saved).status()).toBe(200);
       await page.reload();
       await expect(control).toContainText("No release", { timeout: 15_000 });
+      // And with nothing attached there is nothing to clear, so the button
+      // is gone rather than sitting there offering the state it is in.
+      await expect(
+        page.locator("aside").getByRole("button", { name: "Clear selection" }),
+      ).toHaveCount(0);
     });
 
     await test.step("a published release still names itself", async () => {
@@ -1188,6 +1223,201 @@ test.describe("Epics — the release control", () => {
       await expect(control).not.toContainText(new RegExp(`\\b${later.id}\\b`));
       // Frozen counts: the control must not offer to move it either.
       await expect(control).toBeDisabled();
+    });
+  });
+});
+
+/**
+ * The lifecycle as a ratchet (epic #31): Begin, then Conclude, one way, and
+ * what the page stops offering along it.
+ *
+ * The refused EDGES and their wording are unit-tested. What this drives is
+ * the surface: the Accept a planned epic's quest no longer gets, the caption
+ * on a Begin blocked by its predecessor, the Create and Attach affordances
+ * that vanish once the plan is frozen, the Conclude dialog, and a refusal
+ * reaching the toast with its count. One API probe in the middle pins that
+ * the vanished affordance is a refusal underneath and not a hidden button.
+ *
+ * Seeded through the API like the backlog-gate suite above, for the same
+ * reason: this is about the lifecycle, not about four creation dialogs.
+ */
+test.describe("Epics — the ratchet", () => {
+  test("begins, refuses to conclude with an open quest, then concludes for good", async ({
+    page,
+  }) => {
+    test.setTimeout(150_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `ratchet${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `Rt${t}`.slice(0, 20),
+    );
+    await setProjectFeature(page, projectId, "epics", true);
+
+    const createEpic = (title: string, dependsOn?: number) =>
+      page.evaluate(
+        async ({ projectId, title, dependsOn }) => {
+          const r = await fetch(`/api/createEpic/${projectId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(
+              dependsOn === undefined ? { title } : { title, dependsOn },
+            ),
+          });
+          if (!r.ok)
+            throw new Error(`createEpic ${r.status} ${await r.text()}`);
+          return r.json() as Promise<{ id: number; number: number }>;
+        },
+        { projectId, title, dependsOn },
+      );
+
+    const attach = (epicId: number, questId: number) =>
+      page.evaluate(
+        async ({ epicId, questId }) => {
+          const r = await fetch(`/api/attachQuest/${epicId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ questId }),
+          });
+          return { status: r.status, body: await r.text() };
+        },
+        { epicId, questId },
+      );
+
+    const first = await createEpic(`First${t}`);
+    const second = await createEpic(`Second${t}`, first.id);
+    const quest = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: `Gated${t}`,
+        description: "Seeded for the ratchet",
+        area: "orm",
+        priority: "high",
+        objectives: [],
+        attachments: [],
+      },
+    );
+    expect((await attach(first.id, quest.id)).status).toBe(200);
+
+    await test.step("a planned epic's quest cannot be accepted, and the button says why", async () => {
+      await page.goto(`/${slug}/quests/${quest.shortId}`);
+      const accept = page.getByRole("button", { name: /accept the quest/i });
+      await expect(accept).toBeVisible({ timeout: 15_000 });
+      await expect(accept).toBeDisabled();
+      await expect(accept).toHaveAttribute("title", /has not begun/);
+    });
+
+    await test.step("an epic behind an unfinished predecessor cannot begin, and says which", async () => {
+      await page.goto(`/${slug}/epics/${second.number}`);
+      const begin = page.getByRole("button", { name: "Begin the Epic" });
+      await expect(begin).toBeVisible({ timeout: 15_000 });
+      await expect(begin).toBeDisabled();
+      await expect(
+        page.getByText(`Blocked by Epic ${first.number}`).first(),
+      ).toBeVisible();
+    });
+
+    await test.step("beginning the first epic asks, then freezes its plan", async () => {
+      await page.goto(`/${slug}/epics/${first.number}?tab=quests`);
+      await expect(page.getByRole("button", { name: "New Quest" })).toBeVisible(
+        { timeout: 15_000 },
+      );
+      await expect(
+        page.getByRole("button", { name: "Attach Quest" }),
+      ).toBeVisible();
+
+      await page.getByRole("button", { name: "Begin the Epic" }).click();
+      await page.getByRole("button", { name: "Begin the Epic" }).last().click();
+
+      await expect(
+        page.getByRole("button", { name: "Conclude the Epic" }),
+      ).toBeVisible({ timeout: 15_000 });
+      // The plan is frozen: nothing enters it from here.
+      await expect(page.getByRole("button", { name: "New Quest" })).toHaveCount(
+        0,
+      );
+      await expect(
+        page.getByRole("button", { name: "Attach Quest" }),
+      ).toHaveCount(0);
+    });
+
+    await test.step("and the API refuses to add to the frozen plan", async () => {
+      const late = await apiPost<{ id: number }>(page, "createQuest", {
+        projectId,
+        title: `Late${t}`,
+        description: "Filed after Begin",
+        area: "orm",
+        priority: "low",
+        objectives: [],
+        attachments: [],
+      });
+      const refusal = await attach(first.id, late.id);
+      expect(refusal.status).toBe(400);
+      expect(refusal.body).toContain("Its plan is frozen");
+    });
+
+    await test.step("concluding with an open quest asks, then is refused with the count", async () => {
+      await page.getByRole("button", { name: "Conclude the Epic" }).click();
+      await expect(
+        page.getByRole("alertdialog", { name: /conclude this epic/i }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Conclude the Epic" })
+        .last()
+        .click();
+
+      await expect(page.getByText(/1 quest is still open/).first()).toBeVisible(
+        { timeout: 15_000 },
+      );
+      // Still active: the verb is still on offer.
+      await expect(
+        page.getByRole("button", { name: "Conclude the Epic" }).first(),
+      ).toBeVisible();
+    });
+
+    await test.step("once the quest is shelved, Conclude goes through and nothing reopens", async () => {
+      // `shelveQuest` has no body schema, so it is GET at the canonical
+      // /api/shelveQuest/:id, as the backlog-gate suite above already does.
+      await page.evaluate(async (questId) => {
+        const r = await fetch(`/api/shelveQuest/${questId}`, {
+          credentials: "include",
+        });
+        if (!r.ok) throw new Error(`shelveQuest ${r.status} ${await r.text()}`);
+      }, quest.id);
+
+      await page
+        .getByRole("button", { name: "Conclude the Epic" })
+        .first()
+        .click();
+      await page
+        .getByRole("button", { name: "Conclude the Epic" })
+        .last()
+        .click();
+
+      await expect(page.getByText("Done").first()).toBeVisible({
+        timeout: 15_000,
+      });
+      // Terminal: no verb at all, and in particular no Reopen.
+      await expect(
+        page.getByRole("button", {
+          name: /Conclude the Epic|Begin the Epic|Reopen/,
+        }),
+      ).toHaveCount(0);
+    });
+
+    await test.step("and the second epic can begin now", async () => {
+      await page.goto(`/${slug}/epics/${second.number}`);
+      const begin = page.getByRole("button", { name: "Begin the Epic" });
+      await expect(begin).toBeVisible({ timeout: 15_000 });
+      await expect(begin).toBeEnabled();
+      await expect(
+        page.getByText(`After Epic ${first.number}`).first(),
+      ).toBeVisible();
     });
   });
 });

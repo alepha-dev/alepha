@@ -496,6 +496,75 @@ export class FeedbackController {
   });
 
   /**
+   * Fetch a single feedback item by the per-project `shortId` a `#P120`
+   * reference carries (epic #32). Readable by any project member; backs the
+   * wiki-link hover card, which knows the number and nothing else.
+   */
+  getFeedbackByShortId = $action({
+    use: [$secure({ permissions: ["project:read"] })],
+    method: "GET",
+    path: "/projects/:projectId/feedback/by-short-id/:shortId",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        shortId: z.integer(),
+      }),
+      response: feedbackResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      await this.ensureMember(params.projectId, user);
+      const row = await this.feedbackWith.findOne({
+        where: {
+          shortId: { eq: params.shortId },
+          projectId: { eq: params.projectId },
+        },
+        include: FeedbackController.withRelations,
+      });
+      if (!row) {
+        throw new NotFoundError("Feedback not found");
+      }
+      const [resource] = await this.toResources([row]);
+      return resource;
+    },
+  });
+
+  /**
+   * Every feedback item of the project as `{ shortId, title, status }`, for
+   * the wiki-link resolver: a body carrying `[[#P120]]` needs the title of
+   * item 120 to render it, and the paged inbox above cannot answer for an
+   * item on a page it never loaded. Three columns, no relations and no
+   * attachments, so the cost is one narrow query however large the inbox.
+   */
+  listFeedbackRefs = $action({
+    use: [$secure({ permissions: ["project:read"] })],
+    method: "GET",
+    path: "/projects/:projectId/feedback/refs",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      response: z.array(
+        z.object({
+          shortId: z.integer(),
+          title: z.string(),
+          status: feedback.schema.shape.status,
+        }),
+      ),
+    },
+    handler: async ({ params, user }) => {
+      await this.ensureMember(params.projectId, user);
+      const rows = await this.feedback.findMany({
+        where: { projectId: { eq: params.projectId } },
+        columns: ["shortId", "title", "status"],
+        orderBy: [{ column: "shortId", direction: "desc" }],
+      });
+      return rows.map((r) => ({
+        shortId: r.shortId,
+        title: r.title,
+        status: r.status,
+      }));
+    },
+  });
+
+  /**
    * Read a single feedback attachment's bytes (base64) plus its metadata.
    * Project-member gated, with an IDOR guard: the `attachmentId` must be one
    * of that feedback row's own `attachments`. Backs the

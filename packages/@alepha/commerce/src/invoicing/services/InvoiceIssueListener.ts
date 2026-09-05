@@ -7,7 +7,7 @@ import { InvoiceService } from "./InvoiceService.ts";
  * Issues the credit note when an order is refunded.
  *
  * The paid-side invoice is NOT issued here anymore: it is the first step
- * of the settlement workflow (`@alepha/commerce/settlement`), with
+ * of the settlement job (`@alepha/commerce/settlement`), with
  * per-step retry and a visible execution — the swallowed-error hook that
  * used to live here could silently lose a legally required document.
  * Import the settlement module to issue invoices on payment at all.

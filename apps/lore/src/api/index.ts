@@ -8,6 +8,7 @@ import { AlephaWebSocket } from "alepha/websocket";
 
 import { AdminEstateController } from "./controllers/AdminEstateController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AdminReferenceController } from "./controllers/AdminReferenceController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
@@ -60,6 +61,7 @@ import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
+import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { EstateCommandService } from "./services/EstateCommandService.ts";
 import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
 import { EstateService } from "./services/EstateService.ts";
@@ -85,6 +87,7 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
+import { ReferenceConversionService } from "./services/ReferenceConversionService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
@@ -135,6 +138,10 @@ export const LoreApi = $module({
     ReleaseContentService,
     RoadmapService,
     EpicDependencyService,
+    // The one place the epic workflow's refusals are written (epic #31):
+    // which quest action is allowed in which epic phase, and the words a
+    // refusal carries. Injected by the quest and epic controllers.
+    EpicWorkflowService,
     // Substituted for the framework's `FileAccessProvider` in
     // `main.server.ts`. Listed here only so DI scanning sees the class.
     LoreFileAccessProvider,
@@ -147,6 +154,9 @@ export const LoreApi = $module({
     FolioBlobService,
     FolioHistoryService,
     FolioLinkService,
+    // The one-shot reference converter of epic #32; goes with its admin
+    // controller once the old grammar is purged (quest #1808).
+    ReferenceConversionService,
     // Declares the `$invitationResource` for `resourceType: "project"`.
     // Nothing injects it, so like `AppSecurityProvider` it has to be listed
     // or the resolver is never registered and every invitation 404s.
@@ -230,6 +240,7 @@ export const LoreApi = $module({
     ProjectQuestPortabilityController,
     InvitationController,
     AdminProjectController,
+    AdminReferenceController,
     KanbanController,
     FolioController,
     DirectoryController,

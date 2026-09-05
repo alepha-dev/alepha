@@ -144,7 +144,7 @@ export const E2E_BAND_END = 4999;
  * The previous scheme derived the slot from the app's dev port (`default % 100`)
  * and so depended on two unrelated numbers staying coordinated by comment. An
  * explicit registry cannot drift: a new suite either appears here or does not
- * typecheck. Slots 6-9 are free; past that, raise {@link STRIDE} and the band.
+ * typecheck. Slot 9 is free; past that, raise {@link STRIDE} and the band.
  */
 export const E2E_SLOTS = {
   docs: 0,
@@ -153,10 +153,11 @@ export const E2E_SLOTS = {
   shop: 3,
   ssr: 4,
   "ssr-dev": 5,
+  ui: 6,
   // The Bay end-to-end (apps/e2e-cli/src/bay.e2e.spec.ts) boots two servers:
   // a Lore instance and a Bay proxy, one slot each.
-  bay: 6,
-  "bay-proxy": 7,
+  bay: 7,
+  "bay-proxy": 8,
 } as const;
 
 export type E2eApp = keyof typeof E2E_SLOTS;

@@ -144,7 +144,6 @@ const sharedTestOptions = () => ({
     S3_REGION: "us-east-1",
     S3_ACCESS_KEY_ID: "mock",
     S3_SECRET_ACCESS_KEY: "mock",
-    MQTT_BROKER_URL: "mqtt://localhost:11883",
     // The bucket the S3 specs create on the s3mock service before they run.
     S3_BUCKET_NAME: "alepha-test",
     REDIS_URL: "redis://localhost:16379",

@@ -28,7 +28,7 @@ LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 ### Core Commands
 
 - `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, copy, lint, check:docs, check:deps, check:conventions, typecheck, check:i18n, check:migrations, test, test:bun, build, e2e (+ e2e-cli), gen:llms, clean. **JavaScript/TypeScript only — it does NOT run the Go suite.** Reach for it when the change can affect the build, SSR, or anything an e2e suite covers — `--fast` skips all three. Must complete within 10 minutes; always run it with a 10-minute timeout. If it exceeds 10 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer.
-  - **Needs Docker running** for the service checks (postgres, redis, s3mock, emqx).
+  - **Needs Docker running** for the service checks (postgres, redis, s3mock).
   - **Needs a Go toolchain** since epic #20: `apps/e2e-cli/src/bay.e2e.spec.ts` builds `apps/bay` natively (well under a second on a warm cache, about four seconds for the whole spec) and fails loudly without `go`, because a skipped Go test is how a green run lies. It is the one place `yarn v` runs Go; it does not replace `yarn v:go`.
 - `yarn v:go` - The Go lane: `apps/bay`'s suite in a container (gofmt, vet, build, tests, cross-compile), reproducing the `bay` CI job. **Run it when you touch `apps/bay`** — `yarn v` will not, and a green `yarn v` says nothing about Go.
   - Separate rather than gated on a `git diff` because a heuristic that misfires skips silently. This one cannot be silently wrong.
@@ -87,7 +87,6 @@ Alepha uses a hybrid monorepo structure:
 - `@alepha/devtools` - Development tools and inspection UI
 - `@alepha/lore` - The reporting half of a sigil: an app sends its page views, Web Vitals and errors to the sink named by `SIGIL_SINK` (default `https://lore.alepha.dev`), authenticated by `SIGIL_KEY`. The key is the only required variable and the only secret: it is shaped `sg_<project>_<secret>`, so it names its own project and the app needs nothing else. `SIGIL_CONFIG` is optional and holds switches only. Lore is the sink (`apps/lore`, `SigilIngestController`)
 - `@alepha/payments-stripe` - Stripe payments backend
-- `@alepha/mqtt` - MQTT transport
 
 ### Lore (`apps/lore`)
 
@@ -197,14 +196,14 @@ browser spec running in the node environment looks like.
 
 Two disjoint bands, and they must stay disjoint:
 
-| band                                  | owner                                                                                                                                                                                                                                                                                 |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `3300-3399`                           | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, examples/playground 3304, examples/shop 3305, examples/totp 3307, examples/ssr 3311), plus `@alepha/devtools`'s own Vite config (3310), which is not an Alepha app and has no `alepha.config.ts` |
-| `5173+`                               | dev servers with no `dev.port` (Vite default); also `alepha dev` in multi-app mode, which hands each child `5173 + index` via `SERVER_PORT` and so **overrides `dev.port`**                                                                                                           |
-| `4300-4999`                           | **e2e, and nothing else**                                                                                                                                                                                                                                                             |
-| `11883` / `15432` / `16379` / `19090` | `compose.yml` test services (emqx / postgres / redis / s3mock)                                                                                                                                                                                                                        |
+| band                        | owner                                                                                                                                                                                                                                                                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `3300-3399`                 | **dev servers** — `dev.port` in each app's `alepha.config.ts` (docs 3302, lore 3303, examples/playground 3304, examples/shop 3305, examples/totp 3307, ui 3308, examples/ssr 3311), plus `@alepha/devtools`'s own Vite config (3310), which is not an Alepha app and has no `alepha.config.ts` |
+| `5173+`                     | dev servers with no `dev.port` (Vite default); also `alepha dev` in multi-app mode, which hands each child `5173 + index` via `SERVER_PORT` and so **overrides `dev.port`**                                                                                                                    |
+| `4300-4999`                 | **e2e, and nothing else**                                                                                                                                                                                                                                                                      |
+| `15432` / `16379` / `19090` | `compose.yml` test services (postgres / redis / s3mock)                                                                                                                                                                                                                                        |
 
-All six Playwright configs (`apps/docs`, `apps/lore`, and `apps/examples/{playground,shop,ssr}` — ssr twice, prod + dev mode) take their port from `e2ePort("<app>")` in the repo-root `playwright.port.ts`, the same way every vitest config takes its projects from `vitest.projects.ts`. Add port logic there, never to a caller; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
+All seven Playwright configs (`apps/docs`, `apps/lore`, `apps/ui`, and `apps/examples/{playground,shop,ssr}` — ssr twice, prod + dev mode) take their port from `e2ePort("<app>")` in the repo-root `playwright.port.ts`, the same way every vitest config takes its projects from `vitest.projects.ts`. Add port logic there, never to a caller; a new suite needs a slot in `E2E_SLOTS` or it will not typecheck.
 
 The argument is the **app name, not a port**, because it used to be the port — and it was the app's own _dev_ port. `yarn dev` and `yarn e2e` in the same app fought over one socket, and with `reuseExistingServer` on, Playwright adopted the dev server and ran the suite against hot-reloaded sources and the dev database, reporting green.
 

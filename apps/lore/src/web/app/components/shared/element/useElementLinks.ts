@@ -4,11 +4,13 @@ import { useMemo } from "react";
 import type { BlobController } from "@/api/controllers/BlobController.ts";
 import type { DirectoryController } from "@/api/controllers/DirectoryController.ts";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
+import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 
 import { currentFolioBlobsAtom } from "../../../atoms/currentFolioBlobsAtom.ts";
+import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { projectDirectoriesAtom } from "../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
 import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
@@ -16,10 +18,13 @@ import type {
   BlobRef,
   DirectoryRef,
   EpicRef,
+  FeedbackRef,
   QuestRef,
+  ReleaseRef,
 } from "../../folios/folioWikiLinkResolver.ts";
 import { rewriteFolioWikiLinks } from "../../folios/rewriteFolioWikiLinks.ts";
 import type { ElementRef } from "./elementRef.ts";
+import { formatReference } from "./typedReference.ts";
 
 export interface ElementLinks {
   /**
@@ -74,20 +79,51 @@ export const useElementLinks = (
   const epicApi = useClient<EpicController>();
   const directoryApi = useClient<DirectoryController>();
   const blobApi = useClient<BlobController>();
+  const feedbackApi = useClient<FeedbackController>();
 
   const [atomFolios] = useStore(userFoliosAtom);
   const [atomDirectories] = useStore(projectDirectoriesAtom);
   const [atomBlobs] = useStore(currentFolioBlobsAtom);
+  const [atomReleases] = useStore(currentReleasesAtom);
 
   const inFolioWorkspace = element.kind === "folio";
   const { projectId, projectSlug } = element;
 
-  // Only path-style refs (`dir/sub/name`) need the directory map, and only
-  // `blob:` / `![](blob:…)` need the blob list. Both are gated so a plain
-  // `[[#42]]` never pays for them.
+  // Only path-style refs (`dir/sub/name`) need the directory map, only
+  // `blob:` / `![](blob:…)` need the blob list, and only `[[#P120]]` needs
+  // the feedback refs. All three are gated so a plain `[[#Q42]]` never pays
+  // for them.
   const hasPathLinks = /\[\[[^\]\n]*\/[^\]\n]+\]\]/.test(content);
   const hasBlobRefs =
     /\[\[\s*blob:/i.test(content) || /!\[[^\]]*\]\(blob:/i.test(content);
+  const hasFeedbackRefs = /\[\[\s*#p\d+\s*\]\]/i.test(content);
+
+  // The inbox is paged, so a feedback item's title cannot be read off a
+  // list the page already holds the way a release's can. Three columns for
+  // the whole inbox, fetched only when a body names one.
+  const { data: feedbackRefs } = useQuery<FeedbackRef[]>(
+    {
+      key: ["elementLinks:feedback", projectId],
+      enabled: hasFeedbackRefs && projectId > 0,
+      staleTime: [5, "minutes"],
+      handler: async () =>
+        await feedbackApi.listFeedbackRefs({ params: { projectId } }),
+      onError: () => {},
+    },
+    [feedbackApi, projectId, hasFeedbackRefs],
+  );
+
+  // Every release, with its number, tag and title, is already in the
+  // project layout's atom, so `[[#R12]]` costs no request.
+  const releases = useMemo<ReleaseRef[]>(
+    () =>
+      (atomReleases ?? []).map((r) => ({
+        number: r.number,
+        title: r.title,
+        tag: r.tag,
+      })),
+    [atomReleases],
+  );
 
   // Fetched, not atom-read, only outside the folio workspace. `enabled`
   // does the gating so the hook order never changes between renders.
@@ -209,43 +245,56 @@ export const useElementLinks = (
   );
 
   /**
-   * Ordering is folios, then quests, then epics, then files. The picker
-   * shows the first eight matches, and a folio is what `[[` means when
-   * nothing qualifies it — putting anything ahead of folios would bury the
-   * common case. Epics follow quests because a project has far fewer of
-   * them, so they are rarely what a prefix-free search is reaching for.
+   * Ordering is folios, then quests, then epics. The picker shows the first
+   * eight matches and every entry inserts the same `#<LETTER><n>` shape, so
+   * the order only says what a body most often points at: notes cite notes.
+   * Epics come last because a project has far fewer of them, so they are
+   * rarely what a prefix-free search is reaching for.
+   *
+   * Every token is the typed reference (`typedReference.ts`), shown again
+   * as the hint so the author sees what will land in the document. A quest
+   * used to be inserted as `quest#N`, without the colon both parsers needed
+   * to select the type, so every quest link the picker ever wrote was a
+   * broken folio reference (epic #32).
+   *
+   * Attachments are not offered. `[[blob:#N]]` is dead: a file is embedded
+   * as `![name](assets/<name>)` from the Attachments tab or by dropping it
+   * into the editor, never through a wiki-link.
    */
   const suggestions = useMemo<WikiLinkSuggestion[]>(
     () => [
-      ...folios.map((f) => ({
-        key: `folio:${f.id}`,
-        kind: "folio" as const,
-        token: f.title,
-        label: f.title,
-        hint: `#${f.shortId}`,
-      })),
-      ...(quests ?? []).map((q) => ({
-        key: `quest:${q.shortId}`,
-        kind: "quest" as const,
-        token: `quest#${q.shortId}`,
-        label: q.title,
-        hint: `#${q.shortId}`,
-      })),
-      ...(epics ?? []).map((e) => ({
-        key: `epic:${e.shortId}`,
-        kind: "epic" as const,
-        token: `epic:#${e.shortId}`,
-        label: e.title,
-        hint: `#${e.shortId}`,
-      })),
-      ...blobs.map((b) => ({
-        key: `blob:${b.fileId}`,
-        kind: "blob" as const,
-        token: `blob:#${b.shortId}`,
-        label: b.name,
-      })),
+      ...folios.map((f) => {
+        const token = formatReference("folio", f.shortId);
+        return {
+          key: `folio:${f.id}`,
+          kind: "folio" as const,
+          token,
+          label: f.title,
+          hint: token,
+        };
+      }),
+      ...(quests ?? []).map((q) => {
+        const token = formatReference("quest", q.shortId);
+        return {
+          key: `quest:${q.shortId}`,
+          kind: "quest" as const,
+          token,
+          label: q.title,
+          hint: token,
+        };
+      }),
+      ...(epics ?? []).map((e) => {
+        const token = formatReference("epic", e.shortId);
+        return {
+          key: `epic:${e.shortId}`,
+          kind: "epic" as const,
+          token,
+          label: e.title,
+          hint: token,
+        };
+      }),
     ],
-    [folios, quests, epics, blobs],
+    [folios, quests, epics],
   );
 
   const rendered = useMemo(
@@ -259,9 +308,21 @@ export const useElementLinks = (
             directories,
             blobs,
             epics ?? [],
+            feedbackRefs ?? [],
+            releases,
           )
         : content,
-    [content, projectSlug, folios, quests, directories, blobs, epics],
+    [
+      content,
+      projectSlug,
+      folios,
+      quests,
+      directories,
+      blobs,
+      epics,
+      feedbackRefs,
+      releases,
+    ],
   );
 
   return { suggestions, rendered };

@@ -20,6 +20,7 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { AreaDotColor } from "../../shared/areaColor.ts";
+import { formatReference } from "../../shared/element/typedReference.ts";
 import {
   type EpicStatus,
   STATUS_ICONS,
@@ -76,6 +77,12 @@ export interface ReleaseContentsEpic {
   number: number;
   title: string;
   status: string;
+  /**
+   * The predecessor epic's id, when set. Read by the Flow tab only, which
+   * draws it as the edge between two clusters when both are in this
+   * release. A predecessor outside the release is laid out as a root.
+   */
+  dependsOn?: number;
   quests: ReleaseContentQuest[];
 }
 
@@ -305,11 +312,11 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
                 adding === "epic"
                   ? attachableEpics.map((epic) => ({
                       value: String(epic.id),
-                      label: `#${epic.number} ${epic.title}`,
+                      label: `${formatReference("epic", epic.number)} ${epic.title}`,
                     }))
                   : attachableQuests.map((quest) => ({
                       value: String(quest.id),
-                      label: `#${quest.shortId} ${quest.title}`,
+                      label: `${formatReference("quest", quest.shortId)} ${quest.title}`,
                     }))
               }
             />
@@ -360,7 +367,9 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
               >
                 {/* Only the separator is muted, so the ref and the title read
                     as one name rather than two fields. */}
-                <span className="font-mono">#{epic.number}</span>
+                <span className="font-mono">
+                  {formatReference("epic", epic.number)}
+                </span>
                 <span className="text-muted-foreground"> - </span>
                 {epic.title}
               </Link>

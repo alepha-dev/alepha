@@ -52,3 +52,22 @@ export const STATUS_ICONS: Record<EpicStatus, LucideIcon> = {
   active: CircleDotDashed,
   done: CircleCheck,
 };
+
+/**
+ * The predecessor that blocks Begin, as its per-project number, or
+ * `undefined` when nothing does.
+ *
+ * `epics.dependsOn` is a gate since epic #31: `setEpicStatus` refuses
+ * `active` while the predecessor is not `done`. Three surfaces ask the same
+ * question (the page's Begin button, the list's row menu, the aside's
+ * predecessor row), so it is answered once, off the two fields the resource
+ * carries for exactly this.
+ */
+export const epicBlockedBy = (
+  epic: Pick<EpicResource, "dependsOnNumber" | "dependsOnStatus">,
+): number | undefined =>
+  epic.dependsOnNumber !== undefined &&
+  epic.dependsOnStatus !== undefined &&
+  epic.dependsOnStatus !== "done"
+    ? epic.dependsOnNumber
+    : undefined;

@@ -93,9 +93,8 @@ const AdminSection = () => {
               </DocLink>
               , <DocLink to="packages-alepha-api-audits">audits</DocLink>,{" "}
               <DocLink to="packages-alepha-api-files">files</DocLink>,{" "}
-              <DocLink to="packages-alepha-api-parameters">parameters</DocLink>,{" "}
-              <DocLink to="packages-alepha-api-payments">payments</DocLink> and{" "}
-              <DocLink to="packages-alepha-api-workflows">workflows</DocLink>.
+              <DocLink to="packages-alepha-api-parameters">parameters</DocLink>{" "}
+              and <DocLink to="packages-alepha-api-payments">payments</DocLink>.
             </p>
             <p className="admin-lead">
               Not a template you fork and then maintain, but modules that keep

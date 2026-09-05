@@ -16,7 +16,7 @@ import { AlephaCommerceSettlement } from "../settlement/index.ts";
 
 /**
  * Poll until the mailbox holds `count` mails — the confirmation now
- * arrives through the settlement workflow, a beat after the webhook.
+ * arrives through the settlement job, a beat after the webhook.
  */
 const waitForMail = async (mail: MemoryEmailProvider, count: number) => {
   const deadline = Date.now() + 5_000;
@@ -28,7 +28,7 @@ const waitForMail = async (mail: MemoryEmailProvider, count: number) => {
 
 const setup = async () => {
   // Settlement drives the confirmation email since the paid-path moved
-  // onto the workflow; notifications alone only covers the shipped mail.
+  // onto the job; notifications alone only covers the shipped mail.
   const alepha = Alepha.create()
     .with(AlephaOrmPostgres)
     .with(AlephaCommerceNotifications)

@@ -32,6 +32,7 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 
 /**
@@ -52,6 +53,13 @@ const blightsFiltersSchema = z.object({
    * rather than on its whole history.
    */
   status: z.array(z.enum(["open", "resolved"])).optional(),
+  /**
+   * Absent means every app, the same way an empty `status` means every
+   * status. It carried a literal `"all"` until feedback #2098: the select
+   * drew it as a row of its own, so "All sigils" sat in the list looking
+   * like an app you could pick, and `fetchBlights` had to branch on a
+   * sigil id that is not one.
+   */
   sigilId: z.string().optional(),
 });
 
@@ -91,14 +99,11 @@ const ProjectBlights = () => {
     if (status === "resolved") {
       return <Badge variant="secondary">{tr("blights.status.resolved")}</Badge>;
     }
+    // The status carries the quest's database id after the prefix, not its
+    // per-project number, so the badge says only that it was forwarded
+    // (epic #32): a `#` before a database id read as a reference nobody had.
     if (status.startsWith(QUEST_STATUS_PREFIX)) {
-      return (
-        <Badge variant="outline">
-          {tr("blights.status.quest", {
-            args: [status.slice(QUEST_STATUS_PREFIX.length)],
-          })}
-        </Badge>
-      );
+      return <Badge variant="outline">{tr("blights.status.quest")}</Badge>;
     }
     return null;
   };
@@ -137,15 +142,21 @@ const ProjectBlights = () => {
     alepha.store.set(currentBlightCountAtom, { count: res.openCount });
     setSigilOptions(res.sigils);
 
-    const sigilId = (filters?.sigilId as string) ?? "all";
+    const stored = filters?.sigilId as string | undefined;
+    // ⚠️ `"all"` is a value this filter no longer has, and it is still on the
+    // machine of anyone who used the inbox before feedback #2098 - filters
+    // persist per `persistenceKey`, and `reconcilePersistedFilters` reshapes
+    // containers rather than values, so it arrives here untouched. Read as
+    // absent: no blight carries it, so the alternative is an empty table
+    // under a trigger that says "All sigils", which is the worst of both.
+    const sigilId = stored === "all" ? undefined : stored;
     const resolvedOnly = statuses.length === 1 && statuses[0] === "resolved";
     const statusFiltered = resolvedOnly
       ? res.items.filter((b) => b.status === "resolved")
       : res.items;
-    const filtered =
-      sigilId === "all"
-        ? statusFiltered
-        : statusFiltered.filter((b) => b.sigilId === sigilId);
+    const filtered = sigilId
+      ? statusFiltered.filter((b) => b.sigilId === sigilId)
+      : statusFiltered;
     const rows = sortBlights(filtered, sort);
     const offset = page * size;
     const content = rows.slice(offset, offset + size);
@@ -174,7 +185,7 @@ const ProjectBlights = () => {
         emptyMessage={tr("blights.empty")}
         filters={{
           schema: blightsFiltersSchema,
-          initialValues: { status: ["open"], sigilId: "all" },
+          initialValues: { status: ["open"] },
           render: (form) => (
             <div className="flex gap-2">
               <FilterSlot>
@@ -200,15 +211,14 @@ const ProjectBlights = () => {
                 <Control
                   input={form.input.sigilId}
                   label=""
+                  clearable
                   icon={AppWindow}
+                  clearLabel={tr("blights.filter.allSigils")}
                   triggerClassName="w-full"
-                  items={[
-                    { label: tr("blights.filter.allSigils"), value: "all" },
-                    ...sigilOptions.map((s) => ({
-                      label: s.label,
-                      value: s.id,
-                    })),
-                  ]}
+                  items={sigilOptions.map((s) => ({
+                    label: s.label,
+                    value: s.id,
+                  }))}
                 />
               </div>
             </div>
@@ -362,7 +372,7 @@ const ProjectBlights = () => {
                         });
                         toaster.success(
                           tr("blights.toast.forwarded", {
-                            args: [String(res.questShortId)],
+                            args: [formatReference("quest", res.questShortId)],
                           }),
                         );
                         refresh();

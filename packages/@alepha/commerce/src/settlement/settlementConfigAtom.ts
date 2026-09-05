@@ -2,7 +2,7 @@ import { $atom, type Infer, z } from "alepha";
 
 export const settlementConfig = $atom({
   name: "alepha.commerce.settlement",
-  description: "Timings for the checkout reconciliation workflow.",
+  description: "Timings for the checkout reconciliation job.",
   schema: z.object({
     reconcileAfterMinutes: z
       .integer()

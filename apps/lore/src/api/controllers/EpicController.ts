@@ -8,6 +8,7 @@ import {
 } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Epic, epics } from "../entities/epics.ts";
 import { folios } from "../entities/folios.ts";
 import { quests } from "../entities/quests.ts";
@@ -19,6 +20,7 @@ import {
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { EpicDependencyService } from "../services/EpicDependencyService.ts";
+import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
@@ -63,6 +65,12 @@ export class EpicController {
   linkService = $inject(FolioLinkService);
   attachment = $inject(ReleaseAttachmentService);
   dependencies = $inject(EpicDependencyService);
+  /**
+   * The epic phase gate (epic #31): the quest set can change only while the
+   * epic is `planned`, and the two status edges each have a precondition.
+   * Every refusal and its wording is written on the service, once.
+   */
+  workflow = $inject(EpicWorkflowService);
   audits = $inject(LoreAudits);
   owned = $inject(OwnedResourceProvider);
 
@@ -146,13 +154,13 @@ export class EpicController {
       // for the list rather than one per epic that has a predecessor. Every
       // predecessor is in `allEpics` already (a dependency cannot leave its
       // project), so this reads off the rows in hand.
-      const numbers = new Map(allEpics.map((epic) => [epic.id, epic.number]));
+      const byId = new Map(allEpics.map((epic) => [epic.id, epic]));
 
       return allEpics.map((epic) =>
         this.toEpicResource(
           epic,
           progress.get(epic.id) ?? this.zeroProgress(),
-          epic.dependsOn != null ? numbers.get(epic.dependsOn) : undefined,
+          epic.dependsOn != null ? byId.get(epic.dependsOn) : undefined,
         ),
       );
     },
@@ -341,17 +349,33 @@ export class EpicController {
   });
 
   /**
-   * `planned | active | done`, all four transitions legal — there is no
-   * forbidden edge. Stamps `activatedAt` on the FIRST move to `active`
-   * (kept across later `done`/`planned` swings — it marks when the epic
-   * began, not when it was last active) and `completedAt` on `done`,
-   * clearing `completedAt` on any move away from `done`.
+   * A one-way ratchet: `planned` to `active`, `active` to `done`, and
+   * nothing else. `done` is terminal, with no reopen and no return to
+   * planning; the way forward from a concluded epic is a new epic that
+   * depends on it.
+   *
+   * Nine legal transitions became two with epic #31, and this is what makes
+   * the rest of that epic hold: every refusal the phase gate adds (a quest
+   * can be worked only while its epic is active, the quest set is frozen
+   * once it is) would be undone by flipping the epic back a phase. Until
+   * then every edge was legal on purpose, and `activatedAt` carried a
+   * paragraph about surviving `done`/`planned` swings; there are no swings,
+   * so it is simply when the epic began, stamped on the one edge that
+   * begins it. `completedAt` is stamped on the one edge that concludes it,
+   * and is never cleared.
+   *
+   * The body schema still accepts the three values: the refusal is on the
+   * EDGE, not the value, so asking for the status the epic already has is a
+   * no-op that writes nothing and logs nothing (`epic_set_status` is declared
+   * idempotent).
    *
    * ⚠️ Must not write to any quest row. Activating an epic releases its
    * quests because the backlog gate (`EpicVisibilityService`) stops
    * matching them, not because anything about them changed — this is the
-   * single most important invariant in this controller. See
-   * `EpicController.spec.ts`'s `updatedAt`-is-unchanged assertion.
+   * single most important invariant in this controller, and a terminal
+   * `done` is the transition most tempted to break it by "stamping" the
+   * quests. See `EpicController.spec.ts`'s `updatedAt`-is-unchanged
+   * assertion.
    */
   setEpicStatus = $action({
     use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
@@ -365,16 +389,30 @@ export class EpicController {
     handler: async ({ params, body, user }) => {
       const epic = this.owned.get<Epic>();
 
+      if (body.status === epic.status) {
+        return await this.buildEpicResource(epic);
+      }
+      this.assertStatusEdge(epic, body.status);
+      // The gate on Begin (epic #31): an epic cannot begin while the epic it
+      // depends on is not done. Evaluated here and only here; `dependsOn`
+      // stays writable in every phase because the roadmap draws it.
+      if (body.status === "active") {
+        await this.workflow.assertCanBegin(epic);
+      }
+      // The gate on Conclude (epic #31): every quest completed or shelved,
+      // or a terminal `done` strands the open one forever. Shelving is the
+      // epic-level equivalent of waiving an objective on `completeQuest`.
+      if (body.status === "done") {
+        await this.workflow.assertCanConclude(epic);
+      }
+
       const updated = await this.epics.updateById(params.id, {
         status: body.status,
-        ...(body.status === "active" && !epic.activatedAt
+        ...(body.status === "active"
           ? { activatedAt: this.dt.nowISOString() }
           : {}),
         ...(body.status === "done"
           ? { completedAt: this.dt.nowISOString() }
-          : {}),
-        ...(body.status !== "done" && epic.completedAt
-          ? { completedAt: null }
           : {}),
       });
       await this.logEpic("status", updated, user, {
@@ -385,6 +423,37 @@ export class EpicController {
       return await this.buildEpicResource(updated);
     },
   });
+
+  /**
+   * The two edges of the ratchet, and the words for the three refused ones.
+   *
+   * Written here rather than on `EpicWorkflowService` because this is the
+   * one place a status is ever written, so there is nothing to keep in step
+   * with; the service holds the questions the two legal edges consult
+   * (`assertCanBegin`, `assertCanConclude`), which several callers ask.
+   * Same rule as every message on the service: name the epic by its number,
+   * and name the way forward.
+   */
+  protected assertStatusEdge(
+    epic: Pick<Epic, "number" | "status">,
+    to: Epic["status"],
+  ): void {
+    if (epic.status === "planned" && to === "active") return;
+    if (epic.status === "active" && to === "done") return;
+
+    const move = `Cannot move Epic ${formatReference("epic", epic.number)} from ${epic.status} to ${to}.`;
+    if (epic.status === "done") {
+      throw new BadRequestError(
+        `${move} An epic is concluded once. Create a new epic that depends on it.`,
+      );
+    }
+    if (epic.status === "active") {
+      throw new BadRequestError(
+        `${move} Its plan is frozen. Shelve what will not be done, or create a new epic.`,
+      );
+    }
+    throw new BadRequestError(`${move} Begin it first.`);
+  }
 
   /**
    * Relies on the `epicId` FK's `ON DELETE SET NULL` to orphan the epic's
@@ -434,6 +503,24 @@ export class EpicController {
       }
 
       if (quest.epicId !== epic.id) {
+        // The plan freeze (epic #31). A quest enters an epic only while
+        // that epic is planned, and a MOVE has to satisfy both ends: the
+        // quest cannot be pulled out of a frozen plan any more than pushed
+        // into one. The target is checked first, since it is what the
+        // caller asked for; the source only when there is one.
+        this.workflow.assertPlanEditable(epic, { kind: "add" });
+        if (quest.epicId != null) {
+          const source = await this.epics.findOne({
+            where: { id: { eq: quest.epicId } },
+          });
+          if (source) {
+            this.workflow.assertPlanEditable(source, {
+              kind: "remove",
+              quest,
+            });
+          }
+        }
+
         await this.quests.updateById(quest.id, { epicId: epic.id });
         await this.logEpic("attach", epic, user, {
           quest: quest.shortId,
@@ -455,6 +542,11 @@ export class EpicController {
 
       const quest = await this.quests.getById(params.questId);
       if (quest.epicId === epic.id) {
+        // The plan freeze (epic #31): a quest leaves an epic only while the
+        // epic is planned. Shelve is the route for one that will not be
+        // done, and the message says so.
+        this.workflow.assertPlanEditable(epic, { kind: "remove", quest });
+
         await this.quests.updateById(quest.id, { epicId: null });
         await this.logEpic("detach", epic, user, { quest: quest.shortId });
       }
@@ -546,7 +638,7 @@ export class EpicController {
     return this.toEpicResource(
       epic,
       await this.computeProgress(epic),
-      predecessor?.number,
+      predecessor,
     );
   }
 
@@ -554,19 +646,27 @@ export class EpicController {
    * Assembles the resource once the rollup is in hand, so the single-epic
    * path and the batched list path cannot drift on what a resource is.
    *
-   * ⚠️ `dependsOnNumber` is supplied rather than looked up, for the same
+   * ⚠️ The predecessor is supplied rather than looked up, for the same
    * reason `progress` is: this method is the one place a resource is built,
    * and the two callers reach both facts differently - one row at a time, or
    * batched over the whole list. A lookup in here would make the batched path
    * N+1 again, and computing it in only one caller would let `epic_list`
-   * silently stop carrying a field `epic_get` returns.
+   * silently stop carrying a field `epic_get` returns. Its `number` and its
+   * `status` ride out together, so neither surface can carry one without the
+   * other.
    */
   protected toEpicResource(
     epic: Epic,
     progress: EpicProgress,
-    dependsOnNumber?: number,
+    predecessor?: Pick<Epic, "number" | "status">,
   ): EpicResource {
-    return { ...epic, progress, questCount: progress.total, dependsOnNumber };
+    return {
+      ...epic,
+      progress,
+      questCount: progress.total,
+      dependsOnNumber: predecessor?.number,
+      dependsOnStatus: predecessor?.status,
+    };
   }
 
   /**

@@ -7,6 +7,8 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { epicReviewPromptAtom } from "@/web/app/atoms/epicReviewPromptAtom.ts";
 import { buildEpicReviewPrompt } from "@/web/app/prompts/epicReviewPrompt.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
+
 /**
  * Opens the epic-review prompt for editing.
  *
@@ -49,6 +51,9 @@ export const useEpicReviewPrompt = (): ((epic: EpicResource) => void) => {
       url,
     });
 
-    setPrompt({ reference: `#${epic.number}`, text: prompt });
+    setPrompt({
+      reference: formatReference("epic", epic.number),
+      text: prompt,
+    });
   };
 };

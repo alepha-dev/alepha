@@ -16,6 +16,7 @@ import { $entity, db } from "alepha/orm";
  * - terminal failure      → error
  * - retryable failure     → scheduled (with scheduledAt = now; sweep picks it up)
  * - delay                 → scheduled (with scheduledAt = now + delay)
+ * - handler reschedule()  → scheduled (next scheduledAt and payload, attempt reset, same id and key)
  * - sweep picks due ones  → pending
  * - cancel                → cancelled
  */
