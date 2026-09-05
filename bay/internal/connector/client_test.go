@@ -173,6 +173,7 @@ type fixtureOptions struct {
 	configured bool
 	noExecutor bool
 	logs       io.Writer
+	gauge      Gauge
 }
 
 type clientFixture struct {
@@ -202,6 +203,7 @@ func newClientFixture(t *testing.T, opts fixtureOptions) *clientFixture {
 		Log:          slog.New(slog.NewTextHandler(opts.logs, nil)),
 		PingInterval: 40 * time.Millisecond, PongWait: 40 * time.Millisecond,
 		MinBackoff: 5 * time.Millisecond, MaxBackoff: 20 * time.Millisecond,
+		Gauge: opts.gauge, MinStatsInterval: 10 * time.Millisecond,
 	}
 	if !opts.noExecutor {
 		client.Handler = handler
@@ -468,5 +470,94 @@ func TestClientRefusesAWrongSecretWithoutASession(t *testing.T) {
 	case <-lore.sessions:
 		t.Fatal("a refused handshake must open no session")
 	default:
+	}
+}
+
+// fixedGauge answers the same reading every time, or nothing at all.
+type fixedGauge struct {
+	reading Reading
+	ok      bool
+}
+
+func (g fixedGauge) Sample(context.Context) (Reading, bool) { return g.reading, g.ok }
+
+func (s *loreSession) statsFrame(t *testing.T, within time.Duration) (map[string]any, bool) {
+	t.Helper()
+	deadline := time.After(within)
+	for {
+		select {
+		case f, ok := <-s.frames:
+			if !ok {
+				t.Fatal("session closed while waiting for stats")
+			}
+			if f["type"] == "stats" {
+				return f, true
+			}
+		case <-deadline:
+			return nil, false
+		}
+	}
+}
+
+func TestClientPushesTheGaugeAfterTheWelcomeAndOnTheInterval(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{
+		configured: true,
+		gauge:      fixedGauge{reading: Reading{CPUPercent: 12.34, MemoryPercent: 56.78}, ok: true},
+	})
+	s := f.lore.session(t)
+	_ = s.frame(t) // hello
+
+	// Nothing before the welcome: the interval is Lore's to name.
+	if _, got := s.statsFrame(t, 50*time.Millisecond); got {
+		t.Fatal("no stats may go out before the welcome")
+	}
+
+	w := welcomeFrame()
+	w["statsIntervalSeconds"] = 1
+	s.send(t, w)
+
+	// One push right after the welcome, so a fresh estate shows a figure
+	// within seconds rather than an interval later.
+	first, ok := s.statsFrame(t, 2*time.Second)
+	if !ok {
+		t.Fatal("the welcome must be followed by a stats push")
+	}
+	if first["cpuPercent"] != 12.3 || first["memoryPercent"] != 56.8 {
+		t.Fatalf("stats must be rounded to a tenth: %v", first)
+	}
+	if _, err := time.Parse(time.RFC3339, first["at"].(string)); err != nil {
+		t.Fatalf("at must be RFC 3339: %v", first["at"])
+	}
+
+	// Then on the interval the welcome named.
+	if _, ok := s.statsFrame(t, 3*time.Second); !ok {
+		t.Fatal("the gauge must keep pushing on the interval")
+	}
+}
+
+func TestClientPushesNothingWhenTheGaugeHasNothing(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{configured: true, gauge: fixedGauge{ok: false}})
+	s := f.lore.session(t)
+	_ = s.frame(t)
+	w := welcomeFrame()
+	w["statsIntervalSeconds"] = 1
+	s.send(t, w)
+	if _, got := s.statsFrame(t, 200*time.Millisecond); got {
+		t.Fatal("a gauge with nothing to say must send nothing, never zeros")
+	}
+}
+
+func TestStatsIntervalFloorsAndDefaults(t *testing.T) {
+	c := &Client{MinStatsInterval: time.Minute}
+	if got := c.statsInterval(); got != 1800*time.Second {
+		t.Fatalf("no welcome yet: %v, want 30m", got)
+	}
+	c.statsSeconds.Store(30)
+	if got := c.statsInterval(); got != time.Minute {
+		t.Fatalf("under the floor: %v, want 1m", got)
+	}
+	c.statsSeconds.Store(3600)
+	if got := c.statsInterval(); got != time.Hour {
+		t.Fatalf("named interval: %v, want 1h", got)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -175,6 +176,10 @@ type Client struct {
 	// Reload wakes the loop after `bay connector set` or `clear`, so a new
 	// sink is dialed now rather than at the end of the current backoff.
 	Reload <-chan struct{}
+	// Gauge reads the host for the stats frames; nil pushes nothing.
+	Gauge Gauge
+	// MinStatsInterval floors whatever interval Lore names.
+	MinStatsInterval time.Duration
 
 	Dial         Dialer
 	PingInterval time.Duration
@@ -186,6 +191,11 @@ type Client struct {
 
 	mu   sync.Mutex
 	conn Conn
+
+	// statsSeconds is the interval the last welcome or config named;
+	// statsKick asks the stats loop for a push now.
+	statsSeconds atomic.Int64
+	statsKick    chan struct{}
 }
 
 func (c *Client) defaults() {
@@ -215,6 +225,12 @@ func (c *Client) defaults() {
 	}
 	if c.Status == nil {
 		c.Status = NewStatus()
+	}
+	if c.MinStatsInterval == 0 {
+		c.MinStatsInterval = DefaultMinStatsInterval
+	}
+	if c.statsKick == nil {
+		c.statsKick = make(chan struct{}, 1)
 	}
 }
 
@@ -317,6 +333,7 @@ func (c *Client) session(ctx context.Context, cfg Config, outage *bool) bool {
 	pingCtx, stopPings := context.WithCancel(ctx)
 	defer stopPings()
 	go c.pingLoop(pingCtx, conn)
+	go c.statsLoop(pingCtx)
 
 	// The machine speaks first.
 	if err := c.Send(map[string]string{"type": "hello"}); err != nil {
@@ -388,6 +405,10 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 		}
 		c.Log.Info("lore "+frame.Type, "estate", w.Slug,
 			"deployAllowed", w.DeployAllowed, "statsIntervalSeconds", w.StatsIntervalSeconds)
+		if frame.StatsIntervalSeconds > 0 {
+			c.statsSeconds.Store(int64(frame.StatsIntervalSeconds))
+		}
+		c.kickStats()
 		if c.Handler != nil {
 			c.Handler.Welcome(w)
 		}
