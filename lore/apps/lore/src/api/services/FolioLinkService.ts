@@ -731,10 +731,12 @@ export class FolioLinkService {
     // and quest write, and on D1 an insert is a round trip: a folio with
     // 20 wiki links used to pay 20 of them per save, and now pays one.
     //
-    // ⚠️ `createMany` chunks at 1000 and its batches are not atomic on
-    // their own. That costs nothing here — `FolioController` wraps
-    // create/update in `$transactional()`, and this delete-then-insert was
-    // never atomic without it.
+    // ⚠️ `createMany` chunks by the driver's parameter ceiling (twenty of
+    // these rows per statement on D1, since 2026-09-05: a folio with 28
+    // links used to fail its save with `too many SQL variables`) and its
+    // batches are not atomic on their own. That costs nothing here —
+    // `FolioController` wraps create/update in `$transactional()`, and this
+    // delete-then-insert was never atomic without it.
     await this.links.createMany(
       targets.map((target) => ({
         fromType: source.kind,
