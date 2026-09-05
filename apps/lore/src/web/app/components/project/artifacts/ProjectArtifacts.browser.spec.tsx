@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -94,6 +94,11 @@ describe("ProjectArtifacts", () => {
     releases: unknown[] = [],
   ) => {
     cleanup();
+    // ⚠️ `persistenceKey` puts the filter values in localStorage, and the
+    // store outlives a `cleanup()`. Without this the search set by one case
+    // narrows the table of the next one, which is an order-dependent suite
+    // that passes alone and fails in a file.
+    window.localStorage.clear();
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -213,6 +218,52 @@ describe("ProjectArtifacts", () => {
     expect(await findAllByText("1.0.0")).toHaveLength(2);
     expect(await findAllByText("workerd")).toHaveLength(1);
     expect(await findAllByText("node")).toHaveLength(1);
+  });
+
+  /**
+   * The filter predicate, through the real table rather than by calling it.
+   *
+   * `search` is the one that could not be left to `AlephaTable`'s built-in
+   * field matching, which pairs a filter with the same-named property: this
+   * one spans the tag AND the commit, so the page supplies a predicate and
+   * that predicate owns all three filters.
+   */
+  it("narrows the rows on a search over tag and commit", async ({ expect }) => {
+    const { findByText, queryByText, getByLabelText } = await show(
+      listing([
+        group({ tag: "1.0.0" }),
+        group({
+          app: "web",
+          tag: "2.5.0",
+          commitSha: "beefcafe0000000",
+          variants: [{ ...group().variants[0], app: "web", tag: "2.5.0" }],
+        }),
+      ]),
+    );
+
+    await findByText("1.0.0");
+    await findByText("2.5.0");
+
+    fireEvent.change(getByLabelText("Search a tag or a commit"), {
+      target: { value: "2.5" },
+    });
+
+    // The table debounces its refetch, so the assertion has to wait rather
+    // than read the frame the keystroke landed in.
+    await waitFor(() => expect(queryByText("1.0.0")).toBeNull(), {
+      timeout: 5_000,
+    });
+    expect(queryByText("2.5.0")).toBeTruthy();
+
+    // And the commit half of the same predicate: a query matching no tag but
+    // a commit still keeps its row.
+    fireEvent.change(getByLabelText("Search a tag or a commit"), {
+      target: { value: "beefcafe" },
+    });
+    await waitFor(() => expect(queryByText("2.5.0")).toBeTruthy(), {
+      timeout: 5_000,
+    });
+    expect(queryByText("1.0.0")).toBeNull();
   });
 
   /**
