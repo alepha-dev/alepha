@@ -1353,6 +1353,10 @@ export default {
   "estates.detach.confirmDescription":
     "The project can no longer deploy through it. Nothing already deployed is touched: the machine keeps running whatever it runs.",
   "estates.detach.confirm": "Detach",
+  "account.estates.create.cancel": "Cancel",
+  "estates.secret.description":
+    "This is the only time it is shown. Store it somewhere safe before closing this dialog.",
+  "estates.secret.copied": "Copied",
   "estates.secret.title":
     "Your estate's secret. It is shown once: run `bay connector set <lore-url> <secret>` on the machine.",
   "estates.secret.copy": "Copy secret",
@@ -1371,6 +1375,7 @@ export default {
   "account.estates.create.description":
     "A bay estate: a machine running `bay serve`. It starts stats-only, with deploys off, until you allow them.",
   "account.estates.create.submit": "Create",
+  "account.estates.new": "New estate",
   "account.estates.secretPrefix": "secret $1…",
   "account.estates.gauge": "CPU $1% · memory $2%",
   "account.estates.gauge.none": "no stats yet",
