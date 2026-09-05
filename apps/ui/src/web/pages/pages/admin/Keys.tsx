@@ -11,7 +11,11 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  * dense admin table is where a narrow screen bites first.
  */
 const Keys = () => (
-  <Showcase title="Admin: API keys" description="Programmatic access tokens.">
+  <Showcase
+    id="pages/admin/Keys"
+    title="Admin: API keys"
+    description="Programmatic access tokens."
+  >
     {() => <AdminKeys />}
   </Showcase>
 );

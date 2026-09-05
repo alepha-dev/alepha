@@ -11,7 +11,11 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  * dense admin table is where a narrow screen bites first.
  */
 const Audits = () => (
-  <Showcase title="Admin: audit log" description="The audit trail.">
+  <Showcase
+    id="pages/admin/Audits"
+    title="Admin: audit log"
+    description="The audit trail."
+  >
     {() => <AdminAudits />}
   </Showcase>
 );

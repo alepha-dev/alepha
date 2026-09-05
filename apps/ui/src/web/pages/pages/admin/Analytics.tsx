@@ -12,6 +12,7 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  */
 const Analytics = () => (
   <Showcase
+    id="pages/admin/Analytics"
     title="Admin: analytics"
     description="An explorer over declared datasets."
   >

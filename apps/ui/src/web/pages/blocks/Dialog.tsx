@@ -29,6 +29,7 @@ const Dialog = () => {
 
   return (
     <Showcase
+      id="blocks/Dialog"
       title="Dialog"
       description="Blocking questions, as promises."
       schema={KNOBS}

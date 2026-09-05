@@ -66,6 +66,7 @@ const Table = () => {
 
   return (
     <Showcase
+      id="blocks/Table"
       title="Table"
       description="Server-paged, filtered and sortable."
       schema={KNOBS}

@@ -7,11 +7,12 @@ import type { SchemaControlFn } from "alepha/react/ui";
 import { Showcase } from "@/web/components/Showcase.tsx";
 
 /**
- * A whole form from one schema: layout, labels, validation, the submit bar.
+ * A whole form from one flat schema: layout, labels, widths, validation and
+ * the submit bar, none of them written by hand.
  *
- * The knobs are AutoForm's own chrome - the header, the layout, whether it
- * saves as you type - so the same schema can be seen as a page form, a settings
- * card, and an auto-saving panel without touching the schema.
+ * The knobs are `AutoForm`'s own chrome, so the same schema can be seen as a
+ * page form, a settings card and an auto-saving panel without the schema
+ * changing at all.
  */
 const KNOBS = z.object({
   layout: z.enum(["stack", "row"]).default("stack").meta({ title: "layout" }),
@@ -19,7 +20,7 @@ const KNOBS = z.object({
   autoSave: z.boolean().default(false).meta({ title: "autoSave" }),
   header: z.boolean().default(true).meta({ title: "Header" }),
   noSubmit: z.boolean().default(false).meta({ title: "noSubmit" }),
-  autoGroup: z.boolean().default(false).meta({ title: "autoGroup" }),
+  disabled: z.boolean().default(false).meta({ title: "disabled" }),
 });
 
 /**
@@ -56,21 +57,13 @@ const schema = z.object({
     .string()
     .meta({ format: "date-time", title: "Maintenance window" })
     .optional(),
-  tags: z.array(z.string()).meta({ title: "Tags" }),
-  contact: z
-    .object({
-      email: z.string().meta({ format: "email", title: "Email" }),
-      phone: z.string().meta({ title: "Phone" }).optional(),
-    })
-    .meta({ title: "Contact" })
-    .optional(),
   notes: z
     .string()
     .meta({ title: "Notes", $control: { width: 100 } })
     .optional(),
 });
 
-const AutoFormBlock = () => {
+const Basic = () => {
   const toast = useToast();
   const form = useForm(
     {
@@ -82,8 +75,9 @@ const AutoFormBlock = () => {
 
   return (
     <Showcase
+      id="blocks/auto-form/Basic"
       title="AutoForm"
-      description="A whole form rendered from a zod schema."
+      description="A whole form rendered from a flat schema."
       schema={KNOBS}
       initialValues={{
         layout: "stack",
@@ -91,19 +85,21 @@ const AutoFormBlock = () => {
         autoSave: false,
         header: true,
         noSubmit: false,
-        autoGroup: false,
+        disabled: false,
       }}
     >
       {(v) => (
         <div className="mx-auto max-w-3xl">
           <AutoForm
-            key={`${v.layout}-${v.card}-${v.autoSave}-${v.autoGroup}`}
+            // `layout`, `card` and `autoSave` are read as the form is built,
+            // so a remount is what makes them live knobs rather than dead ones.
+            key={`${v.layout}-${v.card}-${v.autoSave}`}
             form={form}
             layout={v.layout}
             card={v.card}
             autoSave={v.autoSave}
             noSubmit={v.noSubmit}
-            autoGroup={v.autoGroup}
+            disabled={v.disabled}
             title={v.header ? "Project settings" : undefined}
             description={
               v.header
@@ -118,4 +114,4 @@ const AutoFormBlock = () => {
   );
 };
 
-export default AutoFormBlock;
+export default Basic;

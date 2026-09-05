@@ -7,6 +7,7 @@ import { useStore } from "alepha/react";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
+  FormInput,
   Home as HomeIcon,
   LayoutDashboard,
   MessageSquareWarning,
@@ -19,7 +20,6 @@ import {
 } from "lucide-react";
 import { type ComponentType, type SVGProps, useEffect, useState } from "react";
 
-import { ShellTweak } from "@/web/components/ShellTweak.tsx";
 import { SHELL_PREFS_DEFAULT, shellPrefsAtom } from "@/web/shellPrefsAtom.ts";
 
 interface NavLeaf {
@@ -68,29 +68,61 @@ const NAV: NavGroup[] = [
         ],
       },
       {
-        label: "Forms",
+        label: "Control",
         icon: SlidersHorizontal,
         children: [
-          { href: "/blocks/controls", label: "Controls" },
-          { href: "/blocks/select", label: "Select" },
-          { href: "/blocks/auto-form", label: "AutoForm" },
+          { href: "/blocks/control/text", label: "Text" },
+          { href: "/blocks/control/number", label: "Number" },
+          { href: "/blocks/control/date", label: "Date" },
+          { href: "/blocks/control/select", label: "Select" },
+        ],
+      },
+      {
+        label: "AutoForm",
+        icon: FormInput,
+        children: [
+          { href: "/blocks/auto-form/basic", label: "Basic" },
+          { href: "/blocks/auto-form/object", label: "Object" },
+          { href: "/blocks/auto-form/array", label: "Array" },
         ],
       },
       { href: "/blocks/table", label: "Table", icon: Table2 },
       {
-        href: "/blocks/dialog",
-        label: "Dialog",
+        label: "Messages",
         icon: MessageSquareWarning,
+        children: [
+          { href: "/blocks/dialog", label: "Dialog" },
+          { href: "/blocks/toast", label: "Toast" },
+        ],
       },
-      { href: "/blocks/toast", label: "Toast", icon: MessageSquareWarning },
       { href: "/blocks/buttons", label: "Buttons", icon: MousePointerClick },
     ],
   },
   {
     label: "Pages",
     items: [
-      { href: "/pages/auth", label: "Auth", icon: ShieldCheck },
-      { href: "/pages/account", label: "Account", icon: UserCog },
+      {
+        label: "Auth",
+        icon: ShieldCheck,
+        children: [
+          { href: "/pages/auth/login", label: "Sign in" },
+          { href: "/pages/auth/register", label: "Register" },
+          { href: "/pages/auth/reset", label: "Reset password" },
+          { href: "/pages/auth/verify", label: "Verify email" },
+          { href: "/pages/auth/mfa", label: "Second factor" },
+        ],
+      },
+      {
+        label: "Account",
+        icon: UserCog,
+        children: [
+          { href: "/pages/account/profile", label: "Profile" },
+          { href: "/pages/account/security", label: "Security" },
+          { href: "/pages/account/sessions", label: "Sessions" },
+          { href: "/pages/account/keys", label: "API keys" },
+          { href: "/pages/account/connections", label: "Connections" },
+        ],
+      },
       {
         label: "Admin",
         icon: LayoutDashboard,
@@ -139,12 +171,19 @@ const isActive = (href: string, pathname: string) => href === pathname;
  * The shell, and itself a specimen.
  *
  * Its variant comes from a `persist: "localStorage"` atom the reader drives
- * from the top bar, so `AppShell`'s three layouts can be compared on a real
- * page rather than described.
+ * from `/blocks/shell`, so `AppShell`'s three layouts can be compared on a
+ * real page rather than described. That page owns the knobs, and it is the
+ * only thing that sets them: a second copy in the top bar was the same three
+ * switches writing the same atom, one click from the page that documents
+ * them.
  *
- * ⚠️ The content area is `h-full` and `min-h-0` so a page can fill it. Every
- * page here is a single `Showcase`, which needs a bounded height to give its
- * preview area a scroll region of its own.
+ * ⚠️ The `h-svh overflow-hidden` wrapper and `fill` are one mechanism, and
+ * every page depends on it. Without `fill`, `AppShell` renders its `<main>` as
+ * `flex-1 overflow-auto`: nothing bounds the height, so the DOCUMENT becomes
+ * the only scroller and a `Showcase`'s own `overflow-auto` never activates.
+ * The header bar and the props panel then scroll away with the preview, which
+ * is the one thing they must not do. With `fill`, `main` is
+ * `min-h-0 flex-1 overflow-hidden` and the scrolling is the preview's own.
  */
 export const Layout = () => {
   const state = useRouterState();
@@ -165,59 +204,63 @@ export const Layout = () => {
     <TooltipProvider>
       <DialogProvider>
         <ColorScheme />
-        <AppShell
-          variant={prefs.variant}
-          headerOutside={prefs.headerOutside}
-          topbarActions={
-            <>
-              <ShellTweak />
-              <ButtonTheme />
-              <ButtonDark />
-            </>
-          }
-          brand={
-            <a
-              href="/"
-              className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-            >
-              <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">
-                α
-              </span>
-              <span className="truncate group-data-[collapsible=icon]:hidden">
-                Alepha UI
-              </span>
-            </a>
-          }
-          nav={NAV.map((group) => ({
-            label: group.label,
-            items: group.items.map((entry) =>
-              entry.children
-                ? {
-                    label: entry.label,
-                    icon: entry.icon,
-                    defaultOpen: entry.children.some((c) =>
-                      isActive(c.href, pathname),
-                    ),
-                    children: entry.children.map((c) => ({
-                      href: c.href,
-                      label: c.label,
-                      active: isActive(c.href, pathname),
-                    })),
-                  }
-                : {
-                    href: entry.href,
-                    label: entry.label,
-                    icon: entry.icon,
-                    active: isActive(entry.href ?? "", pathname),
-                  },
-            ),
-          }))}
-          breadcrumbs={prefs.breadcrumbs && crumbs.length ? crumbs : undefined}
-        >
-          <div className="flex h-full min-h-0 flex-col">
-            <NestedView />
-          </div>
-        </AppShell>
+        <div className="flex h-svh flex-col overflow-hidden">
+          <AppShell
+            fill
+            variant={prefs.variant}
+            headerOutside={prefs.headerOutside}
+            topbarActions={
+              <>
+                <ButtonTheme />
+                <ButtonDark />
+              </>
+            }
+            brand={
+              <a
+                href="/"
+                className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+              >
+                <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">
+                  α
+                </span>
+                <span className="truncate group-data-[collapsible=icon]:hidden">
+                  Alepha UI
+                </span>
+              </a>
+            }
+            nav={NAV.map((group) => ({
+              label: group.label,
+              items: group.items.map((entry) =>
+                entry.children
+                  ? {
+                      label: entry.label,
+                      icon: entry.icon,
+                      defaultOpen: entry.children.some((c) =>
+                        isActive(c.href, pathname),
+                      ),
+                      children: entry.children.map((c) => ({
+                        href: c.href,
+                        label: c.label,
+                        active: isActive(c.href, pathname),
+                      })),
+                    }
+                  : {
+                      href: entry.href,
+                      label: entry.label,
+                      icon: entry.icon,
+                      active: isActive(entry.href ?? "", pathname),
+                    },
+              ),
+            }))}
+            breadcrumbs={
+              prefs.breadcrumbs && crumbs.length ? crumbs : undefined
+            }
+          >
+            <div className="flex h-full min-h-0 flex-col">
+              <NestedView />
+            </div>
+          </AppShell>
+        </div>
       </DialogProvider>
     </TooltipProvider>
   );

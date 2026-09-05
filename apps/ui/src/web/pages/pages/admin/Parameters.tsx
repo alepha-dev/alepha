@@ -12,6 +12,7 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  */
 const Parameters = () => (
   <Showcase
+    id="pages/admin/Parameters"
     title="Admin: parameters"
     description="Runtime configuration, versioned."
   >

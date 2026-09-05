@@ -24,19 +24,14 @@ const BLOCKS: Entry[] = [
     description: "The navigation tree.",
   },
   {
-    href: "/blocks/controls",
-    title: "Controls",
-    description: "One component per field.",
+    href: "/blocks/control/text",
+    title: "Control",
+    description: "Text, number, date, select.",
   },
   {
-    href: "/blocks/select",
-    title: "Select",
-    description: "Every shape one control takes.",
-  },
-  {
-    href: "/blocks/auto-form",
+    href: "/blocks/auto-form/basic",
     title: "AutoForm",
-    description: "A form from a schema.",
+    description: "A form from a schema, nested and repeated.",
   },
   {
     href: "/blocks/table",
@@ -58,14 +53,14 @@ const BLOCKS: Entry[] = [
 
 const PAGES: Entry[] = [
   {
-    href: "/pages/auth",
+    href: "/pages/auth/login",
     title: "Auth",
-    description: "Sign in, register, reset, verify.",
+    description: "Five screens, from sign-in to second factor.",
   },
   {
-    href: "/pages/account",
+    href: "/pages/account/profile",
     title: "Account",
-    description: "Profile, sessions, keys.",
+    description: "Five screens a person manages about themselves.",
   },
   {
     href: "/pages/admin/dashboard",

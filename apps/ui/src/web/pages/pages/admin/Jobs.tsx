@@ -11,7 +11,11 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  * dense admin table is where a narrow screen bites first.
  */
 const Jobs = () => (
-  <Showcase title="Admin: jobs" description="Registered jobs and their runs.">
+  <Showcase
+    id="pages/admin/Jobs"
+    title="Admin: jobs"
+    description="Registered jobs and their runs."
+  >
     {() => <AdminJobs />}
   </Showcase>
 );

@@ -152,6 +152,7 @@ const SelectPage = () => {
 
   return (
     <Showcase
+      id="blocks/control/Select"
       title="Select"
       description="Every shape one control takes."
       schema={KNOBS}

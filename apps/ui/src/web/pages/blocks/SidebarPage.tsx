@@ -9,7 +9,11 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  * this documents the shape `AppShell` takes as `nav`, and points left.
  */
 const SidebarPage = () => (
-  <Showcase title="Sidebar" description="The navigation tree, on the left.">
+  <Showcase
+    id="blocks/SidebarPage"
+    title="Sidebar"
+    description="The navigation tree, on the left."
+  >
     {() => (
       <div className="max-w-2xl space-y-8">
         <Group title="A leaf">

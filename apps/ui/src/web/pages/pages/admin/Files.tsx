@@ -11,7 +11,11 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  * dense admin table is where a narrow screen bites first.
  */
 const Files = () => (
-  <Showcase title="Admin: files" description="Stored files across buckets.">
+  <Showcase
+    id="pages/admin/Files"
+    title="Admin: files"
+    description="Stored files across buckets."
+  >
     {() => <AdminFiles />}
   </Showcase>
 );

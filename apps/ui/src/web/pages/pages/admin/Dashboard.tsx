@@ -56,6 +56,7 @@ const Dashboard = () => {
 
   return (
     <Showcase
+      id="pages/admin/Dashboard"
       title="Admin: dashboard"
       description="The admin landing page."
       schema={KNOBS}

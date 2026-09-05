@@ -26,6 +26,7 @@ const Shell = () => {
 
   return (
     <Showcase
+      id="blocks/Shell"
       title="App shell"
       description="The frame around every page. The knobs change the real one."
       schema={KNOBS}

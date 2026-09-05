@@ -21,6 +21,7 @@ const KNOBS = z.object({
 
 const Users = () => (
   <Showcase
+    id="pages/admin/Users"
     title="Admin: users"
     description="The user directory."
     schema={KNOBS}

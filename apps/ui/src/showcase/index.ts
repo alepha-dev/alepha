@@ -24,6 +24,7 @@ import { ShowcaseUsers } from "./admin/ShowcaseUsers.ts";
 import { ShowcaseUsersController } from "./admin/ShowcaseUsersController.ts";
 import { ShowcaseController } from "./ShowcaseController.ts";
 import { ShowcaseMembers } from "./ShowcaseMembers.ts";
+import { ShowcaseMfaController } from "./ShowcaseMfaController.ts";
 
 /**
  * The data half of the showcase.
@@ -67,5 +68,6 @@ export const UiShowcase = $module({
     ShowcasePayments,
     ShowcasePaymentsController,
     ShowcaseIdentitiesController,
+    ShowcaseMfaController,
   ],
 });

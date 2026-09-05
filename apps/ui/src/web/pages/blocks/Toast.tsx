@@ -36,6 +36,7 @@ const Toast = () => {
 
   return (
     <Showcase
+      id="blocks/Toast"
       title="Toast"
       description="Transient feedback, stacked and auto-dismissed."
       schema={KNOBS}

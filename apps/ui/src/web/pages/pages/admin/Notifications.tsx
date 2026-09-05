@@ -11,7 +11,11 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  * dense admin table is where a narrow screen bites first.
  */
 const Notifications = () => (
-  <Showcase title="Admin: notifications" description="The delivery log.">
+  <Showcase
+    id="pages/admin/Notifications"
+    title="Admin: notifications"
+    description="The delivery log."
+  >
     {() => <AdminNotifications />}
   </Showcase>
 );

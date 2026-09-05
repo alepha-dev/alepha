@@ -1,4 +1,3 @@
-import { BrandIcon } from "@alepha/ui/components/brand-icon/brand-icon";
 import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
 import { Button } from "@alepha/ui/components/ui/button";
 import { z } from "alepha";
@@ -31,6 +30,7 @@ const VARIANTS = [
 
 const Buttons = () => (
   <Showcase
+    id="blocks/Buttons"
     title="Button"
     description="Every variant, at the size you pick."
     schema={KNOBS}
@@ -81,19 +81,6 @@ const Buttons = () => (
             <ButtonDark />
             <ButtonDark withSystem />
             <ButtonDark variant="outline" />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-muted-foreground text-xs">
-            Brand marks. An unknown provider falls back to a globe rather than
-            rendering nothing.
-          </p>
-          <div className="flex flex-wrap items-center gap-4">
-            <BrandIcon provider="github" className="size-6" />
-            <BrandIcon provider="google" className="size-6" />
-            <BrandIcon provider="apple" className="size-6" />
-            <BrandIcon provider="unknown" className="size-6" />
           </div>
         </div>
       </div>
