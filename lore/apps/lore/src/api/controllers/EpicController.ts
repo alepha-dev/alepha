@@ -8,6 +8,7 @@ import {
 } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Epic, epics } from "../entities/epics.ts";
 import { folios } from "../entities/folios.ts";
 import { quests } from "../entities/quests.ts";
@@ -440,7 +441,7 @@ export class EpicController {
     if (epic.status === "planned" && to === "active") return;
     if (epic.status === "active" && to === "done") return;
 
-    const move = `Cannot move Epic #${epic.number} from ${epic.status} to ${to}.`;
+    const move = `Cannot move Epic ${formatReference("epic", epic.number)} from ${epic.status} to ${to}.`;
     if (epic.status === "done") {
       throw new BadRequestError(
         `${move} An epic is concluded once. Create a new epic that depends on it.`,

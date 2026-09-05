@@ -40,7 +40,7 @@ may name one predecessor. The roadmap draws the order ("After Epic 7"), and
 Begin is refused until that predecessor concludes: the button is disabled
 and says which epic blocks it, and over the API the refusal reads
 
-> Cannot begin Epic #22: it depends on Epic #20, which is not concluded.
+> Cannot begin Epic #E22: it depends on Epic #E20, which is not concluded.
 
 Record a predecessor only when the epic genuinely cannot start before the
 other one ends. An epic that overlaps its neighbour records nothing.
@@ -50,7 +50,7 @@ completed or shelved first, or a terminal "done" would strand the open one
 forever, since accepting a quest needs an active epic and the epic can never
 be active again. The refusal carries the count:
 
-> Cannot conclude Epic #30: 3 quests are still open. Complete or shelve each
+> Cannot conclude Epic #E30: 3 quests are still open. Complete or shelve each
 > one.
 
 Shelving is the epic's equivalent of waiving an objective on a quest: it
@@ -72,7 +72,7 @@ dates. Three routes, depending on what was forgotten.
 
 Trying to add a quest to an active epic is refused with both routes named:
 
-> Cannot add a quest: Epic #30 is active. Its plan is frozen. File this in a
+> Cannot add a quest: Epic #E30 is active. Its plan is frozen. File this in a
 > new epic, or add an objective to a quest already in it.
 
 ## From an agent

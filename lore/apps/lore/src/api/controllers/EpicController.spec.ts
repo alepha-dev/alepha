@@ -397,16 +397,16 @@ describe("EpicController", () => {
       );
 
     await expect(move(planned, "done")).rejects.toThrow(
-      `Cannot move Epic #${planned.number} from planned to done. Begin it first.`,
+      `Cannot move Epic #E${planned.number} from planned to done. Begin it first.`,
     );
     await expect(move(active, "planned")).rejects.toThrow(
-      `Cannot move Epic #${active.number} from active to planned. Its plan is frozen. Shelve what will not be done, or create a new epic.`,
+      `Cannot move Epic #E${active.number} from active to planned. Its plan is frozen. Shelve what will not be done, or create a new epic.`,
     );
     await expect(move(done, "active")).rejects.toThrow(
-      `Cannot move Epic #${done.number} from done to active. An epic is concluded once. Create a new epic that depends on it.`,
+      `Cannot move Epic #E${done.number} from done to active. An epic is concluded once. Create a new epic that depends on it.`,
     );
     await expect(move(done, "planned")).rejects.toThrow(
-      `Cannot move Epic #${done.number} from done to planned. An epic is concluded once. Create a new epic that depends on it.`,
+      `Cannot move Epic #E${done.number} from done to planned. An epic is concluded once. Create a new epic that depends on it.`,
     );
 
     // Nothing moved, and `completedAt` is never cleared.
@@ -450,7 +450,7 @@ describe("EpicController", () => {
         { user },
       ),
     ).rejects.toThrow(
-      `Cannot conclude Epic #${epic.number}: 2 quests are still open. Complete or shelve each one. An accepted quest is unassigned first, then shelved.`,
+      `Cannot conclude Epic #E${epic.number}: 2 quests are still open. Complete or shelve each one. An accepted quest is unassigned first, then shelved.`,
     );
     const still = await ctx.repos.epics.getById(epic.id);
     expect(still.status).toBe("active");
@@ -591,7 +591,7 @@ describe("EpicController", () => {
         { user },
       ),
     ).rejects.toThrow(
-      `Cannot add a quest: Epic #${active.number} is active. Its plan is frozen. File this in a new epic, or add an objective to a quest already in it.`,
+      `Cannot add a quest: Epic #E${active.number} is active. Its plan is frozen. File this in a new epic, or add an objective to a quest already in it.`,
     );
     await expect(
       ctx.controller.attachQuest(
@@ -599,7 +599,7 @@ describe("EpicController", () => {
         { user },
       ),
     ).rejects.toThrow(
-      `Cannot add a quest: Epic #${done.number} is concluded. File this in a new epic.`,
+      `Cannot add a quest: Epic #E${done.number} is concluded. File this in a new epic.`,
     );
     expect((await ctx.repos.quests.getById(quest.id)).epicId).toBeUndefined();
   });
@@ -622,7 +622,7 @@ describe("EpicController", () => {
         { user },
       ),
     ).rejects.toThrow(
-      `Cannot remove quest #${quest.shortId}: Epic #${epic.number} is active. Its plan is frozen. Shelve it instead.`,
+      `Cannot remove quest #Q${quest.shortId}: Epic #E${epic.number} is active. Its plan is frozen. Shelve it instead.`,
     );
     expect((await ctx.repos.quests.getById(quest.id)).epicId).toBe(epic.id);
   });
@@ -652,7 +652,7 @@ describe("EpicController", () => {
         { user },
       ),
     ).rejects.toThrow(
-      `Cannot remove quest #${held.shortId}: Epic #${frozen.number} is active. Its plan is frozen. Shelve it instead.`,
+      `Cannot remove quest #Q${held.shortId}: Epic #E${frozen.number} is active. Its plan is frozen. Shelve it instead.`,
     );
     expect((await ctx.repos.quests.getById(held.id)).epicId).toBe(frozen.id);
 
