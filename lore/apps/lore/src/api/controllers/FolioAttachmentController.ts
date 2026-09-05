@@ -159,6 +159,37 @@ export class FolioAttachmentController {
     },
   });
 
+  /**
+   * Put the bytes in the bucket, without placing them in the folio tree.
+   *
+   * The web client has no use for this - it posts multipart straight to the
+   * framework's `POST /api/files?bucket=archive-blobs` and then calls
+   * `registerAttachment`. An MCP tool cannot: it holds a decoded `File` and
+   * no multipart machinery, and the bucket name is this controller's
+   * business rather than a tool's. Same two-call shape as
+   * `QuestController.uploadAttachment` for the same reason.
+   *
+   * Uploading is not placing. A file that is never registered is an orphan
+   * blob in the bucket, which is what the caller's own error path is for.
+   *
+   * ⚠️ Not `uploadAttachment`, which reads better and is taken: action names
+   * are ONE namespace per container, and `QuestController` has it. A
+   * duplicate is a boot failure, not a shadowed route.
+   */
+  uploadFolioAttachment = $action({
+    use: [$secure({ permissions: ["folio:write"] })],
+    path: "/folio/attachments/upload",
+    description: "Upload the bytes of a folio attachment.",
+    schema: {
+      body: z.object({ file: z.file() }),
+      response: z.object({ fileId: z.uuid() }),
+    },
+    handler: async ({ body, user }) => {
+      const file = await this.folioBucket.upload(body.file, { user });
+      return { fileId: file.id };
+    },
+  });
+
   registerAttachment = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
