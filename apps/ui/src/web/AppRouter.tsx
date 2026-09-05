@@ -22,6 +22,9 @@ export class AppRouter {
       this.blocksAutoForm,
       this.blocksFeedback,
       this.blocksButtons,
+      this.adminUsers,
+      this.adminAudits,
+      this.adminJobs,
     ],
   });
 
@@ -69,6 +72,27 @@ export class AppRouter {
     static: true,
     head: { title: "Toasts and dialogs - Alepha UI" },
     lazy: () => import("./pages/blocks/Feedback.tsx"),
+  });
+
+  adminUsers = $page({
+    path: "/blocks/admin/users",
+    static: true,
+    head: { title: "Admin users - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Users.tsx"),
+  });
+
+  adminJobs = $page({
+    path: "/blocks/admin/jobs",
+    static: true,
+    head: { title: "Admin jobs - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Jobs.tsx"),
+  });
+
+  adminAudits = $page({
+    path: "/blocks/admin/audits",
+    static: true,
+    head: { title: "Admin audit log - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Audits.tsx"),
   });
 
   blocksButtons = $page({

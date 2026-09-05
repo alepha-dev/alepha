@@ -6,12 +6,15 @@ import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
   BookOpen,
+  FileSearch,
   Home as HomeIcon,
   ListChecks,
   MessageSquareWarning,
   MousePointerClick,
   SlidersHorizontal,
   Table2,
+  UsersIcon,
+  Zap,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -32,6 +35,14 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/", label: "Home", icon: HomeIcon },
       { href: "/primitives", label: "Primitives", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Admin",
+    items: [
+      { href: "/blocks/admin/users", label: "Users", icon: UsersIcon },
+      { href: "/blocks/admin/jobs", label: "Jobs", icon: Zap },
+      { href: "/blocks/admin/audits", label: "Audit log", icon: FileSearch },
     ],
   },
   {
