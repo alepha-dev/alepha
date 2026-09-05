@@ -3,6 +3,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { cn } from "@alepha/ui/lib/utils";
 import type { Infer, ZObject } from "alepha";
+import { useAlepha } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useRouterState } from "alepha/react/router";
 import {
@@ -121,6 +122,31 @@ export const Showcase = <T extends ZObject>(props: ShowcaseProps<T>) => {
     },
     [props.schema],
   );
+
+  /**
+   * Every keystroke reaches the preview, including in a TEXT knob.
+   *
+   * `autoSave` alone does not do this, on purpose: its effect skips text
+   * fields so a real settings form does not fire a request per character, and
+   * leaves them to Enter or the inline tick. That trade is right for a form
+   * that saves to a server and wrong for this panel, which writes React state
+   * a few pixels from the thing it changes - a reader typing a button's label
+   * watched nothing happen until they found a tick they had no reason to look
+   * for.
+   *
+   * So the panel listens to the form's own change events instead of waiting
+   * for a commit. `autoSave` stays on for the switches and selects, which it
+   * does commit.
+   */
+  const alepha = useAlepha();
+  useEffect(() => {
+    if (bare || !props.schema) return;
+    const off = alepha.events.on("form:change", (ev: any) => {
+      if (ev.id !== form.id || ev.initial) return;
+      setValues({ ...form.currentValues });
+    });
+    return off;
+  }, [alepha, bare, form, props.schema]);
 
   // Inside the frame: take knob values from the parent as they change.
   useEffect(() => {

@@ -124,12 +124,20 @@ const Table = () => {
               : undefined
           }
           columns={{
+            // `sortable` is opt-in per COLUMN, and without it the header is
+            // inert however well the server sorts. `ShowcaseMembers` has
+            // honoured `sort` from the beginning and the fetcher has always
+            // forwarded it, so the whole path worked except for the one flag
+            // that lets a reader reach it - and this page's own description
+            // says "sortable".
             name: {
               label: "Name",
+              sortable: true,
               cell: (m) => <span className="font-medium">{m.name}</span>,
             },
             email: {
               label: "Email",
+              sortable: true,
               cell: (m) => (
                 <span className="text-muted-foreground truncate">
                   {m.email}
@@ -140,6 +148,7 @@ const Table = () => {
             // defaultHiddenColumns prop, that one belongs to AdminUsers.
             team: {
               label: "Team",
+              sortable: true,
               defaultHidden: v.hideTeam,
               cell: (m) => m.team,
             },

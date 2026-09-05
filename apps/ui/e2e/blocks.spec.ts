@@ -255,6 +255,39 @@ test.describe("blocks", () => {
     await expect(page.getByLabel("Alarm")).toBeVisible();
   });
 
+  test("a scalar-array control can actually be given a value", async ({
+    page,
+  }) => {
+    // Every one of these rendered, was labelled, and was completely unusable:
+    // an array of scalars becomes a MULTI-SELECT, and one with no `items` is a
+    // select over an empty list. It opened on "No results." and no value could
+    // ever be entered, while the page's own help text called it a tag list.
+    // Nothing that asserts a control is PRESENT can see that.
+    const cases = [
+      ["/blocks/control/text", "Tags", "alepha"],
+      ["/blocks/control/number", "Seats", "42"],
+      ["/blocks/auto-form/array", "Ports", "8080"],
+    ] as const;
+
+    for (const [path, label, typed] of cases) {
+      await page.goto(path);
+      const combo = page.getByRole("combobox", { name: label }).first();
+      await combo.click();
+
+      const search = page.getByRole("combobox", { name: "Search\u2026" });
+      await search.fill(typed);
+
+      const create = page.getByRole("option", {
+        name: new RegExp(`Create.*${typed}`),
+      });
+      await expect(create).toBeVisible();
+      await create.click();
+
+      await expect(combo).toContainText(typed);
+      await page.keyboard.press("Escape");
+    }
+  });
+
   test("AutoForm splits objects from arrays", async ({ page }) => {
     await page.goto("/blocks/auto-form/object");
     await expect(page.getByText("Billing").first()).toBeVisible();

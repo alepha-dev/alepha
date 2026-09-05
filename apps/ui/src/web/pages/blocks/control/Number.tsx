@@ -51,10 +51,12 @@ const schema = z.object({
     .boolean()
     .meta({ title: "Newsletter" })
     .describe("A boolean is a switch, not a checkbox."),
+  // Same trap as `tags` on the Text page: without `createNewEntry` this is a
+  // multi-select over an empty list, opening on "No results.".
   seats: z
     .array(z.integer())
-    .meta({ title: "Seats" })
-    .describe("An array of numbers stays numeric per entry."),
+    .meta({ title: "Seats", $control: { createNewEntry: true } })
+    .describe("A numeric tag list: type a number and pick Create."),
 });
 
 const NumberPage = () => {

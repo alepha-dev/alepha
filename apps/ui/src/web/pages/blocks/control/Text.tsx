@@ -56,10 +56,15 @@ const schema = z.object({
     .regex(/^[A-Z]{3}-\d{4}$/)
     .meta({ title: "Pattern" })
     .describe("ABC-1234, enforced by the schema."),
+  // ⚠️ `createNewEntry` is what makes this usable at all. An array of scalars
+  // renders as a MULTI-SELECT, and one with no `items` is a select over an
+  // empty list: it opens on "No results." and can never be given a value. The
+  // description used to say "an array of strings is a tag list", which is only
+  // true once the reader can invent an entry.
   tags: z
     .array(z.string())
-    .meta({ title: "Tags" })
-    .describe("An array of strings is a tag list."),
+    .meta({ title: "Tags", $control: { createNewEntry: true } })
+    .describe("Type a value and pick Create: there is no fixed list."),
 });
 
 const Text = () => {
