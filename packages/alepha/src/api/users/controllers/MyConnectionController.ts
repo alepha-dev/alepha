@@ -149,8 +149,8 @@ export class MyConnectionController {
    * A repository declaration *registers the entity*, so putting one here adds
    * an `oauth_clients` table to the schema of every application that mounts
    * `api/users` — including ones with no OAuth at all. `yarn check:migrations`
-   * caught exactly that in `apps/examples/playground` and `apps/examples/shop`, which suddenly
-   * wanted a migration for a table they can never read.
+   * caught exactly that in `apps/examples/shop`, which suddenly wanted a
+   * migration for a table it can never read.
    *
    * Going through `OAuthClientService` instead keeps the entity owned by the
    * module that declares it: the service is registered by `AlephaOAuth`, so

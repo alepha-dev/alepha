@@ -41,7 +41,13 @@ ignores:
   - "@playwright/test"
   - "wrangler"
   - "vercel"
+  # Every font is pulled by an `@import` in a `.css` file, which depcheck does
+  # not read, so all of them look unused. Self-hosted rather than fetched from
+  # a CDN, so the manifest entry is what actually ships the files.
   - "@fontsource/jetbrains-mono"
+  - "@fontsource/ibm-plex-mono"
+  - "@fontsource/space-grotesk"
+  - "@fontsource/spectral"
   - "@types/bun"
   - "better-sqlite3"
   - "surge"

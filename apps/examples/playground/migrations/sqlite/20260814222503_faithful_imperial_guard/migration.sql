@@ -1,1 +1,0 @@
-ALTER TABLE `workflow_step_executions` ADD `iteration` integer DEFAULT 0 NOT NULL;

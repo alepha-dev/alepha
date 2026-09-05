@@ -44,7 +44,7 @@ import { workspaceProjects } from "./vitest.projects.ts";
  *
  *   - `resolve.alias` mapped `@/` to `apps/lore/src` for every spec in the
  *     repository, because Lore needs it and the root run collects Lore's
- *     specs. `examples/shop`, `examples/playground` and `examples/totp` all
+ *     specs. `examples/shop` and `examples/totp` both
  *     declare the same `@/` in their own tsconfig, so the first `@/` import
  *     written in any of them would have resolved into Lore's source. It now
  *     comes from each workspace's own tsconfig, in `vitest.projects.ts`.

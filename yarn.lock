@@ -1889,10 +1889,31 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fontsource/ibm-plex-mono@npm:^5.2.5":
+  version: 5.3.0
+  resolution: "@fontsource/ibm-plex-mono@npm:5.3.0"
+  checksum: 10c0/4aaf5a3c9efc7c32de4fa46ff3187ac63720904beab825f331ac01800038899761da23270f09d3fb5cff22f7cdc366904834854e2107229ad60833bba71c223d
+  languageName: node
+  linkType: hard
+
 "@fontsource/jetbrains-mono@npm:^5.3.0":
   version: 5.3.0
   resolution: "@fontsource/jetbrains-mono@npm:5.3.0"
   checksum: 10c0/1351b2350e893f5da39559ed90ff0e5e60bcc876b1f40531ad081ad4bf2f3cda3fa9e8940364aef5a7430ae3140685c9cd4819c36d8ad62bcd3fa37e3cc66b1d
+  languageName: node
+  linkType: hard
+
+"@fontsource/space-grotesk@npm:^5.2.5":
+  version: 5.3.0
+  resolution: "@fontsource/space-grotesk@npm:5.3.0"
+  checksum: 10c0/6804603d339edb99e50419e951c153d6ab0c175cd1a3c5044341c5efa261dcae63aec2288d5dd4d698d82b44c9a23a34f065881055b08887de08df2769c9791a
+  languageName: node
+  linkType: hard
+
+"@fontsource/spectral@npm:^5.2.5":
+  version: 5.3.0
+  resolution: "@fontsource/spectral@npm:5.3.0"
+  checksum: 10c0/bf596cf381ff4b37a3a26fd5cbd15dafda3868bde96dd42141f4332f5b7e70cfb5b8ddb8bb5439aed56543a6cf12f7f891745048a92e916431b681c81b8bb6f0
   languageName: node
   linkType: hard
 
@@ -9706,23 +9727,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"playground@workspace:apps/examples/playground":
-  version: 0.0.0-use.local
-  resolution: "playground@workspace:apps/examples/playground"
-  dependencies:
-    "@alepha/ui": "workspace:^"
-    "@playwright/test": "npm:^1.62.1"
-    "@tailwindcss/vite": "npm:^4.3.3"
-    alepha: "workspace:^"
-    lucide-react: "npm:^1.38.0"
-    react: "npm:^19.2.8"
-    react-dom: "npm:^19.2.8"
-    tailwindcss: "npm:^4.3.3"
-    vite: "npm:^8.2.2"
-    wrangler: "npm:^4.127.1"
-  languageName: unknown
-  linkType: soft
-
 "playwright-core@npm:1.62.1":
   version: 1.62.1
   resolution: "playwright-core@npm:1.62.1"
@@ -11684,6 +11688,9 @@ __metadata:
   dependencies:
     "@alepha/lore": "workspace:*"
     "@alepha/ui": "workspace:^"
+    "@fontsource/ibm-plex-mono": "npm:^5.2.5"
+    "@fontsource/space-grotesk": "npm:^5.2.5"
+    "@fontsource/spectral": "npm:^5.2.5"
     "@playwright/test": "npm:^1.62.1"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@types/react": "npm:^19.2.18"

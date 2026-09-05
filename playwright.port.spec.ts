@@ -182,8 +182,8 @@ describe("e2ePort", () => {
     expect,
   }) => {
     delete process.env.E2E_PORT;
-    const first = e2ePort("playground");
-    expect(e2ePort("playground")).toBe(first);
+    const first = e2ePort("shop");
+    expect(e2ePort("shop")).toBe(first);
     expect(process.env.E2E_PORT).toBe(String(first));
   });
 
