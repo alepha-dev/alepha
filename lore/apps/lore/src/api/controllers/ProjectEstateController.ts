@@ -131,9 +131,9 @@ export class ProjectEstateController {
   });
 
   /**
-   * Withdraw the loan. Refused while an environment in this project points
-   * at the estate (`assertUnreferenced`, a seam until epic #1's #1810), so
-   * nothing silently stops being deployable.
+   * Withdraw the loan. Refused while an app instance in this project points
+   * at the estate (`assertUnreferenced`, #1767), so nothing silently stops
+   * being deployable.
    */
   detachEstate = $action({
     use: [$secure({ permissions: ["estate:lend"] })],

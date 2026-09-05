@@ -24,8 +24,6 @@ import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
-import AppSettingsName from "./AppSettingsName.tsx";
-import AppSettingsUrl from "./AppSettingsUrl.tsx";
 
 /**
  * Everything an operator decides about one app.
@@ -45,8 +43,15 @@ import AppSettingsUrl from "./AppSettingsUrl.tsx";
  * sides of it are now read-only state on the Dashboard, side by side, which is
  * where a disagreement between them becomes visible.
  *
- * What remains is what an operator genuinely sets: the app's name, its URL,
- * its credential, and its removal.
+ * ⚠️ **The name and URL rows left with Apps v3 (#1767)** and are rebuilt on
+ * the instance's own Settings tab (#1874). Both describe the deployed copy
+ * rather than the credential: the address lives on `app_instances.url`, and the
+ * name is `"<app>/<env>"`, a server-written mirror that only `AppService`
+ * writes. Editing them here would have needed a second writer for a column
+ * whose whole point is having one.
+ *
+ * What remains is what an operator genuinely sets about the credential itself:
+ * rotating it, and removing it.
  *
  * Rotate and delete live here rather than on the project's settings page
  * because they are about this app and nothing else — that page enrols apps and
@@ -164,24 +169,6 @@ const AppSettings = () => {
           onDismiss={() => setFreshToken(undefined)}
         />
       )}
-
-      <SettingsSection title={tr("app.settings.general")}>
-        {/*
-          The two draft-holding rows. `AppSettingsName` is unkeyed because its
-          draft is the app's own name, which the atom swap replaces anyway; the
-          URL row is keyed, and must be.
-        */}
-        <AppSettingsName />
-
-        {/*
-          Keyed by the app, because this is the one row here that holds a draft
-          of something the atom swap does NOT replace. Moving between two apps'
-          Settings tabs swaps `currentSigilAtom` without unmounting anything,
-          so an unkeyed field would keep showing — and on Save, write — the URL
-          of the app you just left. `SettingsRow` does not unmount it for you.
-        */}
-        <AppSettingsUrl key={sigil.id} />
-      </SettingsSection>
 
       <SettingsSection
         title={tr("app.settings.credential")}

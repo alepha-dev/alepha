@@ -22,9 +22,9 @@ import { projects } from "./projects.ts";
  * legitimate. Both sides cascade, so a deleted estate or a deleted project
  * takes its grants with it, and neither undeploys anything.
  *
- * Detaching is refused while an environment in that project points at the
- * estate (`EstateService.assertUnreferenced`, a seam until epic #1's #1810
- * gives it something to count).
+ * Detaching is refused while an app instance in that project points at the
+ * estate (`EstateService.assertUnreferenced`, given something to count by
+ * `app_instances`, #1767).
  */
 export const estateProjects = $entity({
   name: "estate_projects",
@@ -48,7 +48,8 @@ export const estateProjects = $entity({
   }),
   indexes: [
     { columns: ["estateId", "projectId"], unique: true },
-    // The project's estates page, and the environment lookup epic #1 adds.
+    // The project's estates page, and the lending check `AppService.setEstate`
+    // runs before an instance may point at an estate.
     { columns: ["projectId"] },
   ],
 });

@@ -4,7 +4,7 @@ import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { AlephaSecurity } from "alepha/security";
-import { AlephaServer, BadRequestError } from "alepha/server";
+import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import {
@@ -90,7 +90,7 @@ const createTestSigil = async (
   });
 };
 
-describe("SigilController — the app URL an operator pins", () => {
+describe("SigilController — what the inventory carries", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -99,120 +99,6 @@ describe("SigilController — the app URL an operator pins", () => {
 
   afterEach(async () => {
     await ctx.alepha.stop();
-  });
-
-  it("stores an app URL, without its redundant trailing slash", async ({
-    expect,
-  }) => {
-    const project = await createTestProject(ctx.alepha);
-    const sigil = await createTestSigil(ctx, project.id);
-
-    const updated = await ctx.controller.updateSigil(
-      {
-        params: { projectId: project.id, sigilId: sigil.id },
-        body: { url: "  https://alepha.dev/  " },
-      },
-      { user: ownerToken(project) },
-    );
-
-    expect(updated.url).toBe("https://alepha.dev");
-  });
-
-  it("keeps a path, which is the only reason to type one by hand", async ({
-    expect,
-  }) => {
-    const project = await createTestProject(ctx.alepha);
-    const sigil = await createTestSigil(ctx, project.id);
-
-    const updated = await ctx.controller.updateSigil(
-      {
-        params: { projectId: project.id, sigilId: sigil.id },
-        body: { url: "https://alepha.dev/docs" },
-      },
-      { user: ownerToken(project) },
-    );
-
-    expect(updated.url).toBe("https://alepha.dev/docs");
-  });
-
-  it("clears the override when the field is emptied", async ({ expect }) => {
-    // The way back to the detected host. Without it, a wrong address pinned
-    // once could never be taken off.
-    const project = await createTestProject(ctx.alepha);
-    const sigil = await createTestSigil(ctx, project.id, {
-      url: "https://wrong.example.com",
-    });
-
-    const updated = await ctx.controller.updateSigil(
-      {
-        params: { projectId: project.id, sigilId: sigil.id },
-        body: { url: "   " },
-      },
-      { user: ownerToken(project) },
-    );
-
-    // Nullish, not `""`. An empty string stored back would read as "pinned to
-    // nothing" everywhere downstream — `appUrl` falls through on falsy, so the
-    // link would still be right, but the Settings field would show a pin that
-    // is not there.
-    expect(updated.url ?? null).toBeNull();
-  });
-
-  it("leaves the URL alone when the PATCH does not mention it", async ({
-    expect,
-  }) => {
-    // The capabilities card PATCHes `kinds` alone, and must not take the URL
-    // with it.
-    const project = await createTestProject(ctx.alepha);
-    const sigil = await createTestSigil(ctx, project.id, {
-      url: "https://alepha.dev",
-    });
-
-    const updated = await ctx.controller.updateSigil(
-      {
-        params: { projectId: project.id, sigilId: sigil.id },
-        body: { kinds: ["beacon", "vitals"] },
-      },
-      { user: ownerToken(project) },
-    );
-
-    expect(updated.url).toBe("https://alepha.dev");
-  });
-
-  it("refuses a javascript: URL, which would become an href", async ({
-    expect,
-  }) => {
-    // `new URL()` parses this perfectly happily, which is exactly why the
-    // protocol is checked rather than assumed.
-    const project = await createTestProject(ctx.alepha);
-    const sigil = await createTestSigil(ctx, project.id);
-
-    await expect(
-      ctx.controller.updateSigil(
-        {
-          params: { projectId: project.id, sigilId: sigil.id },
-          body: { url: "javascript:alert(1)" },
-        },
-        { user: ownerToken(project) },
-      ),
-    ).rejects.toThrowError(BadRequestError);
-  });
-
-  it("refuses a relative URL, which would point back at Lore", async ({
-    expect,
-  }) => {
-    const project = await createTestProject(ctx.alepha);
-    const sigil = await createTestSigil(ctx, project.id);
-
-    await expect(
-      ctx.controller.updateSigil(
-        {
-          params: { projectId: project.id, sigilId: sigil.id },
-          body: { url: "alepha.dev" },
-        },
-        { user: ownerToken(project) },
-      ),
-    ).rejects.toThrowError(BadRequestError);
   });
 
   it("surfaces both the pinned URL and the reported host", async ({

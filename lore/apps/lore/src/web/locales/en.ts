@@ -1133,23 +1133,8 @@ export default {
   "insights.errors.worst.title": "Worst offenders",
   "insights.errors.worst.note":
     "Counts are each failure's all-time total, not this window's. The chart above is the window.",
-  "app.settings.general": "General",
   "app.settings.credential": "Credential",
   "app.settings.danger": "Danger zone",
-  "app.settings.name.title": "Name",
-  "app.settings.name.description":
-    "The app's name is also its URL segment here. Lowercase letters, digits and hyphens; it is trimmed and lowercased for you.",
-  "app.settings.name.save": "Rename",
-  "app.settings.name.confirmTitle": "Rename $1?",
-  "app.settings.name.confirmDescription":
-    "The app's page moves to the new address, and any link to the old one stops resolving. Reporting is unaffected: the key carries the project, not the app name, so nothing has to be redeployed or rotated.",
-  "app.settings.name.renamed": "Renamed to $1",
-  "app.settings.url.title": "App URL",
-  "app.settings.url.description":
-    "Where this app lives. Left empty, Lore uses the address the app itself reports from, so there is usually nothing to fill in here.",
-  "app.settings.url.detected":
-    "Using $1, the address this app last reported from. Set a URL here to show a different one, or clear the field to go back to the detected address.",
-  "app.settings.url.save": "Save",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":
     "Mints a new token and stops the current one immediately. Everything this app has reported is kept: this is how a leaked token is revoked without losing its history.",
