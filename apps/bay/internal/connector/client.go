@@ -64,9 +64,27 @@ type Ack struct {
 	Reason string `json:"reason,omitempty"`
 }
 
+// MaxAckStep and MaxAckReason are what Lore's ack schema accepts. An ack over
+// either limit is refused whole by the sink, which would read as a command
+// that was never acknowledged, so the text is cut here rather than dropped
+// there.
+const (
+	MaxAckStep   = 32
+	MaxAckReason = 2000
+)
+
 // NewAck builds an ack frame; the type is always "ack".
 func NewAck(id, status, step, reason string) Ack {
-	return Ack{Type: "ack", ID: id, Status: status, Step: step, Reason: reason}
+	return Ack{Type: "ack", ID: id, Status: status, Step: cut(step, MaxAckStep), Reason: cut(reason, MaxAckReason)}
+}
+
+// cut truncates to n runes, marking the cut.
+func cut(s string, n int) string {
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n-1]) + "…"
 }
 
 // Stats is the gauge this Bay pushes on its interval (#1623).

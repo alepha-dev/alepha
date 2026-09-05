@@ -1,0 +1,7 @@
+{
+  "type": "command",
+  "id": "0b6d3f2e-7a41-4d9c-b2e5-1c8f9a7d6e54",
+  "kind": "restart",
+  "app": "lore",
+  "environment": "production"
+}
