@@ -1,6 +1,7 @@
 import { users } from "alepha/api/users";
 import { $relations } from "alepha/orm";
 
+import { appInstances } from "./entities/appInstances.ts";
 import { blightIgnoreRules } from "./entities/blightIgnoreRules.ts";
 import { epics } from "./entities/epics.ts";
 import { feedback } from "./entities/feedback.ts";
@@ -46,6 +47,7 @@ export const schema = {
   folioDirectories,
   folioAttachments,
   sigils,
+  appInstances,
   blightIgnoreRules,
 };
 
@@ -271,6 +273,15 @@ export const relations = $relations(schema, (r) => ({
       to: r.projects.id,
     }),
     author: r.one.users({ from: r.sigils.createdBy, to: r.users.id }),
+  },
+
+  appInstances: {
+    project: r.one.projects({
+      from: r.appInstances.projectId,
+      to: r.projects.id,
+    }),
+    sigil: r.one.sigils({ from: r.appInstances.sigilId, to: r.sigils.id }),
+    author: r.one.users({ from: r.appInstances.createdBy, to: r.users.id }),
   },
 
   blightIgnoreRules: {

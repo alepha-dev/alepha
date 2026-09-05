@@ -229,8 +229,8 @@ export class EstateController {
   /**
    * Remove an estate.
    *
-   * Refused while an environment points at it (`assertUnreferenced`, a seam
-   * until epic #1's #1810). Deleting undeploys nothing: the VPS keeps
+   * Refused while an app instance anywhere points at it
+   * (`assertUnreferenced`, #1767). Deleting undeploys nothing: the VPS keeps
    * running and Lore only loses the ability to inspect, redeploy or roll
    * back, which the dialog says because the intuitive reading is the
    * opposite. For a `bay` estate the row IS the credential, so deleting it

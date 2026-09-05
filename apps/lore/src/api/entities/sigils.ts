@@ -13,13 +13,19 @@ export const SIGIL_KINDS = ["feedback", "blights", "beacon", "vitals"] as const;
 export type SigilKind = (typeof SIGIL_KINDS)[number];
 
 /**
- * A **sigil** is one app that reports into a project — nothing more than a
- * name and the credential that name reports with.
+ * A **sigil** is the credential one deployed copy of an app reports with —
+ * nothing more than a token and the instance it belongs to.
  *
- * The name is free-form and unique within the project, so how finely an
- * operator slices their world is their decision rather than the schema's: an
- * app that wants its staging traffic kept apart from production creates two
- * sigils and names them so, and one that does not, does not.
+ * ⚠️ **Since Apps v3 (#1767) a sigil is an unlock, not an identity.** The
+ * identity is the `app_instances` row, which exists first and points here
+ * through `sigilId`; minting a sigil is what turns Analytics, Vitals, Errors
+ * and Explore on for that instance. {@link name} is a server-written mirror of
+ * the pair, kept as a column because five surfaces read it as a label.
+ *
+ * Before v3 it was the other way round: a sigil WAS the app, its name was free
+ * text, and the environment was jammed into that name by convention
+ * (`docs-production`, `lore`). Anything you read describing enrolment as the
+ * way an app comes into existence predates this.
  *
  * The credential is a `sg_`-prefixed token shown once at creation and stored
  * as a hash. `tokenPrefix` exists so the UI can name a key it cannot
@@ -33,7 +39,29 @@ export const sigils = $entity({
       onDelete: "cascade",
     }),
     /**
-     * Display name of the app, e.g. `lore`. Free-form; the operator names it.
+     * The instance this credential belongs to, as `"<app>/<env>"`.
+     *
+     * ⚠️ **A server-written mirror of `app_instances`, never an input** (#1767).
+     * `AppService` writes it on sigil creation and on every rename of either
+     * half, and nothing else does: `updateSigil` lost its `name` field when this
+     * landed, because a second writer would let the mirror drift from the
+     * instance it names.
+     *
+     * It stays a column rather than a join because it is read as a display
+     * label in five places - `BlightController.listBlights`,
+     * `InsightsController.labels`, `DashboardMetricRegistry.scopeNames`,
+     * `LoreAudits` descriptions and MCP `sigil_list` - and all five keep
+     * working with zero joins. `/` is outside `APP_NAME_PATTERN`, so a mirror
+     * can never collide with a pre-v3 name, and `(app, env)` is unique, so it
+     * satisfies the `(projectId, name)` index for free.
+     *
+     * ⚠️ `max(100)` here and validated on READ. `AppService.assertPairFits`
+     * refuses a pair over 99 characters on the way in, because a row that fails
+     * its column's schema does not read as `undefined` - it throws every query
+     * that touches the table.
+     *
+     * Rows created before v3 hold a bare name (`docs-production`); the backfill
+     * rewrote them to `docs-production/production`, parsing no suffixes.
      */
     name: z.string().min(1).max(100),
     tokenHash: z.string().min(1).max(256),
@@ -65,7 +93,21 @@ export const sigils = $entity({
      */
     feedbackPosition: z.enum(SIGIL_FEEDBACK_POSITIONS).optional(),
     /**
-     * Where this app lives, as the operator typed it.
+     * @deprecated Frozen dead column — nothing WRITES it since #1767.
+     *
+     * The address moved to `app_instances.url`, which is where it belongs: it
+     * describes the deployed copy rather than the credential, and an instance
+     * has one whether or not it ever mints a sigil. The backfill copied every
+     * value across, `updateSigil` lost the field, and `AppService.setUrl` is the
+     * write path now. The last readers are the pre-v3 app page's own, and they
+     * move onto the instance resource with #1774.
+     *
+     * The column stays rather than being dropped, for the reason
+     * {@link feedbackPosition} does: `sigils` is the CASCADE parent of the four
+     * analytics tables, and a `DROP COLUMN` drizzle turns into a table rebuild
+     * is the wipe bomb documented in `apps/lore/CLAUDE.md`.
+     *
+     * What it was, for a reader of an older migration:
      *
      * The override half of the answer, and the reason there are two columns
      * rather than one: {@link lastSeenHost} is the address the app reports

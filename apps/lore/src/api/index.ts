@@ -51,6 +51,7 @@ import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { ProjectInvitationResource } from "./providers/ProjectInvitationResource.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
+import { AppService } from "./services/AppService.ts";
 import { AreaService } from "./services/AreaService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
@@ -176,6 +177,9 @@ export const LoreApi = $module({
     ArtifactService,
     ProjectLimits,
     AreaService,
+    // The one write path for `app_instances`, and the only writer of
+    // `sigils.name`, which mirrors it (#1767).
+    AppService,
     BlightRuleService,
     OpenBlightCounter,
     // What "open quests" means, shared by the sidebar badge, the dashboard

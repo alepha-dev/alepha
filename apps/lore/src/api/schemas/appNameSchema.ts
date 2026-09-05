@@ -33,3 +33,19 @@ export const APP_NAME_PATTERN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
  * normalising.
  */
 export const appNameSchema = z.string().min(1).max(APP_NAME_MAX_LENGTH);
+
+/**
+ * The longest an `app` plus `env` pair may be, together.
+ *
+ * `sigils.name` is a server-written mirror of `"<app>/<env>"` (folio #1211),
+ * and that column is `max(100)` validated on READ. Two `max(64)` halves reach
+ * 129 characters, and a row that fails its column's schema does not read as
+ * `undefined` - it throws every query that touches the table, which is the
+ * `projects.features` incident of 2026-08-05 pointed at `sigils`.
+ *
+ * 99 rather than 100 because the separator costs a character. Enforced by
+ * `AppService.assertPairFits` on create and on every rename, whether or not the
+ * instance carries a sigil yet: one may be minted tomorrow, and by then the
+ * pair would already be illegal.
+ */
+export const SIGIL_NAME_PAIR_MAX_LENGTH = 99;

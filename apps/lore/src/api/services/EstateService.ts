@@ -4,6 +4,7 @@ import { $repository, DbConflictError } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
+import { appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, type EstateType, estates } from "../entities/estates.ts";
 import { projects } from "../entities/projects.ts";
@@ -30,16 +31,23 @@ import { LoreAudits } from "./LoreAudits.ts";
  *
  * The rules here are the ones folio #1194 fixed on 2026-09-04, and the
  * owner's controller, the project-side lending (#1837), the admin backstop
- * (#1838) and epic #1's environments (#1810) all read them from here rather
- * than restating them.
+ * (#1838) and the app instances that point at an estate (#1767) all read them
+ * from here rather than restating them.
  */
 export class EstateService {
   protected readonly estates = $repository(estates);
+  protected readonly instances = $repository(appInstances);
   protected readonly grants = $repository(estateProjects);
   protected readonly projects = $repository(projects);
   protected readonly tokens = $inject(EstateTokenService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
+
+  /**
+   * How many instances {@link assertUnreferenced} names before it counts the
+   * rest. Enough to act on, short of a paragraph.
+   */
+  protected readonly referenceNameLimit = 5;
 
   /**
    * The runtimes an estate of this type can run, which is what epic #1's
@@ -194,19 +202,22 @@ export class EstateService {
   }
 
   /**
-   * Refuses to delete an estate, or detach it from a project, while an
-   * environment points at it.
+   * Refuses to delete an estate, or detach it from a project, while an app
+   * instance points at it.
    *
-   * ⚠️ A seam today. No `environments` table exists yet (epic #1, #1810), so
-   * nothing can point at an estate and this refuses nothing. #1810 extends
-   * it with the real count and the message naming the environments. The
-   * rule it will enforce, from folio #1194: never cascade, because cascading
-   * silently breaks other people's projects, while refusing forces a visible
-   * repoint or removal in each one.
+   * The rule, from folio #1194: never cascade. Cascading silently breaks other
+   * people's projects, while refusing forces a visible repoint or removal in
+   * each one. That is why `app_instances.estateId` is `set null` at the
+   * database and this check exists above it: the constraint is there for an
+   * account deletion, the refusal is there for everything else.
    *
-   * With a `projectId` the question is narrower: only that project's
-   * environments block a detach. Without one, any environment anywhere
-   * blocks a delete.
+   * With a `projectId` the question is narrower: only that project's instances
+   * block a detach. Without one, any instance anywhere blocks a delete.
+   *
+   * The message names the instances (`club/production, club/staging`) rather
+   * than counting them, because the operator's next action is to open each one
+   * and repoint it. Capped so a project with fifty instances does not answer
+   * with a paragraph.
    *
    * The one deliberate exception is a user account deletion, which cascades
    * through `estates.ownerUserId` without passing here: account deletion
@@ -216,8 +227,31 @@ export class EstateService {
     estateId: string,
     projectId?: number,
   ): Promise<void> {
-    void estateId;
-    void projectId;
+    const referencing = await this.instances.findMany({
+      where: {
+        estateId: { eq: estateId },
+        ...(projectId === undefined ? {} : { projectId: { eq: projectId } }),
+      },
+      columns: ["app", "env"],
+      orderBy: [
+        { column: "app", direction: "asc" },
+        { column: "env", direction: "asc" },
+      ],
+    });
+    if (referencing.length === 0) {
+      return;
+    }
+
+    const named = referencing
+      .slice(0, this.referenceNameLimit)
+      .map((instance) => `${instance.app}/${instance.env}`)
+      .join(", ");
+    const rest = referencing.length - this.referenceNameLimit;
+    throw new ConflictError(
+      `This estate is still the deploy target of ${named}${
+        rest > 0 ? ` and ${rest} more` : ""
+      }. Repoint or remove ${referencing.length === 1 ? "it" : "them"} first.`,
+    );
   }
 
   /**

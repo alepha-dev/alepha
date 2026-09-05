@@ -43,17 +43,17 @@ export type EstateType = (typeof ESTATE_TYPES)[number];
  * `ownerUserId` is the owner and there is no `projectId`: the lending join
  * (`estate_projects`, #1837) carries which projects may deploy through it.
  * A deploy never names the estate on the wire: it resolves server-side from
- * an environment row, which resolves from a project (folio #96's `targetId`
+ * an app instance, which resolves from a project (folio #96's `targetId`
  * warning, back in force under user-scope).
  *
  * ## The rows that will reference this table
  *
- * `environments.estateId` (epic #1, #1810) MUST be `.optional()` INSIDE
+ * `app_instances.estateId` (#1767) is `.optional()` INSIDE
  * `db.ref(...)` with `onDelete: "set null"`. Deleting a user account cascades
  * to their estates, and that cascade must not be blockable by other people's
  * projects: `restrict` would fail the account deletion at the database and
- * `cascade` would delete environments and their secrets. `set null` is the
- * one shape that fits the rules in `EstateService`.
+ * `cascade` would delete deploy targets. `set null` is the one shape that fits
+ * the rules in `EstateService`.
  *
  * `deployments` (epic #1, #1201) carries a denormalised `(estateSlug,
  * estateType)` snapshot beside a soft `estateId`, so history outlives the row.

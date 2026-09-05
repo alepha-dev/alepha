@@ -201,6 +201,14 @@ export class SigilController {
    * one answer, and a partial update of a set invites two clients to disagree
    * about a member neither of them named.
    *
+   * ⚠️ **`name` and `url` left this endpoint with Apps v3 (#1767).** Both
+   * describe the deployed copy rather than the credential, and both moved onto
+   * `app_instances`: the address is `AppService.setUrl`, and the name is a
+   * server-written mirror of `"<app>/<env>"` that only `AppService.rename`
+   * writes. A second writer for that column would let the mirror drift from the
+   * instance it names, which every label in the blights inbox and the insights
+   * dimension reads.
+   *
    * Owner-only, like rotate and delete — a member may read the inventory but
    * not re-arm it.
    */
@@ -215,25 +223,6 @@ export class SigilController {
           .array(z.enum([...SIGIL_KINDS]).meta({ mode: "text" }))
           .max(SIGIL_KINDS.length)
           .optional(),
-        /**
-         * Where this app lives, overriding the host it reports from.
-         *
-         * The empty string is the way to clear it, and it has to be: every
-         * other field here is a choice among values, this one is free text
-         * whose absence is meaningful. With omission as the only "no", an
-         * operator who pinned the wrong address could never get back to the
-         * detected one.
-         */
-        url: z.string().max(2048).optional(),
-        /**
-         * Rename the app.
-         *
-         * Required-if-present, and deliberately NOT following `url`'s
-         * empty-string-clears convention: an app without a name has no URL
-         * segment, so there is nothing an empty name could mean. Omitting the
-         * key is the way to leave it alone, like every field here.
-         */
-        name: appNameSchema.optional(),
       }),
       response: sigilResourceSchema,
     },
@@ -241,25 +230,13 @@ export class SigilController {
       await this.security.assertOwner(params.projectId, user);
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
-      // Every field optional now that this endpoint carries more than `kinds`,
-      // so an omitted key means "leave it alone" rather than "clear it" — the
-      // capabilities card and the URL field are separate surfaces and each
-      // PATCHes only what it owns.
-      // Validated and checked for a collision BEFORE the write, so a
-      // duplicate comes back as a stated 409 rather than as the unique index
-      // on `(projectId, name)` surfacing as a 500 from the driver.
-      const name =
-        body.name === undefined
-          ? undefined
-          : await this.claimName(params.projectId, body.name, sigil.id);
-
-      await this.sigils.updateById(sigil.id, {
-        // De-duplicated so a caller that sends `["beacon", "beacon"]` cannot
-        // make the stored set disagree with the one it asked for.
-        ...(body.kinds ? { kinds: [...new Set(body.kinds)] } : {}),
-        ...(body.url === undefined ? {} : { url: this.readUrl(body.url) }),
-        ...(name === undefined ? {} : { name }),
-      });
+      // Still shaped as an optional field, so an omitted key means "leave it
+      // alone" rather than "clear it", and so the endpoint can grow a second
+      // one without changing what a caller sending only `kinds` means.
+      await this.sigils.updateById(
+        sigil.id,
+        body.kinds ? { kinds: [...new Set(body.kinds)] } : {},
+      );
 
       return this.toResource(
         await this.loadSigil(params.projectId, params.sigilId),
@@ -303,45 +280,6 @@ export class SigilController {
       return { ok: true };
     },
   });
-
-  /**
-   * Reads the operator's app URL, or refuses it.
-   *
-   * `null` for blank, which is what clears the override and hands the answer
-   * back to the host the app reports from.
-   *
-   * Only `http` and `https` are accepted, and that is the whole point of
-   * parsing rather than storing the string: this value becomes an `href` on a
-   * page a project's members read, so `javascript:` — which `new URL()` parses
-   * perfectly happily — has to be refused here rather than escaped there.
-   * Relative input is refused too: a link that resolves against Lore's own
-   * origin points at Lore, which is never what the operator meant.
-   */
-  protected readUrl(raw: string): string | null {
-    const value = raw.trim();
-    if (!value) {
-      return null;
-    }
-
-    let parsed: URL;
-    try {
-      parsed = new URL(value);
-    } catch {
-      throw new BadRequestError(
-        "An app URL must be absolute, like https://example.com",
-      );
-    }
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new BadRequestError("An app URL must be http or https");
-    }
-
-    // A bare origin keeps no trailing slash: `https://example.com/` and
-    // `https://example.com` are the same address, and only one of them should
-    // ever be shown.
-    return parsed.pathname === "/" && !parsed.search && !parsed.hash
-      ? parsed.origin
-      : parsed.href;
-  }
 
   /**
    * Works out which unique index refused the insert, and says so.

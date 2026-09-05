@@ -1149,23 +1149,8 @@ export default {
   "insights.errors.worst.title": "Les plus fréquentes",
   "insights.errors.worst.note":
     "Les compteurs sont le total de chaque défaillance depuis toujours, pas celui de la période. Le graphique ci-dessus, lui, correspond à la période.",
-  "app.settings.general": "Général",
   "app.settings.credential": "Accès",
   "app.settings.danger": "Zone dangereuse",
-  "app.settings.name.title": "Nom",
-  "app.settings.name.description":
-    "Le nom de l'app est aussi son segment d'URL ici. Lettres minuscules, chiffres et tirets ; il est nettoyé et mis en minuscules pour vous.",
-  "app.settings.name.save": "Renommer",
-  "app.settings.name.confirmTitle": "Renommer $1 ?",
-  "app.settings.name.confirmDescription":
-    "La page de l'app change d'adresse et tout lien vers l'ancienne cesse de fonctionner. Les remontées ne sont pas affectées : la clé porte le projet, pas le nom de l'app, donc il n'y a rien à redéployer ni à faire tourner.",
-  "app.settings.name.renamed": "Renommée en $1",
-  "app.settings.url.title": "URL de l'application",
-  "app.settings.url.description":
-    "L'adresse de cette application. Laissé vide, Lore utilise celle depuis laquelle l'application remonte ses données : il n'y a donc en général rien à saisir ici.",
-  "app.settings.url.detected":
-    "Utilise $1, l'adresse depuis laquelle cette application a remonté ses dernières données. Saisissez une URL pour en afficher une autre, ou videz le champ pour revenir à l'adresse détectée.",
-  "app.settings.url.save": "Enregistrer",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":
     "Génère un nouveau jeton et invalide l'actuel immédiatement. Tout ce que cette application a remonté est conservé : c'est ainsi qu'on révoque un jeton fuité sans perdre son historique.",
