@@ -20,8 +20,8 @@ import { projects } from "./projects.ts";
  *
  * Adding the constraint means a table rebuild, and a rebuild on D1 is the
  * cascade-wipe this app has already been bitten by once - see "Migration
- * safety on D1" in `apps/lore/CLAUDE.md`. `FolioBlobService.delete` and
- * `FolioBlobService.deleteByFolio` are the enforcement instead, and are
+ * safety on D1" in `apps/lore/CLAUDE.md`. `FolioAttachmentService.delete` and
+ * `FolioAttachmentService.deleteByFolio` are the enforcement instead, and are
  * the only two ways an attachment may be removed.
  *
  * `projectId` and `folioId` below ARE physical and DO cascade: wiping the
@@ -30,22 +30,23 @@ import { projects } from "./projects.ts";
  *
  * An attachment belongs to exactly ONE folio and dies with it. It used
  * to sit in the folio tree beside folios and directories, scoped by
- * `directoryId`; that made a blob a peer of the documents rather than
+ * `directoryId`; that made a attachment a peer of the documents rather than
  * part of one, and left an uploaded image reachable from a folder it
  * had nothing to do with.
  *
  * Consequently the name only has to be unique **within its folio**, so
- * blobs no longer participate in the `folio_names` reservation table —
+ * attachments no longer participate in the `folio_names` reservation table —
  * that table exists to stop a folio and a directory colliding in one
- * folder, which a per-folio attachment cannot do. `FolioBlobService`
+ * folder, which a per-folio attachment cannot do. `FolioAttachmentService`
  * auto-suffixes against its siblings directly.
  */
-export const folioBlobs = $entity({
+export const folioAttachments = $entity({
   name: "folio_blobs",
   schema: z.object({
     fileId: db.primaryKey(z.uuid()),
     /**
-     * Per-project sequential id. URL form is `blob:#42`.
+     * Per-project sequential id: the `#42` the Attachments tab and the
+     * `folio_attachment_*` MCP tools address an attachment by.
      */
     shortId: z.integer().min(1),
     createdAt: db.createdAt(),
@@ -62,7 +63,7 @@ export const folioBlobs = $entity({
      * add a `NOT NULL` column that carries a `REFERENCES` clause at any
      * table size, and the only shape that would is a table rebuild —
      * which on D1 cascade-wipes this table's children. Same accepted
-     * drift as `sigils.name`. `FolioBlobService.register` is the real
+     * drift as `sigils.name`. `FolioAttachmentService.register` is the real
      * enforcement.
      */
     folioId: db.ref(z.uuid(), () => folios.cols.id, {
@@ -97,4 +98,4 @@ export const folioBlobs = $entity({
   ],
 });
 
-export type FolioBlob = Infer<typeof folioBlobs.schema>;
+export type FolioAttachment = Infer<typeof folioAttachments.schema>;

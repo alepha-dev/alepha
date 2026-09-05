@@ -24,7 +24,7 @@ export interface ReleaseDescriptionEditorProps {
  * The two things `LoreEditor` adds over the bare editor both need element
  * identity a release does not have:
  *
- * - **Image upload** needs a store. A folio writes to folio blobs, a quest to
+ * - **Image upload** needs a store. A folio writes to folio attachments, a quest to
  *   quest attachments; an epic has neither and `useElementImageUpload`
  *   already returns nothing for it, with "give epics a store before giving
  *   this an arm" written beside it. A release is in the same position.

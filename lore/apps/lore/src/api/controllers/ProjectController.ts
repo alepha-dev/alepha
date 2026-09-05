@@ -22,7 +22,7 @@ import { $etag } from "alepha/server/etag";
 
 // The helper the UI labels a user with, so an actor reads identically in an
 // activity feed and on the quest page. Precedent for reaching across:
-// `FolioBlobService` imports `folioAssetPath` from the same tree. Pure
+// `FolioAttachmentService` imports `folioAssetPath` from the same tree. Pure
 // function, no imports of its own.
 import { displayName } from "../../web/app/services/displayName.ts";
 import { type Member, members } from "../entities/members.ts";
@@ -156,8 +156,8 @@ export class ProjectController {
    * Bucket value kept as `campaign-icons`, not renamed to `project-icons`:
    * it's a value already persisted on every existing `files` row (and in
    * production), not just an in-code identifier — same reasoning that keeps
-   * `FOLIO_BLOB_BUCKET` at `"archive-blobs"` (see the note in
-   * `FolioBlobService.ts`) and `FeedbackRateLimiter.ATTACHMENT_BUCKET` at
+   * `FOLIO_ATTACHMENT_BUCKET` at `"archive-blobs"` (see the note in
+   * `FolioAttachmentService.ts`) and `FeedbackRateLimiter.ATTACHMENT_BUCKET` at
    * `"petition-attachments"`.
    */
   iconBucket = $storage({

@@ -5,7 +5,7 @@ import type { UserAccountToken } from "alepha/security";
 import { ForbiddenError } from "alepha/server";
 
 import { feedback } from "../entities/feedback.ts";
-import { folioBlobs } from "../entities/folioBlobs.ts";
+import { folioAttachments } from "../entities/folioAttachments.ts";
 import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { attachmentLookupSchema } from "../schemas/attachmentLookupSchema.ts";
@@ -27,7 +27,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   protected readonly projects = $repository(projects);
   protected readonly feedback = $repository(feedback);
   protected readonly quests = $repository(quests);
-  protected readonly folioBlobs = $repository(folioBlobs);
+  protected readonly folioAttachments = $repository(folioAttachments);
 
   /**
    * Quest attachments bucket inherits the property name when no `name:` is
@@ -39,8 +39,8 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   protected static readonly PROJECT_ICON_BUCKET = "campaign-icons";
   protected static readonly AVATAR_BUCKET = "avatars";
   // Bucket value stays "archive-blobs" — see the note on
-  // `FOLIO_BLOB_BUCKET` in `FolioBlobService.ts`.
-  protected static readonly FOLIO_BLOB_BUCKET = "archive-blobs";
+  // `FOLIO_ATTACHMENT_BUCKET` in `FolioAttachmentService.ts`.
+  protected static readonly FOLIO_ATTACHMENT_BUCKET = "archive-blobs";
 
   async assertReadable(
     file: FileEntity,
@@ -90,15 +90,15 @@ export class LoreFileAccessProvider extends FileAccessProvider {
       throw new ForbiddenError("File access denied");
     }
 
-    // Folio blobs: any project member can read the bytes (Drive-
+    // Folio attachments: any project member can read the bytes (Drive-
     // style sharing scope per folio #4 Q2). The Lore overlay row holds
     // the project id.
-    if (file.bucket === LoreFileAccessProvider.FOLIO_BLOB_BUCKET) {
-      const blob = await this.folioBlobs.findOne({
+    if (file.bucket === LoreFileAccessProvider.FOLIO_ATTACHMENT_BUCKET) {
+      const attachment = await this.folioAttachments.findOne({
         where: { fileId: { eq: file.id } },
       });
-      if (blob) {
-        await this.security.assertMember(blob.projectId, user);
+      if (attachment) {
+        await this.security.assertMember(attachment.projectId, user);
         return;
       }
       throw new ForbiddenError("File access denied");

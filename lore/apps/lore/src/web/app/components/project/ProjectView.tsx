@@ -40,6 +40,7 @@ import { questLogCollapsedAtom } from "../../atoms/questLogCollapsedAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
+import HeaderRepositoryButton from "../shared/header/HeaderRepositoryButton.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
@@ -424,8 +425,21 @@ const ProjectView = () => {
             <ProjectActionsCreateButton />
             {/* Through `before`, not as a sibling: that puts the magnifier in
               the cluster's own flex row, so it takes the same gap as the four
-              icons it now sits with rather than the topbar's spacing. */}
-            <HeaderActions before={<HeaderSearchButton />} />
+              icons it now sits with rather than the topbar's spacing.
+
+              The repository link rides the same slot, which is what puts it
+              "between search and lang" (feedback #2105) without any of the
+              three components needing to know about the other two: `before`
+              is one node, and the order inside it is the order on screen. It
+              renders nothing when the project has no `repositoryUrl`. */}
+            <HeaderActions
+              before={
+                <>
+                  <HeaderSearchButton />
+                  <HeaderRepositoryButton />
+                </>
+              }
+            />
           </>
         }
       >

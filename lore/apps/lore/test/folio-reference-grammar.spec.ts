@@ -53,8 +53,9 @@ interface Seed {
  * browser through `createFolioWikiLinkResolver` (which renders), and the
  * two answers compared.
  *
- * The typed grammar of epic #32 is what it was written for, but the legacy
- * forms are in the table too, since #1803 adds and removes nothing.
+ * The typed grammar of epic #32 is the whole table since the purge (quest
+ * #1808): the forms it replaced are in it only to prove that neither side
+ * reads them any more.
  */
 describe("the reference grammar is one grammar on both sides", () => {
   let alepha: Alepha;
@@ -248,9 +249,7 @@ describe("the reference grammar is one grammar on both sides", () => {
    */
   const inBrowser = (token: string): Resolved | undefined => {
     const target = browserResolver().resolve(token);
-    if (!target || target.kind === "broken" || target.kind === "blob") {
-      return undefined;
-    }
+    if (!target || target.kind === "broken") return undefined;
     if (target.kind === "feedback") {
       const match = /feedback=(\d+)$/.exec(target.href);
       return match
@@ -337,24 +336,25 @@ describe("the reference grammar is one grammar on both sides", () => {
       expected: () => undefined,
     },
     {
-      label: "legacy: a bare #<n> is still the folio",
+      label:
+        "purged: a bare #<n> is not a reference, even to a folio that exists",
       token: (s) => `#${s.folio.shortId}`,
-      expected: (s) => ({ kind: "folio", id: s.folio.shortId }),
+      expected: () => undefined,
     },
     {
-      label: "legacy: quest:#<n> still resolves",
+      label: "purged: quest:#<n> is not a reference",
       token: (s) => `quest:#${s.quest.shortId}`,
-      expected: (s) => ({ kind: "quest", id: s.quest.shortId }),
+      expected: () => undefined,
     },
     {
-      label: "legacy: epic:#<n> still resolves",
+      label: "purged: epic:#<n> is not a reference",
       token: (s) => `epic:#${s.epic.number}`,
-      expected: (s) => ({ kind: "epic", id: s.epic.number }),
+      expected: () => undefined,
     },
     {
-      label: "legacy: a title still resolves",
+      label: "purged: a title is not a reference, even one that names a folio",
       token: (s) => s.folio.title,
-      expected: (s) => ({ kind: "folio", id: s.folio.shortId }),
+      expected: () => undefined,
     },
   ];
 

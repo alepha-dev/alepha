@@ -286,7 +286,7 @@ export class ArtifactService {
   /**
    * Drop an artifact and the bytes behind it.
    *
-   * The row goes first, for the reason `FolioBlobService.delete` writes down:
+   * The row goes first, for the reason `FolioAttachmentService.delete` writes down:
    * the reverse order leaves, on a failure in between, a row that resolves to
    * nothing. Losing the bytes and keeping nothing is the better half.
    */
@@ -358,7 +358,7 @@ export class ArtifactService {
    * The `$storage` the bytes live in.
    *
    * Static so `ArtifactController` can name it from a field initializer, the
-   * same way `FolioBlobService.BUCKET` is read by `BlobController`.
+   * same way `FolioAttachmentService.BUCKET` is read by `FolioAttachmentController`.
    */
   public static readonly BUCKET = "artifacts";
 

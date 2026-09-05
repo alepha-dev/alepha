@@ -59,7 +59,7 @@ describe("MarkdownEditorInner mode toggle", () => {
   });
 
   it("renders viewContent, not value, in view mode", () => {
-    // Regression guard. The folio workspace stores `[[Some Folio]]` and
+    // Regression guard. The folio workspace stores `[[#F3]]` and
     // `assets/x.webp` but must DISPLAY resolved links and `/api/files/<id>`
     // URLs — `rewriteFolioWikiLinks` does that, and its output arrives here
     // as `viewContent`. Rendering `value` instead shows the raw token as
@@ -67,7 +67,7 @@ describe("MarkdownEditorInner mode toggle", () => {
     // what shipped for a moment while this prop did not exist.
     render(
       <MarkdownEditorInner
-        value="[[Some Folio]]"
+        value="[[#F3]]"
         viewContent="[Some Folio](/lore/folios/3)"
         onChange={() => {}}
         mode="view"
@@ -84,7 +84,7 @@ describe("MarkdownEditorInner mode toggle", () => {
     // destroy the portable `[[…]]` link graph on first keystroke.
     const { container } = render(
       <MarkdownEditorInner
-        value="[[Some Folio]]"
+        value="[[#F3]]"
         viewContent="[Some Folio](/lore/folios/3)"
         onChange={() => {}}
         mode="edit"

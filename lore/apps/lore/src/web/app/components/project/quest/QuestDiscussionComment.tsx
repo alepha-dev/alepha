@@ -97,9 +97,9 @@ const QuestDiscussionComment = (props: QuestDiscussionCommentProps) => {
           </span>
         </div>
         <div className="border-border bg-muted/40 rounded-md border px-3 py-3">
-          {/* Through the shared viewer, so `[[folio]]` and `[[quest:#N]]`
+          {/* Through the shared viewer, so `[[#F12]]` and `[[#Q12]]`
             resolve exactly as they do in a description — with the two
-            conversation-only shapes (`#1204`, `@member`) expanded into it
+            conversation-only shapes (`#Q1204`, `@member`) expanded into it
             first. The stored body is never rewritten. */}
           <LoreViewer
             element={{

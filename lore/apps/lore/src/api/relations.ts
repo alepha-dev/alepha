@@ -4,7 +4,7 @@ import { $relations } from "alepha/orm";
 import { blightIgnoreRules } from "./entities/blightIgnoreRules.ts";
 import { epics } from "./entities/epics.ts";
 import { feedback } from "./entities/feedback.ts";
-import { folioBlobs } from "./entities/folioBlobs.ts";
+import { folioAttachments } from "./entities/folioAttachments.ts";
 import { folioDirectories } from "./entities/folioDirectories.ts";
 import { folioLinks } from "./entities/folioLinks.ts";
 import { folioRevisions } from "./entities/folioRevisions.ts";
@@ -26,7 +26,7 @@ import { sigils } from "./entities/sigils.ts";
  *   array is not a foreign key and there is no relation to hang on it, so
  *   attachment lookups stay explicit.
  * - `folioLinks.toId` is polymorphic — a folio uuid, a stringified quest id,
- *   or a blob id, told apart by `targetType`. Only the `fromId` side is a real
+ *   or a feedback or release id, told apart by `targetType`. Only the `fromId` side is a real
  *   reference, so only that side appears below.
  *
  * Everything else joins here rather than in a controller.
@@ -44,7 +44,7 @@ export const schema = {
   folioLinks,
   folioRevisions,
   folioDirectories,
-  folioBlobs,
+  folioAttachments,
   sigils,
   blightIgnoreRules,
 };
@@ -102,9 +102,9 @@ export const relations = $relations(schema, (r) => ({
       from: r.projects.id,
       to: r.folioDirectories.projectId,
     }),
-    blobs: r.many.folioBlobs({
+    attachments: r.many.folioAttachments({
       from: r.projects.id,
-      to: r.folioBlobs.projectId,
+      to: r.folioAttachments.projectId,
     }),
     sigils: r.many.sigils({ from: r.projects.id, to: r.sigils.projectId }),
     blightRules: r.many.blightIgnoreRules({
@@ -212,9 +212,9 @@ export const relations = $relations(schema, (r) => ({
       from: r.folios.id,
       to: r.folioRevisions.folioId,
     }),
-    blobs: r.many.folioBlobs({
+    attachments: r.many.folioAttachments({
       from: r.folios.id,
-      to: r.folioBlobs.folioId,
+      to: r.folioAttachments.folioId,
     }),
     /**
      * Only the outbound side is a relation. Inbound links are found by
@@ -254,13 +254,13 @@ export const relations = $relations(schema, (r) => ({
     }),
   },
 
-  folioBlobs: {
+  folioAttachments: {
     project: r.one.projects({
-      from: r.folioBlobs.projectId,
+      from: r.folioAttachments.projectId,
       to: r.projects.id,
     }),
     folio: r.one.folios({
-      from: r.folioBlobs.folioId,
+      from: r.folioAttachments.folioId,
       to: r.folios.id,
     }),
   },

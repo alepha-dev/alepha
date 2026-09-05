@@ -19,8 +19,8 @@ export interface LoreViewerProps {
  * Read-only markdown for any element, with `[[…]]` resolved to real links.
  *
  * The reader half of the pair `LoreViewer` / `LoreEditor`. Every surface
- * that shows an element's body goes through this, so `[[#42]]`,
- * `[[quest:#N]]`, `[[epic:#N]]` and `[[blob:#N]]` all behave the same
+ * that shows an element's body goes through this, so `[[#F42]]`,
+ * `[[#Q12]]`, `[[#E3]]`, `[[#P120]]` and `[[#R12]]` all behave the same
  * whether the reader is looking at a folio, a quest or an epic — they did
  * not before, and the epic description rendered raw `[[…]]` tokens as
  * literal text.

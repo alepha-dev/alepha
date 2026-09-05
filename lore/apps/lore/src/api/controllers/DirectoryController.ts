@@ -3,7 +3,7 @@ import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
-import { folioBlobs } from "../entities/folioBlobs.ts";
+import { folioAttachments } from "../entities/folioAttachments.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
@@ -17,7 +17,7 @@ import { FolioDirectoryService } from "../services/FolioDirectoryService.ts";
 export class DirectoryController {
   protected readonly directories = $repository(folioDirectories);
   protected readonly folios = $repository(folios);
-  protected readonly blobs = $repository(folioBlobs);
+  protected readonly attachments = $repository(folioAttachments);
   protected readonly directoryService = $inject(FolioDirectoryService);
 
   /**
@@ -42,9 +42,9 @@ export class DirectoryController {
    *
    * Attachments are not children of a folder. They belong to one folio,
    * and `folio_blobs.directoryId` has been dead since that became true,
-   * so the blob query this used to run always came back empty and every
-   * caller was reading a `"blob"` entry kind that could not occur. To
-   * list a folio's attachments, ask `BlobController`.
+   * so the attachment query this used to run always came back empty and
+   * every caller was reading an attachment entry kind that could not occur. To
+   * list a folio's attachments, ask `FolioAttachmentController`.
    */
   listContents = $action({
     use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
@@ -146,13 +146,13 @@ export class DirectoryController {
   });
 
   /**
-   * Project-wide name search across folios + blobs + directories.
+   * Project-wide name search across folios + attachments + directories.
    * Powers the Folio page's top search bar. Case-insensitive
-   * substring match against name (blobs/dirs) and `searchText`
+   * substring match against name (attachments/dirs) and `searchText`
    * (folios — title + tags + summary + content). Capped at 50 results
    * per kind so the response stays small.
    *
-   * Returns the `listContents` Entry shape widened with `"blob"`: an
+   * Returns the `listContents` Entry shape widened with `"attachment"`: an
    * attachment is not a child of any folder, so it can never appear in
    * a listing, but finding one by name across the project is exactly
    * what a search is for.
@@ -161,14 +161,14 @@ export class DirectoryController {
     use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
     path: "/projects/:projectId/folio/search",
     description:
-      "Search folios + blobs + directories by name (and folio body).",
+      "Search folios + attachments + directories by name (and folio body).",
     schema: {
       params: z.object({ projectId: z.integer() }),
       query: z.object({ q: z.string().min(1) }),
       response: z.object({
         entries: z.array(
           z.object({
-            kind: z.enum(["directory", "folio", "blob"]),
+            kind: z.enum(["directory", "folio", "attachment"]),
             id: z.string(),
             shortId: z.integer(),
             name: z.string(),
@@ -184,7 +184,7 @@ export class DirectoryController {
     },
     handler: async ({ params, query }) => {
       const needle = `%${query.q.toLowerCase()}%`;
-      const [dirs, folioRows, blobRows] = await Promise.all([
+      const [dirs, folioRows, attachmentRows] = await Promise.all([
         this.directories.findMany({
           where: {
             projectId: { eq: params.projectId },
@@ -204,7 +204,7 @@ export class DirectoryController {
           ],
           limit: 50,
         }),
-        this.blobs.findMany({
+        this.attachments.findMany({
           where: {
             projectId: { eq: params.projectId },
             name: { like: `%${query.q}%` },
@@ -233,8 +233,8 @@ export class DirectoryController {
             protected: f.protected,
             summary: f.summary || undefined,
           })),
-          ...blobRows.map((b) => ({
-            kind: "blob" as const,
+          ...attachmentRows.map((b) => ({
+            kind: "attachment" as const,
             id: b.fileId,
             shortId: b.shortId,
             name: b.name,
