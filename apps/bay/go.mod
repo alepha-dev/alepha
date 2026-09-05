@@ -2,7 +2,10 @@ module github.com/alepha/bay
 
 go 1.26.1
 
-require github.com/caddyserver/certmagic v0.25.4
+require (
+	github.com/caddyserver/certmagic v0.25.4
+	github.com/gorilla/websocket v1.5.3
+)
 
 require (
 	github.com/caddyserver/zerossl v0.1.5 // indirect

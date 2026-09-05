@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -205,6 +206,23 @@ func connectorRoot(args []string) (string, error) {
 			shown, shown, source)
 	}
 	return root, nil
+}
+
+/*
+connectorLoop runs the Lore connection for the life of `serve`.
+
+The executor that runs what Lore pushes is #1621; until it lands the client
+refuses every command with a reason, which Lore records as failed rather than
+as a dead machine.
+*/
+func (s *server) connectorLoop(ctx context.Context) {
+	client := &connector.Client{
+		Store:  connector.NewStore(s.root),
+		Status: s.connectorStatus,
+		Log:    s.log,
+		Reload: s.connectorReload,
+	}
+	client.Run(ctx)
 }
 
 // ---------------------------------------------------------------------------

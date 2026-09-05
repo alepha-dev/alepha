@@ -657,6 +657,11 @@ func cmdServe(args []string) error {
 	// Traffic bookkeeping, drained from the proxy on its own schedule.
 	go srv.flushLastSeenLoop(backupCtx)
 
+	// The Lore connection, held open for the life of the process when a sink
+	// is configured and inert otherwise; `bay connector set` wakes it through
+	// the control socket. Nothing the proxy or an app does waits on it.
+	go srv.connectorLoop(backupCtx)
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
