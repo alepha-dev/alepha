@@ -11,7 +11,6 @@ import { AdminProjectController } from "./controllers/AdminProjectController.ts"
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
-import { BlobController } from "./controllers/BlobController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
@@ -21,6 +20,7 @@ import { EstatePullController } from "./controllers/EstatePullController.ts";
 import { EstateSocketController } from "./controllers/EstateSocketController.ts";
 import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
+import { FolioAttachmentController } from "./controllers/FolioAttachmentController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
@@ -67,7 +67,7 @@ import { EstateService } from "./services/EstateService.ts";
 import { EstateStatsService } from "./services/EstateStatsService.ts";
 import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
-import { FolioBlobService } from "./services/FolioBlobService.ts";
+import { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
@@ -149,7 +149,7 @@ export const LoreApi = $module({
     FrozenSigilAnalyticsTables,
     FolioNameService,
     FolioDirectoryService,
-    FolioBlobService,
+    FolioAttachmentService,
     FolioHistoryService,
     FolioLinkService,
     // Declares the `$invitationResource` for `resourceType: "project"`.
@@ -239,7 +239,7 @@ export const LoreApi = $module({
     FolioController,
     DirectoryController,
     SearchController,
-    BlobController,
+    FolioAttachmentController,
     FeedbackController,
     SigilController,
     SigilIngestController,

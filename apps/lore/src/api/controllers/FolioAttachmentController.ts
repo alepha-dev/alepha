@@ -4,14 +4,14 @@ import { $repository, $transactional } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
-import { folioBlobs } from "../entities/folioBlobs.ts";
+import { folioAttachments } from "../entities/folioAttachments.ts";
 import { folios } from "../entities/folios.ts";
-import { hydratedBlobSchema } from "../schemas/hydratedBlobSchema.ts";
+import { hydratedFolioAttachmentSchema } from "../schemas/hydratedFolioAttachmentSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
-import { FolioBlobService } from "../services/FolioBlobService.ts";
+import { FolioAttachmentService } from "../services/FolioAttachmentService.ts";
 
 /**
- * REST surface for Folio blobs. The framework `FileController`
+ * REST surface for Folio attachments. The framework `FileController`
  * handles the byte-level upload/download via its own endpoints; this
  * controller layers the Folio concerns on top (project + directory
  * placement, sibling name uniqueness, rename/move/delete with bucket
@@ -19,15 +19,15 @@ import { FolioBlobService } from "../services/FolioBlobService.ts";
  *
  * Typical client flow:
  *   1. POST `/api/files/upload` (framework) → returns framework file id.
- *   2. POST `/api/folio/blobs` (this controller, `register`) → places
+ *   2. POST `/api/folio/attachments` (this controller, `register`) → places
  *      the file in the Folio tree with a unique name.
  *   3. GET `/api/files/:id/download-url` (framework) when serving.
  */
-export class BlobController {
-  protected readonly blobs = $repository(folioBlobs);
+export class FolioAttachmentController {
+  protected readonly attachments = $repository(folioAttachments);
   protected readonly folioRows = $repository(folios);
   protected readonly frameworkFiles = $repository(files);
-  protected readonly blobService = $inject(FolioBlobService);
+  protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly fileController = $inject(FileController);
 
   /**
@@ -43,18 +43,18 @@ export class BlobController {
   protected ownsProject = () => $ownsProject({ param: "projectId" });
 
   /**
-   * Member gate on the project the blob named by `params.id` belongs to.
+   * Member gate on the project the attachment named by `params.id` belongs to.
    *
    * `folio_blobs` is keyed on `fileId`, not `id`, which the gate resolves on
    * its own - `findById` reads the entity's declared primary key rather than
    * assuming a column name.
    */
   protected ownsBlob = () =>
-    $ownsProject({ repository: () => this.blobs, param: "id" });
+    $ownsProject({ repository: () => this.attachments, param: "id" });
 
   /**
    * Member gate reached from the FOLIO the attachments hang off, which is
-   * what `listBlobs` addresses. A different table from the other five, and
+   * what `listAttachments` addresses. A different table from the other five, and
    * the site that proves the hop is not hardcoded to "the row this
    * controller is named after".
    */
@@ -62,37 +62,37 @@ export class BlobController {
     $ownsProject({ repository: () => this.folioRows, param: "folioId" });
 
   /**
-   * Storage for Folio blobs. Declared here so `?bucket=archive-blobs`
+   * Storage for Folio attachments. Declared here so `?bucket=archive-blobs`
    * resolves — without it every Folio upload 404s with
    * "Storage 'archive-blobs' not found." (Bucket value kept as
    * `archive-blobs`, not renamed — see the note on
-   * `FolioBlobService.BUCKET`.) Any logged-in user with `file:create`
+   * `FolioAttachmentService.BUCKET`.) Any logged-in user with `file:create`
    * can upload; per-project membership is enforced downstream by the
-   * `registerBlob` action below.
+   * `registerAttachment` action below.
    */
   folioBucket = $storage({
-    name: FolioBlobService.BUCKET,
-    description: "Folio blobs",
+    name: FolioAttachmentService.BUCKET,
+    description: "Folio attachments",
   });
 
   /**
-   * Hydrate a blob row with framework-file metadata (size, mimeType,
+   * Hydrate a attachment row with framework-file metadata (size, mimeType,
    * checksum/sha256, originalName). Used by GET responses.
    */
   protected async hydrate(fileId: string) {
-    const [blob, file] = await Promise.all([
-      this.blobService.findById(fileId),
+    const [attachment, file] = await Promise.all([
+      this.attachmentService.findById(fileId),
       this.frameworkFiles.findOne({ where: { id: { eq: fileId } } }),
     ]);
-    if (!blob || !file) return undefined;
+    if (!attachment || !file) return undefined;
     return {
-      id: blob.fileId,
-      shortId: blob.shortId,
-      projectId: blob.projectId,
-      folioId: blob.folioId,
-      name: blob.name,
-      createdAt: blob.createdAt,
-      updatedAt: blob.updatedAt,
+      id: attachment.fileId,
+      shortId: attachment.shortId,
+      projectId: attachment.projectId,
+      folioId: attachment.folioId,
+      name: attachment.name,
+      createdAt: attachment.createdAt,
+      updatedAt: attachment.updatedAt,
       size: file.size,
       mimeType: file.mimeType,
       sha256: file.checksum,
@@ -102,55 +102,55 @@ export class BlobController {
   }
 
   /**
-   * Look up a folio blob by per-project shortId. Member-only.
-   * Used by the MCP `blob_*` tools to resolve `blob_shortId` params.
+   * Look up a folio attachment by per-project shortId. Member-only.
+   * Used by the MCP `folio_attachment_*` tools to resolve `attachment_shortId` params.
    * Returns the hydrated shape so callers don't need a follow-up
-   * `getBlob` call.
+   * `getAttachment` call.
    */
-  getBlobByShortId = $action({
+  getAttachmentByShortId = $action({
     use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
-    path: "/projects/:projectId/folio/blobs/by-short-id/:shortId",
-    description: "Look up a folio blob by per-project shortId.",
+    path: "/projects/:projectId/folio/attachments/by-short-id/:shortId",
+    description: "Look up a folio attachment by per-project shortId.",
     schema: {
       params: z.object({
         projectId: z.integer(),
         shortId: z.integer(),
       }),
-      response: hydratedBlobSchema,
+      response: hydratedFolioAttachmentSchema,
     },
     handler: async ({ params }) => {
-      const blob = await this.blobService.findByShortId(
+      const attachment = await this.attachmentService.findByShortId(
         params.projectId,
         params.shortId,
       );
-      if (!blob) throw new NotFoundError("Blob not found");
-      const hydrated = await this.hydrate(blob.fileId);
+      if (!attachment) throw new NotFoundError("Blob not found");
+      const hydrated = await this.hydrate(attachment.fileId);
       if (!hydrated) throw new NotFoundError("Blob not found");
       return hydrated;
     },
   });
 
-  listBlobs = $action({
+  listAttachments = $action({
     use: [$secure({ permissions: ["folio:read"] }), this.ownsFolio()],
-    path: "/folios/:folioId/blobs",
+    path: "/folios/:folioId/attachments",
     description: "List the attachments of one folio.",
     schema: {
       params: z.object({ folioId: z.uuid() }),
-      response: z.array(hydratedBlobSchema),
+      response: z.array(hydratedFolioAttachmentSchema),
     },
     handler: async ({ params }) => {
-      return this.blobService.listHydratedByFolio(params.folioId);
+      return this.attachmentService.listHydratedByFolio(params.folioId);
     },
   });
 
-  getBlob = $action({
+  getAttachment = $action({
     use: [$secure({ permissions: ["folio:read"] }), this.ownsBlob()],
-    path: "/folio/blobs/:id",
+    path: "/folio/attachments/:id",
     description:
-      "Get a single folio blob (metadata only — use framework download for bytes).",
+      "Get a single folio attachment (metadata only — use framework download for bytes).",
     schema: {
       params: z.object({ id: z.uuid() }),
-      response: hydratedBlobSchema,
+      response: hydratedFolioAttachmentSchema,
     },
     handler: async ({ params }) => {
       const hydrated = await this.hydrate(params.id);
@@ -159,16 +159,16 @@ export class BlobController {
     },
   });
 
-  registerBlob = $action({
+  registerAttachment = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
       this.ownsProject(),
     ],
-    path: "/projects/:projectId/folio/blobs",
+    path: "/projects/:projectId/folio/attachments",
     description:
-      "Register a folio blob on top of an already-uploaded framework file.",
+      "Register a folio attachment on top of an already-uploaded framework file.",
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
@@ -176,10 +176,10 @@ export class BlobController {
         name: z.string().min(1).max(200),
         folioId: z.uuid(),
       }),
-      response: folioBlobs.schema,
+      response: folioAttachments.schema,
     },
     handler: async ({ params, body }) => {
-      return this.blobService.register({
+      return this.attachmentService.register({
         projectId: params.projectId,
         folioId: body.folioId,
         name: body.name,
@@ -188,40 +188,40 @@ export class BlobController {
     },
   });
 
-  renameBlob = $action({
+  renameAttachment = $action({
     // Gate INSIDE the transaction - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
       this.ownsBlob(),
     ],
-    path: "/folio/blobs/:id/rename",
-    description: "Rename a folio blob.",
+    path: "/folio/attachments/:id/rename",
+    description: "Rename a folio attachment.",
     schema: {
       params: z.object({ id: z.uuid() }),
       body: z.object({ name: z.string().min(1).max(200) }),
-      response: folioBlobs.schema,
+      response: folioAttachments.schema,
     },
     handler: async ({ params, body }) => {
-      return this.blobService.rename(params.id, body.name);
+      return this.attachmentService.rename(params.id, body.name);
     },
   });
 
-  deleteBlob = $action({
+  deleteAttachment = $action({
     // Gate INSIDE the transaction - see `$ownsProject`.
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
       this.ownsBlob(),
     ],
-    path: "/folio/blobs/:id",
-    description: "Delete a folio blob (and reclaim framework storage).",
+    path: "/folio/attachments/:id",
+    description: "Delete a folio attachment (and reclaim framework storage).",
     schema: {
       params: z.object({ id: z.uuid() }),
       response: okSchema,
     },
     handler: async ({ params }) => {
-      await this.blobService.delete(params.id);
+      await this.attachmentService.delete(params.id);
       return { ok: true };
     },
   });

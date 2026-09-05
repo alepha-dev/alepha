@@ -360,7 +360,7 @@ test.describe("Folio workspace", () => {
    *
    * It used to cost three. The route loader batched `getByShortId` +
    * `list` + `listAllDirectories` into one `/api/_batch`, then fired
-   * `listBlobs` on its own (it needs the folio's `id`, which only exists
+   * `listAttachments` on its own (it needs the folio's `id`, which only exists
    * after the batch resolves, so it could never join the 10ms
    * `BatchCollector` window), and `FolioHistoryTab` fired `listHistory`
    * from a mount effect — a whole request returning up to ten FULL
@@ -420,7 +420,7 @@ test.describe("Folio workspace", () => {
       calls,
       `expected one request, got:\n${calls.join("\n")}`,
     ).toHaveLength(1);
-    expect(calls[0]).toContain("withBlobs=true");
+    expect(calls[0]).toContain("withAttachments=true");
   });
 
   test("09 — /folios opens with nothing selected", async () => {
@@ -1106,7 +1106,7 @@ test.describe("Folio workspace", () => {
     const fileName = `attached-${stamp}.txt`;
     const registered = page.waitForResponse(
       (r) =>
-        new URL(r.url()).pathname.endsWith("/folio/blobs") &&
+        new URL(r.url()).pathname.endsWith("/folio/attachments") &&
         r.request().method() === "POST" &&
         r.status() === 200,
       { timeout: 20_000 },
@@ -1129,10 +1129,13 @@ test.describe("Folio workspace", () => {
           credentials: "include",
         });
         const folio = (await folioRes.json()) as { id: string };
-        const blobsRes = await fetch(`/api/folios/${folio.id}/blobs`, {
-          credentials: "include",
-        });
-        return ((await blobsRes.json()) as Array<{ name: string }>).map(
+        const attachmentsRes = await fetch(
+          `/api/folios/${folio.id}/attachments`,
+          {
+            credentials: "include",
+          },
+        );
+        return ((await attachmentsRes.json()) as Array<{ name: string }>).map(
           (b) => b.name,
         );
       },

@@ -13,8 +13,8 @@ import FolioWorkspace from "./editor/FolioWorkspace.tsx";
  * The directory table that used to own this route is gone. `FolioBrowser`
  * and its Recent Activity panel were a second, competing way to move
  * around the same folios, and the tree does that job inside the surface
- * where the work actually happens. The blob and activity ENDPOINTS are
- * untouched — only their browser UI went — so blob support can come back
+ * where the work actually happens. The attachment and activity ENDPOINTS are
+ * untouched — only their browser UI went — so attachment support can come back
  * into the workspace later without a server change.
  */
 const FoliosLayout = () => {

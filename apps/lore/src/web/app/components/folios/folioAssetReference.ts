@@ -14,7 +14,7 @@
 export const folioAssetPath = (name: string): string =>
   // `encodeURIComponent` leaves parentheses alone — they are legal URI
   // sub-delimiters — but a bare `)` closes a markdown link, so they have to
-  // go too. This is not a corner case: `FolioBlobService.autoSuffix`
+  // go too. This is not a corner case: `FolioAttachmentService.autoSuffix`
   // produces `name (1).ext` for every name collision, so the commonest
   // generated name is precisely the one that breaks without this.
   `assets/${encodeURIComponent(name).replace(/\(/g, "%28").replace(/\)/g, "%29")}`;

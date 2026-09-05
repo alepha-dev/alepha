@@ -8,7 +8,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { BlobController } from "../src/api/controllers/BlobController.ts";
+import { FolioAttachmentController } from "../src/api/controllers/FolioAttachmentController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -23,9 +23,9 @@ const userDataSchema = z.object({
 /**
  * Direct access to the framework `files` table.
  *
- * A folio blob is an overlay on a framework file row, and `register` refuses
+ * A folio attachment is an overlay on a framework file row, and `register` refuses
  * a file that does not already exist in the `archive-blobs` bucket — so a
- * test that wants a blob has to put the underlying row there first. Going
+ * test that wants a attachment has to put the underlying row there first. Going
  * through the real upload endpoint would drag in multipart handling to prove
  * nothing this spec is about.
  */
@@ -38,7 +38,7 @@ interface TestContext {
   adminUserController: AdminUserController;
   projectController: ProjectController;
   folioController: FolioController;
-  blobController: BlobController;
+  attachmentController: FolioAttachmentController;
   testFiles: TestFiles;
   fakeProvider: FakeProvider;
 }
@@ -68,7 +68,7 @@ const setup = async (): Promise<TestContext> => {
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
     folioController: alepha.inject(FolioController),
-    blobController: alepha.inject(BlobController),
+    attachmentController: alepha.inject(FolioAttachmentController),
     testFiles: alepha.inject(TestFiles),
     fakeProvider: alepha.inject(FakeProvider),
   };
@@ -86,7 +86,7 @@ const createTestUser = async (
 };
 
 /**
- * Create the framework file row a blob will overlay, and return its id.
+ * Create the framework file row a attachment will overlay, and return its id.
  */
 const uploadedFile = async (
   ctx: TestContext,
@@ -95,7 +95,7 @@ const uploadedFile = async (
 ): Promise<string> => {
   const row = await ctx.testFiles.rows.create({
     bucket: "archive-blobs",
-    blobId: `blob-${name}-${crypto.randomUUID()}`,
+    blobId: `attachment-${name}-${crypto.randomUUID()}`,
     name,
     originalName: name,
     mimeType: "image/webp",
@@ -105,7 +105,7 @@ const uploadedFile = async (
   return row.id;
 };
 
-describe("folio blobs are scoped to one folio", () => {
+describe("folio attachments are scoped to one folio", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -116,7 +116,9 @@ describe("folio blobs are scoped to one folio", () => {
     await ctx.alepha.stop();
   });
 
-  it("registers a blob against the folio that owns it", async ({ expect }) => {
+  it("registers a attachment against the folio that owns it", async ({
+    expect,
+  }) => {
     const owner = await createTestUser(ctx);
     const project = await ctx.projectController.createProject.fetch(
       { body: { title: "Blob scope" } },
@@ -128,7 +130,7 @@ describe("folio blobs are scoped to one folio", () => {
     );
     const fileId = await uploadedFile(ctx, owner, "photo.webp");
 
-    const blob = await ctx.blobController.registerBlob.fetch(
+    const attachment = await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: { fileId, name: "photo.webp", folioId: folio.data.id },
@@ -136,7 +138,7 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
 
-    expect(blob.data.folioId).toBe(folio.data.id);
+    expect(attachment.data.folioId).toBe(folio.data.id);
   });
 
   it("lists only the attachments of the folio asked for", async ({
@@ -156,7 +158,7 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
 
-    await ctx.blobController.registerBlob.fetch(
+    await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: {
@@ -167,7 +169,7 @@ describe("folio blobs are scoped to one folio", () => {
       },
       { user: owner },
     );
-    await ctx.blobController.registerBlob.fetch(
+    await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: {
@@ -179,12 +181,14 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
 
-    const listed = await ctx.blobController.listBlobs.fetch(
+    const listed = await ctx.attachmentController.listAttachments.fetch(
       { params: { folioId: first.data.id } },
       { user: owner },
     );
 
-    expect(listed.data.map((blob) => blob.name)).toEqual(["a.webp"]);
+    expect(listed.data.map((attachment) => attachment.name)).toEqual([
+      "a.webp",
+    ]);
   });
 
   it("allows the same attachment name in two different folios", async ({
@@ -204,7 +208,7 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
 
-    const a = await ctx.blobController.registerBlob.fetch(
+    const a = await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: {
@@ -215,7 +219,7 @@ describe("folio blobs are scoped to one folio", () => {
       },
       { user: owner },
     );
-    const b = await ctx.blobController.registerBlob.fetch(
+    const b = await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: {
@@ -246,7 +250,7 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
 
-    await ctx.blobController.registerBlob.fetch(
+    await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: {
@@ -257,7 +261,7 @@ describe("folio blobs are scoped to one folio", () => {
       },
       { user: owner },
     );
-    const second = await ctx.blobController.registerBlob.fetch(
+    const second = await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: {
@@ -292,7 +296,7 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
     const fileId = await uploadedFile(ctx, owner, "photo.webp");
-    await ctx.blobController.registerBlob.fetch(
+    await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: { fileId, name: "photo.webp", folioId: folio.data.id },
@@ -300,7 +304,7 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
 
-    await ctx.blobController.renameBlob.fetch(
+    await ctx.attachmentController.renameAttachment.fetch(
       { params: { id: fileId }, body: { name: "diagram.webp" } },
       { user: owner },
     );
@@ -337,7 +341,7 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
     const fileId = await uploadedFile(ctx, owner, "shot (1).png");
-    await ctx.blobController.registerBlob.fetch(
+    await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: { fileId, name: "shot (1).png", folioId: folio.data.id },
@@ -345,7 +349,7 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
 
-    await ctx.blobController.renameBlob.fetch(
+    await ctx.attachmentController.renameAttachment.fetch(
       { params: { id: fileId }, body: { name: "final shot.png" } },
       { user: owner },
     );
@@ -370,7 +374,7 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
     const fileId = await uploadedFile(ctx, owner, "photo.webp");
-    await ctx.blobController.registerBlob.fetch(
+    await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: { fileId, name: "photo.webp", folioId: folio.data.id },
@@ -383,11 +387,11 @@ describe("folio blobs are scoped to one folio", () => {
       { user: owner },
     );
 
-    // Asserted on the blob itself rather than through `listBlobs`: that
+    // Asserted on the attachment itself rather than through `listAttachments`: that
     // endpoint resolves its folio first, so once the folio is gone it answers
     // 404 either way and would pass even if the row had survived.
     await expect(
-      ctx.blobController.getBlob.fetch(
+      ctx.attachmentController.getAttachment.fetch(
         { params: { id: fileId } },
         { user: owner },
       ),

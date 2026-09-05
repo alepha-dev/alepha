@@ -4,9 +4,9 @@ import { parseTypedReference } from "../shared/element/typedReference.ts";
 
 /**
  * Minimal attachment shape needed to resolve an `assets/<name>` reference.
- * Pulled from `BlobController.listBlobs` or `currentFolioBlobsAtom`.
+ * Pulled from `FolioAttachmentController.listAttachments` or `currentFolioAttachmentsAtom`.
  */
-export interface BlobRef {
+export interface AttachmentRef {
   /**
    * UUID — both PK and file id served at `/api/files/<uuid>`.
    */
@@ -75,7 +75,7 @@ export type BrokenWikiLinkReason =
   /**
    * An `assets/<name>` reference naming no attachment of the folio.
    */
-  | "blob-not-found"
+  | "attachment-not-found"
   | "feedback-not-found"
   | "release-not-found";
 
@@ -129,9 +129,9 @@ export interface FolioWikiLinkResolverInput {
   epics?: EpicRef[];
   /**
    * The folio's attachments, for `assets/<name>` references. Absent means
-   * every one of them is `blob-not-found`.
+   * every one of them is `attachment-not-found`.
    */
-  blobs?: BlobRef[];
+  attachments?: AttachmentRef[];
   /**
    * Same rule as `epics`: absent means every `#P` resolves to
    * `feedback-not-found`, and every `#R` to `release-not-found`.
@@ -156,7 +156,7 @@ export interface FolioWikiLinkResolver {
    * document, so `assets/photo.webp` has to mean something once unzipped
    * next to an `assets/` folder, with no Lore to resolve it.
    */
-  resolveBlobByName: (name: string) => BlobRef | undefined;
+  resolveAttachmentByName: (name: string) => AttachmentRef | undefined;
 }
 
 /**
@@ -172,13 +172,13 @@ const IMAGE_EXTENSIONS = new Set([
   "avif",
 ]);
 
-export const isImageBlob = (blob: BlobRef): boolean => {
-  if (blob.mime?.startsWith("image/")) return true;
-  const ext = blob.name.split(".").pop()?.toLowerCase();
+export const isImageAttachment = (attachment: AttachmentRef): boolean => {
+  if (attachment.mime?.startsWith("image/")) return true;
+  const ext = attachment.name.split(".").pop()?.toLowerCase();
   return !!ext && IMAGE_EXTENSIONS.has(ext);
 };
 
-export const formatBlobBytes = (bytes: number): string => {
+export const formatAttachmentBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -210,7 +210,7 @@ export const createFolioWikiLinkResolver = (
   input: FolioWikiLinkResolverInput,
 ): FolioWikiLinkResolver => {
   const { projectSlug, folios, quests } = input;
-  const blobs = input.blobs ?? [];
+  const attachments = input.attachments ?? [];
 
   const folioByShort = new Map<number, Folio>();
   for (const f of folios) folioByShort.set(f.shortId, f);
@@ -225,16 +225,19 @@ export const createFolioWikiLinkResolver = (
 
   /**
    * Built lazily and only for `assets/` references, so a document with none
-   * never pays for it. Case-insensitive because `FolioBlobService` enforces
+   * never pays for it. Case-insensitive because `FolioAttachmentService` enforces
    * uniqueness case-insensitively too — `Photo.webp` and `photo.webp` cannot
    * both exist on one folio, so folding the key cannot introduce ambiguity.
    */
-  let blobByName: Map<string, BlobRef> | undefined;
-  const resolveBlobByName = (name: string): BlobRef | undefined => {
-    blobByName ??= new Map(
-      blobs.map((blob) => [blob.name.trim().toLowerCase(), blob]),
+  let attachmentByName: Map<string, AttachmentRef> | undefined;
+  const resolveAttachmentByName = (name: string): AttachmentRef | undefined => {
+    attachmentByName ??= new Map(
+      attachments.map((attachment) => [
+        attachment.name.trim().toLowerCase(),
+        attachment,
+      ]),
     );
-    return blobByName.get(name.trim().toLowerCase());
+    return attachmentByName.get(name.trim().toLowerCase());
   };
 
   const brokenTarget = (
@@ -314,5 +317,5 @@ export const createFolioWikiLinkResolver = (
     }
   };
 
-  return { resolve, resolveBlobByName };
+  return { resolve, resolveAttachmentByName };
 };

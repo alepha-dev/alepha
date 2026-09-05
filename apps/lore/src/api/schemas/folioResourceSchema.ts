@@ -1,7 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { folios } from "../entities/folios.ts";
-import { hydratedBlobSchema } from "./hydratedBlobSchema.ts";
+import { hydratedFolioAttachmentSchema } from "./hydratedFolioAttachmentSchema.ts";
 import { linkSourceKindSchema } from "./linkSourceKindSchema.ts";
 import { linkTargetKindSchema } from "./linkTargetKindSchema.ts";
 
@@ -39,7 +39,7 @@ export const folioLinksSchema = z.object({
     }),
   ),
   // Inbound can come from any element that carries a body — a folio, a
-  // quest, an epic (and comments once they exist). `blob` is absent by
+  // quest, an epic (and comments once they exist). `attachment` is absent by
   // construction: it has bytes, not content, so nothing inside it links.
   inbound: z.array(
     z.object({
@@ -77,12 +77,12 @@ export const folioMetadataSchema = z.object({
   links: folioLinksSchema.optional(),
   path: folioPathSchema.optional(),
   /**
-   * The folio's attachments, same shape `BlobController.listBlobs`
-   * returns. Opt-in via `withBlobs=true` so the workspace gets them in
+   * The folio's attachments, same shape `FolioAttachmentController.listAttachments`
+   * returns. Opt-in via `withAttachments=true` so the workspace gets them in
    * the call that fetches the folio instead of a second round-trip it
    * could only start once the folio's `id` was known.
    */
-  blobs: z.array(hydratedBlobSchema).optional(),
+  attachments: z.array(hydratedFolioAttachmentSchema).optional(),
 });
 
 /**

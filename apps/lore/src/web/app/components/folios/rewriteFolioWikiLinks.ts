@@ -1,20 +1,20 @@
 import type { Folio } from "@/api/entities/folios.ts";
 
 import {
-  type BlobRef,
+  type AttachmentRef,
   BROKEN_HREF_PREFIX,
   createFolioWikiLinkResolver,
   type EpicRef,
   type FeedbackRef,
-  formatBlobBytes,
-  isImageBlob,
+  formatAttachmentBytes,
+  isImageAttachment,
   type QuestRef,
   type ReleaseRef,
 } from "./folioWikiLinkResolver.ts";
 import { outsideMarkdownCode } from "./markdownCodeSegments.ts";
 
 export {
-  type BlobRef,
+  type AttachmentRef,
   BROKEN_HREF_PREFIX,
   type EpicRef,
   type FeedbackRef,
@@ -44,7 +44,7 @@ export const rewriteFolioWikiLinks = (
   projectSlug: string,
   folios: Folio[],
   quests: QuestRef[],
-  blobs: BlobRef[] = [],
+  attachments: AttachmentRef[] = [],
   epics: EpicRef[] = [],
   feedback: FeedbackRef[] = [],
   releases: ReleaseRef[] = [],
@@ -59,7 +59,7 @@ export const rewriteFolioWikiLinks = (
     folios,
     quests,
     epics,
-    blobs,
+    attachments,
     feedback,
     releases,
   });
@@ -99,23 +99,27 @@ const rewriteSegment = (
     ? content.replace(
         /(!?)\[([^\]]*)\]\(assets\/([^)\n"]+?)(?:\s+"[^"]*")?\)/gi,
         (full, bang: string, label: string, name: string) => {
-          const blob = resolver.resolveBlobByName(decodeURIComponent(name));
-          if (!blob) {
+          const attachment = resolver.resolveAttachmentByName(
+            decodeURIComponent(name),
+          );
+          if (!attachment) {
             // A missing attachment is reported the same way a missing folio
             // is, rather than left to render as a broken-image icon.
-            return `[${escapeMarkdownLabel(full)}](${BROKEN_HREF_PREFIX}blob-not-found)`;
+            return `[${escapeMarkdownLabel(full)}](${BROKEN_HREF_PREFIX}attachment-not-found)`;
           }
-          const fileUrl = `/api/files/${blob.fileId}`;
+          const fileUrl = `/api/files/${attachment.fileId}`;
           // A plain link keeps the author's label whatever the type is —
           // only an EMBED of a non-image has to degrade, because there is no
           // image to show.
           if (!bang) return `[${label}](${fileUrl})`;
-          if (isImageBlob(blob)) {
-            return `![${escapeMarkdownLabel(label || blob.name)}](${fileUrl})`;
+          if (isImageAttachment(attachment)) {
+            return `![${escapeMarkdownLabel(label || attachment.name)}](${fileUrl})`;
           }
           const sizeSuffix =
-            blob.size != null ? ` (${formatBlobBytes(blob.size)})` : "";
-          return `[${escapeMarkdownLabel(`📎 ${blob.name}${sizeSuffix}`)}](${fileUrl})`;
+            attachment.size != null
+              ? ` (${formatAttachmentBytes(attachment.size)})`
+              : "";
+          return `[${escapeMarkdownLabel(`📎 ${attachment.name}${sizeSuffix}`)}](${fileUrl})`;
         },
       )
     : content;

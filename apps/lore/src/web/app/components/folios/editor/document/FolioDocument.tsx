@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 
 import type { Folio } from "@/api/entities/folios.ts";
 
-import { currentFolioBlobsAtom } from "../../../../atoms/currentFolioBlobsAtom.ts";
+import { currentFolioAttachmentsAtom } from "../../../../atoms/currentFolioAttachmentsAtom.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import type { ElementRef } from "../../../shared/element/elementRef.ts";
@@ -116,7 +116,7 @@ export interface FolioDocumentProps {
  */
 const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
-  const [blobs] = useStore(currentFolioBlobsAtom);
+  const [attachments] = useStore(currentFolioAttachmentsAtom);
   const [project] = useStore(currentProjectAtom);
 
   useFolioShortcuts(
@@ -126,16 +126,16 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   );
 
   const values = props.draft.values;
-  // The hover card resolves a blob preview from a precomputed list rather
+  // The hover card resolves a attachment preview from a precomputed list rather
   // than a fetch, so it needs the same rows the resolver got.
-  const hoverBlobs = useMemo(
+  const hoverAttachments = useMemo(
     () =>
-      blobs.map((b) => ({
+      attachments.map((b) => ({
         fileId: b.id,
         shortId: b.shortId,
         name: b.name,
       })),
-    [blobs],
+    [attachments],
   );
 
   // Absent on every project that has not opted in — the key is deliberately
@@ -224,7 +224,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
           <WikiLinkHoverProvider
             projectId={project?.id ?? 0}
             projectSlug={project?.slug ?? ""}
-            blobs={hoverBlobs}
+            attachments={hoverAttachments}
           >
             <LoreEditor
               element={props.element}
