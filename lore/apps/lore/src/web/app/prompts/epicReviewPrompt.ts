@@ -1,3 +1,5 @@
+import { formatReference } from "../components/shared/element/typedReference.ts";
+
 /**
  * What the epic-review prompt needs in order to name its subject.
  *
@@ -37,7 +39,7 @@ export interface EpicReviewPromptInput {
  * reads.
  */
 export const buildEpicReviewPrompt = (input: EpicReviewPromptInput): string => {
-  const ref = `#${input.epicNumber}`;
+  const ref = formatReference("epic", input.epicNumber);
   return [
     `Review the plan of epic ${ref} "${input.epicTitle}" in the Lore project "${input.projectSlug}".`,
     ``,

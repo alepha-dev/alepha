@@ -123,6 +123,12 @@ export default {
     "Aucune épopée ne correspond à cette référence.",
   "folios.wikilink.broken.blobNotFound":
     "Aucun fichier de folio ne correspond à cette référence.",
+  "folios.wikilink.broken.feedbackNotFound":
+    "Aucun retour ne correspond à cette référence.",
+  "folios.wikilink.broken.releaseNotFound":
+    "Aucune release ne correspond à cette référence.",
+  "folios.wikilink.release.open": "ouverte",
+  "folios.wikilink.release.released": "publiée",
   "folios.wikilink.broken.questFormWanted":
     "Le folio #$1 n'existe pas, mais la quête #$1 existe. Dans [[…]], #N désigne un folio ; écrivez plutôt [[quest:#$1]].",
 
@@ -290,7 +296,7 @@ export default {
   "board.filter.noRelease": "Sans version",
   "board.table.epic": "Épopée",
   "board.table.linked": "Liée",
-  "board.table.linked.tooltip": "Bloquée par la quête #$1",
+  "board.table.linked.tooltip": "Bloquée par une autre quête",
   "board.table.priority": "Priorité",
   "board.table.size": "Taille",
   "board.table.area": "Domaine",
@@ -368,7 +374,7 @@ export default {
   "quest.view.questline.open": "Ouvrir la chaîne",
   "quest.discussion.title": "Discussion",
   "quest.discussion.composer.placeholder":
-    "Laissez un commentaire. Mentionnez un membre avec @, liez un folio avec [[…]], ou pointez une autre quête avec #1204.",
+    "Laissez un commentaire. Mentionnez un membre avec @, liez un folio avec [[…]], ou pointez une autre quête avec #Q1204.",
   "quest.discussion.composer.markdown": "Markdown pris en charge",
   "quest.discussion.composer.submit": "Commenter",
   "quest.discussion.commented": "a commenté",
@@ -380,7 +386,7 @@ export default {
   "quest.discussion.empty": "Il ne s'est encore rien passé sur cette quête.",
   "quest.discussion.waived": 'Passé "$1" :',
   "quest.event.created": "a créé la quête",
-  "quest.event.createdFromFeedback": "a créé la quête depuis le retour #$1",
+  "quest.event.createdFromFeedback": "a créé la quête depuis un retour",
   "quest.event.assigned": "a pris la quête",
   "quest.event.unassigned": "s'est désassigné de la quête",
   "quest.event.completed": "a terminé la quête",
@@ -478,7 +484,7 @@ export default {
   "quest.view.objectives.waived": "Passé :",
   "quest.view.objectivesProgress": "$1 sur $2",
   "quest.view.updated": "modifié $1",
-  "quest.view.fromFeedback": "issu du retour #$1",
+  "quest.view.fromFeedback": "issu d'un retour",
   "quest.view.due": "Échéance $1 · $2",
   "quest.view.attach": "Joindre",
   "quest.view.attachHint":
@@ -759,7 +765,6 @@ export default {
   "release.filter.search": "Rechercher",
   "release.filter.state": "État",
   "release.filter.allStates": "Tous les états",
-  "release.filter.stateCount": "$1 états",
   "release.progress.none": "Rien de rattaché",
   "release.list.target": "Visée le $1",
   "release.list.noTarget": "Aucune date visée",
@@ -804,7 +809,7 @@ export default {
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Enregistrer dans les Folios",
   "release.changelog.live": "EN DIRECT · $1 quête(s)",
-  "release.changelog.frozen": "#$1 · FIGÉ LE $2",
+  "release.changelog.frozen": "$1 · FIGÉ LE $2",
   "release.changelog.empty":
     "Aucune quête terminée n'est rattachée à cette version.",
   "release.changelog.loading": "Chargement du journal…",
@@ -815,17 +820,20 @@ export default {
   "release.folio.description":
     "Le journal est enregistré comme folio de ce projet, lisible par tous les membres, et par tout agent via MCP.",
   "release.folio.title": "Titre du folio",
-  "release.folio.defaultTitle": "Version #$1 : $2",
+  "release.folio.defaultTitle": "Version $1 : $2",
   "release.folio.save": "Enregistrer",
   "release.folio.saved": "Journal enregistré dans les Folios",
   "release.folio.error": "Impossible d'enregistrer le journal.",
   "release.folio.summary":
-    "Journal de la version #$1 : $2 quête(s) enregistrée(s).",
+    "Journal de la version $1 : $2 quête(s) enregistrée(s).",
 
   "release.tab.overview": "Vue d'ensemble",
   "release.tab.contents": "Contenu",
+  "release.tab.flow": "Flux",
   "release.tab.changelog": "Changelog",
   "release.tab.artifacts": "Artefacts",
+  "release.flow.empty":
+    "Associez des épopées et des quêtes pour voir l'ordre de livraison.",
 
   "release.plate.frozen": "Figé à la publication",
   "release.meta.target": "visée le $1",
@@ -1260,7 +1268,7 @@ export default {
   "blights.action.deleteSelected": "Supprimer la sélection",
   "blights.action.viewStack": "Voir la stack trace",
   "blights.toast.resolved": "Fléau résolu",
-  "blights.toast.forwarded": "Quête #$1 créée depuis le fléau",
+  "blights.toast.forwarded": "Quête $1 créée depuis le fléau",
   "blights.toast.deleted": "Fléau supprimé",
   "blights.toast.deletedMany": "$1 fléaux supprimés",
   "blights.deleteConfirm": "Supprimer définitivement ce fléau ?",
@@ -1280,7 +1288,7 @@ export default {
   "blights.rules.toast.added": "Règle d'exclusion ajoutée",
   "blights.rules.toast.removed": "Règle d'exclusion supprimée",
   "blights.status.resolved": "Résolu",
-  "blights.status.quest": "Quête #$1",
+  "blights.status.quest": "Transmis à une quête",
 
   "sigils.title": "Applications",
   "sigils.empty":
@@ -1597,13 +1605,20 @@ export default {
   "epic.begin.title": "Démarrer cette épopée ?",
   "epic.begin.confirm":
     "Démarrer $1 libère ses quêtes dans le backlog, où le reste du projet peut les voir et les prendre.",
-  "epic.returnToPlanning.title": "Remettre cette épopée en préparation ?",
-  "epic.returnToPlanning.confirm":
-    "Remettre $1 en préparation retire à nouveau ses quêtes du backlog. Elles gardent leur statut ; elles cessent d'être listées.",
+  "epic.conclude.title": "Conclure cette épopée ?",
+  "epic.conclude.confirm":
+    "Conclure $1 est définitif. Elle ne pourra ni être rouverte ni revenir en planification. Ce qui reste à faire ira dans une nouvelle épopée qui dépend de celle-ci.",
+  "epic.begin.blocked": "Bloquée par l'épopée $1",
   "epic.status.actions.begin": "Commencer l'épopée",
   "epic.status.actions.conclude": "Conclure l'épopée",
-  "epic.status.actions.returnToPlanning": "Revenir à la planification",
-  "epic.status.actions.reopen": "Rouvrir l'épopée",
+  "epic.aside.predecessor": "Dépend de",
+  "epic.aside.predecessor.after": "Après l'épopée $1",
+  "epic.aside.predecessor.blocked": "Bloquée par l'épopée $1",
+  // Le bouton Accepter de la page de quête, retenu tant que l'épopée n'est pas active.
+  "quest.view.accept.epicPlanned":
+    "L'épopée $1 n'a pas commencé. Démarrez-la d'abord.",
+  "quest.view.accept.epicDone":
+    "L'épopée $1 est conclue. Créez une nouvelle épopée pour cette quête.",
   "epic.tab.overview": "Aperçu",
   "epic.tab.quests": "Quêtes",
   "epic.tab.flow": "Flux",
@@ -1627,6 +1642,10 @@ export default {
   "questline.state.ready": "Prête",
   "questline.state.waiting": "En attente",
   "questline.state.shelved": "Mise de côté",
+  "questline.zoom.label": "Zoom",
+  "questline.zoom.in": "Agrandir",
+  "questline.zoom.out": "Réduire",
+  "questline.zoom.fit": "Ajuster à la vue",
   "epic.description.title": "Description",
   "epic.description.empty": "Aucune description pour le moment.",
   "epic.folios.title": "Folios",

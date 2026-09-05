@@ -17,6 +17,7 @@ import {
   okSchema,
 } from "alepha/server";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
@@ -45,6 +46,7 @@ import {
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
+import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
@@ -134,6 +136,13 @@ export class QuestController {
    */
   security = $inject(ProjectSecurityService);
   epicVisibility = $inject(EpicVisibilityService);
+  /**
+   * The epic phase gate (epic #31): a quest can be worked only while its
+   * epic is `active`, and deleted only while it is `planned`. Every refusal
+   * and its wording is written on the service, once; the handlers below
+   * only say which verb they are.
+   */
+  epicWorkflow = $inject(EpicWorkflowService);
   openQuests = $inject(OpenQuestScope);
   fileService = $inject(FileService);
   questMapper = $inject(QuestResourceMapper);
@@ -283,7 +292,7 @@ export class QuestController {
     if (!allowed.includes(status)) {
       const expected = allowed.map((s) => `"${s}"`).join(" or ");
       throw new BadRequestError(
-        `Cannot ${action} quest #${quest.shortId}: it is "${status}", expected ${expected}.`,
+        `Cannot ${action} quest ${formatReference("quest", quest.shortId)}: it is "${status}", expected ${expected}.`,
       );
     }
 
@@ -521,7 +530,9 @@ export class QuestController {
     const rows = await this.epics
       .findMany({ where: { id: { inArray: unique } } })
       .catch(() => []);
-    return new Map(rows.map((row) => [row.id, `#${row.number}`]));
+    return new Map(
+      rows.map((row) => [row.id, formatReference("epic", row.number)]),
+    );
   }
 
   /**
@@ -1207,12 +1218,15 @@ export class QuestController {
       // Quests of a `planned` epic are specified but not released into the
       // backlog. This FILTERS; it never mutates a quest row.
       //
-      // Opt-out rather than unconditional, because MCP `quest_list`
-      // (`QuestTools.ts`) calls this same action with `includePlanned: true`
-      // — the spec (§5.3) requires it to stay ungated: an agent that files a
-      // quest into a planned epic must see it in its own next call, or the
-      // tool looks as though it silently failed. The UI never sets it, so
-      // its listing surfaces stay gated.
+      // Two ways past it, and both are deliberate. `includePlanned` is the
+      // explicit opt-out, set by the pickers that need the whole project
+      // (`EpicQuestPicker`, `QuestDependencyPicker`) and, since epic #31,
+      // offered by MCP `quest_list` as an optional parameter that defaults
+      // OFF, so the tool and the UI list the same backlog unless asked
+      // otherwise. `epic` is the implicit one: a caller addressing one epic
+      // is looking at that epic's own quests, planned or not, which is what
+      // lets an agent that just filed a quest into a planned epic read it
+      // back without any flag.
       //
       // `includePlanned` is client-settable and that is fine — every caller
       // has already passed the membership gate, so it exposes nothing the
@@ -1509,6 +1523,13 @@ export class QuestController {
     },
   });
 
+  /**
+   * Hand an accepted quest back to the backlog as "new".
+   *
+   * Deliberately NOT behind the epic phase gate (epic #31), for the reason
+   * `shelveQuest` is not: unassigning is the step before shelving, and both
+   * move a quest toward resolution rather than opening work.
+   */
   abandonQuest = $action({
     use: [
       $secure({ permissions: ["quest:update"] }),
@@ -1552,6 +1573,10 @@ export class QuestController {
    * Only quests still in "new" status can be shelved: an accepted quest
    * must be abandoned first, so that clearing the assignee, timer and
    * reminders stays an explicit act rather than a side-effect of shelving.
+   *
+   * Deliberately NOT behind the epic phase gate (epic #31). Shelving moves
+   * a quest toward resolution, and it is the only exit for a `new` quest
+   * sitting in a concluded epic from before that rule existed.
    */
   shelveQuest = $action({
     use: [
@@ -1607,6 +1632,9 @@ export class QuestController {
     },
     handler: async ({ params, user }) => {
       const { quest } = this.getQuestForTransition("unshelve", ["shelved"]);
+      // Re-opening work inside a concluded epic is refused; unshelving
+      // inside a planned one is allowed, since that edits an open plan.
+      await this.epicWorkflow.assertQuestWorkable(quest, "unshelve");
 
       quest.shelvedAt = undefined;
       quest.shelvedBy = undefined;
@@ -1641,6 +1669,11 @@ export class QuestController {
         "shelved",
       ]);
 
+      // Epic phase gate (epic #31), BEFORE the questline gate: a quest can
+      // be accepted only while its epic is active, and of the two reasons
+      // this is the one fixed by a single click somewhere else.
+      await this.epicWorkflow.assertQuestWorkable(quest, "accept");
+
       // Questline gate (Lore #32): refuse to accept while a non-null
       // predecessor is still in flight. The dependent quest stays
       // visible in the "new" lane — the UI flips its badge to
@@ -1651,7 +1684,7 @@ export class QuestController {
         });
         if (predecessor && !predecessor.completedAt) {
           throw new BadRequestError(
-            `Cannot accept quest: blocked by #${predecessor.shortId}`,
+            `Cannot accept quest: blocked by ${formatReference("quest", predecessor.shortId)}`,
           );
         }
       }
@@ -1721,6 +1754,10 @@ export class QuestController {
       const { quest, project } = this.getQuestForTransition("reopen", [
         "completed",
       ]);
+      // A concluded epic's quest stays closed: the board reaches this by
+      // dragging a card out of Done, and a done epic's cards ARE on the
+      // board (the backlog gate hides planned epics only).
+      await this.epicWorkflow.assertQuestWorkable(quest, "reopen");
 
       quest.completedAt = undefined;
       quest.completedBy = undefined;
@@ -1776,6 +1813,10 @@ export class QuestController {
         "shelved",
         "accepted",
       ]);
+
+      // Assigning makes a quest accepted without going through
+      // `acceptQuest`, so it answers to the same epic phase gate.
+      await this.epicWorkflow.assertQuestWorkable(quest, "assign");
 
       if (!(await this.security.isMemberById(quest.projectId, body.userId))) {
         throw new BadRequestError(
@@ -1984,6 +2025,10 @@ export class QuestController {
     },
     handler: async ({ params, body, user }) => {
       const { quest } = this.getQuestForTransition("complete", ["accepted"]);
+      // Unreachable once the clean-conclude rule holds (a done epic has no
+      // accepted quest), but rows that pre-date epic #31 can still be here,
+      // and the refusal has to be right for them too.
+      await this.epicWorkflow.assertQuestWorkable(quest, "complete");
 
       const now = this.dt.nowISOString();
 
@@ -1997,7 +2042,7 @@ export class QuestController {
         const target = objectives.find((o) => o.id === waiver.objectiveId);
         if (!target) {
           throw new BadRequestError(
-            `Cannot waive objective ${waiver.objectiveId}: quest #${quest.shortId} has no such objective.`,
+            `Cannot waive objective ${waiver.objectiveId}: quest ${formatReference("quest", quest.shortId)} has no such objective.`,
           );
         }
         if (target.completed) {
@@ -2209,7 +2254,7 @@ export class QuestController {
       ) {
         const last = quest.history.at(-1);
         throw new ConflictError(
-          `Quest #${quest.shortId} changed since you read it: its updatedAt is ${quest.updatedAt}, you passed ${body.expectedUpdatedAt}${
+          `Quest ${formatReference("quest", quest.shortId)} changed since you read it: its updatedAt is ${quest.updatedAt}, you passed ${body.expectedUpdatedAt}${
             last ? ` (last change: ${last.action})` : ""
           }. Re-read the quest before writing.`,
         );
@@ -2563,6 +2608,11 @@ export class QuestController {
           "Only the quest creator or project owner can delete this quest",
         );
       }
+
+      // The plan freeze (epic #31): a quest leaves a frozen plan by being
+      // shelved, never by being deleted, or "no quest leaves the plan" would
+      // hold against detach and not against delete. Free while planned.
+      await this.epicWorkflow.assertQuestDeletable(quest);
 
       // Clear dependents' `dependsOn` so the dependency graph does not keep
       // edges to a deleted quest. `null`, not `undefined`: the repository

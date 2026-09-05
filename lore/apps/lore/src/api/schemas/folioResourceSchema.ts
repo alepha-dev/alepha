@@ -34,6 +34,10 @@ export const folioLinksSchema = z.object({
       // display name (e.g. "diagram.png").
       title: z.string(),
       path: folioRefPathSchema.optional(),
+      // Releases only: what `/releases/:releaseTag` navigates by. Absent on
+      // every other kind, and on a release that has no tag, which the Links
+      // tab then shows without a link.
+      tag: z.string().optional(),
     }),
   ),
   // Inbound can come from any element that carries a body — a folio, a

@@ -148,20 +148,24 @@ test.describe("Releases", () => {
 
     const inEpicDone = await createQuest(page, projectId, `Done${t}`);
     const inEpicOpen = await createQuest(page, projectId, `Open${t}`);
-    for (const quest of [inEpicDone, inEpicOpen]) {
+    // The same quest reachable BOTH ways: in the release's epic AND named
+    // directly. It must still count once.
+    const both = await createQuest(page, projectId, `Both${t}`);
+    // Every quest goes in while the epic is planned, then the epic begins,
+    // then one of them is worked: since epic #31 the quest set freezes at
+    // Begin, and a quest can be accepted only inside an active epic. This
+    // seed used to accept inside a planned epic, which is now the refusal
+    // "Begin it first".
+    for (const quest of [inEpicDone, inEpicOpen, both]) {
       await post(page, `/api/attachQuest/${epic.id}`, { questId: quest.id });
     }
+    await post(page, `/api/setEpicStatus/${epic.id}`, { status: "active" });
     await completeQuest(page, inEpicDone.id);
 
     const loose = await createQuest(page, projectId, `Loose${t}`);
     await post(page, `/api/updateQuestById/${loose.id}`, {
       releaseId: first.id,
     });
-
-    // The same quest reachable BOTH ways: in the release's epic AND named
-    // directly. It must still count once.
-    const both = await createQuest(page, projectId, `Both${t}`);
-    await post(page, `/api/attachQuest/${epic.id}`, { questId: both.id });
     await post(page, `/api/updateQuestById/${both.id}`, {
       releaseId: first.id,
     });
@@ -186,6 +190,40 @@ test.describe("Releases", () => {
 
     // The plate reads the same release from the store, with no round-trip.
     await expect(page.getByText("0.1.0").first()).toBeVisible();
+
+    // ── The Flow tab draws the order the epics ship in ────────────────────
+    // A second epic in the same release, after the first. The edge between
+    // the two clusters exists only if `getReleaseContents` projects
+    // `dependsOn`, which its response schema alone decides: the entity has
+    // carried the column all along and drew nothing. The follow-up holds no
+    // quest, so the counts asserted below are untouched.
+    const followUp = await post<{ id: number; number: number }>(
+      page,
+      `/api/createEpic/${projectId}`,
+      { title: "The follow-up" },
+    );
+    await post(page, `/api/updateEpic/${followUp.id}`, {
+      releaseId: first.id,
+      dependsOn: epic.id,
+    });
+    await page.goto(`/${slug}/releases/0.1.0?tab=flow`);
+    await expect(
+      page.getByRole("link", { name: /The big feature/ }),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByRole("link", { name: /The follow-up/ }),
+    ).toBeVisible();
+    // A quest inside an epic and the loose one both draw as cards, and a
+    // card here is a link to the quest, not a dialog.
+    await expect(
+      page.getByRole("link", { name: `#Q${inEpicOpen.shortId} Open${t}` }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: `#Q${loose.shortId} Loose${t}` }),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="release-flow-edges"] path'),
+    ).not.toHaveCount(0);
 
     // ── Publishing freezes the changelog AND the counts ───────────────────
     await post(page, `/api/publishRelease/${first.id}`, {});
@@ -513,10 +551,14 @@ test.describe("Releases", () => {
       // so the split became a derived filter over the same two values,
       // because nothing pauses.
       //
-      // ⚠️ A MULTI-select since feedback #2092, which changed how this step
-      // has to be driven: the popup stays open after a pick, and a second
-      // pick ADDS rather than replaces. Driving it as a single-select left
-      // both values selected and the assertion saw all five rows.
+      // ⚠️ This step has now been written for both arities, so the history
+      // is worth carrying. It was a scalar; feedback #2092 made it a MULTI
+      // because a clearable scalar drew "All states" as a third pickable
+      // row; feedback #2098 deleted that row from `control-select` itself
+      // and the field went back to a scalar, because open and released are
+      // exhaustive and mutually exclusive - picking both was the same query
+      // as picking neither. So a second pick REPLACES again, and each one
+      // needs the popup reopened.
       //
       // The only combobox on the page: the toolbar's other filter is a text
       // input, and the table's page-size picker only appears once there is
@@ -526,20 +568,24 @@ test.describe("Releases", () => {
       await page.getByRole("option", { name: "Released" }).click();
       await expect.poll(tagColumn, { timeout: 15_000 }).toEqual(["0.28.0"]);
 
-      // Both selected is the same set as neither, which is what a two-value
-      // multi-select buys and costs. Asserted rather than avoided: it is the
-      // behaviour a reader can reach, so it should be one somebody chose.
+      // Replaces rather than adds, which is the whole point of the arity:
+      // there is no reachable state that means "open and released" and so
+      // none that says "2 states" while meaning "no filter".
+      await stateFilter.click();
+      await page.getByRole("option", { name: "Open" }).click();
+      await expect
+        .poll(tagColumn, { timeout: 15_000 })
+        .toEqual(["0.9.0", "0.29.0", "1.0.0", "demo-1"]);
+
+      // Back to every state by pressing the chosen row again - the only way
+      // back now, and the reason #2098 could delete the clear row at all.
+      // The trigger carries the label that row used to.
+      await stateFilter.click();
       await page.getByRole("option", { name: "Open" }).click();
       await expect
         .poll(tagColumn, { timeout: 15_000 })
         .toEqual(["0.9.0", "0.28.0", "0.29.0", "1.0.0", "demo-1"]);
-
-      // Deselecting leaves the other one, with no "All states" row involved -
-      // that row is what #2092 was about, and a multi-select has none.
-      await page.getByRole("option", { name: "Released" }).click();
-      await expect
-        .poll(tagColumn, { timeout: 15_000 })
-        .toEqual(["0.9.0", "0.29.0", "1.0.0", "demo-1"]);
+      await expect(stateFilter).toContainText("All states");
     });
   });
 });

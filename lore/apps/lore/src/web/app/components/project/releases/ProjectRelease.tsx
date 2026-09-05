@@ -11,7 +11,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
-import { Gauge, ListTree, Package, ScrollText } from "lucide-react";
+import { Gauge, ListTree, Package, ScrollText, Workflow } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
@@ -23,12 +23,14 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import ReleaseArtifactsTab from "./ReleaseArtifactsTab.tsx";
 import ReleaseChangelogPanel from "./ReleaseChangelogPanel.tsx";
 import ReleaseContents, {
   type ReleaseContentsData,
 } from "./ReleaseContents.tsx";
 import ReleaseEditSheet from "./ReleaseEditSheet.tsx";
+import ReleaseFlow from "./ReleaseFlow.tsx";
 import ReleaseOverviewTab from "./ReleaseOverviewTab.tsx";
 import ReleasePlate from "./ReleasePlate.tsx";
 import ReleaseSaveToFolioDialog from "./ReleaseSaveToFolioDialog.tsx";
@@ -39,18 +41,20 @@ interface ChangelogState {
   stats: { questCount: number; areaCount: number; contributorCount: number };
 }
 
-type TabKey = "overview" | "contents" | "changelog" | "artifacts";
+type TabKey = "overview" | "contents" | "flow" | "changelog" | "artifacts";
 
 /**
- * One release: what it is, how far along it is, what is in it, what it will
- * say when it ships, and what has been built against its tag.
+ * One release: what it is, how far along it is, what is in it, what order it
+ * ships in, what it will say when it ships, and what has been built against
+ * its tag.
  *
- * A full-width plate over four tabs. It was one `max-w-4xl` scrolling column -
+ * A full-width plate over five tabs. It was one `max-w-4xl` scrolling column -
  * hero, contents, a permanently-open edit card, then a `min-h-100` changelog
  * panel - so "what is left before this ships" meant scrolling past three
  * panels, and there was nowhere to put anything new. Editing moved into a
  * dialog and the three panels became tabs, which is what made room for the
- * fourth.
+ * fourth, and then for the Flow beside Contents: the two are one membership
+ * seen twice, as a list and as a map.
  *
  * Resolved from `currentReleasesAtom` rather than fetched by tag: the project
  * loader already holds every release with its rollup, so the page opens
@@ -239,7 +243,7 @@ const ProjectRelease = () => {
           content: changelog.markdown,
           summary: tr("release.folio.summary", {
             args: [
-              release.tag ?? String(release.number),
+              release.tag ?? formatReference("release", release.number),
               String(changelog.stats.questCount),
             ],
           }) as string,
@@ -288,6 +292,11 @@ const ProjectRelease = () => {
         : undefined,
     },
     {
+      key: "flow",
+      label: String(tr("release.tab.flow")),
+      icon: Workflow,
+    },
+    {
       key: "changelog",
       label: String(tr("release.tab.changelog")),
       icon: ScrollText,
@@ -308,7 +317,9 @@ const ProjectRelease = () => {
       onSelect={(key) => setTab(key as TabKey)}
       // The changelog owns its own scroll region - it has a sticky toolbar and
       // a reading measure - so the layout must not wrap it in a second one.
-      scroll={tab !== "changelog"}
+      // The Flow owns its viewport: it pans and zooms instead of scrolling,
+      // and a scroll region around it would give the wheel two things to do.
+      scroll={tab !== "changelog" && tab !== "flow"}
       plate={
         <ReleasePlate
           release={release}
@@ -326,7 +337,7 @@ const ProjectRelease = () => {
             published
               ? tr("release.changelog.frozen", {
                   args: [
-                    release.tag ?? String(release.number),
+                    release.tag ?? formatReference("release", release.number),
                     String(changelog?.stats.questCount ?? 0),
                   ],
                 })
@@ -365,6 +376,7 @@ const ProjectRelease = () => {
               onChanged={() => void reloadAll()}
             />
           )}
+          {tab === "flow" && <ReleaseFlow contents={contents} />}
         </>
       )}
 
@@ -390,7 +402,10 @@ const ProjectRelease = () => {
           </DialogHeader>
           <ReleaseSaveToFolioDialog
             defaultTitle={tr("release.folio.defaultTitle", {
-              args: [release.tag ?? String(release.number), release.title],
+              args: [
+                release.tag ?? formatReference("release", release.number),
+                release.title,
+              ],
             })}
             saving={folioSaving}
             onConfirm={handleSaveToFolio}

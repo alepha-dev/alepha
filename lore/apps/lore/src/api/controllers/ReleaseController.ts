@@ -14,6 +14,8 @@ import {
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
+import { epics } from "../entities/epics.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { type Release, releases } from "../entities/releases.ts";
 import { compareReleaseTags } from "../releaseOrder.ts";
@@ -450,6 +452,13 @@ export class ReleaseController {
             number: z.integer(),
             title: z.string(),
             status: z.string(),
+            /**
+             * The predecessor epic's id, when set. The release Flow draws
+             * the edge between two clusters from it; nothing else here
+             * reads it. The same field-list rule as the quest row: absent
+             * from this schema, the entity's column serializes nothing.
+             */
+            dependsOn: epics.schema.shape.dependsOn,
             completed: z.integer(),
             total: z.integer(),
             quests: z.array(releaseContentQuestSchema),
@@ -488,6 +497,7 @@ export class ReleaseController {
             number: epic.number,
             title: epic.title,
             status: epic.status,
+            dependsOn: epic.dependsOn,
             completed: own.filter((quest) => quest.completedAt != null).length,
             total: own.length,
             quests: [
@@ -513,6 +523,7 @@ export class ReleaseController {
     title: quest.title,
     area: quest.area,
     priority: quest.priority,
+    dependsOn: quest.dependsOn,
     completedAt: quest.completedAt,
     acceptedAt: quest.acceptedAt,
     shelvedAt: quest.shelvedAt,
@@ -713,7 +724,7 @@ export class ReleaseController {
     for (const group of groups) {
       lines.push(
         group.kind === "epic"
-          ? `## #${group.ref} ${group.name}`
+          ? `## ${group.ref != null ? formatReference("epic", group.ref) : ""} ${group.name}`
           : `## ${group.name}`,
       );
       lines.push("");

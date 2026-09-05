@@ -13,6 +13,10 @@ import type {
 import type { AppRouter } from "../../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
+import {
+  formatReference,
+  isReferenceKind,
+} from "../../../shared/element/typedReference.ts";
 
 export interface FolioLinksTabProps {
   /**
@@ -111,7 +115,9 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
               <span className="w-full truncate text-left">{ref.title}</span>
             </span>
             <span className="folio-mono text-muted-foreground shrink-0 text-[10px]">
-              {KIND_PREFIX[ref.kind] ?? ""}#{ref.shortId}
+              {isReferenceKind(ref.kind)
+                ? formatReference(ref.kind, ref.shortId)
+                : ""}
             </span>
           </>
         );
@@ -125,7 +131,17 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
         // comment backlink would render as a link to a folio whose id it
         // merely shares the shape of. A row that goes nowhere is the honest
         // placeholder until comments have a route.
-        if (ref.kind === "blob" || ref.kind === "comment") {
+        //
+        // `feedback` has no page of its own, and a `release` with no tag has
+        // no URL either (`/releases/:releaseTag`), so both join the plain
+        // row. A tagged release navigates below.
+        const releaseTag = "tag" in ref ? ref.tag : undefined;
+        if (
+          ref.kind === "blob" ||
+          ref.kind === "comment" ||
+          ref.kind === "feedback" ||
+          (ref.kind === "release" && !releaseTag)
+        ) {
           return (
             <li key={`${ref.kind}-${ref.shortId}`}>
               <div className="text-muted-foreground/70 flex w-full items-center gap-2 px-2 py-1.5 text-sm">
@@ -141,12 +157,22 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
             ? "projectQuest"
             : ref.kind === "epic"
               ? "projectEpic"
-              : "projectFoliosFolio";
+              : ref.kind === "release"
+                ? "projectRelease"
+                : "projectFoliosFolio";
         // Every element route names its param differently, and the router
         // merges the CURRENT route's params before yours — so passing the
         // wrong name silently inherits the open folio's id instead of
-        // erroring. See `AppRouter`'s note on `:epicNumber`.
-        const idParam = ref.kind === "epic" ? "epicNumber" : "shortId";
+        // erroring. See `AppRouter`'s note on `:epicNumber`. A release is
+        // addressed by its tag, not its number.
+        const idParam =
+          ref.kind === "epic"
+            ? "epicNumber"
+            : ref.kind === "release"
+              ? "releaseTag"
+              : "shortId";
+        const idValue =
+          ref.kind === "release" ? String(releaseTag) : String(ref.shortId);
         return (
           <li key={`${ref.kind}-${ref.shortId}`}>
             <Button
@@ -158,7 +184,7 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
                   href={router.path(route, {
                     params: {
                       projectSlug,
-                      [idParam]: String(ref.shortId),
+                      [idParam]: idValue,
                     },
                   })}
                 />
@@ -196,16 +222,3 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
 };
 
 export default FolioLinksTab;
-
-/**
- * One-letter disambiguator before the number in a link row, because the
- * numbers of different kinds overlap freely — folio #3 and epic #3 both
- * exist. A folio takes no prefix: it is what `[[…]]` means unqualified, so
- * a bare `#3` reads as one for the same reason the syntax does.
- */
-const KIND_PREFIX: Record<string, string> = {
-  quest: "Q",
-  comment: "C",
-  epic: "E",
-  blob: "F",
-};

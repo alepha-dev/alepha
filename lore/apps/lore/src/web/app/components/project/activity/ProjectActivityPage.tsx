@@ -150,7 +150,13 @@ const ProjectActivityPage = () => {
     // open straight into their toolbar (feedback #2090). If that pattern is
     // ever revisited the answer is a visually-hidden heading, not this one
     // back.
-    <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
+    // ⚠️ `p-4` flat, with no `md:p-6`. This page was the only table page
+    // whose padding scaled with the viewport, so above `md` it sat 8px
+    // further from the edge than Epics, Releases, Blights and Apps, which is
+    // what made it read as random rather than as a rule (feedback #2099).
+    // Below `md` the two already agreed, which is why it was invisible in a
+    // narrow window. Epics is the baseline the report named.
+    <div className="flex min-h-0 flex-1 flex-col p-4">
       <AlephaTable<ProjectActivityRow>
         className="min-h-0 flex-1"
         persistenceKey={`lor.activity.${project.id}`}

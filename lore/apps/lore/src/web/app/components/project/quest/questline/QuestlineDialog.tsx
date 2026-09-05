@@ -6,6 +6,7 @@ import {
 
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 
+import { formatReference } from "../../../shared/element/typedReference.ts";
 import LazyQuestView from "../LazyQuestView.tsx";
 import type { QuestlineNode } from "./questlineLayout.ts";
 
@@ -13,7 +14,7 @@ export interface QuestlineDialogProps {
   /**
    * The quest on show, or `null` when the dialog is closed.
    */
-  node: QuestlineNode | null;
+  node: QuestlineNode<QuestResource> | null;
   onClose: () => void;
   onQuestChange: (quest: QuestResource) => void;
 }
@@ -82,7 +83,7 @@ const QuestlineDialog = (props: QuestlineDialogProps) => {
         {node && (
           <>
             <DialogTitle className="sr-only">
-              #{node.quest.shortId} {node.quest.title}
+              {formatReference("quest", node.quest.shortId)} {node.quest.title}
             </DialogTitle>
 
             {/*

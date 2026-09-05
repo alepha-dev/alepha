@@ -29,7 +29,9 @@ const quest = (
   }) as unknown as QuestResource;
 
 describe("QuestlineLayout", () => {
-  const layout = new QuestlineLayout();
+  const layout = new QuestlineLayout<QuestResource>(
+    (quest) => quest.metadata.status,
+  );
 
   describe("shape", () => {
     it("puts every quest of a linear chain on one row", () => {

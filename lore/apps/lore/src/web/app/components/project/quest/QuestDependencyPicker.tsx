@@ -22,6 +22,8 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
+
 export interface QuestDependencyPickerProps {
   projectId: number;
   /**
@@ -72,7 +74,8 @@ const QuestDependencyPicker = (props: QuestDependencyPickerProps) => {
   }, [props.projectId, props.excludeQuestId]);
 
   const selected = quests.find((q) => q.id === props.value);
-  const labelOf = (q: QuestResource) => `#${q.shortId} — ${q.title}`;
+  const labelOf = (q: QuestResource) =>
+    `${formatReference("quest", q.shortId)} - ${q.title}`;
 
   return (
     <div className="flex items-center gap-2">

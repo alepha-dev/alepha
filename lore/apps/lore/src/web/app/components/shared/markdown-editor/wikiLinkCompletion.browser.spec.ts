@@ -9,25 +9,24 @@ const suggestions: WikiLinkSuggestion[] = [
   {
     key: "folio:1",
     kind: "folio",
-    token: "Lore vocabulary",
+    token: "#F2",
     label: "Lore vocabulary",
-    hint: "#2",
+    hint: "#F2",
   },
   {
     key: "folio:2",
     kind: "folio",
-    token: "Deploy runbook",
+    token: "#F7",
     label: "Deploy runbook",
-    hint: "#7",
+    hint: "#F7",
   },
   {
     key: "quest:19",
     kind: "quest",
-    token: "quest#19",
+    token: "#Q19",
     label: "Fix the tree",
-    hint: "#19",
+    hint: "#Q19",
   },
-  { key: "blob:3", kind: "blob", token: "blob:#3", label: "diagram.webp" },
 ];
 
 /**
@@ -50,7 +49,7 @@ describe("createWikiLinkCompletion", () => {
   });
 
   it("offers everything right after [[", () => {
-    expect(source(contextAt("see [["))?.options).toHaveLength(4);
+    expect(source(contextAt("see [["))?.options).toHaveLength(3);
   });
 
   it("filters on the typed query, case-insensitively", () => {
@@ -59,16 +58,16 @@ describe("createWikiLinkCompletion", () => {
     expect(result?.options.map((o) => o.label)).toEqual(["Deploy runbook"]);
   });
 
-  it("matches a quest by its token as well as its label", () => {
-    const result = source(contextAt("see [[quest#19"));
+  it("matches a quest by its typed token as well as its label", () => {
+    const result = source(contextAt("see [[#q19"));
 
     expect(result?.options.map((o) => o.label)).toEqual(["Fix the tree"]);
   });
 
-  it("applies the token and closes the brackets", () => {
+  it("applies the typed token and closes the brackets", () => {
     const result = source(contextAt("see [[depl"));
 
-    expect(result?.options[0].apply).toBe("Deploy runbook]]");
+    expect(result?.options[0].apply).toBe("#F7]]");
   });
 
   it("anchors the replacement after the opening brackets", () => {
@@ -115,6 +114,6 @@ describe("createWikiLinkCompletion", () => {
 
     current = suggestions;
 
-    expect(live(contextAt("[["))?.options).toHaveLength(4);
+    expect(live(contextAt("[["))?.options).toHaveLength(3);
   });
 });

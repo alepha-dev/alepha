@@ -172,7 +172,7 @@ describe("Lore MCP — blights", () => {
   });
 
   it("should forward a blight into a quest and close it", async () => {
-    const { probe, blightTools, project, call } = await setup();
+    const { probe, blightTools, questTools, project, call } = await setup();
     const filed = await fileBlight(probe, project.id);
 
     const res = await call(blightTools.blight_forward, {
@@ -181,6 +181,10 @@ describe("Lore MCP — blights", () => {
     });
 
     expect(res.questShortId).toBeGreaterThan(0);
+    // A forwarded quest is LOOSE: `QuestService.createQuest` takes no epic,
+    // so the plan freeze (epic #31) can never refuse this path.
+    const quest = await call(questTools.quest_get, { id: res.questId });
+    expect(quest.epic).toBeUndefined();
     const after = await call(blightTools.blight_list, {
       project: project.id,
     });

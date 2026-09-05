@@ -26,6 +26,7 @@ import { useState } from "react";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import { compareReleaseTags } from "@/api/releaseOrder.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import { QUEST_RELEASE_NONE } from "@/api/schemas/questReleaseFilter.ts";
 import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
@@ -34,10 +35,16 @@ import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { settleBulk } from "../../shared/bulkOutcome.ts";
+import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import { useBulkReport } from "../../shared/useBulkReport.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
-import { STATUS_ICONS, STATUS_LABEL_KEYS, STATUS_TONE } from "./epicStatus.ts";
+import {
+  epicBlockedBy,
+  STATUS_ICONS,
+  STATUS_LABEL_KEYS,
+  STATUS_TONE,
+} from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
 import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 
@@ -53,6 +60,20 @@ import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 const epicsFiltersSchema = z.object({
   search: z.string().optional(),
   status: z.array(z.enum(["planned", "active", "done"])).optional(),
+  /**
+   * Release ids as strings, plus the `QUEST_RELEASE_NONE` sentinel, exactly
+   * like the Quests table's (feedback #2102).
+   *
+   * ⚠️ Strings rather than numbers even though a release id is an integer:
+   * the sentinel shares the list, which is what lets "unassigned, or 0.29.0"
+   * be one selection. Two fields would AND where a multi-select ORs.
+   *
+   * Unlike the Quests table's, this one never leaves the browser -
+   * `getEpics` answers with the project's whole list, so the predicate sits
+   * beside `search` and `status` in `fetchEpics` rather than in a query
+   * parameter.
+   */
+  release: z.array(z.string()).optional(),
 });
 
 /**
@@ -69,13 +90,15 @@ const epicsFiltersSchema = z.object({
  * (this comment used to say the menu offers Delete and nothing else), and
  * it is a deliberate reversal rather than drift.
  *
- * Only Begin, out of `EpicStatusControl`'s four verbs, and the reason is
+ * Only Begin, out of `EpicStatusControl`'s two verbs, and the reason is
  * what you are doing when you are looking at this page. Scanning a backlog
  * and starting the next thing is a list-shaped action. Concluding an epic
- * is a judgement about whether its quests are actually finished, and
- * Reopen and Return to Planning are corrections: all three want the epic's
- * own page, where its progress is in front of you. A row menu that carried
- * all four would be the detail page's control, drawn worse.
+ * is a judgement about whether its quests are actually finished, and since
+ * epic #31 it is final, so it wants the epic's own page, where its progress
+ * is in front of you. (Reopen and Return to Planning were the other two
+ * verbs until epic #31 made the lifecycle a one-way ratchet.) Begin is
+ * disabled here with the blocking epic named when the predecessor is not
+ * done, the same way the detail page's button is.
  *
  * The label comes from `epic.status.actions.begin`, the same key the detail
  * page's button uses, so the two surfaces cannot come to call it different
@@ -154,6 +177,14 @@ const ProjectEpics = () => {
 
     const statuses =
       (filters?.status as EpicResource["status"][] | undefined) ?? [];
+    const picked = (filters?.release as string[] | undefined) ?? [];
+    // The selections OR together, and the sentinel is one of them: an epic
+    // matches if it is attached to a picked release, or if "No release" is
+    // picked and it is attached to nothing.
+    const wantsUnattached = picked.includes(QUEST_RELEASE_NONE);
+    const wantedIds = new Set(
+      picked.filter((v) => v !== QUEST_RELEASE_NONE).map(Number),
+    );
     const needle = String(filters?.search ?? "")
       .trim()
       .toLowerCase();
@@ -162,11 +193,22 @@ const ProjectEpics = () => {
         if (statuses.length > 0 && !statuses.includes(epic.status)) {
           return false;
         }
+        if (picked.length > 0) {
+          // `!= null` covers both spellings of "not attached" and narrows
+          // the id in the same breath, so no cast is needed here.
+          const match =
+            epic.releaseId != null
+              ? wantedIds.has(epic.releaseId)
+              : wantsUnattached;
+          if (!match) return false;
+        }
         if (!needle) return true;
+        // `#E3`, `#3` and `3` all reach the number; `needle` is lowercased,
+        // so the letter is.
         return (
           epic.title.toLowerCase().includes(needle) ||
           epic.description.toLowerCase().includes(needle) ||
-          String(epic.number) === needle.replace(/^#/, "")
+          String(epic.number) === needle.replace(/^#e?/, "")
         );
       }),
       sort,
@@ -206,6 +248,36 @@ const ProjectEpics = () => {
   // survives a delete points at rows that no longer exist. `ctx.refresh()`
   // is also what repaints the sidebar's planned-epic badge, since
   // `fetchEpics` pushes that count on every fetch.
+  /**
+   * Every release, published included, led by a sentinel.
+   *
+   * ⚠️ Read this beside the bulk `Add to release` menu below, which filters
+   * the SAME list the opposite way. The two rules are genuinely opposite and
+   * that is why this list is built here rather than shared:
+   *
+   * - a FILTER reads history, so hiding what has shipped would leave the
+   *   table unable to answer "what went into 0.28.0";
+   * - the MENU is a picker for a write, and `ReleaseAttachmentService`
+   *   refuses a published release server-side, so an entry for one could
+   *   only ever fail.
+   *
+   * "No release" leads, because "which epics are still unassigned" is the
+   * question a release planner asks most and every option being a release
+   * left it unanswerable. Named that rather than "None", which in a filter
+   * reads as "no filter". Same two decisions the Quests table already made
+   * (feedback #2102).
+   */
+  const releaseOptions = [
+    {
+      value: QUEST_RELEASE_NONE,
+      label: String(tr("board.filter.noRelease")),
+    },
+    ...(releases ?? []).map((release) => ({
+      value: String(release.id),
+      label: release.tag ?? release.title,
+    })),
+  ];
+
   const bulkActions: Array<
     BulkAction<EpicResource> | BulkMenuAction<EpicResource>
   > = [];
@@ -326,6 +398,29 @@ const ProjectEpics = () => {
                   inputProps={{ "aria-label": tr("epic.filter.status") }}
                 />
               </FilterSlot>
+              {/* Hidden until the project has a release, the way the Quests
+                  table hides it: with none, the only option would be the
+                  sentinel, and a filter offering one value that matches
+                  everything is a control with nothing to do. */}
+              {(releases ?? []).length > 0 && (
+                <FilterSlot>
+                  <Control
+                    input={form.input.release}
+                    label=""
+                    clearable
+                    icon={Flag}
+                    clearLabel={tr("board.filter.allReleases")}
+                    countLabel={(n) =>
+                      String(
+                        tr("board.filter.releaseCount", { args: [String(n)] }),
+                      )
+                    }
+                    triggerClassName="w-full"
+                    items={releaseOptions}
+                    inputProps={{ "aria-label": tr("board.filter.release") }}
+                  />
+                </FilterSlot>
+              )}
             </>
           ),
         }}
@@ -387,12 +482,12 @@ const ProjectEpics = () => {
                   })}
                   onClick={(e) => e.stopPropagation()}
                   className="truncate text-sm font-medium"
-                  title={`#${epic.number} - ${epic.title}`}
+                  title={`${formatReference("epic", epic.number)} - ${epic.title}`}
                 >
                   {/* The number carries the title's own colour: it is part
                       of the name, not an annotation on it. Only the
                       separator is muted. */}
-                  #{epic.number}{" "}
+                  {formatReference("epic", epic.number)}{" "}
                   <span className="text-muted-foreground">-</span> {epic.title}
                 </Link>
                 {epic.description ? (
@@ -462,7 +557,21 @@ const ProjectEpics = () => {
                 },
                 {
                   icon: Play,
-                  label: tr("epic.status.actions.begin"),
+                  // `dependsOn` is a gate since epic #31: Begin is refused
+                  // while the predecessor is not done. The entry stays on the
+                  // row, disabled, and its label names the blocking epic, so
+                  // the reason sits where the click would have been rather
+                  // than in a 400 after it.
+                  label:
+                    epicBlockedBy(epic) !== undefined
+                      ? String(
+                          tr("epic.begin.blocked", {
+                            args: [String(epicBlockedBy(epic))],
+                          }),
+                        )
+                      : tr("epic.status.actions.begin"),
+                  disabled: (row: EpicResource) =>
+                    epicBlockedBy(row) !== undefined,
                   onClick: async (
                     row: EpicResource,
                     { refresh }: { refresh: () => void },

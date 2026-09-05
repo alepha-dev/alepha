@@ -21,6 +21,8 @@ import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
+
 export interface EpicFolioPickerProps {
   projectId: number;
   /**
@@ -75,14 +77,14 @@ const EpicFolioPicker = (props: EpicFolioPickerProps) => {
               {available.map((folio) => (
                 <CommandItem
                   key={folio.id}
-                  value={`#${folio.shortId} ${folio.title}`}
+                  value={`${formatReference("folio", folio.shortId)} ${folio.title}`}
                   onSelect={() => {
                     props.onAttach(folio.id);
                     setOpen(false);
                   }}
                 >
                   <span className="text-muted-foreground shrink-0 font-mono text-xs">
-                    #{folio.shortId}
+                    {formatReference("folio", folio.shortId)}
                   </span>
                   <span className="truncate">{folio.title}</span>
                 </CommandItem>
