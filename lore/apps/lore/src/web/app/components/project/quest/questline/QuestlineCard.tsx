@@ -1,4 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
+import { Link } from "alepha/react/router";
 import { Archive, Check, CircleDot, Lock, Play } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -8,17 +9,29 @@ import { formatReference } from "../../../shared/element/typedReference.ts";
 import {
   CARD_H,
   CARD_W,
+  type QuestlineItem,
   type QuestlineNode,
   type QuestlineState,
 } from "./questlineLayout.ts";
 
-export interface QuestlineCardProps {
-  node: QuestlineNode;
+export interface QuestlineCardProps<T extends QuestlineItem> {
+  node: QuestlineNode<T>;
   /**
    * Tailwind class for the area dot, resolved from `areas.color`.
    */
   areaDotClass: string;
-  onOpen: (node: QuestlineNode) => void;
+  /**
+   * Opens the quest over the map. The epic's Flow passes this, and the card
+   * is a button.
+   */
+  onOpen?: (node: QuestlineNode<T>) => void;
+  /**
+   * Where the card leads instead. The release Flow passes this, and the card
+   * is a link: that map is drawn from release-contents rows, not from the
+   * full resources the dialog needs, and the tab does not fetch. A link also
+   * gives cmd-click a new tab, the way every other quest reference does.
+   */
+  href?: string;
 }
 
 /**
@@ -31,20 +44,25 @@ export interface QuestlineCardProps {
  *
  * Status lives on the top edge rather than the left, so the left and right
  * edges stay clear for the connection handles.
+ *
+ * `questline-card` is a class, not decoration: `QuestlineTrack` dims every
+ * other questline while one card is hovered, and the selector has to match a
+ * button and a link alike.
  */
-const QuestlineCard = (props: QuestlineCardProps) => {
+const QuestlineCard = <T extends QuestlineItem>(
+  props: QuestlineCardProps<T>,
+) => {
   const { tr } = useI18n<I18n, "en">();
   const node = props.node;
   const Icon = STATE_ICON[node.state];
 
-  return (
-    <button
-      type="button"
-      onClick={() => props.onOpen(node)}
-      style={{ width: CARD_W, height: CARD_H }}
-      aria-label={`${formatReference("quest", node.quest.shortId)} ${node.quest.title}`}
-      className={`group/card focus-visible:outline-primary relative flex flex-col gap-2 rounded-lg border px-3.5 pt-[15px] pb-3 text-left transition-[transform,background-color,border-color] hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 ${STATE_CARD[node.state]}`}
-    >
+  const className = `questline-card group/card focus-visible:outline-primary relative flex flex-col gap-2 rounded-lg border px-3.5 pt-[15px] pb-3 text-left transition-[transform,background-color,border-color] hover:-translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 ${STATE_CARD[node.state]}`;
+  const reference = formatReference("quest", node.quest.shortId);
+  const label = `${reference} ${node.quest.title}`;
+  const size = { width: CARD_W, height: CARD_H };
+
+  const body = (
+    <>
       {/* Status band across the top edge, following the card's radius. */}
       <span
         className={`pointer-events-none absolute -top-px -right-px -left-px h-[3px] rounded-t-lg ${STATE_BAND[node.state]}`}
@@ -57,14 +75,16 @@ const QuestlineCard = (props: QuestlineCardProps) => {
 
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground font-mono text-[11.5px]">
-          {formatReference("quest", node.quest.shortId)}
+          {reference}
         </span>
-        <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px]">
-          <span
-            className={`size-[7px] shrink-0 rounded-full ${props.areaDotClass}`}
-          />
-          {node.quest.area}
-        </span>
+        {node.quest.area && (
+          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px]">
+            <span
+              className={`size-[7px] shrink-0 rounded-full ${props.areaDotClass}`}
+            />
+            {node.quest.area}
+          </span>
+        )}
         <span
           className={`ml-auto inline-flex items-center gap-1.5 text-[10.5px] ${STATE_TEXT[node.state]}`}
         >
@@ -78,6 +98,31 @@ const QuestlineCard = (props: QuestlineCardProps) => {
       >
         {node.quest.title}
       </div>
+    </>
+  );
+
+  if (props.href) {
+    return (
+      <Link
+        href={props.href}
+        style={size}
+        aria-label={label}
+        className={className}
+      >
+        {body}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => props.onOpen?.(node)}
+      style={size}
+      aria-label={label}
+      className={className}
+    >
+      {body}
     </button>
   );
 };

@@ -828,8 +828,11 @@ export default {
 
   "release.tab.overview": "Vue d'ensemble",
   "release.tab.contents": "Contenu",
+  "release.tab.flow": "Flux",
   "release.tab.changelog": "Changelog",
   "release.tab.artifacts": "Artefacts",
+  "release.flow.empty":
+    "Associez des épopées et des quêtes pour voir l'ordre de livraison.",
 
   "release.plate.frozen": "Figé à la publication",
   "release.meta.target": "visée le $1",

@@ -362,6 +362,60 @@ describe("ReleaseContentService.contentsOf", () => {
     expect(result.shelvedQuests).toEqual([]);
   });
 
+  it("projects dependsOn on the epic row and the quest row of getReleaseContents", async ({
+    expect,
+  }) => {
+    // The response schema is what serializes. Both columns existed on the
+    // entities long before the release Flow could draw an edge from them,
+    // so this pins the projection rather than the storage.
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const release = await aRelease(user, project.id, "0.29.0");
+    const first = await anEpic(user, project.id, "First");
+    const second = await anEpic(user, project.id, "Second");
+    await attachEpicToRelease(user, first.id, release.id);
+    await ctx.epicController.updateEpic.fetch(
+      {
+        params: { id: second.id },
+        body: { releaseId: release.id, dependsOn: first.id },
+      },
+      { user },
+    );
+    const root = await aQuest(user, project.id, "Root");
+    const next = (
+      await ctx.questController.createQuest.fetch(
+        {
+          body: {
+            projectId: project.id,
+            title: "Next",
+            area: "orm",
+            priority: "high",
+            dependsOn: root.id,
+          },
+        },
+        { user },
+      )
+    ).data;
+    await attachQuestToEpic(user, first.id, root.id);
+    await attachQuestToEpic(user, first.id, next.id);
+
+    const contents = (
+      await ctx.releaseController.getReleaseContents.fetch(
+        { params: { id: release.id } },
+        { user },
+      )
+    ).data;
+
+    const epics = new Map(contents.epics.map((epic) => [epic.id, epic]));
+    expect(epics.get(first.id)?.dependsOn).toBeUndefined();
+    expect(epics.get(second.id)?.dependsOn).toBe(first.id);
+    const rows = new Map(
+      epics.get(first.id)!.quests.map((quest) => [quest.id, quest]),
+    );
+    expect(rows.get(root.id)?.dependsOn).toBeUndefined();
+    expect(rows.get(next.id)?.dependsOn).toBe(root.id);
+  });
+
   it("ignores another project's quests", async ({ expect }) => {
     const user = await createTestUser(ctx);
     const mine = await createTestProject(ctx, user, "Mine");

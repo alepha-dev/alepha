@@ -40,7 +40,7 @@ export interface QuestlineProps {
 const Questline = (props: QuestlineProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [areas] = useStore(currentAreasAtom);
-  const [open, setOpen] = useState<QuestlineNode | null>(null);
+  const [open, setOpen] = useState<QuestlineNode<QuestResource> | null>(null);
   const viewport = useQuestlineViewport();
 
   // The dialog mounts `QuestView` behind a chunk boundary, and it opens on a
@@ -50,8 +50,13 @@ const Questline = (props: QuestlineProps) => {
     preloadQuestView();
   }, []);
 
+  // A resource keeps its status under `metadata`; the release Flow's rows
+  // keep theirs as timestamps. The layout asks rather than assumes.
   const tracks = useMemo(
-    () => new QuestlineLayout().build(props.quests),
+    () =>
+      new QuestlineLayout<QuestResource>(
+        (quest) => quest.metadata.status,
+      ).build(props.quests),
     [props.quests],
   );
   const areaColor = useMemo(() => new AreaDotColor(areas), [areas]);
