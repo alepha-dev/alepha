@@ -117,6 +117,12 @@ export const estates = $entity({
     connectedAt: z.string().optional(),
     disconnectedAt: z.string().optional(),
     /**
+     * The socket that last connected. A close event names its socket, and
+     * one for an OLDER socket can arrive after a reconnect; without this the
+     * new connection would be marked offline by the old one's goodbye.
+     */
+    connectionId: z.string().max(64).optional(),
+    /**
      * Last frame received, on connect or on a stats push.
      */
     lastSeenAt: z.string().optional(),

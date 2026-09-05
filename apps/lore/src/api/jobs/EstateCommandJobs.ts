@@ -9,10 +9,12 @@ import { ProjectLimits } from "../services/ProjectLimits.ts";
  * One sweep for the two things a command queue must not do: leave a stuck
  * command looking eternally in progress, and grow without bound.
  *
- * Every five minutes rather than every minute: the deadlines are two and
- * fifteen minutes, so a stuck command is called out within five minutes of
- * its deadline, and a per-minute cron on a Worker would cost more than the
- * whole connector's traffic (folio #1184's cost table).
+ * On the quarter hour, which is an expression Lore already emits: a Worker's
+ * cron triggers are counted per account and shared across every Worker on
+ * it, so a new cadence is a new trigger and a shared one is free. A stuck
+ * command is therefore called out within fifteen minutes of its deadline,
+ * which is what "not eternally in progress" needs, and a per-minute cron
+ * would cost more than the whole connector's traffic (folio #1184).
  *
  * The cap lives on `ProjectLimits`, so an admin bumps it from
  * `/admin/parameters` with no redeploy, the same way `quality_runs` is capped.
@@ -23,7 +25,7 @@ export class EstateCommandJobs {
   protected readonly limits = $inject(ProjectLimits);
 
   public readonly sweepEstateCommands = $job({
-    cron: "*/5 * * * *",
+    cron: "*/15 * * * *",
     handler: async () => {
       const failed = await this.commands.sweep();
       const pruned = await this.commands.prune(

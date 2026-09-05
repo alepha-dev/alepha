@@ -1,4 +1,5 @@
-import type { EstateCommandFrame } from "../schemas/estateCommandFrameSchema.ts";
+import type { Estate } from "../entities/estates.ts";
+import type { EstateServerFrame } from "../schemas/estateServerFrameSchema.ts";
 
 /**
  * The seam between the queue and the wire.
@@ -18,13 +19,17 @@ export class EstateCommandTransport {
   /**
    * Push one frame to one estate's open connection.
    *
+   * Takes the row rather than an id: every caller already holds it, and the
+   * real transport decides from its liveness stamps whether there is a
+   * socket to reach at all, so the push path costs no database read.
+   *
    * `true` means the frame was handed to a live socket, and the caller marks
    * the command `sent`. `false` means no socket held that estate, and the
    * command stays `pending` for the reconciliation. Never throws for
    * "offline": that is the common case, not an error.
    */
-  async push(estateId: string, frame: EstateCommandFrame): Promise<boolean> {
-    void estateId;
+  async push(estate: Estate, frame: EstateServerFrame): Promise<boolean> {
+    void estate;
     void frame;
     return false;
   }
