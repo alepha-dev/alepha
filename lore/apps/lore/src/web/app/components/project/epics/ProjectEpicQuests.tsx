@@ -80,20 +80,51 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const [creating, setCreating] = useState(false);
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-4">
-      <Card className="py-0 shadow">
+    /*
+     * ⚠️ `overflow-hidden`, not `overflow-auto`, and the chain below it is
+     * the whole fix (feedback #2103).
+     *
+     * MEASURED before changing anything, because the report and the quest
+     * both guessed wrong about where the scroll was. At 1440x800 with 26
+     * quests, `document` did NOT scroll and neither did `body`: the only
+     * element in the chain with `scrollHeight > clientHeight` was THIS div,
+     * at 1156 in a 670 box. What reads as a window scrollbar in the
+     * screenshot is this tab's own, sitting hard against the right edge of
+     * the content column.
+     *
+     * So nothing above `DetailLayout` is at fault and neither is
+     * `DetailLayout`: it already hands its children a bounded height (670
+     * inside a 726 column, once its own 56px header is taken). The chain
+     * stopped one level LOWER, at the `Card` and `CardContent`, which had
+     * no `min-h-0 flex-1`, so `AlephaTable`'s body container - which is
+     * already `overflow-auto` - measured 1020 tall in a 1020 box and had
+     * nothing to scroll. This tab scrolled instead, taking the table's
+     * header row and its pager with it.
+     *
+     * Bounding it here rather than in `DetailLayout` is therefore the
+     * correct fix and not the cheap one. Overview, Flow and Folios use the
+     * SAME `overflow-auto` wrapper on purpose: prose and a folio list have
+     * no inner scroll region to hand off to, so scrolling the tab is right
+     * for them. A scroll region added to `DetailLayout` would give those
+     * three a second scrollbar.
+     */
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+      <Card className="flex min-h-0 flex-1 flex-col py-0 shadow">
         {/* No header row. It held the word "Quests" and the attach button
             directly above the table's own toolbar, which is two stacked bars
             saying one thing (feedback #2006). The tab is already named
             "Quests"; the button belongs in the toolbar's slot, beside the
             column picker and refresh. */}
-        <CardContent className="p-0">
+        <CardContent className="flex min-h-0 flex-1 flex-col p-0">
           {quests === null ? (
             <div className="text-muted-foreground p-6 text-center text-sm">
               {tr("epic.quests.loading")}
             </div>
           ) : (
             <AlephaTable<QuestResource>
+              // The last link of the chain, and the same one every
+              // standalone list page uses.
+              className="min-h-0 flex-1"
               data={quests}
               emptyMessage={tr("epic.quests.empty")}
               // The page-level action, in the slot the table keeps for it.
