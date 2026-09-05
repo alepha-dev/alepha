@@ -1360,6 +1360,62 @@ export default {
   "estates.toast.detached": "Domaine retiré",
   "estates.toast.copied": "Secret copié",
 
+  "account.estates.title": "Domaines",
+  "account.estates.description":
+    "Les machines et comptes que vous possédez et prêtez aux projets comme destinations de déploiement. Chacun se connecte avec un secret affiché une seule fois, à la création et à la rotation.",
+  "account.estates.empty":
+    "Vous ne possédez encore aucun domaine. Créez-en un, puis lancez `bay connector set` sur la machine avec le secret affiché.",
+  "account.estates.create": "Créer un domaine",
+  "account.estates.create.description":
+    "Un domaine bay : une machine qui exécute `bay serve`. Il démarre en statistiques seules, déploiements désactivés, jusqu'à ce que vous les autorisiez.",
+  "account.estates.create.submit": "Créer",
+  "account.estates.secretPrefix": "secret $1…",
+  "account.estates.gauge": "CPU $1 % · mémoire $2 %",
+  "account.estates.gauge.none": "pas encore de statistiques",
+  "account.estates.switch.deploys": "Autoriser les déploiements",
+  "account.estates.switch.deploys.description":
+    "Désactivé signifie statistiques seules : aucun projet ne peut déployer via ce domaine, quel que soit le prêt.",
+  "account.estates.switch.series":
+    "Conserver un historique du CPU et de la mémoire",
+  "account.estates.switch.series.description":
+    "La jauge en direct ci-dessus est toujours conservée. Ceci écrit aussi chaque relevé dans la série que lisent les graphiques.",
+  "account.estates.interval": "Intervalle des statistiques",
+  "account.estates.interval.description":
+    "La fréquence à laquelle la machine rapporte sa jauge. Prise en compte à sa prochaine connexion.",
+  "account.estates.interval.minutes": "$1 min",
+  "account.estates.interval.hours": "$1 h",
+  "account.estates.loans.none": "Prêté à aucun projet.",
+  "account.estates.loans.label": "Prêté à",
+  "account.estates.detach.confirmTitle": "Retirer $1 de $2 ?",
+  "account.estates.commands.title": "Commandes",
+  "account.estates.commands.empty": "Aucune commande pour l'instant.",
+  "account.estates.commands.restart": "Redémarrer",
+  "account.estates.commands.app": "application",
+  "account.estates.commands.environment": "environnement",
+  "account.estates.commands.status.pending": "en attente",
+  "account.estates.commands.status.sent": "envoyée",
+  "account.estates.commands.status.running": "en cours",
+  "account.estates.commands.status.done": "terminée",
+  "account.estates.commands.status.failed": "échouée",
+  "account.estates.rotate": "Changer le secret",
+  "account.estates.rotate.confirmTitle": "Changer le secret de $1 ?",
+  "account.estates.rotate.confirmDescription":
+    "Le secret actuel cesse de fonctionner dès que vous confirmez. La machine est refusée à sa prochaine connexion tant que vous n'avez pas lancé `bay connector set` avec le nouveau, affiché une seule fois.",
+  "account.estates.rotate.confirm": "Changer",
+  "account.estates.delete": "Supprimer",
+  "account.estates.delete.confirmTitle": "Supprimer $1 ?",
+  "account.estates.delete.confirmDescription":
+    "Rien n'est dédéployé : la machine continue d'exécuter ce qu'elle exécute, et Lore perd seulement la possibilité d'inspecter, redéployer ou revenir en arrière via ce domaine. Un secret bay est révoqué. Un identifiant cloudflare n'est pas révoqué chez Cloudflare ; faites-le là-bas. Chaque projet auquel il est prêté le perd.",
+  "account.estates.delete.confirm": "Supprimer",
+  "account.estates.toast.created": "Domaine créé",
+  "account.estates.toast.rotated": "Secret changé",
+  "account.estates.toast.deleted": "Domaine supprimé",
+  "account.estates.toast.restartQueued": "Redémarrage en file",
+  "account.delete.estates.one":
+    "1 domaine que vous possédez sera également supprimé et son secret révoqué ; $1 projet(s) auquel il est prêté perdent leur destination de déploiement.",
+  "account.delete.estates.many":
+    "$1 domaines que vous possédez seront également supprimés et leurs secrets révoqués ; $2 projet(s) auxquels ils sont prêtés perdent une destination de déploiement.",
+
   "feedback.list.showMore": "Afficher plus",
   "feedback.list.loadingMore": "Chargement…",
   "feedback.empty.pending": "Aucun retour en attente.",

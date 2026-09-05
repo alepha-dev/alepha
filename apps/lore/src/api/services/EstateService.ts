@@ -6,6 +6,7 @@ import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, type EstateType, estates } from "../entities/estates.ts";
+import { projects } from "../entities/projects.ts";
 import {
   type EstateResource,
   estateResourceSchema,
@@ -18,6 +19,7 @@ import {
   ESTATE_PROTOCOL_VERSION,
   type EstateWelcomeFrame,
 } from "../schemas/estateWelcomeFrameSchema.ts";
+import type { OwnedEstateResource } from "../schemas/ownedEstateResourceSchema.ts";
 import { EstateTokenService } from "./EstateTokenService.ts";
 import { LoreAudits } from "./LoreAudits.ts";
 
@@ -34,6 +36,7 @@ import { LoreAudits } from "./LoreAudits.ts";
 export class EstateService {
   protected readonly estates = $repository(estates);
   protected readonly grants = $repository(estateProjects);
+  protected readonly projects = $repository(projects);
   protected readonly tokens = $inject(EstateTokenService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -222,6 +225,51 @@ export class EstateService {
    * the estates the account owns, and how many projects lose a deploy
    * destination when they go.
    */
+  /**
+   * The owner's list with the projects each estate is lent to (#1838).
+   *
+   * Two queries for the whole list, never one per row. A project deleted
+   * since the loan is left out by the repository's own soft-delete filter,
+   * and its grant is left alone: the row cascades when the project is
+   * really gone, and until then the loan is not the owner's to see.
+   */
+  async withLoans(owned: Estate[]): Promise<OwnedEstateResource[]> {
+    if (owned.length === 0) {
+      return [];
+    }
+    const grants = await this.grants.findMany({
+      where: { estateId: { inArray: owned.map((estate) => estate.id) } },
+      orderBy: [{ column: "createdAt", direction: "asc" }],
+    });
+    const projectIds = [...new Set(grants.map((grant) => grant.projectId))];
+    const rows = projectIds.length
+      ? await this.projects.findMany({
+          where: { id: { inArray: projectIds } },
+          columns: ["id", "title", "slug"],
+        })
+      : [];
+    const named = new Map(rows.map((project) => [project.id, project]));
+
+    return owned.map((estate) => ({
+      ...this.toResource(estate),
+      projects: grants
+        .filter((grant) => grant.estateId === estate.id)
+        .flatMap((grant) => {
+          const project = named.get(grant.projectId);
+          return project
+            ? [
+                {
+                  id: project.id,
+                  title: project.title,
+                  ...(project.slug ? { slug: project.slug } : {}),
+                  lentAt: String(grant.createdAt),
+                },
+              ]
+            : [];
+        }),
+    }));
+  }
+
   async countOwned(
     userId: string,
   ): Promise<{ estates: number; projects: number }> {

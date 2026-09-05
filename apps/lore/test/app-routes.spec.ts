@@ -52,6 +52,7 @@ const NAV_ROUTE_NAMES = [
   "projectReports",
   "projectSettingsBanner",
   "projectSettingsSigils",
+  "projectSettingsEstates",
   // Apps section + the per-app tab bar — ProjectView.tsx, AppLayout.tsx,
   // ProjectSettingsSigilRow.tsx, AppSettings.tsx
   "projectApps",
@@ -97,6 +98,7 @@ const NAV_ROUTE_NAMES = [
   "accountConnections",
   "accountInvitations",
   "accountProjects",
+  "accountEstates",
   "myFeedback",
 ];
 

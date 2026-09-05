@@ -13,7 +13,11 @@ import {
 } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { TestEntityRepositories } from "../../../test/fixtures/entities.ts";
+import {
+  createTestProject,
+  TestEntityRepositories,
+} from "../../../test/fixtures/entities.ts";
+import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
 import { EstateService } from "../services/EstateService.ts";
@@ -27,6 +31,7 @@ import { EstateController } from "./EstateController.ts";
  */
 class EstateRepositories {
   estates = $repository(estates);
+  grants = $repository(estateProjects);
 }
 
 interface TestContext {
@@ -400,5 +405,49 @@ describe("EstateService.isOnline", () => {
   it("derives runtimes from the type", ({ expect }) => {
     expect(ctx.service.acceptedRuntimes("bay")).toEqual(["node"]);
     expect(ctx.service.acceptedRuntimes("cloudflare")).toEqual(["workerd"]);
+  });
+});
+
+describe("EstateController, the owner's list", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("names the projects each estate is lent to, and nobody else's estates", async ({
+    expect,
+  }) => {
+    const alice = await createUser(ctx);
+    const bob = await createUser(ctx);
+    const project = await createTestProject(ctx.alepha, { title: "Shop" });
+    const lent = await createEstate(ctx, alice, "ovh-1");
+    await createEstate(ctx, alice, "ovh-2");
+    await createEstate(ctx, bob, "hetzner");
+    await ctx.repos.grants.create({
+      estateId: lent.id,
+      projectId: project.id,
+      createdBy: alice.id,
+    });
+
+    const { items } = await ctx.controller.listMyEstates({}, { user: alice });
+    expect(items.map((item) => item.slug).sort()).toEqual(["ovh-1", "ovh-2"]);
+
+    const withLoan = items.find((item) => item.id === lent.id);
+    expect(withLoan?.projects).toHaveLength(1);
+    expect(withLoan?.projects[0]).toMatchObject({
+      id: project.id,
+      title: "Shop",
+      slug: project.slug,
+    });
+    expect(items.find((item) => item.slug === "ovh-2")?.projects).toEqual([]);
+    // The secret never crosses, loans or not.
+    for (const item of items) {
+      expect(Object.keys(item)).not.toContain("secretHash");
+    }
   });
 });
