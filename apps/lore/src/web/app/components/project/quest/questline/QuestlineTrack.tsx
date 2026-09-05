@@ -1,14 +1,22 @@
 import type { AreaDotColor } from "../../../shared/areaColor.ts";
 import QuestlineCard from "./QuestlineCard.tsx";
 import type {
+  QuestlineItem,
   QuestlineNode,
   QuestlineTrack as Track,
 } from "./questlineLayout.ts";
 
-export interface QuestlineTrackProps {
-  track: Track;
+export interface QuestlineTrackProps<T extends QuestlineItem> {
+  track: Track<T>;
   areaColor: AreaDotColor;
-  onOpen: (node: QuestlineNode) => void;
+  /**
+   * Cards are buttons that open the quest over the map.
+   */
+  onOpen?: (node: QuestlineNode<T>) => void;
+  /**
+   * Cards are links to wherever this says. See `QuestlineCard`.
+   */
+  hrefOf?: (node: QuestlineNode<T>) => string;
 }
 
 /**
@@ -20,13 +28,18 @@ export interface QuestlineTrackProps {
  * OTHER questline, and a single shared SVG could not be dimmed row by row.
  * A track is exactly one connected component, so "connected to what I am
  * pointing at" and "in this element" are the same question.
+ *
+ * The dimming keys on the card's own class rather than on `button:hover`,
+ * because the release Flow draws its cards as links.
  */
-const QuestlineTrack = (props: QuestlineTrackProps) => {
+const QuestlineTrack = <T extends QuestlineItem>(
+  props: QuestlineTrackProps<T>,
+) => {
   const track = props.track;
 
   return (
     <div
-      className="group/track relative transition-opacity duration-300 group-has-[button:hover]/board:opacity-50 has-[button:hover]:opacity-100"
+      className="group/track relative transition-opacity duration-300 group-has-[.questline-card:hover]/board:opacity-50 has-[.questline-card:hover]:opacity-100"
       style={{ width: track.width, height: track.height }}
     >
       <svg
@@ -56,8 +69,9 @@ const QuestlineTrack = (props: QuestlineTrackProps) => {
         >
           <QuestlineCard
             node={node}
-            areaDotClass={props.areaColor.dotClass(node.quest.area)}
+            areaDotClass={props.areaColor.dotClass(node.quest.area ?? "")}
             onOpen={props.onOpen}
+            href={props.hrefOf?.(node)}
           />
         </div>
       ))}
