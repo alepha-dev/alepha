@@ -36,18 +36,24 @@ interface NavEntry {
 }
 
 interface NavGroup {
+  /**
+   * An empty label renders the items with no heading above them, which is what
+   * puts Home on its own at the top.
+   */
   label: string;
   items: NavEntry[];
 }
 
 /**
+ * Two subjects: the components a page is built FROM, and the pages built out of
+ * them. Home sits above both in an unlabelled group.
+ *
  * ⚠️ An entry with `children` becomes a COLLAPSIBLE group and its own `href` is
- * ignored, so a parent must never be a destination. That is what keeps this
- * readable at 25+ pages: three flat groups would be a wall.
+ * ignored, so a parent must never be a destination.
  */
 const NAV: NavGroup[] = [
   {
-    label: "Overview",
+    label: "",
     items: [{ href: "/", label: "Home", icon: HomeIcon }],
   },
   {
@@ -70,40 +76,36 @@ const NAV: NavGroup[] = [
           { href: "/blocks/auto-form", label: "AutoForm" },
         ],
       },
-      { href: "/blocks/table", label: "AlephaTable", icon: Table2 },
+      { href: "/blocks/table", label: "Table", icon: Table2 },
       {
-        href: "/blocks/feedback",
-        label: "Toasts & dialogs",
+        href: "/blocks/dialog",
+        label: "Dialog",
         icon: MessageSquareWarning,
       },
+      { href: "/blocks/toast", label: "Toast", icon: MessageSquareWarning },
       { href: "/blocks/buttons", label: "Buttons", icon: MousePointerClick },
     ],
   },
   {
-    label: "Auth",
+    label: "Pages",
     items: [
-      { href: "/blocks/auth", label: "Sign in & register", icon: ShieldCheck },
-      { href: "/blocks/account", label: "Account", icon: UserCog },
-    ],
-  },
-  {
-    label: "Admin",
-    items: [
+      { href: "/pages/auth", label: "Auth", icon: ShieldCheck },
+      { href: "/pages/account", label: "Account", icon: UserCog },
       {
-        label: "Admin surface",
+        label: "Admin",
         icon: LayoutDashboard,
         children: [
-          { href: "/blocks/admin/dashboard", label: "Dashboard" },
-          { href: "/blocks/admin/users", label: "Users" },
-          { href: "/blocks/admin/sessions", label: "Sessions" },
-          { href: "/blocks/admin/keys", label: "API keys" },
-          { href: "/blocks/admin/jobs", label: "Jobs" },
-          { href: "/blocks/admin/files", label: "Files" },
-          { href: "/blocks/admin/notifications", label: "Notifications" },
-          { href: "/blocks/admin/parameters", label: "Parameters" },
-          { href: "/blocks/admin/analytics", label: "Analytics" },
-          { href: "/blocks/admin/payments", label: "Payments" },
-          { href: "/blocks/admin/audits", label: "Audit log" },
+          { href: "/pages/admin/dashboard", label: "Dashboard" },
+          { href: "/pages/admin/users", label: "Users" },
+          { href: "/pages/admin/sessions", label: "Sessions" },
+          { href: "/pages/admin/keys", label: "API keys" },
+          { href: "/pages/admin/jobs", label: "Jobs" },
+          { href: "/pages/admin/files", label: "Files" },
+          { href: "/pages/admin/notifications", label: "Notifications" },
+          { href: "/pages/admin/parameters", label: "Parameters" },
+          { href: "/pages/admin/analytics", label: "Analytics" },
+          { href: "/pages/admin/payments", label: "Payments" },
+          { href: "/pages/admin/audits", label: "Audit log" },
         ],
       },
     ],
@@ -114,7 +116,9 @@ const findCrumbs = (pathname: string): { label: string; href?: string }[] => {
   for (const group of NAV) {
     for (const entry of group.items) {
       if (entry.href === pathname) {
-        return [{ label: group.label }, { label: entry.label }];
+        return group.label
+          ? [{ label: group.label }, { label: entry.label }]
+          : [{ label: entry.label }];
       }
       const child = entry.children?.find((c) => c.href === pathname);
       if (child) {
@@ -136,26 +140,20 @@ const isActive = (href: string, pathname: string) => href === pathname;
  *
  * Its variant comes from a `persist: "localStorage"` atom the reader drives
  * from the top bar, so `AppShell`'s three layouts can be compared on a real
- * page rather than described. See `ShellTweak`.
+ * page rather than described.
  *
- * `ButtonTheme` is back in the top bar beside `ButtonDark`, because `UiThemes`
- * now registers six themes: the picker hides itself below two, which is why an
- * earlier version of this file had to use `ButtonDark` alone.
+ * ⚠️ The content area is `h-full` and `min-h-0` so a page can fill it. Every
+ * page here is a single `Showcase`, which needs a bounded height to give its
+ * preview area a scroll region of its own.
  */
 export const Layout = () => {
   const state = useRouterState();
   const [stored] = useStore(shellPrefsAtom);
 
-  // ⚠️ First client render MUST match the server, which never saw localStorage.
-  // Reading the stored value straight away produces a different tree and React
-  // refuses to patch the difference up, leaving `data-variant` disagreeing with
-  // what React thinks it rendered. So the default paints once, then the stored
-  // preference lands on the next pass.
+  // First client render MUST match the server, which never saw localStorage.
+  // Reading storage during hydration renders a different tree and React
+  // refuses to patch the difference up.
   const [hydrated, setHydrated] = useState(false);
-  // Deliberate, and the rule's own escape: an effect is right "when
-  // synchronizing with an external system", and web storage is one that does
-  // not exist until the browser takes over. The extra render IS the mechanism -
-  // it is what makes the first pass match the server.
   // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => setHydrated(true), []);
   const prefs = hydrated ? stored : SHELL_PREFS_DEFAULT;
@@ -197,15 +195,12 @@ export const Layout = () => {
                 ? {
                     label: entry.label,
                     icon: entry.icon,
-                    // Open when the reader is inside it, so a deep link does
-                    // not land on a collapsed group with no visible context.
                     defaultOpen: entry.children.some((c) =>
                       isActive(c.href, pathname),
                     ),
                     children: entry.children.map((c) => ({
                       href: c.href,
                       label: c.label,
-                      icon: c.icon,
                       active: isActive(c.href, pathname),
                     })),
                   }
@@ -219,7 +214,9 @@ export const Layout = () => {
           }))}
           breadcrumbs={prefs.breadcrumbs && crumbs.length ? crumbs : undefined}
         >
-          <NestedView />
+          <div className="flex h-full min-h-0 flex-col">
+            <NestedView />
+          </div>
         </AppShell>
       </DialogProvider>
     </TooltipProvider>

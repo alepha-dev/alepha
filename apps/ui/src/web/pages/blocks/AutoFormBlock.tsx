@@ -4,28 +4,38 @@ import { z } from "alepha";
 import { useForm } from "alepha/react/form";
 import type { SchemaControlFn } from "alepha/react/ui";
 
-import { BlockPage } from "@/web/components/BlockPage.tsx";
-import { Specimen } from "@/web/components/Specimen.tsx";
+import { Showcase } from "@/web/components/Showcase.tsx";
 
 /**
- * Module scope so `useForm` anchors it once. See `Controls.tsx`.
+ * A whole form from one schema: layout, labels, validation, the submit bar.
  *
- * `apiToken` is gated on `role` through a function `$control`, which is the
- * feature worth showing: the form re-derives which fields exist from the
- * current values, so conditional UI needs no branching in the component.
+ * The knobs are AutoForm's own chrome - the header, the layout, whether it
+ * saves as you type - so the same schema can be seen as a page form, a settings
+ * card, and an auto-saving panel without touching the schema.
+ */
+const KNOBS = z.object({
+  layout: z.enum(["stack", "row"]).default("stack").meta({ title: "layout" }),
+  card: z.boolean().default(false).meta({ title: "card" }),
+  autoSave: z.boolean().default(false).meta({ title: "autoSave" }),
+  header: z.boolean().default(true).meta({ title: "Header" }),
+  noSubmit: z.boolean().default(false).meta({ title: "noSubmit" }),
+  autoGroup: z.boolean().default(false).meta({ title: "autoGroup" }),
+});
+
+/**
+ * ⚠️ A function `$control` receives `{ form }` and HIDES its field by returning
+ * `false`. There is no `hidden` key; getting that wrong means the field never
+ * appears at all.
  */
 const schema = z.object({
   projectName: z
     .string()
-    .meta({ title: "Project name", $control: { width: 100 } }),
+    .meta({ title: "Project name", $control: { width: 100 } })
+    .describe("Shown everywhere the project is referenced."),
   role: z
     .enum(["viewer", "admin"])
     .default("viewer")
     .meta({ title: "Role", $control: { width: 50 } }),
-  // A FUNCTION `$control`, which is the feature this page exists to show.
-  // ⚠️ It receives `{ form }` and reads `form.currentValues`, and it HIDES the
-  // field by returning `false` - there is no `hidden` key. Getting either wrong
-  // makes the field silently never appear.
   apiToken: z
     .string()
     .meta({
@@ -41,6 +51,19 @@ const schema = z.object({
     .enum(["eu-west", "us-east", "ap-south"])
     .meta({ title: "Region", $control: { width: 50 } }),
   replicas: z.number().meta({ title: "Replicas", $control: { width: 50 } }),
+  autoScale: z.boolean().default(false).meta({ title: "Autoscale" }),
+  maintenanceAt: z
+    .string()
+    .meta({ format: "date-time", title: "Maintenance window" })
+    .optional(),
+  tags: z.array(z.string()).meta({ title: "Tags" }),
+  contact: z
+    .object({
+      email: z.string().meta({ format: "email", title: "Email" }),
+      phone: z.string().meta({ title: "Phone" }).optional(),
+    })
+    .meta({ title: "Contact" })
+    .optional(),
   notes: z
     .string()
     .meta({ title: "Notes", $control: { width: 100 } })
@@ -58,22 +81,40 @@ const AutoFormBlock = () => {
   );
 
   return (
-    <BlockPage
+    <Showcase
       title="AutoForm"
       description="A whole form rendered from a zod schema."
+      schema={KNOBS}
+      initialValues={{
+        layout: "stack",
+        card: false,
+        autoSave: false,
+        header: true,
+        noSubmit: false,
+        autoGroup: false,
+      }}
     >
-      <Specimen
-        title="Schema-driven, with a conditional field"
-        description="Switch Role to admin and the Api Token field appears."
-      >
-        <AutoForm
-          form={form}
-          title="Project settings"
-          description="Width and validation come from the schema."
-          submitLabel="Save settings"
-        />
-      </Specimen>
-    </BlockPage>
+      {(v) => (
+        <div className="mx-auto max-w-3xl">
+          <AutoForm
+            key={`${v.layout}-${v.card}-${v.autoSave}-${v.autoGroup}`}
+            form={form}
+            layout={v.layout}
+            card={v.card}
+            autoSave={v.autoSave}
+            noSubmit={v.noSubmit}
+            autoGroup={v.autoGroup}
+            title={v.header ? "Project settings" : undefined}
+            description={
+              v.header
+                ? "Switch Role to admin and the Api Token field appears."
+                : undefined
+            }
+            submitLabel="Save settings"
+          />
+        </div>
+      )}
+    </Showcase>
   );
 };
 
