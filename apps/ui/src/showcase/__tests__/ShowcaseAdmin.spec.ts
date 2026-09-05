@@ -43,6 +43,24 @@ const REQUIRED: Record<string, string[]> = {
     "cancelExecution",
   ],
   AdminSessions: ["findSessions", "deleteSession", "deleteSessions"],
+  AdminAnalytics: ["listDatasets", "queryDataset"],
+  AdminNotifications: [
+    "findNotifications",
+    "listNotificationTemplates",
+    "getNotification",
+    "previewNotification",
+    "resendNotification",
+    "deleteNotification",
+    "deleteNotifications",
+  ],
+  AdminParameters: [
+    "getParameterTree",
+    "getCurrent",
+    "getHistory",
+    "createVersion",
+    "rollback",
+    "deleteParameter",
+  ],
   AdminFiles: [
     "findFiles",
     "getFileStats",
@@ -66,6 +84,7 @@ const LISTINGS = [
   "findSessions",
   "findApiKeys",
   "findFiles",
+  "findNotifications",
 ] as const;
 
 describe("showcase admin fixtures", () => {
@@ -174,4 +193,108 @@ describe("showcase admin fixtures", () => {
       expect(buckets.has(bucket)).toBe(true);
     }
   });
+
+  it("every notification names a template the filter offers", async ({
+    expect,
+  }) => {
+    const api = (await start()).client() as unknown as {
+      findNotifications: (a: { query: Record<string, unknown> }) => Promise<{
+        content: { template?: string }[];
+      }>;
+      listNotificationTemplates: () => Promise<{ name: string }[]>;
+    };
+    const rows = await api.findNotifications({ query: { page: 0, size: 50 } });
+    const templates = (await api.listNotificationTemplates()).map(
+      (t) => t.name,
+    );
+
+    // The filter bar is built from the templates, so a row naming one the list
+    // does not carry is a row no filter can ever reach.
+    for (const row of rows.content) {
+      if (row.template) expect(templates).toContain(row.template);
+    }
+  });
+
+  it("every parameter leaf resolves to a value", async ({ expect }) => {
+    const api = (await start()).client() as unknown as {
+      getParameterTree: () => Promise<TreeNode[]>;
+      getCurrent: (a: { params: { name: string } }) => Promise<{
+        current?: unknown;
+      }>;
+    };
+    const leaves: string[] = [];
+    const walk = (nodes: TreeNode[]) => {
+      for (const n of nodes) {
+        if (n.isLeaf) leaves.push(n.path);
+        else walk(n.children ?? []);
+      }
+    };
+    walk(await api.getParameterTree());
+
+    expect(leaves.length).toBeGreaterThan(0);
+    // `AdminParameters` navigates the tree then asks for the leaf it landed
+    // on, so a node with no value opens an empty panel and reports nothing.
+    for (const path of leaves) {
+      const current = await api.getCurrent({ params: { name: path } });
+      expect(current.current).toBeDefined();
+    }
+  });
+
+  it("analytics answers the grouping it was asked for", async ({ expect }) => {
+    const api = (await start()).client() as unknown as {
+      queryDataset: (a: {
+        params: { name: string };
+        body: Record<string, unknown>;
+      }) => Promise<{ rows: Record<string, string | number>[] }>;
+    };
+
+    // The explorer changes grouping, window and measures, so a canned result
+    // would answer every question identically and make the controls look
+    // inert. Two different groupings must not produce the same shape.
+    const byCountry = await api.queryDataset({
+      params: { name: "pageviews" },
+      body: {
+        since: "2026-08-01",
+        groupBy: ["country"],
+        select: { views: "sum" },
+      },
+    });
+    const byDevice = await api.queryDataset({
+      params: { name: "pageviews" },
+      body: {
+        since: "2026-08-01",
+        groupBy: ["device"],
+        select: { views: "sum" },
+      },
+    });
+
+    expect(byCountry.rows.length).toBeGreaterThan(0);
+    expect(Object.keys(byCountry.rows[0])).toContain("country");
+    expect(Object.keys(byDevice.rows[0])).toContain("device");
+  });
+
+  it("publishes dataset dimensions as JSON Schema, not zod", async ({
+    expect,
+  }) => {
+    const api = (await start()).client() as unknown as {
+      listDatasets: () => Promise<
+        { dimensions: Record<string, any>; measures: Record<string, any> }[]
+      >;
+    };
+    const [dataset] = await api.listDatasets();
+
+    // The explorer rebuilds its form with `jsonSchemaToZod`. Handing it a zod
+    // schema yields a control panel with no controls.
+    expect(dataset.dimensions.type).toBe("object");
+    expect(
+      Object.keys(dataset.dimensions.properties ?? {}).length,
+    ).toBeGreaterThan(0);
+    expect(dataset.measures.type).toBe("object");
+  });
 });
+
+interface TreeNode {
+  path: string;
+  isLeaf: boolean;
+  children?: TreeNode[];
+}

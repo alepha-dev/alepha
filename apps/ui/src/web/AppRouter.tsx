@@ -28,6 +28,10 @@ export class AppRouter {
       this.adminSessions,
       this.adminKeys,
       this.adminFiles,
+      this.adminNotifications,
+      this.adminParameters,
+      this.adminDashboard,
+      this.adminAnalytics,
     ],
   });
 
@@ -77,6 +81,13 @@ export class AppRouter {
     lazy: () => import("./pages/blocks/Feedback.tsx"),
   });
 
+  adminDashboard = $page({
+    path: "/blocks/admin/dashboard",
+    static: true,
+    head: { title: "Admin dashboard - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Dashboard.tsx"),
+  });
+
   adminUsers = $page({
     path: "/blocks/admin/users",
     static: true,
@@ -103,6 +114,27 @@ export class AppRouter {
     static: true,
     head: { title: "Admin files - Alepha UI" },
     lazy: () => import("./pages/blocks/admin/Files.tsx"),
+  });
+
+  adminNotifications = $page({
+    path: "/blocks/admin/notifications",
+    static: true,
+    head: { title: "Admin notifications - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Notifications.tsx"),
+  });
+
+  adminParameters = $page({
+    path: "/blocks/admin/parameters",
+    static: true,
+    head: { title: "Admin parameters - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Parameters.tsx"),
+  });
+
+  adminAnalytics = $page({
+    path: "/blocks/admin/analytics",
+    static: true,
+    head: { title: "Admin analytics - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Analytics.tsx"),
   });
 
   adminJobs = $page({

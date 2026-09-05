@@ -8,12 +8,15 @@ import {
   BookOpen,
   FileSearch,
   Home as HomeIcon,
+  LayoutDashboard,
   ListChecks,
   MessageSquareWarning,
   MousePointerClick,
   SlidersHorizontal,
   Table2,
   UsersIcon,
+  ChartLine,
+  Bell,
   FilesIcon,
   KeyRound,
   MonitorSmartphone,
@@ -43,6 +46,11 @@ const NAV: NavGroup[] = [
   {
     label: "Admin",
     items: [
+      {
+        href: "/blocks/admin/dashboard",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+      },
       { href: "/blocks/admin/users", label: "Users", icon: UsersIcon },
       { href: "/blocks/admin/jobs", label: "Jobs", icon: Zap },
       {
@@ -52,6 +60,17 @@ const NAV: NavGroup[] = [
       },
       { href: "/blocks/admin/keys", label: "API keys", icon: KeyRound },
       { href: "/blocks/admin/files", label: "Files", icon: FilesIcon },
+      {
+        href: "/blocks/admin/notifications",
+        label: "Notifications",
+        icon: Bell,
+      },
+      {
+        href: "/blocks/admin/parameters",
+        label: "Parameters",
+        icon: SlidersHorizontal,
+      },
+      { href: "/blocks/admin/analytics", label: "Analytics", icon: ChartLine },
       { href: "/blocks/admin/audits", label: "Audit log", icon: FileSearch },
     ],
   },
