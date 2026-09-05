@@ -53,32 +53,6 @@ type Ref = FolioLinks["outbound"][number] | FolioLinks["inbound"][number];
  * payload the server sends. Showing one would mean fabricating text that
  * was never fetched; the brief called for excerpts, but the data to back
  * them doesn't exist yet. See the task report.
- *
- * A `blob` outbound ref renders as plain, NON-navigable text (not a
- * `Link`) — carried over from the deleted `FolioBacklinksPanel.tsx`, that
- * kind used to fall through to the same `projectFoliosFolio` route every
- * `folio` ref uses, with `ref.shortId` as the param. That's wrong:
- * `FolioController.folioShortId` and `FolioBlobService.blobShortId` are
- * two INDEPENDENT per-project `$sequence()` counters, so a folio and a
- * blob routinely share a shortId — a folio containing `[[blob#3]]` got
- * an Outgoing row that opened whichever *folio* happens to own shortId
- * 3, an unrelated document (or a dead route, if no folio does).
- *
- * A real download link IS reachable — `BlobController.getBlobByShortId`
- * (`GET /projects/:projectId/folio/blobs/by-short-id/:shortId`,
- * member-gated, already used by the MCP `blob_*` tools) resolves a
- * shortId to the hydrated blob record, whose `id` is the underlying
- * `files` row id `/api/files/:id` downloads need — the same id
- * `FolioBrowser.tsx`'s own blob rows already open with
- * `window.open(\`/api/files/${entry.id}\`, ...)`. This tab renders
- * non-navigable anyway: `resolveLinks` (`FolioController.ts`) doesn't
- * send that id inline with the outbound ref, only `shortId` / `title` /
- * `path`, so making a blob row clickable means firing a resolve call on
- * render for every blob ref this tab shows — a fetch-on-render this
- * otherwise-synchronous tab doesn't have today. Deliberately deferred,
- * not blocked: plain text is honest about "no link" without a false
- * "impossible" claim, and is strictly safer than the wrong-route bug it
- * replaces. See the task report.
  */
 const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
@@ -122,22 +96,21 @@ const FolioLinksTab = (props: FolioLinksTabProps): ReactElement => {
           </>
         );
 
-        // No client-addressable target — see this file's doc. Plain,
-        // non-navigable row instead of a link to the wrong document.
+        // No client-addressable target: a plain, non-navigable row instead
+        // of a link to the wrong document.
         //
-        // `comment` joins `blob` here deliberately. Comments do not exist
-        // yet but `linkSourceKind` already names them, and the route switch
-        // below ends in a folio fallback — so without this guard the first
-        // comment backlink would render as a link to a folio whose id it
-        // merely shares the shape of. A row that goes nowhere is the honest
-        // placeholder until comments have a route.
+        // `comment` is here deliberately. Comments do not exist yet as a
+        // route but `linkSourceKind` already names them, and the route
+        // switch below ends in a folio fallback — so without this guard the
+        // first comment backlink would render as a link to a folio whose id
+        // it merely shares the shape of. A row that goes nowhere is the
+        // honest placeholder until comments have a route.
         //
         // `feedback` has no page of its own, and a `release` with no tag has
         // no URL either (`/releases/:releaseTag`), so both join the plain
         // row. A tagged release navigates below.
         const releaseTag = "tag" in ref ? ref.tag : undefined;
         if (
-          ref.kind === "blob" ||
           ref.kind === "comment" ||
           ref.kind === "feedback" ||
           (ref.kind === "release" && !releaseTag)

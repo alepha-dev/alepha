@@ -107,7 +107,7 @@ describe("folio_links — a polymorphic source", () => {
     // way `to_id` has always held quest targets.
     await ctx.folioLinkService.syncLinks(
       { kind: "quest", id: 42, projectId },
-      `See [[${target.title}]] for the design.`,
+      `See [[#F${target.shortId}]] for the design.`,
     );
 
     const outbound = await ctx.folioLinkService.findOutbound({
@@ -127,7 +127,7 @@ describe("folio_links — a polymorphic source", () => {
 
   it("keeps quest 5 and epic 5 apart on the unique index", async () => {
     const { projectId, target } = await seed();
-    const content = `See [[${target.title}]].`;
+    const content = `See [[#F${target.shortId}]].`;
 
     // Both stringify to "5". Before `from_type` joined the unique key
     // `(from_id, to_id)` these two rows were the same row, and the second
@@ -148,7 +148,7 @@ describe("folio_links — a polymorphic source", () => {
 
   it("re-syncing one source leaves the other's links alone", async () => {
     const { projectId, target } = await seed();
-    const content = `See [[${target.title}]].`;
+    const content = `See [[#F${target.shortId}]].`;
     await ctx.folioLinkService.syncLinks(
       { kind: "quest", id: 5, projectId },
       content,
@@ -177,7 +177,7 @@ describe("folio_links — a polymorphic source", () => {
         body: {
           projectId,
           title: "Source Folio",
-          content: `Points at [[${target.title}]].`,
+          content: `Points at [[#F${target.shortId}]].`,
         },
       },
       { user: owner },
@@ -235,7 +235,7 @@ describe("quests and epics as link sources, through their controllers", () => {
         body: {
           projectId,
           title: "Wire the thing",
-          description: `Per [[${target.title}]], do the thing.`,
+          description: `Per [[#F${target.shortId}]], do the thing.`,
           area: "orm",
           priority: "high",
           objectives: [],
@@ -285,7 +285,7 @@ describe("quests and epics as link sources, through their controllers", () => {
         body: {
           projectId,
           title: "Two fields",
-          description: `Per [[${target.title}]].`,
+          description: `Per [[#F${target.shortId}]].`,
           area: "orm",
           priority: "high",
           objectives: [],
@@ -298,7 +298,7 @@ describe("quests and epics as link sources, through their controllers", () => {
     await ctx.questController.updateQuestById.fetch(
       {
         params: { id: quest.data.id },
-        body: { completionMessage: `Also [[${second.data.title}]].` },
+        body: { completionMessage: `Also [[#F${second.data.shortId}]].` },
       },
       { user: owner },
     );
@@ -322,7 +322,7 @@ describe("quests and epics as link sources, through their controllers", () => {
         params: { projectId },
         body: {
           title: "Linked epic",
-          description: `Specified in [[${target.title}]].`,
+          description: `Specified in [[#F${target.shortId}]].`,
         },
       },
       { user: owner },
@@ -340,7 +340,7 @@ describe("quests and epics as link sources, through their controllers", () => {
         body: {
           projectId,
           title: "Doomed",
-          description: `Per [[${target.title}]].`,
+          description: `Per [[#F${target.shortId}]].`,
           area: "orm",
           priority: "high",
           objectives: [],
@@ -357,152 +357,5 @@ describe("quests and epics as link sources, through their controllers", () => {
     );
 
     expect(await ctx.folioLinkService.findInbound(target.id)).toHaveLength(0);
-  });
-});
-
-/**
- * Phase 5: a folio rename rewrites the references that named it.
- *
- * The gap these close was real and silent — renaming a folio left every
- * `[[Old Title]]` in the project pointing at nothing, in the markdown, with
- * no error anywhere. Driven by the link table, so it reaches quests and
- * epics, which a folio-only scan never could.
- */
-describe("renaming a folio rewrites the references to it", () => {
-  let ctx: TestContext;
-  beforeEach(async () => {
-    ctx = await setup();
-  });
-  afterEach(async () => {
-    await ctx.alepha.stop();
-  });
-
-  const seedTarget = async () => {
-    const owner = await createTestUser(ctx);
-    const project = await ctx.projectController.createProject.fetch(
-      { body: { title: `Ren ${Date.now()}` } },
-      { user: owner },
-    );
-    const projectId = project.data.id;
-    const target = await ctx.folioController.create.fetch(
-      { body: { projectId, title: "Old Title", content: "target" } },
-      { user: owner },
-    );
-    return { owner, projectId, target: target.data };
-  };
-
-  const rename = async (
-    ctxTarget: { id: string },
-    owner: { id: string; roles: string[] },
-    title: string,
-  ) =>
-    ctx.folioController.update.fetch(
-      { params: { id: ctxTarget.id }, body: { title } },
-      { user: owner },
-    );
-
-  it("rewrites the token inside another FOLIO", async () => {
-    const { owner, projectId, target } = await seedTarget();
-    const source = await ctx.folioController.create.fetch(
-      {
-        body: {
-          projectId,
-          title: "Source",
-          content: "See [[Old Title]] and [[Old Title#section]].",
-        },
-      },
-      { user: owner },
-    );
-
-    await rename(target, owner, "New Title");
-
-    const after = await ctx.folioController.get.fetch(
-      { params: { id: source.data.id } },
-      { user: owner },
-    );
-    // The anchor survives; the title is swapped in place.
-    expect(after.data.content).toBe(
-      "See [[New Title]] and [[New Title#section]].",
-    );
-  });
-
-  it("rewrites the token inside a QUEST, which a folio-only scan would miss", async () => {
-    const { owner, projectId, target } = await seedTarget();
-    const quest = await ctx.questController.createQuest.fetch(
-      {
-        body: {
-          projectId,
-          title: "Q",
-          description: "Per [[Old Title]].",
-          area: "orm",
-          priority: "high",
-          objectives: [],
-          attachments: [],
-        },
-      },
-      { user: owner },
-    );
-
-    await rename(target, owner, "New Title");
-
-    const after = await ctx.questController.getQuestById.fetch(
-      { params: { id: quest.data.id } },
-      { user: owner },
-    );
-    expect(after.data.description).toBe("Per [[New Title]].");
-
-    // And the link survives the rename rather than being dropped.
-    const inbound = await ctx.folioLinkService.findInbound(target.id);
-    expect(inbound).toHaveLength(1);
-    expect(inbound[0].fromType).toBe("quest");
-  });
-
-  it("leaves prose and other entity kinds alone", async () => {
-    const { owner, projectId, target } = await seedTarget();
-    const source = await ctx.folioController.create.fetch(
-      {
-        body: {
-          projectId,
-          title: "Careful",
-          // Bare prose naming the folio, a QUEST token that merely shares
-          // the name, and the real reference. Only the last may change.
-          content:
-            "Old Title is a phrase. [[quest:Old Title]] is a quest. [[Old Title]] is the folio.",
-        },
-      },
-      { user: owner },
-    );
-
-    await rename(target, owner, "New Title");
-
-    const after = await ctx.folioController.get.fetch(
-      { params: { id: source.data.id } },
-      { user: owner },
-    );
-    expect(after.data.content).toBe(
-      "Old Title is a phrase. [[quest:Old Title]] is a quest. [[New Title]] is the folio.",
-    );
-  });
-
-  it("does not touch a #N reference, which never went stale", async () => {
-    const { owner, projectId, target } = await seedTarget();
-    const source = await ctx.folioController.create.fetch(
-      {
-        body: {
-          projectId,
-          title: "ByNumber",
-          content: `See [[#${target.shortId}]].`,
-        },
-      },
-      { user: owner },
-    );
-
-    await rename(target, owner, "New Title");
-
-    const after = await ctx.folioController.get.fetch(
-      { params: { id: source.data.id } },
-      { user: owner },
-    );
-    expect(after.data.content).toBe(`See [[#${target.shortId}]].`);
   });
 });

@@ -1,15 +1,14 @@
 import { type Infer, z } from "alepha";
 
 /**
- * What a `[[...]]` reference can point AT: any element (folio, quest,
+ * What a `[[#Q12]]` reference can point AT: any element (folio, quest,
  * epic), plus `feedback` and `release`, which have a per-project number and
- * a title but no body of their own to link FROM, plus `blob`, a binary
- * attachment.
+ * a title but no body of their own to link FROM. One literal per letter of
+ * the grammar: `F`, `Q`, `E`, `P`, `R`.
  *
- * A superset of {@link elementKindSchema} on purpose. A blob has bytes and
- * a name but no body, so nothing inside it can reference anything — it is a
- * target and never a source. Keeping the two unions apart is what stops a
- * future "sync this element's links" call from being handed a blob.
+ * A superset of {@link elementKindSchema} on purpose: feedback and releases
+ * are targets and never sources. Keeping the two unions apart is what stops
+ * a future "sync this element's links" call from being handed one.
  *
  * Persisted as `folio_links.target_type`, which is `mode: "text"` — no
  * CHECK constraint at the database level, so extending this enum is a
@@ -17,12 +16,14 @@ import { type Infer, z } from "alepha";
  * and how `feedback` and `release` were (epic #32). The literals ARE the
  * stored values: renaming one is a data migration, not a rename, which is
  * why the kind is `feedback` and not the `petition` its letter `P` recalls.
+ * Removing one is a data migration too: `blob` left with the purge of epic
+ * #32, after the converter had deleted every row carrying it, because a
+ * stored value the enum no longer has fails validation on read.
  */
 export const linkTargetKindSchema = z.enum([
   "folio",
   "quest",
   "epic",
-  "blob",
   "feedback",
   "release",
 ]);

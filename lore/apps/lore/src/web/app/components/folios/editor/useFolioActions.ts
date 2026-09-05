@@ -18,7 +18,7 @@ import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
-import { currentFolioBlobsAtom } from "../../../atoms/currentFolioBlobsAtom.ts";
+import { currentFolioAttachmentsAtom } from "../../../atoms/currentFolioAttachmentsAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -1024,7 +1024,7 @@ export const useFolioActions = (
       content: values.content,
     });
     const stem = folioExportFilename(values.title);
-    const attachments = alepha.store.get(currentFolioBlobsAtom) ?? [];
+    const attachments = alepha.store.get(currentFolioAttachmentsAtom) ?? [];
     if (attachments.length === 0) {
       triggerFolioDownload(
         `${stem}.md`,

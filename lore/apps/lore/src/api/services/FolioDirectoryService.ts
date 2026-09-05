@@ -7,7 +7,7 @@ import {
   folioDirectories,
 } from "../entities/folioDirectories.ts";
 import { folios } from "../entities/folios.ts";
-import { FolioBlobService } from "./FolioBlobService.ts";
+import { FolioAttachmentService } from "./FolioAttachmentService.ts";
 import { FolioNameService } from "./FolioNameService.ts";
 
 /**
@@ -30,7 +30,7 @@ export class FolioDirectoryService {
   protected readonly directories = $repository(folioDirectories);
   protected readonly folios = $repository(folios);
   protected readonly names = $inject(FolioNameService);
-  protected readonly blobService = $inject(FolioBlobService);
+  protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly directoryShortId = $sequence();
 
   public async findById(id: string): Promise<FolioDirectory | undefined> {
@@ -179,11 +179,11 @@ export class FolioDirectoryService {
    * purpose - it discriminates by `kind` - so it can't piggy-back on the
    * DB cascade. Explicit walk keeps the reservation table consistent.)
    *
-   * Attachments are not counted and not walked. A blob belongs to a
+   * Attachments are not counted and not walked. An attachment belongs to a
    * folio, not to a folder: `folio_blobs.directoryId` has been dead
    * since attachments became folio-scoped, so a query on it always came
    * back empty, and the release loop it fed had nothing to release -
-   * blobs left the `folio_names` namespace in the same change. The
+   * attachments left the `folio_names` namespace in the same change. The
    * attachments of the folios below are reclaimed through
    * `deleteByFolio` in the loop that follows.
    */
@@ -217,7 +217,7 @@ export class FolioDirectoryService {
         // The folio is about to be cascaded away by the FK, which takes its
         // `folio_blobs` rows with it and leaves the framework files behind.
         // Same reclamation `FolioController.delete` does for one folio.
-        await this.blobService.deleteByFolio(folio.id);
+        await this.attachmentService.deleteByFolio(folio.id);
       }
     }
     await this.names.releaseByEntity(id);

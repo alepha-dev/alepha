@@ -13,7 +13,7 @@ import { folioNames } from "../entities/folioNames.ts";
  *
  * Attachments (`folio_blobs`) are deliberately NOT in this namespace.
  * They belong to a single folio rather than sitting in a folder, so
- * they can only collide with each other — `FolioBlobService` handles
+ * they can only collide with each other — `FolioAttachmentService` handles
  * that within the owning folio, and a reservation row here would give
  * an attachment the power to block a folio name it never appears
  * beside.
