@@ -615,7 +615,7 @@ export default {
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.epics": "Epics",
   "project.settings.nav.feedback": "Feedback",
-  "project.settings.nav.sigils": "Sigils",
+  "project.settings.nav.sigils": "Apps",
   "project.settings.nav.estates": "Estates",
   "project.settings.nav.releases": "Releases",
   "project.settings.nav.quests": "Quests",
@@ -740,7 +740,7 @@ export default {
     "Anyone with the link will see your release tags, their target dates, and the titles of the epics inside them, including epics you have not started yet.",
   "project.settings.roadmap.publicConfirm.confirm": "Make it public",
   "project.settings.feature.sigils.description":
-    "Enroll your applications so they can report crashes, page views and web vitals here, one token per app.",
+    "Track the apps this project deploys, one row per app and environment. Each one can hold a key it reports crashes, page views and web vitals with.",
   "project.settings.feature.feedback.description":
     "Let any signed-in user send this project a bug report or feature request, and give the owner an inbox to triage them in.",
   "project.settings.feature.epics.description":
@@ -1274,19 +1274,7 @@ export default {
   "blights.status.resolved": "Resolved",
   "blights.status.quest": "Forwarded to a quest",
 
-  "sigils.title": "Apps",
   "sigils.empty": "No app enrolled yet. Until one is, nothing can report here.",
-  "sigils.create.title": "Enroll an app",
-  "sigils.create.subtitle":
-    "Mints a token this app reports with. The token is shown once and never again.",
-  "sigils.create.dialogDescription":
-    "Name the app. This name is its address: lowercase letters, digits and hyphens, up to 64 characters, e.g. lore-staging.",
-  "sigils.create.name": "App name",
-  "sigils.create.namePlaceholder": "lore-staging",
-  "sigils.create.invalid":
-    "Lowercase letters, digits and hyphens only, starting and ending with a letter or digit.",
-  "sigils.create.submit": "Enroll",
-  "sigils.create.ownerOnly": "Only the project owner can enroll an app.",
   "sigils.token.title":
     "Copy this token now: it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, which is the only variable an app needs. Add SIGIL_SINK pointing at this instance if it is not the app's default sink.",
   "sigils.token.copy": "Copy token",
@@ -1303,7 +1291,6 @@ export default {
   "sigils.delete.confirmDescription":
     "This erases everything this app ever reported (page views, web vitals, unique visitors and its error budget) along with its token. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
   "sigils.delete.confirm": "Delete",
-  "sigils.toast.created": "Sigil created",
   "sigils.toast.rotated": "Token rotated",
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",

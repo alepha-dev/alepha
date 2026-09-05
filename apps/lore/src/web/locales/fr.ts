@@ -624,7 +624,7 @@ export default {
   "project.settings.nav.folios": "Folios",
   "project.settings.nav.epics": "Épopées",
   "project.settings.nav.feedback": "Retours",
-  "project.settings.nav.sigils": "Sigils",
+  "project.settings.nav.sigils": "Apps",
   "project.settings.nav.estates": "Domaines",
   "project.settings.nav.releases": "Versions",
   "project.settings.nav.quests": "Quêtes",
@@ -751,7 +751,7 @@ export default {
     "Toute personne disposant du lien verra vos étiquettes de version, leurs dates cibles et les titres des épopées qu’elles contiennent, y compris les épopées que vous n’avez pas encore commencées.",
   "project.settings.roadmap.publicConfirm.confirm": "Rendre publique",
   "project.settings.feature.sigils.description":
-    "Enrôlez vos applications pour qu’elles remontent ici plantages, pages vues et Web Vitals, un jeton par application.",
+    "Suivez les applications que ce projet déploie, une ligne par application et environnement. Chacune peut porter une clé avec laquelle elle remonte plantages, pages vues et Web Vitals.",
   "project.settings.feature.feedback.description":
     "Autorisez tout utilisateur connecté à envoyer un rapport de bug ou une demande de fonctionnalité à ce projet, et donnez au propriétaire une boîte de réception pour les trier.",
   "project.settings.feature.epics.description":
@@ -1294,21 +1294,8 @@ export default {
   "blights.status.resolved": "Résolu",
   "blights.status.quest": "Transmis à une quête",
 
-  "sigils.title": "Applications",
   "sigils.empty":
     "Aucune application enrôlée. Tant qu’il n’y en a pas, rien ne peut remonter ici.",
-  "sigils.create.title": "Enrôler une application",
-  "sigils.create.subtitle":
-    "Crée un jeton avec lequel cette application remonte ses données. Le jeton est affiché une seule fois, jamais ensuite.",
-  "sigils.create.dialogDescription":
-    "Nommez l’application. Ce nom est son adresse : lettres minuscules, chiffres et tirets, jusqu’à 64 caractères, par ex. lore-staging.",
-  "sigils.create.name": "Nom de l’application",
-  "sigils.create.namePlaceholder": "lore-staging",
-  "sigils.create.invalid":
-    "Lettres minuscules, chiffres et tirets uniquement, en commençant et en terminant par une lettre ou un chiffre.",
-  "sigils.create.submit": "Enrôler",
-  "sigils.create.ownerOnly":
-    "Seul le propriétaire du projet peut enrôler une application.",
   "sigils.token.title":
     "Copiez ce jeton maintenant : il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, seule variable nécessaire. Ajoutez SIGIL_SINK pointant vers cette instance si ce n’est pas le collecteur par défaut de l’application.",
   "sigils.token.copy": "Copier le jeton",
@@ -1325,7 +1312,6 @@ export default {
   "sigils.delete.confirmDescription":
     "Cela efface tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "sigils.delete.confirm": "Supprimer",
-  "sigils.toast.created": "Sigil créé",
   "sigils.toast.rotated": "Jeton renouvelé",
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",
