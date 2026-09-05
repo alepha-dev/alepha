@@ -305,7 +305,7 @@ describe("Lore MCP — epics", () => {
 
     expect(created.acceptedAt).toBeUndefined();
     expect(created.acceptNote).toBe(
-      `Cannot accept quest #${created.shortId}: Epic #${epic.number} is planned. Begin it first.`,
+      `Cannot accept quest #Q${created.shortId}: Epic #E${epic.number} is planned. Begin it first.`,
     );
     const row = await repos.quests.getById(created.id);
     expect(row.epicId).toBe(epic.id);

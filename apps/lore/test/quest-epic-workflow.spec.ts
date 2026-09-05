@@ -111,7 +111,7 @@ describe("the epic phase gate on quest transitions", () => {
           { user: ownerToken(project) },
         ),
       ).rejects.toThrow(
-        `Cannot accept quest #${quest.shortId}: Epic #${epic.number} is planned. Begin it first.`,
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is planned. Begin it first.`,
       );
       expect(
         (await ctx.repos.quests.getById(quest.id)).acceptedAt,
@@ -152,7 +152,7 @@ describe("the epic phase gate on quest transitions", () => {
           { user: ownerToken(project) },
         ),
       ).rejects.toThrow(
-        `Cannot accept quest #${quest.shortId}: Epic #${epic.number} is concluded. File this in a new epic.`,
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is concluded. File this in a new epic.`,
       );
     });
 
@@ -199,7 +199,7 @@ describe("the epic phase gate on quest transitions", () => {
         { user: ownerToken(project) },
       ),
     ).rejects.toThrow(
-      `Cannot assign quest #${quest.shortId}: Epic #${epic.number} is planned. Begin it first.`,
+      `Cannot assign quest #Q${quest.shortId}: Epic #E${epic.number} is planned. Begin it first.`,
     );
   });
 
@@ -232,7 +232,7 @@ describe("the epic phase gate on quest transitions", () => {
         { user },
       ),
     ).rejects.toThrow(
-      `Cannot complete quest #${parked.shortId}: Epic #${planned.number} is planned. Begin it first.`,
+      `Cannot complete quest #Q${parked.shortId}: Epic #E${planned.number} is planned. Begin it first.`,
     );
 
     const completed = await ctx.controller.completeQuest(
@@ -269,7 +269,7 @@ describe("the epic phase gate on quest transitions", () => {
     await expect(
       ctx.controller.reopenQuest({ params: { id: closed.id } }, { user }),
     ).rejects.toThrow(
-      `Cannot reopen quest #${closed.shortId}: Epic #${done.number} is concluded. File this in a new epic.`,
+      `Cannot reopen quest #Q${closed.shortId}: Epic #E${done.number} is concluded. File this in a new epic.`,
     );
 
     const reopened = await ctx.controller.reopenQuest(
@@ -302,7 +302,7 @@ describe("the epic phase gate on quest transitions", () => {
     await expect(
       ctx.controller.unshelveQuest({ params: { id: sealed.id } }, { user }),
     ).rejects.toThrow(
-      `Cannot unshelve quest #${sealed.shortId}: Epic #${done.number} is concluded. File this in a new epic.`,
+      `Cannot unshelve quest #Q${sealed.shortId}: Epic #E${done.number} is concluded. File this in a new epic.`,
     );
 
     // Shelving during planning is an edit to an open plan, and so is
@@ -361,12 +361,12 @@ describe("the epic phase gate on quest transitions", () => {
       await expect(
         ctx.controller.deleteQuest({ params: { id: held.id } }, { user }),
       ).rejects.toThrow(
-        `Cannot delete quest #${held.shortId}: Epic #${active.number} is active. Its plan is frozen. Shelve it instead.`,
+        `Cannot delete quest #Q${held.shortId}: Epic #E${active.number} is active. Its plan is frozen. Shelve it instead.`,
       );
       await expect(
         ctx.controller.deleteQuest({ params: { id: sealed.id } }, { user }),
       ).rejects.toThrow(
-        `Cannot delete quest #${sealed.shortId}: Epic #${done.number} is concluded.`,
+        `Cannot delete quest #Q${sealed.shortId}: Epic #E${done.number} is concluded.`,
       );
       // Both rows survive.
       expect((await ctx.repos.quests.getById(held.id)).id).toBe(held.id);

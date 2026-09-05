@@ -1,6 +1,7 @@
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Epic, epics } from "../entities/epics.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 
@@ -106,11 +107,11 @@ export class EpicWorkflowService {
     if (epic.status === "planned") {
       if (verb === "unshelve") return;
       throw new BadRequestError(
-        `Cannot ${verb} quest #${quest.shortId}: Epic #${epic.number} is planned. Begin it first.`,
+        `Cannot ${verb} quest ${formatReference("quest", quest.shortId)}: Epic ${formatReference("epic", epic.number)} is planned. Begin it first.`,
       );
     }
     throw new BadRequestError(
-      `Cannot ${verb} quest #${quest.shortId}: Epic #${epic.number} is concluded. File this in a new epic.`,
+      `Cannot ${verb} quest ${formatReference("quest", quest.shortId)}: Epic ${formatReference("epic", epic.number)} is concluded. File this in a new epic.`,
     );
   }
 
@@ -145,13 +146,13 @@ export class EpicWorkflowService {
           ? " File this in a new epic, or add an objective to a quest already in it."
           : " File this in a new epic.";
       throw new BadRequestError(
-        `Cannot add a quest: Epic #${epic.number} ${phase}${fix}`,
+        `Cannot add a quest: Epic ${formatReference("epic", epic.number)} ${phase}${fix}`,
       );
     }
 
     const fix = epic.status === "active" ? " Shelve it instead." : "";
     throw new BadRequestError(
-      `Cannot ${edit.kind} quest #${edit.quest.shortId}: Epic #${epic.number} ${phase}${fix}`,
+      `Cannot ${edit.kind} quest ${formatReference("quest", edit.quest.shortId)}: Epic ${formatReference("epic", epic.number)} ${phase}${fix}`,
     );
   }
 
@@ -190,7 +191,7 @@ export class EpicWorkflowService {
     if (!predecessor || predecessor.status === "done") return;
 
     throw new BadRequestError(
-      `Cannot begin Epic #${epic.number}: it depends on Epic #${predecessor.number}, which is not concluded.`,
+      `Cannot begin Epic ${formatReference("epic", epic.number)}: it depends on Epic ${formatReference("epic", predecessor.number)}, which is not concluded.`,
     );
   }
 
@@ -234,7 +235,7 @@ export class EpicWorkflowService {
         ? " An accepted quest is unassigned first, then shelved."
         : "";
     throw new BadRequestError(
-      `Cannot conclude Epic #${epic.number}: ${noun} still open. Complete or shelve each one.${route}`,
+      `Cannot conclude Epic ${formatReference("epic", epic.number)}: ${noun} still open. Complete or shelve each one.${route}`,
     );
   }
 }

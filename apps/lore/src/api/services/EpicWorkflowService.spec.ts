@@ -75,7 +75,7 @@ describe("EpicWorkflowService", () => {
       await expect(
         app.workflow.assertQuestWorkable(quest, "accept"),
       ).rejects.toThrow(
-        `Cannot accept quest #${quest.shortId}: Epic #${epic.number} is planned. Begin it first.`,
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is planned. Begin it first.`,
       );
     });
 
@@ -89,7 +89,7 @@ describe("EpicWorkflowService", () => {
       await expect(
         app.workflow.assertQuestWorkable(quest, "reopen"),
       ).rejects.toThrow(
-        `Cannot reopen quest #${quest.shortId}: Epic #${epic.number} is concluded. File this in a new epic.`,
+        `Cannot reopen quest #Q${quest.shortId}: Epic #E${epic.number} is concluded. File this in a new epic.`,
       );
     });
 
@@ -109,7 +109,7 @@ describe("EpicWorkflowService", () => {
       ] as const) {
         await expect(
           app.workflow.assertQuestWorkable(quest, verb),
-        ).rejects.toThrow(`Cannot ${verb} quest #${quest.shortId}:`);
+        ).rejects.toThrow(`Cannot ${verb} quest #Q${quest.shortId}:`);
       }
     });
 
@@ -182,7 +182,7 @@ describe("EpicWorkflowService", () => {
       expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "add" }),
       ).toThrow(
-        `Cannot add a quest: Epic #${epic.number} is active. Its plan is frozen. File this in a new epic, or add an objective to a quest already in it.`,
+        `Cannot add a quest: Epic #E${epic.number} is active. Its plan is frozen. File this in a new epic, or add an objective to a quest already in it.`,
       );
     });
 
@@ -193,7 +193,7 @@ describe("EpicWorkflowService", () => {
       expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "add" }),
       ).toThrow(
-        `Cannot add a quest: Epic #${epic.number} is concluded. File this in a new epic.`,
+        `Cannot add a quest: Epic #E${epic.number} is concluded. File this in a new epic.`,
       );
     });
 
@@ -207,7 +207,7 @@ describe("EpicWorkflowService", () => {
       expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "remove", quest }),
       ).toThrow(
-        `Cannot remove quest #${quest.shortId}: Epic #${epic.number} is active. Its plan is frozen. Shelve it instead.`,
+        `Cannot remove quest #Q${quest.shortId}: Epic #E${epic.number} is active. Its plan is frozen. Shelve it instead.`,
       );
     });
 
@@ -221,7 +221,7 @@ describe("EpicWorkflowService", () => {
       expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "delete", quest }),
       ).toThrow(
-        `Cannot delete quest #${quest.shortId}: Epic #${epic.number} is active. Its plan is frozen. Shelve it instead.`,
+        `Cannot delete quest #Q${quest.shortId}: Epic #E${epic.number} is active. Its plan is frozen. Shelve it instead.`,
       );
     });
 
@@ -235,12 +235,12 @@ describe("EpicWorkflowService", () => {
       expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "remove", quest }),
       ).toThrow(
-        `Cannot remove quest #${quest.shortId}: Epic #${epic.number} is concluded.`,
+        `Cannot remove quest #Q${quest.shortId}: Epic #E${epic.number} is concluded.`,
       );
       expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "delete", quest }),
       ).toThrow(
-        `Cannot delete quest #${quest.shortId}: Epic #${epic.number} is concluded.`,
+        `Cannot delete quest #Q${quest.shortId}: Epic #E${epic.number} is concluded.`,
       );
     });
 
@@ -307,7 +307,7 @@ describe("EpicWorkflowService", () => {
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
       await expect(app.workflow.assertQuestDeletable(quest)).rejects.toThrow(
-        `Cannot delete quest #${quest.shortId}: Epic #${epic.number} is active. Its plan is frozen. Shelve it instead.`,
+        `Cannot delete quest #Q${quest.shortId}: Epic #E${epic.number} is active. Its plan is frozen. Shelve it instead.`,
       );
     });
   });
@@ -357,10 +357,10 @@ describe("EpicWorkflowService", () => {
       });
 
       await expect(app.workflow.assertCanBegin(afterPlanned)).rejects.toThrow(
-        `Cannot begin Epic #${afterPlanned.number}: it depends on Epic #${planned.number}, which is not concluded.`,
+        `Cannot begin Epic #E${afterPlanned.number}: it depends on Epic #E${planned.number}, which is not concluded.`,
       );
       await expect(app.workflow.assertCanBegin(afterActive)).rejects.toThrow(
-        `Cannot begin Epic #${afterActive.number}: it depends on Epic #${active.number}, which is not concluded.`,
+        `Cannot begin Epic #E${afterActive.number}: it depends on Epic #E${active.number}, which is not concluded.`,
       );
     });
 
@@ -429,10 +429,10 @@ describe("EpicWorkflowService", () => {
       });
 
       await expect(app.workflow.assertCanConclude(one)).rejects.toThrow(
-        `Cannot conclude Epic #${one.number}: 1 quest is still open. Complete or shelve each one.`,
+        `Cannot conclude Epic #E${one.number}: 1 quest is still open. Complete or shelve each one.`,
       );
       await expect(app.workflow.assertCanConclude(three)).rejects.toThrow(
-        `Cannot conclude Epic #${three.number}: 3 quests are still open. Complete or shelve each one.`,
+        `Cannot conclude Epic #E${three.number}: 3 quests are still open. Complete or shelve each one.`,
       );
     });
 
@@ -447,7 +447,7 @@ describe("EpicWorkflowService", () => {
       });
 
       await expect(app.workflow.assertCanConclude(epic)).rejects.toThrow(
-        `Cannot conclude Epic #${epic.number}: 1 quest is still open. Complete or shelve each one. An accepted quest is unassigned first, then shelved.`,
+        `Cannot conclude Epic #E${epic.number}: 1 quest is still open. Complete or shelve each one. An accepted quest is unassigned first, then shelved.`,
       );
     });
 

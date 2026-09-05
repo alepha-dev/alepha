@@ -251,7 +251,7 @@ describe("ProjectEpicQuests - columns", () => {
         status,
       );
 
-      await screen.findByRole("link", { name: "#12 - Ship the thing" });
+      await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
       expect(screen.queryByRole("button", { name: "New Quest" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Attach Quest" })).toBeNull();
       expect(

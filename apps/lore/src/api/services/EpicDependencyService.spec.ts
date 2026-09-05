@@ -287,7 +287,7 @@ describe("EpicDependencyService", () => {
           { user },
         ),
       ).rejects.toThrow(
-        `Cannot begin Epic #${second.number}: it depends on Epic #${first.number}, which is not concluded.`,
+        `Cannot begin Epic #E${second.number}: it depends on Epic #E${first.number}, which is not concluded.`,
       );
       expect((await ctx.repos.epics.getById(second.id)).status).toBe("planned");
 
