@@ -2,7 +2,6 @@ ignores:
   - "alepha"
   - "@alepha/ui"
   - "@alepha/mantine"
-  - "@alepha/mqtt"
   - "@alepha/devtools"
   # The root devDependency is what makes Yarn link `node_modules/.bin/lore`,
   # so every `yarn lore ...` step in CI stops resolving the moment somebody

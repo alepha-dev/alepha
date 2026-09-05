@@ -27,7 +27,12 @@ import {
   type JobStatus,
   jobExecutionEntity,
 } from "../entities/jobExecutionEntity.ts";
-import type { JobPrimitiveOptions, JobPriority } from "../primitives/$job.ts";
+import type {
+  JobPrimitiveOptions,
+  JobPriority,
+  JobRescheduleOptions,
+  JobRetryBackoff,
+} from "../primitives/$job.ts";
 import { jobConfig } from "../schemas/jobConfigAtom.ts";
 import { DirectJobDispatcher } from "./DirectJobDispatcher.ts";
 import type { JobDispatcher, JobDispatchOptions } from "./JobDispatcher.ts";
@@ -127,6 +132,14 @@ export interface JobRuntimeRegistration {
 }
 
 export type JobEffectiveMode = "cron" | "queue" | "direct";
+
+/**
+ * What a handler's `reschedule()` resolved to: the row's next stage.
+ */
+interface RescheduleIntent {
+  scheduledAt: string;
+  payload: Record<string, unknown> | undefined;
+}
 
 // -----------------------------------------------------------------------------------------------------------------
 
@@ -287,6 +300,12 @@ export class JobProvider {
     if (options.inline && options.retry) {
       throw new AlephaError(
         `Job '${name}' declares both 'inline' and 'retry'. "Retry ${options.retry.retries} time(s)" and "tell the caller now" cannot both be the default. Keep 'retry' on the job and pass 'inline' per push at the call sites that cannot wait.`,
+      );
+    }
+    const factor = options.retry?.backoff?.factor ?? 2;
+    if (!(factor >= 1)) {
+      throw new AlephaError(
+        `Job '${name}' declares a retry backoff factor of ${factor}. Below 1 every retry comes sooner than the last; use 1 for a flat curve.`,
       );
     }
 
@@ -492,27 +511,29 @@ export class JobProvider {
 
   /**
    * Update only when the row is still in one of the expected statuses.
-   * Logs and returns silently when the guard rejects — this happens when a
+   * Logs and returns `false` when the guard rejects — this happens when a
    * concurrent operation (most often `cancel()`) has already moved the row
-   * into a terminal state. We must not overwrite that.
+   * into a terminal state. We must not overwrite that. Returns `true` when
+   * the write happened, for the callers that must not dispatch otherwise.
    */
   protected async guardedUpdate(
     executionId: string,
     expectedStatuses: JobStatus[],
     patch: Parameters<typeof this.executions.updateById>[1],
     label: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       await this.executions.updateOne(
         { id: { eq: executionId }, status: { inArray: expectedStatuses } },
         patch,
       );
+      return true;
     } catch (e) {
       if (e instanceof DbEntityNotFoundError) {
         this.log.debug(
           `${label}: row ${executionId} not in expected status — skipping write`,
         );
-        return;
+        return false;
       }
       throw e;
     }
@@ -645,6 +666,11 @@ export class JobProvider {
             now: startedAt,
             signal: abortController.signal,
             executionId,
+            reschedule: () => {
+              throw new AlephaError(
+                `Job '${name}' called reschedule() from a cron tick. A tick has no execution row to park; push a queue-mode job for work that waits.`,
+              );
+            },
           });
 
           if (record === "all") {
@@ -1237,7 +1263,121 @@ export class JobProvider {
     });
   }
 
+  // --- Reschedule ------------------------------------------------------------------------------------------------
+
+  /**
+   * Resolve a handler's `reschedule()` call into the row it asks for. Runs at
+   * call time, inside the handler, so a bad request fails the run there
+   * rather than parking garbage: the error takes the retry path like any
+   * other throw.
+   */
+  protected rescheduleIntent(
+    registration: JobRuntimeRegistration,
+    currentPayload: Record<string, unknown> | undefined,
+    options: JobRescheduleOptions,
+  ): RescheduleIntent {
+    let scheduledAt: string;
+    if (options.scheduledAt) {
+      scheduledAt = options.scheduledAt.toISOString();
+    } else if (options.delay) {
+      scheduledAt = this.dt
+        .now()
+        .add(this.dt.duration(options.delay))
+        .toISOString();
+    } else {
+      throw new AlephaError(
+        `Job '${registration.name}' called reschedule() without a 'delay' or a 'scheduledAt'. A reschedule is a wait; say how long.`,
+      );
+    }
+    const payload =
+      options.payload === undefined
+        ? currentPayload
+        : (this.alepha.codec.validate(
+            registration.options.schema!,
+            options.payload,
+          ) as Record<string, unknown>);
+    return { scheduledAt, payload };
+  }
+
+  /**
+   * Put a running execution back to `scheduled` for its next stage.
+   *
+   * Guarded on `running`, like every other write that ends a run: a cancel
+   * that landed while the handler was finishing wins, and the reschedule is
+   * dropped without a dispatch. The row keeps its id, its key and its
+   * `maxAttempts`; `attempt` and `redispatchCount` start over, so each stage
+   * has the job's full retry budget. No success is recorded and no
+   * `job:success` is emitted: the execution is not over.
+   */
+  protected async park(
+    jobName: string,
+    executionId: string,
+    next: RescheduleIntent,
+  ): Promise<void> {
+    const parked = await this.guardedUpdate(
+      executionId,
+      ["running"],
+      {
+        status: "scheduled",
+        scheduledAt: next.scheduledAt,
+        payload: next.payload,
+        attempt: 0,
+        redispatchCount: 0,
+      },
+      "reschedule",
+    );
+    if (!parked) return;
+    this.log.debug(`Job '${jobName}' rescheduled`, {
+      executionId,
+      scheduledAt: next.scheduledAt,
+    });
+    await this.dispatchDelayed(jobName, executionId, next.scheduledAt);
+  }
+
   // --- Cancel ----------------------------------------------------------------------------------------------------
+
+  /**
+   * Cancel the execution parked under `(jobName, key)`, if any.
+   *
+   * One status-guarded update on `pending | scheduled`, not a read followed
+   * by `cancel()`: a claim racing this call simply wins the update, and the
+   * handler it started is left alone. A `running` row is never touched here,
+   * by contract (see {@link JobPrimitive.cancelByKey}); the row's own next
+   * stage re-checks whatever the event meant. Returns the cancelled id, or
+   * `null` when nothing was parked under that key.
+   */
+  public async cancelByKey(
+    jobName: string,
+    key: string,
+    context?: CancelContext,
+  ): Promise<string | null> {
+    this.getRegistration(jobName);
+    try {
+      const row = await this.executions.updateOne(
+        {
+          jobName: { eq: jobName },
+          key: { eq: key },
+          status: { inArray: ["pending", "scheduled"] },
+        },
+        {
+          status: "cancelled",
+          key: null,
+          cancelledBy: context?.cancelledBy,
+          cancelledByName: context?.cancelledByName,
+          completedAt: this.dt.nowISOString(),
+        },
+      );
+      this.log.info(`Cancelled execution ${row.id} by key`, {
+        jobName,
+        key,
+        cancelledBy: context?.cancelledByName ?? context?.cancelledBy,
+      });
+      return row.id;
+    } catch (error) {
+      if (error instanceof DbEntityNotFoundError) return null;
+      throw error;
+    }
+  }
 
   public async cancel(
     executionId: string,
@@ -1369,6 +1509,9 @@ export class JobProvider {
             executionId,
           });
 
+          // Set by the handler's `reschedule()`; read once it resolves. A
+          // throw discards it, which is what makes "throw wins" true.
+          let parkAgain: RescheduleIntent | undefined;
           try {
             await opts.handler({
               payload: execution.payload,
@@ -1376,7 +1519,24 @@ export class JobProvider {
               now,
               signal: abortController.signal,
               executionId,
+              reschedule: (options) => {
+                if (inline) {
+                  throw new AlephaError(
+                    `Job '${jobName}' called reschedule() during an inline push. The caller is waiting for an outcome, and a parked row has none to give it. Push without 'inline' for work that waits.`,
+                  );
+                }
+                parkAgain = this.rescheduleIntent(
+                  registration,
+                  execution.payload,
+                  options,
+                );
+              },
             });
+
+            if (parkAgain) {
+              await this.park(jobName, executionId, parkAgain);
+              return;
+            }
 
             // Success: either DELETE (no retention configured, or
             // record=error) or UPDATE to 'ok'.
@@ -1542,20 +1702,37 @@ export class JobProvider {
   /**
    * How long to wait before attempt `currentAttempt + 1`.
    *
-   * Exponential (`base * 2^(n-1)`), capped, then **full jitter**: uniform in
-   * `[0, computed]`. The jitter matters more than the curve. Before this,
-   * every retrying row in the system shared one `scheduledAt` and the sweep
-   * promoted them as a single herd against a downstream that had just told
-   * them all it was struggling; spreading them is most of the value.
+   * Exponential (`base * factor^(n-1)`), capped, then **full jitter**:
+   * uniform in `[0, computed]`. The jitter matters more than the curve.
+   * Before this, every retrying row in the system shared one `scheduledAt`
+   * and the sweep promoted them as a single herd against a downstream that
+   * had just told them all it was struggling; spreading them is most of the
+   * value.
+   *
+   * A job's own `retry.backoff` replaces the base, the factor and the cap,
+   * and may switch the jitter off for an exact curve; the global
+   * `retryBackoffMax` still caps a job that names no `max`.
    */
-  protected retryBackoffMs(currentAttempt: number): number {
-    const base = Math.max(0, this.config.retryBackoffBase);
-    const cap = Math.max(base, this.config.retryBackoffMax);
+  protected retryBackoffMs(
+    currentAttempt: number,
+    backoff?: JobRetryBackoff,
+  ): number {
+    const base = backoff
+      ? Math.max(0, this.dt.duration(backoff.initial).as("milliseconds"))
+      : Math.max(0, this.config.retryBackoffBase);
+    const cap = Math.max(
+      base,
+      backoff?.max
+        ? this.dt.duration(backoff.max).as("milliseconds")
+        : this.config.retryBackoffMax,
+    );
+    const factor = backoff?.factor ?? 2;
     const exponent = Math.max(0, currentAttempt - 1);
     // 2^30 ms is already ~12 days, so clamp the exponent before it can
     // overflow into Infinity on a job with an absurd retry count.
-    const ceiling = Math.min(cap, base * 2 ** Math.min(exponent, 30));
-    return Math.round(this.randomFraction() * ceiling);
+    const ceiling = Math.min(cap, base * factor ** Math.min(exponent, 30));
+    const jitter = backoff?.jitter ?? true;
+    return Math.round(jitter ? this.randomFraction() * ceiling : ceiling);
   }
 
   /**
@@ -1611,7 +1788,7 @@ export class JobProvider {
       // sweep is the backstop, so a runtime that cannot arrange a wake-up
       // still retries, just no sooner than the next tick. That is the
       // property the old comment wanted, and it did not need a flat grid.
-      const delayMs = this.retryBackoffMs(currentAttempt);
+      const delayMs = this.retryBackoffMs(currentAttempt, retry.backoff);
       const nextScheduledAt = this.dt
         .now()
         .add(delayMs, "millisecond")

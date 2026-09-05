@@ -14,7 +14,6 @@ import type {
   AdminSessionController,
   AdminUserController,
 } from "alepha/api/users";
-import type { AdminWorkflowController } from "alepha/api/workflows";
 import { Translate } from "alepha/react/i18n";
 import { $client } from "alepha/server/links";
 import {
@@ -29,7 +28,6 @@ import {
   SlidersHorizontal,
   Timer,
   UsersIcon,
-  Workflow,
 } from "lucide-react";
 import { createElement } from "react";
 
@@ -143,20 +141,20 @@ import { adminRouterOptionsAtom } from "./admin-router-options.tsx";
  * groups by their smallest member, so only an `order` of 1000 or more sinks a
  * page in among them.
  *
- * ### These thirteen route names are claimed globally
+ * ### These twelve route names are claimed globally
  *
  * `dashboard`, `users`, `userDetail`, `sessions`, `keys`, `jobs`,
- * `notifications`, `audits`, `files`, `parameters`, `payments`, `analytics`
- * and `workflows` each carry an explicit `name:` so a future rename of the
+ * `notifications`, `audits`, `files`, `parameters`, `payments` and
+ * `analytics` each carry an explicit `name:` so a future rename of the
  * field itself (done for readability, without touching the string) never
  * silently changes the public route name — the same reason `AuthRouter`'s
  * pages all carry one too.
  *
  * Route names live in one process-wide namespace, and a duplicate does not
  * throw: `ReactPageProvider.page()` returns the first match. An adopter that
- * registers its own page named `files` (or any of the other twelve) either
+ * registers its own page named `files` (or any of the other eleven) either
  * shadows this one or is shadowed by it, silently, depending on mount order.
- * Treat these thirteen names as reserved when hanging pages off `layout`.
+ * Treat these twelve names as reserved when hanging pages off `layout`.
  *
  * ### It needs `<DialogProvider>` and `<Toaster />` above it
  *
@@ -178,7 +176,6 @@ export class AdminRouter {
   protected readonly parameterApi = $client<AdminParameterController>();
   protected readonly paymentApi = $client<AdminPaymentController>();
   protected readonly analyticsApi = $client<AdminAnalyticsController>();
-  protected readonly workflowApi = $client<AdminWorkflowController>();
 
   /**
    * Anchors the shell and the first breadcrumb. Not itself a nav entry — a
@@ -485,24 +482,5 @@ export class AdminRouter {
       order: 1016,
     },
     lazy: () => import("./admin-analytics.tsx"),
-  });
-
-  workflows = $pageNav({
-    parent: this.layout,
-    path: "/workflows",
-    name: "workflows",
-    head: { title: "Workflows" },
-    permission: "admin:workflow:read",
-    can: () => this.workflowApi.getWorkflowRegistry.can(),
-    nav: {
-      label: "Workflows",
-      labelKey: "admin.nav.workflows",
-      icon: createElement(Workflow),
-      group: "System",
-      groupKey: "admin.nav.group.system",
-      order: 1014,
-      keywords: ["saga", "steps", "executions"],
-    },
-    lazy: () => import("./admin-workflows.tsx"),
   });
 }

@@ -1,3 +1,4 @@
+import { AdminJobsPayloadDialog } from "@alepha/ui/components/admin/admin-jobs-payload-dialog";
 import { AdminJobsStatusBadge } from "@alepha/ui/components/admin/admin-jobs-status-badge";
 import { useConfirmedAction } from "@alepha/ui/components/admin/use-confirmed-action";
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
@@ -6,8 +7,8 @@ import { type Infer, type Page, z } from "alepha";
 import type { AdminJobController, JobExecutionResource } from "alepha/api/jobs";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Ban, CircleDot, RotateCcw } from "lucide-react";
-import { useCallback } from "react";
+import { Ban, Braces, CircleDot, RotateCcw } from "lucide-react";
+import { useCallback, useState } from "react";
 
 import {
   JOB_EXECUTION_STATUSES,
@@ -60,6 +61,7 @@ export const AdminJobsExecutionsPanel = (
   const client = useClient<AdminJobController>();
   const { l, tr } = useI18n();
   const statusLabels = useJobStatusLabels();
+  const [payloadOf, setPayloadOf] = useState<JobExecutionResource | null>(null);
 
   const fetcher = useCallback(
     async (params: { filters?: ExecFilters }) => {
@@ -116,125 +118,162 @@ export const AdminJobsExecutionsPanel = (
   );
 
   return (
-    <AlephaTable<JobExecutionResource>
-      className="min-h-0 flex-1"
-      persistenceKey={`admin.jobs.executions.${jobName}`}
-      pollMs={EXEC_POLL_MS}
-      rowKey={(e) => e.id}
-      fetch={fetcher}
-      filters={{
-        schema: execFiltersSchema,
-        render: (form) => (
-          <Control
-            input={form.input.status}
-            label=""
-            clearable
-            icon={CircleDot}
-            clearLabel={String(
-              tr("admin.jobs.statusAll", { default: "All statuses" }),
-            )}
-            triggerClassName="w-40"
-            items={JOB_EXECUTION_STATUSES.map((status) => ({
-              value: status,
-              label: statusLabels[status],
-            }))}
-          />
-        ),
-      }}
-      columns={{
-        status: {
-          label: tr("admin.jobs.colStatus", { default: "Status" }),
-          cell: (e) => <AdminJobsStatusBadge status={e.status} />,
-        },
-        startedAt: {
-          label: tr("admin.jobs.colStarted", { default: "Started" }),
-          cell: (e) => (
-            <span className="text-muted-foreground text-xs">
-              {e.startedAt
-                ? String(l(e.startedAt, { date: "fromNow" }))
-                : tr("admin.jobs.notStarted", { default: "Not started" })}
-            </span>
+    <>
+      <AlephaTable<JobExecutionResource>
+        className="min-h-0 flex-1"
+        persistenceKey={`admin.jobs.executions.${jobName}`}
+        pollMs={EXEC_POLL_MS}
+        rowKey={(e) => e.id}
+        fetch={fetcher}
+        filters={{
+          schema: execFiltersSchema,
+          render: (form) => (
+            <Control
+              input={form.input.status}
+              label=""
+              clearable
+              icon={CircleDot}
+              clearLabel={String(
+                tr("admin.jobs.statusAll", { default: "All statuses" }),
+              )}
+              triggerClassName="w-40"
+              items={JOB_EXECUTION_STATUSES.map((status) => ({
+                value: status,
+                label: statusLabels[status],
+              }))}
+            />
           ),
-        },
-        duration: {
-          label: tr("admin.jobs.colDuration", { default: "Duration" }),
-          align: "right",
-          cell: (e) => {
-            if (!e.startedAt || !e.completedAt) {
-              return <span className="text-muted-foreground">—</span>;
-            }
-            const ms =
-              new Date(e.completedAt).getTime() -
-              new Date(e.startedAt).getTime();
-            return (
-              <span className="text-xs">
-                {ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`}
-              </span>
-            );
+        }}
+        columns={{
+          status: {
+            label: tr("admin.jobs.colStatus", { default: "Status" }),
+            cell: (e) => <AdminJobsStatusBadge status={e.status} />,
           },
-        },
-        attempt: {
-          label: tr("admin.jobs.colAttempt", { default: "Attempt" }),
-          align: "right",
-          cell: (e) => (
-            <span className="text-xs">
-              {e.attempt}/{e.maxAttempts}
-            </span>
-          ),
-        },
-        triggeredBy: {
-          label: tr("admin.jobs.colTriggeredBy", { default: "Triggered by" }),
-          cell: (e) => (
-            <span className="text-muted-foreground text-xs">
-              {e.triggeredByName ?? e.triggeredBy ?? "—"}
-            </span>
-          ),
-        },
-        error: {
-          label: tr("admin.jobs.colError", { default: "Error" }),
-          cell: (e) =>
-            e.error ? (
-              <span
-                className="text-destructive line-clamp-2 text-xs"
-                title={e.error}
-              >
-                {e.error}
+          startedAt: {
+            label: tr("admin.jobs.colStarted", { default: "Started" }),
+            cell: (e) => (
+              <span className="text-muted-foreground text-xs">
+                {e.startedAt
+                  ? String(l(e.startedAt, { date: "fromNow" }))
+                  : tr("admin.jobs.notStarted", { default: "Not started" })}
               </span>
-            ) : (
-              <span className="text-muted-foreground">—</span>
             ),
-        },
-      }}
-      rowActions={(e) => {
-        const actions = [] as Array<{
-          label: string;
-          icon: typeof RotateCcw;
-          onClick: (
-            _e: JobExecutionResource,
-            ctx: { refresh: () => void },
-          ) => void;
-          destructive?: boolean;
-        }>;
-        if (e.can.retry) {
+          },
+          scheduledAt: {
+            label: tr("admin.jobs.colScheduled", { default: "Scheduled" }),
+            cell: (e) =>
+              e.status === "scheduled" && e.scheduledAt ? (
+                // A parked row: a retry waiting out its backoff, a delayed
+                // push, or a job rescheduled onto its next stage.
+                <span
+                  className="text-muted-foreground text-xs"
+                  title={String(l(e.scheduledAt, { date: "lll" }))}
+                >
+                  {String(l(e.scheduledAt, { date: "fromNow" }))}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              ),
+          },
+          duration: {
+            label: tr("admin.jobs.colDuration", { default: "Duration" }),
+            align: "right",
+            cell: (e) => {
+              if (!e.startedAt || !e.completedAt) {
+                return <span className="text-muted-foreground">-</span>;
+              }
+              const ms =
+                new Date(e.completedAt).getTime() -
+                new Date(e.startedAt).getTime();
+              return (
+                <span className="text-xs">
+                  {ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`}
+                </span>
+              );
+            },
+          },
+          attempt: {
+            label: tr("admin.jobs.colAttempt", { default: "Attempt" }),
+            align: "right",
+            cell: (e) => (
+              <span className="text-xs">
+                {e.attempt}/{e.maxAttempts}
+              </span>
+            ),
+          },
+          key: {
+            label: tr("admin.jobs.colKey", { default: "Key" }),
+            cell: (e) =>
+              e.key ? (
+                <span className="font-mono text-xs">{e.key}</span>
+              ) : (
+                // Terminal rows release their key, so only a live one shows.
+                <span className="text-muted-foreground">-</span>
+              ),
+          },
+          triggeredBy: {
+            label: tr("admin.jobs.colTriggeredBy", { default: "Triggered by" }),
+            cell: (e) => (
+              <span className="text-muted-foreground text-xs">
+                {e.triggeredByName ?? e.triggeredBy ?? "-"}
+              </span>
+            ),
+          },
+          error: {
+            label: tr("admin.jobs.colError", { default: "Error" }),
+            cell: (e) =>
+              e.error ? (
+                <span
+                  className="text-destructive line-clamp-2 text-xs"
+                  title={e.error}
+                >
+                  {e.error}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              ),
+          },
+        }}
+        rowActions={(e) => {
+          const actions = [] as Array<{
+            label: string;
+            icon: typeof RotateCcw;
+            onClick: (
+              _e: JobExecutionResource,
+              ctx: { refresh: () => void },
+            ) => void;
+            destructive?: boolean;
+          }>;
           actions.push({
-            label: tr("admin.jobs.retry", { default: "Retry" }),
-            icon: RotateCcw,
-            onClick: (_e, { refresh }) => retry.run(e, refresh),
+            label: tr("admin.jobs.viewPayload", { default: "View payload" }),
+            icon: Braces,
+            onClick: () => setPayloadOf(e),
           });
-        }
-        if (e.can.cancel) {
-          actions.push({
-            label: tr("admin.jobs.cancel", { default: "Cancel" }),
-            icon: Ban,
-            destructive: true,
-            onClick: (_e, { refresh }) => cancel.run(e, refresh),
-          });
-        }
-        return actions;
-      }}
-      emptyMessage={String(
-        tr("admin.jobs.noExecs", { default: "No executions yet." }),
-      )}
-    />
+          if (e.can.retry) {
+            actions.push({
+              label: tr("admin.jobs.retry", { default: "Retry" }),
+              icon: RotateCcw,
+              onClick: (_e, { refresh }) => retry.run(e, refresh),
+            });
+          }
+          if (e.can.cancel) {
+            actions.push({
+              label: tr("admin.jobs.cancel", { default: "Cancel" }),
+              icon: Ban,
+              destructive: true,
+              onClick: (_e, { refresh }) => cancel.run(e, refresh),
+            });
+          }
+          return actions;
+        }}
+        emptyMessage={String(
+          tr("admin.jobs.noExecs", { default: "No executions yet." }),
+        )}
+      />
+      <AdminJobsPayloadDialog
+        execution={payloadOf}
+        onClose={() => setPayloadOf(null)}
+      />
+    </>
   );
 };

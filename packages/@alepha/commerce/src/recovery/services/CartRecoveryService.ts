@@ -8,8 +8,8 @@ import { checkoutSessions } from "../../checkout/entities/checkoutSessions.ts";
 import { CartRecoveryMailRenderer } from "../providers/CartRecoveryMailRenderer.ts";
 
 /**
- * The step bodies of the cart-recovery workflow, kept on a service so
- * they stay individually testable and substitutable.
+ * The stage bodies of the cart-recovery job, kept on a service so they
+ * stay individually testable and substitutable.
  */
 export class CartRecoveryService {
   protected readonly log = $logger();
@@ -37,7 +37,7 @@ export class CartRecoveryService {
   /**
    * Send reminder `stage` for the cart. Returns `false` when there is
    * nothing left to remind about (cart emptied since). Throws on SMTP
-   * failure so the workflow step can retry.
+   * failure so the job can retry.
    */
   public async sendReminder(cartId: string, stage: 1 | 2): Promise<boolean> {
     const session = await this.sessions.findOne({
