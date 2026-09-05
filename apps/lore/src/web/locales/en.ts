@@ -125,6 +125,12 @@ export default {
   "folios.wikilink.broken.epicNotFound": "No epic matches this reference.",
   "folios.wikilink.broken.blobNotFound":
     "No folio blob matches this reference.",
+  "folios.wikilink.broken.feedbackNotFound":
+    "No feedback item matches this reference.",
+  "folios.wikilink.broken.releaseNotFound":
+    "No release matches this reference.",
+  "folios.wikilink.release.open": "open",
+  "folios.wikilink.release.released": "released",
   "folios.wikilink.broken.questFormWanted":
     "There is no folio #$1, but quest #$1 exists. Inside [[…]], #N means a folio; write [[quest:#$1]] instead.",
 
@@ -263,7 +269,7 @@ export default {
   "board.filter.noRelease": "No release",
   "board.table.epic": "Epic",
   "board.table.linked": "Linked",
-  "board.table.linked.tooltip": "Blocked by quest #$1",
+  "board.table.linked.tooltip": "Blocked by another quest",
   "board.table.priority": "Priority",
   "board.table.size": "Size",
   "board.table.area": "Area",
@@ -364,7 +370,7 @@ export default {
   "quest.view.questline.open": "Open the questline",
   "quest.discussion.title": "Discussion",
   "quest.discussion.composer.placeholder":
-    "Leave a comment. Mention a member with @, link a folio with [[…]], or point at another quest with #1204.",
+    "Leave a comment. Mention a member with @, link a folio with [[…]], or point at another quest with #Q1204.",
   "quest.discussion.composer.markdown": "Markdown supported",
   "quest.discussion.composer.submit": "Comment",
   "quest.discussion.commented": "commented",
@@ -376,7 +382,7 @@ export default {
   "quest.discussion.empty": "Nothing has happened on this quest yet.",
   "quest.discussion.waived": 'Skipped "$1":',
   "quest.event.created": "created the quest",
-  "quest.event.createdFromFeedback": "created the quest from feedback #$1",
+  "quest.event.createdFromFeedback": "created the quest from feedback",
   "quest.event.assigned": "took the quest",
   "quest.event.unassigned": "unassigned the quest",
   "quest.event.completed": "completed the quest",
@@ -474,7 +480,7 @@ export default {
   "quest.view.objectives.waived": "Skipped:",
   "quest.view.objectivesProgress": "$1 of $2",
   "quest.view.updated": "updated $1",
-  "quest.view.fromFeedback": "from feedback #$1",
+  "quest.view.fromFeedback": "from feedback",
   "quest.view.due": "Due $1 · $2",
   "quest.view.attach": "Attach",
   "quest.view.attachHint":
@@ -792,7 +798,7 @@ export default {
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Save to Folios",
   "release.changelog.live": "LIVE · $1 quest(s)",
-  "release.changelog.frozen": "#$1 · FROZEN $2",
+  "release.changelog.frozen": "$1 · FROZEN $2",
   "release.changelog.empty":
     "No completed quest is attached to this release yet.",
   "release.changelog.loading": "Loading changelog…",
@@ -803,11 +809,11 @@ export default {
   "release.folio.description":
     "The changelog is saved as a folio in this project, readable by every member, and by any agent over MCP.",
   "release.folio.title": "Folio title",
-  "release.folio.defaultTitle": "Release #$1: $2",
+  "release.folio.defaultTitle": "Release $1: $2",
   "release.folio.save": "Save",
   "release.folio.saved": "Changelog saved to Folios",
   "release.folio.error": "Could not save the changelog.",
-  "release.folio.summary": "Changelog for release #$1: $2 quest(s) recorded.",
+  "release.folio.summary": "Changelog for release $1: $2 quest(s) recorded.",
 
   "release.tab.overview": "Overview",
   "release.tab.contents": "Contents",
@@ -1239,7 +1245,7 @@ export default {
   "blights.action.deleteSelected": "Delete selected",
   "blights.action.viewStack": "View stack trace",
   "blights.toast.resolved": "Blight resolved",
-  "blights.toast.forwarded": "Quest #$1 created from blight",
+  "blights.toast.forwarded": "Quest $1 created from blight",
   "blights.toast.deleted": "Blight deleted",
   "blights.toast.deletedMany": "$1 blights deleted",
   "blights.deleteConfirm": "Delete this blight permanently?",
@@ -1258,7 +1264,7 @@ export default {
   "blights.rules.toast.added": "Ignore rule added",
   "blights.rules.toast.removed": "Ignore rule removed",
   "blights.status.resolved": "Resolved",
-  "blights.status.quest": "Quest #$1",
+  "blights.status.quest": "Forwarded to a quest",
 
   "sigils.title": "Apps",
   "sigils.empty": "No app enrolled yet. Until one is, nothing can report here.",

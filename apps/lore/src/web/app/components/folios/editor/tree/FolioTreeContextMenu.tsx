@@ -21,6 +21,7 @@ import type { ReactElement } from "react";
 
 import type { AppRouter } from "../../../../AppRouter.ts";
 import type { I18n } from "../../../../services/I18n.ts";
+import { formatReference } from "../../../shared/element/typedReference.ts";
 import type { FolioTreeNode } from "./folioTreeModel.ts";
 import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
 
@@ -82,8 +83,13 @@ const FolioTreeContextMenu = (
     window.open(hrefFor(), "_blank", "noopener,noreferrer");
   };
 
+  // The typed token, `[[#F12]]`, never the title: a title reference is
+  // what the purge of epic #32 stops reading, and only a folio row offers
+  // this item, so the node's shortId is a folio's.
   const handleCopyWikiLink = (): void => {
-    void navigator.clipboard.writeText(`[[${node.name}]]`);
+    void navigator.clipboard.writeText(
+      `[[${formatReference("folio", node.shortId)}]]`,
+    );
   };
 
   return (

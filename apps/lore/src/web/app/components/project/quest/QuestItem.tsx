@@ -13,6 +13,7 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import { formatEstimate } from "./questEstimate.ts";
 
 export interface QuestItemProps {
@@ -58,10 +59,10 @@ const QuestItem = (props: QuestItemProps) => {
         )}
         <span
           className="min-w-0 flex-1 truncate text-sm"
-          title={`#${quest.shortId} - ${quest.title}`}
+          title={`${formatReference("quest", quest.shortId)} - ${quest.title}`}
         >
-          #{quest.shortId} <span className="text-muted-foreground">-</span>{" "}
-          {quest.title}
+          {formatReference("quest", quest.shortId)}{" "}
+          <span className="text-muted-foreground">-</span> {quest.title}
         </span>
         {quest.metadata.objectivesProgress.total > 1 && (
           <span className="shrink-0 text-[10px] opacity-70">
