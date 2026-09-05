@@ -631,9 +631,21 @@ export const AppShell = (props: AppShellProps) => {
     //     header stays sticky, body scrolls, no page-level scrollbar.
     //   - For non-fill pages there's no height bound, so this collapses
     //     to "scroll whatever overflows" without further config.
+    //
+    // `relative` is load-bearing in BOTH branches, and it is the whole of
+    // #1849: an `overflow` declared on a STATIC element does not clip an
+    // absolutely positioned descendant whose containing block resolves above
+    // it. Base UI gives every named form control a 1×1 hidden `<input>`
+    // styled `position: absolute` with no offsets, so on a page whose fields
+    // live inside an inner scroller each of those inputs escaped this `main`,
+    // resolved against the positioned `SidebarInset` and pinned the document
+    // open at its own static offset — a page that scrolled 1271px into empty
+    // background beneath a shell that had not moved. Positioning `main` makes
+    // its overflow bound real, whatever a page renders inside it.
     <main
       className={cn(
         props.mainClassName,
+        "relative",
         props.fill
           ? "flex min-h-0 flex-1 flex-col overflow-hidden"
           : "flex-1 overflow-auto",

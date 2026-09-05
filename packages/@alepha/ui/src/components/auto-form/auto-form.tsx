@@ -514,7 +514,13 @@ export function AutoForm<T extends ZObject>(props: AutoFormProps<T>) {
           <CardContent
             className={cn(
               "flex flex-col gap-4",
-              props.fill && "min-h-0 flex-1 overflow-y-auto",
+              // `relative` alongside the scroller, not decoration: Base UI
+              // gives every named control a 1×1 hidden `<input>` positioned
+              // `absolute` with no offsets, and a scroller that is not itself
+              // a containing block neither clips those inputs nor scrolls
+              // them with the field they belong to — so a native validation
+              // bubble would point at where the field used to be. #1849.
+              props.fill && "relative min-h-0 flex-1 overflow-y-auto",
             )}
           >
             {fieldGroups}
