@@ -17,8 +17,8 @@ import { type Infer, z } from "alepha";
  * a discriminator whose literals are already persisted is a data
  * migration.
  *
- * Distinct again from {@link linkTargetKindSchema}, which adds `blob`: a
- * blob can be pointed at but contains nothing, so it is a target and never
+ * Distinct again from {@link linkTargetKindSchema}, which adds `feedback`
+ * and `release`: both can be pointed at but contain nothing, so they are targets and never
  * a source.
  */
 export const linkSourceKindSchema = z.enum([

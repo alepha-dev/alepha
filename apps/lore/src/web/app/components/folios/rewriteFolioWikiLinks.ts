@@ -1,36 +1,34 @@
 import type { Folio } from "@/api/entities/folios.ts";
 
 import {
-  type BlobRef,
+  type AttachmentRef,
   BROKEN_HREF_PREFIX,
   createFolioWikiLinkResolver,
-  type DirectoryRef,
   type EpicRef,
   type FeedbackRef,
-  formatBlobBytes,
-  isImageBlob,
+  formatAttachmentBytes,
+  isImageAttachment,
   type QuestRef,
   type ReleaseRef,
 } from "./folioWikiLinkResolver.ts";
 import { outsideMarkdownCode } from "./markdownCodeSegments.ts";
 
 export {
-  type BlobRef,
+  type AttachmentRef,
   BROKEN_HREF_PREFIX,
-  type DirectoryRef,
   type EpicRef,
   type FeedbackRef,
   type ReleaseRef,
 } from "./folioWikiLinkResolver.ts";
 
 /**
- * Rewrite `[[...]]` wiki-link tokens in folio markdown into standard
- * markdown anchor syntax so the existing `<a>` renderer in MarkdownView
- * handles them.
+ * Rewrite `[[#Q12]]` reference tokens and `assets/<name>` attachment paths
+ * in element markdown into standard markdown links so the existing `<a>`
+ * renderer in MarkdownView handles them.
  *
  * This is the READ-ONLY half of wiki-links: markdown in, markdown out, for
- * `MarkdownView`. The editor (`editor/wikilink/`) never goes through here —
- * it decorates the token in place and leaves the markdown alone. Both call
+ * `MarkdownView`. The editor never goes through here — it shows the token
+ * as typed and leaves the markdown alone. Both call
  * `createFolioWikiLinkResolver`, which is where the resolution rules live
  * and the only place they are allowed to live: two implementations would
  * drift, and the reader would see a live link the editor calls broken.
@@ -46,25 +44,22 @@ export const rewriteFolioWikiLinks = (
   projectSlug: string,
   folios: Folio[],
   quests: QuestRef[],
-  directories: DirectoryRef[] = [],
-  blobs: BlobRef[] = [],
+  attachments: AttachmentRef[] = [],
   epics: EpicRef[] = [],
   feedback: FeedbackRef[] = [],
   releases: ReleaseRef[] = [],
 ): string => {
   if (!content) return content;
   const hasWiki = content.includes("[[");
-  const hasBlobImage = /!\[[^\]]*\]\(blob:/i.test(content);
   const hasAssets = /\]\(assets\//i.test(content);
-  if (!hasWiki && !hasBlobImage && !hasAssets) return content;
+  if (!hasWiki && !hasAssets) return content;
 
   const resolver = createFolioWikiLinkResolver({
     projectSlug,
     folios,
     quests,
     epics,
-    directories,
-    blobs,
+    attachments,
     feedback,
     releases,
   });
@@ -75,28 +70,25 @@ export const rewriteFolioWikiLinks = (
   // surface (#1261), and would corrupt a mermaid `A[[Sub]]` node before the
   // diagram parser ever saw it. So the passes only ever see prose.
   return outsideMarkdownCode(content, (segment) =>
-    rewriteSegment(segment, resolver, { hasWiki, hasBlobImage, hasAssets }),
+    rewriteSegment(segment, resolver, { hasWiki, hasAssets }),
   );
 };
 
 /**
- * The three rewrites, over one stretch of prose. Split out only so
- * `outsideMarkdownCode` has something to call per segment; the passes and
- * their order are exactly what they were when they ran over the whole
- * document.
+ * The two rewrites, over one stretch of prose. Split out only so
+ * `outsideMarkdownCode` has something to call per segment.
  */
 const rewriteSegment = (
   content: string,
   resolver: ReturnType<typeof createFolioWikiLinkResolver>,
-  present: { hasWiki: boolean; hasBlobImage: boolean; hasAssets: boolean },
+  present: { hasWiki: boolean; hasAssets: boolean },
 ): string => {
   const { hasWiki, hasAssets } = present;
 
-  // Step 0 — `assets/<name>`, the form folio markdown actually stores. Both
-  // the embed `![alt](assets/x.webp)` and the plain link `[label](assets/x)`
-  // are rewritten, so an attachment can be shown or linked. Runs before the
-  // `blob:` pass below purely for readability; the two syntaxes cannot
-  // overlap.
+  // Step 0 — `assets/<name>`, the form folio markdown stores for an
+  // attachment. Both the embed `![alt](assets/x.webp)` and the plain link
+  // `[label](assets/x)` are rewritten, so an attachment can be shown or
+  // linked.
   //
   // Spaces ARE allowed in the name: hand-written markdown will not be
   // percent-encoded, and refusing those would resolve nothing for a file
@@ -107,54 +99,38 @@ const rewriteSegment = (
     ? content.replace(
         /(!?)\[([^\]]*)\]\(assets\/([^)\n"]+?)(?:\s+"[^"]*")?\)/gi,
         (full, bang: string, label: string, name: string) => {
-          const blob = resolver.resolveBlobByName(decodeURIComponent(name));
-          if (!blob) {
+          const attachment = resolver.resolveAttachmentByName(
+            decodeURIComponent(name),
+          );
+          if (!attachment) {
             // A missing attachment is reported the same way a missing folio
             // is, rather than left to render as a broken-image icon.
-            return `[${escapeMarkdownLabel(full)}](${BROKEN_HREF_PREFIX}blob-not-found)`;
+            return `[${escapeMarkdownLabel(full)}](${BROKEN_HREF_PREFIX}attachment-not-found)`;
           }
-          const fileUrl = `/api/files/${blob.fileId}`;
+          const fileUrl = `/api/files/${attachment.fileId}`;
           // A plain link keeps the author's label whatever the type is —
           // only an EMBED of a non-image has to degrade, because there is no
           // image to show.
           if (!bang) return `[${label}](${fileUrl})`;
-          if (isImageBlob(blob)) {
-            return `![${escapeMarkdownLabel(label || blob.name)}](${fileUrl})`;
+          if (isImageAttachment(attachment)) {
+            return `![${escapeMarkdownLabel(label || attachment.name)}](${fileUrl})`;
           }
           const sizeSuffix =
-            blob.size != null ? ` (${formatBlobBytes(blob.size)})` : "";
-          return `[${escapeMarkdownLabel(`📎 ${blob.name}${sizeSuffix}`)}](${fileUrl})`;
+            attachment.size != null
+              ? ` (${formatAttachmentBytes(attachment.size)})`
+              : "";
+          return `[${escapeMarkdownLabel(`📎 ${attachment.name}${sizeSuffix}`)}](${fileUrl})`;
         },
       )
     : content;
 
-  // Step 1 — rewrite `![alt](blob:#42)` / `![alt](blob:<uuid>)` image
-  // syntax BEFORE the wiki-link pass. Image MIME → `<img>` URL.
-  // Non-image MIME → a plain link with a paperclip + size annotation
-  // (so non-image blobs degrade to a download link instead of a
-  // broken-image placeholder).
-  const rewritten = withAssets.replace(
-    /!\[([^\]]*)\]\(blob:([^)\s]+)\)/gi,
-    (full, alt: string, ref: string) => {
-      const blob = resolver.resolveBlob(ref);
-      if (!blob) return full;
-      const fileUrl = `/api/files/${blob.fileId}`;
-      if (isImageBlob(blob)) {
-        const safeAlt = alt || blob.name;
-        return `![${safeAlt}](${fileUrl})`;
-      }
-      const sizeSuffix =
-        blob.size != null ? ` (${formatBlobBytes(blob.size)})` : "";
-      const label = escapeMarkdownLabel(`📎 ${blob.name}${sizeSuffix}`);
-      return `[${label}](${fileUrl})`;
-    },
-  );
+  if (!hasWiki) return withAssets;
 
-  if (!hasWiki) return rewritten;
-
-  return rewritten.replace(/\[\[([^\]\n]+)\]\]/g, (_full, body: string) => {
+  // Step 1 — every `[[...]]` token. A blank one is not a reference and is
+  // left exactly as typed; anything else resolves to a link or to a broken
+  // marker, never back to prose.
+  return withAssets.replace(/\[\[([^\]\n]+)\]\]/g, (_full, body: string) => {
     const target = resolver.resolve(body);
-    // A blank token is not a reference — leave it exactly as typed.
     if (!target) return `[[${body}]]`;
     return `[${escapeMarkdownLabel(target.label)}](${target.href})`;
   });

@@ -26,7 +26,7 @@ export interface QuestDiscussionComposerProps {
  * mounting CodeMirror at the bottom of every quest page to write one would
  * cost more than it is worth. `Markdown supported` says what the body does
  * with it; the feed renders it through the same viewer the description uses,
- * so `[[folio]]`, `#1204` and `@member` all resolve.
+ * so `[[#F12]]`, `#Q1204` and `@member` all resolve.
  *
  * **⌘↵ posts** as well as the button. Deciding it here rather than leaving it
  * open: the textarea is the only focusable thing in the section, so a reader

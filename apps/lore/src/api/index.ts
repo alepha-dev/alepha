@@ -8,11 +8,9 @@ import { AlephaWebSocket } from "alepha/websocket";
 
 import { AdminEstateController } from "./controllers/AdminEstateController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
-import { AdminReferenceController } from "./controllers/AdminReferenceController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
-import { BlobController } from "./controllers/BlobController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
@@ -22,6 +20,7 @@ import { EstatePullController } from "./controllers/EstatePullController.ts";
 import { EstateSocketController } from "./controllers/EstateSocketController.ts";
 import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
+import { FolioAttachmentController } from "./controllers/FolioAttachmentController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
@@ -68,7 +67,7 @@ import { EstateService } from "./services/EstateService.ts";
 import { EstateStatsService } from "./services/EstateStatsService.ts";
 import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
-import { FolioBlobService } from "./services/FolioBlobService.ts";
+import { FolioAttachmentService } from "./services/FolioAttachmentService.ts";
 import { FolioDirectoryService } from "./services/FolioDirectoryService.ts";
 import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
@@ -87,7 +86,6 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
-import { ReferenceConversionService } from "./services/ReferenceConversionService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
@@ -151,12 +149,9 @@ export const LoreApi = $module({
     FrozenSigilAnalyticsTables,
     FolioNameService,
     FolioDirectoryService,
-    FolioBlobService,
+    FolioAttachmentService,
     FolioHistoryService,
     FolioLinkService,
-    // The one-shot reference converter of epic #32; goes with its admin
-    // controller once the old grammar is purged (quest #1808).
-    ReferenceConversionService,
     // Declares the `$invitationResource` for `resourceType: "project"`.
     // Nothing injects it, so like `AppSecurityProvider` it has to be listed
     // or the resolver is never registered and every invitation 404s.
@@ -240,12 +235,11 @@ export const LoreApi = $module({
     ProjectQuestPortabilityController,
     InvitationController,
     AdminProjectController,
-    AdminReferenceController,
     KanbanController,
     FolioController,
     DirectoryController,
     SearchController,
-    BlobController,
+    FolioAttachmentController,
     FeedbackController,
     SigilController,
     SigilIngestController,

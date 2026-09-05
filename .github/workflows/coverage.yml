@@ -1,0 +1,110 @@
+name: Coverage
+
+permissions:
+  contents: read
+
+# ────────────────────────────────────────────────────────────────────────
+# Why coverage is nightly and not on every push
+#
+# `QualityService.record` upserts on `(projectId, branch, day)` - one row per
+# branch per day, last push of the day wins. At ~19 pushes to `main` a day,
+# eighteen of those writes were overwritten by the nineteenth before anyone
+# read them, so the Quality tab has always rendered exactly one point per day.
+# Running this once a day stores the same rows and takes ~2min of measured
+# instrumentation off `verify`, which is on the critical path to the deploys.
+#
+# ⚠️ A separate coverage job existed before, on every push (33470c4a6), and was
+# removed 1h40 later (ce4d041a8) because it ran the whole suite a SECOND time
+# in parallel with the plain one: more expensive than the instrumentation it
+# avoided, and two red X per broken test. That argument is about frequency, not
+# about separation - once a day with nothing waiting on it is the opposite
+# trade. Do not fold this back into `verify` without re-reading both commits.
+#
+# Measured on run 33428317573, same commit, both jobs on parallel runners:
+# with coverage 736s, without 611s.
+# ────────────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    # Off-peak, and not on the hour: GitHub queues every `0 * * * *` cron in
+    # the world at once and delays them by 5-15min under that load. The minute
+    # is arbitrary, the point is that it is nobody's round number.
+    - cron: "17 3 * * *"
+  # Manual runs, which is how this gets proven after a change to it rather
+  # than by waiting until tomorrow morning.
+  workflow_dispatch:
+
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+# Same default as CI: the project every `lore` command in this workflow
+# reports to, named once so no step can forget it. Not a secret; a project
+# slug is in every URL Lore serves.
+env:
+  LORE_PROJECT: alepha
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    # A hang detector, not a budget. Public-repo minutes are free, and this
+    # job blocks nothing: a generous number costs nothing, a tight one costs a
+    # missing data point.
+    timeout-minutes: 30
+    services:
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3mock:
+        image: adobe/s3mock
+        ports:
+          - 19090:9090
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
+
+      # ⚠️ `--coverage` is not only coverage. `TestCommand.reportArgs()` puts
+      # six flags behind that one boolean, and two of them are the JSON test
+      # reporter: `coverage/test-results.json` is where `QualityReportReader`
+      # gets total, passed, failed, skipped and durationMs - five of the nine
+      # numbers pushed below. Drop the flag and the push loses those too, not
+      # just the four percentages.
+      - name: Test With Coverage
+        run: yarn alepha test --coverage
+
+      # NOT `continue-on-error`, and that is the one deliberate difference from
+      # the step this replaces.
+      #
+      # In `verify` the push had to be non-fatal: it was the last step of the
+      # job both deploys gate on, so a failed push skipped the deploy - and it
+      # deadlocked exactly once, because the endpoint it calls ships with Lore
+      # and only that deploy could have created it.
+      #
+      # Nothing gates on this workflow, so that loop cannot form here, and the
+      # inverse risk takes over: pushing IS the entire purpose of this job. A
+      # swallowed failure is a green nightly that has silently stopped
+      # recording, which is the failure nobody would notice for weeks.
+      - name: Push Coverage To Lore
+        run: yarn lore quality push
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}

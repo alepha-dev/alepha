@@ -62,7 +62,7 @@ export const folioNames = $entity({
      * `"blob"` was removed when attachments became folio-scoped: this
      * table exists to stop two SIBLINGS in one folder colliding, and an
      * attachment is no longer a sibling of anything — it belongs to one
-     * folio, whose own name is what the folder sees. `FolioBlobService`
+     * folio, whose own name is what the folder sees. `FolioAttachmentService`
      * keeps names unique within a folio on its own.
      */
     kind: z.enum(["folio", "directory"]).meta({ mode: "text" }),

@@ -13,7 +13,6 @@ import {
   okSchema,
 } from "alepha/server";
 
-import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import {
   type Folio,
@@ -32,7 +31,7 @@ import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
-import { FolioBlobService } from "../services/FolioBlobService.ts";
+import { FolioAttachmentService } from "../services/FolioAttachmentService.ts";
 import { FolioHistoryService } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
@@ -59,7 +58,6 @@ type DirectoryMapLoader = () => Promise<Map<string, DirectoryRow>>;
 export class FolioController {
   folios = $repository(folios);
   protected readonly directories = $repository(folioDirectories);
-  protected readonly blobs = $repository(folioBlobs);
   /**
    * ...with the author attached, for the project activity feed.
    */
@@ -67,7 +65,7 @@ export class FolioController {
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(FolioLinkService);
   protected readonly bound = $inject(BoundParameters);
-  protected readonly blobService = $inject(FolioBlobService);
+  protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
   protected readonly revisionStats = $inject(FolioRevisionStatsService);
@@ -190,7 +188,7 @@ export class FolioController {
       // `withLinks=true` attaches the resolved [[wiki-link]] index.
       // `withPath=true` attaches the folio's directory chain (root → … →
       // direct parent), which renders the AppShell breadcrumb without a
-      // separate `listAllDirectories`. `withBlobs=true` attaches the
+      // separate `listAllDirectories`. `withAttachments=true` attaches the
       // attachment list.
       //
       // There was a `withRevisionCount` here too, feeding the meta bar's
@@ -199,7 +197,7 @@ export class FolioController {
       query: z.object({
         withLinks: z.boolean().optional(),
         withPath: z.boolean().optional(),
-        withBlobs: z.boolean().optional(),
+        withAttachments: z.boolean().optional(),
       }),
       response: folioResourceSchema,
     },
@@ -211,7 +209,7 @@ export class FolioController {
         },
       });
       if (!folio) throw new NotFoundError("Folio not found");
-      if (!query.withLinks && !query.withPath && !query.withBlobs) {
+      if (!query.withLinks && !query.withPath && !query.withAttachments) {
         return folio;
       }
       // Every requested extra is independent of the others, so they run
@@ -226,18 +224,18 @@ export class FolioController {
       // saves — and it is lazy, so a folio at the project root with no
       // links still reads no directories at all.
       const loadDirectories = this.directoryMapLoader(folio.projectId);
-      const [links, path, blobs] = await Promise.all([
+      const [links, path, attachments] = await Promise.all([
         query.withLinks
           ? this.resolveLinks(folio.id, folio.projectId, loadDirectories)
           : undefined,
         query.withPath
           ? this.resolveDirectoryPath(folio.directoryId, loadDirectories)
           : undefined,
-        query.withBlobs
-          ? this.blobService.listHydratedByFolio(folio.id)
+        query.withAttachments
+          ? this.attachmentService.listHydratedByFolio(folio.id)
           : undefined,
       ]);
-      return { ...folio, metadata: { links, path, blobs } };
+      return { ...folio, metadata: { links, path, attachments } };
     },
   });
 
@@ -347,9 +345,9 @@ export class FolioController {
       this.linkService.findInbound(folioId),
     ]);
 
-    // Outbound: split by targetType. Folio + quest + blob each resolve
-    // through their own table. Old rows have no targetType (defaults
-    // to "folio"), so the partition stays backwards-compatible.
+    // Outbound: split by targetType, each kind resolving through its own
+    // table. Old rows have no targetType (defaults to "folio"), so the
+    // partition stays backwards-compatible.
     const outFolioIds = out
       .filter((l) => l.targetType === "folio")
       .map((l) => l.toId);
@@ -361,9 +359,6 @@ export class FolioController {
       .filter((l) => l.targetType === "epic")
       .map((l) => Number.parseInt(l.toId, 10))
       .filter((n) => Number.isFinite(n));
-    const outBlobIds = out
-      .filter((l) => l.targetType === "blob")
-      .map((l) => l.toId);
     const outFeedbackIds = out
       .filter((l) => l.targetType === "feedback")
       .map((l) => Number.parseInt(l.toId, 10))
@@ -392,7 +387,6 @@ export class FolioController {
       folioRefs,
       questRefs,
       epicRefs,
-      blobRefs,
       inboundRefs,
       inboundQuestRefs,
       inboundEpicRefs,
@@ -407,12 +401,6 @@ export class FolioController {
       ),
       this.linkService.findQuestRefs(outQuestIds),
       this.linkService.findEpicRefs(outEpicIds),
-      this.bound.collect(outBlobIds, (batch) =>
-        this.blobs.findMany({
-          where: { fileId: { inArray: batch } },
-          columns: ["fileId", "shortId", "name", "folioId", "projectId"],
-        }),
-      ),
       // Folio SOURCES only. Since links went polymorphic an inbound row
       // can come from a quest or an epic, whose stringified integer ids
       // must never be handed to the folios repository as UUIDs.
@@ -436,14 +424,13 @@ export class FolioController {
     // guard preserves.
     //
     // The loader is scoped to the SOURCE folio's project. Every linked
-    // folio and blob shares it, because link rows are tenant-scoped via
-    // `folio_id` and the `[[...]]` resolver only ever matches names
-    // inside one project. `extraProjectIds` is the belt to that braces:
+    // folio shares it, because link rows are tenant-scoped via `folio_id`
+    // and the `[[...]]` resolver only ever matches numbers inside one
+    // project. `extraProjectIds` is the belt to that braces:
     // if a cross-project ref ever appears it is fetched rather than
     // silently rendered without its path.
     const projectIds = new Set<number>();
     for (const f of folioRefs) projectIds.add(f.projectId);
-    for (const b of blobRefs) projectIds.add(b.projectId);
     for (const f of inboundRefs) projectIds.add(f.projectId);
     const dirById = projectIds.size
       ? new Map(await loadDirectories())
@@ -476,7 +463,6 @@ export class FolioController {
     const folioById = new Map(folioRefs.map((r) => [r.id, r]));
     const questById = new Map(questRefs.map((r) => [r.id, r]));
     const epicById = new Map(epicRefs.map((r) => [r.id, r]));
-    const blobById = new Map(blobRefs.map((r) => [r.fileId, r]));
     const inboundById = new Map(inboundRefs.map((r) => [r.id, r]));
     const inboundQuestById = new Map(inboundQuestRefs.map((r) => [r.id, r]));
     const inboundEpicById = new Map(inboundEpicRefs.map((r) => [r.id, r]));
@@ -540,19 +526,6 @@ export class FolioController {
             shortId: ref.shortId,
             title: ref.title,
             tag: ref.tag,
-          });
-      } else if (l.targetType === "blob") {
-        const ref = blobById.get(l.toId);
-        if (ref)
-          outbound.push({
-            kind: "blob",
-            shortId: ref.shortId,
-            title: ref.name,
-            // No folder chain: an attachment hangs off one folio rather
-            // than sitting in a directory, so any path shown here would
-            // be the owning folio's, not the blob's. `path` is optional
-            // and the Links tab renders blob rows as plain text anyway.
-            path: undefined,
           });
       } else {
         const ref = folioById.get(l.toId);
@@ -650,7 +623,7 @@ export class FolioController {
         projectId: z.integer(),
         /**
          * Folio directory the folio lives in. `null` / omitted →
-         * project root. See quest [[#66]] — folios no longer nest in
+         * project root. See quest #Q66 — folios no longer nest in
          * other folios, they sit in folio directories.
          */
         directoryId: z.uuid().nullable().optional(),
@@ -873,23 +846,8 @@ export class FolioController {
           ? ""
           : buildFolioSearchText({ title, summary, content }),
       });
-      // A rename invalidates every reference that named this folio BY
-      // TITLE — and folios are referenced by title on purpose (see
-      // `rewriteTitleRefs`). Re-syncing the OTHER sources would not save
-      // them: the re-sync re-resolves `[[Old Title]]`, finds nothing, and
-      // drops the row, leaving the markdown permanently broken. So the
-      // markdown itself is rewritten, driven by the link table.
-      //
-      // After the row above, so the sources re-resolve against the NEW
-      // title. Unconditional on `isProtected`: that flag describes THIS
-      // folio's content, and what is being rewritten is other elements'.
-      if (title !== existing.title) {
-        await this.linkService.rewriteTitleRefs(
-          { id: updated.id, projectId: updated.projectId },
-          existing.title,
-          title,
-        );
-      }
+      // A rename touches no other element: a folio is referenced by its
+      // number (`[[#F12]]`, epic #32), which a title change leaves intact.
       // Re-sync this folio's own outbound links whenever content changed.
       if (!isProtected) {
         await this.linkService.syncLinks(this.folioSource(updated), content);
@@ -975,7 +933,7 @@ export class FolioController {
        * nothing else references. Every folio deleted before this left its
        * attachments there, paid for and unreachable.
        */
-      await this.blobService.deleteByFolio(params.id);
+      await this.attachmentService.deleteByFolio(params.id);
       // Hand the name back to the folder. `folio_names` has no foreign
       // key to `folios` (it discriminates by `kind`), so nothing frees
       // it on cascade - the reservation would outlive the folio and
@@ -1269,16 +1227,6 @@ export class FolioController {
             }),
       });
 
-      // Same as `update`: folios are referenced by title, so a revert that
-      // restores an older title has to rewrite every `[[Old Title]]` pointing
-      // at this folio, or the next re-sync drops those links for good.
-      if (revision.titleSnapshot !== folio.title) {
-        await this.linkService.rewriteTitleRefs(
-          { id: updated.id, projectId: updated.projectId },
-          folio.title,
-          revision.titleSnapshot,
-        );
-      }
       if (!isProtected) {
         await this.linkService.syncLinks(
           this.folioSource(updated),

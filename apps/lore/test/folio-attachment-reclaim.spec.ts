@@ -8,11 +8,11 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { BlobController } from "../src/api/controllers/BlobController.ts";
 import { DirectoryController } from "../src/api/controllers/DirectoryController.ts";
+import { FolioAttachmentController } from "../src/api/controllers/FolioAttachmentController.ts";
 import { FolioController } from "../src/api/controllers/FolioController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
-import { folioBlobs } from "../src/api/entities/folioBlobs.ts";
+import { folioAttachments } from "../src/api/entities/folioAttachments.ts";
 import { LoreApi } from "../src/api/index.ts";
 
 /**
@@ -38,7 +38,7 @@ const userDataSchema = z.object({
 
 class TestRows {
   public readonly files = $repository(files);
-  public readonly blobs = $repository(folioBlobs);
+  public readonly attachments = $repository(folioAttachments);
 }
 
 interface TestContext {
@@ -47,7 +47,7 @@ interface TestContext {
   projectController: ProjectController;
   folioController: FolioController;
   directoryController: DirectoryController;
-  blobController: BlobController;
+  attachmentController: FolioAttachmentController;
   rows: TestRows;
   fakeProvider: FakeProvider;
 }
@@ -78,7 +78,7 @@ const setup = async (): Promise<TestContext> => {
     projectController: alepha.inject(ProjectController),
     folioController: alepha.inject(FolioController),
     directoryController: alepha.inject(DirectoryController),
-    blobController: alepha.inject(BlobController),
+    attachmentController: alepha.inject(FolioAttachmentController),
     rows: alepha.inject(TestRows),
     fakeProvider: alepha.inject(FakeProvider),
   };
@@ -100,7 +100,7 @@ const uploadedFile = async (
 ): Promise<string> => {
   const row = await ctx.rows.files.create({
     bucket: "archive-blobs",
-    blobId: `blob-${name}-${crypto.randomUUID()}`,
+    blobId: `attachment-${name}-${crypto.randomUUID()}`,
     name,
     originalName: name,
     mimeType: "image/webp",
@@ -110,7 +110,7 @@ const uploadedFile = async (
   return row.id;
 };
 
-describe("folio blob reclamation", () => {
+describe("folio attachment reclamation", () => {
   let ctx: TestContext;
 
   beforeEach(async () => {
@@ -146,7 +146,7 @@ describe("folio blob reclamation", () => {
       { user: owner },
     );
     const fileId = await uploadedFile(ctx, owner, "photo.webp");
-    await ctx.blobController.registerBlob.fetch(
+    await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: { fileId, name: "photo.webp", folioId: folio.data.id },
@@ -161,13 +161,14 @@ describe("folio blob reclamation", () => {
     undefined;
 
   const blobExists = async (fileId: string) =>
-    (await ctx.rows.blobs.findOne({ where: { fileId: { eq: fileId } } })) !==
-    undefined;
+    (await ctx.rows.attachments.findOne({
+      where: { fileId: { eq: fileId } },
+    })) !== undefined;
 
   it("deleting an attachment removes both its rows", async ({ expect }) => {
     const { owner, fileId } = await aFolioWithAnAttachment("Blob");
 
-    await ctx.blobController.deleteBlob.fetch(
+    await ctx.attachmentController.deleteAttachment.fetch(
       { params: { id: fileId } },
       { user: owner },
     );
@@ -215,7 +216,7 @@ describe("folio blob reclamation", () => {
       { user: owner },
     );
     const keptFileId = await uploadedFile(ctx, owner, "kept.webp");
-    await ctx.blobController.registerBlob.fetch(
+    await ctx.attachmentController.registerAttachment.fetch(
       {
         params: { projectId: project.data.id },
         body: { fileId: keptFileId, name: "kept.webp", folioId: other.data.id },

@@ -307,7 +307,7 @@ describe("FolioController per-project visibility (post #65 refactor)", () => {
         body: {
           projectId: created.data.id,
           title: "Source by owner",
-          content: `See [[#${targetFolio.data.shortId}]] for context`,
+          content: `See [[#F${targetFolio.data.shortId}]] for context`,
         },
       },
       { user: owner },

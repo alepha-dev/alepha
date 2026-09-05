@@ -99,7 +99,7 @@ describe("splitMarkdownCode", () => {
 
 describe("rewriteFolioWikiLinks - fenced code is untouched (#1261)", () => {
   it("leaves [[...]] inside a fenced block alone", () => {
-    const input = "See [[#1]].\n\n```ts\nconst a = [[1, 2]];\n```\n";
+    const input = "See [[#F1]].\n\n```ts\nconst a = [[1, 2]];\n```\n";
     expect(rewrite(input)).toBe(
       "See [Roadmap](/sds/folios/1).\n\n```ts\nconst a = [[1, 2]];\n```\n",
     );
@@ -115,18 +115,13 @@ describe("rewriteFolioWikiLinks - fenced code is untouched (#1261)", () => {
     expect(rewrite(input)).toBe(input);
   });
 
-  it("leaves a blob: embed inside a fence alone", () => {
-    const input = "```md\n![a](blob:#3)\n```";
-    expect(rewrite(input)).toBe(input);
-  });
-
   it("leaves [[...]] inside an inline code span alone", () => {
-    expect(rewrite("write `[[#1]]` to link")).toBe("write `[[#1]]` to link");
+    expect(rewrite("write `[[#F1]]` to link")).toBe("write `[[#F1]]` to link");
   });
 
   it("still rewrites prose on the same line as an inline code span", () => {
-    expect(rewrite("`[[#1]]` renders [[#1]]")).toBe(
-      "`[[#1]]` renders [Roadmap](/sds/folios/1)",
+    expect(rewrite("`[[#F1]]` renders [[#F1]]")).toBe(
+      "`[[#F1]]` renders [Roadmap](/sds/folios/1)",
     );
   });
 });

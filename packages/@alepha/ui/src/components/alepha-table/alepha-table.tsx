@@ -66,7 +66,9 @@ import {
   useState,
 } from "react";
 
+import { useIsMobile } from "../../hooks/use-mobile.ts";
 import { AlephaTableBulkMenu } from "./alepha-table-bulk-menu.tsx";
+import { AlephaTableFilterDialog } from "./alepha-table-filter-dialog.tsx";
 import { paginateLocal } from "./paginate-local.ts";
 import { useTableSelection } from "./use-table-selection.ts";
 
@@ -671,6 +673,17 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const pageSizes = props.pageSizes ?? PAGE_SIZES;
   const alepha = useAlepha();
   const { tr } = useI18n();
+  /**
+   * The whole of the phone layout, and deliberately one switch rather than a
+   * scattering of `max-md:` classes: the filter controls have to be rendered
+   * in exactly ONE of the two places (see `AlephaTableFilterDialog`), which
+   * CSS cannot express. Everything else below the breakpoint follows the same
+   * flag so the two halves of the layout cannot disagree.
+   *
+   * Safe against hydration because the whole table sits inside `ClientOnly`,
+   * and `useIsMobile` reads the same `MediaQueryList` it subscribes to.
+   */
+  const isMobile = useIsMobile();
 
   // -- Filter form (internal when `filters` is set, else legacy `form`) -----
 
@@ -1158,16 +1171,24 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     [refresh, clearSelection],
   );
 
-  const hasActiveFilters = useMemo(() => {
-    if (!props.filters || !form) return false;
+  /**
+   * How many filters currently narrow the list — a count rather than the
+   * boolean this used to be, because on a phone the bar is behind a button
+   * and the trigger's badge is the only thing that says the table is
+   * filtered at all.
+   */
+  const activeFilterCount = useMemo(() => {
+    if (!props.filters || !form) return 0;
     const values = form.currentValues ?? {};
+    let count = 0;
     for (const v of Object.values(values)) {
       if (v === undefined || v === null || v === "") continue;
       if (Array.isArray(v) && v.length === 0) continue;
-      return true;
+      count++;
     }
-    return false;
+    return count;
   }, [props.filters, form, refreshKey]);
+  const hasActiveFilters = activeFilterCount > 0;
 
   const showToolbar =
     Boolean(props.filters) ||
@@ -1210,7 +1231,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           // dark-scoped rule (0,3,0) outranks it, and without it the two
           // controls disagreed: the trigger went dark, the input stayed light.
           <div className="bg-muted [&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2">
-            {props.filters && form ? (
+            {props.filters && form && !isMobile ? (
               <form
                 {...form.props}
                 className="flex flex-1 flex-wrap items-end gap-2"
@@ -1295,6 +1316,15 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                     )}
                   </>
                 ) : null}
+                {isMobile && props.filters && form && (
+                  <AlephaTableFilterDialog
+                    form={form}
+                    activeCount={activeFilterCount}
+                    onReset={resetFilters}
+                  >
+                    {props.filters.render(form)}
+                  </AlephaTableFilterDialog>
+                )}
                 {showColumnPicker && (
                   <ColumnPicker<T>
                     columns={props.columns}
@@ -1302,7 +1332,12 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                     onToggle={toggleColumn}
                   />
                 )}
-                {showActionsMenu && props.filters && (
+                {/*
+                  Desktop only. On a phone Reset lives in the dialog beside the
+                  controls it clears, and a second copy out here would spend a
+                  slot of the very row this change exists to shorten.
+                */}
+                {showActionsMenu && props.filters && !isMobile && (
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -1618,39 +1653,55 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
               toolbar answers "which rows". Mixing the two turns the toolbar
               into a junk drawer. */}
           <div className="flex items-center gap-2">
-            {pageSizes.length > 0 && (
-              // The same `Control` the filter bar is built on, so the picker
-              // is one component with every other select in this table. It
-              // used to be the raw `Select` underneath it, because `Control`
-              // is form-bound and this is not a form — `sizeForm` above is
-              // what closes that gap.
-              <Control
-                input={sizeForm.input.size}
-                // The count line beside it is not a label, so the trigger has
-                // to name itself.
-                label=""
-                inputProps={{
-                  "aria-label": String(
-                    tr("table.pageSize", { default: "Rows per page" }),
-                  ),
-                }}
-                // `bg-background`, because this bar is `bg-muted` and the
-                // trigger is `bg-transparent` by default: on a plain form
-                // surface that blending is right, on a tinted bar it made the
-                // picker read as part of the bar while the pagination buttons
-                // beside it sat on their own plane. Set here rather than on
-                // the trigger itself, which every form still wants
-                // transparent.
-                triggerClassName="bg-background h-7 w-auto gap-1 text-xs"
-                items={pageSizes.map((n) => ({
-                  value: String(n),
-                  label: String(n),
-                }))}
-              />
-            )}
+            {/*
+              Hidden on a phone, and the size itself is untouched: `size` is
+              persisted per table, so a reader who chose 50 on a desktop keeps
+              50 here — this drops the CONTROL, not the setting. Nobody picks
+              100 rows on a 412px screen, and the picker plus the range text
+              plus the numbered pages is exactly what made this bar wrap onto
+              three lines (feedback #2106).
+            */}
+            {pageSizes.length > 0 &&
+              !isMobile && (
+                // The same `Control` the filter bar is built on, so the picker
+                // is one component with every other select in this table. It
+                // used to be the raw `Select` underneath it, because `Control`
+                // is form-bound and this is not a form — `sizeForm` above is
+                // what closes that gap.
+                <Control
+                  input={sizeForm.input.size}
+                  // The count line beside it is not a label, so the trigger has
+                  // to name itself.
+                  label=""
+                  inputProps={{
+                    "aria-label": String(
+                      tr("table.pageSize", { default: "Rows per page" }),
+                    ),
+                  }}
+                  // `bg-background`, because this bar is `bg-muted` and the
+                  // trigger is `bg-transparent` by default: on a plain form
+                  // surface that blending is right, on a tinted bar it made the
+                  // picker read as part of the bar while the pagination buttons
+                  // beside it sat on their own plane. Set here rather than on
+                  // the trigger itself, which every form still wants
+                  // transparent.
+                  triggerClassName="bg-background h-7 w-auto gap-1 text-xs"
+                  items={pageSizes.map((n) => ({
+                    value: String(n),
+                    label: String(n),
+                  }))}
+                />
+              )}
             <p className="text-muted-foreground text-xs">
               {meta
-                ? `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""} · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`
+                ? // The row range is the half that goes on a phone: "where am
+                  // I" survives, "how many of how many" does not, and the two
+                  // together are what pushed this past one line.
+                  `Page ${meta.number + 1}${meta.totalPages ? ` of ${meta.totalPages}` : ""}${
+                    isMobile
+                      ? ""
+                      : ` · ${meta.numberOfElements} of ${meta.totalElements ?? "?"}`
+                  }`
                 : "—"}
             </p>
           </div>
@@ -1670,27 +1721,35 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                     )}
                   />
                 </PaginationItem>
-                {computePageItems(meta.number + 1, meta.totalPages).map(
-                  (item, idx) =>
-                    item === "ellipsis" ? (
-                      <PaginationItem key={`e-${idx}`}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : (
-                      <PaginationItem key={item}>
-                        <PaginationLink
-                          href="#"
-                          isActive={item === meta.number + 1}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setPage(item - 1);
-                          }}
-                        >
-                          {item}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ),
-                )}
+                {/*
+                  Previous/next only on a phone. The numbered sequence is up
+                  to seven tap targets plus two ellipses, which is the widest
+                  thing in this bar, and "Page 1 of 3" beside it already says
+                  where the reader is. Their labels are `hidden sm:block` in
+                  the primitive, so the two that remain are bare chevrons.
+                */}
+                {!isMobile &&
+                  computePageItems(meta.number + 1, meta.totalPages).map(
+                    (item, idx) =>
+                      item === "ellipsis" ? (
+                        <PaginationItem key={`e-${idx}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem key={item}>
+                          <PaginationLink
+                            href="#"
+                            isActive={item === meta.number + 1}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(item - 1);
+                            }}
+                          >
+                            {item}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ),
+                  )}
                 <PaginationItem>
                   <PaginationNext
                     href="#"

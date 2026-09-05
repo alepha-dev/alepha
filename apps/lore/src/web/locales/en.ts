@@ -11,6 +11,7 @@ export default {
   "header.actions.admin": "Admin Panel",
   "header.actions.language": "Language",
   "header.actions.search": "Search",
+  "header.actions.repository": "Repository",
 
   "spotlight.title": "Search",
   "spotlight.description": "Find quests and folios in this project.",
@@ -117,22 +118,19 @@ export default {
   "folios.history.action.revert": "Reverted",
 
   "folios.wikilink.broken.title": "Broken link",
-  "folios.wikilink.broken.folioNotFound":
-    "No folio matches this reference. Inside [[…]], #N means a folio; a quest is [[quest:#N]].",
-  "folios.wikilink.broken.ambiguous":
-    "Several entries share this title. Use the explicit #N form to disambiguate.",
+  "folios.wikilink.broken.notAReference":
+    "Not a reference. Inside [[…]], write #F12 for a folio, #Q12 for a quest, #E3 for an epic, #P120 for a feedback item or #R12 for a release.",
+  "folios.wikilink.broken.folioNotFound": "No folio matches this reference.",
   "folios.wikilink.broken.questNotFound": "No quest matches this reference.",
   "folios.wikilink.broken.epicNotFound": "No epic matches this reference.",
-  "folios.wikilink.broken.blobNotFound":
-    "No folio blob matches this reference.",
+  "folios.wikilink.broken.attachmentNotFound":
+    "No attachment of this folio matches this reference.",
   "folios.wikilink.broken.feedbackNotFound":
     "No feedback item matches this reference.",
   "folios.wikilink.broken.releaseNotFound":
     "No release matches this reference.",
   "folios.wikilink.release.open": "open",
   "folios.wikilink.release.released": "released",
-  "folios.wikilink.broken.questFormWanted":
-    "There is no folio #$1, but quest #$1 exists. Inside [[…]], #N means a folio; write [[quest:#$1]] instead.",
 
   "folios.editor.menu.folio": "Folio",
   "folios.editor.menu.edit": "Edit",
@@ -1609,6 +1607,8 @@ export default {
   "epic.aside.created": "Created",
   "epic.flow.empty": "Attach quests to see how they depend on each other.",
   "questline.stat.quests": "quests",
+  "questline.stat.area": "area",
+  "questline.stat.areas": "areas",
   "questline.state.done": "Done",
   "questline.state.running": "Running",
   "questline.state.ready": "Ready",

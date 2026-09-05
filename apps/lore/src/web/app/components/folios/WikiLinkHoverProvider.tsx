@@ -22,7 +22,10 @@ import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
 import type { BrokenWikiLinkReason } from "./folioWikiLinkResolver.ts";
-import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
+import {
+  type AttachmentRef,
+  BROKEN_HREF_PREFIX,
+} from "./rewriteFolioWikiLinks.ts";
 
 /**
  * Obsidian-style hover-card preview on `[[wiki-links]]` in folio /
@@ -37,8 +40,8 @@ import { type BlobRef, BROKEN_HREF_PREFIX } from "./rewriteFolioWikiLinks.ts";
  *   inbox is the only page feedback has; the query names the item)
  * - `/<projectSlug>/releases/<tag>` → release preview, read off the
  *   project's own release list rather than fetched
- * - `/api/files/<uuid>` → blob preview (the rewriter only emits this
- *   URL for resolved blob refs, so the false-positive risk on a
+ * - `/api/files/<uuid>` → attachment preview (the rewriter only emits this
+ *   URL for resolved attachment refs, so the false-positive risk on a
  *   user-typed link is negligible)
  *
  * Preview data is fetched on first hover and cached per session.
@@ -54,7 +57,7 @@ export interface WikiLinkHoverProviderProps {
    * Matched against the first segment of a hovered link's own URL.
    */
   projectSlug: string;
-  blobs: BlobRef[];
+  attachments: AttachmentRef[];
   children: React.ReactNode;
 }
 
@@ -79,8 +82,8 @@ type HoverTarget =
   // A release link carries its tag, not its number: that is what the route
   // takes, and the preview finds the release by it.
   | { kind: "release"; tag: string }
-  | { kind: "blob"; fileId: string }
-  | { kind: "broken"; reason: BrokenReason; hint?: string };
+  | { kind: "attachment"; fileId: string }
+  | { kind: "broken"; reason: BrokenReason };
 
 interface HoverState {
   target: HoverTarget;
@@ -98,7 +101,7 @@ const QUEST_RE = /^\/([^/]+)\/quests\/(\d+)(?:[#?]|$)/;
 const EPIC_RE = /^\/([^/]+)\/epics\/(\d+)(?:[#?]|$)/;
 const FEEDBACK_RE = /^\/([^/]+)\/feedback\?feedback=(\d+)(?:[#&]|$)/;
 const RELEASE_RE = /^\/([^/]+)\/releases\/([^/?#]+)(?:[#?]|$)/;
-const BLOB_RE = /^\/api\/files\/([a-f0-9-]{36})(?:[#?]|$)/i;
+const ATTACHMENT_RE = /^\/api\/files\/([a-f0-9-]{36})(?:[#?]|$)/i;
 
 /**
  * The path of a link target: an absolute URL is reduced to its path, a
@@ -121,16 +124,10 @@ const parseHref = (
 ): HoverTarget | null => {
   if (!href) return null;
   if (href.startsWith(BROKEN_HREF_PREFIX)) {
-    // `reason[:hint]` — no reason contains a colon, so the first one splits.
-    const rest = href.slice(BROKEN_HREF_PREFIX.length);
-    const sep = rest.indexOf(":");
-    return sep === -1
-      ? { kind: "broken", reason: rest as BrokenReason }
-      : {
-          kind: "broken",
-          reason: rest.slice(0, sep) as BrokenReason,
-          hint: rest.slice(sep + 1),
-        };
+    return {
+      kind: "broken",
+      reason: href.slice(BROKEN_HREF_PREFIX.length) as BrokenReason,
+    };
   }
   // Strip protocol/host if present (markdown links are typically root-relative
   // but a user could paste an absolute URL into a wiki body).
@@ -155,27 +152,26 @@ const parseHref = (
   if (release && release[1] === projectSlug) {
     return { kind: "release", tag: decodeURIComponent(release[2]) };
   }
-  const blob = BLOB_RE.exec(path);
-  if (blob) return { kind: "blob", fileId: blob[1] };
+  const attachment = ATTACHMENT_RE.exec(path);
+  if (attachment) return { kind: "attachment", fileId: attachment[1] };
   return null;
 };
 
 const targetKey = (t: HoverTarget): string => {
-  if (t.kind === "blob") return `blob:${t.fileId}`;
+  if (t.kind === "attachment") return `attachment:${t.fileId}`;
   if (t.kind === "release") return `release:${t.tag}`;
-  if (t.kind === "broken") return `broken:${t.reason}:${t.hint ?? ""}`;
+  if (t.kind === "broken") return `broken:${t.reason}`;
   return `${t.kind}:${t.shortId}`;
 };
 
 const BROKEN_REASON_KEY: Record<BrokenReason, string> = {
+  "not-a-reference": "folios.wikilink.broken.notAReference",
   "folio-not-found": "folios.wikilink.broken.folioNotFound",
-  "ambiguous-title": "folios.wikilink.broken.ambiguous",
   "quest-not-found": "folios.wikilink.broken.questNotFound",
   "epic-not-found": "folios.wikilink.broken.epicNotFound",
-  "blob-not-found": "folios.wikilink.broken.blobNotFound",
+  "attachment-not-found": "folios.wikilink.broken.attachmentNotFound",
   "feedback-not-found": "folios.wikilink.broken.feedbackNotFound",
   "release-not-found": "folios.wikilink.broken.releaseNotFound",
-  "folio-not-found-quest-exists": "folios.wikilink.broken.questFormWanted",
 };
 
 const formatBytes = (bytes: number | undefined): string => {
@@ -210,7 +206,7 @@ const stripMarkdown = (raw: string): string =>
 const HOVER_OPEN_DELAY_MS = 400;
 
 const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
-  const { projectId, projectSlug, blobs } = props;
+  const { projectId, projectSlug, attachments } = props;
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
   const epicApi = useClient<EpicController>();
@@ -238,11 +234,11 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
   const hoverRef = useRef<HoverState | null>(null);
   hoverRef.current = hover;
 
-  const blobByUuid = useMemo(() => {
-    const m = new Map<string, BlobRef>();
-    for (const b of blobs) m.set(b.fileId, b);
+  const attachmentByUuid = useMemo(() => {
+    const m = new Map<string, AttachmentRef>();
+    for (const b of attachments) m.set(b.fileId, b);
     return m;
-  }, [blobs]);
+  }, [attachments]);
 
   const cancelClose = useCallback(() => {
     if (closeTimer.current) {
@@ -398,7 +394,7 @@ const WikiLinkHoverProvider = (props: WikiLinkHoverProviderProps) => {
           key={targetKey(hover.target)}
           state={hover}
           projectId={projectId}
-          blobByUuid={blobByUuid}
+          attachmentByUuid={attachmentByUuid}
           cache={cache.current}
           folioApi={folioApi}
           questApi={questApi}
@@ -446,8 +442,8 @@ interface EpicPreview {
   progress: { completed: number; total: number };
 }
 
-interface BlobPreview {
-  kind: "blob";
+interface AttachmentPreview {
+  kind: "attachment";
   name: string;
   size?: number;
   mime?: string;
@@ -473,14 +469,14 @@ type Preview =
   | FolioPreview
   | QuestPreview
   | EpicPreview
-  | BlobPreview
+  | AttachmentPreview
   | FeedbackPreview
   | ReleasePreview;
 
 interface HoverCardPopoverProps {
   state: HoverState;
   projectId: number;
-  blobByUuid: Map<string, BlobRef>;
+  attachmentByUuid: Map<string, AttachmentRef>;
   cache: Map<string, Preview>;
   folioApi: ReturnType<typeof useClient<FolioController>>;
   questApi: ReturnType<typeof useClient<QuestController>>;
@@ -505,7 +501,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
   const {
     state,
     projectId,
-    blobByUuid,
+    attachmentByUuid,
     cache,
     folioApi,
     questApi,
@@ -610,18 +606,18 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
           };
           cache.set(key, preview);
           if (alive) setData(preview);
-        } else if (state.target.kind === "blob") {
-          const blob = blobByUuid.get(state.target.fileId);
-          if (!blob) {
+        } else if (state.target.kind === "attachment") {
+          const attachment = attachmentByUuid.get(state.target.fileId);
+          if (!attachment) {
             if (alive) setData(null);
             return;
           }
-          const preview: BlobPreview = {
-            kind: "blob",
-            name: blob.name,
-            size: blob.size,
-            mime: blob.mime,
-            fileId: blob.fileId,
+          const preview: AttachmentPreview = {
+            kind: "attachment",
+            name: attachment.name,
+            size: attachment.size,
+            mime: attachment.mime,
+            fileId: attachment.fileId,
           };
           cache.set(key, preview);
           if (alive) setData(preview);
@@ -643,7 +639,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
     key,
     state.target,
     projectId,
-    blobByUuid,
+    attachmentByUuid,
     cache,
     folioApi,
     questApi,
@@ -681,9 +677,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             {tr("folios.wikilink.broken.title")}
           </span>
           <span className="text-muted-foreground text-xs">
-            {tr(BROKEN_REASON_KEY[state.target.reason], {
-              args: [state.target.hint ?? ""],
-            })}
+            {tr(BROKEN_REASON_KEY[state.target.reason])}
           </span>
         </div>
       ) : loading ? (
@@ -774,7 +768,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
           </div>
         </div>
       )}
-      {data?.kind === "blob" && (
+      {data?.kind === "attachment" && (
         <div className="flex flex-col gap-1.5">
           {data.mime?.startsWith("image/") && (
             <FileImage

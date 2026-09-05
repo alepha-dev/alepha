@@ -457,7 +457,10 @@ test.describe("Epics — the list", () => {
       await expect(editor).toBeVisible({ timeout: 15_000 });
       await editor.click();
       await page.keyboard.press("ControlOrMeta+End");
-      await page.keyboard.type("[[Q");
+      // `[[#Q`, not `[[Q`: since feedback #2112 the picker waits for the
+      // hash and one character, so that a bare `[[` does not put a popup
+      // between the author and the text.
+      await page.keyboard.type("[[#Q");
 
       // CodeMirror renders completions as `option`-role entries. The quest
       // seeded above proves the picker is reading the same project-wide

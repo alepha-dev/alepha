@@ -7,18 +7,18 @@ import { useI18n } from "alepha/react/i18n";
 import { Copy, Loader2, Paperclip, Pencil, Trash2, Upload } from "lucide-react";
 import { type DragEvent, type ReactElement, useRef, useState } from "react";
 
-import type { BlobController } from "@/api/controllers/BlobController.ts";
+import type { FolioAttachmentController } from "@/api/controllers/FolioAttachmentController.ts";
 
-import { currentFolioBlobsAtom } from "../../../../atoms/currentFolioBlobsAtom.ts";
+import { currentFolioAttachmentsAtom } from "../../../../atoms/currentFolioAttachmentsAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import { folioAssetEmbed } from "../../folioAssetReference.ts";
 import { FOLIO_IMAGE_MAX_WIDTH } from "../../folioImageBounds.ts";
-import { formatBlobBytes } from "../../folioWikiLinkResolver.ts";
+import { formatAttachmentBytes } from "../../folioWikiLinkResolver.ts";
 
-// Mirrors `FolioBlobService.BUCKET` — not imported so the
+// Mirrors `FolioAttachmentService.BUCKET` — not imported so the
 // browser bundle does not pull a server-side module. Value stays
 // "archive-blobs": it is persisted on every existing `files` row.
-const FOLIO_BLOB_BUCKET = "archive-blobs";
+const FOLIO_ATTACHMENT_BUCKET = "archive-blobs";
 
 export interface FolioAttachmentsTabProps {
   /**
@@ -46,8 +46,8 @@ export interface FolioAttachmentsTabProps {
 const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
-  const blobApi = useClient<BlobController>();
-  const [blobs, setBlobs] = useStore(currentFolioBlobsAtom);
+  const attachmentApi = useClient<FolioAttachmentController>();
+  const [attachments, setAttachments] = useStore(currentFolioAttachmentsAtom);
   const [busy, setBusy] = useState(false);
   const [dropping, setDropping] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
@@ -56,7 +56,11 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
 
   const refresh = async (): Promise<void> => {
     if (!props.folioId) return;
-    setBlobs(await blobApi.listBlobs({ params: { folioId: props.folioId } }));
+    setAttachments(
+      await attachmentApi.listAttachments({
+        params: { folioId: props.folioId },
+      }),
+    );
   };
 
   const upload = async (files: File[]): Promise<void> => {
@@ -75,7 +79,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
         const form = new FormData();
         form.append("file", file);
         const uploaded = await fetch(
-          `/api/files?bucket=${encodeURIComponent(FOLIO_BLOB_BUCKET)}`,
+          `/api/files?bucket=${encodeURIComponent(FOLIO_ATTACHMENT_BUCKET)}`,
           { method: "POST", body: form, credentials: "include" },
         );
         if (!uploaded.ok) {
@@ -84,12 +88,12 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
           );
         }
         const { id } = (await uploaded.json()) as { id: string };
-        await blobApi.registerBlob({
+        await attachmentApi.registerAttachment({
           params: { projectId },
           body: { fileId: id, name: file.name, folioId },
         });
       }
-      // Re-read rather than appending the `registerBlob` rows: the list has
+      // Re-read rather than appending the `registerAttachment` rows: the list has
       // to carry `size` and `mimeType`, which only the hydrated read
       // returns, and the server may have auto-suffixed the name.
       await refresh();
@@ -112,8 +116,8 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
       destructive: true,
     });
     if (!confirmed) return;
-    await blobApi.deleteBlob({ params: { id } });
-    setBlobs(blobs.filter((blob) => blob.id !== id));
+    await attachmentApi.deleteAttachment({ params: { id } });
+    setAttachments(attachments.filter((attachment) => attachment.id !== id));
   };
 
   const rename = async (id: string, current: string): Promise<void> => {
@@ -123,7 +127,10 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
       defaultValue: current,
     });
     if (!next || next.trim() === current) return;
-    await blobApi.renameBlob({ params: { id }, body: { name: next.trim() } });
+    await attachmentApi.renameAttachment({
+      params: { id },
+      body: { name: next.trim() },
+    });
     // Re-read rather than patching the row: the server auto-suffixes on
     // collision, so the name it stored may not be the one just typed — and
     // it has also rewritten the folio's references to match.
@@ -140,7 +147,10 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
     void upload([...event.dataTransfer.files]);
   };
 
-  const total = blobs.reduce((sum, blob) => sum + blob.size, 0);
+  const total = attachments.reduce(
+    (sum, attachment) => sum + attachment.size,
+    0,
+  );
 
   if (!props.folioId) {
     return (
@@ -194,20 +204,20 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
         />
       </div>
 
-      {blobs.length === 0 ? (
+      {attachments.length === 0 ? (
         <p className="text-muted-foreground px-3 py-4 text-center text-xs italic">
           {tr("folios.editor.inspector.attachments-empty")}
         </p>
       ) : (
         <ul className="flex flex-col">
-          {blobs.map((blob) => (
+          {attachments.map((attachment) => (
             <li
-              key={blob.id}
+              key={attachment.id}
               className="hover:bg-accent/50 group flex items-center gap-2 px-3 py-1.5"
             >
-              {blob.mimeType.startsWith("image/") ? (
+              {attachment.mimeType.startsWith("image/") ? (
                 <img
-                  src={`/api/files/${blob.id}`}
+                  src={`/api/files/${attachment.id}`}
                   alt=""
                   className="border-border size-8 flex-none rounded border object-cover"
                 />
@@ -218,22 +228,22 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
               )}
               <span className="min-w-0 flex-1">
                 <a
-                  href={`/api/files/${blob.id}`}
+                  href={`/api/files/${attachment.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block truncate text-xs hover:underline"
-                  title={blob.name}
+                  title={attachment.name}
                 >
-                  {blob.name}
+                  {attachment.name}
                 </a>
                 <span className="text-muted-foreground block text-[11px]">
-                  {formatBlobBytes(blob.size)}
+                  {formatAttachmentBytes(attachment.size)}
                 </span>
               </span>
               <button
                 type="button"
                 disabled={props.disabled}
-                onClick={() => void rename(blob.id, blob.name)}
+                onClick={() => void rename(attachment.id, attachment.name)}
                 aria-label={String(tr("folios.editor.tree.rename"))}
                 title={String(tr("folios.editor.tree.rename"))}
                 className="text-muted-foreground hover:text-foreground flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
@@ -242,7 +252,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
               </button>
               <button
                 type="button"
-                onClick={() => copyReference(blob.name)}
+                onClick={() => copyReference(attachment.name)}
                 aria-label={String(
                   tr("folios.editor.inspector.attachments-copy-ref"),
                 )}
@@ -256,7 +266,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
               <button
                 type="button"
                 disabled={props.disabled}
-                onClick={() => void remove(blob.id, blob.name)}
+                onClick={() => void remove(attachment.id, attachment.name)}
                 aria-label={String(tr("folio.action.delete"))}
                 title={String(tr("folio.action.delete"))}
                 className="text-muted-foreground hover:text-destructive flex size-6 flex-none items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100"
@@ -268,10 +278,10 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
         </ul>
       )}
 
-      {blobs.length > 0 && (
+      {attachments.length > 0 && (
         <p className="text-muted-foreground border-border border-t px-3 py-2 text-[11px]">
           {tr("folios.editor.inspector.attachments-total", {
-            args: [String(blobs.length), formatBlobBytes(total)],
+            args: [String(attachments.length), formatAttachmentBytes(total)],
           })}
         </p>
       )}
