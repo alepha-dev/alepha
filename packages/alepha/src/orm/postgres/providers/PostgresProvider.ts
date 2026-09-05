@@ -32,6 +32,11 @@ export abstract class PostgresProvider extends DatabaseProvider {
 
   public override readonly dialect = "postgresql";
 
+  /**
+   * The wire protocol carries the parameter count as a 16-bit integer.
+   */
+  public override readonly maxBoundParameters = 65535;
+
   public get name() {
     return "postgres";
   }

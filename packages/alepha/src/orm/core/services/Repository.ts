@@ -916,7 +916,9 @@ export abstract class Repository<T extends ZObject> {
   /**
    * Create many entities.
    *
-   * Inserts are batched in chunks of 1000 to avoid hitting database limits.
+   * Inserts are batched: at most `batchSize` rows (default 1000) per
+   * statement, and fewer when that many rows would bind more values than
+   * the driver accepts (see {@link Repository.insertBatchSize}).
    *
    * **Order is guaranteed**: the returned array is index-aligned with
    * `values`, across batch boundaries. Callers rely on this to map
@@ -952,14 +954,15 @@ export abstract class Repository<T extends ZObject> {
     // Documented rather than silently wrapped, because an implicit
     // transaction around an arbitrarily large insert is its own hazard (lock
     // duration, WAL growth) and the caller is better placed to decide.
-    const batchSize = opts.batchSize ?? 1000;
+    const rows = values.map((data) => this.cast(data, true));
+    const batchSize = this.insertBatchSize(rows, opts.batchSize);
     const allEntities: Infer<T>[] = [];
 
     try {
-      for (let i = 0; i < values.length; i += batchSize) {
-        const batch = values.slice(i, i + batchSize);
+      for (let i = 0; i < rows.length; i += batchSize) {
+        const batch = rows.slice(i, i + batchSize);
         const entities = await this.rawInsert(opts)
-          .values(batch.map((data) => this.cast(data, true)))
+          .values(batch)
           .returning(this.table)
           .then((rows) => rows.map((it) => this.clean(it, this.entity.schema)));
         allEntities.push(...entities);
@@ -979,6 +982,33 @@ export abstract class Repository<T extends ZObject> {
     } catch (error) {
       throw this.handleError(error, "Insert query has failed");
     }
+  }
+
+  /**
+   * Rows per INSERT statement: the caller's `batchSize` (default 1000),
+   * capped so that rows times columns stays within the driver's
+   * `maxBoundParameters`. Every provided column of every row is one bound
+   * value, so on Cloudflare D1 (ceiling 100) a five-column table inserts
+   * twenty rows at a time. The flat thousand used to bind five thousand
+   * there and fail on the twenty-first row, which is how Lore's reference
+   * converter (epic #32) died on a folio with 28 links on 2026-09-05.
+   *
+   * A row wider than the ceiling gets a batch of one and the driver's own
+   * refusal, which is the honest answer: no batching can bind it.
+   */
+  protected insertBatchSize(
+    rows: ReadonlyArray<Record<string, unknown>>,
+    requested?: number,
+  ): number {
+    const columns = rows.reduce(
+      (max, row) => Math.max(max, Object.keys(row).length),
+      1,
+    );
+    const perStatement = Math.max(
+      1,
+      Math.floor(this.provider.maxBoundParameters / columns),
+    );
+    return Math.max(1, Math.min(requested ?? 1000, perStatement));
   }
 
   /**

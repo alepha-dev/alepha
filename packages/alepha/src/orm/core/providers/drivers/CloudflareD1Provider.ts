@@ -37,6 +37,14 @@ export type {
 export class CloudflareD1Provider extends DatabaseProvider {
   protected readonly builder = $inject(SqliteModelBuilder);
   protected readonly timeouts = $inject(D1TimeoutProvider);
+
+  /**
+   * Probed on `lore-production`: 100 placeholders run, 101 fail with `too
+   * many SQL variables`. A five-column table therefore inserts twenty rows
+   * per statement; the flat thousand `createMany` used to send bound five
+   * thousand and died on the first folio with more than twenty links.
+   */
+  public override readonly maxBoundParameters = 100;
   protected readonly env = $env(
     z.object({
       DATABASE_URL: z.string().describe("Expect to be 'd1://binding'"),

@@ -49,6 +49,19 @@ export abstract class DatabaseProvider {
   public abstract readonly dialect: "postgresql" | "sqlite";
   public abstract readonly url: string;
 
+  /**
+   * How many values one statement may bind. Every `inArray` value and every
+   * column of every row of a multi-row INSERT is one; past the ceiling the
+   * driver refuses the statement outright, on data volume rather than on
+   * anything the code did (`DbTooManyParametersError`).
+   *
+   * SQLite's `SQLITE_MAX_VARIABLE_NUMBER` defaults to 32766 since 3.32,
+   * PostgreSQL takes 65535, and Cloudflare D1 stops at 100. `createMany`
+   * sizes its batches from this, so a driver with a low ceiling gets short
+   * statements instead of an error on the row that crosses it.
+   */
+  public readonly maxBoundParameters: number = 32766;
+
   public readonly enums = new Map<string, unknown>();
   public readonly tables = new Map<string, unknown>();
   public readonly sequences = new Map<string, unknown>();
