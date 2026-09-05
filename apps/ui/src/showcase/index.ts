@@ -15,6 +15,8 @@ import { ShowcaseNotifications } from "./admin/ShowcaseNotifications.ts";
 import { ShowcaseNotificationsController } from "./admin/ShowcaseNotificationsController.ts";
 import { ShowcaseParameters } from "./admin/ShowcaseParameters.ts";
 import { ShowcaseParametersController } from "./admin/ShowcaseParametersController.ts";
+import { ShowcasePayments } from "./admin/ShowcasePayments.ts";
+import { ShowcasePaymentsController } from "./admin/ShowcasePaymentsController.ts";
 import { ShowcaseSessions } from "./admin/ShowcaseSessions.ts";
 import { ShowcaseSessionsController } from "./admin/ShowcaseSessionsController.ts";
 import { ShowcaseUsers } from "./admin/ShowcaseUsers.ts";
@@ -61,5 +63,7 @@ export const UiShowcase = $module({
     ShowcaseParametersController,
     ShowcaseAnalytics,
     ShowcaseAnalyticsController,
+    ShowcasePayments,
+    ShowcasePaymentsController,
   ],
 });

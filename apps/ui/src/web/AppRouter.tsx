@@ -32,6 +32,7 @@ export class AppRouter {
       this.adminParameters,
       this.adminDashboard,
       this.adminAnalytics,
+      this.adminPayments,
     ],
   });
 
@@ -135,6 +136,13 @@ export class AppRouter {
     static: true,
     head: { title: "Admin analytics - Alepha UI" },
     lazy: () => import("./pages/blocks/admin/Analytics.tsx"),
+  });
+
+  adminPayments = $page({
+    path: "/blocks/admin/payments",
+    static: true,
+    head: { title: "Admin payments - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Payments.tsx"),
   });
 
   adminJobs = $page({
