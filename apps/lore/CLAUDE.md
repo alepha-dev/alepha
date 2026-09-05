@@ -56,7 +56,7 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (29)** — `Artifact`, `Blight`, `Blob`, `Directory`, `Estate`, `EstateCommand`, `EstateSocket` (the `$websocket` a Bay machine holds open, `/ws/estates`; the first websocket in Lore, and the first Durable Object on production), `ProjectEstate`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Roadmap`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
+**Controllers (30)** — `Artifact`, `Blight`, `Blob`, `Directory`, `Estate`, `EstateCommand`, `EstateSocket` (the `$websocket` a Bay machine holds open, `/ws/estates`; the first websocket in Lore, and the first Durable Object on production), `EstatePull` (the two root `$route`s a machine pulls a deploy's artifact bytes and secret set from, by command id, under its estate secret; the secret set is `{}` until epic #1's #1813), `ProjectEstate`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Roadmap`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
 
 > **Invitations moved out of Lore entirely** (epic #23, quest #1663). The
 > entity, `InvitationService`, `InvitationJobs` and `AdminInvitationController`

@@ -16,6 +16,7 @@ import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
 import { EstateCommandController } from "./controllers/EstateCommandController.ts";
 import { EstateController } from "./controllers/EstateController.ts";
+import { EstatePullController } from "./controllers/EstatePullController.ts";
 import { EstateSocketController } from "./controllers/EstateSocketController.ts";
 import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
@@ -240,6 +241,7 @@ export const LoreApi = $module({
     ProjectEstateController,
     EstateCommandController,
     EstateSocketController,
+    EstatePullController,
     SigilAnalyticsController,
     InsightsController,
     BlightController,
