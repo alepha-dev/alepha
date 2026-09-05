@@ -11,6 +11,7 @@ export default {
   "header.actions.admin": "Admin Panel",
   "header.actions.language": "Language",
   "header.actions.search": "Search",
+  "header.actions.repository": "Repository",
 
   "spotlight.title": "Search",
   "spotlight.description": "Find quests and folios in this project.",

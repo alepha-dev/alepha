@@ -8,6 +8,7 @@ export default {
   "header.actions.admin": "Panneau admin",
   "header.actions.language": "Langue",
   "header.actions.search": "Rechercher",
+  "header.actions.repository": "Dépôt",
 
   "spotlight.title": "Rechercher",
   "spotlight.description": "Trouver des quêtes et des folios dans ce projet.",
