@@ -21,12 +21,14 @@ import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
+import EpicReviewPromptDialog from "./EpicReviewPromptDialog.tsx";
 import ProjectEpics from "./ProjectEpics.tsx";
 
 const epicOf = (
   number: number,
   title: string,
   status: EpicResource["status"],
+  releaseId?: number,
 ): EpicResource =>
   ({
     id: number,
@@ -35,6 +37,7 @@ const epicOf = (
     title,
     description: "",
     status,
+    releaseId,
     createdAt: "2026-09-01T10:00:00.000Z",
     updatedAt: "2026-09-01T10:00:00.000Z",
     progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
@@ -103,7 +106,7 @@ describe("ProjectEpics - the status filter", () => {
     localStorage.clear();
   });
 
-  const mount = async (releases: unknown[] = []) => {
+  const mount = async (releases: unknown[] = [], epics?: EpicResource[]) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -129,15 +132,27 @@ describe("ProjectEpics - the status filter", () => {
       unlockHistory: [],
     } as never);
     alepha.store.set(currentReleasesAtom, releases as never);
+    // Injected AFTER `start` and before `render`, so a case can bring its own
+    // fixture without a second provider class. The default set is what every
+    // other case in this file relies on, so it is left alone unless asked.
+    if (epics) alepha.inject(FakeLinkProvider).epics = epics;
 
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <ProjectEpics />
+          {/* Mounted in `Layout` in the app, so this spec supplies its own.
+              Review writes an atom rather than the clipboard now, and the
+              dialog is what reads it. */}
+          <EpicReviewPromptDialog />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
-    await view.findByRole("link", { name: "#1 - Planned epic" });
+    await view.findByRole("link", {
+      name: `#${(epics ?? [])[0]?.number ?? 1} - ${
+        (epics ?? [])[0]?.title ?? "Planned epic"
+      }`,
+    });
     return view;
   };
 
@@ -164,6 +179,119 @@ describe("ProjectEpics - the status filter", () => {
     expect(row("#2 - Active epic")).not.toBeNull();
     // The trigger says how many, the way the Quests list's does.
     expect(status.textContent).toContain("2 status");
+  });
+
+  /**
+   * The Release filter (feedback #2102): the Epics list could SHOW which
+   * release an epic ships in, and sort by it, but not narrow by it - which
+   * is the question anyone planning a release opens this page to ask.
+   *
+   * Two decisions are pinned here rather than left to the reader, because
+   * the same page carries the opposite rule fifty lines away in the bulk
+   * `Add to release` menu, and copying the wrong one is silent.
+   */
+  describe("the release filter", () => {
+    // `currentReleasesAtom` is schema-validated, so a release here is the
+    // whole row and not the three fields this describe reads.
+    const aRelease = (id: number, tag: string, released?: string) => ({
+      id,
+      projectId: 1,
+      number: id,
+      tag,
+      title: tag,
+      description: "",
+      releasedAt: released,
+      createdAt: "2026-08-26T10:00:00.000Z",
+      updatedAt: "2026-08-26T10:00:00.000Z",
+      progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
+    });
+
+    const RELEASES = [
+      aRelease(7, "0.28.0", "2026-09-03T00:00:00.000Z"),
+      aRelease(8, "0.29.0"),
+    ];
+
+    const EPICS = [
+      epicOf(1, "Shipped epic", "done", 7),
+      epicOf(2, "Next epic", "active", 8),
+      epicOf(3, "Unassigned epic", "planned"),
+    ];
+
+    const openFilter = async () => {
+      const trigger = screen.getByRole("combobox", { name: "Release" });
+      fireEvent.keyDown(trigger, { key: "ArrowDown" });
+      return trigger;
+    };
+
+    it("is absent while the project has no release", async () => {
+      await mount();
+
+      // One value that matches everything is a control with nothing to do.
+      expect(screen.queryByRole("combobox", { name: "Release" })).toBeNull();
+    });
+
+    it("narrows to the epics attached to the picked release", async () => {
+      await mount(RELEASES, EPICS);
+
+      await openFilter();
+      fireEvent.click(await screen.findByRole("option", { name: "0.29.0" }));
+
+      await waitFor(() => expect(row("#1 - Shipped epic")).toBeNull());
+      expect(row("#2 - Next epic")).not.toBeNull();
+      expect(row("#3 - Unassigned epic")).toBeNull();
+    });
+
+    /**
+     * ⚠️ The opposite of the bulk menu's rule, deliberately. A published
+     * release is excluded THERE because attaching to one is refused server
+     * side, so the entry could only ever fail. It is included HERE because a
+     * filter reads history, and "what went into 0.28.0" is a question the
+     * table has to be able to answer after 0.28.0 has shipped.
+     */
+    it("offers a published release, which the Add to release menu does not", async () => {
+      await mount(RELEASES, EPICS);
+
+      await openFilter();
+      fireEvent.click(await screen.findByRole("option", { name: "0.28.0" }));
+
+      await waitFor(() => expect(row("#2 - Next epic")).toBeNull());
+      expect(row("#1 - Shipped epic")).not.toBeNull();
+    });
+
+    it("answers which epics are unassigned, through the No release entry", async () => {
+      await mount(RELEASES, EPICS);
+
+      await openFilter();
+      fireEvent.click(
+        await screen.findByRole("option", { name: "No release" }),
+      );
+
+      await waitFor(() => expect(row("#1 - Shipped epic")).toBeNull());
+      expect(row("#2 - Next epic")).toBeNull();
+      expect(row("#3 - Unassigned epic")).not.toBeNull();
+    });
+
+    /**
+     * The sentinel shares the list with the ids so that this is expressible
+     * in one selection. Two fields would AND where a multi-select ORs.
+     */
+    it("ORs the sentinel with a release rather than ANDing them", async () => {
+      await mount(RELEASES, EPICS);
+
+      await openFilter();
+      fireEvent.click(
+        await screen.findByRole("option", { name: "No release" }),
+      );
+      fireEvent.click(await screen.findByRole("option", { name: "0.29.0" }));
+
+      await waitFor(() => expect(row("#1 - Shipped epic")).toBeNull());
+      expect(row("#2 - Next epic")).not.toBeNull();
+      expect(row("#3 - Unassigned epic")).not.toBeNull();
+      // The trigger counts, the way its neighbour does.
+      expect(
+        screen.getByRole("combobox", { name: "Release" }).textContent,
+      ).toContain("2 releases");
+    });
   });
 
   /**
@@ -297,8 +425,12 @@ describe("ProjectEpics - the status filter", () => {
       expect(items.join(" ")).not.toContain("Begin");
     });
 
-    it("copies a prompt naming the epic, the URL and the calls that read it", async () => {
-      const written = stubClipboard();
+    /**
+     * ⚠️ Review no longer copies on click (feedback #2097). It opens the
+     * prompt for editing first, so this asserts the DIALOG'S initial value -
+     * the same guarantee, moved to where the text now appears.
+     */
+    it("opens the prompt, prefilled with the epic, the URL and the calls that read it", async () => {
       await mount();
 
       const items = await openRowMenu("#1 - Planned epic");
@@ -306,15 +438,62 @@ describe("ProjectEpics - the status filter", () => {
       expect(review).toBeTruthy();
       fireEvent.click(review!);
 
-      await waitFor(() => expect(written).toHaveLength(1));
-      const prompt = written[0]!;
+      const editor = (await screen.findByTestId(
+        "epic-review-prompt-text",
+      )) as HTMLTextAreaElement;
+      const prompt = editor.value;
       expect(prompt).toContain("#1");
       expect(prompt).toContain("Planned epic");
       expect(prompt).toContain("/epics/1");
       expect(prompt).toContain("epic_get");
       expect(prompt).toContain('detail: "full"');
-      // Nothing that is not the four fields the builder takes.
+      // Nothing that is not the four fields the builder takes. Letting a
+      // human edit the text before copying does not weaken this: the
+      // guarantee is about what Lore ADDS, and what Lore added is this value.
       expect(prompt).not.toContain("sg_");
+    });
+
+    it("copies what the reader edited, not what was built", async () => {
+      const written = stubClipboard();
+      await mount();
+
+      const items = await openRowMenu("#1 - Planned epic");
+      fireEvent.click(
+        items.find((item) => item.textContent?.includes("Review"))!,
+      );
+
+      const editor = (await screen.findByTestId(
+        "epic-review-prompt-text",
+      )) as HTMLTextAreaElement;
+      // The one sentence of context that was the whole point of the report.
+      fireEvent.change(editor, {
+        target: { value: `${editor.value}\n\nFocus on the migration.` },
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Copy and close" }));
+
+      await waitFor(() => expect(written).toHaveLength(1));
+      expect(written[0]).toContain("Focus on the migration.");
+      // Still the built prompt underneath, not a replacement.
+      expect(written[0]).toContain("epic_get");
+    });
+
+    it("copies nothing when the reader cancels", async () => {
+      const written = stubClipboard();
+      await mount();
+
+      const items = await openRowMenu("#1 - Planned epic");
+      fireEvent.click(
+        items.find((item) => item.textContent?.includes("Review"))!,
+      );
+      await screen.findByTestId("epic-review-prompt-text");
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() =>
+        expect(screen.queryByTestId("epic-review-prompt-text")).toBeNull(),
+      );
+      expect(written).toHaveLength(0);
     });
   });
 });

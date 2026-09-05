@@ -24,7 +24,12 @@ import MyFeedbackEditSheet from "./MyFeedbackEditSheet.tsx";
  */
 const myFeedbackFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z.enum(["pending", "accepted", "rejected"]).optional(),
+  /**
+   * An ARRAY, and empty means every status (feedback #2092). Three real
+   * states, so a multi-select earns its keep: "accepted or rejected" is a
+   * question a reporter asks and a single value could not express.
+   */
+  status: z.array(z.enum(["pending", "accepted", "rejected"])).optional(),
   projectId: z.string().optional(),
 });
 
@@ -107,6 +112,13 @@ const MyFeedback = () => {
                   clearable
                   icon={CircleDot}
                   clearLabel={String(tr("myFeedback.filter.allStatuses"))}
+                  countLabel={(n) =>
+                    String(
+                      tr("myFeedback.filter.statusCount", {
+                        args: [String(n)],
+                      }),
+                    )
+                  }
                   triggerClassName="w-full"
                   items={[
                     {
@@ -153,7 +165,10 @@ const MyFeedback = () => {
               size,
               sort,
               search: f?.search || undefined,
-              status: f?.status || undefined,
+              // Comma-joined, the way every list filter reaches the server:
+              // `parseQueryString` returns `Record<string, string>`, so a
+              // repeated key would keep only the last value.
+              status: f?.status?.length ? f.status.join(",") : undefined,
               projectId: f?.projectId ? Number(f.projectId) : undefined,
             } as any,
           })

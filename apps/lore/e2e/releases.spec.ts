@@ -510,8 +510,18 @@ test.describe("Releases", () => {
 
     await test.step("the state filter replaces the two headings", async () => {
       // Open and released used to be two sections. A table is one flat list,
-      // so the split became a derived two-value filter — and two is the
-      // whole vocabulary, because nothing pauses.
+      // so the split became a derived filter over the same two values,
+      // because nothing pauses.
+      //
+      // ⚠️ This step has now been written for both arities, so the history
+      // is worth carrying. It was a scalar; feedback #2092 made it a MULTI
+      // because a clearable scalar drew "All states" as a third pickable
+      // row; feedback #2098 deleted that row from `control-select` itself
+      // and the field went back to a scalar, because open and released are
+      // exhaustive and mutually exclusive - picking both was the same query
+      // as picking neither. So a second pick REPLACES again, and each one
+      // needs the popup reopened.
+      //
       // The only combobox on the page: the toolbar's other filter is a text
       // input, and the table's page-size picker only appears once there is
       // more than one page.
@@ -520,11 +530,24 @@ test.describe("Releases", () => {
       await page.getByRole("option", { name: "Released" }).click();
       await expect.poll(tagColumn, { timeout: 15_000 }).toEqual(["0.28.0"]);
 
+      // Replaces rather than adds, which is the whole point of the arity:
+      // there is no reachable state that means "open and released" and so
+      // none that says "2 states" while meaning "no filter".
       await stateFilter.click();
       await page.getByRole("option", { name: "Open" }).click();
       await expect
         .poll(tagColumn, { timeout: 15_000 })
         .toEqual(["0.9.0", "0.29.0", "1.0.0", "demo-1"]);
+
+      // Back to every state by pressing the chosen row again - the only way
+      // back now, and the reason #2098 could delete the clear row at all.
+      // The trigger carries the label that row used to.
+      await stateFilter.click();
+      await page.getByRole("option", { name: "Open" }).click();
+      await expect
+        .poll(tagColumn, { timeout: 15_000 })
+        .toEqual(["0.9.0", "0.28.0", "0.29.0", "1.0.0", "demo-1"]);
+      await expect(stateFilter).toContainText("All states");
     });
   });
 });

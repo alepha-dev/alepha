@@ -1,37 +1,37 @@
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useStore } from "alepha/react";
-import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { epicReviewPromptAtom } from "@/web/app/atoms/epicReviewPromptAtom.ts";
 import { buildEpicReviewPrompt } from "@/web/app/prompts/epicReviewPrompt.ts";
-import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
- * Puts the epic-review prompt on the clipboard, and says so.
+ * Opens the epic-review prompt for editing.
  *
  * A hook rather than a copy in each caller, because there are two: the Epics
  * row menu and the epic's own page. The label they show comes from one i18n
  * key for the same reason `Begin` does - two surfaces reading one key cannot
  * come to call the action different things.
  *
- * The clipboard write is the row menu's own copy-id pattern, unchanged:
- * `await` inside `try`, a success toast naming what was copied, an error
- * toast in `catch`. `navigator.clipboard.writeText` needs a user gesture and
- * a secure context and it REJECTS, so a toast fired before the write
- * resolved would be a lie.
+ * ⚠️ It no longer writes the clipboard. #2087 shipped Review as a blind
+ * copy: the reader never saw the text they were about to paste, and could not
+ * add the one sentence of context that makes a review land (feedback #2097).
+ * This builds the prompt and hands it to `EpicReviewPromptDialog`, mounted
+ * once in `Layout`, which owns the editing AND the copy - the write has to
+ * happen inside the dialog button's own click, or Safari's transient
+ * activation has expired by the time a resolved promise gets there.
+ *
+ * Both call sites are unchanged one-liners, which is the property this hook
+ * exists for.
  */
-export const useEpicReviewPrompt = (): ((
-  epic: EpicResource,
-) => Promise<void>) => {
-  const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
+export const useEpicReviewPrompt = (): ((epic: EpicResource) => void) => {
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
+  const [, setPrompt] = useStore(epicReviewPromptAtom);
 
-  return async (epic) => {
+  return (epic) => {
     const path = router.path("projectEpic", {
       params: { epicNumber: String(epic.number) },
     });
@@ -49,13 +49,6 @@ export const useEpicReviewPrompt = (): ((
       url,
     });
 
-    try {
-      await navigator.clipboard.writeText(prompt);
-      toaster.success(
-        tr("epic.action.review.copied", { args: [`#${epic.number}`] }),
-      );
-    } catch {
-      toaster.error(tr("epic.action.review.error"));
-    }
+    setPrompt({ reference: `#${epic.number}`, text: prompt });
   };
 };

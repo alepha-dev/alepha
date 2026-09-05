@@ -24,8 +24,8 @@ import {
   Clock,
   X,
 } from "lucide-react";
-import type { DayPickerProps } from "react-day-picker";
 import { useState } from "react";
+import type { DayPickerProps } from "react-day-picker";
 
 /** How many years back a `birthdate` picker offers. Covers every living
  *  person; the oldest verified human reached 122. */

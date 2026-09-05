@@ -83,13 +83,6 @@ jobs:
         ports:
           - 19090:9090
 
-      emqx:
-        image: emqx/emqx
-        ports:
-          - 11883:1883
-        env:
-          EMQX_ALLOW_ANONYMOUS: "true"
-
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -165,9 +158,9 @@ jobs:
   # them, and that is `verify` above: every app this job builds is SQLite or
   # nothing (playground and shop inject `:memory:`, lore and docs inject no
   # `DATABASE_URL` at all, and `alepha/orm` picks SQLite unless the URL starts
-  # with `d1:`). Nothing here references REDIS_URL, MQTT_BROKER_URL or
-  # S3_ENDPOINT, and `node dist` does not read `.env`, so the containers were
-  # unreachable rather than merely unused.
+  # with `d1:`). Nothing here references REDIS_URL or S3_ENDPOINT, and
+  # `node dist` does not read `.env`, so the containers were unreachable
+  # rather than merely unused.
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30

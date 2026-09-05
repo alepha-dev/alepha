@@ -1244,6 +1244,7 @@ export default {
   "blights.filter.open": "Ouverts",
   "blights.filter.resolved": "Résolus",
   "blights.filter.all": "Tous",
+  "blights.filter.statusCount": "$1 statuts",
   "blights.col.error": "Erreur",
   "blights.col.page": "Page",
   "blights.col.count": "Occurrences",
@@ -1465,6 +1466,11 @@ export default {
   "epic.action.review.copied":
     "Invite de relecture pour $1 copiée. Collez-la dans Claude Code ou Codex.",
   "epic.action.review.error": "Impossible de copier l’invite de relecture.",
+  "epic.action.review.dialog.title": "Faire relire cette épopée par un agent",
+  "epic.action.review.dialog.description":
+    "Ajustez l’invite si besoin, puis copiez-la dans Claude Code ou Codex.",
+  "epic.action.review.dialog.label": "Invite de relecture",
+  "epic.action.review.dialog.copy": "Copier et fermer",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":
     'Ses quêtes et folios sont conservés, détachés de "$1". Cette action est irréversible.',
@@ -1663,6 +1669,7 @@ export default {
   "myFeedback.filter.search": "Rechercher",
   "myFeedback.filter.search.aria": "Rechercher un retour",
   "myFeedback.filter.allStatuses": "Tous les statuts",
+  "myFeedback.filter.statusCount": "$1 statuts",
   "myFeedback.filter.allProjects": "Tous les projets",
   "myFeedback.column.project": "Projet",
   "myFeedback.column.title": "Titre",
@@ -1716,7 +1723,9 @@ export default {
   "activity.col.details": "Détails",
   "activity.filter.allPeople": "Tout le monde",
   "activity.filter.allResources": "Toutes les ressources",
+  "activity.filter.typeCount": "$1 ressources",
   "activity.filter.allActions": "Toutes les actions",
+  "activity.filter.actionCount": "$1 actions",
   "activity.resource.quest": "Quête",
   "activity.resource.epic": "Epic",
   "activity.resource.release": "Version",

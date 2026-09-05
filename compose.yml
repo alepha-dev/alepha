@@ -52,20 +52,6 @@ services:
         tmpfs:
           size: 4gb
 
-  emqx:
-    restart: always
-    image: emqx/emqx:latest
-    ports:
-      - "11883:1883"
-    environment:
-      EMQX_ALLOW_ANONYMOUS: "true"
-      # Pin the Erlang node name. Left to itself the entrypoint builds it from
-      # `hostname -f`, which fails inside the compose network ("Temporary
-      # failure in name resolution") and yields `emqx@` — an empty host that
-      # kills the kernel on boot, so the container restart-loops and every MQTT
-      # test fails with the broker simply absent.
-      EMQX_NODE__NAME: "emqx@127.0.0.1"
-
   # A local npm registry, for rehearsing a release before it is irreversible.
   #
   # `yarn v` proves the monorepo is green, but it proves it against the

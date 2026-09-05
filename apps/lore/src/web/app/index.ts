@@ -17,6 +17,8 @@ import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
+import { epicReviewPromptAtom } from "./atoms/epicReviewPromptAtom.ts";
+import { folioTreeCollapsedAtom } from "./atoms/folioTreeCollapsedAtom.ts";
 import { kanbanFiltersAtom } from "./atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "./atoms/kanbanReloadAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
@@ -43,6 +45,8 @@ export const LoreWebApp = $module({
     currentAssignedQuestsAtom,
     currentReleasesAtom,
     currentEpicsAtom,
+    epicReviewPromptAtom,
+    folioTreeCollapsedAtom,
     currentProjectAtom,
     currentProjectMemberAtom,
     currentQuestAtom,

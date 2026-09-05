@@ -2,10 +2,6 @@ import { render } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { jobExecutionEntity } from "alepha/api/jobs";
 import { notificationQuerySchema } from "alepha/api/notifications";
-import {
-  workflowExecutions,
-  workflowStepExecutions,
-} from "alepha/api/workflows";
 import { AlephaContext } from "alepha/react";
 import { $dictionary, AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { describe, expect, it } from "vitest";
@@ -17,10 +13,6 @@ import {
 } from "../admin-jobs-status-labels.ts";
 import { useNotificationStatusLabels } from "../admin-notifications-status-labels.ts";
 import { NOTIFICATION_STATUSES } from "../admin-notifications-status-tones.ts";
-import {
-  useWorkflowStatusLabels,
-  WORKFLOW_EXECUTION_STATUSES,
-} from "../admin-workflows-status-labels.ts";
 
 /**
  * The status vocabularies are the one place where a translation can go
@@ -108,13 +100,6 @@ describe("admin status labels", () => {
     expect(labels.skipped).toBe("Ignorée");
   });
 
-  it("offers every workflow EXECUTION status, and no step-only one", () => {
-    expect(WORKFLOW_EXECUTION_STATUSES).toEqual(statusesOf(workflowExecutions));
-    // `skipped` is a step status: offering it as an execution filter would be
-    // a value the query can never match.
-    expect(WORKFLOW_EXECUTION_STATUSES).not.toContain("skipped");
-  });
-
   it("translates every job status into French", async () => {
     const labels = await renderWith(useJobStatusLabels, "fr");
 
@@ -126,22 +111,6 @@ describe("admin status labels", () => {
       expect(label).not.toBe(status);
     }
     expect(labels.ok).toBe("Réussie");
-  });
-
-  it("translates both workflow vocabularies into French", async () => {
-    const labels = await renderWith(useWorkflowStatusLabels, "fr");
-
-    // The badge takes either an execution or a step status, so the labels
-    // have to span the union - the two enums differ on `timed_out`/`skipped`.
-    const union = new Set([
-      ...statusesOf(workflowExecutions),
-      ...statusesOf(workflowStepExecutions),
-    ]);
-    for (const status of union) {
-      expect(labels[status]).toBeTruthy();
-      expect(labels[status]).not.toBe(status);
-    }
-    expect(labels.compensation_failed).toBe("Échec de la compensation");
   });
 
   it("falls back to the English default when no catalogue defines the key", async () => {

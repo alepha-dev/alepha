@@ -8,7 +8,17 @@ import { auditSeveritySchema } from "../entities/audits.ts";
  * Query schema for searching and filtering audit logs.
  */
 export const auditQuerySchema = pageQuerySchema.extend({
+  /**
+   * Filter by audit type. Comma-separated for several, and an absent or
+   * empty value means every type.
+   *
+   * A single value keeps working unchanged, which is what let this widen
+   * without touching its callers: `"quest"` is a one-element list.
+   */
   type: z.text({ description: "Filter by audit type" }).optional(),
+  /**
+   * Filter by action. Comma-separated for several, like {@link type}.
+   */
   action: z.text({ description: "Filter by action" }).optional(),
   severity: auditSeveritySchema.optional(),
   scopeType: z.text({ description: "Filter by scope type" }).optional(),

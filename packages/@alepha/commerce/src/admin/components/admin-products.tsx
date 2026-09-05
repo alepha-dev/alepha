@@ -205,7 +205,7 @@ export const AdminProducts = (props: AdminProductsProps) => {
           /*
            * No label, and the "all" case is `clearable` rather than an
            * empty-valued item — the shape every `@alepha/ui` admin table uses
-           * (`admin-users`, `admin-jobs`, `admin-workflows`).
+           * (`admin-users`, `admin-jobs`).
            *
            * The label is dropped because the column it filters is named one row
            * below it: the bar read "Type" directly above a header that also

@@ -1225,6 +1225,7 @@ export default {
   "blights.filter.open": "Open",
   "blights.filter.resolved": "Resolved",
   "blights.filter.all": "All",
+  "blights.filter.statusCount": "$1 statuses",
   "blights.col.error": "Error",
   "blights.col.page": "Page",
   "blights.col.count": "Count",
@@ -1440,6 +1441,11 @@ export default {
   "epic.action.review.copied":
     "Review prompt for $1 copied. Paste it into Claude Code or Codex.",
   "epic.action.review.error": "Could not copy the review prompt.",
+  "epic.action.review.dialog.title": "Review this epic with an agent",
+  "epic.action.review.dialog.description":
+    "Tweak the prompt if you want, then copy it into Claude Code or Codex.",
+  "epic.action.review.dialog.label": "Review prompt",
+  "epic.action.review.dialog.copy": "Copy and close",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
     'Its quests and folios stay, detached from "$1". This cannot be undone.',
@@ -1636,6 +1642,7 @@ export default {
   "myFeedback.filter.search": "Search",
   "myFeedback.filter.search.aria": "Search feedback",
   "myFeedback.filter.allStatuses": "All statuses",
+  "myFeedback.filter.statusCount": "$1 statuses",
   "myFeedback.filter.allProjects": "All projects",
   "myFeedback.column.project": "Project",
   "myFeedback.column.title": "Title",
@@ -1689,7 +1696,9 @@ export default {
   "activity.col.details": "Details",
   "activity.filter.allPeople": "Everyone",
   "activity.filter.allResources": "All resources",
+  "activity.filter.typeCount": "$1 resources",
   "activity.filter.allActions": "All actions",
+  "activity.filter.actionCount": "$1 actions",
   "activity.resource.quest": "Quest",
   "activity.resource.epic": "Epic",
   "activity.resource.release": "Release",

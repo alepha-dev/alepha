@@ -23,6 +23,21 @@ const FoliosLayout = () => {
   return (
     <div className="bg-background flex h-full min-h-0 flex-1">
       <main className="flex min-h-0 min-w-0 flex-1">
+        {/* ⚠️ This ternary REMOUNTS the workspace, and that is load-bearing
+            knowledge rather than a detail. The two branches are different
+            component types in the same position, so React tears one down and
+            builds the other: walking from `/folios` to `/folios/:shortId`
+            destroys the tree and everything it was holding.
+
+            That is how feedback #14 came back as #2100. `useFolioTreeModel`
+            guarded its one-time collapse seed with a `useRef`, which survives
+            re-renders but not this, so the seed ran again and re-collapsed
+            every directory except the opened folio's own ancestors.
+
+            Collapse state now lives in `folioTreeCollapsedAtom`, which
+            survives a remount by construction. Anything else this tree must
+            keep across the list-to-folio step belongs there too - a ref or a
+            `useState` here will be silently thrown away. */}
         {name === "projectFolios" ? <FolioWorkspace empty /> : <NestedView />}
       </main>
     </div>

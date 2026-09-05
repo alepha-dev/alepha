@@ -12,12 +12,12 @@ import { OrderMailRenderer } from "../providers/OrderMailRenderer.ts";
  * way".
  *
  * The shipping notice is event-driven (`commerce:order:shipped`). The
- * confirmation is NOT: it is a step of the settlement workflow
+ * confirmation is NOT: it is a stage of the settlement job
  * (`@alepha/commerce/settlement`), which calls `sendConfirmationFor` with
- * per-step retry instead of the swallowed-error hook that used to live
- * here — an SMTP outage now means a visible, retryable execution rather
- * than a silently lost email. Import the settlement module to send
- * confirmations at all.
+ * retry instead of the swallowed-error hook that used to live here: an
+ * SMTP outage now means a visible, retryable execution rather than a
+ * silently lost email. Import the settlement module to send confirmations
+ * at all.
  *
  * The recipient comes from the checkout session rather than the order: an order
  * has no email column, because a counter sale has no email and inventing a
@@ -37,7 +37,7 @@ export class OrderMailer {
    * Send the order confirmation, returning whether one went out — `false`
    * means the order has no email on file (a counter sale), which is a
    * normal outcome, not an error. Throws on render/SMTP failure so the
-   * calling workflow step can retry.
+   * calling job can retry.
    */
   public async sendConfirmationFor(orderId: string): Promise<boolean> {
     const to = await this.recipientOf(orderId);

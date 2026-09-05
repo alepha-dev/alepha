@@ -20,9 +20,19 @@ import FilterSlot from "../../shared/FilterSlot.tsx";
 import { activityResourceHref } from "./activityResourceHref.ts";
 
 const activityFiltersSchema = z.object({
+  /**
+   * One person at a time, deliberately. A person picker answering "what did
+   * SHE change" is a different question from "which kinds of thing moved",
+   * and a list of two people is a report nobody asks for.
+   */
   userId: z.string().optional(),
-  type: z.string().optional(),
-  action: z.string().optional(),
+  /**
+   * ARRAYS, and empty means every value (feedback #2092). Both are the
+   * multi-select case: "quests and epics" and "created or deleted" are
+   * questions a reader has, and a single value could not express either.
+   */
+  type: z.array(z.string()).optional(),
+  action: z.array(z.string()).optional(),
 });
 
 /**
@@ -122,8 +132,10 @@ const ProjectActivityPage = () => {
         // through, it would select the rows whose column is the empty string,
         // which is none of them.
         userId: filters?.userId || undefined,
-        type: filters?.type || undefined,
-        action: filters?.action || undefined,
+        // Comma-joined, which `AuditService.find` splits back into one
+        // condition. A single value still produces the `eq` it always did.
+        type: filters?.type?.length ? filters.type.join(",") : undefined,
+        action: filters?.action?.length ? filters.action.join(",") : undefined,
       },
     });
   };
@@ -138,7 +150,13 @@ const ProjectActivityPage = () => {
     // open straight into their toolbar (feedback #2090). If that pattern is
     // ever revisited the answer is a visually-hidden heading, not this one
     // back.
-    <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
+    // ⚠️ `p-4` flat, with no `md:p-6`. This page was the only table page
+    // whose padding scaled with the viewport, so above `md` it sat 8px
+    // further from the edge than Epics, Releases, Blights and Apps, which is
+    // what made it read as random rather than as a rule (feedback #2099).
+    // Below `md` the two already agreed, which is why it was invisible in a
+    // narrow window. Epics is the baseline the report named.
+    <div className="flex min-h-0 flex-1 flex-col p-4">
       <AlephaTable<ProjectActivityRow>
         className="min-h-0 flex-1"
         persistenceKey={`lor.activity.${project.id}`}
@@ -172,6 +190,11 @@ const ProjectActivityPage = () => {
                   clearable
                   icon={Layers}
                   clearLabel={String(tr("activity.filter.allResources"))}
+                  countLabel={(n) =>
+                    String(
+                      tr("activity.filter.typeCount", { args: [String(n)] }),
+                    )
+                  }
                   triggerClassName="w-full"
                   items={options.types.map((type) => ({
                     label: resourceLabel(tr, type),
@@ -186,6 +209,11 @@ const ProjectActivityPage = () => {
                   clearable
                   icon={Zap}
                   clearLabel={String(tr("activity.filter.allActions"))}
+                  countLabel={(n) =>
+                    String(
+                      tr("activity.filter.actionCount", { args: [String(n)] }),
+                    )
+                  }
                   triggerClassName="w-full"
                   items={options.actions.map((action) => ({
                     label: action,

@@ -32,8 +32,8 @@ const seller = {
  * A clock that runs normally until pinned.
  *
  * Freezing the whole container is not an option here: issuance rides the
- * settlement workflow, whose scheduling reads the same provider. So the test
- * lets the workflow run on the real clock and pins only the instant the credit
+ * settlement job, whose scheduling reads the same provider. So the test
+ * lets the job run on the real clock and pins only the instant the credit
  * note is issued in - which is the call under test.
  */
 class PinnableClock extends DateTimeProvider {
@@ -48,7 +48,7 @@ const setup = async (
   identity: Partial<typeof seller> & { vatExemptionNotice?: string } = {},
 ) => {
   // Settlement drives the paid-side invoice since the paid-path moved
-  // onto the workflow; invoicing alone covers only credit notes.
+  // onto the job; invoicing alone covers only credit notes.
   const alepha = Alepha.create()
     .with({ provide: DateTimeProvider, use: PinnableClock })
     .with(AlephaOrmPostgres)
@@ -85,8 +85,8 @@ const aRing = (catalog: CatalogService, price = 8900) =>
 
 /**
  * Sell one unit of a product, end to end, and return the paid order id.
- * Waits for the settlement workflow to issue the invoice — issuance is a
- * workflow step now, landing a beat after the webhook returns.
+ * Waits for the settlement job to issue the invoice: issuance is a stage of
+ * that job now, landing a beat after the webhook returns.
  */
 const sell = async (
   ctx: Awaited<ReturnType<typeof setup>>,
@@ -112,7 +112,7 @@ const sell = async (
 };
 
 /**
- * Poll until the settlement workflow has issued the order's invoice.
+ * Poll until the settlement job has issued the order's invoice.
  */
 const invoiceFor = async (
   ctx: Awaited<ReturnType<typeof setup>>,

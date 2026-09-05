@@ -1,16 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import { Alepha } from "alepha";
+import { jobExecutionEntity } from "alepha/api/jobs";
 import {
   MemoryPaymentProvider,
   PaymentProvider,
   PaymentService,
 } from "alepha/api/payments";
-import {
-  WorkflowProvider,
-  workflowExecutions,
-  workflowStepExecutions,
-} from "alepha/api/workflows";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { AlephaOrmPostgres } from "alepha/orm/postgres";
@@ -24,6 +20,8 @@ import { orders } from "../entities/orders.ts";
 import { CatalogService } from "../services/CatalogService.ts";
 import { StockService } from "../services/StockService.ts";
 import { AlephaCommerceSettlement } from "../settlement/index.ts";
+
+const JOB = "SettlementJobs.checkoutReconciliation";
 
 /**
  * Poll `fn` until `predicate` returns true, or throw on timeout.
@@ -45,17 +43,16 @@ async function waitFor<T>(
 }
 
 class ReconciliationProbe {
-  executions = $repository(workflowExecutions);
-  steps = $repository(workflowStepExecutions);
+  executions = $repository(jobExecutionEntity);
   sessions = $repository(checkoutSessions);
   orders = $repository(orders);
 }
 
 /**
- * A memory PSP whose poll reports the charge captured — the buyer paid,
- * the webhook just never arrived. (The stock MemoryPaymentProvider is
- * deliberately unpollable, so abandoned-payment scenarios elsewhere in
- * the suite stay abandoned.)
+ * A memory PSP whose poll reports the charge captured: the buyer paid, the
+ * webhook just never arrived. (The stock MemoryPaymentProvider is
+ * deliberately unpollable, so abandoned-payment scenarios elsewhere in the
+ * suite stay abandoned.)
  */
 class PaidButWebhooklessProvider extends MemoryPaymentProvider {
   public override async retrieveSessionStatus(): Promise<"captured"> {
@@ -117,13 +114,13 @@ const payWithoutWebhook = async (ctx: ReturnType<typeof injectCtx>) => {
   return { sessionId: opened.id, intentId: handoff.intentId };
 };
 
+/**
+ * The reconciliation for a session, matched on the payload: the key is
+ * released when the row ends.
+ */
 const reconciliationFor = (probe: ReconciliationProbe, sessionId: string) =>
   probe.executions
-    .findMany({
-      where: {
-        workflowName: { eq: "SettlementWorkflows.checkoutReconciliation" },
-      },
-    })
+    .findMany({ where: { jobName: { eq: JOB } } })
     .then((rows) =>
       rows.find(
         (r) => (r.payload as { sessionId?: string })?.sessionId === sessionId,
@@ -131,22 +128,18 @@ const reconciliationFor = (probe: ReconciliationProbe, sessionId: string) =>
     );
 
 /**
- * Wait until the reconcile step is parked (pending + scheduledAt).
+ * Wait until the reconciliation is parked: `scheduled` with its stamp. The
+ * push writes the stamp before it returns, so this is a formality that
+ * documents the discipline: park before travel.
  */
 const waitForParkedReconcile = async (
   probe: ReconciliationProbe,
   executionId: string,
 ) => {
   await waitFor(
-    () =>
-      probe.steps.findOne({
-        where: {
-          workflowExecutionId: { eq: executionId },
-          stepName: { eq: "reconcile" },
-        },
-      }),
-    (s) => s?.status === "pending" && Boolean(s?.scheduledAt),
-    { label: "reconcile step parked" },
+    () => probe.executions.findById(executionId),
+    (r) => r?.status === "scheduled" && Boolean(r.scheduledAt),
+    { label: "reconciliation parked" },
   );
 };
 
@@ -166,18 +159,20 @@ describe("checkout reconciliation", () => {
       (e) => Boolean(e),
       { label: "reconciliation scheduled" },
     );
+    expect(scheduled?.status).toBe("scheduled");
+    expect(scheduled?.key).toBe(sessionId);
 
     await ctx.payments.handleWebhookEvent(intentId, "captured");
 
-    await waitFor(
+    const cancelled = await waitFor(
       () => reconciliationFor(ctx.probe, sessionId),
       (e) => e?.status === "cancelled",
       { label: "reconciliation cancelled after webhook settle" },
     );
+    expect(cancelled?.cancelledByName).toBe("checkout settled");
 
     const session = await ctx.probe.sessions.findById(sessionId);
     expect(session?.status).toBe("completed");
-    expect(scheduled?.status).not.toBe("failed");
   });
 
   it(
@@ -193,7 +188,7 @@ describe("checkout reconciliation", () => {
       const ctx = injectCtx(alepha);
       await alepha.start();
 
-      // The buyer paid — but no webhook is ever delivered. Exactly the
+      // The buyer paid, but no webhook is ever delivered. Exactly the
       // Mollie-without-webhook gap.
       const { sessionId } = await payWithoutWebhook(ctx);
 
@@ -206,16 +201,8 @@ describe("checkout reconciliation", () => {
 
       await ctx.dt.travel([26, "minute"]);
 
-      // The clock is frozen after travel — no further cron ever ticks, so a
-      // wake-up lost in the catch-up storm would strand the step forever in
-      // test time (production's next real tick rescues it within minutes).
-      // Nudge the sweep on every poll: it is idempotent, and a single nudge
-      // can lose its lock to a still-running storm invocation.
       await waitFor(
-        async () => {
-          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-          return (await ctx.probe.sessions.findById(sessionId))?.status;
-        },
+        async () => (await ctx.probe.sessions.findById(sessionId))?.status,
         (s) => s === "completed",
         {
           label: "stranded paid checkout settled",
@@ -229,11 +216,11 @@ describe("checkout reconciliation", () => {
       expect(order?.status).toBe("paid");
 
       const done = await waitFor(
-        () => reconciliationFor(ctx.probe, sessionId),
-        (e) => e?.status === "completed",
+        () => ctx.probe.executions.findById(scheduled!.id),
+        (e) => e?.status === "ok",
         { label: "reconciliation completed" },
       );
-      expect(done?.status).toBe("completed");
+      expect(done?.status).toBe("ok");
     },
   );
 
@@ -258,12 +245,8 @@ describe("checkout reconciliation", () => {
 
       await ctx.dt.travel([26, "minute"]);
 
-      // Same nudging poll as the recovery test above.
       await waitFor(
-        async () => {
-          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-          return (await ctx.probe.sessions.findById(sessionId))?.status;
-        },
+        async () => (await ctx.probe.sessions.findById(sessionId))?.status,
         (s) => s === "abandoned",
         {
           label: "unconfirmable checkout abandoned",
@@ -338,8 +321,13 @@ describe("checkout reconciliation", () => {
    *
    * Nothing retries it: the intent is already captured, and `syncIntent`
    * returns early on a terminal status, so it has nothing left to replay. The
-   * reconcile step then saw a `paying` session with an old intent and
-   * abandoned it - cancelling an order the customer had paid for.
+   * reconciliation then saw a `paying` session with an old intent and
+   * abandoned it, cancelling an order the customer had paid for.
+   *
+   * The settle it performs emits `commerce:order:paid`, whose listener
+   * cancels the reconciliation by key. The row is running at that moment, so
+   * `cancelByKey` leaves it alone and the execution that rescued the money
+   * ends as `ok`, not `cancelled`.
    */
   it(
     "settles a checkout whose captured webhook failed, instead of cancelling it",
@@ -365,8 +353,8 @@ describe("checkout reconciliation", () => {
         .handleWebhookEvent(intentId, "captured")
         .catch(() => undefined);
 
-      // The money is taken and the checkout is stranded - exactly the state
-      // reconcile has to resolve.
+      // The money is taken and the checkout is stranded: exactly the state
+      // the reconciliation has to resolve.
       expect((await ctx.probe.sessions.findById(sessionId))?.status).toBe(
         "paying",
       );
@@ -375,17 +363,21 @@ describe("checkout reconciliation", () => {
       await ctx.dt.travel([26, "minute"]);
 
       await waitFor(
-        async () => {
-          await ctx.alepha.inject(WorkflowProvider).recoverySweep();
-          return (await ctx.probe.sessions.findById(sessionId))?.status;
-        },
+        async () => (await ctx.probe.sessions.findById(sessionId))?.status,
         (s) => s === "completed",
-        { label: "reconcile settled the captured checkout" },
+        { label: "reconciliation settled the captured checkout" },
       );
 
       const session = await ctx.probe.sessions.findById(sessionId);
       const order = await ctx.probe.orders.findById(session!.orderId!);
       expect(order?.status).toBe("paid");
+
+      const done = await waitFor(
+        () => ctx.probe.executions.findById(scheduled!.id),
+        (e) => e?.status === "ok",
+        { label: "the rescuing run completed, not cancelled by its own event" },
+      );
+      expect(done?.status).toBe("ok");
     },
   );
 });
