@@ -1,0 +1,31 @@
+{
+  "name": "ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "alepha build",
+    "dev": "alepha dev",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "lint": "alepha lint",
+    "start": "node dist",
+    "test": "alepha test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@alepha/lore": "workspace:*",
+    "@alepha/ui": "workspace:^",
+    "alepha": "workspace:^",
+    "lucide-react": "^1.38.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.2.18",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.2",
+    "wrangler": "^4.127.1"
+  }
+}
