@@ -1183,10 +1183,16 @@ test.describe("Epics — the release control", () => {
       // ⚠️ Detaching used to be a "No release" ROW at the top of the list.
       // Feedback #2098 deleted that row from `control-select` - it drew the
       // empty state as a third pickable release with a check mark - and put
-      // an `x` on the trigger in its place. This step is the reason the `x`
-      // had to exist at all: the row was this control's only local way to
-      // say "no release", and unlike a table filter it has no "Reset
-      // filters" entry to fall back on.
+      // an `x` on the trigger in its place.
+      //
+      // This comment used to claim this step was "the reason the `x` had to
+      // exist at all", because it went red when the row was deleted. That is
+      // circular and wrong: it went red because the SELECTOR below named a
+      // node that no longer existed, and re-clicking the selected release
+      // would have fixed it in one line. A broken locator is not a usability
+      // finding. The actual case for the `x` is in `control-select.tsx`, and
+      // this step's job is narrower and still worth doing: that the control
+      // can reach the empty state, and that the write lands.
       const saved = written();
       await page
         .locator("aside")
