@@ -11,6 +11,7 @@ import {
   mintedEstateSchema,
 } from "../schemas/estateResourceSchema.ts";
 import { estateSlugSchema } from "../schemas/estateSlugSchema.ts";
+import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
@@ -36,6 +37,7 @@ export class EstateController {
   protected readonly estates = $repository(estates);
   protected readonly service = $inject(EstateService);
   protected readonly tokens = $inject(EstateTokenService);
+  protected readonly transport = $inject(EstateCommandTransport);
   protected readonly audits = $inject(LoreAudits);
 
   /**
@@ -154,9 +156,21 @@ export class EstateController {
         metadata: { fields: Object.keys(body) },
       });
 
-      return this.service.toResource(
-        await this.service.loadOwned(params.estateId, user),
-      );
+      const updated = await this.service.loadOwned(params.estateId, user);
+      // The machine caches what `welcome` told it, so a switch it acts on
+      // (deploys, the gauge interval) is pushed as `config` the moment it
+      // changes. Best effort: an offline machine learns it from its next
+      // `welcome`, and the label is nothing the machine reads.
+      if (
+        body.deployAllowed !== undefined ||
+        body.statsIntervalSeconds !== undefined
+      ) {
+        await this.transport.push(
+          updated,
+          this.service.welcomeFrame(updated, "config"),
+        );
+      }
+      return this.service.toResource(updated);
     },
   });
 

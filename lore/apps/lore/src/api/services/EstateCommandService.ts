@@ -91,7 +91,7 @@ export class EstateCommandService {
       requestedBy,
       timeoutSeconds: EstateCommandService.RUN_TIMEOUT_SECONDS[input.kind],
     });
-    return this.dispatch(created);
+    return this.dispatch(estate, created);
   }
 
   /**
@@ -99,11 +99,11 @@ export class EstateCommandService {
    * A command that could not be pushed stays `pending` for the
    * reconciliation; nothing is lost by an offline machine.
    */
-  async dispatch(command: EstateCommand): Promise<EstateCommand> {
-    const pushed = await this.transport.push(
-      command.estateId,
-      this.frameOf(command),
-    );
+  async dispatch(
+    estate: Estate,
+    command: EstateCommand,
+  ): Promise<EstateCommand> {
+    const pushed = await this.transport.push(estate, this.frameOf(command));
     if (!pushed) {
       return command;
     }
@@ -133,11 +133,11 @@ export class EstateCommandService {
    * at "however long the outage lasted" instead of "gone until someone
    * notices". Small, and load-bearing.
    */
-  async reconcile(estateId: string): Promise<number> {
-    const waiting = await this.pendingFor(estateId);
+  async reconcile(estate: Estate): Promise<number> {
+    const waiting = await this.pendingFor(estate.id);
     let pushed = 0;
     for (const command of waiting) {
-      const after = await this.dispatch(command);
+      const after = await this.dispatch(estate, command);
       if (after.status === "sent") {
         pushed += 1;
       }
@@ -269,7 +269,11 @@ export class EstateCommandService {
     };
   }
 
-  protected async markSent(command: EstateCommand): Promise<EstateCommand> {
+  /**
+   * Record that a frame reached a socket. Public because the socket handler
+   * pushes the reconciliation itself, through `reply()`, and has to say so.
+   */
+  async markSent(command: EstateCommand): Promise<EstateCommand> {
     await this.commands.updateById(command.id, {
       status: "sent",
       sentAt: command.sentAt ?? this.now(),

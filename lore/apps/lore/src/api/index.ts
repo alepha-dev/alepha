@@ -4,6 +4,7 @@ import {
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
 import { AlephaApiInvitations } from "alepha/api/invitations";
+import { AlephaWebSocket } from "alepha/websocket";
 
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
@@ -15,6 +16,7 @@ import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
 import { EstateCommandController } from "./controllers/EstateCommandController.ts";
 import { EstateController } from "./controllers/EstateController.ts";
+import { EstateSocketController } from "./controllers/EstateSocketController.ts";
 import { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";
 import { FeedbackController } from "./controllers/FeedbackController.ts";
 import { FolioController } from "./controllers/FolioController.ts";
@@ -59,6 +61,7 @@ import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { EstateCommandService } from "./services/EstateCommandService.ts";
 import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
 import { EstateService } from "./services/EstateService.ts";
+import { EstateStatsService } from "./services/EstateStatsService.ts";
 import { EstateTokenService } from "./services/EstateTokenService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { FolioBlobService } from "./services/FolioBlobService.ts";
@@ -87,6 +90,7 @@ import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
+import { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
 
 export const LoreApi = $module({
   name: "lore.api",
@@ -110,6 +114,11 @@ export const LoreApi = $module({
     AlephaApiAnalyticsAdmin,
     AlephaApiInvitations,
     LoreDashboardCatalog,
+    // The estates websocket (epic #20). The first websocket in Lore: on
+    // Cloudflare the build derives the Durable Object binding and its
+    // migration from the `$websocket` below, and the `workerd` export
+    // condition picks the Durable Object provider over the Node one.
+    AlephaWebSocket,
   ],
   services: [
     // Declares the `$realm`. Nothing injects it — it must be listed here
@@ -200,6 +209,10 @@ export const LoreApi = $module({
     // for the machine's next connect.
     EstateCommandTransport,
     EstateCommandService,
+    EstateStatsService,
+    // The real transport, substituted for `EstateCommandTransport` in
+    // `main.server.ts`. Listed so DI scanning sees the class.
+    WebSocketEstateCommandTransport,
     // Controllers
     QuestController,
     QuestCommentController,
@@ -226,6 +239,7 @@ export const LoreApi = $module({
     EstateController,
     ProjectEstateController,
     EstateCommandController,
+    EstateSocketController,
     SigilAnalyticsController,
     InsightsController,
     BlightController,

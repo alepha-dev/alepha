@@ -14,6 +14,7 @@ import { estateCommands } from "../entities/estateCommands.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
 import type { EstateCommandFrame } from "../schemas/estateCommandFrameSchema.ts";
+import type { EstateServerFrame } from "../schemas/estateServerFrameSchema.ts";
 import { EstateCommandService } from "./EstateCommandService.ts";
 import { EstateCommandTransport } from "./EstateCommandTransport.ts";
 
@@ -31,11 +32,16 @@ class MemoryEstateCommandTransport extends EstateCommandTransport {
   }> = [];
 
   override async push(
-    estateId: string,
-    frame: EstateCommandFrame,
+    estate: Estate,
+    frame: EstateServerFrame,
   ): Promise<boolean> {
-    this.pushed.push({ estateId, frame });
-    return this.connected.has(estateId);
+    // This spec only ever pushes commands; the narrower type keeps the
+    // assertions on `frame.id` honest without a cast at every site.
+    this.pushed.push({
+      estateId: estate.id,
+      frame: frame as EstateCommandFrame,
+    });
+    return this.connected.has(estate.id);
   }
 }
 
@@ -114,6 +120,14 @@ const restart = {
 
 const MINUTE = 60_000;
 
+/**
+ * `createdAt` has millisecond resolution, and two commands enqueued back to
+ * back can share one. Anything that asserts an order by creation time waits
+ * this long between enqueues, so the order under test is the one the rows
+ * actually carry rather than a coin toss between equal stamps.
+ */
+const spaced = () => new Promise((resolve) => setTimeout(resolve, 5));
+
 describe("EstateCommandService, enqueue and push", () => {
   let ctx: TestContext;
 
@@ -190,12 +204,13 @@ describe("EstateCommandService, enqueue and push", () => {
     const estate = await createEstate(ctx, owner, "ovh-1");
 
     const first = await ctx.service.enqueue(estate, restart, owner.id);
+    await spaced();
     const second = await ctx.service.enqueue(estate, restart, owner.id);
     expect([first.status, second.status]).toEqual(["pending", "pending"]);
 
     // The machine connects: both go out, oldest first, under their own ids.
     ctx.transport.connected.add(estate.id);
-    expect(await ctx.service.reconcile(estate.id)).toBe(2);
+    expect(await ctx.service.reconcile(estate)).toBe(2);
     const afterFirst = await ctx.repos.commands.findMany({
       where: { estateId: { eq: estate.id } },
       orderBy: [{ column: "createdAt", direction: "asc" }],
@@ -208,7 +223,7 @@ describe("EstateCommandService, enqueue and push", () => {
     // A reconnect before any ack pushes the same two again: sent means the
     // push landed on a socket, not that the machine read it.
     ctx.transport.pushed.length = 0;
-    expect(await ctx.service.reconcile(estate.id)).toBe(2);
+    expect(await ctx.service.reconcile(estate)).toBe(2);
     expect(ctx.transport.pushed.map((push) => push.frame.id)).toEqual([
       first.id,
       second.id,
@@ -376,6 +391,7 @@ describe("EstateCommandService, the sweep", () => {
     const commands = [];
     for (let i = 0; i < 5; i += 1) {
       commands.push(await ctx.service.enqueue(estate, restart, owner.id));
+      await spaced();
     }
     // The first four finish; the fifth is still out there.
     for (const command of commands.slice(0, 4)) {

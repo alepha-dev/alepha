@@ -12,6 +12,8 @@ import { LoreWebAdmin } from "@/web/admin/index.ts";
 import { LoreApi } from "./api/index.ts";
 import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
 import { LoreSigilSinkProvider } from "./api/providers/LoreSigilSinkProvider.ts";
+import { EstateCommandTransport } from "./api/services/EstateCommandTransport.ts";
+import { WebSocketEstateCommandTransport } from "./api/services/WebSocketEstateCommandTransport.ts";
 import { LoreMcp } from "./mcp/index.ts";
 import { LoreWebApp } from "./web/app/index.ts";
 
@@ -116,6 +118,13 @@ alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 // renders on every Lore page — including the feedback form itself, where it
 // offers to open the form you are already looking at. `*` matches within one
 // path segment, so this covers `/sds/request` and not `/sds/request/anything`.
+// The estate command queue pushes over the estates websocket (epic #20).
+// Declared BEFORE `LoreApi`, which registers the default transport that
+// reaches nothing: a substitution after the service is in use is refused.
+alepha.with({
+  provide: EstateCommandTransport,
+  use: WebSocketEstateCommandTransport,
+});
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
 

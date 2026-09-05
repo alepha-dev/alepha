@@ -14,6 +14,10 @@ import {
   ESTATE_SLUG_MAX_LENGTH,
   ESTATE_SLUG_PATTERN,
 } from "../schemas/estateSlugSchema.ts";
+import {
+  ESTATE_PROTOCOL_VERSION,
+  type EstateWelcomeFrame,
+} from "../schemas/estateWelcomeFrameSchema.ts";
 import { EstateTokenService } from "./EstateTokenService.ts";
 import { LoreAudits } from "./LoreAudits.ts";
 
@@ -69,6 +73,23 @@ export class EstateService {
     }
     const seen = estate.lastSeenAt ? Date.parse(estate.lastSeenAt) : connected;
     return now - seen <= estate.statsIntervalSeconds * 2 * 1000;
+  }
+
+  /**
+   * What a machine is told about its estate: the `welcome` on connect and
+   * the `config` on every switch change, same fields, wire format v1.
+   */
+  welcomeFrame(
+    estate: Estate,
+    type: EstateWelcomeFrame["type"],
+  ): EstateWelcomeFrame {
+    return {
+      type,
+      protocol: ESTATE_PROTOCOL_VERSION,
+      estate: { id: estate.id, slug: estate.slug },
+      deployAllowed: estate.deployAllowed,
+      statsIntervalSeconds: estate.statsIntervalSeconds,
+    };
   }
 
   /**
