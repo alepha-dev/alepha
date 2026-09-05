@@ -14,6 +14,9 @@ import {
   SlidersHorizontal,
   Table2,
   UsersIcon,
+  FilesIcon,
+  KeyRound,
+  MonitorSmartphone,
   Zap,
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
@@ -42,6 +45,13 @@ const NAV: NavGroup[] = [
     items: [
       { href: "/blocks/admin/users", label: "Users", icon: UsersIcon },
       { href: "/blocks/admin/jobs", label: "Jobs", icon: Zap },
+      {
+        href: "/blocks/admin/sessions",
+        label: "Sessions",
+        icon: MonitorSmartphone,
+      },
+      { href: "/blocks/admin/keys", label: "API keys", icon: KeyRound },
+      { href: "/blocks/admin/files", label: "Files", icon: FilesIcon },
       { href: "/blocks/admin/audits", label: "Audit log", icon: FileSearch },
     ],
   },

@@ -42,7 +42,31 @@ const REQUIRED: Record<string, string[]> = {
     "retryExecution",
     "cancelExecution",
   ],
+  AdminSessions: ["findSessions", "deleteSession", "deleteSessions"],
+  AdminFiles: [
+    "findFiles",
+    "getFileStats",
+    "uploadFile",
+    "deleteFile",
+    "deleteFiles",
+  ],
+  AdminKeys: ["findApiKeys", "createApiKey", "revokeApiKey", "revokeApiKeys"],
 };
+
+/**
+ * Read-only actions that take nothing but paging, so they can be smoke-called
+ * generically. Calling them is the point: `$action` validates the handler's
+ * return against `schema.response`, and that check is the only thing standing
+ * between a plausible-looking fixture and a blank page in the browser. It has
+ * already caught `jobName` vs `name` and an invented `completed` status.
+ */
+const LISTINGS = [
+  "findUsers",
+  "findAudits",
+  "findSessions",
+  "findApiKeys",
+  "findFiles",
+] as const;
 
 describe("showcase admin fixtures", () => {
   for (const [component, actions] of Object.entries(REQUIRED)) {
@@ -106,5 +130,48 @@ describe("showcase admin fixtures", () => {
     // shown on the site.
     expect(rows.some((r) => r.can.retry)).toBe(true);
     expect(rows.some((r) => r.can.cancel)).toBe(true);
+  });
+
+  for (const action of LISTINGS) {
+    it(`${action} answers a page that satisfies its response schema`, async ({
+      expect,
+    }) => {
+      const api = (await start()).client() as unknown as Record<
+        string,
+        (a: { query: Record<string, unknown> }) => Promise<{
+          content: unknown[];
+        }>
+      >;
+
+      // A schema violation throws here rather than returning something odd,
+      // which is exactly the failure mode worth having in CI: in the browser
+      // the same violation is a toast and an empty table.
+      const page = await api[action]({ query: { page: 0, size: 5 } });
+
+      expect(Array.isArray(page.content)).toBe(true);
+      expect(page.content.length).toBeGreaterThan(0);
+    });
+  }
+
+  it("derives file stats that agree with the rows", async ({ expect }) => {
+    const api = (await start()).client() as unknown as {
+      getFileStats: () => Promise<{
+        totalFiles: number;
+        byBucket: { bucket: string }[];
+      }>;
+      findFiles: (a: { query: Record<string, unknown> }) => Promise<{
+        content: { bucket: string }[];
+      }>;
+    };
+    const stats = await api.getFileStats();
+    const all = await api.findFiles({ query: { page: 0, size: 100 } });
+
+    // `AdminFiles` builds its bucket filter from the stats, so a bucket listed
+    // there with no matching row is a filter that always returns nothing.
+    const buckets = new Set(all.content.map((f) => f.bucket));
+    expect(stats.totalFiles).toBe(all.content.length);
+    for (const { bucket } of stats.byBucket) {
+      expect(buckets.has(bucket)).toBe(true);
+    }
   });
 });

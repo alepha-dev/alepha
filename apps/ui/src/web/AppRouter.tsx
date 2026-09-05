@@ -25,6 +25,9 @@ export class AppRouter {
       this.adminUsers,
       this.adminAudits,
       this.adminJobs,
+      this.adminSessions,
+      this.adminKeys,
+      this.adminFiles,
     ],
   });
 
@@ -79,6 +82,27 @@ export class AppRouter {
     static: true,
     head: { title: "Admin users - Alepha UI" },
     lazy: () => import("./pages/blocks/admin/Users.tsx"),
+  });
+
+  adminSessions = $page({
+    path: "/blocks/admin/sessions",
+    static: true,
+    head: { title: "Admin sessions - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Sessions.tsx"),
+  });
+
+  adminKeys = $page({
+    path: "/blocks/admin/keys",
+    static: true,
+    head: { title: "Admin api keys - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Keys.tsx"),
+  });
+
+  adminFiles = $page({
+    path: "/blocks/admin/files",
+    static: true,
+    head: { title: "Admin files - Alepha UI" },
+    lazy: () => import("./pages/blocks/admin/Files.tsx"),
   });
 
   adminJobs = $page({

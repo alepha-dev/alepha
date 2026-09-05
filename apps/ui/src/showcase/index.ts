@@ -3,8 +3,14 @@ import { AlephaServerLinks } from "alepha/server/links";
 
 import { ShowcaseAudits } from "./admin/ShowcaseAudits.ts";
 import { ShowcaseAuditsController } from "./admin/ShowcaseAuditsController.ts";
+import { ShowcaseFiles } from "./admin/ShowcaseFiles.ts";
+import { ShowcaseFilesController } from "./admin/ShowcaseFilesController.ts";
 import { ShowcaseJobs } from "./admin/ShowcaseJobs.ts";
 import { ShowcaseJobsController } from "./admin/ShowcaseJobsController.ts";
+import { ShowcaseKeys } from "./admin/ShowcaseKeys.ts";
+import { ShowcaseKeysController } from "./admin/ShowcaseKeysController.ts";
+import { ShowcaseSessions } from "./admin/ShowcaseSessions.ts";
+import { ShowcaseSessionsController } from "./admin/ShowcaseSessionsController.ts";
 import { ShowcaseUsers } from "./admin/ShowcaseUsers.ts";
 import { ShowcaseUsersController } from "./admin/ShowcaseUsersController.ts";
 import { ShowcaseController } from "./ShowcaseController.ts";
@@ -37,5 +43,11 @@ export const UiShowcase = $module({
     ShowcaseUsersController,
     ShowcaseJobs,
     ShowcaseJobsController,
+    ShowcaseSessions,
+    ShowcaseSessionsController,
+    ShowcaseKeys,
+    ShowcaseKeysController,
+    ShowcaseFiles,
+    ShowcaseFilesController,
   ],
 });
