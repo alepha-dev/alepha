@@ -1,6 +1,7 @@
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Release, releases } from "../entities/releases.ts";
 
 /**
@@ -69,7 +70,7 @@ export class ReleaseAttachmentService {
   protected assertOpen(release: Release, verb: string): void {
     if (release.releasedAt) {
       throw new BadRequestError(
-        `Cannot ${verb} ${release.tag ?? `release #${release.number}`}: it has been published. Reopen it first.`,
+        `Cannot ${verb} ${release.tag ?? `release ${formatReference("release", release.number)}`}: it has been published. Reopen it first.`,
       );
     }
   }

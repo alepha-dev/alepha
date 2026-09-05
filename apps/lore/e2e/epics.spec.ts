@@ -465,7 +465,9 @@ test.describe("Epics — the list", () => {
       const option = page.getByRole("option", { name: `Q${t}` }).first();
       await expect(option).toBeVisible({ timeout: 15_000 });
       await option.click();
-      await expect(editor).toContainText("[[quest#", { timeout: 10_000 });
+      // The typed form (epic #32). This used to pin `[[quest#`, a token
+      // neither parser read as a quest.
+      await expect(editor).toContainText("[[#Q", { timeout: 10_000 });
 
       // This step navigated to the epic's own page; the steps after it act
       // on the LIST's toolbar, which does not exist here.
@@ -635,7 +637,7 @@ test.describe("Epics — the questline", () => {
     const loose = await seed(`Loose${t}`);
 
     const card = (q: { shortId: number; title: string }) =>
-      page.getByRole("button", { name: `#${q.shortId} ${q.title}` });
+      page.getByRole("button", { name: `#Q${q.shortId} ${q.title}` });
 
     await test.step("every quest is on the board at once", async () => {
       await page.goto(`/${slug}/epics/${epic.number}?tab=flow`);
@@ -693,7 +695,7 @@ test.describe("Epics — the questline", () => {
       // The questline row's own `#id` anchor, not the title's: both are
       // links in this panel, and only this one points at the neighbour.
       await dialog
-        .getByRole("link", { name: `#${left.shortId}`, exact: true })
+        .getByRole("link", { name: `#Q${left.shortId}`, exact: true })
         .click();
 
       await expect(page).toHaveURL(new RegExp(`/quests/${left.shortId}$`), {

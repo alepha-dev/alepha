@@ -178,6 +178,30 @@ describe("SearchController, an id query", () => {
     ]);
   });
 
+  it("a typed reference restricts the id match to its own kind (epic #32)", async () => {
+    const { user, projectId } = await seed();
+
+    const quests = await ctx.search.search.fetch(
+      { params: { projectId }, query: { q: "#Q1" } },
+      { user },
+    );
+    expect(kindsWithId(quests.data.hits, 1)).toEqual(["quest"]);
+
+    // Case-insensitive on the way in, like every other reader of the grammar.
+    const folios = await ctx.search.search.fetch(
+      { params: { projectId }, query: { q: "#f1" } },
+      { user },
+    );
+    expect(kindsWithId(folios.data.hits, 1)).toEqual(["folio"]);
+
+    // A letter for a kind this search does not index matches nothing by id.
+    const epics = await ctx.search.search.fetch(
+      { params: { projectId }, query: { q: "#E1" } },
+      { user },
+    );
+    expect(kindsWithId(epics.data.hits, 1)).toEqual([]);
+  });
+
   it("finds nothing by number in another project's rows", async () => {
     const { user } = await seed();
     const other = await ctx.projects.createProject.fetch(

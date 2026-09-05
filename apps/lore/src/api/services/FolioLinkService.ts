@@ -1,12 +1,16 @@
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
+import { splitMarkdownCode } from "../../web/app/components/folios/markdownCodeSegments.ts";
+import { parseTypedReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { type Epic, epics } from "../entities/epics.ts";
+import { feedback } from "../entities/feedback.ts";
 import { folioBlobs } from "../entities/folioBlobs.ts";
 import { folioDirectories } from "../entities/folioDirectories.ts";
 import { type FolioLink, folioLinks } from "../entities/folioLinks.ts";
 import { type Folio, folios } from "../entities/folios.ts";
 import { type Quest, quests } from "../entities/quests.ts";
+import { releases } from "../entities/releases.ts";
 import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { BoundParameters } from "./BoundParameters.ts";
@@ -19,7 +23,9 @@ import { BoundParameters } from "./BoundParameters.ts";
  */
 export interface ParsedToken {
   /**
-   * Target table — `folio` (default), `quest`, `epic` or `blob`.
+   * Target table — `folio` (default), `quest`, `epic`, `blob`, and since
+   * epic #32 `feedback` and `release`, which only the typed grammar
+   * (`#P120`, `#R12`) can name.
    */
   type: LinkTargetKind;
   /**
@@ -68,6 +74,16 @@ interface TokenLookupMaps {
   pathContext?: PathContext;
   blobByShort?: Map<number, string>;
   blobUuids?: Set<string>;
+  /**
+   * `feedback.shortId` → `feedback.id`. Number only: feedback and releases
+   * are reachable through the typed grammar alone, so there is no title
+   * lookup to keep ambiguous.
+   */
+  feedbackByShort?: Map<number, number>;
+  /**
+   * `releases.number` → `releases.id`. The tag is never an address.
+   */
+  releaseByNumber?: Map<number, number>;
 }
 
 /**
@@ -99,6 +115,10 @@ interface PathContext {
  *
  * Resolution rules (scoped to the folio's project — folios are
  * project-shared, so any member's folio is a valid target):
+ * - `[[#Q12]]`, `[[#E3]]`, `[[#F12]]` are the typed grammar (epic #32): the
+ *   letter names the kind, the number is its per-project id. Tried first,
+ *   and read through `typedReference.ts`, the same module the browser
+ *   resolver reads it through.
  * - `[[#12]]` matches the folio with `shortId = 12`.
  * - `[[dir/sub/name]]` matches by folio path. Tried anchored at the
  *   project root first (`dir` is a root directory, `sub` is its child,
@@ -133,6 +153,8 @@ export class FolioLinkService {
   protected readonly epics = $repository(epics);
   protected readonly directories = $repository(folioDirectories);
   protected readonly blobs = $repository(folioBlobs);
+  protected readonly feedbackRows = $repository(feedback);
+  protected readonly releaseRows = $repository(releases);
   protected readonly bound = $inject(BoundParameters);
 
   /**
@@ -141,24 +163,33 @@ export class FolioLinkService {
    * runaway note can't cost unbounded resolution work. Dedupes by
    * normalized (type, ref, anchor) so the same token written twice
    * produces one link.
+   *
+   * Fenced blocks and inline code spans are held out. A regex cannot see a
+   * fence, and the reader has skipped code since #1261
+   * (`rewriteFolioWikiLinks`); until this side did the same, a token quoted
+   * inside backticks wrote an edge into the graph that no page ever showed
+   * as a link. Same splitter as the reader, so the two agree on what code is.
    */
   public parseTokens(content: string): ParsedToken[] {
     const out: ParsedToken[] = [];
     if (!content) return out;
     const seen = new Set<string>();
-    const re = /\[\[([^\]\n]+)\]\]/g;
-    let match: RegExpExecArray | null = re.exec(content);
-    while (match !== null) {
-      const parsed = this.parseToken(match[1]);
-      if (parsed) {
-        const dedupKey = `${parsed.type}:${parsed.ref}#${parsed.anchor ?? ""}`;
-        if (!seen.has(dedupKey)) {
-          seen.add(dedupKey);
-          out.push(parsed);
-          if (out.length >= this.MAX_LINKS_PER_FOLIO) break;
+    for (const segment of splitMarkdownCode(content)) {
+      if (segment.code) continue;
+      const re = /\[\[([^\]\n]+)\]\]/g;
+      let match: RegExpExecArray | null = re.exec(segment.text);
+      while (match !== null) {
+        const parsed = this.parseToken(match[1]);
+        if (parsed) {
+          const dedupKey = this.tokenKey(parsed);
+          if (!seen.has(dedupKey)) {
+            seen.add(dedupKey);
+            out.push(parsed);
+            if (out.length >= this.MAX_LINKS_PER_FOLIO) return out;
+          }
         }
+        match = re.exec(segment.text);
       }
-      match = re.exec(content);
     }
     return out;
   }
@@ -168,14 +199,22 @@ export class FolioLinkService {
    * structured target. Returns `undefined` on empty input.
    *
    * Syntax precedence:
-   * 1. Optional `type:` prefix (`quest:`). Bare ref keeps the folio
+   * 1. The typed grammar, `#Q12` / `#E3` / `#F12` (`typedReference.ts`).
+   * 2. Optional `type:` prefix (`quest:`). Bare ref keeps the folio
    *    default for backwards compatibility.
-   * 2. Optional `#anchor` suffix on folio refs only (anchors on
+   * 3. Optional `#anchor` suffix on folio refs only (anchors on
    *    typed entities are deferred per the spec).
    */
   public parseToken(raw: string): ParsedToken | undefined {
     const trimmed = raw.trim();
     if (!trimmed) return undefined;
+
+    // Under the legacy rules below the same string reads as a folio ref
+    // whose number is `Q12`, which parses to nothing, so this branch only
+    // ever claims tokens that resolved to nothing before it existed. The
+    // ref keeps the `#N` shape the resolver already matches on per kind.
+    const typed = parseTypedReference(trimmed);
+    if (typed) return { type: typed.kind, ref: `#${typed.id}`, raw: trimmed };
 
     let type: LinkTargetKind = "folio";
     let body = trimmed;
@@ -235,11 +274,73 @@ export class FolioLinkService {
     sourceFolioId: string,
   ): Promise<Array<{ targetType: LinkTargetKind; toId: string }>> {
     if (tokens.length === 0) return [];
+    const maps = await this.buildLookupMaps(tokens, projectId);
 
+    const seen = new Set<string>();
+    const resolved: Array<{
+      targetType: LinkTargetKind;
+      toId: string;
+    }> = [];
+    for (const token of tokens) {
+      const targetId = this.resolveParsedToken(token, maps);
+      if (!targetId) continue;
+      if (token.type === "folio" && targetId === sourceFolioId) continue;
+      const dedupKey = `${token.type}:${targetId}`;
+      if (seen.has(dedupKey)) continue;
+      seen.add(dedupKey);
+      resolved.push({ targetType: token.type, toId: targetId });
+    }
+    return resolved;
+  }
+
+  /**
+   * Resolve tokens one by one and keep the pairing, keyed by
+   * {@link FolioLinkService.tokenKey}. What the reference converter of epic
+   * #32 needs: it rewrites each token in place and has to know which target
+   * THAT token reached, where {@link FolioLinkService.resolveTokenIds}
+   * answers with the deduped set of targets a body reaches. The lookup
+   * tables are read once for the whole list, so a caller collects every
+   * token of a project before asking.
+   */
+  public async resolveTokensEach(
+    tokens: ParsedToken[],
+    projectId: number,
+  ): Promise<Map<string, { targetType: LinkTargetKind; toId: string }>> {
+    const out = new Map<string, { targetType: LinkTargetKind; toId: string }>();
+    if (tokens.length === 0) return out;
+    const maps = await this.buildLookupMaps(tokens, projectId);
+    for (const token of tokens) {
+      const key = this.tokenKey(token);
+      if (out.has(key)) continue;
+      const toId = this.resolveParsedToken(token, maps);
+      if (toId) out.set(key, { targetType: token.type, toId });
+    }
+    return out;
+  }
+
+  /**
+   * The identity of a token for dedup and lookup: same kind, same
+   * reference, same anchor. What `parseTokens` dedupes on.
+   */
+  public tokenKey(token: ParsedToken): string {
+    return `${token.type}:${token.ref}#${token.anchor ?? ""}`;
+  }
+
+  /**
+   * Read every lookup table a list of tokens can need, once. Which tables
+   * is decided by the token kinds present, so a body with only `#Q` refs
+   * never reads folios or directories.
+   */
+  protected async buildLookupMaps(
+    tokens: ParsedToken[],
+    projectId: number,
+  ): Promise<TokenLookupMaps> {
     const needsFolios = tokens.some((t) => t.type === "folio");
     const needsQuests = tokens.some((t) => t.type === "quest");
     const needsEpics = tokens.some((t) => t.type === "epic");
     const needsBlobs = tokens.some((t) => t.type === "blob");
+    const needsFeedback = tokens.some((t) => t.type === "feedback");
+    const needsReleases = tokens.some((t) => t.type === "release");
     const needsPaths = tokens.some(
       (t) =>
         t.type === "folio" && t.ref.includes("/") && !t.ref.startsWith("#"),
@@ -355,31 +456,38 @@ export class FolioLinkService {
       }
     }
 
-    const seen = new Set<string>();
-    const resolved: Array<{
-      targetType: LinkTargetKind;
-      toId: string;
-    }> = [];
-    for (const token of tokens) {
-      const targetId = this.resolveParsedToken(token, {
-        folioById,
-        folioByTitle,
-        questById,
-        questByTitle,
-        epicByNumber,
-        epicByTitle,
-        pathContext,
-        blobByShort,
-        blobUuids,
+    // Feedback and releases are addressed by number only (`#P120`, `#R12`),
+    // so one two-column read each and no title map.
+    const feedbackByShort = new Map<number, number>();
+    if (needsFeedback) {
+      const candidates = await this.feedbackRows.findMany({
+        where: { projectId: { eq: projectId } },
+        columns: ["id", "shortId"],
       });
-      if (!targetId) continue;
-      if (token.type === "folio" && targetId === sourceFolioId) continue;
-      const dedupKey = `${token.type}:${targetId}`;
-      if (seen.has(dedupKey)) continue;
-      seen.add(dedupKey);
-      resolved.push({ targetType: token.type, toId: targetId });
+      for (const c of candidates) feedbackByShort.set(c.shortId, c.id);
     }
-    return resolved;
+    const releaseByNumber = new Map<number, number>();
+    if (needsReleases) {
+      const candidates = await this.releaseRows.findMany({
+        where: { projectId: { eq: projectId } },
+        columns: ["id", "number"],
+      });
+      for (const c of candidates) releaseByNumber.set(c.number, c.id);
+    }
+
+    return {
+      folioById,
+      folioByTitle,
+      questById,
+      questByTitle,
+      epicByNumber,
+      epicByTitle,
+      pathContext,
+      blobByShort,
+      blobUuids,
+      feedbackByShort,
+      releaseByNumber,
+    };
   }
 
   /**
@@ -401,7 +509,20 @@ export class FolioLinkService {
       pathContext,
       blobByShort,
       blobUuids,
+      feedbackByShort,
+      releaseByNumber,
     } = maps;
+    if (token.type === "feedback" || token.type === "release") {
+      // Only the typed grammar produces these, so the ref is always `#N`.
+      if (!token.ref.startsWith("#")) return undefined;
+      const n = Number.parseInt(token.ref.slice(1), 10);
+      if (!Number.isFinite(n)) return undefined;
+      const id =
+        token.type === "feedback"
+          ? feedbackByShort?.get(n)
+          : releaseByNumber?.get(n);
+      return id != null ? String(id) : undefined;
+    }
     if (token.type === "blob") {
       // `blob#42` → shortId 42 in this project. Bare `blob:<uuid>` →
       // UUID lookup (validate it belongs to this project via the
@@ -617,6 +738,34 @@ export class FolioLinkService {
   }
 
   /**
+   * How many link rows point at a kind of target, across every project.
+   * The dry run of the reference converter (epic #32) reports it before
+   * {@link FolioLinkService.deleteLinksTo} removes them.
+   */
+  public async countLinksTo(targetType: LinkTargetKind): Promise<number> {
+    const rows = await this.links.findMany({
+      where: { targetType: { eq: targetType } },
+      columns: ["fromId"],
+    });
+    return rows.length;
+  }
+
+  /**
+   * Drop every link row pointing at a kind of target, across every project,
+   * and answer how many went. Exists for the `blob` rows: the purge of epic
+   * #32 removes that literal from `linkTargetKindSchema`, and a stored value
+   * the enum no longer has fails validation on read, so the rows must be
+   * gone before the literal is.
+   */
+  public async deleteLinksTo(targetType: LinkTargetKind): Promise<number> {
+    const count = await this.countLinksTo(targetType);
+    if (count > 0) {
+      await this.links.deleteMany({ targetType: { eq: targetType } });
+    }
+    return count;
+  }
+
+  /**
    * Outbound links: what this source points TO (parsed from its content).
    */
   public async findOutbound(source: {
@@ -681,6 +830,49 @@ export class FolioLinkService {
       }),
     );
     return rows.map((r) => ({ id: r.id, shortId: r.number, title: r.title }));
+  }
+
+  /**
+   * Resolve feedback target ids to display refs, the row shape the links
+   * payload uses for every kind.
+   */
+  public async findFeedbackRefs(
+    ids: number[],
+  ): Promise<Array<{ id: number; shortId: number; title: string }>> {
+    return this.bound.collect(ids, (batch) =>
+      this.feedbackRows.findMany({
+        where: { id: { inArray: batch } },
+        columns: ["id", "shortId", "title"],
+      }),
+    );
+  }
+
+  /**
+   * Resolve release target ids to display refs. As with epics, the
+   * per-project `number` rides under `shortId`; the `tag` comes along
+   * because it is what `/releases/:releaseTag` navigates by, and a release
+   * may not have one.
+   */
+  public async findReleaseRefs(ids: number[]): Promise<
+    Array<{
+      id: number;
+      shortId: number;
+      title: string;
+      tag?: string;
+    }>
+  > {
+    const rows = await this.bound.collect(ids, (batch) =>
+      this.releaseRows.findMany({
+        where: { id: { inArray: batch } },
+        columns: ["id", "number", "title", "tag"],
+      }),
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      shortId: r.number,
+      title: r.title,
+      tag: r.tag,
+    }));
   }
 
   /**

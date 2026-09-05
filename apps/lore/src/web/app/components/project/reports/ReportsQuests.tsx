@@ -13,6 +13,7 @@ import type { reportsQuestsSchema } from "@/api/schemas/reportsSchemas.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { formatReference } from "../../shared/element/typedReference.ts";
 import ReportsSection from "./ReportsSection.tsx";
 
 type ReportsQuests = Infer<typeof reportsQuestsSchema>;
@@ -220,7 +221,7 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
                 className="hover:bg-muted/50 flex items-center gap-3 py-2 text-sm"
               >
                 <span className="text-muted-foreground tabular-nums">
-                  #{quest.shortId}
+                  {formatReference("quest", quest.shortId)}
                 </span>
                 <span className="truncate font-medium">{quest.title}</span>
                 <span className="text-muted-foreground shrink-0">

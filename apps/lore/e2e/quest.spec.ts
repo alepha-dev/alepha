@@ -508,7 +508,7 @@ test.describe("Quest", () => {
       }, follower.id)) as { status: number; body: string };
       expect(result.status).toBe(400);
       expect(result.body.toLowerCase()).toContain("blocked by");
-      expect(result.body).toContain(`#${predecessor.shortId}`);
+      expect(result.body).toContain(`#Q${predecessor.shortId}`);
     });
 
     await test.step("complete the predecessor, then accept the follower", async () => {
@@ -547,7 +547,7 @@ test.describe("Quest", () => {
       await page.goto(`/${projectSlug}/quests/${follower.shortId}`);
       await page.waitForLoadState("networkidle");
       await expect(
-        page.getByText(new RegExp(`unblocked.*#${predecessor.shortId}`, "i")),
+        page.getByText(new RegExp(`unblocked.*#Q${predecessor.shortId}`, "i")),
       ).toBeVisible({ timeout: 10_000 });
     });
 
@@ -567,7 +567,7 @@ test.describe("Quest", () => {
         .first();
       await expect(banner).toBeVisible({ timeout: 10_000 });
       await expect(
-        banner.getByRole("link", { name: `#${follower.shortId}` }),
+        banner.getByRole("link", { name: `#Q${follower.shortId}` }),
       ).toBeVisible();
       await expect(banner).toContainText(`Follower${t}`);
     });
@@ -634,12 +634,14 @@ test.describe("Quest", () => {
       const search = page.getByPlaceholder("Search quests…");
       await search.fill(`Setup${t}`);
       await page
-        .getByRole("option", { name: new RegExp(`#${predecessor.shortId}\\b`) })
+        .getByRole("option", {
+          name: new RegExp(`#Q${predecessor.shortId}\\b`),
+        })
         .click();
       // Trigger reflects the selection; the popover closes.
       await expect(
         page.getByRole("button", {
-          name: new RegExp(`#${predecessor.shortId}\\b`),
+          name: new RegExp(`#Q${predecessor.shortId}\\b`),
         }),
       ).toBeVisible({ timeout: 5_000 });
       await expect(search).toBeHidden();
@@ -662,7 +664,7 @@ test.describe("Quest", () => {
       // the rail's Questline row.
       await expect(
         page
-          .getByText(new RegExp(`blocked by.*#${predecessor.shortId}`, "i"))
+          .getByText(new RegExp(`blocked by.*#Q${predecessor.shortId}`, "i"))
           .first(),
       ).toBeVisible({ timeout: 10_000 });
     });
@@ -1201,7 +1203,7 @@ test.describe("Quest", () => {
         crumbs.getByRole("link", { name: "Quests" }),
       ).toHaveAttribute("href", `/${projectSlug}/quests`, { timeout: 15_000 });
       // The leaf is the number, and it is inert — it is the open page.
-      await expect(crumbs.getByText(`#${shortId}`)).toBeVisible();
+      await expect(crumbs.getByText(`#Q${shortId}`)).toBeVisible();
     });
 
     await test.step("the breadcrumb is the way back, on a deep link too", async () => {
@@ -1873,14 +1875,14 @@ test.describe("Quest", () => {
       timeout: 15_000,
     });
 
-    await test.step("Copy ID puts the #N reference on the clipboard", async () => {
+    await test.step("Copy ID puts the #Q<n> reference on the clipboard", async () => {
       await page.getByRole("button", { name: "Open row actions" }).click();
       await page.getByRole("menuitem", { name: /copy id/i }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
-      // The `#N` reference, not the row id: that is what pastes usefully into
-      // a commit message, a prompt or a folio.
-      expect(copied).toBe(`#${shortId}`);
+      // The typed `#Q<n>` reference, not the row id: that is what pastes
+      // usefully into a commit message, a prompt or a folio (epic #32).
+      expect(copied).toBe(`#Q${shortId}`);
     });
 
     await test.step("Edit opens the drawer and saves in place", async () => {
@@ -2118,7 +2120,7 @@ test.describe("Quest — the questline route", () => {
     const alone = await seed(`Alone${t}`);
 
     const card = (quest: { shortId: number }, title: string) =>
-      page.getByRole("button", { name: `#${quest.shortId} ${title}` });
+      page.getByRole("button", { name: `#Q${quest.shortId} ${title}` });
 
     await test.step("an unfiled quest draws its own component", async () => {
       await page.goto(`/${slug}/quests/${root.shortId}/graph`);

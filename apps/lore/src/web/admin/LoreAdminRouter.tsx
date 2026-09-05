@@ -1,8 +1,9 @@
 import { $pageAdmin } from "@alepha/ui/components/admin/admin-router-page";
 import { $client } from "alepha/server/links";
-import { FolderKanban } from "lucide-react";
+import { FolderKanban, Link2 } from "lucide-react";
 
 import type { AdminProjectController } from "@/api/controllers/AdminProjectController.ts";
+import type { AdminReferenceController } from "@/api/controllers/AdminReferenceController.ts";
 
 /**
  * Lore's own pages inside the shared admin shell.
@@ -19,6 +20,24 @@ import type { AdminProjectController } from "@/api/controllers/AdminProjectContr
  */
 export class LoreAdminRouter {
   protected readonly projectApi = $client<AdminProjectController>();
+  protected readonly referenceApi = $client<AdminReferenceController>();
+
+  /**
+   * The one-shot reference converter of epic #32. Deleted with the
+   * converter once the old grammar is purged (quest #1808).
+   */
+  adminReferences = $pageAdmin({
+    path: "/references",
+    head: { title: "References" },
+    nav: {
+      label: "References",
+      icon: <Link2 />,
+      group: "Lore",
+      order: 101,
+    },
+    can: () => this.referenceApi.convertReferences.can(),
+    lazy: () => import("./AdminReferences.tsx"),
+  });
 
   /**
    * Gated on the action rather than on `admin:project:read` alone. The

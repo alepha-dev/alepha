@@ -31,6 +31,7 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { formatEstimate } from "./questEstimate.ts";
 import QuestReleaseControl from "./QuestReleaseControl.tsx";
@@ -173,7 +174,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
                   },
                 })}
               >
-                #{epic.number} {epic.title}
+                {formatReference("epic", epic.number)} {epic.title}
               </Link>
             ) : undefined}
           </QuestViewRailRow>

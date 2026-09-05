@@ -20,6 +20,7 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { formatReference } from "../../shared/element/typedReference.ts";
 import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_RANK,
@@ -203,9 +204,9 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                       })}
                       onClick={(e) => e.stopPropagation()}
                       className={`block truncate text-sm font-medium ${quest.completedAt ? "text-muted-foreground line-through" : ""}`}
-                      title={`#${quest.shortId} - ${quest.title}`}
+                      title={`${formatReference("quest", quest.shortId)} - ${quest.title}`}
                     >
-                      #{quest.shortId}{" "}
+                      {formatReference("quest", quest.shortId)}{" "}
                       <span className="text-muted-foreground">-</span>{" "}
                       {quest.title}
                     </Link>
