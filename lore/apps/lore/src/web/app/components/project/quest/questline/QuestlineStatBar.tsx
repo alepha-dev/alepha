@@ -1,6 +1,11 @@
 import { Button } from "@alepha/ui/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@alepha/ui/components/ui/popover";
 import { useI18n } from "alepha/react/i18n";
-import { Maximize, Minus, Plus } from "lucide-react";
+import { ChevronDown, Maximize, Minus, Plus } from "lucide-react";
 import { useMemo } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -25,6 +30,27 @@ export interface QuestlineStatBarProps {
  *
  * Every number is counted from the same nodes the board renders, so the
  * header cannot disagree with what is on screen underneath it.
+ *
+ * ⚠️ **One line is a property, not a description.** The area legend used to
+ * render every area it found, so the bar's height was a function of how many
+ * areas the release happened to touch: on `0.29.0` that was seventeen chips
+ * over two extra lines, above a map whose whole point is the space it has to
+ * draw in, and worst exactly where the map is biggest (feedback #2104). The
+ * areas are behind one trigger now, so the bar costs the same height whatever
+ * it is given.
+ *
+ * **No areas stay inline, and that was the open question.** Keeping the top
+ * two or three is the obvious middle ground and it loses on this data: the
+ * report's own `0.29.0` distribution is seventeen areas over ~117 quests with
+ * the largest at 17, so a prefix explains about one colour in seven and there
+ * is no natural cut to make. A partial legend is worse than a closed one,
+ * because three chips beside a map of seventeen colours read as "these are the
+ * areas" rather than as "three of them" - and it would put a variable-width
+ * element back in the bar, on the narrow quest questline first.
+ *
+ * Shared: this is the QUEST questline's bar, reused by the Release Flow tab.
+ * The quest questline is the narrower of the two, so it is the one that
+ * decides.
  */
 const QuestlineStatBar = (props: QuestlineStatBarProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -71,25 +97,52 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
         </span>
       ))}
 
-      {/* `ml-auto` rather than a flex-1 spacer: a spacer eats the free
-          space the legend needs to wrap into, so on a narrow panel the areas
-          ran off the edge instead of dropping onto a second line. */}
-      <span className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        {summary.areas.map(([area, count]) => (
-          <span
-            key={area}
-            className="text-muted-foreground inline-flex items-center gap-1.5 text-[11.5px]"
+      {/* `ml-auto` rather than a flex-1 spacer: a spacer eats the free space
+          the rest of the bar needs to wrap into on a narrow panel. */}
+      {summary.areas.length > 0 && (
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground ml-auto h-6 gap-1 px-2 text-[11.5px] font-normal"
+              />
+            }
           >
-            <span
-              className={`size-[7px] shrink-0 rounded-full ${props.areaColor.dotClass(area)}`}
-            />
-            {area}
-            <b className="text-muted-foreground/70 font-mono text-[11px] font-normal">
-              {count}
+            <b className="text-foreground font-mono text-[11px] font-medium">
+              {summary.areas.length}
             </b>
-          </span>
-        ))}
-      </span>
+            {tr(
+              summary.areas.length === 1
+                ? "questline.stat.area"
+                : "questline.stat.areas",
+            )}
+            <ChevronDown className="size-3 shrink-0" />
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="max-h-80 w-56 overflow-y-auto p-2"
+          >
+            <div className="flex flex-col gap-1">
+              {summary.areas.map(([area, count]) => (
+                <span
+                  key={area}
+                  className="text-muted-foreground flex items-center gap-2 text-[11.5px]"
+                >
+                  <span
+                    className={`size-[7px] shrink-0 rounded-full ${props.areaColor.dotClass(area)}`}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{area}</span>
+                  <b className="text-muted-foreground/70 font-mono text-[11px] font-normal">
+                    {count}
+                  </b>
+                </span>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
 
       <span
         role="group"
