@@ -31,7 +31,7 @@ export type ProjectNavEntry = Infer<typeof projectNavEntrySchema>;
  * **It is derived from the sidebar's own computed nav, not from a second
  * list.** That is the whole point: the sidebar already resolves each entry
  * through `router.path(...)`, applies the project's `features.*` gates, and
- * expands the Apps group from `currentSigilsAtom`. A hand-written page list in
+ * expands the Apps group from `currentInstancesAtom`. A hand-written page list in
  * the palette would rot the first time a route was renamed — and route names
  * are famously not typecheck-protected here (see `AppRouter.ts`) — while a
  * second gating pass would drift from the sidebar's the first time a feature

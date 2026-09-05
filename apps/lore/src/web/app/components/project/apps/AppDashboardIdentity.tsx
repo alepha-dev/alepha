@@ -9,7 +9,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import type { SigilResource } from "@/api/schemas/sigilResourceSchema.ts";
+import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 
 import type { I18n } from "../../../services/I18n.ts";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
@@ -25,7 +25,7 @@ import { appUrl, appUrlLabel } from "./appUrl.ts";
 const SILENT_AFTER_MS = 24 * 60 * 60 * 1000;
 
 export interface AppDashboardIdentityProps {
-  sigil: SigilResource;
+  instance: AppInstanceResource;
 }
 
 /**
@@ -39,18 +39,21 @@ export interface AppDashboardIdentityProps {
 const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
   const { tr, l } = useI18n<I18n, "en">();
   const dateTime = useInject(DateTimeProvider);
-  const { sigil } = props;
+  const { instance } = props;
+  const sigil = instance.sigil;
 
-  const url = appUrl(sigil);
+  const url = appUrl(instance);
   const silent =
-    sigil.lastSeenAt !== undefined &&
+    sigil?.lastSeenAt !== undefined &&
     dateTime.nowMillis() - new Date(sigil.lastSeenAt).getTime() >
       SILENT_AFTER_MS;
 
   return (
     <Card data-testid="app-identity">
       <CardHeader>
-        <CardTitle className="text-base">{sigil.name}</CardTitle>
+        <CardTitle className="text-base">
+          {instance.app} / {instance.env}
+        </CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-x-6">
         <span className="text-muted-foreground">
@@ -75,7 +78,7 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
             <>
               <span>{appUrlLabel(url)}</span>
               <span className="text-muted-foreground text-xs">
-                {sigil.url
+                {instance.url
                   ? tr("app.dashboard.address.pinned")
                   : tr("app.dashboard.address.detected")}
               </span>
@@ -90,18 +93,24 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
         <span className="text-muted-foreground">
           {tr("app.dashboard.token")}
         </span>
-        <code className="font-mono text-xs">{sigil.tokenPrefix}…</code>
+        <code className="font-mono text-xs">
+          {sigil ? `${sigil.tokenPrefix}…` : tr("app.dashboard.token.none")}
+        </code>
 
         <span className="text-muted-foreground">
           {tr("app.dashboard.enrolled")}
         </span>
-        <span>{String(l(sigil.createdAt, { date: "lll" }))}</span>
+        <span>
+          {sigil
+            ? String(l(sigil.createdAt, { date: "lll" }))
+            : String(l(instance.createdAt, { date: "lll" }))}
+        </span>
 
         <span className="text-muted-foreground">
           {tr("app.dashboard.lastReport")}
         </span>
         <span className="flex flex-wrap items-center gap-2">
-          {sigil.lastSeenAt ? (
+          {sigil?.lastSeenAt ? (
             String(l(sigil.lastSeenAt, { date: "lll" }))
           ) : (
             <span className="text-muted-foreground">

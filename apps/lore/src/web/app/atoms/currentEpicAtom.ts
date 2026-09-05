@@ -10,7 +10,7 @@ import { epicResourceSchema } from "@/api/schemas/epicResourceSchema.ts";
  * layout ABOVE this route. The layout can only see the route's params
  * (`epicNumber`), and a number is not a title, so the leaf has to be handed
  * up rather than derived. Same arrangement, and same reason, as
- * `currentSigilAtom` for the Apps pages.
+ * `currentInstanceAtom` for the Apps pages.
  *
  * The loader is the only writer. `ProjectEpic` keeps its own copy in state
  * and replaces it on a status change, which the breadcrumb does not read —

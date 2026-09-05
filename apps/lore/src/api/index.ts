@@ -8,6 +8,7 @@ import { AlephaWebSocket } from "alepha/websocket";
 
 import { AdminEstateController } from "./controllers/AdminEstateController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
+import { AppController } from "./controllers/AppController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
@@ -245,6 +246,7 @@ export const LoreApi = $module({
     SearchController,
     FolioAttachmentController,
     FeedbackController,
+    AppController,
     SigilController,
     SigilIngestController,
     EstateController,

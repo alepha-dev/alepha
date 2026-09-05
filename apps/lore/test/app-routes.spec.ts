@@ -126,36 +126,45 @@ describe("AppRouter route table", () => {
     await alepha.stop();
   });
 
-  const appName = "lore-staging";
+  // ⚠️ Two segments since Apps v3, and the app half deliberately CONTAINS a
+  // hyphen: `club-b14` + `production` and `club` + `b14-production` are two
+  // legal rows that a joined slug would render identically, which is why the
+  // route never joined them.
+  const app = "club-b14";
+  const env = "production";
 
-  it("resolves the per-app page and each of its tabs", ({ expect }) => {
-    const params = { projectSlug: "sds", appName };
+  it("resolves the per-instance page and each of its tabs", ({ expect }) => {
+    const params = { projectSlug: "sds", app, env };
 
     expect(router.path("projectApps", { params })).toBe("/sds/apps");
-    expect(router.path("app", { params })).toBe(`/sds/apps/${appName}/`);
+    expect(router.path("app", { params })).toBe(`/sds/apps/${app}/${env}/`);
+    expect(router.path("projectAppRedirect", { params })).toBe(
+      `/sds/apps/${app}`,
+    );
     expect(router.path("appAnalytics", { params })).toBe(
-      `/sds/apps/${appName}/analytics`,
+      `/sds/apps/${app}/${env}/analytics`,
     );
     expect(router.path("appVitals", { params })).toBe(
-      `/sds/apps/${appName}/vitals`,
+      `/sds/apps/${app}/${env}/vitals`,
     );
     // ⚠️ `:analyticsDimension`, not `:dimension`: the router keeps one key per
     // path position, so two routes naming the same position differently
     // collapse onto one and the inner value arrives missing. This resolving to
-    // a full path with nothing unsubstituted is what proves it did not.
+    // a full path with nothing unsubstituted is what proves it did not. The
+    // same rule is why the two segments above are `:app` and `:env`.
     expect(
       router.path("appAnalyticsDimension", {
         params: { ...params, analyticsDimension: "path" },
       }),
-    ).toBe(`/sds/apps/${appName}/analytics/path`);
+    ).toBe(`/sds/apps/${app}/${env}/analytics/path`);
     expect(router.path("appExplore", { params })).toBe(
-      `/sds/apps/${appName}/explore`,
+      `/sds/apps/${app}/${env}/explore`,
     );
     expect(router.path("appArtifacts", { params })).toBe(
-      `/sds/apps/${appName}/artifacts`,
+      `/sds/apps/${app}/${env}/artifacts`,
     );
     expect(router.path("appSettings", { params })).toBe(
-      `/sds/apps/${appName}/settings`,
+      `/sds/apps/${app}/${env}/settings`,
     );
   });
 
@@ -193,7 +202,8 @@ describe("AppRouter route table", () => {
     // test forgot to supply something.
     const params = {
       projectSlug: "sds",
-      appName,
+      app,
+      env,
       shortId: "3",
       epicNumber: "7",
       releaseTag: "0.28.0",
@@ -225,7 +235,7 @@ describe("AppRouter route table", () => {
     expect,
   }) => {
     const pageApi = alepha.inject(ReactPageProvider);
-    const params = { projectSlug: "sds", appName, shortId: "3" };
+    const params = { projectSlug: "sds", app, env, shortId: "3" };
 
     const unreserved = new Set<string>();
     for (const page of pageApi.getPages()) {

@@ -32,11 +32,11 @@ import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
 import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
+import { currentInstanceAtom } from "../../atoms/currentInstanceAtom.ts";
+import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
-import { currentSigilAtom } from "../../atoms/currentSigilAtom.ts";
-import { currentSigilsAtom } from "../../atoms/currentSigilsAtom.ts";
 import { questLogCollapsedAtom } from "../../atoms/questLogCollapsedAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
@@ -72,8 +72,8 @@ const ProjectView = () => {
   const [feedbackCount] = useStore(currentFeedbackCountAtom);
   const [blightCount] = useStore(currentBlightCountAtom);
   const [folioPath] = useStore(currentFolioPathAtom);
-  const [sigils] = useStore(currentSigilsAtom);
-  const [sigil] = useStore(currentSigilAtom);
+  const [instances] = useStore(currentInstancesAtom);
+  const [instance] = useStore(currentInstanceAtom);
   const [epic] = useStore(currentEpicAtom);
   const [quest] = useStore(currentQuestAtom);
   const [epicCount] = useStore(currentEpicCountAtom);
@@ -200,7 +200,7 @@ const ProjectView = () => {
   }
   // Blights are reported by apps, so the entry appears once some enrolled app
   // carries the capability, and goes when the last one drops it. `?? []` means
-  // a failed sigil read hides the entry, the same "a degraded section costs a
+  // a failed instance read hides the entry, the same "a degraded section costs a
   // section" trade the Apps group below makes.
   //
   // ...unless blights are already filed. They outlive the app that reported
@@ -209,8 +209,8 @@ const ProjectView = () => {
   // Blights off on it, would otherwise lose the only way into an inbox that
   // still holds open crashes. A project that has never collected one still
   // shows no entry, which is the property this gate exists for.
-  const collectsBlights = (sigils ?? []).some((it) =>
-    it.kinds.includes("blights"),
+  const collectsBlights = (instances ?? []).some((it) =>
+    it.sigil?.kinds.includes("blights"),
   );
   const hasOpenBlights = (blightCount?.count ?? 0) > 0;
   if (features.sigils && (collectsBlights || hasOpenBlights)) {
@@ -274,16 +274,19 @@ const ProjectView = () => {
   // would read the same at a glance, and the number that matters is per-tab.
   const opsItems: NavGroup["items"] = [];
   if (features.sigils) {
-    const activeAppName = ROUTES_APP.has(name)
-      ? String(routerState.params.appName ?? "")
+    const activeApp = ROUTES_APP.has(name)
+      ? String(routerState.params.app ?? "")
+      : "";
+    const activeEnv = ROUTES_APP.has(name)
+      ? String(routerState.params.env ?? "")
       : "";
     // Two states worth rendering, and they are not the same claim. `undefined`
-    // means the loader's `listSigils` failed and was swallowed to keep the page
+    // means the loader's `listApps` failed and was swallowed to keep the page
     // alive — that is worth saying, and it links to the settings page where a
     // retry lives. `[]` renders nothing at all: the group would hold no apps
-    // and no way to add one, since enrolment lives on the settings page.
-    const appsUnavailable = sigils === undefined;
-    const apps = sigils ?? [];
+    // and no way to add one, since creating lives elsewhere.
+    const appsUnavailable = instances === undefined;
+    const apps = instances ?? [];
     if (appsUnavailable || apps.length > 0) {
       opsItems.push({
         label: tr("project.menu.apps"),
@@ -303,11 +306,11 @@ const ProjectView = () => {
               },
             ]
           : apps.map((it) => ({
-              label: it.name,
+              label: `${it.app} / ${it.env}`,
               href: router.path("app", {
-                params: { projectSlug, appName: it.name },
+                params: { projectSlug, app: it.app, env: it.env },
               }),
-              active: activeAppName === it.name,
+              active: activeApp === it.app && activeEnv === it.env,
             })),
       });
     }
@@ -358,13 +361,21 @@ const ProjectView = () => {
       href: sectionHref,
     });
   }
-  // The app pages contribute the app's own name as a leaf, so the header reads
-  // "Project › Apps › checkout" rather than stopping at the section.
-  if (ROUTES_APP.has(name) && sigil) {
+  // The app pages contribute BOTH halves of the instance, so the header reads
+  // "Project › Apps › club › b14-production" and mirrors the two-segment route.
+  //
+  // ⚠️ The app half is a plain label with no `href`, decided 2026-09-05.
+  // There is no app page: `/apps/club` redirects to a sibling instance, so a
+  // link there would move the reader SIDEWAYS rather than up, which is worse
+  // than a label. The one honest target was the Apps list filtered to that
+  // name, and that filter is local state rather than a URL, so there is
+  // nothing to link to.
+  if (ROUTES_APP.has(name) && instance) {
+    breadcrumbs.push({ label: instance.app });
     breadcrumbs.push({
-      label: sigil.name,
+      label: instance.env,
       href: router.path("app", {
-        params: { projectSlug, appName: sigil.name },
+        params: { projectSlug, app: instance.app, env: instance.env },
       }),
     });
   }

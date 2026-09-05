@@ -6,17 +6,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
-import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
-import { useClient, useStore } from "alepha/react";
+import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Ban, Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "@/web/app/atoms/currentProjectMemberAtom.ts";
-import { currentSigilsAtom } from "@/web/app/atoms/currentSigilsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import TokenReveal from "../../shared/TokenReveal.tsx";
@@ -54,15 +52,16 @@ import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
  */
 const ProjectSettingsSigilsPage = () => {
   const { tr } = useI18n<I18n, "en">();
-  const toaster = useToast();
   const sigilApi = useClient<SigilController>();
   const [project] = useStore(currentProjectAtom);
   const [member] = useStore(currentProjectMemberAtom);
   const isOwner = member?.owner ?? false;
-  // Shared with the sidebar's Apps section: enrolling here has to make the app
-  // appear there without a reload, and this page's own successful `reload()`
-  // repairs a sidebar whose read failed during the project load.
-  const [sigils, setSigils] = useStore(currentSigilsAtom);
+  // ⚠️ Its own read since Apps v3 (#1768), where it used to share
+  // `currentSigilsAtom` with the sidebar. That atom is `currentInstancesAtom`
+  // now and holds instances, which is a different thing: a sigil is an unlock
+  // on one, and this page still lists credentials. The page is gutted by #1770,
+  // so the list is kept alive on a query of its own rather than rewired to a
+  // shape it is about to stop rendering.
   const [rulesOpen, setRulesOpen] = useState(false);
 
   const master = useProjectFeatureToggle("sigils");
@@ -74,23 +73,18 @@ const ProjectSettingsSigilsPage = () => {
    */
   const [freshToken, setFreshToken] = useState<string | undefined>();
 
-  const reload = useCallback(async () => {
-    if (!project) return;
-    try {
-      const res = await sigilApi.listSigils({
-        params: { projectId: project.id },
-      });
-      setSigils(res.items);
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  }, [project, sigilApi, setSigils]);
-
-  useEffect(() => {
-    if (project && enabled) {
-      void reload();
-    }
-  }, [project, enabled, reload]);
+  const { data, refetch, error } = useQuery(
+    {
+      enabled: Boolean(project) && enabled,
+      key: ["settings-sigils", project?.id],
+      handler: async () => {
+        if (!project) return undefined;
+        return await sigilApi.listSigils({ params: { projectId: project.id } });
+      },
+    },
+    [project?.id, enabled],
+  );
+  const sigils = data?.items;
 
   if (!project) return null;
 
@@ -155,16 +149,29 @@ const ProjectSettingsSigilsPage = () => {
             </CardContent>
 
             {/*
-              `?? []` is the sidebar's could-not-load state. This page always
-              runs its own `reload()`, which either fills the atom or toasts the
-              failure, so the empty message here is only ever the true one.
+              `?? []` covers the first render, before the query resolves. The
+              empty message is therefore the true one everywhere except that
+              one frame.
             */}
-            {(sigils ?? []).length === 0 && (
+            {/*
+              A failed read is not an empty list, and rendering it as one would
+              claim a project has no apps on the strength of a transient
+              failure - the same distinction `currentInstancesAtom` draws.
+            */}
+            {error ? (
               <CardContent className="px-4 py-6">
-                <span className="text-muted-foreground text-sm">
-                  {tr("sigils.empty")}
+                <span className="text-destructive text-sm">
+                  {error.message}
                 </span>
               </CardContent>
+            ) : (
+              (sigils ?? []).length === 0 && (
+                <CardContent className="px-4 py-6">
+                  <span className="text-muted-foreground text-sm">
+                    {tr("sigils.empty")}
+                  </span>
+                </CardContent>
+              )
             )}
             {(sigils ?? []).map((sigil) => (
               <ProjectSettingsSigilRow key={sigil.id} sigil={sigil} />
@@ -201,7 +208,13 @@ const ProjectSettingsSigilsPage = () => {
           <ProjectSettingsSigilsEnrollDialog
             open={enrolling}
             onOpenChange={setEnrolling}
-            onEnrolled={setFreshToken}
+            onEnrolled={(token) => {
+              setFreshToken(token);
+              // The dialog no longer writes a shared atom, so the list is
+              // refetched here instead. One extra read on a rare action, and
+              // the page cannot show a list the dialog just made stale.
+              void refetch();
+            }}
           />
 
           <ProjectBlightRulesDialog

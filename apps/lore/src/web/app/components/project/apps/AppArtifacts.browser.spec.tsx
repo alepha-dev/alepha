@@ -8,10 +8,10 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import { defaultProjectFeatures } from "@/api/entities/projects.ts";
-import type { SigilResource } from "@/api/schemas/sigilResourceSchema.ts";
+import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import AppArtifacts from "./AppArtifacts.tsx";
 
@@ -38,13 +38,15 @@ class RecordingLinkProvider extends LinkProvider {
   }
 }
 
-const sigilOf = (over: Partial<SigilResource> = {}): SigilResource => ({
-  id: "00000000-0000-4000-8000-000000000001",
+const instanceOf = (
+  over: Partial<AppInstanceResource> = {},
+): AppInstanceResource => ({
+  id: "00000000-0000-4000-8000-000000000010",
   projectId: 1,
-  name: "docs-production",
-  tokenPrefix: "sg_lore_ab",
-  kinds: ["beacon", "vitals", "blights", "feedback"],
+  app: "docs",
+  env: "production",
   createdAt: "2026-08-01T10:00:00.000Z",
+  updatedAt: "2026-08-01T10:00:00.000Z",
   ...over,
 });
 
@@ -72,12 +74,12 @@ describe("AppArtifacts", () => {
   };
 
   const show = async (
-    sigil: SigilResource,
+    instance: AppInstanceResource,
     responses: Record<string, unknown> = {},
   ) => {
     cleanup();
     const alepha = await mount();
-    alepha.store.set(currentSigilAtom, sigil as never);
+    alepha.store.set(currentInstanceAtom, instance as never);
     // The list reads the project for its id and its slug, so without this it
     // would stay disabled and every case below would pass by not running the
     // code it is about.
@@ -118,7 +120,7 @@ describe("AppArtifacts", () => {
   it("issues one artifact listing and no analytics query", async ({
     expect,
   }) => {
-    const { links, getByTestId } = await show(sigilOf(), listing([]));
+    const { links, getByTestId } = await show(instanceOf(), listing([]));
 
     expect(getByTestId("app-artifacts")).toBeTruthy();
     // Awaited: the listing is an effect, so asserting synchronously would
@@ -133,11 +135,11 @@ describe("AppArtifacts", () => {
    * error or an ominous blank would report a fault where there is none.
    */
   it("tells a project with no pipeline how to start", async ({ expect }) => {
-    const { findByText, getByTestId } = await show(sigilOf(), listing([]));
+    const { findByText, getByTestId } = await show(instanceOf(), listing([]));
 
     expect(await findByText(/No artifacts pushed yet/)).toBeTruthy();
     expect(getByTestId("app-artifacts").textContent).toContain(
-      "lore artifacts push --project alepha --app docs-production",
+      "lore artifacts push --project alepha --app docs",
     );
   });
 
@@ -149,7 +151,7 @@ describe("AppArtifacts", () => {
     expect,
   }) => {
     const { findByText, getByTestId } = await show(
-      sigilOf(),
+      instanceOf(),
       listing([
         {
           app: "docs-production",
@@ -199,7 +201,7 @@ describe("AppArtifacts", () => {
 
   it("shows no commit when the push named none", async ({ expect }) => {
     const { findByText, getByTestId } = await show(
-      sigilOf(),
+      instanceOf(),
       listing([
         {
           app: "docs-production",

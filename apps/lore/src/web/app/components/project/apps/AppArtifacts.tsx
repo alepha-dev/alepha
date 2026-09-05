@@ -1,6 +1,6 @@
 import { useStore } from "alepha/react";
 
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppArtifactsList from "./AppArtifactsList.tsx";
 
 /**
@@ -14,18 +14,25 @@ import AppArtifactsList from "./AppArtifactsList.tsx";
  *
  * Nothing here is gated on beacon. Artifacts arrive through
  * `lore artifacts push` from CI, not through the sigil's telemetry, so
- * an app that collects nothing still has a build history to show.
+ * an instance with no sigil at all still has a build history to show.
  */
 const AppArtifacts = () => {
-  const [sigil] = useStore(currentSigilAtom);
+  const [instance] = useStore(currentInstanceAtom);
 
-  if (!sigil) {
+  if (!instance) {
     return null;
   }
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <AppArtifactsList sigil={sigil} />
+      {/*
+        Keyed on the APP, not the instance: `artifacts.app` is a plain string
+        and a build is pushed once for an app, not once per deployed copy.
+        Every instance of `club` therefore shows the same list, which is the
+        model the entity argues for and the reason promotion is expressible at
+        all.
+      */}
+      <AppArtifactsList app={instance.app} />
     </div>
   );
 };

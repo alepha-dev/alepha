@@ -6,8 +6,8 @@ import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { ExternalLink } from "lucide-react";
 
 import type { AppRouter } from "../../../AppRouter.ts";
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
 import { APP_INSIGHTS_FILTER_KEYS } from "./useAppInsights.ts";
@@ -89,21 +89,27 @@ const AppLayout = () => {
   const routerState = useRouterState();
 
   const [project] = useStore(currentProjectAtom);
-  const [sigil] = useStore(currentSigilAtom);
+  const [instance] = useStore(currentInstanceAtom);
 
-  if (!project || !sigil) {
+  if (!project || !instance) {
     return null;
   }
 
+  const sigil = instance.sigil;
+
   const activeRoute = routerState.name ?? "";
-  const params = { projectSlug: project.slug, appName: sigil.name };
-  const url = appUrl(sigil);
-  // The app's own capability, not the project's. Analytics and Vitals both
-  // read what Beacon collects, and an app that does not carry it has nothing
-  // behind either tab.
-  const collectsBeacon = sigil.kinds.includes("beacon");
+  const params = {
+    projectSlug: project.slug,
+    app: instance.app,
+    env: instance.env,
+  };
+  const url = appUrl(instance);
+  // The instance's own capability, not the project's, and not the app's:
+  // Analytics and Vitals read what Beacon collects for THIS deployed copy, and
+  // an instance with no sigil at all carries none of them.
+  const collectsBeacon = sigil?.kinds.includes("beacon") ?? false;
   // And the same question for errors, which come in under a different kind.
-  const collectsBlights = sigil.kinds.includes("blights");
+  const collectsBlights = sigil?.kinds.includes("blights") ?? false;
   const tabs = TABS.filter(
     (tab) =>
       (!tab.needsBeacon || collectsBeacon) &&
@@ -162,7 +168,17 @@ const AppLayout = () => {
       scroll={activeRoute !== "appExplore"}
       plate={
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-6 pt-6 pb-4">
-          <h1 className="text-xl font-semibold">{sigil.name}</h1>
+          {/*
+            The pair, split: the app muted and the instance at full strength,
+            because two instances of one app differ in the second half and that
+            is the half a reader is looking for.
+          */}
+          <h1 className="text-xl font-semibold">
+            <span className="text-muted-foreground font-normal">
+              {instance.app} /{" "}
+            </span>
+            {instance.env}
+          </h1>
           {/*
           The app's own address, beside its name. A plain `<a>` rather than the
           router's `Link`: this is the one link on the page that leaves Lore.
@@ -190,7 +206,7 @@ const AppLayout = () => {
             </a>
           )}
           <span className="text-muted-foreground text-xs">
-            {sigil.lastSeenAt
+            {sigil?.lastSeenAt
               ? tr("sigils.lastSeen", {
                   args: [String(l(sigil.lastSeenAt, { date: "lll" }))],
                 })

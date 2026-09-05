@@ -197,6 +197,24 @@ export class LoreAudits {
   });
 
   /**
+   * An app instance is a deploy target, which is why it is audited at all: it
+   * is the row epic #1 resolves an estate from, so who created it and who
+   * repointed it are questions somebody comes back to.
+   *
+   * `update` folds into one row with a count, like every other editable
+   * resource here - renaming both halves is two PATCHes from one settings page
+   * and reads better as one event. `delete` is not folded and never should be:
+   * deleting an instance takes its sigil and that app's whole analytics
+   * history with it.
+   */
+  readonly app = $audit({
+    type: "app",
+    description: "App instances and their deploy targets",
+    actions: ["create", "update", "delete"],
+    coalesce: { actions: ["update"], window: "5m" },
+  });
+
+  /**
    * A sigil IS a credential: its token is what an enrolled app authenticates
    * with. `rotate` is the one update in this file for that reason, and the
    * retention is the longest for the same one - credential events are what you
@@ -249,6 +267,7 @@ export class LoreAudits {
       this.release,
       this.feedback,
       this.member,
+      this.app,
       this.sigil,
       this.estate,
       this.project,

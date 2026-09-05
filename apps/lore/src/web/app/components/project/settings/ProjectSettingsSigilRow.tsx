@@ -40,11 +40,18 @@ const ProjectSettingsSigilRow = (props: ProjectSettingsSigilRowProps) => {
       data-testid="sigil-row"
       className="p-0"
     >
+      {/*
+        `sigils.name` is the `"<app>/<env>"` mirror since #1767, so splitting it
+        on the first `/` is reading the contract rather than guessing: `/` is
+        outside `APP_NAME_PATTERN`, so neither half can contain one. A pre-v3
+        row that somehow escaped the backfill has no `/` and lands on the bare
+        `/apps/:app` redirect, which resolves to its default instance.
+      */}
       <Link
-        href={router.path("app", {
+        href={router.path("projectAppRedirect", {
           params: {
             projectSlug: project?.slug ?? "",
-            appName: sigil.name,
+            app: sigil.name.split("/")[0],
           },
         })}
         className="hover:bg-muted/60 flex flex-wrap items-center gap-3 px-4 py-3 transition-colors"

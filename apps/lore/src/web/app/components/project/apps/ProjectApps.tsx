@@ -8,11 +8,11 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Search, SignalHigh } from "lucide-react";
 
-import type { SigilResource } from "@/api/schemas/sigilResourceSchema.ts";
+import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
+import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
@@ -43,7 +43,7 @@ const filtersSchema = z.object({
 });
 
 /**
- * Every enrolled app in one table.
+ * Every deployed copy of every app in one table.
  *
  * Deliberately basic: this is the field being prepared, not the finished
  * surface. What lives under an app is going to move once deployments land.
@@ -54,7 +54,7 @@ const filtersSchema = z.object({
  * `SECTION_HREF_ROUTES` now, so the "Apps" segment that used to render as dead
  * text on every app page is a link, with no new chrome anywhere.
  *
- * **Static-data mode, so there is no second request.** `currentSigilsAtom` is
+ * **Static-data mode, so there is no second request.** `currentInstancesAtom` is
  * already filled by the project route's own loader, and `AlephaTable` filters,
  * sorts and pages an array it is handed in memory. ⚠️ `refresh()` does not
  * re-fire anything in this mode; a page that enrols or deletes has to hand the
@@ -66,16 +66,19 @@ const ProjectApps = () => {
   const dateTime = useInject(DateTimeProvider);
 
   const [project] = useStore(currentProjectAtom);
-  const [sigils] = useStore(currentSigilsAtom);
+  const [instances] = useStore(currentInstancesAtom);
 
   if (!project) {
     return null;
   }
 
-  const isSilent = (sigil: SigilResource) =>
-    !sigil.lastSeenAt ||
-    dateTime.nowMillis() - new Date(sigil.lastSeenAt).getTime() >
-      SILENT_AFTER_MS;
+  const isSilent = (instance: AppInstanceResource) => {
+    const lastSeenAt = instance.sigil?.lastSeenAt;
+    return (
+      !lastSeenAt ||
+      dateTime.nowMillis() - new Date(lastSeenAt).getTime() > SILENT_AFTER_MS
+    );
+  };
 
   return (
     <div
@@ -87,13 +90,13 @@ const ProjectApps = () => {
       // the inset went with it and this page starts where its siblings do.
       className="flex min-h-0 flex-1 flex-col overflow-hidden p-4"
     >
-      <AlephaTable<SigilResource>
+      <AlephaTable<AppInstanceResource>
         className="min-h-0 flex-1"
         // `undefined` is "the read failed", `[]` is "none enrolled". Only the
         // second is an empty state; the first is handled by the sidebar's own
         // "Couldn't load apps" entry, and an empty table here would claim a
         // project has no apps on the strength of a transient failure.
-        data={sigils ?? []}
+        data={instances ?? []}
         emptyMessage={tr("sigils.empty")}
         filters={{
           schema: filtersSchema,
@@ -135,49 +138,68 @@ const ProjectApps = () => {
         // The built-in field matching pairs a filter with the same-named
         // property, and neither of these is one: `search` spans the name and
         // the address, and `reporting` is a question about a timestamp.
-        filter={(sigil, values) => {
+        filter={(instance, values) => {
           const search = String(values.search ?? "").toLowerCase();
           if (search) {
-            const url = appUrl(sigil) ?? "";
+            const url = appUrl(instance) ?? "";
             if (
-              !sigil.name.toLowerCase().includes(search) &&
+              !instance.app.toLowerCase().includes(search) &&
+              !instance.env.toLowerCase().includes(search) &&
               !url.toLowerCase().includes(search)
             ) {
               return false;
             }
           }
-          if (values.reporting === "silent" && !isSilent(sigil)) return false;
-          if (values.reporting === "reporting" && isSilent(sigil)) return false;
+          if (values.reporting === "silent" && !isSilent(instance))
+            return false;
+          if (values.reporting === "reporting" && isSilent(instance)) {
+            return false;
+          }
           return true;
         }}
-        onRowClick={(sigil) =>
+        onRowClick={(instance) =>
           void router.push("app", {
-            params: { projectSlug: project.slug, appName: sigil.name },
+            params: {
+              projectSlug: project.slug,
+              app: instance.app,
+              env: instance.env,
+            },
           })
         }
         columns={{
-          name: {
+          app: {
             label: tr("apps.table.name"),
             sortable: true,
             className: "w-full max-w-0 min-w-40",
-            cell: (sigil) => (
+            cell: (instance) => (
               <Link
                 href={router.path("app", {
-                  params: { projectSlug: project.slug, appName: sigil.name },
+                  params: {
+                    projectSlug: project.slug,
+                    app: instance.app,
+                    env: instance.env,
+                  },
                 })}
                 className="block truncate font-medium"
               >
-                {sigil.name}
+                {instance.app}
               </Link>
+            ),
+          },
+          env: {
+            label: tr("apps.table.env"),
+            sortable: true,
+            cell: (instance) => (
+              <span className="truncate text-xs">{instance.env}</span>
             ),
           },
           url: {
             label: tr("apps.table.address"),
-            cell: (sigil) => {
-              // A Feedback-only app never posts to the ingest, so it has no
-              // detected host at all. That reads as unknown rather than as a
-              // broken link.
-              const url = appUrl(sigil);
+            cell: (instance) => {
+              // An instance with no sigil never posts to the ingest, so it has
+              // no detected host at all, and neither does a Feedback-only app.
+              // That reads as unknown rather than as a broken link.
+              const url = appUrl(instance);
               return url ? (
                 <span className="text-muted-foreground truncate text-xs">
                   {appUrlLabel(url)}
@@ -191,8 +213,8 @@ const ProjectApps = () => {
           },
           kinds: {
             label: tr("apps.table.reports"),
-            cell: (sigil) =>
-              sigil.kinds.length === 0 ? (
+            cell: (instance) =>
+              (instance.sigil?.kinds.length ?? 0) === 0 ? (
                 <span className="text-muted-foreground text-xs">-</span>
               ) : (
                 // ⚠️ `flex-nowrap`, not the `flex-wrap` this had. An app
@@ -206,7 +228,7 @@ const ProjectApps = () => {
                 // space to the right of the last column at the width this was
                 // reported from.
                 <span className="flex flex-nowrap items-center gap-1">
-                  {sigil.kinds.map((kind) => (
+                  {(instance.sigil?.kinds ?? []).map((kind) => (
                     <Badge
                       key={kind}
                       variant="outline"
@@ -221,16 +243,16 @@ const ProjectApps = () => {
           lastSeenAt: {
             label: tr("apps.table.lastSeen"),
             sortable: true,
-            cell: (sigil) => (
+            cell: (instance) => (
               <span className="flex flex-wrap items-center gap-2 text-xs whitespace-nowrap">
-                {sigil.lastSeenAt ? (
-                  String(l(sigil.lastSeenAt, { date: "ll" }))
+                {instance.sigil?.lastSeenAt ? (
+                  String(l(instance.sigil.lastSeenAt, { date: "ll" }))
                 ) : (
                   <span className="text-muted-foreground">
                     {tr("sigils.neverSeen")}
                   </span>
                 )}
-                {isSilent(sigil) && sigil.lastSeenAt && (
+                {isSilent(instance) && instance.sigil?.lastSeenAt && (
                   <Badge variant="outline" className="text-amber-600">
                     {tr("app.dashboard.silent")}
                   </Badge>
@@ -238,18 +260,23 @@ const ProjectApps = () => {
               </span>
             ),
           },
-          tokenPrefix: {
+          sigilId: {
             label: tr("apps.table.token"),
-            cell: (sigil) => (
-              <code className="font-mono text-xs">{sigil.tokenPrefix}…</code>
-            ),
+            cell: (instance) =>
+              instance.sigil ? (
+                <code className="font-mono text-xs">
+                  {instance.sigil.tokenPrefix}…
+                </code>
+              ) : (
+                <span className="text-muted-foreground text-xs">-</span>
+              ),
           },
           createdAt: {
             label: tr("app.dashboard.enrolled"),
             sortable: true,
-            cell: (sigil) => (
+            cell: (instance) => (
               <span className="text-muted-foreground text-xs whitespace-nowrap">
-                {String(l(sigil.createdAt, { date: "ll" }))}
+                {String(l(instance.createdAt, { date: "ll" }))}
               </span>
             ),
           },

@@ -11,6 +11,7 @@ import { HttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
 import { createElement } from "react";
 
+import type { AppController } from "../../api/controllers/AppController.ts";
 import type { AreaController } from "../../api/controllers/AreaController.ts";
 import type { BlightController } from "../../api/controllers/BlightController.ts";
 import type { DashboardController } from "../../api/controllers/DashboardController.ts";
@@ -26,6 +27,7 @@ import type { QuestController } from "../../api/controllers/QuestController.ts";
 import type { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import type { RoadmapController } from "../../api/controllers/RoadmapController.ts";
 import type { SigilController } from "../../api/controllers/SigilController.ts";
+import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
 import { currentAreasAtom } from "./atoms/currentAreasAtom.ts";
 import { currentAssignedQuestsAtom } from "./atoms/currentAssignedQuestsAtom.ts";
 import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
@@ -35,13 +37,13 @@ import { currentEpicsAtom } from "./atoms/currentEpicsAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
+import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
+import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
 import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
-import { currentSigilAtom } from "./atoms/currentSigilAtom.ts";
-import { currentSigilsAtom } from "./atoms/currentSigilsAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
@@ -89,6 +91,7 @@ export class AppRouter {
   releaseApi = $client<ReleaseController>();
   roadmapApi = $client<RoadmapController>();
   sigilApi = $client<SigilController>();
+  appApi = $client<AppController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
   dashboardApi = $client<DashboardController>();
@@ -409,6 +412,7 @@ export class AppRouter {
       this.projectBlights,
       this.projectApps,
       this.projectApp,
+      this.projectAppRedirect,
     ],
     /**
      * A **root-level** param: `/sds/quests/19`, not `/p/2/q/19`.
@@ -423,7 +427,7 @@ export class AppRouter {
      * shares this tree position. `RouterProvider.push` keeps ONE param name per
      * position — two routes naming it differently collapse onto one, the outer
      * wins, and the inner value arrives missing. Same trap documented on
-     * `projectApp`'s `:appName`.
+     * `projectApp`'s `:app` and `:env`.
      */
     path: "/:projectSlug",
     // Every project surface is member-gated server-side, so nothing under here
@@ -487,7 +491,7 @@ export class AppRouter {
         pendingFeedback,
         openQuests,
         epicRefs,
-        sigils,
+        instances,
         openBlights,
         areas,
       ] = await Promise.all([
@@ -538,7 +542,7 @@ export class AppRouter {
         // excluded from it on purpose. Without this number the sidebar
         // reported none of that work.
         //
-        // `undefined` on failure and NOT `[]`, like `currentSigilsAtom`: the
+        // `undefined` on failure and NOT `[]`, like `currentInstancesAtom`: the
         // badge must read "could not count" rather than "none planned".
         project.features?.epics
           ? this.epicApi
@@ -546,18 +550,18 @@ export class AppRouter {
               .catch(() => undefined)
           : Promise.resolve([]),
 
-        // The sidebar's Apps section. Member-readable (`listSigils` is gated
-        // on `project:read`, unlike every sigil mutation, which is owner-only)
+        // The project's app instances. Member-readable (`listApps` is gated
+        // on `project:read`, unlike every mutation, which is owner-only)
         // but `.catch` keeps a transient failure from taking the whole
         // project down with it: a degraded section costs a section, an
         // unhandled rejection costs the page.
         //
-        // `undefined` on failure, NOT `[]`: the sidebar and the Blights
-        // derivation below both need to tell "no apps" apart from "could not
-        // read the apps": see `currentSigilsAtom`.
+        // `undefined` on failure, NOT `[]`: the sidebar entry, Spotlight and
+        // the Blights derivation below all need to tell "no apps" apart from
+        // "could not read the apps": see `currentInstancesAtom`.
         project.features?.sigils
-          ? this.sigilApi
-              .listSigils({ params: { projectId: project.id } })
+          ? this.appApi
+              .listApps({ params: { projectId: project.id } })
               .then((r) => r.items)
               .catch(() => undefined)
           : Promise.resolve([]),
@@ -607,7 +611,7 @@ export class AppRouter {
         count: (epicRefs ?? []).filter((epic) => epic.status === "planned")
           .length,
       });
-      this.alepha.store.set(currentSigilsAtom, sigils);
+      this.alepha.store.set(currentInstancesAtom, instances);
       this.alepha.store.set(currentAreasAtom, areas);
 
       return {
@@ -624,7 +628,7 @@ export class AppRouter {
       this.alepha.store.set(currentQuestCountAtom, { count: 0 });
       this.alepha.store.set(currentEpicCountAtom, { count: 0 });
       this.alepha.store.set(currentEpicsAtom, undefined);
-      this.alepha.store.set(currentSigilsAtom, undefined);
+      this.alepha.store.set(currentInstancesAtom, undefined);
       this.alepha.store.set(currentAreasAtom, undefined);
     },
     errorHandler: (error) => {
@@ -677,28 +681,7 @@ export class AppRouter {
   });
 
   /**
-   * One enrolled app — the tab shell, and the loader every tab under it reads.
-   *
-   * The segment is the app's **name**, not its id: `/lore/apps/lore-staging`.
-   * Names are unique on `(projectId, name)` and constrained to
-   * `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` on the way in (see `appNameSchema`), so
-   * they survive a path unescaped. The HTTP API still addresses a sigil by
-   * UUID — rotate, delete and `?sigilId=` are unchanged; only this page moved.
-   *
-   * ⚠️ The path segment is `:appName`, not `:id` or `:name`, and that is
-   * load-bearing. `/:projectSlug` is already a param node at an outer position,
-   * and the router keeps one key per position: two routes naming different
-   * segments the same thing collapse onto one, the outer one wins, and the
-   * inner param arrives missing.
-   */
-  /**
-   * Every enrolled app, in one table.
-   *
-   * Reachable only from the breadcrumb: the sidebar already carries an Apps
-   * disclosure group with one child per app, so a list entry beside it would
-   * be a second door to the same information. `SECTION_HREF_ROUTES` in
-   * `projectViewRoutes.ts` is what turns the "Apps" crumb from dead text into
-   * a link.
+   * Every deployed copy of every app, in one flat table.
    *
    * Gated on `features.sigils` the same way `projectApp` is, and for the same
    * reason: the module toggle is the whole gate, so reaching this by URL with
@@ -724,9 +707,26 @@ export class AppRouter {
     },
   });
 
+  /**
+   * One deployed copy — the tab shell, and the loader every tab under it reads.
+   *
+   * ⚠️ **Two segments, `/apps/:app/:env`, and never a joined slug.**
+   * `APP_NAME_PATTERN` allows hyphens inside both halves, so
+   * `/apps/club-b14-production` is genuinely ambiguous between `club` +
+   * `b14-production` and `club-b14` + `production`. Both are legal rows that
+   * can coexist in one project, since the unique key is the pair, and both
+   * produce that identical slug: a lookup returns two rows and picks one
+   * arbitrarily. The collision is silent, so it can never be the URL.
+   *
+   * ⚠️ The segments are `:app` and `:env`, never `:id` or `:name`.
+   * `/:projectSlug` is already a param node at an outer position, and the
+   * router keeps one key per position: two routes naming different segments
+   * the same thing collapse onto one, the outer one wins, and the inner param
+   * arrives missing.
+   */
   projectApp = $page({
     name: "projectApp",
-    path: "/apps/:appName",
+    path: "/apps/:app/:env",
     children: () => [
       this.app,
       this.appAnalytics,
@@ -739,12 +739,16 @@ export class AppRouter {
     ],
     schema: {
       params: z.object({
-        appName: z.string(),
+        app: z.string(),
+        env: z.string(),
       }),
     },
     head: (props, previous) => {
-      const sigil = (props as { sigil?: { name?: string } } | undefined)?.sigil;
-      return { title: `${previous?.title ?? ""} › ${sigil?.name ?? "App"}` };
+      const instance = (
+        props as { instance?: { app?: string; env?: string } } | undefined
+      )?.instance;
+      const name = instance ? `${instance.app}/${instance.env}` : "App";
+      return { title: `${previous?.title ?? ""} › ${name}` };
     },
     lazy: () => import("./components/project/apps/AppLayout.tsx"),
     loader: async ({ params }) => {
@@ -758,30 +762,97 @@ export class AppRouter {
         throw new NotFoundError("Sigils not enabled for this project");
       }
 
-      // The list is the membership proof as well as the lookup: it is scoped to
-      // the project server-side, so an id that is not in it does not belong
-      // here, whoever it belongs to. Re-setting the atom also refreshes the
-      // sidebar when this page is deep-linked into (the project loader's own
-      // fetch may have failed, or another tab may have enrolled since).
-      const { items } = await this.sigilApi.listSigils({
-        params: { projectId: project.id },
-      });
-      const sigil = items.find((it) => it.name === params.appName);
-      if (!sigil) {
-        throw new NotFoundError("App not found");
+      // Two calls, and the list is not a lookup helper: `getApp` is the
+      // membership proof and the 404, and the list re-seeds the atom the
+      // sidebar and Spotlight read, which matters when this page is deep-linked
+      // into (the project loader's own fetch may have failed, or another tab
+      // may have created an instance since). They are concurrent, so the client
+      // folds them into one `/api/_batch`.
+      const [instance, listed] = await Promise.all([
+        this.appApi.getApp({
+          params: { projectId: project.id, app: params.app, env: params.env },
+        }),
+        this.appApi
+          .listApps({ params: { projectId: project.id } })
+          .then((r) => r.items)
+          .catch(() => undefined),
+      ]);
+      if (listed) {
+        this.alepha.store.set(currentInstancesAtom, listed);
       }
-      this.alepha.store.set(currentSigilsAtom, items);
-      this.alepha.store.set(currentSigilAtom, sigil);
+      this.alepha.store.set(currentInstanceAtom, instance);
 
       // Nothing analytics-shaped is fetched here. This loader runs for every
       // tab, Settings included, and it used to await a full `getInsights` —
       // ten aggregate queries against Analytics Engine — before any of them
       // rendered. The two tabs that show insights ask for them themselves
       // (`useAppInsights`), which is what makes the others free to open.
-      return { sigil };
+      return { instance };
     },
     onLeave: () => {
-      this.alepha.store.set(currentSigilAtom, undefined);
+      this.alepha.store.set(currentInstanceAtom, undefined);
+    },
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+  });
+
+  /**
+   * `/apps/:app` with no environment: a redirect to that app's default
+   * instance, so every link written before Apps v3 keeps working.
+   *
+   * The rule is `defaultAppInstance`, the same function `AppService` calls:
+   * **`production` if that env exists, else the first env by name.** It lives
+   * in its own module rather than on the service because this loader runs in
+   * the browser and cannot inject one, and a second copy of the rule is how two
+   * callers end up disagreeing about which page a link opens. An app with no
+   * instance at all is a 404, which is what a bare name that never existed
+   * should be.
+   *
+   * ⚠️ A SIBLING of `projectApp`, not a parent. `/apps/:app/:env` is the page;
+   * making this its parent would render a redirect shell above every tab.
+   * The router tries the longer static-shaped match first, so a two-segment
+   * URL never reaches this.
+   *
+   * `/apps/docs-production` becomes `/apps/docs-production/production` after
+   * the backfill: one hop, invisible.
+   */
+  projectAppRedirect = $page({
+    name: "projectAppRedirect",
+    path: "/apps/:app",
+    schema: {
+      params: z.object({
+        app: z.string(),
+      }),
+    },
+    lazy: () => import("./components/shared/RedirectPage.tsx"),
+    // Annotated `Promise<void>` because every path throws, so the inferred
+    // return type would be `never` and the children union would refuse it.
+    loader: async ({ params }): Promise<void> => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project?.features?.sigils) {
+        throw new NotFoundError("Sigils not enabled for this project");
+      }
+
+      const { items } = await this.appApi.listApps({
+        params: { projectId: project.id },
+      });
+      const target = defaultAppInstance(items, params.app);
+      if (!target) {
+        throw new NotFoundError("App not found");
+      }
+
+      throw new Redirection(
+        this.router.path("app", {
+          params: {
+            projectSlug: project.slug,
+            app: target.app,
+            env: target.env,
+          },
+        }),
+      );
     },
     errorHandler: (error) => {
       if (HttpError.is(error, 404)) {
@@ -817,7 +888,7 @@ export class AppRouter {
    * bar above both comes from `projectApp` either way.
    *
    * ⚠️ The segment is `:analyticsDimension`, not `:dimension` or `:name`, and
-   * that is load-bearing for the same reason `:appName` is. The router keeps
+   * that is load-bearing for the same reason `:app` and `:env` are. The router keeps
    * one key per position, so two routes naming different segments the same
    * thing collapse onto one and the inner param arrives missing. A name nobody
    * else will reach for is the whole protection.
@@ -944,15 +1015,16 @@ export class AppRouter {
   /**
    * The gate the two analytics tabs share.
    *
-   * Reads the open app rather than the project: Beacon is a per-app capability
-   * now. A 404 rather than a 403, for the same reason the deleted project-level
+   * Reads the open instance rather than the project: Beacon is a per-instance
+   * capability now, and an instance with no sigil at all carries none of them.
+   * A 404 rather than a 403, for the same reason the deleted project-level
    * Insights route was — the tab is hidden on this exact condition, so reaching
    * it by URL with Beacon off is asking for a page that does not exist here,
    * not one that is withheld.
    */
   protected assertBeacon(): void {
-    const sigil = this.alepha.store.get(currentSigilAtom);
-    if (!sigil?.kinds.includes("beacon")) {
+    const instance = this.alepha.store.get(currentInstanceAtom);
+    if (!instance?.sigil?.kinds.includes("beacon")) {
       throw new NotFoundError("Beacon is not enabled for this app");
     }
   }
@@ -964,8 +1036,8 @@ export class AppRouter {
    * without the other.
    */
   protected assertBlights(): void {
-    const sigil = this.alepha.store.get(currentSigilAtom);
-    if (!sigil?.kinds.includes("blights")) {
+    const instance = this.alepha.store.get(currentInstanceAtom);
+    if (!instance?.sigil?.kinds.includes("blights")) {
       throw new NotFoundError("Blights are not enabled for this app");
     }
   }
@@ -1389,7 +1461,7 @@ export class AppRouter {
       // refuse as a duplicate. A failed read is a broken page, and the
       // route's error state is what says so.
       //
-      // Not the same call as `currentSigilsAtom`'s deliberate
+      // Not the same call as `currentInstancesAtom`'s deliberate
       // `.catch(() => undefined)` in the project loader: that one costs a
       // sidebar SECTION on a page about something else, and it
       // distinguishes "empty" from "unreadable". Here the invitations ARE

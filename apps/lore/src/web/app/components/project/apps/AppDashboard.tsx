@@ -1,6 +1,6 @@
 import { useStore } from "alepha/react";
 
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppDashboardCapabilities from "./AppDashboardCapabilities.tsx";
 import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
 
@@ -13,7 +13,7 @@ import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
  * queries against Analytics Engine to show three counters. Those tiles live on
  * Analytics now, where a range control exists to explain them; nothing here
  * issues an analytics query at all, and everything it renders came with the
- * route's own sigil lookup.
+ * route's own instance lookup.
  *
  * Two blocks. Identity answers "what is this and is it alive". Capabilities
  * puts what the app SAYS it sends beside what this sink ACCEPTS, which is the
@@ -26,17 +26,22 @@ import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
  * and a run log still want this page once the rest of the deploy chain lands.
  */
 const AppDashboard = () => {
-  const [sigil] = useStore(currentSigilAtom);
+  const [instance] = useStore(currentInstanceAtom);
 
-  if (!sigil) {
+  if (!instance) {
     return null;
   }
 
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <AppDashboardIdentity sigil={sigil} />
-        <AppDashboardCapabilities sigil={sigil} />
+        <AppDashboardIdentity instance={instance} />
+        {/*
+          Capabilities are the sigil's, so the card only exists once one has
+          been minted. An instance without one shows identity alone; #1774
+          gives that state a next-steps body of its own.
+        */}
+        {instance.sigil && <AppDashboardCapabilities sigil={instance.sigil} />}
       </div>
     </div>
   );

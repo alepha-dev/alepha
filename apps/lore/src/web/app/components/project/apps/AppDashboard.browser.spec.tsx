@@ -8,10 +8,10 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import { defaultProjectFeatures } from "@/api/entities/projects.ts";
-import type { SigilResource } from "@/api/schemas/sigilResourceSchema.ts";
+import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import AppDashboard from "./AppDashboard.tsx";
 
@@ -46,14 +46,32 @@ class RecordingLinkProvider extends LinkProvider {
   }
 }
 
-const sigilOf = (over: Partial<SigilResource> = {}): SigilResource => ({
-  id: "00000000-0000-4000-8000-000000000001",
+/**
+ * An instance with a sigil on it, which is the state every case here is about:
+ * the Capabilities card only exists once one has been minted.
+ *
+ * `instanceOf` takes the SIGIL's own overrides, so the cases below read exactly as
+ * they did before the instance level existed.
+ */
+const instanceOf = (
+  sigil: Partial<NonNullable<AppInstanceResource["sigil"]>> = {},
+  instance: Partial<AppInstanceResource> = {},
+): AppInstanceResource => ({
+  id: "00000000-0000-4000-8000-000000000010",
   projectId: 1,
-  name: "docs-production",
-  tokenPrefix: "sg_lore_ab",
-  kinds: ["beacon", "vitals", "blights", "feedback"],
+  app: "docs",
+  env: "production",
   createdAt: "2026-08-01T10:00:00.000Z",
-  ...over,
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  sigilId: "00000000-0000-4000-8000-000000000001",
+  sigil: {
+    id: "00000000-0000-4000-8000-000000000001",
+    tokenPrefix: "sg_lore_ab",
+    kinds: ["beacon", "vitals", "blights", "feedback"],
+    createdAt: "2026-08-01T10:00:00.000Z",
+    ...sigil,
+  },
+  ...instance,
 });
 
 describe("AppDashboard", () => {
@@ -74,7 +92,7 @@ describe("AppDashboard", () => {
   };
 
   const show = async (
-    sigil: SigilResource,
+    instance: AppInstanceResource,
     responses: Record<string, unknown> = {},
   ) => {
     // Testing Library binds its queries to `document.body`, so a second render
@@ -82,7 +100,7 @@ describe("AppDashboard", () => {
     // deliberately render twice to compare two states.
     cleanup();
     const alepha = await mount();
-    alepha.store.set(currentSigilAtom, sigil as never);
+    alepha.store.set(currentInstanceAtom, instance as never);
     // The project is part of the page's context in production, so it is set
     // here too; nothing on this page reads it since Artifacts left for its own
     // tab, and a case that starts needing it must not pass by skipping the
@@ -126,7 +144,7 @@ describe("AppDashboard", () => {
    * a red test and a decision.
    */
   it("asks the server for nothing at all", async ({ expect }) => {
-    const { links, getByTestId } = await show(sigilOf());
+    const { links, getByTestId } = await show(instanceOf());
 
     expect(getByTestId("app-identity")).toBeTruthy();
     // Awaited, so an effect that fires after the first paint is caught too:
@@ -142,7 +160,7 @@ describe("AppDashboard", () => {
   it("reads an unreported config as unknown, never as off", async ({
     expect,
   }) => {
-    const { getAllByText, getByTestId } = await show(sigilOf());
+    const { getAllByText, getByTestId } = await show(instanceOf());
 
     const capabilities = getByTestId("app-capabilities");
     // One per capability row, on the "app sends" side only.
@@ -161,7 +179,7 @@ describe("AppDashboard", () => {
     expect,
   }) => {
     const { getByTestId, getAllByLabelText } = await show(
-      sigilOf({
+      instanceOf({
         // Lore accepts views only.
         kinds: ["beacon"],
         // The app says it sends everything.
@@ -190,7 +208,7 @@ describe("AppDashboard", () => {
     expect,
   }) => {
     const { queryByLabelText } = await show(
-      sigilOf({
+      instanceOf({
         kinds: ["beacon"],
         reportedConfig: {
           trackers: { views: true, errors: false, vitals: false },
@@ -210,14 +228,14 @@ describe("AppDashboard", () => {
 
   it("badges an app that has said nothing for a day", async ({ expect }) => {
     const stale = await show(
-      sigilOf({ lastSeenAt: "2020-01-01T00:00:00.000Z" }),
+      instanceOf({ lastSeenAt: "2020-01-01T00:00:00.000Z" }),
     );
     expect(stale.getByText("Silent")).toBeTruthy();
 
     // From the container's own clock rather than the wall clock, so the
     // assertion cannot drift under `travel()` or a pinned test time.
     const recent = await show(
-      sigilOf({
+      instanceOf({
         lastSeenAt: new Date(stale.dateTime.nowMillis() - 60_000).toISOString(),
       }),
     );
@@ -227,18 +245,23 @@ describe("AppDashboard", () => {
   it("says the address is not known rather than inventing one", async ({
     expect,
   }) => {
-    const unknown = await show(sigilOf());
+    const unknown = await show(instanceOf());
     expect(unknown.getByText("Not known yet")).toBeTruthy();
 
-    const detected = await show(sigilOf({ lastSeenHost: "docs.alepha.dev" }));
+    const detected = await show(
+      instanceOf({ lastSeenHost: "docs.alepha.dev" }),
+    );
     expect(detected.getByText("docs.alepha.dev")).toBeTruthy();
 
     // The operator's pin wins over the detected host, silently.
+    // The pin lives on the INSTANCE and the detected host on its sigil, which
+    // is the split Apps v3 made: an address describes the deployed copy, not
+    // the credential.
     const pinned = await show(
-      sigilOf({
-        lastSeenHost: "docs.alepha.dev",
-        url: "https://alepha.dev/docs",
-      }),
+      instanceOf(
+        { lastSeenHost: "docs.alepha.dev" },
+        { url: "https://alepha.dev/docs" },
+      ),
     );
     expect(pinned.getByText("alepha.dev/docs")).toBeTruthy();
   });

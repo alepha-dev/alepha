@@ -45,9 +45,9 @@ class RecordingLinkProvider extends LinkProvider {
  * the tag column links there only when a release with that tag exists.
  */
 class Routes {
-  app = $page({
-    name: "app",
-    path: "/:projectSlug/apps/:appName",
+  projectAppRedirect = $page({
+    name: "projectAppRedirect",
+    path: "/:projectSlug/apps/:app",
     component: () => null,
   });
   projectRelease = $page({

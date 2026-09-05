@@ -8,6 +8,7 @@ import {
   APP_NAME_PATTERN,
   SIGIL_NAME_PAIR_MAX_LENGTH,
 } from "../schemas/appNameSchema.ts";
+import { defaultAppInstance } from "../schemas/defaultAppInstance.ts";
 
 /**
  * What an app instance IS, stated once: how its two names are normalised, what
@@ -102,12 +103,10 @@ export class AppService {
    * The instance a bare `/apps/:app` means, and the one the `sigil_create` shim
    * mints into.
    *
-   * **`production` if that env exists, else the first env by name.** One seam
-   * for both callers so they cannot disagree, and one rule rather than a
-   * `projects.defaultEnv` column: v3 has no consumer that needs persistence,
-   * and a column on the cascade parent with no settings page to set it is the
-   * failure folio #1172 records. The column ships with epic #1's #1811, beside
-   * the `--env` fallback that reads it.
+   * The rule itself is `defaultAppInstance`, which the `/apps/:app` redirect
+   * also reads: that one runs in the browser and cannot inject this service, so
+   * the rule lives in a module both can import rather than being stated twice.
+   * This method is the server-side door onto it, and nothing more.
    */
   async defaultInstance(
     projectId: number,
@@ -115,9 +114,8 @@ export class AppService {
   ): Promise<AppInstance | undefined> {
     const rows = await this.instances.findMany({
       where: { projectId: { eq: projectId }, app: { eq: app } },
-      orderBy: [{ column: "env", direction: "asc" }],
     });
-    return rows.find((row) => row.env === "production") ?? rows[0];
+    return defaultAppInstance(rows, app);
   }
 
   /**

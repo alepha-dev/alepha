@@ -1089,6 +1089,7 @@ export default {
   "apps.filter.reporting": "Actives",
   "apps.filter.silent": "Silencieuses",
   "apps.table.name": "App",
+  "apps.table.env": "Env",
   "apps.table.address": "Adresse",
   "apps.table.reports": "Remontées",
   "apps.table.lastSeen": "Dernier rapport",

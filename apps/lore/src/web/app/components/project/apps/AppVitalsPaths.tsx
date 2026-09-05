@@ -11,8 +11,8 @@ import { useI18n } from "alepha/react/i18n";
 
 import type { InsightsController } from "@/api/controllers/InsightsController.ts";
 
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { VITAL_METRICS } from "./appVitalMetrics.ts";
 import { useAppInsightsFilters } from "./useAppInsights.ts";
@@ -35,7 +35,8 @@ const AppVitalsPaths = () => {
   const { tr } = useI18n<I18n, "en">();
   const insightsApi = useClient<InsightsController>();
   const [project] = useStore(currentProjectAtom);
-  const [sigil] = useStore(currentSigilAtom);
+  const [instance] = useStore(currentInstanceAtom);
+  const sigil = instance?.sigil;
   const { range, filters } = useAppInsightsFilters();
 
   // The same range control the tab already has, and no second one. `path` is
