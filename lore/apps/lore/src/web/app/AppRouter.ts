@@ -1330,6 +1330,7 @@ export class AppRouter {
       this.projectSettingsEpics,
       this.projectSettingsFeedback,
       this.projectSettingsSigils,
+      this.projectSettingsEstates,
       this.projectSettingsReleases,
       this.projectSettingsQuality,
       this.projectSettingsQuests,
@@ -1386,6 +1387,21 @@ export class AppRouter {
       ]);
       return { members, pendingInvitations };
     },
+  });
+
+  /**
+   * Where the project can deploy: the estates lent to it (epic #20). No
+   * loader, and no feature flag: the page lists what it holds itself, and an
+   * empty list is a normal state that says so in words.
+   */
+  projectSettingsEstates = $page({
+    name: "projectSettingsEstates",
+    path: "/estates",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Estates`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsEstatesPage.tsx"),
   });
 
   projectSettingsAreas = $page({

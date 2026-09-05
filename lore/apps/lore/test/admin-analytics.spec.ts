@@ -25,8 +25,16 @@ describe("Lore admin analytics surface", () => {
     // is a red test rather than a silent third row. `sigil_errors` joined on
     // 2026-09-04 (feedback #2085): the error series `sigil_error_groups`
     // structurally cannot hold, since that table keeps a running all-time
-    // total per fingerprint and never the occurrences.
-    expect(names).toEqual(["sigil_errors", "sigil_views", "sigil_vitals"]);
+    // total per fingerprint and never the occurrences. `estate_stats` joined on
+    // 2026-09-05 (epic #20, quest #1627): the series behind the estate gauge,
+    // keyed by estate rather than by sigil, and the first dataset here that
+    // no sigil page reads.
+    expect(names).toEqual([
+      "estate_stats",
+      "sigil_errors",
+      "sigil_views",
+      "sigil_vitals",
+    ]);
 
     const views = service.listDatasets().find((d) => d.name === "sigil_views");
     const dimensions = Object.keys(views?.dimensions.properties ?? {}).sort();

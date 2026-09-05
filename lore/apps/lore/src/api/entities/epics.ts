@@ -81,30 +81,37 @@ export const epics = $entity({
      * #1154's six-epic chain was a mermaid diagram pasted into a description.
      * Neither can be rendered, sorted or checked.
      *
-     * ## ⚠️ ADVISORY, not a gate. Decided deliberately, 2026-09-01.
+     * ## ⚠️ A GATE since 2026-09-04 (epic #31). It was advisory for three days.
      *
-     * `quests.dependsOn` is a real gate: while the predecessor is incomplete,
-     * `acceptQuest` refuses to assign the quest. Consistency argued for the
-     * same here - `setEpicStatus` refusing `active` while the predecessor is
-     * not `done` - and it was rejected, for three reasons:
+     * `EpicWorkflowService.assertCanBegin`: `setEpicStatus` refuses the move
+     * to `active` while the predecessor is not `done`. Evaluated at Begin and
+     * only there: the field stays writable in every phase because the roadmap
+     * draws it, and a predecessor written after Begin is an ordering statement
+     * rather than a constraint that was ever checked. A deleted predecessor is
+     * `SET NULL` and unblocks.
      *
-     * 1. **The units are not comparable.** A quest gate refuses ONE person
-     *    starting ONE task, and is worked around by finishing the predecessor.
-     *    Epics overlap by design: starting B while A is finishing is normal
-     *    planning, not a mistake, and a refusal there would make people stop
-     *    setting the field rather than start respecting it.
-     * 2. **`setEpicStatus` has no forbidden edge today**, on purpose - all
-     *    nine transitions are legal and its own doc says so. This would be the
-     *    first refusal on that surface, with no force flag to get past it.
-     * 3. **The direction is reversible one way only.** Adding the gate later
-     *    is additive; removing one people have built round is a behaviour
-     *    change to undo. Advisory first is the cheaper mistake.
+     * **The record of the decision it reversed.** On 2026-09-01 this column
+     * shipped advisory, deliberately, for three reasons: the units are not
+     * comparable (a quest gate refuses one person starting one task, epics
+     * overlap by design), `setEpicStatus` had no forbidden edge at all and this
+     * would have been the first, and adding a gate later is additive while
+     * removing one is a behaviour change, so advisory was the cheaper mistake.
+     * That comment ended with "if the gate is ever wanted, it goes on
+     * `setEpicStatus`, and this comment is the record of what was weighed".
      *
-     * So the roadmap draws "after Epic N" and nothing is refused. If the gate
-     * is ever wanted, it goes on `setEpicStatus`, and this comment is the
-     * record of what was weighed.
+     * **What changed the answer is evidence, not taste.** The advisory channel
+     * already existed elsewhere and measured zero: `quest_list` and `quest_get`
+     * stamp the epic's status on every quest, with a description spelling out
+     * that a planned epic's quests are not released, and epic #27 was worked
+     * to 9 of 9 quests completed while still `planned`, by an agent told that
+     * status on every single call. A note is decoration; a refusal is
+     * information. The second reason fell with it: `setEpicStatus` is a
+     * one-way ratchet now and refuses seven of its nine former edges, so this
+     * gate is one refusal among several rather than the first on the surface.
+     * The overlap concern is answered by the successor route: an epic that
+     * genuinely starts before its predecessor ends records no predecessor.
      *
-     * **Cycles ARE rejected on write**, which is not the same decision.
+     * **Cycles ARE rejected on write**, which was never the same decision.
      * `A → B → A` is not a workflow preference, it is a graph the renderer
      * cannot terminate on, and nothing else in a self-reference prevents it.
      * `EpicDependencyService` walks the chain on every write.

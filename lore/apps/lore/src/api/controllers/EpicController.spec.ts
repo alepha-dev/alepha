@@ -338,51 +338,165 @@ describe("EpicController", () => {
     expect(updated.title).toBe("New title");
   });
 
-  it("allows every status transition and manages the timestamps correctly", async ({
-    expect,
-  }) => {
+  /**
+   * ⚠️ This used to be "allows every status transition and manages the
+   * timestamps correctly", and walked planned, active, done, active,
+   * planned, asserting `activatedAt` survived the swings. Epic #31 made the
+   * lifecycle a one-way ratchet, so the case was rewritten into its
+   * opposite rather than deleted: the two forward edges succeed with their
+   * stamps, every other edge refuses, and a repeat is a no-op.
+   */
+  it("walks the two forward edges and stamps each once", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
     const epic = await createTestEpic(ctx.alepha, project, {
       status: "planned",
     });
 
-    // planned -> active
     const activated = await ctx.controller.setEpicStatus(
       { params: { id: epic.id }, body: { status: "active" } },
       { user },
     );
     expect(activated.status).toBe("active");
     expect(activated.activatedAt).toBeDefined();
-    const firstActivatedAt = activated.activatedAt;
+    expect(activated.completedAt).toBeUndefined();
 
-    // active -> done
     const done = await ctx.controller.setEpicStatus(
       { params: { id: epic.id }, body: { status: "done" } },
       { user },
     );
     expect(done.status).toBe("done");
     expect(done.completedAt).toBeDefined();
+    expect(done.activatedAt).toEqual(activated.activatedAt);
+  });
 
-    // done -> active
-    const reactivated = await ctx.controller.setEpicStatus(
-      { params: { id: epic.id }, body: { status: "active" } },
+  it("refuses every backward or skipping edge, naming the way forward", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const planned = await createTestEpic(ctx.alepha, project, {
+      status: "planned",
+    });
+    const active = await createTestEpic(ctx.alepha, project, {
+      status: "active",
+      activatedAt: "2026-09-04T00:00:00.000Z",
+    });
+    const done = await createTestEpic(ctx.alepha, project, {
+      status: "done",
+      activatedAt: "2026-09-04T00:00:00.000Z",
+      completedAt: "2026-09-04T01:00:00.000Z",
+    });
+    const move = (
+      epic: { id: number },
+      status: "planned" | "active" | "done",
+    ) =>
+      ctx.controller.setEpicStatus(
+        { params: { id: epic.id }, body: { status } },
+        { user },
+      );
+
+    await expect(move(planned, "done")).rejects.toThrow(
+      `Cannot move Epic #E${planned.number} from planned to done. Begin it first.`,
+    );
+    await expect(move(active, "planned")).rejects.toThrow(
+      `Cannot move Epic #E${active.number} from active to planned. Its plan is frozen. Shelve what will not be done, or create a new epic.`,
+    );
+    await expect(move(done, "active")).rejects.toThrow(
+      `Cannot move Epic #E${done.number} from done to active. An epic is concluded once. Create a new epic that depends on it.`,
+    );
+    await expect(move(done, "planned")).rejects.toThrow(
+      `Cannot move Epic #E${done.number} from done to planned. An epic is concluded once. Create a new epic that depends on it.`,
+    );
+
+    // Nothing moved, and `completedAt` is never cleared.
+    expect((await ctx.repos.epics.getById(planned.id)).status).toBe("planned");
+    expect((await ctx.repos.epics.getById(active.id)).status).toBe("active");
+    const sealed = await ctx.repos.epics.getById(done.id);
+    expect(sealed.status).toBe("done");
+    expect(sealed.completedAt).toBe("2026-09-04T01:00:00.000Z");
+  });
+
+  it("refuses to conclude while a quest is open, and concludes once every quest is resolved", async ({
+    expect,
+  }) => {
+    // The clean-conclude rule (epic #31). The count and the wording are
+    // pinned on `EpicWorkflowService.spec.ts`; this is about the refusal
+    // reaching the handler, the status not moving, and the way out being
+    // the resolution the message names rather than a status flip.
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const epic = await createTestEpic(ctx.alepha, project, {
+      status: "active",
+      activatedAt: "2026-09-04T00:00:00.000Z",
+    });
+    const open = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+    });
+    const held = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+      acceptedAt: "2026-09-04T00:00:00.000Z",
+      acceptedBy: project.createdBy,
+    });
+    await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+      acceptedAt: "2026-09-04T00:00:00.000Z",
+      completedAt: "2026-09-04T01:00:00.000Z",
+    });
+
+    await expect(
+      ctx.controller.setEpicStatus(
+        { params: { id: epic.id }, body: { status: "done" } },
+        { user },
+      ),
+    ).rejects.toThrow(
+      `Cannot conclude Epic #E${epic.number}: 2 quests are still open. Complete or shelve each one. An accepted quest is unassigned first, then shelved.`,
+    );
+    const still = await ctx.repos.epics.getById(epic.id);
+    expect(still.status).toBe("active");
+    expect(still.completedAt).toBeUndefined();
+
+    // Resolve both the way the message says: shelve the untouched one,
+    // complete the accepted one.
+    await ctx.repos.quests.updateById(open.id, {
+      shelvedAt: "2026-09-04T02:00:00.000Z",
+    });
+    await ctx.repos.quests.updateById(held.id, {
+      completedAt: "2026-09-04T02:00:00.000Z",
+    });
+
+    const done = await ctx.controller.setEpicStatus(
+      { params: { id: epic.id }, body: { status: "done" } },
       { user },
     );
-    expect(reactivated.status).toBe("active");
-    // The original activation timestamp survives a done -> active swing —
-    // it marks when the epic began, not when it was last active.
-    expect(reactivated.activatedAt).toEqual(firstActivatedAt);
-    expect(reactivated.completedAt).toBeUndefined();
+    expect(done.status).toBe("done");
+    expect(done.completedAt).toBeDefined();
+  });
 
-    // active -> planned
-    const reparked = await ctx.controller.setEpicStatus(
-      { params: { id: epic.id }, body: { status: "planned" } },
+  it("treats the same status as a no-op that writes nothing", async ({
+    expect,
+  }) => {
+    // The refusal is on the edge, not the value, and `epic_set_status` is
+    // declared idempotent. Before the ratchet, `done` to `done` re-stamped
+    // `completedAt` on every call.
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const done = await createTestEpic(ctx.alepha, project, {
+      status: "done",
+      activatedAt: "2026-09-04T00:00:00.000Z",
+      completedAt: "2026-09-04T01:00:00.000Z",
+    });
+    const before = await ctx.repos.epics.getById(done.id);
+
+    const result = await ctx.controller.setEpicStatus(
+      { params: { id: done.id }, body: { status: "done" } },
       { user },
     );
-    expect(reparked.status).toBe("planned");
-    expect(reparked.activatedAt).toEqual(firstActivatedAt);
-    expect(reparked.completedAt).toBeUndefined();
+
+    expect(result.status).toBe("done");
+    const after = await ctx.repos.epics.getById(done.id);
+    expect(after.updatedAt).toEqual(before.updatedAt);
+    expect(after.completedAt).toBe("2026-09-04T01:00:00.000Z");
   });
 
   it("orphans its quests and folios on delete instead of writing to them", async ({
@@ -453,6 +567,144 @@ describe("EpicController", () => {
         { user },
       ),
     ).rejects.toThrowError(BadRequestError);
+  });
+
+  /**
+   * The plan freeze (epic #31). The WORDING is pinned on
+   * `EpicWorkflowService.spec.ts`; these cases are about the refusal
+   * reaching each handler and the row staying where it was.
+   */
+  it("refuses to attach a quest to an active or concluded epic", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const active = await createTestEpic(ctx.alepha, project, {
+      status: "active",
+    });
+    const done = await createTestEpic(ctx.alepha, project, { status: "done" });
+    const quest = await createTestQuest(ctx.alepha, project);
+
+    await expect(
+      ctx.controller.attachQuest(
+        { params: { id: active.id }, body: { questId: quest.id } },
+        { user },
+      ),
+    ).rejects.toThrow(
+      `Cannot add a quest: Epic #E${active.number} is active. Its plan is frozen. File this in a new epic, or add an objective to a quest already in it.`,
+    );
+    await expect(
+      ctx.controller.attachQuest(
+        { params: { id: done.id }, body: { questId: quest.id } },
+        { user },
+      ),
+    ).rejects.toThrow(
+      `Cannot add a quest: Epic #E${done.number} is concluded. File this in a new epic.`,
+    );
+    expect((await ctx.repos.quests.getById(quest.id)).epicId).toBeUndefined();
+  });
+
+  it("refuses to detach a quest from an active epic, naming shelve", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const epic = await createTestEpic(ctx.alepha, project, {
+      status: "active",
+    });
+    const quest = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+    });
+
+    await expect(
+      ctx.controller.detachQuest(
+        { params: { id: epic.id, questId: quest.id } },
+        { user },
+      ),
+    ).rejects.toThrow(
+      `Cannot remove quest #Q${quest.shortId}: Epic #E${epic.number} is active. Its plan is frozen. Shelve it instead.`,
+    );
+    expect((await ctx.repos.quests.getById(quest.id)).epicId).toBe(epic.id);
+  });
+
+  it("a move between epics has to satisfy both ends", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const frozen = await createTestEpic(ctx.alepha, project, {
+      status: "active",
+    });
+    const open = await createTestEpic(ctx.alepha, project, {
+      status: "planned",
+    });
+    const alsoOpen = await createTestEpic(ctx.alepha, project, {
+      status: "planned",
+    });
+
+    // Out of a frozen plan into an open one: refused on the SOURCE. The
+    // MCP `quest_update` path is one `attachQuest` on the target, so this is
+    // the only place the source is ever checked.
+    const held = await createTestQuest(ctx.alepha, project, {
+      epicId: frozen.id,
+    });
+    await expect(
+      ctx.controller.attachQuest(
+        { params: { id: open.id }, body: { questId: held.id } },
+        { user },
+      ),
+    ).rejects.toThrow(
+      `Cannot remove quest #Q${held.shortId}: Epic #E${frozen.number} is active. Its plan is frozen. Shelve it instead.`,
+    );
+    expect((await ctx.repos.quests.getById(held.id)).epicId).toBe(frozen.id);
+
+    // Between two open plans: fine.
+    const free = await createTestQuest(ctx.alepha, project, {
+      epicId: open.id,
+    });
+    await ctx.controller.attachQuest(
+      { params: { id: alsoOpen.id }, body: { questId: free.id } },
+      { user },
+    );
+    expect((await ctx.repos.quests.getById(free.id)).epicId).toBe(alsoOpen.id);
+  });
+
+  it("re-attaching a quest already in a frozen epic is a no-op, not a refusal", async ({
+    expect,
+  }) => {
+    // `attachQuest` is idempotent, and the freeze must not turn a repeat of
+    // an earlier, legal attach into an error.
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const epic = await createTestEpic(ctx.alepha, project, {
+      status: "active",
+    });
+    const quest = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+    });
+
+    const result = await ctx.controller.attachQuest(
+      { params: { id: epic.id }, body: { questId: quest.id } },
+      { user },
+    );
+    expect(result.progress.total).toBe(1);
+  });
+
+  it("still deletes an active or concluded epic, detaching its quests", async ({
+    expect,
+  }) => {
+    // Deleting a plan is not editing one: the freeze refuses attach, detach
+    // and quest deletion, never the destructive, audited act on the epic.
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    for (const status of ["active", "done"] as const) {
+      const epic = await createTestEpic(ctx.alepha, project, { status });
+      const quest = await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+      });
+
+      await ctx.controller.deleteEpic({ params: { id: epic.id } }, { user });
+
+      expect((await ctx.repos.quests.getById(quest.id)).epicId).toBeUndefined();
+    }
   });
 
   it("attaches and detaches a folio", async ({ expect }) => {
