@@ -582,7 +582,20 @@ export class FormModel<T extends ZObject> {
     // Peel optional/nullable/default wrappers so the structural guards below
     // (`isObject`/`isArray`/`isString`/…, `.maxLength`, format) see the real
     // schema. Optionality is tracked separately via `isRequired`/`required`.
-    const field = z.schema.unwrap(rawField) as typeof rawField;
+    //
+    // ⚠️ The peeled wrappers may carry `.meta()`, which is what labels every
+    // control: `.meta()` binds to one instance, so `.default(x).meta({ title })`
+    // leaves the title on the `ZodDefault` this line throws away, and the field
+    // silently falls back to its prettified property name. `z.schema.meta`
+    // merges the chain, and re-tagging returns a NEW schema rather than
+    // mutating zod's registry for a shared instance.
+    const chainMeta = z.schema.meta(rawField);
+    const unwrapped = z.schema.unwrap(rawField) as typeof rawField;
+    const field = (
+      Object.keys(chainMeta).length
+        ? (unwrapped as any).meta(chainMeta)
+        : unwrapped
+    ) as typeof rawField;
 
     const isRequired = z.schema.requiredKeys(schema).includes(name) ?? false;
     const key = parent ? `${parent}.${name}` : name;

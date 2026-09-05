@@ -488,17 +488,49 @@ export const z = {
     /**
      * Everything a schema was tagged with via `.meta()`.
      *
-     * `format` above reads one key out of this; a walker that needs another —
-     * the `maxSize` a `z.file()` carries, say — would otherwise have to reach
+     * `format` above reads one key out of this; a walker that needs another -
+     * the `maxSize` a `z.file()` carries, say - would otherwise have to reach
      * into zod's internals at the call site, which is exactly the coupling this
      * namespace exists to prevent.
+     *
+     * ⚠️ The optional / nullable / default wrappers are walked, and the layers
+     * merged from the inside out. `.meta()` registers against ONE schema
+     * instance, and every wrapper is a new instance, so
+     * `z.enum([...]).default("a").meta({ title })` puts the title on the
+     * `ZodDefault` while `z.enum([...]).meta({ title }).default("a")` puts it
+     * on the enum. Reading either end alone makes half the call sites silently
+     * lose their annotation - a form field that falls back to its prettified
+     * property name is what that looks like.
+     *
+     * An outer layer wins on a key both carry, being the later annotation.
      */
     meta: (s: any): Record<string, any> => {
-      try {
-        return s?.meta?.() ?? {};
-      } catch {
-        return {};
+      const layers: any[] = [];
+      let cur = s;
+      while (
+        cur instanceof zod.ZodOptional ||
+        cur instanceof zod.ZodNullable ||
+        cur instanceof zod.ZodDefault
+      ) {
+        layers.push(cur);
+        cur =
+          typeof cur.unwrap === "function"
+            ? cur.unwrap()
+            : cur?._zod?.def?.innerType;
       }
+      layers.push(cur);
+
+      const out: Record<string, any> = {};
+      // Innermost first, so an outer wrapper's annotation overwrites it.
+      for (const layer of layers.toReversed()) {
+        try {
+          Object.assign(out, layer?.meta?.() ?? {});
+        } catch {
+          // A schema whose `.meta()` throws contributes nothing, rather than
+          // taking the whole read down with it.
+        }
+      }
+      return out;
     },
 
     // -- structural accessors ------------------------------------------------

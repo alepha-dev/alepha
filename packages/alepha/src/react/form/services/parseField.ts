@@ -71,9 +71,10 @@ export const parseField = (
   input: BaseInputField,
   options: ParseFieldOptions = {},
 ): FieldMeta => {
-  // Peel optional/nullable/default wrappers: structure, `.meta()`, format and
-  // constraints all live on the inner schema, not the wrapper. `required` is
-  // tracked separately via `input.required`.
+  // Peel optional/nullable/default wrappers: structure and constraints live on
+  // the inner schema, not the wrapper. `required` is tracked separately via
+  // `input.required`. `.meta()` is the exception and is read below, from the
+  // whole chain.
   const schema = z.schema.unwrap(input.schema) as ZType & {
     minLength?: number;
     maxLength?: number;
@@ -82,10 +83,11 @@ export const parseField = (
   };
 
   // Title / description / `$control` ride on zod's `.meta()` registry now
-  // (typebox kept them as plain schema properties). Read them from there.
-  const meta = (
-    typeof (schema as any).meta === "function" ? (schema as any).meta() : null
-  ) as Record<string, unknown> | null;
+  // (typebox kept them as plain schema properties). Read them through
+  // `z.schema.meta`, which merges the wrapper layers: `.meta()` binds to one
+  // instance, so `.default(x).meta({ title })` leaves the title on the
+  // `ZodDefault` and reading the unwrapped schema alone loses it.
+  const meta = z.schema.meta(input.schema) as Record<string, unknown> | null;
 
   const label =
     options.label ??
@@ -125,10 +127,16 @@ export const parseField = (
                 ? "string"
                 : undefined;
 
+  // `z.schema.format` reads the inner schema's own registry entry; `meta`
+  // carries whatever an outer wrapper was tagged with. Same reason as the
+  // label above: a `format` written after `.optional()` is on the wrapper.
+  const nativeFormat = z.schema.format(schema);
   const format =
-    typeof z.schema.format(schema) === "string"
-      ? z.schema.format(schema)
-      : undefined;
+    typeof nativeFormat === "string"
+      ? nativeFormat
+      : typeof meta?.format === "string"
+        ? meta.format
+        : undefined;
   const element = z.schema.element(schema) ?? z.schema.items(schema)[0];
   // An array of a UNION of objects is still an array of objects for editing
   // purposes — `z.array(z.union([...]))` is how a heterogeneous list (a
