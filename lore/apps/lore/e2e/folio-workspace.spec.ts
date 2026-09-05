@@ -1223,7 +1223,11 @@ test.describe("Folio workspace", () => {
       // merge into the sentence the assertions above depend on.
       await page.keyboard.press("ControlOrMeta+End");
       await page.keyboard.press("Enter");
-      await page.keyboard.type("[[Ward");
+      // `[[#Ward`, not `[[Ward`: since feedback #2112 the picker waits for
+      // the hash and one character. The query is still the TITLE - the hash
+      // is the author saying "a reference goes here" and is dropped before
+      // filtering, so title lookup is unaffected.
+      await page.keyboard.type("[[#Ward");
 
       // CodeMirror renders its completions as an `option`-role list.
       const option = page.getByRole("option", { name: folioTitle }).first();
