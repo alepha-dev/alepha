@@ -2189,3 +2189,108 @@ test.describe("Quest — the questline route", () => {
     });
   });
 });
+
+/**
+ * The quest table's column ORDER, which is the surface `AlephaTable` grew for
+ * quest #1871 and which this table is the first adopter of.
+ *
+ * ⚠️ It has to be an e2e. The reconciliation half is covered by browser specs
+ * in `ProjectQuestsTable.browser.spec.tsx`, but the MENU cannot be: it is a
+ * Base UI `ContextMenu` on a right-click, rendered into a portal, and jsdom
+ * neither dispatches the gesture the way a browser does nor lays out the
+ * popup. A completion source that returns the right options is not the same
+ * claim as a picker that opens - the same lesson quest #1869 cost a full
+ * debugging session to learn.
+ */
+test.describe("quest table columns", () => {
+  test("the header menu sorts, moves a column, and the order sticks", async ({
+    page,
+  }) => {
+    const t = Date.now();
+    await registerAndVerify(page, `cols${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `CO${t}`.slice(0, 20),
+    );
+    await apiPost(page, "createQuest", {
+      projectId,
+      title: `Ordered${t}`,
+      description: "seeded",
+      area: "Main",
+      priority: "medium",
+      objectives: [],
+      attachments: [],
+    });
+
+    // Wide enough that the table is not in its phone layout, where the header
+    // is not what a reader touches.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`/${slug}/quests`);
+    await expect(page.getByText(`Ordered${t}`)).toBeVisible({
+      timeout: 20_000,
+    });
+
+    const headers = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll("thead th")]
+          .map((th) => th.textContent?.trim())
+          .filter((label): label is string => !!label),
+      );
+
+    const priority = page
+      .locator("thead th")
+      .filter({ hasText: /^Priority$/ })
+      .first();
+
+    await test.step("a sortable column offers the three sort entries", async () => {
+      await priority.click({ button: "right" });
+
+      // The pair that a click on the header cannot express: click-cycling
+      // makes you guess which of three states you are in.
+      await expect(
+        page.getByRole("menuitem", { name: "Sort ascending" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("menuitem", { name: "Sort descending" }),
+      ).toBeVisible();
+      // Disabled while nothing is sorted, which is the state on arrival.
+      await expect(
+        page.getByRole("menuitem", { name: "Clear sort" }),
+      ).toBeDisabled();
+
+      await page.getByRole("menuitem", { name: "Sort descending" }).click();
+      await expect(page.getByText(`Ordered${t}`)).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
+    let moved: string[] = [];
+
+    await test.step("moving a column left reorders the header", async () => {
+      const before = await headers();
+      const at = before.indexOf("Priority");
+      expect(at).toBeGreaterThan(0);
+
+      await priority.click({ button: "right" });
+      await page.getByRole("menuitem", { name: "Move left" }).click();
+
+      await expect
+        .poll(async () => (await headers()).indexOf("Priority"), {
+          timeout: 10_000,
+        })
+        .toBe(at - 1);
+      moved = await headers();
+    });
+
+    await test.step("and the order survives a reload", async () => {
+      await page.reload();
+      await expect(page.getByText(`Ordered${t}`)).toBeVisible({
+        timeout: 20_000,
+      });
+
+      // The whole point of persisting it: a preference that is forgotten on
+      // navigation is not a preference.
+      expect(await headers()).toEqual(moved);
+    });
+  });
+});
