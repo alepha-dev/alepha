@@ -339,3 +339,83 @@
   --sidebar-border: oklch(0.33 0.05 15);
   --sidebar-ring: oklch(0.72 0.16 15);
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Scrollbars.
+ *
+ * Every scroller on this site is INSIDE something - a preview area, a props
+ * panel, a table body - and a platform scrollbar is 15px of chrome eating the
+ * frame the component is being shown in.
+ *
+ * `scrollbar-width` / `scrollbar-color` are the standard properties, honoured
+ * by Chrome since 121 and by Firefox throughout. The `::-webkit-` block below
+ * is not a fallback for them - it is what older Chromium and every current
+ * WebKit read, and the two never both apply, so they cannot disagree.
+ *
+ * Colours come from the theme tokens, so a scrollbar follows the six themes
+ * and both colour schemes rather than staying the one the OS drew.
+ * ────────────────────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}
+
+/* The intersection of two bars is a filled square by default, which reads as
+   a stray block in the corner of every preview that scrolls both ways. */
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * The Showcase props panel.
+ *
+ * `Control` in `layout="row"` gives a text input a flat `sm:w-64` - 256px,
+ * "the width every hand-written SettingsRow already passes". The rows in this
+ * 20rem panel are 293px, so the label column was squeezed to ZERO width and
+ * its text rendered on top of the input.
+ *
+ * The mismatch is that `sm:` is a VIEWPORT query deciding a CONTAINER
+ * question: on a 1280px window the component takes the wide-screen branch for
+ * a box a quarter that size. `Control` is right for the settings page it was
+ * built for, so this narrows the input here rather than changing it for the
+ * settings pages in Lore and the docs.
+ *
+ * Scoped to `.showcase-props` so it cannot reach a form in a preview - several
+ * of which ARE row-layout settings cards being shown at their intended width.
+ * ────────────────────────────────────────────────────────────────────────── */
+@media (width >= 40rem) {
+  /* The row is `minmax(0,1fr) auto`, and an `auto` track sizes to its content's
+     INTRINSIC width - for an `<input>` that is its `size` attribute, around
+     200px, whatever CSS width is set on it. So narrowing the input alone moves
+     nothing: the track has to be bounded here, and then the label column is
+     what is left rather than what is spare. */
+  .showcase-props [class*="grid-cols-"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 9rem);
+    gap: 0.75rem;
+  }
+
+  .showcase-props input,
+  .showcase-props textarea,
+  .showcase-props button[role="combobox"] {
+    width: 100%;
+    min-width: 0;
+  }
+}
