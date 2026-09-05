@@ -39,6 +39,63 @@ export interface AuditPrimitiveOptions {
    * ```
    */
   retentionDays?: number;
+
+  /**
+   * Merge a burst of identical events into one row carrying a count, instead
+   * of writing one row per event.
+   *
+   * A project's activity feed prints one row per recorded write, so a session
+   * editing one resource ten times in twenty minutes produces ten
+   * near-identical rows. They are genuine events, not duplicates, but a reader
+   * scrolling the feed learns nothing from the ninth. This folds them, and
+   * shrinks the table that grows without bound while it is at it.
+   *
+   * ⚠️ **Per ACTION, not per type.** A type declares a dozen verbs and only
+   * the churny ones should merge: `update` yes, `create` and `delete` no,
+   * because each of those is a distinct fact that happens once. The listed
+   * actions are validated as a subset of {@link AuditPrimitiveOptions.actions}
+   * at registration, the same way `log()` validates its argument, so a typo
+   * fails at boot rather than silently never merging.
+   *
+   * @example
+   * ```ts
+   * $audit({
+   *   type: "folio",
+   *   actions: ["create", "update", "delete"],
+   *   coalesce: { actions: ["update"], window: "5m" },
+   * });
+   * ```
+   */
+  coalesce?: AuditCoalesceOptions;
+}
+
+/**
+ * Which of a type's actions merge, and how close together they have to be.
+ */
+export interface AuditCoalesceOptions {
+  /**
+   * The actions that merge. Must be a subset of the type's declared actions.
+   */
+  actions: string[];
+
+  /**
+   * How long a row stays open to further events, as `<n>s`, `<n>m` or `<n>h`.
+   *
+   * ⚠️ Measured from the row's `createdAt`, never from its last event, and
+   * that is the load-bearing decision. A coalesced row can then never span
+   * more than this window, so its position in a feed sorted by `createdAt`
+   * is off by at most that much. Measuring from the last event would let a
+   * resource edited every four minutes for an hour claim a one-hour span
+   * while sitting at that hour's start.
+   *
+   * It also keeps the lookup a plain range on `createdAt`, which the existing
+   * composite indexes serve as a seek over a handful of rows.
+   *
+   * The cost is that a long burst becomes several rows rather than one, which
+   * is wanted: one row saying "x40 over an afternoon" hides a resource being
+   * picked up and put down repeatedly.
+   */
+  window: string;
 }
 
 /**
@@ -99,6 +156,13 @@ export class AuditPrimitive extends Primitive<AuditPrimitiveOptions> {
   }
 
   /**
+   * Which actions merge, and how close together, if any.
+   */
+  public get coalesce(): AuditCoalesceOptions | undefined {
+    return this.options.coalesce;
+  }
+
+  /**
    * Log an audit event for this type.
    *
    * `action` must be one of the type's declared {@link actions}: the admin
@@ -147,7 +211,11 @@ export class AuditPrimitive extends Primitive<AuditPrimitiveOptions> {
       description: this.options.description,
       actions: this.options.actions,
       retentionDays: this.options.retentionDays,
+      coalesce: this.options.coalesce,
     };
+    // Both the action subset and the window spec are checked in
+    // `registerType`, which is the one place every type passes through - so
+    // a malformed declaration fails at boot rather than at the first write.
     this.auditService.registerType(definition);
   }
 }

@@ -234,7 +234,18 @@ const ProjectActivityPage = () => {
                 // The absolute stamp on hover, because "3 days ago" is the
                 // right default and the wrong answer when somebody is
                 // reconstructing a sequence.
-                title={String(dt.of(row.createdAt).format("lll"))}
+                // A coalesced row names its SPAN, not just its start: the
+                // relative time is the first event, and without the end the
+                // reader cannot tell a single edit from twenty minutes of
+                // them. `updatedAt` is absent on a row standing for one
+                // event, where the start is the whole story.
+                title={
+                  row.updatedAt
+                    ? `${dt.of(row.createdAt).format("lll")} → ${dt
+                        .of(row.updatedAt)
+                        .format("lll")}`
+                    : String(dt.of(row.createdAt).format("lll"))
+                }
               >
                 {String(l(row.createdAt, { date: "fromNow" }))}
               </span>
@@ -253,6 +264,16 @@ const ProjectActivityPage = () => {
             cell: (row) => (
               <Badge variant="secondary" className="font-mono text-xs">
                 {row.action}
+                {/* A burst that `$audit`'s `coalesce` folded (#1872). Ten
+                    edits to one folio in twenty minutes used to be ten
+                    near-identical rows, and a reader learned nothing from
+                    the ninth. Hidden at 1, which is every row an app that
+                    never opted in ever writes. */}
+                {(row.eventCount ?? 1) > 1 && (
+                  <span className="text-muted-foreground ml-1 tabular-nums">
+                    ×{row.eventCount}
+                  </span>
+                )}
               </Badge>
             ),
           },

@@ -1,4 +1,5 @@
-import { $inject, Alepha } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, type Page } from "alepha/orm";
 import type { ServerRequest } from "alepha/server";
@@ -27,6 +28,21 @@ export interface AuditTypeDefinition {
    * forever. When `undefined`, the global default retention applies.
    */
   retentionDays?: number;
+
+  /**
+   * Which actions merge into one row, and how close together they have to be.
+   * See `$audit`'s `coalesce`.
+   */
+  coalesce?: { actions: string[]; window: string };
+
+  /**
+   * {@link coalesce}'s window, in milliseconds, parsed once at registration.
+   *
+   * Kept beside the raw spec rather than replacing it so `getRegisteredTypes`
+   * still answers what was declared, and so the parse happens at boot instead
+   * of on every write.
+   */
+  coalesceWindowMs?: number;
 }
 
 /**
@@ -42,6 +58,7 @@ export class AuditService {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly repo = $repository(audits);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
    * Registry of audit types and their allowed actions.
@@ -52,11 +69,47 @@ export class AuditService {
    * Register an audit type with its allowed actions.
    */
   public registerType(definition: AuditTypeDefinition): void {
+    if (definition.coalesce) {
+      // A subset of the declared actions, checked the way `log()` checks its
+      // argument: a typo here would otherwise be a rule that silently never
+      // fires, which is the worst kind to debug.
+      const unknown = definition.coalesce.actions.filter(
+        (action) => !definition.actions.includes(action),
+      );
+      if (unknown.length > 0) {
+        throw new AlephaError(
+          `Audit type '${definition.type}' coalesces unknown action(s) ${unknown.join(", ")}. Declared actions: ${definition.actions.join(", ")}.`,
+        );
+      }
+      definition.coalesceWindowMs = this.parseWindow(
+        definition.coalesce.window,
+        definition.type,
+      );
+    }
     this.auditTypes.set(definition.type, definition);
     this.log.debug("Audit type registered", {
       type: definition.type,
       actions: definition.actions,
     });
+  }
+
+  /**
+   * Parse a coalescing window into milliseconds.
+   *
+   * Seconds, minutes and hours only. A window measured in days would be a row
+   * standing for a whole day of edits while sitting at that day's start
+   * position in a feed sorted by `createdAt`, which is the failure the
+   * measured-from-`createdAt` rule exists to avoid.
+   */
+  protected parseWindow(spec: string, type: string): number {
+    const match = /^(\d+)([smh])$/.exec(spec);
+    if (!match) {
+      throw new AlephaError(
+        `Audit type '${type}' declares a malformed coalescing window '${spec}'; expected a count of seconds, minutes or hours such as '5m'.`,
+      );
+    }
+    const scale = { s: 1_000, m: 60_000, h: 3_600_000 }[match[2]] ?? 0;
+    return Number(match[1]) * scale;
   }
 
   /**
@@ -182,6 +235,18 @@ export class AuditService {
     });
 
     const success = data.success ?? true;
+
+    // A burst of identical events folds into the row it started, if the type
+    // asked for it. Everything below this line is unchanged for a type that
+    // did not: `coalesceInto` returns undefined without touching the database.
+    const merged = await this.coalesceInto(
+      { ...contextData, ...data },
+      success,
+    );
+    if (merged) {
+      return merged;
+    }
+
     const entry = await this.repo.create({
       ...contextData,
       ...data,
@@ -213,6 +278,126 @@ export class AuditService {
     });
 
     return entry;
+  }
+
+  /**
+   * Fold this event into an open row, or answer `undefined` to let the caller
+   * insert.
+   *
+   * ## What makes two events the same event
+   *
+   * `(scopeType, scopeId, type, action, userId, resourceType, resourceId)`,
+   * plus `success`. Anything else differing - a different actor, a different
+   * resource, a failure among successes - is a different fact and gets its own
+   * row.
+   *
+   * ## The window is measured from `createdAt`
+   *
+   * Not from the row's last event. That bounds a row's span to the window, so
+   * its position in a feed sorted by `createdAt desc` is off by at most that
+   * much, and it keeps this lookup a plain range the composite indexes serve
+   * as a seek: `(scopeType, scopeId, type, action, createdAt)` for scoped
+   * rows, `(type, action, createdAt)` for app-layer ones.
+   *
+   * ## No lock, deliberately
+   *
+   * Two concurrent writes can both miss and both insert, degrading to one row
+   * each - exactly today's behaviour. An audit write must never block the
+   * action it is recording, and a duplicated row is a far smaller cost than a
+   * contended one.
+   */
+  protected async coalesceInto(
+    data: CreateAudit,
+    success: boolean,
+  ): Promise<AuditEntity | undefined> {
+    const definition = this.auditTypes.get(data.type);
+    const windowMs = definition?.coalesceWindowMs;
+    if (
+      !windowMs ||
+      !definition?.coalesce?.actions.includes(data.action) ||
+      // Failures stay one row each: two failures are rarely the same failure,
+      // and `errorMessage` would have to be merged or dropped.
+      !success
+    ) {
+      return undefined;
+    }
+
+    // `nowMillis`, never `Date.now()`, so `travel()` moves the window in
+    // tests the way it moves everything else.
+    const since = new Date(this.dateTime.nowMillis() - windowMs).toISOString();
+
+    // ⚠️ Built key by key: a `where` carrying an explicit `undefined` throws,
+    // and most of these columns are legitimately absent.
+    const where: Record<string, unknown> = {
+      type: { eq: data.type },
+      action: { eq: data.action },
+      success: { eq: true },
+      createdAt: { gte: since },
+    };
+    for (const [column, value] of [
+      ["scopeType", data.scopeType],
+      ["scopeId", data.scopeId],
+      ["userId", data.userId],
+      ["resourceType", data.resourceType],
+      ["resourceId", data.resourceId],
+    ] as const) {
+      // `isNull` rather than an omitted key: omitting it would match rows
+      // that HAVE a value, folding one user's edit into another's.
+      where[column] = value === undefined ? { isNull: true } : { eq: value };
+    }
+
+    // `findMany` with a limit rather than `findOne`, which takes no ordering:
+    // several rows can be open at once when a burst spans a window boundary,
+    // and the newest is the one still accepting events.
+    const [open] = await this.repo.findMany({
+      where: where as never,
+      orderBy: { column: "createdAt", direction: "desc" },
+      limit: 1,
+    });
+    if (!open) {
+      return undefined;
+    }
+
+    const now = new Date(this.dateTime.nowMillis()).toISOString();
+    return await this.repo.updateById(open.id, {
+      eventCount: (open.eventCount ?? 1) + 1,
+      // The row's span. `createdAt` stays where it was, which is what keeps
+      // the feed's ordering honest.
+      updatedAt: now,
+      metadata: this.mergeMetadata(open.metadata, data.metadata),
+      // `description` keeps the FIRST value on purpose: it is a write-time
+      // snapshot (see `projectActivityRowSchema`), and a burst's identity was
+      // fixed when its first event landed.
+    } as never);
+  }
+
+  /**
+   * Merge a later event's metadata into the row's.
+   *
+   * `fields` is unioned, because the point of a coalesced update row is that
+   * it names everything the burst touched. Every other key is last-write-wins,
+   * which is the only rule that needs no knowledge of what the key means.
+   */
+  protected mergeMetadata(
+    existing: unknown,
+    incoming: Record<string, unknown> | undefined,
+  ): Record<string, unknown> | undefined {
+    if (!incoming) {
+      return (existing as Record<string, unknown>) ?? undefined;
+    }
+    const base = (existing as Record<string, unknown>) ?? {};
+    const merged: Record<string, unknown> = { ...base, ...incoming };
+    const before = base.fields;
+    const after = incoming.fields;
+    if (Array.isArray(before) || Array.isArray(after)) {
+      merged.fields = [
+        ...new Set([
+          ...(Array.isArray(before) ? before : []),
+          ...(Array.isArray(after) ? after : []),
+        ]),
+      ];
+    }
+    return merged;
   }
 
   /**

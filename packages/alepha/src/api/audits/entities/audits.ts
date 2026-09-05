@@ -146,6 +146,35 @@ export const audits = $entity({
      * Error message if the action failed.
      */
     errorMessage: z.text().optional(),
+
+    /**
+     * How many identical events this row stands for.
+     *
+     * `1` for every row unless its type opted the action into coalescing (see
+     * `$audit`'s `coalesce`), in which case a burst of identical events inside
+     * the window bumps this instead of inserting again. An MCP session editing
+     * one folio ten times in twenty minutes is ten genuine events and ten
+     * near-identical rows, and a reader learns nothing from the ninth.
+     *
+     * Defaulted rather than optional so every reader can add it up without a
+     * null check, and so an app that never opts in is unaffected beyond the
+     * column itself.
+     */
+    eventCount: db.default(z.integer(), 1),
+
+    /**
+     * When the LAST event folded into this row landed.
+     *
+     * Optional on purpose, and its absence is meaningful: a row that was never
+     * coalesced has one event, and `createdAt` already says when. Present, it
+     * gives the burst its span - `createdAt` to here - which is what the
+     * activity feed's tooltip reads.
+     *
+     * ⚠️ NOT `db.updatedAt()`. That stamps on every write including the
+     * insert, which would make every row in the table claim a span it does
+     * not have.
+     */
+    updatedAt: z.datetime().optional(),
   }),
   /**
    * Every index here is composite and ends on `createdAt`, because every
