@@ -176,9 +176,8 @@ func (r *Child) Start(s Spec) error {
 // Stop terminates an app gracefully, then forcefully.
 //
 // SIGTERM first and a real grace period: Alepha stops accepting, finishes
-// in-flight requests and jobs, then exits. This is what makes stopping an app
-// safe even when we were wrong about it being idle — the `idle` flag is only an
-// optimisation, graceful shutdown is the actual guarantee.
+// in-flight requests and jobs, then exits. Graceful shutdown is the guarantee
+// that stopping an app is safe, whatever reason it was stopped for.
 func (r *Child) Stop(key string, grace time.Duration) error {
 	r.mu.Lock()
 	cmd, ok := r.procs[key]

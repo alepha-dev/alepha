@@ -77,9 +77,8 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// file-first, fallback app. One rule that covers assets, prerendered HTML,
-	// favicon, the PWA manifest and the service worker — and it is what keeps
-	// scale-to-zero viable, since a page pulls 10-30 asset requests that must
-	// never wake a sleeping process.
+	// favicon, the PWA manifest and the service worker: a page pulls 10-30 of
+	// them, and none has to reach the app process to be answered.
 	if path, ok := p.findStatic(app, r.URL.Path); ok {
 		// Counted without inspecting the response: findStatic has already
 		// stat'd the file, so what follows is a 200, a 304 or a range — all of
