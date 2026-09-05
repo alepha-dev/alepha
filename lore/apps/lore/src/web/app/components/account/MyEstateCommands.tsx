@@ -60,7 +60,7 @@ const MyEstateCommands = (props: MyEstateCommandsProps) => {
     if (!canRestart || busy) return;
     setBusy(true);
     try {
-      const queued = await api.restartEstateApp({
+      const queued = await api.enqueueEstateCommand({
         params: { estateId: props.estateId },
         body: {
           kind: "restart",
