@@ -214,68 +214,6 @@ jobs:
         timeout-minutes: 10
         run: yarn e2e-cli
 
-      # ────────────────────────────────────────────────────────────────
-      # Build in, artifact out. `yarn build` above already produced
-      # `apps/lore/dist`, so this packs it and stores it in the project's
-      # registry: `lore artifacts push` packs the workspace itself
-      # rather than requiring a separate step, because a tarball on disk and
-      # the build in `dist/` can differ and the push would happily ship the
-      # older one.
-      #
-      # ⚠️ **Lore does not build.** The registry is a place to keep an
-      # artifact, not a builder: no git clone, no install, no build step on
-      # the far side. GitHub Actions already does that well and for free, and
-      # duplicating it would mean per-project repo credentials, dependency
-      # caching and an unbounded cost surface. See folio #73.
-      #
-      # ⚠️ **This is deliberately NOT in `deploy-lore-production`.** That job's
-      # value is its `needs: [verify, e2e]` gate on an app that ships to
-      # production with no human in the loop, and Lore deploying itself
-      # THROUGH Lore is circular: a release that boots broken takes out the
-      # only way to repair it. This runs alongside and places nothing.
-      #
-      # The artifact is therefore the `node` build this job already made, not
-      # the workerd bundle `platform up` produces. Its manifest says so, which
-      # is the whole reason the runtime is read from the manifest and never
-      # from a flag or a filename.
-      #
-      # ⚠️ `vars.LORE_ARTIFACT_PROJECT` gates it, and the gate is the point.
-      # The step ships INERT: set the variable to a throwaway project, watch a
-      # run land, and only then point it at a real one. It is also the ONLY
-      # step in this workflow that overrides the `LORE_PROJECT` default, and
-      # it has to: the whole idea is that this artifact lands somewhere
-      # disposable until it is proven. That is quest #1202's
-      # "prove it on a throwaway project before any real one" expressed as a
-      # property of the workflow rather than as a note somebody has to
-      # remember.
-      #
-      # `continue-on-error` and skipped on pull requests, like the coverage
-      # push above and for the same reason: a red push is a warning annotation
-      # that blocks no deploy and reddens no fork PR. The secret is passed
-      # through `env` and never echoed - the command prints the digest, not
-      # the credential.
-      #
-      # Tagged `latest`, which replaces in place and IS the retention policy:
-      # one row and one stored object per app, with no sweep job. A per-commit
-      # tag is deliberately absent - every tag but `latest` is write-once, so
-      # tagging each commit would keep every build ever made, which is exactly
-      # the "keep everything" degeneration quest #1518 was written to end. The
-      # commit is recorded ON the row instead, and the push writes the sha256
-      # to `$GITHUB_OUTPUT` for a later step that means to pin these exact
-      # bytes. A version tag belongs on a release, not on a commit.
-      - name: Push Artifact To Lore
-        if: github.event_name != 'pull_request' && vars.LORE_ARTIFACT_PROJECT != ''
-        continue-on-error: true
-        working-directory: apps/lore
-        run: >-
-          yarn lore artifacts push
-          --project "$LORE_ARTIFACT_PROJECT"
-          --app lore
-          --tag latest
-        env:
-          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
-          LORE_ARTIFACT_PROJECT: ${{ vars.LORE_ARTIFACT_PROJECT }}
-
   # ──────────────────────────────────────────────────────────────────────
   # The self-hosted Lore image. `docker run -p 3000:3000 -v lore:/data <image>`
   # is the whole promise of that image, and nothing in `yarn v` exercises it:
@@ -523,6 +461,67 @@ jobs:
         working-directory: apps/ui
         run: yarn alepha platform up --env production
 
+  # ---------------------------------------------------------------------------
+  # shop: the artifact only, and the job name says where this is going.
+  #
+  # `apps/examples/shop` declares `shop.alepha.dev` in its `platform()` block
+  # and nothing deploys it. This job builds the bundle that deploy would upload
+  # and stores it in Lore, so the foundation for deploying THROUGH Lore exists
+  # before anything depends on it. When shop really deploys, the deploy step
+  # goes in here beside the push, and the job is already named for it.
+  #
+  # ⚠️ The build is `-t cloudflare`, and that is the whole point of the job.
+  # `yarn build` in `e2e` produces a `node` bundle; shop runs on Workers, so a
+  # node artifact of it is a build nobody can deploy. The manifest records
+  # `runtime: workerd`, which is where Lore reads it from - there is no
+  # `--runtime` flag anywhere and nothing parses a filename.
+  #
+  # No Cloudflare credentials: this builds and never talks to the API. The
+  # bindings the build emits come from env vars (`DATABASE_URL` and friends),
+  # not from a lookup, so an unset one costs a binding in the generated
+  # `wrangler.jsonc` rather than a failure.
+  #
+  # Gated on `verify` only, like docs and ui: nothing here touches e2e's
+  # territory, and nothing gates on this job in turn - a failed push blocks no
+  # deploy, which is the property that lets it be non-swallowing.
+  #
+  # Tagged `latest` - the CLI's default, so no `--tag`. It replaces in place
+  # and IS the retention policy: one row and one stored object, no sweep job.
+  # `release.yml` is where version tags are pushed. No `--app` or `--project`
+  # either: the name is the slugified `package.json` name of the working
+  # directory, and the project is the workflow-level `LORE_PROJECT` above.
+  # ---------------------------------------------------------------------------
+  deploy-shop-production:
+    needs: [verify]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # `alepha.meta.version` reads the git tag on the built commit, and
+          # the default checkout passes --no-tags, so without this the artifact
+          # would report "latest" as its version.
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Prepare
+        run: yarn copy
+
+      - name: Build
+        working-directory: apps/examples/shop
+        run: yarn alepha build -t cloudflare
+
+      - name: Push shop artifact to Lore
+        working-directory: apps/examples/shop
+        run: yarn lore artifacts push
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
   deploy-lore-production:
     needs: [verify, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -563,6 +562,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+
           TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
           # No SIGIL_SINK here on purpose. Lore IS the sink, and a Cloudflare
           # Worker cannot fetch its own hostname, so pointing Lore at an origin
