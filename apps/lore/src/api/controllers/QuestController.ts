@@ -2514,7 +2514,12 @@ export class QuestController {
         objectives,
         history,
       });
-      await this.logQuest("objective", updated, user, {
+      // `update` with `fields`, not an `objective` verb of its own: ticking a
+      // box is a field edit like any other, so it reads like one in the feed
+      // and folds into the same 5-minute bursts as the rest of the quest's
+      // edits (#1872).
+      await this.logQuest("update", updated, user, {
+        fields: ["objectives"],
         objectiveId: target.id,
         completed: target.completed,
       });
@@ -2573,7 +2578,10 @@ export class QuestController {
           },
         ],
       });
-      await this.logQuest("objective", updated, user, { edited: true });
+      await this.logQuest("update", updated, user, {
+        fields: ["objectives"],
+        edited: true,
+      });
 
       return this.mapQuestToResource(updated);
     },

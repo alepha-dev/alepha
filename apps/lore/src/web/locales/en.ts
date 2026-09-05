@@ -309,6 +309,25 @@ export default {
   "project.menu.quests": "Quests",
   "project.menu.kanban": "Kanban",
   "project.menu.reports": "Reports",
+  "project.menu.artifacts": "Artifacts",
+  "artifacts.list.empty": "No artifact matches these filters.",
+  "artifacts.truncated":
+    "This list is cut at the read limit, so it is not every artifact this project holds. Narrow it by app or by tag to see the rest.",
+  "artifacts.empty.description":
+    "Nothing has been pushed yet. Artifacts arrive from CI, so this page stays empty until a build is published:",
+  "artifacts.filter.search": "Search a tag or a commit",
+  "artifacts.filter.app": "App",
+  "artifacts.filter.allApps": "All apps",
+  "artifacts.filter.appCount": "$1 apps",
+  "artifacts.filter.runtime": "Runtime",
+  "artifacts.filter.allRuntimes": "All runtimes",
+  "artifacts.filter.runtimeCount": "$1 runtimes",
+  "artifacts.table.app": "App",
+  "artifacts.table.tag": "Tag",
+  "artifacts.table.runtime": "Runtime",
+  "artifacts.table.size": "Size",
+  "artifacts.table.pushed": "Pushed",
+  "artifacts.table.commit": "Commit",
   "project.menu.folios": "Folios",
   "project.menu.settings": "Settings",
 
@@ -1334,6 +1353,10 @@ export default {
   "estates.detach.confirmDescription":
     "The project can no longer deploy through it. Nothing already deployed is touched: the machine keeps running whatever it runs.",
   "estates.detach.confirm": "Detach",
+  "account.estates.create.cancel": "Cancel",
+  "estates.secret.description":
+    "This is the only time it is shown. Store it somewhere safe before closing this dialog.",
+  "estates.secret.copied": "Copied",
   "estates.secret.title":
     "Your estate's secret. It is shown once: run `bay connector set <lore-url> <secret>` on the machine.",
   "estates.secret.copy": "Copy secret",
@@ -1352,6 +1375,7 @@ export default {
   "account.estates.create.description":
     "A bay estate: a machine running `bay serve`. It starts stats-only, with deploys off, until you allow them.",
   "account.estates.create.submit": "Create",
+  "account.estates.new": "New estate",
   "account.estates.secretPrefix": "secret $1…",
   "account.estates.gauge": "CPU $1% · memory $2%",
   "account.estates.gauge.none": "no stats yet",

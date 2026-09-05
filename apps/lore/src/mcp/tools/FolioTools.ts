@@ -7,6 +7,11 @@ import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioAttachmentController } from "../../api/controllers/FolioAttachmentController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
+// The one definition of an `assets/<name>` reference, shared with the editor
+// so a path written by an agent and one written by a human are the same
+// string. Precedent for reaching across: `FolioAttachmentService` imports it
+// from here too. It is a pure function with no imports of its own.
+import { folioAssetPath } from "../../web/app/components/folios/folioAssetReference.ts";
 import { DIAGRAM_CAPABILITY } from "../schemas/diagramCapability.ts";
 import {
   folioEpicRefSchema,
@@ -14,6 +19,7 @@ import {
   folioRefParamsSchema,
   folioRefSchema,
 } from "../schemas/index.ts";
+import { AttachmentUploadService } from "../services/AttachmentUploadService.ts";
 import { DiagramCheckService } from "../services/DiagramCheckService.ts";
 import { EpicRefService } from "../services/EpicRefService.ts";
 import { ProjectTools } from "./ProjectTools.ts";
@@ -62,6 +68,7 @@ export class FolioTools {
   protected readonly epicController = $inject(EpicController);
   protected readonly epicRefs = $inject(EpicRefService);
   protected readonly diagrams = $inject(DiagramCheckService);
+  protected readonly attachmentUpload = $inject(AttachmentUploadService);
   protected readonly projectTools = $inject(ProjectTools);
 
   /**
@@ -816,13 +823,103 @@ export class FolioTools {
   // ---------------------------------------------------------------------------
   // folio_attachment_* tools: a folio's attachments
   //
-  // Uploads are out of MCP scope — agents can't post bytes efficiently
-  // through the JSON-RPC channel. The list / rename / delete tools are the
-  // meaningful surface: agents inspect what humans uploaded and organize
-  // it. Markdown reaches an attachment as `![name](assets/<name>)` for an
-  // image or `[name](assets/<name>)` for anything else; the old `blob:`
-  // embed and wiki-link forms are gone (epic #32).
+  // Markdown reaches an attachment as `![name](assets/<name>)` for an image
+  // or `[name](assets/<name>)` for anything else; the old `blob:` embed and
+  // wiki-link forms are gone (epic #32).
+  //
+  // Uploads were out of scope here until `quest_attachment_add` proved the
+  // channel: base64 through a JSON-RPC frame is a bad way to move bytes,
+  // which is an argument for a size ceiling and not for making an agent
+  // paste a diagram into the body as text. Same 2 MB cap, same validation,
+  // shared with the quest surface through `AttachmentUploadService`.
   // ---------------------------------------------------------------------------
+
+  folio_attachment_add = $tool({
+    description:
+      "Attach a file to a folio: a diagram, a CSV of measurements, a screenshot, an HTML mockup. Embed it in the folio body afterwards with the `path` this returns — `![name](assets/<name>)` for an image, `[name](assets/<name>)` for anything else — since a file nothing references is a file nobody finds. " +
+      "Any file type, capped at 2 MB decoded, so put anything bigger where it belongs and link to it. A name already taken on the folio is auto-suffixed (`chart (1).png`), so write the returned `name` / `path` rather than the one you sent.",
+    title: "Attach a file to a folio",
+    annotations: { readOnlyHint: false, destructiveHint: false },
+    schema: {
+      params: z.object({
+        project: z.integer().optional(),
+        project_name: z.string().optional(),
+        folio_shortId: z.integer(),
+        name: z
+          .string()
+          .min(1)
+          .max(200)
+          .describe(
+            "File name, extension included. It is what the `assets/` reference is addressed by, so it is the name a reader sees.",
+          ),
+        mimeType: z
+          .string()
+          .describe('Media type, e.g. "image/png" or "text/csv".'),
+        data: z
+          .string()
+          .describe("The file's bytes, base64, with no data-URL prefix."),
+      }),
+      result: z.object({
+        shortId: z
+          .integer()
+          .describe(
+            "Per-project attachment id — what `folio_attachment_rename` / `_delete` address it by.",
+          ),
+        name: z.string().describe("The name it was stored under."),
+        path: z
+          .string()
+          .describe("The markdown reference: `assets/<name>`, URL-encoded."),
+        mimeType: z.string(),
+        size: z.number(),
+      }),
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      const folioId = await this.resolveFolioId({
+        shortId: params.folio_shortId,
+        project: projectId,
+      });
+
+      // A protected folio's `content` is a client-side encryption envelope
+      // the server cannot read, so it can neither hold the reference this
+      // returns nor have it repointed on a later rename — which is why the
+      // editor hides its upload handler there. MCP is not the way around
+      // that.
+      const folio = await this.folioController.get({ params: { id: folioId } });
+      if (folio.protected) {
+        throw new BadRequestError(
+          `Folio #${params.folio_shortId} is protected: its content is encrypted client-side, so an attachment could never be referenced from it. Attach the file to an unprotected folio instead.`,
+        );
+      }
+
+      // Validated before a single byte reaches the bucket, so a refusal
+      // leaves nothing behind.
+      const file = this.attachmentUpload.toFile(params, "folio");
+
+      // Two calls, same as the editor: the bytes go to the bucket, then the
+      // file is placed in this folio under a name unique to it.
+      const uploaded = await this.attachmentController.uploadFolioAttachment({
+        body: { file },
+      });
+      const attachment = await this.attachmentController.registerAttachment({
+        params: { projectId },
+        body: { fileId: uploaded.fileId, name: params.name, folioId },
+      });
+
+      return {
+        shortId: attachment.shortId,
+        // `register` renames on collision, so this is the stored name and
+        // not the requested one.
+        name: attachment.name,
+        path: folioAssetPath(attachment.name),
+        mimeType: file.type,
+        size: file.size,
+      };
+    },
+  });
 
   folio_attachment_list = $tool({
     description:

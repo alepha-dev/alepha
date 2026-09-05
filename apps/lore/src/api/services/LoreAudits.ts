@@ -73,6 +73,12 @@ export class LoreAudits {
     type: "project",
     description: "Project lifecycle",
     actions: ["create", "update", "delete"],
+    // A session editing one resource repeatedly is the everyday case here -
+    // an MCP agent, or somebody working through a form - so `update` folds
+    // into one row with a count. Five minutes, measured from the row's
+    // `createdAt`, so a long editing session becomes several rows rather than
+    // one that claims an afternoon.
+    coalesce: { actions: ["update"], window: "5m" },
   });
 
   /**
@@ -81,6 +87,18 @@ export class LoreAudits {
    * `update` carries the changed field names in `metadata.fields` - that is
    * what makes a row readable without diffing anything, and it is why one
    * `update` action covers every field edit instead of one action per field.
+   *
+   * ⚠️ `objective` was one of these verbs and is gone: ticking a box is a
+   * field edit like any other, so it writes `update` with
+   * `metadata.fields: ["objectives"]` and folds into the same bursts. Rows
+   * already written keep `action: "objective"` and still render, since the
+   * feed prints `row.action` raw; they simply stop being offered in the
+   * filter. No backfill.
+   *
+   * Only `update` coalesces. The lifecycle verbs each happen once and are
+   * each a distinct fact: two `complete`s in five minutes is a quest
+   * completed, reopened and completed again, which is exactly what a reader
+   * would want to see as two rows.
    */
   readonly quest = $audit({
     type: "quest",
@@ -97,16 +115,27 @@ export class LoreAudits {
       "shelve",
       "unshelve",
       "comment",
-      "objective",
       "attachment",
       "commit",
     ],
+    // A session editing one resource repeatedly is the everyday case here -
+    // an MCP agent, or somebody working through a form - so `update` folds
+    // into one row with a count. Five minutes, measured from the row's
+    // `createdAt`, so a long editing session becomes several rows rather than
+    // one that claims an afternoon.
+    coalesce: { actions: ["update"], window: "5m" },
   });
 
   readonly epic = $audit({
     type: "epic",
     description: "Epic lifecycle",
     actions: ["create", "update", "delete", "status", "attach", "detach"],
+    // A session editing one resource repeatedly is the everyday case here -
+    // an MCP agent, or somebody working through a form - so `update` folds
+    // into one row with a count. Five minutes, measured from the row's
+    // `createdAt`, so a long editing session becomes several rows rather than
+    // one that claims an afternoon.
+    coalesce: { actions: ["update"], window: "5m" },
   });
 
   /**
@@ -118,6 +147,12 @@ export class LoreAudits {
     type: "folio",
     description: "Folio lifecycle",
     actions: ["create", "update", "delete", "revert", "move"],
+    // A session editing one resource repeatedly is the everyday case here -
+    // an MCP agent, or somebody working through a form - so `update` folds
+    // into one row with a count. Five minutes, measured from the row's
+    // `createdAt`, so a long editing session becomes several rows rather than
+    // one that claims an afternoon.
+    coalesce: { actions: ["update"], window: "5m" },
   });
 
   /**
@@ -130,6 +165,12 @@ export class LoreAudits {
     type: "release",
     description: "Release lifecycle",
     actions: ["create", "update", "delete", "publish", "reopen"],
+    // A session editing one resource repeatedly is the everyday case here -
+    // an MCP agent, or somebody working through a form - so `update` folds
+    // into one row with a count. Five minutes, measured from the row's
+    // `createdAt`, so a long editing session becomes several rows rather than
+    // one that claims an afternoon.
+    coalesce: { actions: ["update"], window: "5m" },
   });
 
   /**

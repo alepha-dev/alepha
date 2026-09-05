@@ -440,4 +440,85 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       expect(cell.textContent).toBe("-");
     });
   });
+
+  /**
+   * Column ORDER (#1871), on the table the quest names as the first adopter:
+   * ten-plus columns and a `persistenceKey` it already uses for visibility.
+   *
+   * The order is a stored array, and the risk is not the menu - it is the
+   * reconciliation. A stored order is a snapshot of the columns as they were
+   * when somebody last dragged one, so it goes stale in both directions, and
+   * a table that trusted it verbatim would drop a newly added column and try
+   * to render a removed one.
+   */
+  describe("column order", () => {
+    const headerText = (view: Awaited<ReturnType<typeof mount>>["view"]) =>
+      [...view.container.querySelectorAll("thead th")]
+        .map((th) => th.textContent?.trim())
+        .filter(Boolean);
+
+    it("renders the declared order when nothing is stored", async ({
+      expect,
+    }) => {
+      const { view } = await mount([questOf(1, "Filed quest", false)]);
+
+      await waitFor(() => expect(headerText(view).length).toBeGreaterThan(1));
+      // Whatever the table declares first is what shows first: no stored
+      // preference means no reordering at all.
+      expect(headerText(view)[0]).toBeTruthy();
+    });
+
+    it("honours a stored order", async ({ expect }) => {
+      // Seeded rather than dragged: a native HTML5 drag is not something
+      // jsdom performs, and what is under test here is the read path.
+      window.localStorage.setItem(
+        "lor.board.1.columns",
+        JSON.stringify(["title", "epicId"]),
+      );
+      window.localStorage.setItem(
+        "lor.board.1.columnOrder",
+        JSON.stringify(["epicId", "title"]),
+      );
+
+      const { view } = await mount([questOf(1, "Filed quest", false, 42)]);
+
+      await waitFor(() => expect(headerText(view)).toContain("Epic"));
+      const headers = headerText(view);
+      // Epic is declared after the title and comes first here, which is the
+      // whole feature.
+      expect(headers.indexOf("Epic")).toBeLessThan(
+        headers.findIndex((label) => label?.includes("Quest")),
+      );
+    });
+
+    /**
+     * ⚠️ The case that would fail silently. A stored order naming a column
+     * that no longer exists must not render it, and one MISSING a column
+     * added since must still show that column - otherwise upgrading the app
+     * quietly removes a column for every reader who ever touched the picker.
+     */
+    it("reconciles a stale stored order against the declared columns", async ({
+      expect,
+    }) => {
+      window.localStorage.setItem(
+        "lor.board.1.columns",
+        JSON.stringify(["title", "epicId"]),
+      );
+      window.localStorage.setItem(
+        "lor.board.1.columnOrder",
+        // A column that was removed, and only one of the real ones - so the
+        // rest have to be appended rather than lost.
+        JSON.stringify(["columnFromAnOlderRelease", "epicId"]),
+      );
+
+      const { view } = await mount([questOf(1, "Filed quest", false, 42)]);
+
+      await waitFor(() => expect(headerText(view)).toContain("Epic"));
+      const headers = headerText(view);
+      // The dead key rendered nothing...
+      expect(headers).not.toContain("columnFromAnOlderRelease");
+      // ...and the column the stored order never mentioned is still here.
+      expect(headers.some((label) => label?.includes("Quest"))).toBe(true);
+    });
+  });
 });

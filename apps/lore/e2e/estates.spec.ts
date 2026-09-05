@@ -46,17 +46,24 @@ const confirmDialog = async (page: Page, label: string): Promise<void> => {
 const createEstate = async (page: Page, slug: string): Promise<void> => {
   await page.goto("/account/estates");
   await page.waitForLoadState("networkidle");
+  // Creation is behind a dialog since #1862: the inline card was always
+  // present, above every estate, so the page opened on the form for the
+  // thing you do least often.
+  await page.getByTestId("estate-create-open").click();
   await page.getByTestId("estate-create-slug").fill(slug);
   await page.getByTestId("estate-create-submit").click();
 
-  // The only moment the cleartext secret exists. Shown, then gone for good.
-  // The long match is the token; the card below shows a short masked prefix
-  // of the same shape, which must still be there once the panel is gone.
-  await expect(page.getByText(/est_[A-Za-z0-9_-]{16,}/)).toBeVisible({
-    timeout: 15_000,
-  });
+  // The only moment the cleartext secret exists. Shown in a dialog that
+  // stays open until dismissed, then gone for good - the page it used to sit
+  // on re-renders on every switch below it, and the column stores a hash.
+  // The long match is the token; the row shows a short masked prefix of the
+  // same shape, which must still be there once the dialog is gone.
+  const reveal = page.getByTestId("my-estate-secret-dialog");
+  await expect(reveal).toBeVisible({ timeout: 15_000 });
+  await expect(reveal.getByText(/est_[A-Za-z0-9_-]{16,}/)).toBeVisible();
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.getByText(/est_[A-Za-z0-9_-]{16,}/)).toHaveCount(0);
+  await releasePointerEvents(page);
 };
 
 test.describe("Estates", () => {
@@ -73,47 +80,61 @@ test.describe("Estates", () => {
 
     await createEstate(page, "ovh-1");
 
-    const card = page.getByTestId("my-estate-card");
-    await expect(card).toHaveCount(1);
-    await expect(card.getByTestId("my-estate-slug")).toHaveText("ovh-1");
-    await expect(card.getByText("offline", { exact: true })).toBeVisible();
-    await expect(card.getByText("stats only", { exact: true })).toBeVisible();
-    await expect(card.getByText("Not lent to any project.")).toBeVisible();
+    // The ROW carries the four facts worth a glance since #1862; everything
+    // else moved into the drawer it opens.
+    const row = page.getByTestId("my-estate-row");
+    await expect(row).toHaveCount(1);
+    await expect(row.getByTestId("my-estate-slug")).toHaveText("ovh-1");
+    await expect(row.getByText("offline", { exact: true })).toBeVisible();
+    await expect(row.getByText("stats only", { exact: true })).toBeVisible();
     // The masked prefix names the credential; the credential itself is gone.
-    await expect(card.getByText(/secret est_/)).toBeVisible();
+    await expect(row.getByText(/secret est_/)).toBeVisible();
+
+    await row.click();
+    const drawer = page.getByTestId("my-estate-drawer");
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByText("Not lent to any project.")).toBeVisible();
+    // Truncated in the drawer too: a panel is not a reason to print a
+    // credential that cannot be shown again anyway.
+    await expect(drawer.getByText(/secret est_/)).toBeVisible();
 
     // The badge follows the server's answer, not the click, and survives a
     // reload because the row was written.
-    await card.getByTestId("my-estate-deploys").click();
+    await drawer.getByTestId("my-estate-deploys").click();
     await expect(
-      card.getByText("deploys allowed", { exact: true }),
-    ).toBeVisible();
-    await page.reload();
-    await page.waitForLoadState("networkidle");
-    const reloaded = page.getByTestId("my-estate-card");
-    await expect(
-      reloaded.getByText("deploys allowed", { exact: true }),
+      row.getByText("deploys allowed", { exact: true }),
     ).toBeVisible();
 
     // A restart queues as pending: no machine holds this estate's socket, so
     // the command waits for its next hello rather than failing.
-    await reloaded.getByTestId("my-estate-restart-app").fill("lore");
-    await reloaded
+    await drawer.getByTestId("my-estate-restart-app").fill("lore");
+    await drawer
       .getByTestId("my-estate-restart-environment")
       .fill("production");
-    await reloaded.getByTestId("my-estate-restart").click();
-    const command = reloaded.getByTestId("my-estate-command");
+    await drawer.getByTestId("my-estate-restart").click();
+    const command = drawer.getByTestId("my-estate-command");
     await expect(command).toHaveCount(1);
     await expect(command.first()).toContainText("pending");
     await expect(command.first()).toContainText("lore/production");
 
-    // Delete says what it does NOT do, then takes the card with it.
-    await reloaded.getByTestId("my-estate-delete").click();
+    // Reopened from scratch, the switch still reads what the server stored.
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    const reloadedRow = page.getByTestId("my-estate-row");
+    await expect(
+      reloadedRow.getByText("deploys allowed", { exact: true }),
+    ).toBeVisible();
+    await reloadedRow.click();
+    const reopened = page.getByTestId("my-estate-drawer");
+    await expect(reopened).toBeVisible();
+
+    // Delete says what it does NOT do, then takes the row with it.
+    await reopened.getByTestId("my-estate-delete").click();
     const dialog = page.locator('[role="alertdialog"], [role="dialog"]').last();
     await expect(dialog).toContainText("Nothing is undeployed");
     await expect(dialog).toContainText("not revoked at Cloudflare");
     await confirmDialog(page, "Delete");
-    await expect(page.getByTestId("my-estate-card")).toHaveCount(0);
+    await expect(page.getByTestId("my-estate-row")).toHaveCount(0);
     await expect(page.getByText("You own no estate yet")).toBeVisible();
   });
 

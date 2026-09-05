@@ -337,68 +337,108 @@ jobs:
             ${{ runner.temp }}/artifacts/bay-linux-arm64
             ${{ runner.temp }}/artifacts/SHA256SUMS
 
-      # ──────────────────────────────────────────────────────────────────
-      # Lore, last and never blocking.
+      # ──────────────────────────────────────────────────────────────
+      # Lore, last - and twice per app, once per runtime.
       #
-      # Four steps, all `continue-on-error`: a Lore failure must never redden
-      # a release that has already reached npm, which is the posture `ci.yml`
-      # states for its own Lore pushes. They sit after the GitHub Release for
-      # the same reason the release sits after `npm publish`: nothing here is
-      # worth tearing a release over.
+      # `docs` and `lore` each ship as TWO artifacts under one version tag:
+      # the `node` bundle `yarn build` produced far above, and the `workerd`
+      # bundle rebuilt here. They are variants rather than rivals - the unique
+      # key is `(project, app, tag, runtime)`, so `0.29.0` names one release
+      # carrying both, and Lore folds them into a single entry when listing.
       #
-      # Three artifact pushes first, then the publish, so the release's
-      # artifacts tab is already populated the moment it flips to published.
-      # That is presentation rather than a constraint: the join is
-      # `artifacts.tag = releases.tag` with no foreign key, and publishing
-      # blocks no later push.
+      # Both are worth keeping because both are real deployment targets: the
+      # node build is what the `ghcr.io/alepha-dev/lore` image runs and what a
+      # self-hoster gets, the workerd build is what `alepha.dev` and
+      # `lore.alepha.dev` actually serve. An artifact registry holding only
+      # one of them can answer "redeploy this version" for only half the
+      # places it runs.
       #
-      # Each push still runs INSIDE its app, because `lore artifacts push`
-      # packs the workspace it is run in and reads its `package.json`. What it
-      # no longer needs is an `alepha.config.ts` in that directory: `lore` is
-      # a binary, Yarn links it in all four working directories these steps
-      # use, and the destination comes from the workflow-level `LORE_PROJECT`
-      # above. The publish needs neither and runs from the root.
+      # ⚠️ The rebuilds sit HERE, at the very end, and cannot move earlier.
+      # `alepha build -t cloudflare` cleans `dist/` and replaces it, and
+      # `apps/lore/dist` was the docker build context of the ghcr push above.
+      # Rebuilding before that step would hand it a workerd bundle, or nothing
+      # at all.
+      #
+      # No Cloudflare credentials are needed and none are present: the build
+      # emits `wrangler.jsonc` from env vars and never calls the API. The
+      # bindings it cannot see (`DATABASE_URL` above all) are simply absent
+      # from the generated config - the artifact is storage today, and the
+      # thing that deploys it later is what resolves bindings.
+      #
+      # `ui` and `shop` are deliberately absent. Neither is versioned by this
+      # release - `ui` is a showcase and `shop` an example - and CI keeps a
+      # `latest` of shop's workerd build in `deploy-shop-production`.
+      #
+      # None of these steps is `continue-on-error`. A swallowed push is how
+      # 0.28.0 reached npm with no Lore artifact of its own: `No Lore project
+      # named`, a warning annotation, a green run, and nobody the wiser until
+      # someone went looking months later. A failure here reddens the release
+      # run, which is honest rather than dangerous BECAUSE of where these
+      # steps sit: npm, the tag, ghcr and the GitHub Release are all done
+      # above. Nothing is torn by going red, and re-running the job re-pushes
+      # cleanly - the uploader is idempotent on identical bytes and the
+      # publish exits 0 on an already-published release.
+      #
+      # Each push runs INSIDE its app, because `lore artifacts push` packs the
+      # workspace it is run in and reads its `package.json` - which is also
+      # where the app name comes from, so there is no `--app` to keep in
+      # agreement with the directory. The destination comes from the
+      # workflow-level `LORE_PROJECT` at the top of this file. The publish
+      # needs neither and runs from the root.
       #
       # `--tag` is the version, byte for byte: `releases.tag` preserves case
       # so the artifact and the release meet on the same string. A version
       # with no Lore release exits 0 with a log line, and a re-run of this job
       # finds it already published and exits 0 again.
-      # ──────────────────────────────────────────────────────────────────
-      - name: Push docs artifact to Lore
-        continue-on-error: true
+      # ──────────────────────────────────────────────────────────────
+      - name: Push docs artifact to Lore (node)
         working-directory: apps/docs
         run: >-
           yarn lore artifacts push
-          --app docs
           --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
 
-      - name: Push lore artifact to Lore
-        continue-on-error: true
+      - name: Push lore artifact to Lore (node)
         working-directory: apps/lore
         run: >-
           yarn lore artifacts push
-          --app lore
           --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
 
-      - name: Push shop artifact to Lore
-        continue-on-error: true
-        working-directory: apps/examples/shop
+      # Build and push kept as separate steps per app, so a red one says which
+      # half failed: a bundler error and a registry error need different people
+      # looking at them.
+      - name: Rebuild docs for workerd
+        working-directory: apps/docs
+        run: yarn alepha build -t cloudflare
+
+      - name: Push docs artifact to Lore (workerd)
+        working-directory: apps/docs
         run: >-
           yarn lore artifacts push
-          --app shop
+          --tag "$VERSION"
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Rebuild lore for workerd
+        working-directory: apps/lore
+        run: yarn alepha build -t cloudflare
+
+      - name: Push lore artifact to Lore (workerd)
+        working-directory: apps/lore
+        run: >-
+          yarn lore artifacts push
           --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
 
       - name: Publish the Lore release
-        continue-on-error: true
         run: yarn lore releases publish --tag "$VERSION"
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}

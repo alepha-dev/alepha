@@ -437,6 +437,13 @@ export class ProjectTools {
           actor: row.actor,
           resourceId: row.resourceId,
           description: row.description,
+          // ⚠️ Load-bearing since #1872, not decoration. Coalescing means one
+          // event here can stand for ten writes, so an agent reading this
+          // feed would silently lose that without the count - and `updatedAt`
+          // is what tells it the burst ran until 14:52 rather than ending at
+          // `createdAt`.
+          eventCount: row.eventCount ?? 1,
+          updatedAt: row.updatedAt,
           summary: this.activitySummary(row),
         })),
         truncated: rows.length >= size,
@@ -463,6 +470,7 @@ export class ProjectTools {
     action: string;
     resourceId?: string;
     description?: string;
+    eventCount?: number;
   }): string {
     // `#` reads as an identifier for the numbered kinds and as noise for a
     // release, whose id is already a tag like `0.28.0`.
@@ -471,6 +479,10 @@ export class ProjectTools {
       ? ` ${numbered ? "#" : ""}${row.resourceId}`
       : "";
     const title = row.description ? ` (${row.description})` : "";
-    return `${row.action} ${row.type}${ref}${title}`;
+    // The count belongs in the phrase, not only in the field: this string is
+    // what an agent skims, and "update quest #12" reading the same for one
+    // edit and for twelve is the information coalescing would otherwise cost.
+    const times = (row.eventCount ?? 1) > 1 ? ` x${row.eventCount}` : "";
+    return `${row.action}${times} ${row.type}${ref}${title}`;
   }
 }

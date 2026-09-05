@@ -6,6 +6,13 @@ import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Checkbox } from "@alepha/ui/components/ui/checkbox";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@alepha/ui/components/ui/context-menu";
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -48,8 +55,16 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronsUpDown,
+  ArrowDownAZ,
+  ArrowUpAZ,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
   Columns3,
+  EyeOff,
   FunnelX,
+  GripVertical,
   Inbox,
   MoreVertical,
   RefreshCw,
@@ -663,6 +678,44 @@ const persistedColumns = <T,>(
   );
 };
 
+/**
+ * The reader's column order, reconciled against what the table actually
+ * declares.
+ *
+ * Reconciliation is the whole of this function and the reason it is not just
+ * `readPersisted`. A stored array is a snapshot of the columns as they were
+ * when somebody last dragged one, and the code has moved since: a column
+ * added in a later release is missing from it, one removed is still in it.
+ * Trusting it verbatim would drop the new column from the table entirely and
+ * try to render a dead one.
+ *
+ * New keys go to the END rather than at their declared index. That is the
+ * rule with the least surprise: the reader's layout is left exactly as they
+ * arranged it, and the new column turns up somewhere predictable where the
+ * picker can find it. Splicing it in by declaration index would put it at a
+ * position matching neither the author's intent (the rest of the order is not
+ * the declared one any more) nor the reader's.
+ */
+const reconcileOrder = (
+  stored: string[] | undefined,
+  declared: string[],
+): string[] => {
+  if (!stored) return declared;
+  const known = new Set(declared);
+  const kept = stored.filter((key) => known.has(key));
+  const seen = new Set(kept);
+  return [...kept, ...declared.filter((key) => !seen.has(key))];
+};
+
+const persistedOrder = <T,>(
+  key: string | undefined,
+  columns: Record<string, ColumnDef<T>>,
+): string[] =>
+  reconcileOrder(
+    key ? readPersisted<string[]>(key, "columnOrder") : undefined,
+    Object.keys(columns),
+  );
+
 export function AlephaTable<T>(props: AlephaTableProps<T>) {
   // State, not a constant. It was `props.defaultSize ?? 20` read once, so a
   // reader had no way to see more rows than the call site had decided for
@@ -1080,6 +1133,24 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     });
   };
 
+  /**
+   * Sort in a named direction, or clear it.
+   *
+   * The header cycles; the menu states. Both write the same state, so a
+   * column sorted from the menu shows the header's own arrow.
+   */
+  const setSortTo = (
+    col: string,
+    def: ColumnDef<T>,
+    direction: "asc" | "desc" | null,
+  ) => {
+    if (!def.sortable) return;
+    const field = def.sortKey ?? col;
+    const next: SortState | null = direction ? { field, direction } : null;
+    setSort(next);
+    props.onSortChange?.(next);
+  };
+
   // -- Column visibility -----------------------------------------------------
 
   const allColumnKeys = useMemo(
@@ -1090,6 +1161,81 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() =>
     persistedColumns(props.persistenceKey, props.columns),
   );
+
+  /**
+   * The reader's column order. Held as the raw preference and reconciled on
+   * every read below, so a caller adding a column at runtime is handled by
+   * the same code path as a stale stored array.
+   */
+  const [columnOrder, setColumnOrder] = useState<string[]>(() =>
+    persistedOrder(props.persistenceKey, props.columns),
+  );
+
+  const orderedKeys = useMemo(
+    () => reconcileOrder(columnOrder, allColumnKeys),
+    [columnOrder, allColumnKeys],
+  );
+
+  /**
+   * Move one column one slot, within the VISIBLE sequence.
+   *
+   * Over the visible columns and not the full order, because nudging a column
+   * past a hidden one would look like nothing happened - the reader would
+   * press "move left" and see the table unchanged. A swap rather than a
+   * splice, so the hidden columns between the two keep their places.
+   */
+  const moveColumn = (key: string, delta: -1 | 1) => {
+    const visible = orderedKeys.filter((k) => visibleColumns.has(k));
+    const at = visible.indexOf(key);
+    const target = visible[at + delta];
+    if (at < 0 || target === undefined) return;
+    const next = [...orderedKeys];
+    const from = next.indexOf(key);
+    const to = next.indexOf(target);
+    next[from] = target;
+    next[to] = key;
+    commitOrder(next);
+    // Announced, or the change is silent for a screen reader: nothing else
+    // about a reordered table is spoken.
+    setOrderAnnouncement(
+      String(
+        tr("alephaTable.columnMoved", {
+          default: `${String(props.columns[key]?.label ?? key)} moved to position ${at + delta + 1} of ${visible.length}`,
+          args: [
+            String(props.columns[key]?.label ?? key),
+            String(at + delta + 1),
+            String(visible.length),
+          ],
+        }),
+      ),
+    );
+  };
+
+  /**
+   * Drop `key` onto `target`'s slot, which is what a drag in the column
+   * picker means. Unlike {@link moveColumn} this walks the FULL order: the
+   * picker lists hidden columns too, so a drag there can legitimately cross
+   * one.
+   */
+  const reorderColumn = (key: string, target: string) => {
+    if (key === target) return;
+    const next = orderedKeys.filter((k) => k !== key);
+    next.splice(next.indexOf(target), 0, key);
+    commitOrder(next);
+  };
+
+  const commitOrder = (next: string[]) => {
+    setColumnOrder(next);
+    if (props.persistenceKey) {
+      writePersisted(props.persistenceKey, "columnOrder", next);
+    }
+  };
+
+  /**
+   * What the live region says after a move. Cleared and re-set on each one,
+   * so two moves in a row are both announced.
+   */
+  const [orderAnnouncement, setOrderAnnouncement] = useState("");
 
   /**
    * ⚠️ A changed `persistenceKey` is a changed SCOPE, and this is where that
@@ -1133,6 +1279,10 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     setSize(persistedSize(props.persistenceKey, props.defaultSize));
     setSort(persistedSort(props.persistenceKey, props.defaultSort));
     setVisibleColumns(persistedColumns(props.persistenceKey, props.columns));
+    // Same render pass as the rest, and for the identical reason: the effects
+    // keyed on `persistenceKey` fire in one flush, so an order left behind
+    // here would be written back under the INCOMING key.
+    setColumnOrder(persistedOrder(props.persistenceKey, props.columns));
     setRefreshKey((k) => k + 1);
   }
 
@@ -1160,7 +1310,10 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   // -- Render ---------------------------------------------------------------
 
-  const cols = Object.entries(props.columns) as Array<[string, ColumnDef<T>]>;
+  // The reader's order, not the declaration's.
+  const cols = orderedKeys.map((key) => [key, props.columns[key]!]) as Array<
+    [string, ColumnDef<T>]
+  >;
   const visibleCols = cols.filter(([key]) => visibleColumns.has(key));
   const hasCheckbox = Boolean(props.bulkActions?.length);
   const hasRowActions = Boolean(props.rowActions);
@@ -1328,8 +1481,10 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                 {showColumnPicker && (
                   <ColumnPicker<T>
                     columns={props.columns}
+                    order={orderedKeys}
                     visible={visibleColumns}
                     onToggle={toggleColumn}
+                    onReorder={reorderColumn}
                   />
                 )}
                 {/*
@@ -1488,35 +1643,50 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                     />
                   </TableHead>
                 )}
-                {visibleCols.map(([key, def]) => {
+                {visibleCols.map(([key, def], index) => {
                   const sorted =
                     def.sortable && sort?.field === (def.sortKey ?? key);
                   return (
-                    <TableHead
-                      key={key}
-                      className={cn(
-                        def.className,
-                        def.align === "right" && "text-right",
-                        def.align === "center" && "text-center",
-                      )}
-                      aria-sort={
-                        sorted
-                          ? sort?.direction === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : undefined
-                      }
-                    >
-                      {def.sortable ? (
-                        // A real button so keyboard and assistive-tech
-                        // users can sort — a th onClick is mouse-only.
-                        <button
-                          type="button"
-                          onClick={() => toggleSort(key, def)}
-                          className="group/sort hover:text-foreground inline-flex cursor-pointer items-center gap-1 select-none"
-                        >
-                          {def.label}
-                          {/* A sortable column says so at rest. The arrow
+                    // ⚠️ The menu is on the HEADER and never on a body cell.
+                    // Overriding the browser's own menu is acceptable on
+                    // chrome; on a data cell it breaks copy, and people copy
+                    // cell values constantly.
+                    <ContextMenu key={key}>
+                      <ContextMenuTrigger
+                        render={
+                          <TableHead
+                            // Focusable so Shift+F10 reaches the menu.
+                            // Without it the menu is mouse-only, and
+                            // right-click is already invisible and absent on
+                            // touch - which is exactly why the column picker
+                            // and not this is the primary path.
+                            tabIndex={0}
+                            className={cn(
+                              def.className,
+                              "focus-visible:ring-ring/50 outline-none focus-visible:ring-2",
+                              def.align === "right" && "text-right",
+                              def.align === "center" && "text-center",
+                            )}
+                            aria-sort={
+                              sorted
+                                ? sort?.direction === "asc"
+                                  ? "ascending"
+                                  : "descending"
+                                : undefined
+                            }
+                          />
+                        }
+                      >
+                        {def.sortable ? (
+                          // A real button so keyboard and assistive-tech
+                          // users can sort — a th onClick is mouse-only.
+                          <button
+                            type="button"
+                            onClick={() => toggleSort(key, def)}
+                            className="group/sort hover:text-foreground inline-flex cursor-pointer items-center gap-1 select-none"
+                          >
+                            {def.label}
+                            {/* A sortable column says so at rest. The arrow
                               used to appear only once a column WAS sorted,
                               so an unsorted sortable header and a dead one
                               were indistinguishable until you happened to
@@ -1531,25 +1701,96 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
                               `aria-hidden` throughout: `aria-sort` on the
                               `th` already states this to assistive tech. */}
-                          {sorted ? (
-                            sort?.direction === "asc" ? (
-                              <ArrowUp className="size-3.5" aria-hidden />
+                            {sorted ? (
+                              sort?.direction === "asc" ? (
+                                <ArrowUp className="size-3.5" aria-hidden />
+                              ) : (
+                                <ArrowDown className="size-3.5" aria-hidden />
+                              )
                             ) : (
-                              <ArrowDown className="size-3.5" aria-hidden />
-                            )
-                          ) : (
-                            <ChevronsUpDown
-                              className="size-3.5 opacity-40 transition-opacity group-hover/sort:opacity-100"
-                              aria-hidden
-                            />
-                          )}
-                        </button>
-                      ) : (
-                        <span className="inline-flex items-center gap-1">
-                          {def.label}
-                        </span>
-                      )}
-                    </TableHead>
+                              <ChevronsUpDown
+                                className="size-3.5 opacity-40 transition-opacity group-hover/sort:opacity-100"
+                                aria-hidden
+                              />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            {def.label}
+                          </span>
+                        )}
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        {/* Explicit directions rather than the header's
+                            click-cycling, which is the one item here that
+                            beats the affordance it duplicates: cycling makes
+                            you guess which of three states you are in.
+                            Hidden entirely on a column that cannot sort,
+                            rather than shown disabled - a permanently dead
+                            entry on half the columns is noise. */}
+                        {def.sortable && (
+                          <>
+                            <ContextMenuItem
+                              onClick={() => setSortTo(key, def, "asc")}
+                            >
+                              <ArrowUpAZ className="size-4" />
+                              {tr("alephaTable.sortAsc", {
+                                default: "Sort ascending",
+                              })}
+                            </ContextMenuItem>
+                            <ContextMenuItem
+                              onClick={() => setSortTo(key, def, "desc")}
+                            >
+                              <ArrowDownAZ className="size-4" />
+                              {tr("alephaTable.sortDesc", {
+                                default: "Sort descending",
+                              })}
+                            </ContextMenuItem>
+                            <ContextMenuItem
+                              disabled={!sorted}
+                              onClick={() => setSortTo(key, def, null)}
+                            >
+                              {tr("alephaTable.sortClear", {
+                                default: "Clear sort",
+                              })}
+                            </ContextMenuItem>
+                            <ContextMenuSeparator />
+                          </>
+                        )}
+                        {/* Disabled at the ends rather than hidden: the pair
+                            is a fixed landmark, and an entry that appears
+                            and disappears as you move a column is harder to
+                            aim at than one that greys out. */}
+                        <ContextMenuItem
+                          disabled={index === 0}
+                          onClick={() => moveColumn(key, -1)}
+                        >
+                          <ChevronLeft className="size-4" />
+                          {tr("alephaTable.moveLeft", { default: "Move left" })}
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          disabled={index === visibleCols.length - 1}
+                          onClick={() => moveColumn(key, 1)}
+                        >
+                          <ChevronRight className="size-4" />
+                          {tr("alephaTable.moveRight", {
+                            default: "Move right",
+                          })}
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                        {/* Never the last one: a table with no columns has
+                            no way back to this menu. */}
+                        <ContextMenuItem
+                          disabled={visibleCols.length <= 1}
+                          onClick={() => toggleColumn(key)}
+                        >
+                          <EyeOff className="size-4" />
+                          {tr("alephaTable.hideColumn", {
+                            default: "Hide column",
+                          })}
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
                   );
                 })}
                 {hasRowActions && <TableHead className="w-10" />}
@@ -1645,6 +1886,13 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
             </TableBody>
           </Table>
         </div>
+
+        {/* A move is otherwise silent: nothing about a reordered table is
+            spoken, and the visual change is the only feedback. Outside the
+            table so it is not read as a cell. */}
+        <span aria-live="polite" className="sr-only">
+          {orderAnnouncement}
+        </span>
 
         {/* `bg-muted`, paired with the filter bar above — see the note there. */}
         <div className="bg-muted -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2">
@@ -1772,13 +2020,32 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   );
 }
 
+/**
+ * The single home for column state: what is shown, and in what order.
+ *
+ * Both live here rather than order being reachable only from the header's
+ * context menu, and that is the shape decision. Right-click advertises
+ * nothing and does not exist on touch, so a feature reachable only that way
+ * is one most people never find. The menu is a fast path into this.
+ *
+ * Reordering is native HTML5 drag, the way Lore's folio tree does it: this
+ * package has no drag-and-drop dependency and a column list is not worth
+ * adding one. The arrows beside each row are not a fallback for a broken
+ * drag - they are the keyboard and touch path, where drag does not exist.
+ */
 function ColumnPicker<T>(props: {
   columns: Record<string, ColumnDef<T>>;
+  order: string[];
   visible: Set<string>;
   onToggle: (key: string) => void;
+  onReorder: (key: string, target: string) => void;
 }) {
   const { tr } = useI18n();
-  const entries = Object.entries(props.columns);
+  const [dragging, setDragging] = useState<string | null>(null);
+  // The reader's order, so the list reads like the table it controls.
+  const entries = props.order.map(
+    (key) => [key, props.columns[key]!] as [string, ColumnDef<T>],
+  );
   const label = tr("alephaTable.toggleColumns", {
     default: "Toggle columns",
   });
@@ -1820,15 +2087,64 @@ function ColumnPicker<T>(props: {
             {tr("alephaTable.columns", { default: "Columns" })}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {entries.map(([key, def]) => (
-            <DropdownMenuCheckboxItem
+          {entries.map(([key, def], index) => (
+            <div
               key={key}
-              checked={props.visible.has(key)}
-              closeOnClick={false}
-              onCheckedChange={() => props.onToggle(key)}
+              draggable
+              onDragStart={() => setDragging(key)}
+              onDragEnd={() => setDragging(null)}
+              onDragOver={(event) => {
+                // Required, or the drop never fires.
+                event.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (dragging && dragging !== key)
+                  props.onReorder(dragging, key);
+                setDragging(null);
+              }}
+              className={cn(
+                "flex items-center gap-1 pr-1",
+                dragging === key && "opacity-45",
+              )}
             >
-              {def.label}
-            </DropdownMenuCheckboxItem>
+              <GripVertical
+                className="text-muted-foreground/60 size-3.5 shrink-0 cursor-grab"
+                aria-hidden
+              />
+              <DropdownMenuCheckboxItem
+                checked={props.visible.has(key)}
+                closeOnClick={false}
+                onCheckedChange={() => props.onToggle(key)}
+                className="flex-1"
+              >
+                {def.label}
+              </DropdownMenuCheckboxItem>
+              {/* Keyboard and touch reach the order here. A drag handle alone
+                  would put reordering out of reach for both. */}
+              <button
+                type="button"
+                disabled={index === 0}
+                aria-label={String(
+                  tr("alephaTable.moveUp", { default: "Move up" }),
+                )}
+                onClick={() => props.onReorder(key, entries[index - 1]![0])}
+                className="text-muted-foreground/60 hover:text-foreground rounded p-0.5 disabled:opacity-30"
+              >
+                <ChevronUp className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                disabled={index === entries.length - 1}
+                aria-label={String(
+                  tr("alephaTable.moveDown", { default: "Move down" }),
+                )}
+                onClick={() => props.onReorder(entries[index + 1]![0], key)}
+                className="text-muted-foreground/60 hover:text-foreground rounded p-0.5 disabled:opacity-30"
+              >
+                <ChevronDown className="size-3.5" />
+              </button>
+            </div>
           ))}
         </DropdownMenuGroup>
       </DropdownMenuContent>

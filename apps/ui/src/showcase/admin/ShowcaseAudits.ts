@@ -163,6 +163,17 @@ export class ShowcaseAudits {
       requestId: `req_${String(i + 1).padStart(6, "0")}`,
       success,
       errorMessage: success ? undefined : "The operation was refused.",
+      // Every fourth row is a coalesced burst (#1872), so the admin table's
+      // count badge has something to draw. `updatedAt` is what gives the row
+      // its span, and it is absent on the rows standing for one event -
+      // which is what the badge's own absence has to look like.
+      eventCount: i % 4 === 0 ? 3 : 1,
+      updatedAt:
+        i % 4 === 0
+          ? new Date(
+              Date.UTC(2026, 8, 4, 18, 0) - i * 37 * 60_000 + 4 * 60_000,
+            ).toISOString()
+          : undefined,
     })) as AuditResource[];
   }
 }
