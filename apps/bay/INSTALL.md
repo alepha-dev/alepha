@@ -186,6 +186,35 @@ Then, from the project:
 alepha platform status -e production
 ```
 
+## 6b. Connect it to Lore (optional)
+
+A Bay can dial a Lore instance and hold a websocket open, so restarts and deploys queued in Lore
+arrive the instant they are queued and the machine's CPU and memory show on Lore's estate list.
+Nothing listens for it: the machine dials OUT, there is no inbound port, and the secret it dials
+with authenticates the machine and grants nothing on this host.
+
+On Lore, create an **estate** under `/account/estates`. The secret is shown once. Then, on the
+host, as root or as a member of the control group:
+
+```bash
+bay connector set https://lore.example.com est_... --root /opt/bay/data
+bay connector show --root /opt/bay/data
+```
+
+`set` stores the sink and the secret at mode 0600 beside `state.json` and tells the running
+`bay serve` to re-read them, so nothing restarts. `show` prints the sink, the estate Lore named
+and whether the connection is up; it never prints the secret. `clear` forgets both and the machine
+dials nobody again.
+
+What Lore may make the machine do is a closed vocabulary: `restart` an instance it already runs,
+and `deploy` an artifact it names by digest, which the machine pulls and verifies before anything
+touches disk. Deploys stay refused until the estate's owner allows them on the estate, and the
+machine honours that switch on its own side too.
+
+Rotating the secret on Lore refuses the machine on its next dial; run `set` again with the new
+one. Deleting the estate does the same for good. `http://` is accepted for a loopback sink only,
+so a secret never crosses a network in clear.
+
 ## 7. Upgrading Bay
 
 Replace the binary and restart. `/opt/bay/data` is untouched, and hosted apps keep running until the

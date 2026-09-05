@@ -153,6 +153,10 @@ export const E2E_SLOTS = {
   shop: 3,
   ssr: 4,
   "ssr-dev": 5,
+  // The Bay end-to-end (apps/e2e-cli/src/bay.e2e.spec.ts) boots two servers:
+  // a Lore instance and a Bay proxy, one slot each.
+  bay: 6,
+  "bay-proxy": 7,
 } as const;
 
 export type E2eApp = keyof typeof E2E_SLOTS;
