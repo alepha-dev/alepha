@@ -9,10 +9,10 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, expect, it } from "vitest";
 
 import { defaultProjectFeatures } from "@/api/entities/projects.ts";
-import type { SigilResource } from "@/api/schemas/sigilResourceSchema.ts";
+import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import AppErrors from "./AppErrors.tsx";
 
@@ -38,18 +38,25 @@ class Routes {
   });
 }
 
-const SIGIL: SigilResource = {
-  id: "00000000-0000-4000-8000-000000000001",
+const INSTANCE: AppInstanceResource = {
+  id: "00000000-0000-4000-8000-000000000010",
   projectId: 1,
-  name: "docs-production",
-  tokenPrefix: "sg_lore_ab",
-  kinds: ["beacon", "vitals", "blights", "feedback"],
+  app: "docs",
+  env: "production",
   createdAt: "2026-08-01T10:00:00.000Z",
-} as SigilResource;
+  updatedAt: "2026-08-01T10:00:00.000Z",
+  sigilId: "00000000-0000-4000-8000-000000000001",
+  sigil: {
+    id: "00000000-0000-4000-8000-000000000001",
+    tokenPrefix: "sg_lore_ab",
+    kinds: ["beacon", "vitals", "blights", "feedback"],
+    createdAt: "2026-08-01T10:00:00.000Z",
+  },
+} as AppInstanceResource;
 
 const groupOf = (over: Record<string, unknown> = {}) => ({
-  sigilId: SIGIL.id,
-  sigilLabel: SIGIL.name,
+  sigilId: INSTANCE.sigilId,
+  sigilLabel: `${INSTANCE.app}/${INSTANCE.env}`,
   fingerprint: "fp-a",
   name: "TypeError",
   message: "Cannot read properties of undefined",
@@ -83,7 +90,7 @@ describe("AppErrors", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
 
-    alepha.store.set(currentSigilAtom, SIGIL as never);
+    alepha.store.set(currentInstanceAtom, INSTANCE as never);
     alepha.store.set(currentProjectAtom, {
       id: 1,
       createdAt: "2026-08-26T10:00:00.000Z",

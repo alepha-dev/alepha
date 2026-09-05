@@ -6,8 +6,8 @@ import { useClient, useStore } from "alepha/react";
 import { useMemo } from "react";
 
 import type { SigilAnalyticsController } from "../../../../../api/controllers/SigilAnalyticsController.ts";
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 
 /**
  * The query explorer, scoped to the open app.
@@ -29,10 +29,10 @@ import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 export const AppExplore = () => {
   const client = useClient<SigilAnalyticsController>();
   const [project] = useStore(currentProjectAtom);
-  const [sigil] = useStore(currentSigilAtom);
+  const [instance] = useStore(currentInstanceAtom);
 
   const projectId = project?.id;
-  const sigilId = sigil?.id;
+  const sigilId = instance?.sigil?.id;
 
   // Memoised on the two ids: the transport is an effect dependency inside the
   // panel, so a fresh object each render would re-fire every query forever.

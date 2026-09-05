@@ -11,9 +11,9 @@ import { sigils } from "../entities/sigils.ts";
  * capped at 253 chars on the column and was an unbounded `z.string()` here.
  *
  * Lives here rather than beside the controller because the browser reads it
- * too: `currentSigilsAtom` / `currentSigilAtom` validate against this schema on
- * every write, and importing it from `SigilController.ts` would pull the
- * repository and the database provider into the client bundle.
+ * too, through the sigil summary `appInstanceResourceSchema` picks out of it,
+ * and importing it from `SigilController.ts` would pull the repository and the
+ * database provider into the client bundle.
  */
 export const sigilResourceSchema = sigils.schema.omit({
   // The credential itself. `tokenPrefix` stays, which is the whole point of

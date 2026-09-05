@@ -9,7 +9,7 @@ import { useI18n } from "alepha/react/i18n";
 import { AlertTriangle } from "lucide-react";
 import { Fragment } from "react";
 
-import type { SigilResource } from "@/api/schemas/sigilResourceSchema.ts";
+import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 
 import type { I18n } from "../../../services/I18n.ts";
 
@@ -63,7 +63,12 @@ const CAPABILITIES: Array<{
 ];
 
 export interface AppDashboardCapabilitiesProps {
-  sigil: SigilResource;
+  /**
+   * The instance's sigil summary, not the row: capabilities are read off
+   * `kinds` and `reportedConfig`, and the card has no business holding a
+   * credential's other columns.
+   */
+  sigil: NonNullable<AppInstanceResource["sigil"]>;
 }
 
 /**

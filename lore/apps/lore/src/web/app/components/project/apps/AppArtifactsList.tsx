@@ -8,7 +8,6 @@ import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
-import type { SigilResource } from "@/api/schemas/sigilResourceSchema.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -16,7 +15,11 @@ import AppArtifactsEmpty from "./AppArtifactsEmpty.tsx";
 import AppArtifactsRow from "./AppArtifactsRow.tsx";
 
 export interface AppArtifactsListProps {
-  sigil: SigilResource;
+  /**
+   * The app name artifacts are keyed by, which is `app_instances.app` and not
+   * the instance: a build belongs to an app, not to a deployed copy of one.
+   */
+  app: string;
 }
 
 /**
@@ -51,16 +54,16 @@ const AppArtifactsList = (props: AppArtifactsListProps) => {
   const { data, loading, error } = useQuery(
     {
       enabled: Boolean(project),
-      key: ["app-artifacts", project?.id, props.sigil.name],
+      key: ["app-artifacts", project?.id, props.app],
       handler: async () => {
         if (!project) return undefined;
         return await artifactApi.listArtifacts({
           params: { projectId: project.id },
-          query: { app: props.sigil.name },
+          query: { app: props.app },
         });
       },
     },
-    [project?.id, props.sigil.name],
+    [project?.id, props.app],
   );
 
   const groups = data?.groups ?? [];
@@ -88,7 +91,7 @@ const AppArtifactsList = (props: AppArtifactsListProps) => {
         ) : groups.length === 0 ? (
           <AppArtifactsEmpty
             projectSlug={project?.slug ?? ""}
-            appName={props.sigil.name}
+            appName={props.app}
           />
         ) : (
           <div className="flex flex-col divide-y">

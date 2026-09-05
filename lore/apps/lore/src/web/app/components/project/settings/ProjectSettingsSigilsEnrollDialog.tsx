@@ -20,7 +20,6 @@ import {
   APP_NAME_PATTERN,
 } from "@/api/schemas/appNameSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { currentSigilsAtom } from "@/web/app/atoms/currentSigilsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsSigilsEnrollDialogProps {
@@ -49,7 +48,6 @@ const ProjectSettingsSigilsEnrollDialog = (
   const toaster = useToast();
   const sigilApi = useClient<SigilController>();
   const [project] = useStore(currentProjectAtom);
-  const [sigils, setSigils] = useStore(currentSigilsAtom);
 
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -74,11 +72,9 @@ const ProjectSettingsSigilsEnrollDialog = (
         params: { projectId: project.id },
         body: { name: normalized },
       });
-      const { token, ...resource } = created;
-      setSigils([resource, ...(sigils ?? [])]);
       setName("");
       props.onOpenChange(false);
-      props.onEnrolled(token);
+      props.onEnrolled(created.token);
       toaster.success(tr("sigils.toast.created"));
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));

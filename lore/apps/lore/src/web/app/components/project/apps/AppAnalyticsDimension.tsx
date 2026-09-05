@@ -9,8 +9,8 @@ import type { InsightsController } from "@/api/controllers/InsightsController.ts
 import type { InsightsDimensionResource } from "@/api/schemas/insightsDimensionResourceSchema.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import {
   APP_INSIGHTS_FILTER_KEYS,
@@ -79,18 +79,22 @@ const AppAnalyticsDimension = () => {
   const routerState = useRouterState();
   const insightsApi = useClient<InsightsController>();
   const [project] = useStore(currentProjectAtom);
-  const [sigil] = useStore(currentSigilAtom);
+  const [instance] = useStore(currentInstanceAtom);
   const { filters, range, traffic } = useAppInsightsFilters();
 
   const dimension = routerState.params?.analyticsDimension as
     | Dimension
     | undefined;
 
-  if (!project || !sigil || !dimension) {
+  if (!project || !instance?.sigil || !dimension) {
     return null;
   }
 
-  const params = { projectSlug: project.slug, appName: sigil.name };
+  const params = {
+    projectSlug: project.slug,
+    app: instance.app,
+    env: instance.env,
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -134,7 +138,7 @@ const AppAnalyticsDimension = () => {
                 ...filters,
                 range,
                 traffic,
-                sigilId: sigil.id,
+                sigilId: instance.sigil?.id,
                 limit: size,
                 offset: page * size,
               },

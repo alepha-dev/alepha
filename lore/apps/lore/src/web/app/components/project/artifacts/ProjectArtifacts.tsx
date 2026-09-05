@@ -282,12 +282,16 @@ const ProjectArtifacts = () => {
               app: {
                 label: tr("artifacts.table.app"),
                 sortable: true,
+                // `/apps/:app` rather than a full instance route, and that
+                // is the right target: an artifact is keyed by the APP and
+                // says nothing about which copy runs it. The redirect
+                // resolves to that app's default instance.
                 cell: (row) => (
                   <Link
-                    href={router.path("app", {
+                    href={router.path("projectAppRedirect", {
                       params: {
                         projectSlug: project.slug,
-                        appName: row.app,
+                        app: row.app,
                       },
                     })}
                     className="block truncate font-medium"

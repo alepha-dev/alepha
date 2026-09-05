@@ -33,8 +33,8 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { InsightsDimensionResource } from "@/api/schemas/insightsDimensionResourceSchema.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import AppAnalyticsEstimatedBadge from "./AppAnalyticsEstimatedBadge.tsx";
 import AppAnalyticsFilterChips from "./AppAnalyticsFilterChips.tsx";
@@ -94,7 +94,7 @@ const AppAnalytics = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
-  const [sigil] = useStore(currentSigilAtom);
+  const [instance] = useStore(currentInstanceAtom);
   const { data, loading, error, range, traffic, filters, setFilters } =
     useAppInsights();
 
@@ -115,7 +115,7 @@ const AppAnalytics = () => {
     </div>
   );
 
-  if (!data || !project || !sigil) {
+  if (!data || !project || !instance) {
     return (
       <div className="flex flex-col gap-4 p-4">
         {controls}
@@ -128,7 +128,11 @@ const AppAnalytics = () => {
     );
   }
 
-  const params = { projectSlug: project.slug, appName: sigil.name };
+  const params = {
+    projectSlug: project.slug,
+    app: instance.app,
+    env: instance.env,
+  };
   const detailHref = (dimension: InsightsDimensionResource["dimension"]) =>
     router.path("appAnalyticsDimension", {
       params: { ...params, analyticsDimension: dimension },

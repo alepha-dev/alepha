@@ -18,10 +18,10 @@ import { useState } from "react";
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
+import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
-import { currentSigilsAtom } from "../../../atoms/currentSigilsAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
 
@@ -80,8 +80,8 @@ const AppSettings = () => {
 
   const [project] = useStore(currentProjectAtom);
   const [member] = useStore(currentProjectMemberAtom);
-  const [sigil, setSigil] = useStore(currentSigilAtom);
-  const [sigils, setSigils] = useStore(currentSigilsAtom);
+  const [instance, setInstance] = useStore(currentInstanceAtom);
+  const [instances, setInstances] = useStore(currentInstancesAtom);
   const isOwner = member?.owner ?? false;
 
   /**
@@ -90,13 +90,32 @@ const AppSettings = () => {
   const [freshToken, setFreshToken] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
-  if (!project || !sigil) {
+  const sigil = instance?.sigil;
+
+  if (!project || !instance || !sigil) {
     return null;
   }
 
+  const label = `${instance.app}/${instance.env}`;
+
+  /**
+   * Writes one instance back into both atoms.
+   *
+   * The page renders from the first and the sidebar from the second, and they
+   * must not disagree. `?? []` covers the sidebar's could-not-load state; this
+   * page's own loader always fills it, so that branch is a type guard rather
+   * than a real case.
+   */
+  const writeInstance = (next: typeof instance) => {
+    setInstance(next);
+    setInstances(
+      (instances ?? []).map((it) => (it.id === next.id ? next : it)),
+    );
+  };
+
   const rotate = async () => {
     const confirmed = await dialog.confirm({
-      title: tr("sigils.rotate.confirmTitle", { args: [sigil.name] }),
+      title: tr("sigils.rotate.confirmTitle", { args: [label] }),
       description: tr("sigils.rotate.confirmDescription"),
       confirmLabel: tr("sigils.rotate.confirm"),
     });
@@ -107,16 +126,16 @@ const AppSettings = () => {
       const rotated = await sigilApi.rotateSigil({
         params: { projectId: project.id, sigilId: sigil.id },
       });
-      const { token, ...resource } = rotated;
-      setFreshToken(token);
+      setFreshToken(rotated.token);
       // The prefix names the credential everywhere it is shown, and rotation
-      // changed it — refresh both the page's copy and the sidebar's. `?? []`
-      // covers the sidebar's could-not-load state; this page's own loader
-      // always fills the atom, so it is a type guard rather than a real case.
-      setSigil(resource);
-      setSigils(
-        (sigils ?? []).map((it) => (it.id === resource.id ? resource : it)),
-      );
+      // changed it. Only the prefix is written back: the response is a sigil
+      // resource, and the atom holds an instance carrying a narrower summary of
+      // one, so spreading the response would put `name` and `tokenHash`-shaped
+      // fields where the schema refuses them.
+      writeInstance({
+        ...instance,
+        sigil: { ...sigil, tokenPrefix: rotated.tokenPrefix },
+      });
       toaster.success(tr("sigils.toast.rotated"));
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
@@ -127,7 +146,7 @@ const AppSettings = () => {
 
   const remove = async () => {
     const confirmed = await dialog.confirm({
-      title: tr("sigils.delete.confirmTitle", { args: [sigil.name] }),
+      title: tr("sigils.delete.confirmTitle", { args: [label] }),
       description: tr("sigils.delete.confirmDescription"),
       confirmLabel: tr("sigils.delete.confirm"),
       destructive: true,
@@ -139,16 +158,24 @@ const AppSettings = () => {
       await sigilApi.deleteSigil({
         params: { projectId: project.id, sigilId: sigil.id },
       });
-      setSigils((sigils ?? []).filter((it) => it.id !== sigil.id));
+      // ⚠️ The INSTANCE survives. Deleting a sigil revokes a credential and
+      // erases what it collected; it does not remove the deployed copy, which
+      // is the row this page is about. The four unlocked tabs disappear with
+      // the sigil, so the page stays where it is and the tab bar re-renders
+      // around it. Deleting the instance itself is #1874's danger zone.
+      const { sigil: _removed, sigilId: _id, ...rest } = instance;
+      writeInstance(rest);
       toaster.success(tr("sigils.toast.deleted"));
-      // This page's subject no longer exists, so staying here would render a
-      // 404 on the next load. The enrolment page is where an operator goes
-      // next anyway.
-      await router.push("projectSettingsSigils", {
-        params: { projectSlug: project.slug },
+      await router.push("app", {
+        params: {
+          projectSlug: project.slug,
+          app: instance.app,
+          env: instance.env,
+        },
       });
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
+    } finally {
       setBusy(false);
     }
   };

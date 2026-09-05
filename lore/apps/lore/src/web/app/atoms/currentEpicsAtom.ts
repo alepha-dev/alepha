@@ -20,7 +20,7 @@ import { epicRefResourceSchema } from "@/api/schemas/epicRefResourceSchema.ts";
  * for this.
  *
  * `undefined` (not read) and `[]` (no epics) are different states, the same
- * distinction `currentSigilsAtom` draws: the Epic column shows a dash for a
+ * distinction `currentInstancesAtom` draws: the Epic column shows a dash for a
  * quest with no epic either way, but the sidebar badge must not report 0
  * planned epics because a request failed.
  *

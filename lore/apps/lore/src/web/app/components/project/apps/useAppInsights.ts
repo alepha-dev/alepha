@@ -4,8 +4,8 @@ import { useQueryParams } from "alepha/react/router";
 
 import type { InsightsController } from "@/api/controllers/InsightsController.ts";
 
+import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentSigilAtom } from "../../../atoms/currentSigilAtom.ts";
 import { appInsightsFiltersSchema } from "./appInsightsFiltersSchema.ts";
 
 export type AppInsightsRange = "1d" | "7d" | "30d";
@@ -99,12 +99,14 @@ export const useAppInsightsFilters = () => {
 export const useAppInsights = () => {
   const insightsApi = useClient<InsightsController>();
   const [project] = useStore(currentProjectAtom);
-  const [sigil] = useStore(currentSigilAtom);
+  const [instance] = useStore(currentInstanceAtom);
+  const sigil = instance?.sigil;
   const { range, traffic, filters, setFilters } = useAppInsightsFilters();
 
-  // The app's own capability, not the project's: Beacon off means there is
-  // nothing collected to ask for, and the request would only 404.
-  const enabled = Boolean(project && sigil && sigil.kinds.includes("beacon"));
+  // The instance's own capability, not the project's and not the app's: Beacon
+  // off - or no sigil at all - means there is nothing collected to ask for, and
+  // the request would only 404.
+  const enabled = Boolean(project && sigil?.kinds.includes("beacon"));
   // The dimension filters are part of the question, so they are part of the
   // cache key. Serialized rather than spread so the key is one stable string
   // whatever order the URL happened to carry them in.

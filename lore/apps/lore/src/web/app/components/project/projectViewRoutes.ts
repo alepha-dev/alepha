@@ -36,6 +36,11 @@ export const ROUTES_APP = new Set([
   "projectApp",
   "app",
   "projectApps",
+  // The bare `/apps/:app` hop. It redirects in its loader and never paints,
+  // but it is a route the shell can be asked about for one tick, and a page
+  // that is not in this set renders in the centred column with the sidebar
+  // unhighlighted - visible as a flash on a slow read.
+  "projectAppRedirect",
   "appAnalytics",
   "appAnalyticsDimension",
   "appVitals",
@@ -119,6 +124,7 @@ export const SECTION_HREF_ROUTES: Record<
   projectQuest: "projectQuests",
   projectRelease: "projectReleases",
   projectApp: "projectApps",
+  projectAppRedirect: "projectApps",
   app: "projectApps",
   appAnalytics: "projectApps",
   appAnalyticsDimension: "projectApps",
@@ -153,6 +159,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectBlights: "project.menu.blights",
   projectApps: "project.menu.apps",
   projectApp: "project.menu.apps",
+  projectAppRedirect: "project.menu.apps",
   app: "project.menu.apps",
   appAnalytics: "project.menu.apps",
   appAnalyticsDimension: "project.menu.apps",
