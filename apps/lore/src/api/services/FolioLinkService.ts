@@ -64,7 +64,7 @@ export interface LinkSource {
  * `epic`, and two more positional maps of the same shape is how a call site
  * silently passes quests where epics belong.
  */
-interface TokenLookupMaps {
+export interface TokenLookupMaps {
   folioById: Map<number, string>;
   folioByTitle: Map<string, { id: string; count: number }>;
   questById: Map<number, number>;
@@ -272,9 +272,10 @@ export class FolioLinkService {
     tokens: ParsedToken[],
     projectId: number,
     sourceFolioId: string,
+    maps?: TokenLookupMaps,
   ): Promise<Array<{ targetType: LinkTargetKind; toId: string }>> {
     if (tokens.length === 0) return [];
-    const maps = await this.buildLookupMaps(tokens, projectId);
+    const lookup = maps ?? (await this.buildLookupMaps(tokens, projectId));
 
     const seen = new Set<string>();
     const resolved: Array<{
@@ -282,7 +283,7 @@ export class FolioLinkService {
       toId: string;
     }> = [];
     for (const token of tokens) {
-      const targetId = this.resolveParsedToken(token, maps);
+      const targetId = this.resolveParsedToken(token, lookup);
       if (!targetId) continue;
       if (token.type === "folio" && targetId === sourceFolioId) continue;
       const dedupKey = `${token.type}:${targetId}`;
@@ -300,22 +301,44 @@ export class FolioLinkService {
    * THAT token reached, where {@link FolioLinkService.resolveTokenIds}
    * answers with the deduped set of targets a body reaches. The lookup
    * tables are read once for the whole list, so a caller collects every
-   * token of a project before asking.
+   * token of a project before asking, or hands in the maps it already
+   * holds from {@link FolioLinkService.lookupMaps}.
    */
   public async resolveTokensEach(
     tokens: ParsedToken[],
     projectId: number,
+    maps?: TokenLookupMaps,
   ): Promise<Map<string, { targetType: LinkTargetKind; toId: string }>> {
     const out = new Map<string, { targetType: LinkTargetKind; toId: string }>();
     if (tokens.length === 0) return out;
-    const maps = await this.buildLookupMaps(tokens, projectId);
+    const lookup = maps ?? (await this.buildLookupMaps(tokens, projectId));
     for (const token of tokens) {
       const key = this.tokenKey(token);
       if (out.has(key)) continue;
-      const toId = this.resolveParsedToken(token, maps);
+      const toId = this.resolveParsedToken(token, lookup);
       if (toId) out.set(key, { targetType: token.type, toId });
     }
     return out;
+  }
+
+  /**
+   * The lookup tables a list of tokens needs, built once, for a caller that
+   * syncs many sources of one project and hands the same maps to every
+   * {@link FolioLinkService.syncLinks} and
+   * {@link FolioLinkService.resolveTokensEach} call. The maps cover the
+   * token kinds present in the list, so build them from every token of the
+   * project, not from one body's.
+   *
+   * Without it each sync re-reads the project's folios, quests and epics.
+   * The reference converter of epic #32 paid that per rewritten row: on D1
+   * the first production run took twenty minutes over 161 folios and was
+   * cut off on the next one (2026-09-05).
+   */
+  public async lookupMaps(
+    tokens: ParsedToken[],
+    projectId: number,
+  ): Promise<TokenLookupMaps> {
+    return this.buildLookupMaps(tokens, projectId);
   }
 
   /**
@@ -680,7 +703,11 @@ export class FolioLinkService {
    * `FolioController` already wraps create/update with `$transactional()`)
    * so a partial sync never leaks orphan rows.
    */
-  public async syncLinks(source: LinkSource, content: string): Promise<void> {
+  public async syncLinks(
+    source: LinkSource,
+    content: string,
+    maps?: TokenLookupMaps,
+  ): Promise<void> {
     const fromId = String(source.id);
     const tokens = this.parseTokens(content);
     const targets = await this.resolveTokenIds(
@@ -690,6 +717,7 @@ export class FolioLinkService {
       // UUID: comparing a quest's stringified integer against it can never
       // match anyway, so passing it would be noise rather than a filter.
       source.kind === "folio" ? fromId : "",
+      maps,
     );
 
     await this.links.deleteMany({

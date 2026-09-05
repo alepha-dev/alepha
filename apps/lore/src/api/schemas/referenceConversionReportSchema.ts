@@ -21,6 +21,12 @@ export const referenceConversionReportSchema = z.object({
    * validation on read.
    */
   blobLinks: z.integer(),
+  /**
+   * Changed rows no call has written yet, summed over the projects below.
+   * A write stops at its `limit` and the operator's page calls again until
+   * this reads 0; a dry run reports every changed row here.
+   */
+  remaining: z.integer(),
   projects: z.array(
     z.object({
       projectId: z.integer(),
@@ -31,9 +37,14 @@ export const referenceConversionReportSchema = z.object({
        */
       scanned: z.integer(),
       /**
-       * Bodies whose text changed.
+       * Bodies whose text changes (dry run), or whose text this call wrote
+       * (write).
        */
       rewritten: z.integer(),
+      /**
+       * Changed bodies this call did not write, left for the next one.
+       */
+      remaining: z.integer(),
       /**
        * Protected folios, whose ciphertext the server never reads. Their
        * title references break at the purge unless fixed by hand first.
