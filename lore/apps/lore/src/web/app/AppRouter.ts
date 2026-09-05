@@ -1605,18 +1605,19 @@ export class AppRouter {
   });
 
   /**
-   * Sigils — which applications report here.
+   * Apps — the module switch, and the blight ignore rules.
    *
-   * ⚠️ Named in `ProjectSettings.tsx`'s nav array, which is a list of route
-   * names with nothing in the type system tying it to the routes it names.
-   * Renaming or removing this page without editing that array crashes every
-   * settings page, which is exactly what happened once.
+   * ⚠️ **The name and the path deliberately still say `sigils`** while the page
+   * says Apps (#1770). Renaming a `$page` is not typecheck-protected, and this
+   * name is carried as a plain string in `ProjectSettings.tsx`'s nav array,
+   * which crashed every settings page once when this route moved. The label is
+   * the only thing that changed.
    */
   projectSettingsSigils = $page({
     name: "projectSettingsSigils",
     path: "/sigils",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Sigils`,
+      title: `${previous?.title ?? ""} › Apps`,
     }),
     lazy: () =>
       import("./components/project/settings/ProjectSettingsSigilsPage.tsx"),
