@@ -99,7 +99,7 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
           // Only on the direct branch. Here the id is always a project's, and
           // `projects.id` is an integer, while a path segment is text. On the
           // hop branch the id belongs to the resource and may well be a uuid
-          // (folios, directories, blobs), where `Number` would produce NaN.
+          // (folios, directories, attachments), where `Number` would produce NaN.
           cast: Number,
         }),
 

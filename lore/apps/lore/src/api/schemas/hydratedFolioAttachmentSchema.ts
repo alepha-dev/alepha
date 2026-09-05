@@ -4,12 +4,12 @@ import { type Infer, z } from "alepha";
  * A folio attachment as the API returns it: the `folio_blobs` row joined
  * with its framework `files` row (size, mimeType, checksum, originalName).
  *
- * Lives in its own file rather than inside `BlobController` because two
- * surfaces now serialize it — `BlobController.listBlobs` and the
- * `metadata.blobs` that `FolioController.getByShortId?withBlobs=true`
+ * Lives in its own file rather than inside `FolioAttachmentController` because two
+ * surfaces now serialize it — `FolioAttachmentController.listAttachments` and the
+ * `metadata.attachments` that `FolioController.getByShortId?withAttachments=true`
  * attaches — and a second copy is how the two stop agreeing.
  */
-export const hydratedBlobSchema = z.object({
+export const hydratedFolioAttachmentSchema = z.object({
   id: z.uuid(),
   shortId: z.integer(),
   projectId: z.integer(),
@@ -24,4 +24,6 @@ export const hydratedBlobSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
-export type HydratedBlob = Infer<typeof hydratedBlobSchema>;
+export type HydratedFolioAttachment = Infer<
+  typeof hydratedFolioAttachmentSchema
+>;

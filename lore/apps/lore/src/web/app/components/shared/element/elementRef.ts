@@ -21,7 +21,7 @@ export interface ElementRef {
   /**
    * The element's own id — a folio's UUID, a quest's or epic's integer.
    * Absent while the element is being created and has none yet, which is
-   * what disables blob resolution and image upload for a draft folio.
+   * what disables attachment resolution and image upload for a draft folio.
    */
   id?: string | number;
 }

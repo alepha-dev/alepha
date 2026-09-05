@@ -1,11 +1,11 @@
 import { describe, it } from "vitest";
 
 import {
-  type BlobRef,
+  type AttachmentRef,
   rewriteFolioWikiLinks,
 } from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
 
-const imagePng: BlobRef = {
+const imagePng: AttachmentRef = {
   fileId: "11111111-1111-1111-1111-111111111111",
   shortId: 42,
   name: "diagram.png",
@@ -13,13 +13,13 @@ const imagePng: BlobRef = {
   size: 12_345,
 };
 
-const imageJpegByExtOnly: BlobRef = {
+const imageJpegByExtOnly: AttachmentRef = {
   fileId: "22222222-2222-2222-2222-222222222222",
   shortId: 7,
   name: "photo.JPG",
 };
 
-const nonImageCsv: BlobRef = {
+const nonImageCsv: AttachmentRef = {
   fileId: "33333333-3333-3333-3333-333333333333",
   shortId: 5,
   name: "data.csv",
@@ -85,7 +85,7 @@ describe("rewriteFolioWikiLinks — assets/ references", () => {
     );
     // Deliberately not left as a raw `assets/missing.png` src: that renders
     // as a broken-image icon with no explanation of why.
-    expect(out).toContain("#lore-broken:blob-not-found");
+    expect(out).toContain("#lore-broken:attachment-not-found");
   });
 
   it("rewrites a plain link to an attachment, not just an embed", ({

@@ -158,7 +158,7 @@ export class QuestController {
     maxSize: 10,
     // No `mimeTypes`, on purpose: a quest carries whatever the work needs,
     // an HTML mockup included. `$storage` reads an absent list as "any
-    // type", the same as the folio blob bucket. A member is someone the
+    // type", the same as the folio attachment bucket. A member is someone the
     // project already trusts; feedback attachments come from anyone with an
     // account and keep their own narrow list.
     //
@@ -840,7 +840,7 @@ export class QuestController {
 
       // Listing an id here is what grants every member read access to the
       // bytes, so only the caller's own uploads into the quest bucket may be
-      // listed: an avatar, a folio blob or another project's attachment
+      // listed: an avatar, a folio attachment or another project's attachment
       // used to become readable by naming its id.
       const [owned] = await this.ownUploads([body.fileId], user);
       if (!owned) {
@@ -985,7 +985,7 @@ export class QuestController {
   /**
    * The subset of `ids` that are files this user uploaded into the quest
    * bucket, in the order given. Anything else is dropped: another user's
-   * upload, an avatar, a folio blob, a foreign id. Being listed in
+   * upload, an avatar, a folio attachment, a foreign id. Being listed in
    * `quest.attachments` is what lets every project member read the bytes
    * (see `LoreFileAccessProvider`), so a caller must not be able to list a
    * file that is not theirs.
@@ -1041,7 +1041,7 @@ export class QuestController {
 
       // Only an id this quest lists can be removed through it. The handler
       // used to delete ANY file in the instance by id (avatars, project
-      // icons, folio blobs): `FileService.deleteFile` has no owner check.
+      // icons, folio attachments): `FileService.deleteFile` has no owner check.
       if (!quest.attachments.includes(params.fileId)) {
         throw new NotFoundError("Attachment not found on this quest");
       }

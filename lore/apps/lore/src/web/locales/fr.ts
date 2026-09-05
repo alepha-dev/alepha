@@ -121,7 +121,7 @@ export default {
     "Aucune quête ne correspond à cette référence.",
   "folios.wikilink.broken.epicNotFound":
     "Aucune épopée ne correspond à cette référence.",
-  "folios.wikilink.broken.blobNotFound":
+  "folios.wikilink.broken.attachmentNotFound":
     "Aucune pièce jointe de ce folio ne correspond à cette référence.",
   "folios.wikilink.broken.feedbackNotFound":
     "Aucun retour ne correspond à cette référence.",

@@ -3,19 +3,19 @@ import { AlephaError } from "alepha";
 import { useClient } from "alepha/react";
 import { useCallback } from "react";
 
-import type { BlobController } from "@/api/controllers/BlobController.ts";
+import type { FolioAttachmentController } from "@/api/controllers/FolioAttachmentController.ts";
 
 import { folioAssetPath } from "../../folios/folioAssetReference.ts";
 import { FOLIO_IMAGE_MAX_WIDTH } from "../../folios/folioImageBounds.ts";
 
-// Mirrors `FolioBlobService.BUCKET` — not imported
+// Mirrors `FolioAttachmentService.BUCKET` — not imported
 // so the browser bundle doesn't pull the server-side service module.
 // Bucket value stays "archive-blobs" — see the note on
-// `FOLIO_BLOB_BUCKET` in `FolioBlobService.ts`.
-const FOLIO_BLOB_BUCKET = "archive-blobs";
+// `FOLIO_ATTACHMENT_BUCKET` in `FolioAttachmentService.ts`.
+const FOLIO_ATTACHMENT_BUCKET = "archive-blobs";
 
 /**
- * Image upload handler for folio markdown: two-step blob upload —
+ * Image upload handler for folio markdown: two-step attachment upload —
  * framework file bytes, then registration as an attachment of `folioId`.
  *
  * Returns the **relative** `assets/<name>` path, not `/api/files/<uuid>`.
@@ -27,7 +27,7 @@ const FOLIO_BLOB_BUCKET = "archive-blobs";
  *
  * The name comes from the server's response, not from `file.name` — the
  * two differ whenever the folio already had an attachment by that name and
- * `FolioBlobService` auto-suffixed it. Using the local name would write a
+ * `FolioAttachmentService` auto-suffixed it. Using the local name would write a
  * reference that resolves to nothing.
  *
  * Returns `undefined` when disabled — protected folios must not upload
@@ -39,7 +39,7 @@ export const useFolioImageUpload = (
   folioId: string | undefined,
   enabled: boolean,
 ): ((file: File) => Promise<string>) | undefined => {
-  const blobApi = useClient<BlobController>();
+  const attachmentApi = useClient<FolioAttachmentController>();
 
   const handler = useCallback(
     async (original: File) => {
@@ -69,7 +69,7 @@ export const useFolioImageUpload = (
       });
       const form = new FormData();
       form.append("file", file);
-      const url = `/api/files?bucket=${encodeURIComponent(FOLIO_BLOB_BUCKET)}`;
+      const url = `/api/files?bucket=${encodeURIComponent(FOLIO_ATTACHMENT_BUCKET)}`;
       const uploaded = await fetch(url, {
         method: "POST",
         body: form,
@@ -79,7 +79,7 @@ export const useFolioImageUpload = (
         throw new AlephaError(`upload failed: ${uploaded.status}`);
       }
       const uploadedJson = (await uploaded.json()) as { id: string };
-      const blob = await blobApi.registerBlob({
+      const attachment = await attachmentApi.registerAttachment({
         params: { projectId },
         body: {
           fileId: uploadedJson.id,
@@ -87,9 +87,9 @@ export const useFolioImageUpload = (
           folioId,
         },
       });
-      return folioAssetPath(blob.name);
+      return folioAssetPath(attachment.name);
     },
-    [blobApi, projectId, folioId],
+    [attachmentApi, projectId, folioId],
   );
 
   return enabled && projectId !== undefined && folioId !== undefined

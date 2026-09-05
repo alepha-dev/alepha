@@ -31,7 +31,7 @@ import type { LinkSourceKind } from "../schemas/linkSourceKindSchema.ts";
 import type { LinkTargetKind } from "../schemas/linkTargetKindSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
-import { FolioBlobService } from "../services/FolioBlobService.ts";
+import { FolioAttachmentService } from "../services/FolioAttachmentService.ts";
 import { FolioHistoryService } from "../services/FolioHistoryService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { FolioNameService } from "../services/FolioNameService.ts";
@@ -65,7 +65,7 @@ export class FolioController {
   protected readonly users = $repository(users);
   protected readonly linkService = $inject(FolioLinkService);
   protected readonly bound = $inject(BoundParameters);
-  protected readonly blobService = $inject(FolioBlobService);
+  protected readonly attachmentService = $inject(FolioAttachmentService);
   protected readonly historyService = $inject(FolioHistoryService);
   protected readonly nameService = $inject(FolioNameService);
   protected readonly revisionStats = $inject(FolioRevisionStatsService);
@@ -188,7 +188,7 @@ export class FolioController {
       // `withLinks=true` attaches the resolved [[wiki-link]] index.
       // `withPath=true` attaches the folio's directory chain (root → … →
       // direct parent), which renders the AppShell breadcrumb without a
-      // separate `listAllDirectories`. `withBlobs=true` attaches the
+      // separate `listAllDirectories`. `withAttachments=true` attaches the
       // attachment list.
       //
       // There was a `withRevisionCount` here too, feeding the meta bar's
@@ -197,7 +197,7 @@ export class FolioController {
       query: z.object({
         withLinks: z.boolean().optional(),
         withPath: z.boolean().optional(),
-        withBlobs: z.boolean().optional(),
+        withAttachments: z.boolean().optional(),
       }),
       response: folioResourceSchema,
     },
@@ -209,7 +209,7 @@ export class FolioController {
         },
       });
       if (!folio) throw new NotFoundError("Folio not found");
-      if (!query.withLinks && !query.withPath && !query.withBlobs) {
+      if (!query.withLinks && !query.withPath && !query.withAttachments) {
         return folio;
       }
       // Every requested extra is independent of the others, so they run
@@ -224,18 +224,18 @@ export class FolioController {
       // saves — and it is lazy, so a folio at the project root with no
       // links still reads no directories at all.
       const loadDirectories = this.directoryMapLoader(folio.projectId);
-      const [links, path, blobs] = await Promise.all([
+      const [links, path, attachments] = await Promise.all([
         query.withLinks
           ? this.resolveLinks(folio.id, folio.projectId, loadDirectories)
           : undefined,
         query.withPath
           ? this.resolveDirectoryPath(folio.directoryId, loadDirectories)
           : undefined,
-        query.withBlobs
-          ? this.blobService.listHydratedByFolio(folio.id)
+        query.withAttachments
+          ? this.attachmentService.listHydratedByFolio(folio.id)
           : undefined,
       ]);
-      return { ...folio, metadata: { links, path, blobs } };
+      return { ...folio, metadata: { links, path, attachments } };
     },
   });
 
@@ -933,7 +933,7 @@ export class FolioController {
        * nothing else references. Every folio deleted before this left its
        * attachments there, paid for and unreachable.
        */
-      await this.blobService.deleteByFolio(params.id);
+      await this.attachmentService.deleteByFolio(params.id);
       // Hand the name back to the folder. `folio_names` has no foreign
       // key to `folios` (it discriminates by `kind`), so nothing frees
       // it on cascade - the reservation would outlive the folio and

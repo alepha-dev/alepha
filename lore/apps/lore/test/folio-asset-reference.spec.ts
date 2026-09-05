@@ -5,13 +5,13 @@ import {
   folioAssetPath,
 } from "../src/web/app/components/folios/folioAssetReference.ts";
 import {
-  type BlobRef,
+  type AttachmentRef,
   rewriteFolioWikiLinks,
 } from "../src/web/app/components/folios/rewriteFolioWikiLinks.ts";
 
 const PROJECT_SLUG = "sds";
 
-const blobNamed = (name: string): BlobRef => ({
+const blobNamed = (name: string): AttachmentRef => ({
   fileId: "11111111-1111-1111-1111-111111111111",
   shortId: 1,
   name,

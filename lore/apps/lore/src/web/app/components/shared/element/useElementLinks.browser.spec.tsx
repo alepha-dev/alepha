@@ -36,7 +36,7 @@ class FakeLinkProvider extends LinkProvider {
   override client(): any {
     return {
       list: async () => [],
-      listBlobs: async () => [],
+      listAttachments: async () => [],
       getEpics: async () => this.epics,
       getQuests: async (config: { query?: { includePlanned?: boolean } }) => {
         const includePlanned = config?.query?.includePlanned === true;

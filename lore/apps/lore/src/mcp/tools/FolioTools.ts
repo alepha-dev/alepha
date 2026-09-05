@@ -2,9 +2,9 @@ import { $inject, z } from "alepha";
 import { $tool } from "alepha/mcp";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import { BlobController } from "../../api/controllers/BlobController.ts";
 import { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import { EpicController } from "../../api/controllers/EpicController.ts";
+import { FolioAttachmentController } from "../../api/controllers/FolioAttachmentController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { DIAGRAM_CAPABILITY } from "../schemas/diagramCapability.ts";
@@ -49,8 +49,8 @@ const buildSnippet = (text: string, query: string, radius = 100): string => {
  * `project_context` — it returns the folio index alongside active quests
  * in one ~2K-token call.
  *
- * Also declares the `directory_*` and `blob_*` tools (quest #66): folios
- * live in a per-project directory tree alongside binary blob
+ * Also declares the `directory_*` and `folio_attachment_*` tools (quest #66): folios
+ * live in a per-project directory tree alongside binary attachments
  * attachments, so browsing and organizing that tree is part of the same
  * surface as the folios it holds.
  */
@@ -58,7 +58,7 @@ export class FolioTools {
   protected readonly folioController = $inject(FolioController);
   protected readonly projectController = $inject(ProjectController);
   protected readonly directoryController = $inject(DirectoryController);
-  protected readonly blobController = $inject(BlobController);
+  protected readonly attachmentController = $inject(FolioAttachmentController);
   protected readonly epicController = $inject(EpicController);
   protected readonly epicRefs = $inject(EpicRefService);
   protected readonly diagrams = $inject(DiagramCheckService);
@@ -139,18 +139,18 @@ export class FolioTools {
   }
 
   /**
-   * Resolve a `blob_shortId` MCP input to the global file UUID, scoped to
+   * Resolve a `attachment_shortId` MCP input to the global file UUID, scoped to
    * the given project. Delegates to a public controller endpoint — no
    * reach into private state.
    */
-  protected async resolveBlobFileId(
+  protected async resolveAttachmentFileId(
     projectId: number,
     shortId: number,
   ): Promise<string> {
-    const blob = await this.blobController.getBlobByShortId({
+    const attachment = await this.attachmentController.getAttachmentByShortId({
       params: { projectId, shortId },
     });
-    return blob.id;
+    return attachment.id;
   }
 
   folio_list = $tool({
@@ -619,7 +619,7 @@ export class FolioTools {
 
   directory_list = $tool({
     description:
-      "List the contents of a directory (folios + child directories) in one call. Pass `directory_shortId` to drill in, or omit for the project root. Returns the directory metadata, the breadcrumb (root → … → parent), and `entries` tagged by `kind`. This is the Drive-like browse endpoint for AI agents. Attachments are not listed here: a blob belongs to one folio rather than to a folder, so ask `blob_list` for a folio's.",
+      "List the contents of a directory (folios + child directories) in one call. Pass `directory_shortId` to drill in, or omit for the project root. Returns the directory metadata, the breadcrumb (root → … → parent), and `entries` tagged by `kind`. This is the Drive-like browse endpoint for AI agents. Attachments are not listed here: a blob belongs to one folio rather than to a folder, so ask `folio_attachment_list` for a folio's.",
     title: "List directory contents",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -637,7 +637,7 @@ export class FolioTools {
           z.object({
             // No `"blob"`: an attachment belongs to a folio, not to a
             // folder, so it is never a child of a directory. Ask
-            // `blob_list` for a folio's attachments.
+            // `folio_attachment_list` for a folio's attachments.
             kind: z.enum(["directory", "folio"]),
             shortId: z.integer(),
             name: z.string(),
@@ -783,7 +783,7 @@ export class FolioTools {
 
   directory_delete = $tool({
     description:
-      "Delete a directory. Refuses if not empty unless `cascade: true` — cascade recursively wipes the subtree (folios + blobs + sub-directories) via the DB cascade.",
+      "Delete a directory. Refuses if not empty unless `cascade: true` — cascade recursively wipes the subtree (folios + attachments + sub-directories) via the DB cascade.",
     title: "Delete directory",
     annotations: { destructiveHint: true },
     schema: {
@@ -814,7 +814,7 @@ export class FolioTools {
   });
 
   // ---------------------------------------------------------------------------
-  // blob_* tools: a folio's attachments
+  // folio_attachment_* tools: a folio's attachments
   //
   // Uploads are out of MCP scope — agents can't post bytes efficiently
   // through the JSON-RPC channel. The list / rename / delete tools are the
@@ -824,10 +824,10 @@ export class FolioTools {
   // embed and wiki-link forms are gone (epic #32).
   // ---------------------------------------------------------------------------
 
-  blob_list = $tool({
+  folio_attachment_list = $tool({
     description:
       "List the attachments of one folio. Each entry includes shortId, name, size, mimeType, and the optional sha256 + originalName.",
-    title: "List blobs",
+    title: "List attachments",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: z.object({
@@ -836,7 +836,7 @@ export class FolioTools {
         folio_shortId: z.integer(),
       }),
       result: z.object({
-        blobs: z.array(
+        attachments: z.array(
           z.object({
             shortId: z.integer(),
             name: z.string(),
@@ -858,11 +858,11 @@ export class FolioTools {
         shortId: params.folio_shortId,
         project: projectId,
       });
-      const blobs = await this.blobController.listBlobs({
+      const attachments = await this.attachmentController.listAttachments({
         params: { folioId },
       });
       return {
-        blobs: blobs.map((b) => ({
+        attachments: attachments.map((b) => ({
           shortId: b.shortId,
           name: b.name,
           size: b.size,
@@ -875,15 +875,15 @@ export class FolioTools {
     },
   });
 
-  blob_rename = $tool({
-    description: "Rename a blob (auto-suffix on collision).",
-    title: "Rename blob",
+  folio_attachment_rename = $tool({
+    description: "Rename an attachment of a folio (auto-suffix on collision).",
+    title: "Rename attachment",
     annotations: { idempotentHint: true, destructiveHint: false },
     schema: {
       params: z.object({
         project: z.integer().optional(),
         project_name: z.string().optional(),
-        blob_shortId: z.integer(),
+        attachment_shortId: z.integer(),
         name: z.string().min(1).max(200),
       }),
       result: z.object({ shortId: z.integer(), name: z.string() }),
@@ -893,11 +893,11 @@ export class FolioTools {
         params.project,
         params.project_name,
       );
-      const fileId = await this.resolveBlobFileId(
+      const fileId = await this.resolveAttachmentFileId(
         projectId,
-        params.blob_shortId,
+        params.attachment_shortId,
       );
-      const updated = await this.blobController.renameBlob({
+      const updated = await this.attachmentController.renameAttachment({
         params: { id: fileId },
         body: { name: params.name },
       });
@@ -905,15 +905,15 @@ export class FolioTools {
     },
   });
 
-  blob_delete = $tool({
-    description: "Delete a blob and reclaim its storage.",
-    title: "Delete blob",
+  folio_attachment_delete = $tool({
+    description: "Delete an attachment of a folio and reclaim its storage.",
+    title: "Delete attachment",
     annotations: { destructiveHint: true },
     schema: {
       params: z.object({
         project: z.integer().optional(),
         project_name: z.string().optional(),
-        blob_shortId: z.integer(),
+        attachment_shortId: z.integer(),
       }),
       result: z.object({ ok: z.boolean() }),
     },
@@ -922,11 +922,13 @@ export class FolioTools {
         params.project,
         params.project_name,
       );
-      const fileId = await this.resolveBlobFileId(
+      const fileId = await this.resolveAttachmentFileId(
         projectId,
-        params.blob_shortId,
+        params.attachment_shortId,
       );
-      await this.blobController.deleteBlob({ params: { id: fileId } });
+      await this.attachmentController.deleteAttachment({
+        params: { id: fileId },
+      });
       return { ok: true };
     },
   });

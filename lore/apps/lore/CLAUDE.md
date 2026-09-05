@@ -56,7 +56,7 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (31)** — `Artifact`, `Blight`, `Blob`, `Directory`, `Estate`, `EstateCommand`, `EstateSocket` (the `$websocket` a Bay machine holds open, `/ws/estates`; the first websocket in Lore, and the first Durable Object on production), `EstatePull` (the two root `$route`s a machine pulls a deploy's artifact bytes and secret set from, by command id, under its estate secret; the secret set is `{}` until epic #1's #1813), `AdminEstate` (the instance-wide backstop for an estate whose owner is gone: list and delete behind `admin:estate:read` / `admin:estate:delete`, masked like the owner's own view, no credential for the admin role either; #1838), `ProjectEstate`, `Feedback`, `FeedbackComment`, `Folio`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Roadmap`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
+**Controllers (31)** — `Artifact`, `Blight`, `Directory`, `Estate`, `EstateCommand`, `EstateSocket` (the `$websocket` a Bay machine holds open, `/ws/estates`; the first websocket in Lore, and the first Durable Object on production), `EstatePull` (the two root `$route`s a machine pulls a deploy's artifact bytes and secret set from, by command id, under its estate secret; the secret set is `{}` until epic #1's #1813), `AdminEstate` (the instance-wide backstop for an estate whose owner is gone: list and delete behind `admin:estate:read` / `admin:estate:delete`, masked like the owner's own view, no credential for the admin role either; #1838), `ProjectEstate`, `Feedback`, `FeedbackComment`, `Folio`, `FolioAttachment`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Roadmap`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
 
 > **Invitations moved out of Lore entirely** (epic #23, quest #1663). The
 > entity, `InvitationService`, `InvitationJobs` and `AdminInvitationController`
@@ -86,11 +86,11 @@ apps/lore/                # This app
 > `MySessionController`'s actions verbatim. Reach for the `alepha/api/users` and
 > `alepha/api/oauth` controllers instead of re-adding an app-local one.
 
-**Entities (34)** — `artifacts`, `blightIgnoreRules`, `blights`, `estates` (a user-owned deploy destination, lent to projects; epic #20, folio #1194), `estateProjects` (the lending join), `estateCommands` (the queue behind the connector, `pending` to `sent` to `running` to `done` or `failed`, swept by `EstateCommandJobs`), `feedback`, `feedbackComments`, `files`, `folioBlobs`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `members`, `releases`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
+**Entities (34)** — `artifacts`, `blightIgnoreRules`, `blights`, `estates` (a user-owned deploy destination, lent to projects; epic #20, folio #1194), `estateProjects` (the lending join), `estateCommands` (the queue behind the connector, `pending` to `sent` to `running` to `done` or `failed`, swept by `EstateCommandJobs`), `feedback`, `feedbackComments`, `files`, `folioAttachments`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `members`, `releases`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
 
-**Services (45)** — `BlightRuleService`, `EstateCommandService`, `EstateCommandTransport` (the seam; `WebSocketEstateCommandTransport` is the real one, substituted in `main.server.ts`), `EstateService`, `EstateStatsService` (the gauge upsert on the row on every push, and the `estate_stats` `$analytics` series only while `collectSeries` is on; the series is read back as daily means through `series()`, which carries the `estimated` disclosure), `EstateTokenService`, `FeedbackRateLimiter`, `FolioBlobService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `PinnedFolioFolder`, `ProjectActivityService`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
+**Services (45)** — `BlightRuleService`, `EstateCommandService`, `EstateCommandTransport` (the seam; `WebSocketEstateCommandTransport` is the real one, substituted in `main.server.ts`), `EstateService`, `EstateStatsService` (the gauge upsert on the row on every push, and the `estate_stats` `$analytics` series only while `collectSeries` is on; the series is read back as daily means through `series()`, which carries the `estimated` disclosure), `EstateTokenService`, `FeedbackRateLimiter`, `FolioAttachmentService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `PinnedFolioFolder`, `ProjectActivityService`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
 
-**MCP tools (10)** — `ArtifactTools` (`artifact_list` / `artifact_get`, read-only: pushing is CI's job and the credential for it lives in CI, so there is deliberately no `artifact_push`), `BlightTools`, `EpicTools`, `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `blob_*` live here now), `InsightsTools` , `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `ProjectTools` (including `project_activity`, the one call for everything that moved since a timestamp), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`), `SigilTools`.
+**MCP tools (10)** — `ArtifactTools` (`artifact_list` / `artifact_get`, read-only: pushing is CI's job and the credential for it lives in CI, so there is deliberately no `artifact_push`), `BlightTools`, `EpicTools`, `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `folio_attachment_*` live here now), `InsightsTools` , `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `ProjectTools` (including `project_activity`, the one call for everything that moved since a timestamp), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`), `SigilTools`.
 
 ## Routes
 
@@ -152,7 +152,7 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 
 Also top-level under the shared layout: `/auth/login` (`login`), `/oauth/continue` (`oauthContinue`), `/auth/register` (`register`), `/auth/reset-password` (`resetPassword`).
 
-HTTP API routes follow the same vocabulary: `/projects/:id/quests/export`, `/quests/attachments`, `/kanban/:projectId`, `/projects/:projectId/feedback`. MCP tools are `project_*`, `quest_*`, `release_*`, `folio_*` (also `directory_*` / `blob_*`), `feedback_*`, `blight_*`, `sigil_*`, `insights_*`.
+HTTP API routes follow the same vocabulary: `/projects/:id/quests/export`, `/quests/attachments`, `/kanban/:projectId`, `/projects/:projectId/feedback`. MCP tools are `project_*`, `quest_*`, `release_*`, `folio_*` (also `directory_*` / `folio_attachment_*`), `feedback_*`, `blight_*`, `sigil_*`, `insights_*`.
 
 ### ⚠️ `/:projectSlug` is a **root-level** param — three consequences
 
@@ -235,7 +235,7 @@ Live in `src/web/app/atoms/` (29 files). The project route loader fills the `cur
 **Per-resource (set by their route loaders)**
 
 - `currentQuestAtom` — active quest detail
-- `currentFolioBlobsAtom` — that folio's attachments. Folio-scoped, not project-scoped, since attachments stopped being rows in the folio tree
+- `currentFolioAttachmentsAtom` — that folio's attachments. Folio-scoped, not project-scoped, since attachments stopped being rows in the folio tree
 - `currentEpicAtom` — the open epic. It exists for the breadcrumb, which `ProjectView` renders one layer ABOVE the route: the layout only sees `epicNumber`, and a number is not a title. Same arrangement as `currentSigilAtom`
 - `currentSigilAtom` — the open app. Its analytics are **not** an atom any more: `currentSigilInsightsAtom` was deleted when the `projectApp` loader stopped fetching insights for every tab. Analytics, Vitals and the Dashboard each call `useAppInsights`, which keys a `useQuery` on `(sigil, range, traffic, dimension filters)` and reads them all from the URL
 
@@ -393,7 +393,7 @@ the handler. `ProjectSecurityService.assertMember` / `assertOwner` are the
 older in-handler form, still used by the controllers not yet ported -
 Area, Kanban, Reports, Feedback, Blight, Insights, Search, Sigil, Quest
 portability. Ported as of 2026-08-29: Quest, QuestComment, Epic, Release,
-Folio, Directory, Blob.
+Folio, Directory, FolioAttachment.
 
 `isMember` / `isMemberById` are not going anywhere: they answer questions
 that are not gates (branching on membership, or asking about somebody other
@@ -407,7 +407,7 @@ owner's opt-in/out lever.
 
 **Which side of the split an endpoint belongs on is "is this the work, or
 the project's configuration".** The work is member-gated end to end —
-quests, folios (with their directories and blobs), kanban moves, and
+quests, folios (with their directories and attachments), kanban moves, and
 **epics** (`EpicController`, member-gated since 2026-08-28; it was
 owner-only, which made the header's "Create epic" entry answer 403 for
 every member it was shown to, and left an epic nobody but the owner could
@@ -550,7 +550,7 @@ User-submitted bug reports / feature requests that the project owner triages. (R
 
 Folios are markdown notes scoped to a **project** and shared across all its members (they were per-user before quest #65) — they mirror the `~/.claude/projects/*/memory/MEMORY.md` pattern but at the project level: persistent across sessions, exportable, fully MCP-readable. Treat them as the canonical place where any agent working on a Lore project should look for context and write down what it learns.
 
-Since the 2026-08 great rename, Folios also absorbed the standalone **Archive** module — the directory tree + binary blobs that used to have their own URL path, entities (`archiveDirectories`/`archiveBlobs`/`archiveNames`) and MCP tool class (`ArchiveTools`). Folios live in a directory tree rather than nesting under each other. `folioDirectories` is the tree (depth-capped at 8), `folioBlobs` holds binary attachments, and `folioNames` backs name-uniqueness. `folios.directoryId` is `undefined` for the project root and **cascades on directory delete** — removing a directory removes everything in it, folios included. Surfaced at `/:projectSlug/folios` and over MCP via `FolioTools` (`directory_*`, `blob_*` tools live in this same file now).
+Since the 2026-08 great rename, Folios also absorbed the standalone **Archive** module — the directory tree + binary blobs that used to have their own URL path, entities (`archiveDirectories`/`archiveBlobs`/`archiveNames`) and MCP tool class (`ArchiveTools`). Folios live in a directory tree rather than nesting under each other. `folioDirectories` is the tree (depth-capped at 8), `folioAttachments` holds binary attachments, and `folioNames` backs name-uniqueness. `folios.directoryId` is `undefined` for the project root and **cascades on directory delete** — removing a directory removes everything in it, folios included. Surfaced at `/:projectSlug/folios` and over MCP via `FolioTools` (`directory_*`, `folio_attachment_*` tools live in this same file now).
 
 **Conventions** (apply when curating folios — yourself or via Claude):
 
@@ -571,18 +571,18 @@ The MCP tool descriptions in `src/mcp/tools/ProjectTools.ts` and `src/mcp/tools/
 **Where to look**
 
 - Entity: `src/api/entities/folios.ts` (project-scoped, `searchText` blob for cheap LIKE search — blank for protected folios, `summary` for agent-readable orientation)
-- Blob / directory entities: `src/api/entities/folioBlobs.ts`, `folioDirectories.ts`, `folioNames.ts`
+- Attachment / directory entities: `src/api/entities/folioAttachments.ts`, `folioDirectories.ts`, `folioNames.ts`
 - Link table: `src/api/entities/folioLinks.ts` (derived; re-synced from `[[...]]` references on every folio save)
 - Link sync: `src/api/services/FolioLinkService.ts`
-- Blob / directory services: `src/api/services/FolioBlobService.ts`, `FolioDirectoryService.ts`, `FolioNameService.ts`
+- Attachment / directory services: `src/api/services/FolioAttachmentService.ts`, `FolioDirectoryService.ts`, `FolioNameService.ts`
 - Controller: `src/api/controllers/FolioController.ts` (list, getByShortId, get, getLinks, create, update, delete, listProjectActivity, listHistory, revertHistory, pinHistory)
-- Directory / blob controllers: `src/api/controllers/DirectoryController.ts`, `src/api/controllers/BlobController.ts`
+- Directory / attachment controllers: `src/api/controllers/DirectoryController.ts`, `src/api/controllers/FolioAttachmentController.ts`
 - History: `src/api/services/FolioHistoryService.ts` (append, retention sweep, protection-domain purge)
-- MCP tools: `src/mcp/tools/FolioTools.ts` (folio, directory and blob tools) + `ProjectTools.ts` (`project_context`)
+- MCP tools: `src/mcp/tools/FolioTools.ts` (folio, directory and attachment tools) + `ProjectTools.ts` (`project_context`)
 - UI: `src/web/app/components/folios/editor/FolioWorkspace.tsx` (the workspace shell — three panes: folio tree (`editor/tree/`), document (`editor/document/`), inspector (`editor/inspector/` — Outline / History / Links tabs, the History and Links tabs absorbed the old `FolioHistoryPanel.tsx` / `FolioBacklinksPanel.tsx`, both deleted)), `FolioBrowser.tsx` and `FolioProtectedView.tsx` are both deleted — the browser with the directory view, the protected view as a long-standing orphan the workspace's own locked-folio gate had already replaced. Pane visibility, the 1280/1024px drawer breakpoints and focus mode (⌘.) live in `editor/useFolioPanes.ts`; find-in-folio (⌘F) in `editor/document/useFolioFind.ts`, which paints through the CSS Custom Highlight API (`::highlight(folio-find)` in `src/main.css`) rather than injecting `<mark>` elements — View mode's DOM is derived from the markdown on every render, so an injected node is discarded (and under the old Lexical body it would have been saved into the folio). ⚠️ **⌘F has two implementations**: `useFolioFind` serves VIEW mode only; in Edit mode `useFolioShortcuts` stands aside so `@codemirror/search` handles it, because CodeMirror virtualizes its viewport and a text-node walk silently misses every match scrolled out of sight. It is also keyed on the _rewritten_ content (`useFolioWikiLinks().rendered`), not the raw draft — the rewrite changes when the async quest fetch lands, replacing the pane's text nodes under any range the hook is holding
 - E2E: `e2e/folio-workspace.spec.ts` is the whole folio surface now (summary round-trip, inspector tabs, tree drag-move, find, focus mode, pane persistence, the empty `/folios`, creating from the tree). `e2e/folios.spec.ts` was deleted with the directory table it drove. A tree drag is a fire-and-forget `update` — arm `waitForResponse` BEFORE the drop, or navigating cancels it in flight and the drop looks like it did nothing
 
-**Bucket literals kept un-renamed** — `FOLIO_BLOB_BUCKET = "archive-blobs"` (`FolioBlobService.ts`, `LoreFileAccessProvider.ts`, `BlobController.ts`, `useFolioImageUpload.ts`). Same reasoning as the `petition-attachments` bucket in the Feedback section: it's a value already persisted on every existing `files` row, and renaming it would orphan every folio image/blob ever uploaded.
+**Bucket literals kept un-renamed** — `FOLIO_ATTACHMENT_BUCKET = "archive-blobs"` (`FolioAttachmentService.ts`, `LoreFileAccessProvider.ts`, `FolioAttachmentController.ts`, `useFolioImageUpload.ts`). Same reasoning as the `petition-attachments` bucket in the Feedback section: it's a value already persisted on every existing `files` row, and renaming it would orphan every folio image/blob ever uploaded.
 
 ### ⚠️ Protected folios: the protection-domain invariant
 
@@ -1057,7 +1057,7 @@ The `@/` alias is still duplicated in both configs, and the root copy is load-be
 - `feedback-attachment.spec.ts` / `feedback-rate-limit.spec.ts` / `feedback-source.spec.ts` — the Feedback module (attachments, rate limits, `source` provenance)
 - `my-feedback.spec.ts` — reporter-scoped `/me` feedback endpoints
 - `folio-protected-history.spec.ts` — **regression guard**: the protection-domain invariant (no plaintext left in `folio_revisions` after encrypting; pinned revisions are not exempt)
-- `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, blob links, directories (the old Archive-module coverage lives here now too)
+- `folio-*.spec.ts` — links, backlinks, tidy, pinning, permissions, history, activity, attachment links, directories (the old Archive-module coverage lives here now too)
 - `sigil-controller.spec.ts` / `sigil-ingest.spec.ts` / `sigil-entities.spec.ts` / `sigil-self-report.spec.ts` — sigil CRUD + rotation, token verification, capability gating, aggregate upserts, and Lore's own in-process self-report path
 - `sigil-jobs.spec.ts` — the analytics collapse sweep: the uniques hash-fold, the hourly→daily view fold, idempotency across re-runs, and what Insights reads on either side of a sweep. Drives `DateTimeProvider.travel()` over the window boundary, so it asserts end state and never call counts
 - `insights-controller.spec.ts` / `insights-tools.spec.ts` — beacon/vitals windows and the p75 walk (clock pinned with `DateTimeProvider.pause()`), the `?sigilId=` per-app filter including the cross-project refusal, plus the MCP surface

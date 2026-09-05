@@ -7,47 +7,50 @@ import { BadRequestError, NotFoundError } from "alepha/server";
 // two writers and the reader of an `assets/` reference must agree on the
 // encoding exactly, and a second copy here is how that stops being true.
 import { folioAssetPath } from "../../web/app/components/folios/folioAssetReference.ts";
-import { type FolioBlob, folioBlobs } from "../entities/folioBlobs.ts";
+import {
+  type FolioAttachment,
+  folioAttachments,
+} from "../entities/folioAttachments.ts";
 import { folios } from "../entities/folios.ts";
-import type { HydratedBlob } from "../schemas/hydratedBlobSchema.ts";
+import type { HydratedFolioAttachment } from "../schemas/hydratedFolioAttachmentSchema.ts";
 
 /**
- * Lore-side blob operations on top of the framework `FileService`. The
+ * Lore-side attachment operations on top of the framework `FileService`. The
  * framework owns the bytes + the upload/download flow; we own the
  * placement of an attachment on its folio and the sibling-name rule.
  *
  * The bucket name `archive-blobs` is allocated here so per-project
  * separation isn't required at the framework layer — each folio_blob
  * row maps to one `files` row with `bucket = 'archive-blobs'`. Kept as
- * `archive-blobs` rather than renamed to `folio-blobs`: it's a value
+ * `archive-blobs` rather than renamed to `folio-attachments`: it's a value
  * already persisted on every existing `files` row, not just an
  * in-code identifier — same reasoning that keeps
  * `FeedbackRateLimiter.ATTACHMENT_BUCKET` at `"petition-attachments"`
  * after the Petitions → Feedback rename.
  */
-export class FolioBlobService {
+export class FolioAttachmentService {
   /**
-   * Static so `BlobController.folioBucket` can name it from a field
+   * Static so `FolioAttachmentController.folioBucket` can name it from a field
    * initializer, the same way `FeedbackRateLimiter.ATTACHMENT_BUCKET` is
    * read by `FeedbackController`.
    */
   static readonly BUCKET = "archive-blobs";
 
-  protected readonly blobs = $repository(folioBlobs);
+  protected readonly attachments = $repository(folioAttachments);
   protected readonly folioRows = $repository(folios);
   protected readonly frameworkFiles = $repository(files);
   protected readonly fileService = $inject(FileService);
   protected readonly blobShortId = $sequence();
 
-  public async findById(fileId: string): Promise<FolioBlob | undefined> {
-    return this.blobs.findOne({ where: { fileId: { eq: fileId } } });
+  public async findById(fileId: string): Promise<FolioAttachment | undefined> {
+    return this.attachments.findOne({ where: { fileId: { eq: fileId } } });
   }
 
   public async findByShortId(
     projectId: number,
     shortId: number,
-  ): Promise<FolioBlob | undefined> {
-    return this.blobs.findOne({
+  ): Promise<FolioAttachment | undefined> {
+    return this.attachments.findOne({
       where: {
         projectId: { eq: projectId },
         shortId: { eq: shortId },
@@ -60,8 +63,8 @@ export class FolioBlobService {
    * an export ever needs — an attachment has no existence outside its
    * folio.
    */
-  public async listByFolio(folioId: string): Promise<FolioBlob[]> {
-    return this.blobs.findMany({
+  public async listByFolio(folioId: string): Promise<FolioAttachment[]> {
+    return this.attachments.findMany({
       where: { folioId: { eq: folioId } },
       orderBy: [{ column: "name", direction: "asc" }],
       limit: 1000,
@@ -73,33 +76,35 @@ export class FolioBlobService {
    * size / mimeType / checksum every listing displays.
    *
    * Two queries regardless of how many attachments the folio has. The
-   * caller this replaced (`BlobController.listBlobs`) hydrated one blob at
+   * caller this replaced (`FolioAttachmentController.listAttachments`) hydrated one attachment at
    * a time and each hydrate was itself two queries — 2N+1 for a list that
    * loads on every folio open. Both readers go through here now, so the
    * shape can only be built one way.
    */
-  public async listHydratedByFolio(folioId: string): Promise<HydratedBlob[]> {
-    const blobs = await this.listByFolio(folioId);
-    if (blobs.length === 0) return [];
+  public async listHydratedByFolio(
+    folioId: string,
+  ): Promise<HydratedFolioAttachment[]> {
+    const attachments = await this.listByFolio(folioId);
+    if (attachments.length === 0) return [];
     const rows = await this.frameworkFiles.findMany({
-      where: { id: { inArray: blobs.map((b) => b.fileId) } },
+      where: { id: { inArray: attachments.map((b) => b.fileId) } },
     });
     const fileById = new Map(rows.map((f) => [f.id, f]));
-    const hydrated: HydratedBlob[] = [];
-    for (const blob of blobs) {
-      const file = fileById.get(blob.fileId);
-      // A blob whose framework file went missing is skipped rather than
+    const hydrated: HydratedFolioAttachment[] = [];
+    for (const attachment of attachments) {
+      const file = fileById.get(attachment.fileId);
+      // A attachment whose framework file went missing is skipped rather than
       // rendered half-empty — same call the per-row `hydrate` made by
       // returning `undefined` and being filtered out.
       if (!file) continue;
       hydrated.push({
-        id: blob.fileId,
-        shortId: blob.shortId,
-        projectId: blob.projectId,
-        folioId: blob.folioId,
-        name: blob.name,
-        createdAt: blob.createdAt,
-        updatedAt: blob.updatedAt,
+        id: attachment.fileId,
+        shortId: attachment.shortId,
+        projectId: attachment.projectId,
+        folioId: attachment.folioId,
+        name: attachment.name,
+        createdAt: attachment.createdAt,
+        updatedAt: attachment.updatedAt,
         size: file.size,
         mimeType: file.mimeType,
         sha256: file.checksum,
@@ -111,7 +116,7 @@ export class FolioBlobService {
   }
 
   /**
-   * Register a folio blob on top of an already-uploaded framework
+   * Register a folio attachment on top of an already-uploaded framework
    * file. Caller is responsible for the upload flow (typically via
    * framework `FileController` endpoints — Lore does not currently
    * expose an MCP-side upload; uploads happen via HTTP). We wire the
@@ -127,16 +132,16 @@ export class FolioBlobService {
     folioId: string;
     name: string;
     fileId: string;
-  }): Promise<FolioBlob> {
+  }): Promise<FolioAttachment> {
     const frameworkFile = await this.frameworkFiles.findOne({
       where: { id: { eq: input.fileId } },
     });
     if (!frameworkFile) {
       throw new BadRequestError("Framework file row not found — upload first");
     }
-    if (frameworkFile.bucket !== FolioBlobService.BUCKET) {
+    if (frameworkFile.bucket !== FolioAttachmentService.BUCKET) {
       throw new BadRequestError(
-        `Framework file is in bucket '${frameworkFile.bucket}', expected '${FolioBlobService.BUCKET}'`,
+        `Framework file is in bucket '${frameworkFile.bucket}', expected '${FolioAttachmentService.BUCKET}'`,
       );
     }
 
@@ -149,7 +154,7 @@ export class FolioBlobService {
 
     const name = await this.autoSuffix(input.name, input.folioId);
     const shortId = await this.blobShortId.next(String(input.projectId));
-    return this.blobs.create({
+    return this.attachments.create({
       fileId: input.fileId,
       projectId: input.projectId,
       folioId: input.folioId,
@@ -158,12 +163,14 @@ export class FolioBlobService {
     });
   }
 
-  public async rename(fileId: string, name: string): Promise<FolioBlob> {
-    const blob = await this.findById(fileId);
-    if (!blob) throw new NotFoundError("Blob not found");
-    const nextName = await this.autoSuffix(name, blob.folioId, fileId);
-    const renamed = await this.blobs.updateById(fileId, { name: nextName });
-    await this.rewriteReferences(blob.folioId, blob.name, nextName);
+  public async rename(fileId: string, name: string): Promise<FolioAttachment> {
+    const attachment = await this.findById(fileId);
+    if (!attachment) throw new NotFoundError("Blob not found");
+    const nextName = await this.autoSuffix(name, attachment.folioId, fileId);
+    const renamed = await this.attachments.updateById(fileId, {
+      name: nextName,
+    });
+    await this.rewriteReferences(attachment.folioId, attachment.name, nextName);
     return renamed;
   }
 
@@ -230,7 +237,7 @@ export class FolioBlobService {
     folioId: string,
     exceptFileId?: string,
   ): Promise<string> {
-    const siblings = await this.blobs.findMany({
+    const siblings = await this.attachments.findMany({
       where: { folioId: { eq: folioId } },
       columns: ["fileId", "name"],
       limit: 1000,
@@ -267,7 +274,7 @@ export class FolioBlobService {
   }
 
   /**
-   * Delete the blob row AND the underlying framework file, so the bytes
+   * Delete the attachment row AND the underlying framework file, so the bytes
    * are reclaimed. For v1 delete is hard delete.
    *
    * ⚠️ **There is no physical foreign key from `folio_blobs.fileId` to
@@ -286,10 +293,10 @@ export class FolioBlobService {
    * better half of that trade.
    */
   public async delete(fileId: string): Promise<void> {
-    const blob = await this.findById(fileId);
-    if (!blob) throw new NotFoundError("Blob not found");
+    const attachment = await this.findById(fileId);
+    if (!attachment) throw new NotFoundError("Blob not found");
 
-    await this.blobs.deleteById(fileId);
+    await this.attachments.deleteById(fileId);
 
     // Checked rather than caught: the framework row may already be gone
     // (this is exactly the orphan state that existed before), and
@@ -315,14 +322,14 @@ export class FolioBlobService {
    * Returns how many were reclaimed, which is what makes it assertable.
    */
   public async deleteByFolio(folioId: string): Promise<number> {
-    const blobs = await this.blobs.findMany({
+    const attachments = await this.attachments.findMany({
       where: { folioId: { eq: folioId } },
       columns: ["fileId"],
     });
-    if (blobs.length === 0) return 0;
+    if (attachments.length === 0) return 0;
 
-    const ids = blobs.map((blob) => blob.fileId);
-    await this.blobs.deleteMany({ fileId: { inArray: ids } });
+    const ids = attachments.map((attachment) => attachment.fileId);
+    await this.attachments.deleteMany({ fileId: { inArray: ids } });
     // One round trip per bucket, and it tolerates ids whose file row has
     // already gone.
     await this.fileService.deleteFiles(ids);

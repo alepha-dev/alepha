@@ -33,7 +33,7 @@ import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "./atoms/currentEpicCountAtom.ts";
 import { currentEpicsAtom } from "./atoms/currentEpicsAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
-import { currentFolioBlobsAtom } from "./atoms/currentFolioBlobsAtom.ts";
+import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
 import { currentProjectMemberAtom } from "./atoms/currentProjectMemberAtom.ts";
@@ -1727,7 +1727,7 @@ export class AppRouter {
     },
     onLeave: () => {
       this.alepha.store.set(currentFolioPathAtom, []);
-      this.alepha.store.set(currentFolioBlobsAtom, []);
+      this.alepha.store.set(currentFolioAttachmentsAtom, []);
     },
   });
 
@@ -1740,8 +1740,8 @@ export class AppRouter {
     lazy: () => import("./components/folios/FolioCreatePage.tsx"),
     loader: async ({ url }) => {
       // A draft has no attachments of its own: without this the last opened
-      // folio's blobs were offered in the new folio's link picker.
-      this.alepha.store.set(currentFolioBlobsAtom, []);
+      // folio's attachments were offered in the new folio's link picker.
+      this.alepha.store.set(currentFolioAttachmentsAtom, []);
       // Carry the source directory across the navigation: the folio tree's
       // create link adds `?dir=<shortId>` when the user is in a directory; resolve to a UUID here so the editor can pass
       // it to `folioApi.create({ directoryId })`. Without this, every
@@ -1831,12 +1831,15 @@ export class AppRouter {
           query: {
             withLinks: true,
             withPath: true,
-            withBlobs: true,
+            withAttachments: true,
           },
         }),
         this.seedFolioTree(project.id),
       ]);
-      this.alepha.store.set(currentFolioBlobsAtom, folio.metadata?.blobs ?? []);
+      this.alepha.store.set(
+        currentFolioAttachmentsAtom,
+        folio.metadata?.attachments ?? [],
+      );
       // Populate the folio breadcrumb so the AppShell header reads
       // "Lore › Folios › <dirs…> › <folio title>". Cleared on leave
       // by the parent `projectFolios` route.

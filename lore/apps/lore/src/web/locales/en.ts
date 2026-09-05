@@ -122,7 +122,7 @@ export default {
   "folios.wikilink.broken.folioNotFound": "No folio matches this reference.",
   "folios.wikilink.broken.questNotFound": "No quest matches this reference.",
   "folios.wikilink.broken.epicNotFound": "No epic matches this reference.",
-  "folios.wikilink.broken.blobNotFound":
+  "folios.wikilink.broken.attachmentNotFound":
     "No attachment of this folio matches this reference.",
   "folios.wikilink.broken.feedbackNotFound":
     "No feedback item matches this reference.",

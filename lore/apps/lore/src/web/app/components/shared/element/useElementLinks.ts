@@ -1,19 +1,19 @@
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useMemo } from "react";
 
-import type { BlobController } from "@/api/controllers/BlobController.ts";
 import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
+import type { FolioAttachmentController } from "@/api/controllers/FolioAttachmentController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 
-import { currentFolioBlobsAtom } from "../../../atoms/currentFolioBlobsAtom.ts";
+import { currentFolioAttachmentsAtom } from "../../../atoms/currentFolioAttachmentsAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { userFoliosAtom } from "../../../atoms/userFoliosAtom.ts";
 import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSuggestion.ts";
 import type {
-  BlobRef,
+  AttachmentRef,
   EpicRef,
   FeedbackRef,
   QuestRef,
@@ -53,7 +53,7 @@ export interface ElementLinks {
  *
  * A `folio` element is only ever rendered inside the folios workspace, whose
  * route loader has already filled `userFoliosAtom` and
- * `currentFolioBlobsAtom` — the tree pane is built from them. Reading the
+ * `currentFolioAttachmentsAtom` — the tree pane is built from them. Reading the
  * atoms there rather than fetching is what keeps opening a folio at one
  * request instead of four. Every other element is rendered somewhere those
  * atoms are empty, so it fetches.
@@ -74,11 +74,11 @@ export const useElementLinks = (
   const folioApi = useClient<FolioController>();
   const questApi = useClient<QuestController>();
   const epicApi = useClient<EpicController>();
-  const blobApi = useClient<BlobController>();
+  const attachmentApi = useClient<FolioAttachmentController>();
   const feedbackApi = useClient<FeedbackController>();
 
   const [atomFolios] = useStore(userFoliosAtom);
-  const [atomBlobs] = useStore(currentFolioBlobsAtom);
+  const [atomAttachments] = useStore(currentFolioAttachmentsAtom);
   const [atomReleases] = useStore(currentReleasesAtom);
 
   const inFolioWorkspace = element.kind === "folio";
@@ -182,13 +182,13 @@ export const useElementLinks = (
   // resolvable for a folio element. Outside the workspace that means
   // fetching by id; a quest or epic body's `assets/` path stays unresolved
   // rather than being looked up project-wide, which is not a thing.
-  const { data: fetchedBlobs } = useQuery<BlobRef[]>(
+  const { data: fetchedAttachments } = useQuery<AttachmentRef[]>(
     {
-      key: ["elementLinks:blobs", String(element.id ?? "")],
+      key: ["elementLinks:attachments", String(element.id ?? "")],
       enabled: !inFolioWorkspace && hasAssets && element.id !== undefined,
       staleTime: [1, "minutes"],
       handler: async () => {
-        const rows = await blobApi.listBlobs({
+        const rows = await attachmentApi.listAttachments({
           params: { folioId: String(element.id) },
         });
         return rows.map((b) => ({
@@ -201,22 +201,22 @@ export const useElementLinks = (
       },
       onError: () => {},
     },
-    [blobApi, element.id, inFolioWorkspace, hasAssets],
+    [attachmentApi, element.id, inFolioWorkspace, hasAssets],
   );
 
   const folios = inFolioWorkspace ? atomFolios : (fetchedFolios ?? []);
-  const blobs = useMemo<BlobRef[]>(
+  const attachments = useMemo<AttachmentRef[]>(
     () =>
       inFolioWorkspace
-        ? atomBlobs.map((b) => ({
+        ? atomAttachments.map((b) => ({
             fileId: b.id,
             shortId: b.shortId,
             name: b.name,
             size: b.size,
             mime: b.mimeType,
           }))
-        : (fetchedBlobs ?? []),
-    [inFolioWorkspace, atomBlobs, fetchedBlobs],
+        : (fetchedAttachments ?? []),
+    [inFolioWorkspace, atomAttachments, fetchedAttachments],
   );
 
   /**
@@ -280,7 +280,7 @@ export const useElementLinks = (
             projectSlug,
             folios,
             quests ?? [],
-            blobs,
+            attachments,
             epics ?? [],
             feedbackRefs ?? [],
             releases,
@@ -291,7 +291,7 @@ export const useElementLinks = (
       projectSlug,
       folios,
       quests,
-      blobs,
+      attachments,
       epics,
       feedbackRefs,
       releases,
