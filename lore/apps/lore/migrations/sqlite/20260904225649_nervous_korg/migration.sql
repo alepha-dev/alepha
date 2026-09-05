@@ -1,1 +1,0 @@
-ALTER TABLE `estates` ADD `connection_id` text;
