@@ -399,6 +399,7 @@ export class AppRouter {
       this.projectQuestGraph,
       this.projectEpics,
       this.projectEpic,
+      this.projectArtifacts,
       this.projectReleases,
       this.projectRelease,
       this.projectSettings,
@@ -1181,6 +1182,22 @@ export class AppRouter {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
+  });
+
+  /**
+   * Every build this project has, across every app (feedback #2111).
+   *
+   * No loader: `listArtifacts` is one indexed read and it is paid for by the
+   * page that shows it, the same arrangement `AppArtifactsList` documents.
+   * Putting it in the project loader would charge every reader for a page
+   * most of them are not opening.
+   */
+  projectArtifacts = $page({
+    path: "/artifacts",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Artifacts`,
+    }),
+    lazy: () => import("./components/project/artifacts/ProjectArtifacts.tsx"),
   });
 
   projectReleases = $page({

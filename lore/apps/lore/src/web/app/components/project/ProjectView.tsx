@@ -17,6 +17,7 @@ import {
   Grid3x2,
   Inbox,
   Layers,
+  Package,
   TriangleAlert,
 } from "lucide-react";
 
@@ -234,6 +235,17 @@ const ProjectView = () => {
       active: name.startsWith("projectFolios"),
     });
   }
+  // Between Folios and Releases, where feedback #2111 asked for it. No
+  // feature gate and no artifact count behind it: the page carries a real
+  // empty state that prints the push command, which is the only place a
+  // reader who has never pushed one can learn the capability exists. See
+  // `ProjectArtifactsEmpty` for why hiding the entry loses twice.
+  recordItems.push({
+    label: tr("project.menu.artifacts"),
+    icon: Package,
+    href: router.path("projectArtifacts", { params: { projectSlug } }),
+    active: name === "projectArtifacts",
+  });
   // Between Folios and Reports. `active` covers the list and one release,
   // unchanged by the move.
   if (features.milestones) {
