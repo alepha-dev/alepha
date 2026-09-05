@@ -1,12 +1,12 @@
 import {
   type CSSProperties,
-  type RefObject,
+  type RefCallback,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
+  useRef,
 } from "react";
 
 import {
@@ -20,11 +20,11 @@ export interface QuestlineViewportControls {
   /**
    * The clipped frame. Every listener hangs off it.
    */
-  viewportRef: RefObject<HTMLDivElement | null>;
+  viewportRef: RefCallback<HTMLDivElement>;
   /**
    * The board inside the frame, measured untransformed for the fit.
    */
-  boardRef: RefObject<HTMLDivElement | null>;
+  boardRef: RefCallback<HTMLDivElement>;
   /**
    * The transform to put on the board.
    */
@@ -57,11 +57,16 @@ export interface QuestlineViewportControls {
  * scroll container, so focusing a card outside it would scroll the frame
  * under the transform and the next pan would jump. Clip cannot scroll, and
  * the `focusin` listener below pans the card into view instead.
+ *
+ * The two refs are callback refs held in state, not `useRef`: a map that
+ * renders an empty state first (no quests yet, contents still loading) has
+ * no frame when the effects first run, and a `useRef` would leave it with no
+ * listeners once the frame did appear. Nodes in state re-run the effects.
  */
 export const useQuestlineViewport = (): QuestlineViewportControls => {
   const geometry = useMemo(() => new QuestlineViewport(), []);
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const boardRef = useRef<HTMLDivElement>(null);
+  const [frame, setFrame] = useState<HTMLDivElement | null>(null);
+  const [board, setBoard] = useState<HTMLDivElement | null>(null);
   const [transform, setTransform] = useState<ViewportTransform>(
     geometry.identity,
   );
@@ -73,8 +78,6 @@ export const useQuestlineViewport = (): QuestlineViewportControls => {
   const touched = useRef(false);
 
   const fit = useCallback(() => {
-    const frame = viewportRef.current;
-    const board = boardRef.current;
     if (!frame || !board) return;
     touched.current = false;
     setTransform(
@@ -84,18 +87,20 @@ export const useQuestlineViewport = (): QuestlineViewportControls => {
         { width: board.offsetWidth, height: board.offsetHeight },
       ),
     );
-  }, [geometry]);
+  }, [frame, board, geometry]);
 
   // After hydration and before paint. The server renders `identity` because
   // it has nothing to measure, and a fit in a plain effect would flash one
   // frame of the board at its natural size first.
   useLayoutEffect(() => {
+    // Measuring the DOM is the "synchronize with an external system" case
+    // the rule exempts: the sizes do not exist until the commit this runs
+    // after, so they cannot be derived during render.
+    // oxlint-disable-next-line react/set-state-in-effect
     fit();
   }, [fit]);
 
   useEffect(() => {
-    const frame = viewportRef.current;
-    const board = boardRef.current;
     if (!frame || !board || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
       if (!touched.current) fit();
@@ -104,10 +109,9 @@ export const useQuestlineViewport = (): QuestlineViewportControls => {
     // The board as well: a quest edited from the dialog can change the layout.
     observer.observe(board);
     return () => observer.disconnect();
-  }, [fit]);
+  }, [frame, board, fit]);
 
   useEffect(() => {
-    const frame = viewportRef.current;
     if (!frame) return;
 
     // Plain wheel pans, ctrl-wheel zooms. Browsers synthesise `ctrlKey` for
@@ -213,6 +217,14 @@ export const useQuestlineViewport = (): QuestlineViewportControls => {
       event.preventDefault();
     };
 
+    // A link is draggable by default, so a pan that starts on one becomes a
+    // native drag-and-drop a few pixels in, and the browser answers with a
+    // `pointercancel` that ends the pan there. Measured on the release map:
+    // a 160px drag moved the board 13px. The release map's cards are links.
+    const onDragStart = (event: DragEvent) => {
+      event.preventDefault();
+    };
+
     frame.addEventListener("wheel", onWheel, { passive: false });
     frame.addEventListener("focusin", onFocusIn);
     frame.addEventListener("pointerdown", onPointerDown);
@@ -220,6 +232,7 @@ export const useQuestlineViewport = (): QuestlineViewportControls => {
     frame.addEventListener("pointerup", onPointerEnd);
     frame.addEventListener("pointercancel", onPointerEnd);
     frame.addEventListener("click", onClick, true);
+    frame.addEventListener("dragstart", onDragStart);
     return () => {
       frame.removeEventListener("wheel", onWheel);
       frame.removeEventListener("focusin", onFocusIn);
@@ -228,21 +241,21 @@ export const useQuestlineViewport = (): QuestlineViewportControls => {
       frame.removeEventListener("pointerup", onPointerEnd);
       frame.removeEventListener("pointercancel", onPointerEnd);
       frame.removeEventListener("click", onClick, true);
+      frame.removeEventListener("dragstart", onDragStart);
     };
-  }, [geometry]);
+  }, [frame, geometry]);
 
   // The buttons zoom about the frame's centre, since there is no cursor to
   // anchor on.
   const zoomBy = useCallback(
     (factor: number) => {
-      const frame = viewportRef.current;
       if (!frame) return;
       touched.current = true;
       const px = frame.clientWidth / 2;
       const py = frame.clientHeight / 2;
       setTransform((t) => geometry.zoomAt(t, factor, px, py));
     },
-    [geometry],
+    [frame, geometry],
   );
   const zoomIn = useCallback(() => zoomBy(ZOOM_STEP), [zoomBy]);
   const zoomOut = useCallback(() => zoomBy(1 / ZOOM_STEP), [zoomBy]);
@@ -253,8 +266,8 @@ export const useQuestlineViewport = (): QuestlineViewportControls => {
   );
 
   return {
-    viewportRef,
-    boardRef,
+    viewportRef: setFrame,
+    boardRef: setBoard,
     boardStyle,
     transform,
     dragging,

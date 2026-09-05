@@ -817,8 +817,11 @@ export default {
 
   "release.tab.overview": "Overview",
   "release.tab.contents": "Contents",
+  "release.tab.flow": "Flow",
   "release.tab.changelog": "Changelog",
   "release.tab.artifacts": "Artifacts",
+  "release.flow.empty":
+    "Attach epics and quests to see the order they ship in.",
 
   "release.plate.frozen": "Frozen at publish",
   "release.meta.target": "target $1",

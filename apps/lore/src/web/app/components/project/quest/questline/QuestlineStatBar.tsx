@@ -35,7 +35,8 @@ const QuestlineStatBar = (props: QuestlineStatBarProps) => {
     const areas = new Map<string, number>();
     for (const node of nodes) {
       states.set(node.state, (states.get(node.state) ?? 0) + 1);
-      areas.set(node.quest.area, (areas.get(node.quest.area) ?? 0) + 1);
+      const area = node.quest.area;
+      if (area) areas.set(area, (areas.get(area) ?? 0) + 1);
     }
     return {
       total: nodes.length,
