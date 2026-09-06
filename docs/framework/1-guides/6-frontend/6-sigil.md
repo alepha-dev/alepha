@@ -20,9 +20,17 @@ SIGIL_KEY=sg_alepha_…
 That is the whole enrolment. The key is the only secret and the only required
 variable: it authorises the reporting _and_ names the project reported into.
 
+⚠️ **Where the key comes from changed in Lore; what your app does with it did
+not.** A key is minted from one deployed copy's Settings tab rather than from a
+project-level enrol page, so `SIGIL_KEY` names a copy of your app rather than
+the app as a whole. Nothing in a deployed app needs updating: the key still
+carries its own project, which copy reported is read from the token's hash
+rather than declared by the app, and the pairing of an app with an environment
+is bookkeeping on the sink's side that this module never sees.
+
 | Variable       | Required |                                                                                 |
 | -------------- | -------- | ------------------------------------------------------------------------------- |
-| `SIGIL_KEY`    | **yes**  | the sigil token the sink minted for this app - **secret, server-only**          |
+| `SIGIL_KEY`    | **yes**  | the sigil token the sink minted for this copy - **secret, server-only**         |
 | `SIGIL_SINK`   | no       | origin of the sink. Defaults to `https://lore.alepha.dev`; set it to self-host  |
 | `SIGIL_CONFIG` | no       | JSON: switches over what this app reports                                       |
 | `SIGIL_SALT`   | no       | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET` |
