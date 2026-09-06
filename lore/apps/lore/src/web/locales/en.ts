@@ -140,6 +140,7 @@ export default {
   "folios.editor.action.bold": "Bold",
   "folios.editor.action.italic": "Italic",
   "folios.editor.action.code": "Inline code",
+  "folios.editor.action.spoiler": "Spoiler",
   "folios.editor.action.heading1": "Heading 1",
   "folios.editor.action.heading2": "Heading 2",
   "folios.editor.action.heading3": "Heading 3",

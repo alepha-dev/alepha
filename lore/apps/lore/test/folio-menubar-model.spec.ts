@@ -126,7 +126,9 @@ describe("isFolioActionEnabled", () => {
     // the folio or the workspace and stays live while reading.
     const reading = { ...unlocked, editing: false };
     for (const item of folioMenuItems()) {
-      const needsEditor = /^(edit\.(bold|italic|code)|insert\.)/.test(item.id);
+      const needsEditor = /^(edit\.(bold|italic|code|spoiler)|insert\.)/.test(
+        item.id,
+      );
       expect(isFolioActionEnabled(item.id, reading), item.id).toBe(
         !needsEditor,
       );

@@ -139,6 +139,7 @@ export default {
   "folios.editor.action.bold": "Gras",
   "folios.editor.action.italic": "Italique",
   "folios.editor.action.code": "Code en ligne",
+  "folios.editor.action.spoiler": "Spoiler",
   "folios.editor.action.heading1": "Titre 1",
   "folios.editor.action.heading2": "Titre 2",
   "folios.editor.action.heading3": "Titre 3",
