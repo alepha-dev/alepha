@@ -379,6 +379,197 @@ test.describe("blocks", () => {
 });
 
 /**
+ * The five layout blocks that are shells rather than controls: each one is
+ * mostly empty until a caller fills it, so "it rendered" and "it rendered
+ * anything" are two different claims. These assert the parts the components
+ * themselves own - the frame, the rail, the aside, the tab toolbar, the
+ * divided cards - and never a bare 200.
+ */
+test.describe("layout blocks", () => {
+  test("App shell is a second shell, contained and live", async ({ page }) => {
+    await page.goto("/blocks/shell");
+
+    // Scoped throughout. There are literally two `AppShell`s on this page and
+    // every slot the specimen has, the app's own chrome has too.
+    const preview = page.getByTestId("showcase-preview");
+
+    // The four slots a caller fills: brand, nav, breadcrumbs, footer.
+    await expect(preview.getByText("Acme")).toBeVisible();
+    await expect(preview.getByText("Onboarding")).toBeVisible();
+    await expect(preview.getByText("Ada Lovelace")).toBeVisible();
+
+    /**
+     * ⚠️ The regression, and it is the same one `/blocks/sidebar` guards.
+     * `fill` is what re-anchors the otherwise viewport-fixed rail into the
+     * shell's own wrapper; drop it and the specimen renders perfectly while
+     * lying across the whole window on top of the page it is nested in.
+     */
+    await expect(preview.locator('[data-slot="sidebar-container"]')).toHaveCSS(
+      "position",
+      "absolute",
+    );
+
+    // The rail is live rather than decorative: every entry is a link back to
+    // this page with a different `?nav=`, which is also what keeps their React
+    // keys distinct - `AppShell` keys a nav item by its href, so one shared
+    // href is eleven children with the same key.
+    await preview.getByRole("link", { name: "Quests" }).click();
+    await expect(page).toHaveURL(/nav=quests/);
+    await expect(preview.getByRole("link", { name: "Quests" })).toHaveAttribute(
+      "data-active",
+      "",
+    );
+  });
+
+  test("Sidebar is a live rail, contained, that collapses to icons", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/sidebar");
+
+    // Scoped throughout: this rail's labels are the same ordinary words as the
+    // app's own rail on the left, and half of them appear again in the code
+    // block the preview prints beside it.
+    const preview = page.getByTestId("showcase-preview");
+
+    // Real content, not a description of it. This page used to be prose.
+    await expect(preview.getByText("Acme")).toBeVisible();
+    await expect(
+      preview.getByRole("button", { name: "Projects" }),
+    ).toBeVisible();
+
+    /**
+     * ⚠️ The regression this exists for, and it is invisible to every
+     * assertion above. The desktop rail is `fixed inset-y-0 h-svh`, pinned to
+     * the VIEWPORT: without the provider's re-anchoring it renders perfectly,
+     * reads perfectly, and lies across the whole window on top of the app.
+     */
+    await expect(preview.locator('[data-slot="sidebar-container"]')).toHaveCSS(
+      "position",
+      "absolute",
+    );
+
+    const sub = preview.locator('[data-slot="sidebar-menu-sub"]');
+    await expect(sub).toContainText("Analytics");
+
+    await preview.locator('[data-slot="sidebar-trigger"]').click();
+
+    await expect(preview.locator('[data-slot="sidebar"]')).toHaveAttribute(
+      "data-state",
+      "collapsed",
+    );
+    // Collapsed to icons the sub-menu is unreachable, whatever its own
+    // disclosure is set to - which is why AppShell swaps the group for a
+    // dropdown at that width.
+    await expect(sub).toBeHidden();
+  });
+
+  /**
+   * The two tab kinds are the point of `PlateLayout`, and the pair is exactly
+   * what a rendering assertion cannot tell apart: both draw five underlined
+   * words. So this reads the roles, which is where the difference lives.
+   */
+  test("Plate is a navigation with link tabs and a tablist without", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/plate");
+
+    // The band above the tabs, which the layout owns as a slot.
+    await expect(page.getByText("Shipped 4 September 2026")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Publish" })).toBeVisible();
+
+    // `tabsTestId` earns its keep here: every tab label is an ordinary word
+    // that the tab BODY prints too.
+    const bar = page.getByTestId("plate-tabs");
+    await expect(bar).toHaveAttribute("role", "navigation");
+
+    // A routed tab has to stay a link. `role="tab"` on an anchor would take it
+    // out of `getByRole("link")` and tell a screen reader it swaps a panel
+    // when it actually leaves the page.
+    await bar.getByRole("link", { name: /Changelog/ }).click();
+    await expect(page).toHaveURL(/tab=changelog/);
+    await expect(bar.getByRole("link", { name: /Changelog/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    // The other kind is a panel swap inside one route, so it is a tablist of
+    // buttons and the URL does not move.
+    await page.getByLabel("Tab kind").click();
+    await page.getByRole("option", { name: "buttons" }).click();
+
+    await expect(bar).toHaveAttribute("role", "tablist");
+    await bar.getByRole("tab", { name: /Flow/ }).click();
+    await expect(bar.getByRole("tab", { name: /Flow/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page).toHaveURL(/tab=changelog/);
+  });
+
+  test("Detail draws its aside, its toolbar and the tab body", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/detail");
+
+    // The identity column, which is the half that disappears below `md`.
+    await expect(page.getByText("ada@alepha.dev")).toBeVisible();
+    // The clipboard behaviour lives in DetailAside so no page reimplements it.
+    await expect(page.getByRole("button", { name: "Copy Id" })).toBeVisible();
+
+    // The toolbar: `Segmented` is a radiogroup, and the caller's actions sit
+    // at the other end of it.
+    await expect(page.getByRole("radio", { name: /Activity/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit" })).toBeVisible();
+
+    // A tab switch changes the body and the URL, which is what `useDetailTab`
+    // is for: "that user's sessions" has to be a link somebody can send.
+    await page.getByRole("radio", { name: /Members/ }).click();
+    await expect(page).toHaveURL(/tab=members/);
+    await expect(
+      page.getByText("Each body renders what it is given"),
+    ).toBeVisible();
+  });
+
+  test("Settings draws the rail, the cards and the danger zone", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/settings");
+
+    // Scoped to the preview throughout. Every knob in the props panel is
+    // named after the thing it switches on, so "Danger zone" alone matches
+    // the page description, the section title AND the switch's label.
+    const preview = page.getByTestId("showcase-preview");
+
+    // The rail groups by `group`, and an ungrouped entry renders first with no
+    // heading above it.
+    const rail = preview.getByRole("navigation");
+    await expect(rail.getByText("Overview")).toBeVisible();
+    await expect(rail.getByText("Account")).toBeVisible();
+    // Visible but not reachable: rendered muted and inert rather than hidden.
+    await expect(rail.getByText("Billing")).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+
+    // A row is a label and one control, and the label is a real `<label>` when
+    // the row is given an `htmlFor`.
+    await expect(preview.getByLabel("Display name")).toHaveValue(
+      "Ada Lovelace",
+    );
+    await expect(
+      preview.getByRole("switch", { name: "Weekly digest" }),
+    ).toBeVisible();
+
+    // And the boundary between "change your display name" and "delete your
+    // account", which is the whole point of the second card.
+    await expect(preview.getByText("Danger zone")).toBeVisible();
+    await expect(
+      preview.getByRole("button", { name: "Delete", exact: true }),
+    ).toBeVisible();
+  });
+});
+
+/**
  * Auth and Account are five pages each, not one page with a dropdown, because
  * that is what they are in an application that mounts them. Each entry below
  * is a route AND a sidebar link, and both have been wrong before.

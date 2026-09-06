@@ -24,6 +24,21 @@ const BLOCKS: Entry[] = [
     description: "The navigation tree.",
   },
   {
+    href: "/blocks/detail",
+    title: "Detail",
+    description: "Identity column, tabs, tab body.",
+  },
+  {
+    href: "/blocks/plate",
+    title: "Plate",
+    description: "A plate, a tab strip, and a body under both.",
+  },
+  {
+    href: "/blocks/settings",
+    title: "Settings",
+    description: "Sticky rail, cards of rows, danger zone.",
+  },
+  {
     href: "/blocks/control/text",
     title: "Control",
     description: "Text, number, date, select.",

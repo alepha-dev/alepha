@@ -3,7 +3,6 @@ import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
 import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
-import { useStore } from "alepha/react";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
 import {
@@ -18,9 +17,7 @@ import {
   Table2,
   UserCog,
 } from "lucide-react";
-import { type ComponentType, type SVGProps, useEffect, useState } from "react";
-
-import { SHELL_PREFS_DEFAULT, shellPrefsAtom } from "@/web/shellPrefsAtom.ts";
+import type { ComponentType, SVGProps } from "react";
 
 interface NavLeaf {
   href: string;
@@ -65,6 +62,9 @@ const NAV: NavGroup[] = [
         children: [
           { href: "/blocks/shell", label: "App shell" },
           { href: "/blocks/sidebar", label: "Sidebar" },
+          { href: "/blocks/detail", label: "Detail" },
+          { href: "/blocks/plate", label: "Plate" },
+          { href: "/blocks/settings", label: "Settings" },
         ],
       },
       {
@@ -168,14 +168,15 @@ const findCrumbs = (pathname: string): { label: string; href?: string }[] => {
 const isActive = (href: string, pathname: string) => href === pathname;
 
 /**
- * The shell, and itself a specimen.
+ * The shell around every page. Fixed, and no longer a specimen.
  *
- * Its variant comes from a `persist: "localStorage"` atom the reader drives
- * from `/blocks/shell`, so `AppShell`'s three layouts can be compared on a
- * real page rather than described. That page owns the knobs, and it is the
- * only thing that sets them: a second copy in the top bar was the same three
- * switches writing the same atom, one click from the page that documents
- * them.
+ * Its variant used to come from a `persist: "localStorage"` atom that
+ * `/blocks/shell` wrote, which was the only way to show `AppShell` before its
+ * `fill` prop made a contained copy possible. The cost was that trying a
+ * variant reshaped the whole site, on every later visit, from a page the
+ * reader had already left. `/blocks/shell` renders its own shell now, so the
+ * atom had no writer left and is gone, along with the hydration guard that
+ * existed only to keep its stored value out of the first client render.
  *
  * ⚠️ The `h-svh overflow-hidden` wrapper and `fill` are one mechanism, and
  * every page depends on it. Without `fill`, `AppShell` renders its `<main>` as
@@ -187,15 +188,6 @@ const isActive = (href: string, pathname: string) => href === pathname;
  */
 export const Layout = () => {
   const state = useRouterState();
-  const [stored] = useStore(shellPrefsAtom);
-
-  // First client render MUST match the server, which never saw localStorage.
-  // Reading storage during hydration renders a different tree and React
-  // refuses to patch the difference up.
-  const [hydrated, setHydrated] = useState(false);
-  // oxlint-disable-next-line react/set-state-in-effect
-  useEffect(() => setHydrated(true), []);
-  const prefs = hydrated ? stored : SHELL_PREFS_DEFAULT;
 
   const pathname = state.url.pathname;
   const crumbs = findCrumbs(pathname);
@@ -207,8 +199,7 @@ export const Layout = () => {
         <div className="flex h-svh flex-col overflow-hidden">
           <AppShell
             fill
-            variant={prefs.variant}
-            headerOutside={prefs.headerOutside}
+            variant="floating"
             topbarActions={
               <>
                 <ButtonTheme />
@@ -252,9 +243,7 @@ export const Layout = () => {
                     },
               ),
             }))}
-            breadcrumbs={
-              prefs.breadcrumbs && crumbs.length ? crumbs : undefined
-            }
+            breadcrumbs={crumbs.length ? crumbs : undefined}
           >
             <div className="flex h-full min-h-0 flex-col">
               <NestedView />

@@ -17,6 +17,9 @@ export class AppRouter {
       this.home,
       this.blocksShell,
       this.blocksSidebar,
+      this.blocksDetail,
+      this.blocksPlate,
+      this.blocksSettings,
       this.controlText,
       this.controlNumber,
       this.controlDate,
@@ -95,6 +98,32 @@ export class AppRouter {
     static: true,
     head: { title: "Sidebar - Alepha UI" },
     lazy: () => import("./pages/blocks/SidebarPage.tsx"),
+  });
+
+  blocksDetail = $page({
+    path: "/blocks/detail",
+    static: true,
+    head: { title: "Detail - Alepha UI" },
+    lazy: () => import("./pages/blocks/Detail.tsx"),
+  });
+
+  /**
+   * The other tab shell, and a separate page because it is a separate shape:
+   * `Detail` is a one-line identity with fields, `Plate` is an identity
+   * several facts wide with sections big enough to be their own view.
+   */
+  blocksPlate = $page({
+    path: "/blocks/plate",
+    static: true,
+    head: { title: "Plate - Alepha UI" },
+    lazy: () => import("./pages/blocks/Plate.tsx"),
+  });
+
+  blocksSettings = $page({
+    path: "/blocks/settings",
+    static: true,
+    head: { title: "Settings - Alepha UI" },
+    lazy: () => import("./pages/blocks/Settings.tsx"),
   });
 
   /**
