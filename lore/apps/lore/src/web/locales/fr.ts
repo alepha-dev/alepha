@@ -1117,7 +1117,23 @@ export default {
   "app.tab.artifacts": "Artefacts",
   "app.tab.settings": "Paramètres",
   "app.dashboard.token": "Jeton",
-  "app.dashboard.enrolled": "Enrôlée le",
+  "app.dashboard.identity": "Identité",
+  "app.dashboard.created": "Créée le",
+  "app.dashboard.deploysTo": "Déploie vers",
+  "app.switcher.label": "Changer d\u2019environnement",
+  "app.nextSteps.title": "Prochaines étapes",
+  "app.nextSteps.description":
+    "Aucune n\u2019est obligatoire. Cette copie est déjà suivie ; chaque étape ci-dessous apporte une chose de plus.",
+  "app.nextSteps.done": "Fait",
+  "app.nextSteps.sigil.title": "Créer un sigil",
+  "app.nextSteps.sigil.description":
+    "La clé avec laquelle cette copie remonte ses données. Débloque Analytics, Vitals, Erreurs et Explorer.",
+  "app.nextSteps.url.title": "Saisir une adresse",
+  "app.nextSteps.url.description":
+    "L\u2019adresse de cette copie, si elle ne va pas en remonter une elle-même.",
+  "app.nextSteps.estate.title": "Choisir un domaine",
+  "app.nextSteps.estate.description":
+    "Où cette copie est déployée, parmi les domaines prêtés à ce projet.",
   "app.dashboard.address": "Adresse",
   "app.dashboard.address.unknown": "Pas encore connue",
   "app.dashboard.address.pinned": "Fixée dans l'onglet Paramètres",
