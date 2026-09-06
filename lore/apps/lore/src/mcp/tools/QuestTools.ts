@@ -50,7 +50,7 @@ import {
   questUpdateResultSchema,
 } from "../schemas/index.ts";
 import { AttachmentContentService } from "../services/AttachmentContentService.ts";
-import { AttachmentUploadService } from "../services/AttachmentUploadService.ts";
+import { AttachmentPushCommand } from "../services/AttachmentPushCommand.ts";
 import { DiagramCheckService } from "../services/DiagramCheckService.ts";
 import { EpicRefService } from "../services/EpicRefService.ts";
 import { ProjectTools } from "./ProjectTools.ts";
@@ -68,7 +68,7 @@ export class QuestTools {
   protected readonly commentController = $inject(QuestCommentController);
   protected readonly questMapper = $inject(QuestResourceMapper);
   protected readonly attachmentContent = $inject(AttachmentContentService);
-  protected readonly attachmentUpload = $inject(AttachmentUploadService);
+  protected readonly attachmentPush = $inject(AttachmentPushCommand);
   protected readonly diagrams = $inject(DiagramCheckService);
   protected readonly projectTools = $inject(ProjectTools);
 
@@ -822,44 +822,54 @@ export class QuestTools {
   });
 
   /**
-   * Attach a file to a quest.
+   * Say how to attach a file to a quest. It moves no bytes.
+   *
+   * ## ⚠️ It uploads nothing, and that IS the design
+   *
+   * Uploading over MCP means base64 inside a JSON-RPC frame, which is what
+   * capped every attachment at 2 MB decoded. That cap was never a policy
+   * anyone chose: `QuestController`'s own bucket allows 10 MB. The bytes
+   * moved to `lore attachments push`, which streams them.
+   *
+   * The tool survives as a name, a description and a target check, because an
+   * agent scanning its tool list for "attach a file to a quest" and finding
+   * nothing would paste the file into a comment as text instead. It still
+   * resolves the project and confirms the quest exists, so a wrong shortId
+   * fails HERE rather than three steps later in a shell.
    */
   quest_attachment_add = $tool({
     description:
-      "Attach a file to a quest: a screenshot, a probe log, a CSV of measurements, an HTML mockup the next agent or the owner will open. Use it when you have evidence or material rather than a claim, since a file on the quest is something the owner can look at where numbers pasted into a comment are something they have to take your word for. " +
-      "Any file type, capped at 2 MB decoded, so put anything bigger where it belongs and link to it. What comes back from `quest_attachment_get` depends on the type: images inline, text-like payloads (html, plain, csv, markdown, json) decoded, anything else a note naming the file. Allowed on completed quests: evidence usually arrives at the end.",
-    title: "Attach a file to a quest",
-    annotations: { readOnlyHint: false, destructiveHint: false },
+      "How to attach a file to a quest: a screenshot, a probe log, a CSV of measurements, an HTML mockup the next agent or the owner will open. Use it when you have evidence or material rather than a claim, since a file on the quest is something the owner can look at where numbers pasted into a comment are something they have to take your word for. " +
+      "⚠️ This tool moves NO bytes. It confirms the quest exists and returns a `lore attachments push` command line to run in a shell, because base64 through a JSON-RPC frame capped uploads at 2 MB while the server accepts ten. Any file type, and the media type is guessed from the extension. Read one back with `quest_attachment_get`: images inline, text-like payloads (html, plain, csv, markdown, json) decoded, anything else a note naming the file. Allowed on completed quests: evidence usually arrives at the end.",
+    title: "How to attach a file to a quest",
+    annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: questAttachmentAddParamsSchema,
       result: questAttachmentAddResultSchema,
     },
     handler: async ({ params }) => {
+      // Resolved from whichever reference the caller gave, then read back, so
+      // the answer always carries the shortId the command addresses - an
+      // agent that passed a global `id` gets a runnable line rather than a
+      // number the CLI does not take.
+      //
+      // ⚠️ The project comes from the QUEST rather than from `resolveProjectId`,
+      // and it has to: `id` alone is a complete reference, so requiring
+      // `project` beside it would refuse the very shape this tool takes.
       const id = await this.resolveQuestId(params);
-
-      const upload = this.attachmentUpload.toFile(params, "quest");
-
-      const uploaded = await this.questController.uploadAttachment({
-        body: { file: upload },
-      });
-      // Two calls, same as the UI: the bytes go to storage, then the file
-      // id is recorded on the quest. `addAttachment` dedupes on the id, so
-      // a retry cannot double up.
-      await this.questController.addAttachment({
-        params: { id },
-        body: { fileId: uploaded.fileId },
-      });
-
-      const files = await this.questController.listQuestAttachments({
-        params: { id },
-      });
-      const file = files.find((it) => it.fileId === uploaded.fileId);
+      const quest = await this.questController.getQuestById({ params: { id } });
 
       return {
-        id: uploaded.fileId,
-        name: file?.name ?? params.name,
-        mimeType: file?.mimeType ?? params.mimeType,
-        size: file?.size ?? upload.size,
+        command: this.attachmentPush.compose({
+          file: params.file,
+          projectId: quest.projectId,
+          target: "quest",
+          shortId: quest.shortId,
+          name: params.name,
+        }),
+        authentication: this.attachmentPush.authentication,
+        projectId: quest.projectId,
+        shortId: quest.shortId,
       };
     },
   });
