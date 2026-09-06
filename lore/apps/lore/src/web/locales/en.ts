@@ -973,7 +973,7 @@ export default {
   "kanban.composer.placeholder": "Title, then Enter",
   "kanban.composer.submit": "Add",
   "kanban.composer.needsArea":
-    "Create an area first — a quest has to belong to one.",
+    "Create an area first: a quest has to belong to one.",
   "kanban.reopen.title": "Reopen this quest?",
   "kanban.reopen.confirm":
     "It goes back to In progress. Its completion summary is kept.",
@@ -1524,7 +1524,7 @@ export default {
   "bay.commands.col.status": "Status",
   "bay.commands.col.by": "Asked by",
   "bay.commands.col.reason": "Outcome",
-  "bay.commands.byNobody": "—",
+  "bay.commands.byNobody": "-",
   "bay.commands.result": "Open the stored result",
   "account.estates.inventory": "$1 app(s), reported $2",
   "account.estates.inventory.none": "nothing reported",

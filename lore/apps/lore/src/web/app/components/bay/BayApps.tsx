@@ -138,7 +138,7 @@ const BayApps = () => {
             sortable: true,
             cell: (row) => (
               <span className="text-muted-foreground text-xs">
-                {(row.reported && row.runtime) || "—"}
+                {(row.reported && row.runtime) || "-"}
               </span>
             ),
           },
@@ -147,7 +147,7 @@ const BayApps = () => {
             sortable: true,
             cell: (row) => (
               <span className="text-muted-foreground truncate text-xs">
-                {(row.reported && row.release) || "—"}
+                {(row.reported && row.release) || "-"}
               </span>
             ),
           },
@@ -160,7 +160,7 @@ const BayApps = () => {
                     nothing, and "0 B" would be a reading. */}
                 {row.reported && row.memoryBytes !== undefined
                   ? formatBytes(row.memoryBytes)
-                  : "—"}
+                  : "-"}
               </span>
             ),
           },
@@ -171,7 +171,7 @@ const BayApps = () => {
               <span className="text-xs tabular-nums">
                 {row.reported && row.restarts !== undefined
                   ? String(row.restarts)
-                  : "—"}
+                  : "-"}
               </span>
             ),
           },
@@ -182,7 +182,7 @@ const BayApps = () => {
               <span className="text-muted-foreground text-xs">
                 {row.reported && row.startedAt
                   ? String(l(row.startedAt, { date: "fromNow" }))
-                  : "—"}
+                  : "-"}
               </span>
             ),
           },
@@ -198,7 +198,7 @@ const BayApps = () => {
                       // sends a weekly email answers nobody and is not
                       // abandoned.
                       tr("bay.apps.cronsOnly", { args: [String(row.crons)] })
-                    : "—"}
+                    : "-"}
               </span>
             ),
           },
@@ -207,7 +207,7 @@ const BayApps = () => {
             sortable: true,
             cell: (row) => {
               if (!row.reported || !row.backups) {
-                return <span className="text-muted-foreground text-xs">—</span>;
+                return <span className="text-muted-foreground text-xs">-</span>;
               }
               return (
                 <span className="flex items-center gap-1.5 text-xs">
@@ -256,7 +256,7 @@ const BayApps = () => {
                   ))}
                 </span>
               ) : (
-                <span className="text-muted-foreground text-xs">—</span>
+                <span className="text-muted-foreground text-xs">-</span>
               ),
           },
         }}

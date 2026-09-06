@@ -73,7 +73,7 @@ const NAV_ROUTE_NAMES = [
   "projectSettingsReleases",
   "projectSettingsQuality",
   "projectSettingsQuests",
-  // The bay console's rail — BayLayout.tsx, plus the instance page the Apps
+  // The bay console's rail - BayLayout.tsx, plus the instance page the Apps
   // entry stays lit for and the drawer's "Open console" link.
   "bay",
   "bayOverview",
