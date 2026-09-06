@@ -8,8 +8,12 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import { TestEntityRepositories } from "../../../test/fixtures/entities.ts";
+import {
+  createTestProject,
+  TestEntityRepositories,
+} from "../../../test/fixtures/entities.ts";
 import { EstateController } from "../controllers/EstateController.ts";
+import { appInstances } from "../entities/appInstances.ts";
 import { estateInventories } from "../entities/estateInventories.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
@@ -19,6 +23,7 @@ import { EstateInventoryService } from "./EstateInventoryService.ts";
 class InventoryRepositories {
   estates = $repository(estates);
   inventories = $repository(estateInventories);
+  instances = $repository(appInstances);
 }
 
 interface TestContext {
@@ -181,5 +186,140 @@ describe("EstateInventoryService", () => {
 
     expect((await ctx.service.findFor(first.estate.id))?.appCount).toBe(1);
     expect((await ctx.service.findFor(second.estate.id))?.appCount).toBe(2);
+  });
+});
+
+/**
+ * The reconciliation is the whole reason the snapshot is stored server-side,
+ * so it is proven server-side: three states out of one frame, with no
+ * browser involved.
+ */
+describe("EstateInventoryService.reconcile", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("answers matched, untracked and missing from one stored inventory", async ({
+    expect,
+  }) => {
+    const { estate } = await createEstate(ctx, "ovh-7");
+    const project = await createTestProject(ctx.alepha);
+
+    // Tracked here and reported: matched. Tracked here and NOT reported:
+    // missing, which is what a failed deploy looks like.
+    const matched = await ctx.repos.instances.create({
+      projectId: project.id,
+      app: "lore",
+      env: "production",
+      estateId: estate.id,
+    });
+    const missing = await ctx.repos.instances.create({
+      projectId: project.id,
+      app: "shop",
+      env: "staging",
+      estateId: estate.id,
+    });
+    // Tracked in the project but pointing at no estate: this machine's
+    // report says nothing about it either way.
+    await ctx.repos.instances.create({
+      projectId: project.id,
+      app: "elsewhere",
+      env: "production",
+    });
+
+    // Reported and tracked nowhere: untracked.
+    await ctx.service.record(estate, frame(["lore", "stray"]));
+
+    const result = await ctx.service.reconcile(estate);
+    const reported = result.inventory?.apps ?? [];
+    expect(reported.map((row) => [row.app, row.state])).toEqual([
+      ["lore", "matched"],
+      ["stray", "untracked"],
+    ]);
+    expect(reported[0]?.instanceId).toBe(matched.id);
+    expect(reported[0]?.project).toEqual({
+      id: project.id,
+      title: project.title,
+      slug: project.slug,
+    });
+    // An untracked row has no instance and no project: there is nothing in
+    // Lore to link it to.
+    expect(reported[1]?.instanceId).toBeUndefined();
+    expect(reported[1]?.project).toBeUndefined();
+
+    expect(result.expected).toHaveLength(1);
+    expect(result.expected[0]).toMatchObject({
+      app: "shop",
+      env: "staging",
+      instanceId: missing.id,
+      state: "missing",
+    });
+  });
+
+  /**
+   * A machine that never connected has no row, and that is an answer rather
+   * than a 404: the page says "nothing reported yet" and still lists what
+   * Lore expects to find there.
+   */
+  it("answers a null inventory beside the expected rows for a machine that never reported", async ({
+    expect,
+  }) => {
+    const { estate } = await createEstate(ctx, "ovh-8");
+    const project = await createTestProject(ctx.alepha);
+    await ctx.repos.instances.create({
+      projectId: project.id,
+      app: "lore",
+      env: "production",
+      estateId: estate.id,
+    });
+
+    const result = await ctx.service.reconcile(estate);
+    expect(result.inventory).toBeNull();
+    expect(result.expected.map((row) => row.app)).toEqual(["lore"]);
+  });
+
+  /**
+   * The pair is the key, so the same app name in another environment is a
+   * different instance and must not match.
+   */
+  it("matches on the pair, never on the app name alone", async ({ expect }) => {
+    const { estate } = await createEstate(ctx, "ovh-9");
+    const project = await createTestProject(ctx.alepha);
+    await ctx.repos.instances.create({
+      projectId: project.id,
+      app: "lore",
+      env: "staging",
+      estateId: estate.id,
+    });
+
+    await ctx.service.record(estate, frame(["lore"]));
+
+    const result = await ctx.service.reconcile(estate);
+    expect(result.inventory?.apps[0]?.state).toBe("untracked");
+    expect(result.expected.map((row) => `${row.app}/${row.env}`)).toEqual([
+      "lore/staging",
+    ]);
+  });
+
+  it("summarises a list of estates in one query", async ({ expect }) => {
+    const first = await createEstate(ctx, "ovh-10");
+    const second = await createEstate(ctx, "ovh-11");
+    await ctx.service.record(first.estate, frame(["lore", "docs"]));
+
+    const summaries = await ctx.service.summariesFor([
+      first.estate.id,
+      second.estate.id,
+    ]);
+    expect(summaries.get(first.estate.id)?.appCount).toBe(2);
+    // Never reported: absent rather than a zero, so the row says "not
+    // reported" instead of "0 apps".
+    expect(summaries.get(second.estate.id)).toBeUndefined();
+    expect(await ctx.service.summariesFor([])).toEqual(new Map());
   });
 });
