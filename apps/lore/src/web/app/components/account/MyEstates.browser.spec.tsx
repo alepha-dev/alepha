@@ -27,7 +27,15 @@ class RecordingLinkProvider extends LinkProvider {
         get: (_target, prop: string) => {
           const call = async () => {
             this.calls.push(prop);
-            return this.responses[prop] ?? {};
+            const answer = this.responses[prop];
+            // A scripted refusal, so a case can drive the "the dialog stays
+            // open with the message beside the field" path the same way the
+            // server drives it: an error whose `data.field` survived the
+            // round trip.
+            if (answer instanceof Error) {
+              throw answer;
+            }
+            return answer ?? {};
           };
           return Object.assign(call, { can: () => true });
         },
@@ -45,6 +53,10 @@ class Routes {
 }
 
 const SECRET = "est_thisIsTheOnlyTimeItExists";
+
+const CF_ACCOUNT = "0123456789abcdef0123456789abcdef";
+
+const CF_TOKEN = `cfut_${"a1B2c3D4e5".repeat(4)}0123abcd`;
 
 const estate = (over: Record<string, unknown> = {}) => ({
   id: "00000000-0000-4000-8000-000000000001",
@@ -187,5 +199,172 @@ describe("MyEstates", () => {
 
     await findByText("ovh-1");
     expect(queryByTestId("my-estate-secret-dialog")).toBeNull();
+  });
+
+  /**
+   * ⚠️ The correctness bug this quest exists to prevent.
+   *
+   * A bay create mints a secret Lore generated and shows it once. A
+   * cloudflare create mints NOTHING: the user brought the token. Echoing it
+   * back is not a credential handover, it is Lore teaching that it hands out
+   * Cloudflare tokens, and it puts the token in a second place on screen
+   * after #1629 took care that no read path returns it.
+   *
+   * The dialog stays shut because the response carries no `secret` FIELD,
+   * which is what `secret: z.string().optional()` made possible. This case
+   * asserts the absence, not an empty string.
+   */
+  it("does not open the secret dialog for a cloudflare create", async ({
+    expect,
+  }) => {
+    const cloudflare = {
+      ...estate({
+        type: "cloudflare",
+        secretPrefix: "cfut_a1B2c3D4",
+        accountId: CF_ACCOUNT,
+        credentialStatus: "valid",
+        credentialCheckedAt: "2026-09-06T00:00:00.000Z",
+        deployAllowed: true,
+      }),
+    };
+    const { getByTestId, queryByTestId, findByText, findByTestId } = await show(
+      {
+        listMyEstates: { items: [] },
+        createEstate: cloudflare,
+      },
+    );
+
+    await findByText(/You own no estate yet/);
+    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(getByTestId("estate-type-cloudflare"));
+    fireEvent.change(getByTestId("estate-create-slug"), {
+      target: { value: "cf-1" },
+    });
+    fireEvent.change(getByTestId("estate-create-account"), {
+      target: { value: CF_ACCOUNT },
+    });
+    fireEvent.change(getByTestId("estate-create-token"), {
+      target: { value: CF_TOKEN },
+    });
+    fireEvent.click(getByTestId("estate-create-submit"));
+
+    // The row lands, showing the credential's status rather than a
+    // connection badge that can only ever say "offline".
+    const status = await findByTestId("my-estate-credential-status");
+    expect(status.textContent).toContain("valid");
+    expect(cloudflare).not.toHaveProperty("secret");
+    expect(queryByTestId("my-estate-secret-dialog")).toBeNull();
+  });
+
+  it("keeps the create dialog open and names the field a refusal concerns", async ({
+    expect,
+  }) => {
+    const refusal = Object.assign(
+      new Error('This token is missing "D1: Edit"'),
+      { data: { field: "token" } },
+    );
+    const { getByTestId, findByTestId } = await show({
+      listMyEstates: { items: [] },
+      createEstate: refusal,
+    });
+
+    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(getByTestId("estate-type-cloudflare"));
+    fireEvent.change(getByTestId("estate-create-slug"), {
+      target: { value: "cf-1" },
+    });
+    fireEvent.change(getByTestId("estate-create-account"), {
+      target: { value: CF_ACCOUNT },
+    });
+    fireEvent.change(getByTestId("estate-create-token"), {
+      target: { value: CF_TOKEN },
+    });
+    fireEvent.click(getByTestId("estate-create-submit"));
+
+    // Beside the token field, not a toast: the person hitting this has to
+    // go and widen the token at Cloudflare, and the sentence has to still be
+    // on screen while they do it.
+    const message = await findByTestId("estate-create-token-error");
+    expect(message.textContent).toContain("D1: Edit");
+    // Still open, so nothing typed has to be typed again.
+    expect(getByTestId("estate-create-slug")).toBeTruthy();
+  });
+
+  it("shows a cloudflare drawer without the machine's controls", async ({
+    expect,
+  }) => {
+    const { findByTestId, queryByTestId, queryByText } = await show({
+      listMyEstates: {
+        items: [
+          estate({
+            type: "cloudflare",
+            secretPrefix: "cfut_a1B2c3D4",
+            accountId: CF_ACCOUNT,
+            credentialStatus: "invalid",
+            credentialCheckedAt: "2026-09-06T00:00:00.000Z",
+            credentialError: 'This token is missing "D1: Edit"',
+          }),
+        ],
+      },
+    });
+
+    fireEvent.click(await findByTestId("my-estate-row"));
+    await findByTestId("my-estate-drawer");
+
+    // What only a machine has is gone: the series switch, the interval, the
+    // command queue and the rotation that mints a new secret.
+    expect(queryByTestId("my-estate-series")).toBeNull();
+    expect(queryByTestId("my-estate-rotate")).toBeNull();
+    expect(queryByText("Commands")).toBeNull();
+    // What a Cloudflare estate has instead.
+    expect(queryByTestId("my-estate-token")).toBeTruthy();
+    expect(queryByTestId("my-estate-replace")).toBeTruthy();
+    expect(queryByTestId("my-estate-recheck")).toBeTruthy();
+    expect(
+      (await findByTestId("my-estate-credential-error")).textContent,
+    ).toContain("D1: Edit");
+    // The deploys switch stays: it is the owner's kill switch.
+    expect(queryByTestId("my-estate-deploys")).toBeTruthy();
+  });
+
+  it("replaces a token without revealing anything", async ({ expect }) => {
+    const replaced = estate({
+      type: "cloudflare",
+      secretPrefix: "cfat_z9Y8x7W6",
+      accountId: CF_ACCOUNT,
+      credentialStatus: "valid",
+      credentialCheckedAt: "2026-09-06T00:00:00.000Z",
+    });
+    const { findByTestId, getByTestId, queryByTestId, queryByText } =
+      await show({
+        listMyEstates: {
+          items: [
+            estate({
+              type: "cloudflare",
+              secretPrefix: "cfut_a1B2c3D4",
+              accountId: CF_ACCOUNT,
+              credentialStatus: "valid",
+            }),
+          ],
+        },
+        replaceEstateCredential: replaced,
+      });
+
+    fireEvent.click(await findByTestId("my-estate-row"));
+    const field = await findByTestId("my-estate-token");
+    // A password input with autocomplete off: a password manager offering to
+    // save a Cloudflare deploy token is the leak the mask exists to prevent.
+    expect(field.getAttribute("type")).toBe("password");
+    expect(field.getAttribute("autocomplete")).toBe("off");
+
+    fireEvent.change(field, { target: { value: CF_TOKEN } });
+    fireEvent.click(getByTestId("my-estate-replace"));
+
+    // A write, not a mint: nothing is revealed afterwards, and the field is
+    // emptied.
+    await waitFor(() =>
+      expect(queryByTestId("my-estate-secret-dialog")).toBeNull(),
+    );
+    await waitFor(() => expect(queryByText(CF_TOKEN)).toBeNull());
   });
 });

@@ -699,7 +699,7 @@ export const Control = (props: ControlProps) => {
           maxLength={meta.constraints.maxLength}
           pattern={meta.constraints.pattern}
           // `cn`, not a plain join: the settings width below has to be
-          // overridable by the caller, and only tailwind-merge can decide
+          // overridable by the caller, and only `cn`'s merge can decide
           // that `sm:w-96` beats `sm:w-64` rather than both landing on the
           // element. Order is precedence — later wins.
           className={cn(

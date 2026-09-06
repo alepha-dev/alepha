@@ -181,7 +181,7 @@ describe("ProjectEstateController, lending", () => {
       { user: ada },
     );
 
-    expect(minted.secret.startsWith("est_")).toBe(true);
+    expect(minted.secret!.startsWith("est_")).toBe(true);
     expect(minted.slug).toBe("ovh-2");
     expect(minted.owner.id).toBe(ada.id);
 
