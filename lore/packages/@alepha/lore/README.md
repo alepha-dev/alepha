@@ -45,6 +45,14 @@ That is the whole enrolment. The key is the only secret and the only required
 variable: it authorises the reporting _and_ names the project reported into, so
 there is nothing else for the app to be told.
 
+⚠️ **Where the key comes from changed in Lore; what the app does with it did
+not.** A key is minted from one deployed copy's Settings tab rather than from a
+project-level enrol page, so `SIGIL_KEY` names a copy of your app rather than
+the app as a whole. Nothing in a deployed app needs updating: the key still
+carries its own project, which copy reported is read from the token's hash
+rather than declared by the app, and the pairing of an app with an environment
+is bookkeeping on Lore's side that this package never sees.
+
 Its absence is a supported mode rather than a misconfiguration. Without a key
 the module still captures, and aggregated errors go to the app's own logger
 instead. That is the headless case: an app that must not phone home to
