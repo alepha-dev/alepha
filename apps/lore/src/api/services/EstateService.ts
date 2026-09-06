@@ -2,7 +2,12 @@ import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbConflictError } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
-import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
+import {
+  BadRequestError,
+  ConflictError,
+  HttpError,
+  NotFoundError,
+} from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
@@ -120,6 +125,7 @@ export class EstateService {
       ...estate,
       online: this.isOnline(estate),
       acceptedRuntimes: this.acceptedRuntimes(estate.type),
+      credentialStatus: this.cloudflare.credentialStatus(estate),
     });
   }
 
@@ -307,8 +313,19 @@ export class EstateService {
     token: string;
   }): Promise<{ expiresAt?: string }> {
     const check = await this.cloudflare.check(input);
-    if (check.outcome !== "passed") {
-      throw new BadRequestError(check.message);
+    if (check.outcome === "failed") {
+      // `data` survives the round trip (`HttpError.toJSON`, read back by
+      // `HttpClient` through `errorSchema`), which is what lets the dialog
+      // put the message beside the field it concerns rather than in a toast
+      // that is gone before it has been read (#1865).
+      throw new HttpError({
+        status: 400,
+        message: check.message,
+        data: { field: check.field },
+      });
+    }
+    if (check.outcome === "inconclusive") {
+      throw new HttpError({ status: 400, message: check.message });
     }
     return { expiresAt: check.expiresAt };
   }

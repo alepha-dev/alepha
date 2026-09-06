@@ -35,6 +35,11 @@ export const adminEstateResourceSchema = z.object({
    */
   ownerName: z.string().optional(),
   online: z.boolean(),
+  /**
+   * Cloudflare only. Shown instead of the online badge, which means nothing
+   * on a row that never connects (#1630).
+   */
+  credentialStatus: z.enum(["valid", "invalid"]).optional(),
   deployAllowed: z.boolean(),
   lastSeenAt: z.string().optional(),
   createdAt: z.datetime(),

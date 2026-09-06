@@ -8,6 +8,7 @@ import { displayName } from "../../web/app/services/displayName.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { estates } from "../entities/estates.ts";
 import { adminEstateResourceSchema } from "../schemas/adminEstateResourceSchema.ts";
+import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
@@ -32,6 +33,7 @@ export class AdminEstateController {
   protected readonly grants = $repository(estateProjects);
   protected readonly users = $repository(users);
   protected readonly service = $inject(EstateService);
+  protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly audits = $inject(LoreAudits);
 
   public readonly findEstates = $action({
@@ -98,6 +100,7 @@ export class AdminEstateController {
           ownerUserId: estate.ownerUserId,
           ownerName: names.get(estate.ownerUserId),
           online: this.service.isOnline(estate),
+          credentialStatus: this.cloudflare.credentialStatus(estate),
           deployAllowed: estate.deployAllowed,
           lastSeenAt: estate.lastSeenAt,
           createdAt: String(estate.createdAt),

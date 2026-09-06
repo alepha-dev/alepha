@@ -23,6 +23,12 @@ export const lentEstateResourceSchema = z.object({
   online: z.boolean(),
   deployAllowed: z.boolean(),
   acceptedRuntimes: z.array(z.string()),
+  /**
+   * Cloudflare only, and the one thing a member deciding whether to deploy
+   * needs more than `online`: `online` is false for a row that never
+   * connects, and "invalid" is the fact that matters (#1630).
+   */
+  credentialStatus: z.enum(["valid", "invalid"]).optional(),
   lastSeenAt: z.string().optional(),
   cpuPercent: z.number().optional(),
   memoryPercent: z.number().optional(),

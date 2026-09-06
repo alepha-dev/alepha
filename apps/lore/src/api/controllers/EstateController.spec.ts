@@ -17,15 +17,13 @@ import {
   createTestProject,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
+import { MemoryCloudflareProbeService } from "../../../test/fixtures/MemoryCloudflareProbeService.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
 import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
+import { CloudflareProbeService } from "../services/CloudflareProbeService.ts";
 import { CredentialSealService } from "../services/CredentialSealService.ts";
-import {
-  EstateCloudflareService,
-  type EstateCredentialCheck,
-} from "../services/EstateCloudflareService.ts";
 import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
@@ -41,22 +39,6 @@ class EstateRepositories {
   grants = $repository(estateProjects);
 }
 
-/**
- * The Cloudflare seam, scripted.
- *
- * #1630 fills `EstateCloudflareService.check` with seven real `GET`s; what
- * this spec needs is control over its three answers, so the subclass returns
- * whatever the case sets and keeps the real `mask`, which is not
- * provisional.
- */
-class ScriptedCloudflareService extends EstateCloudflareService {
-  public next: EstateCredentialCheck = { outcome: "passed" };
-
-  override async check(): Promise<EstateCredentialCheck> {
-    return this.next;
-  }
-}
-
 interface TestContext {
   alepha: Alepha;
   controller: EstateController;
@@ -64,7 +46,7 @@ interface TestContext {
   tokens: EstateTokenService;
   crypto: CryptoProvider;
   seal: CredentialSealService;
-  cloudflare: ScriptedCloudflareService;
+  cloudflare: MemoryCloudflareProbeService;
   commands: EstateCommandService;
   repos: EstateRepositories;
   entities: TestEntityRepositories;
@@ -88,8 +70,8 @@ const setup = async (): Promise<TestContext> => {
   // Substituted BEFORE the module that registers the real one: a
   // substitution declared after the service is in use is refused.
   alepha.with({
-    provide: EstateCloudflareService,
-    use: ScriptedCloudflareService,
+    provide: CloudflareProbeService,
+    use: MemoryCloudflareProbeService,
   });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
@@ -110,7 +92,7 @@ const setup = async (): Promise<TestContext> => {
     tokens: alepha.inject(EstateTokenService),
     crypto: alepha.inject(CryptoProvider),
     seal: alepha.inject(CredentialSealService),
-    cloudflare: alepha.inject(ScriptedCloudflareService),
+    cloudflare: alepha.inject(MemoryCloudflareProbeService),
     commands: alepha.inject(EstateCommandService),
     repos,
     entities,
@@ -285,14 +267,11 @@ describe("EstateController, the credential", () => {
 
   it("writes no row when the check refuses the token", async ({ expect }) => {
     const user = await createUser(ctx);
-    ctx.cloudflare.next = {
-      outcome: "failed",
-      message: "This token cannot manage D1 (D1: Edit)",
-    };
+    // Cloudflare refuses every missing permission with the same code, so the
+    // probe that failed is what names the group.
+    ctx.cloudflare.refuse("/d1/database");
 
-    await expect(createCloudflare(ctx, user, "cf-1")).rejects.toThrow(
-      BadRequestError,
-    );
+    await expect(createCloudflare(ctx, user, "cf-1")).rejects.toThrow(/D1/);
 
     // Not a half-made estate that a later check could rescue: no row at all,
     // which is what lets `credentialStatus` have two values (#1630).
@@ -305,13 +284,10 @@ describe("EstateController, the credential", () => {
     expect,
   }) => {
     const user = await createUser(ctx);
-    ctx.cloudflare.next = {
-      outcome: "inconclusive",
-      message: "Cloudflare could not be reached, try again",
-    };
+    ctx.cloudflare.unreachable("/queues");
 
     await expect(createCloudflare(ctx, user, "cf-1")).rejects.toThrow(
-      BadRequestError,
+      /could not be reached/,
     );
     expect(
       await ctx.repos.estates.findMany({ where: { slug: { eq: "cf-1" } } }),
@@ -325,13 +301,13 @@ describe("EstateController, the credential", () => {
     const created = await createCloudflare(ctx, user, "cf-1");
     const replacement = `cfat_${"z9Y8x7W6v5".repeat(4)}beef0123`;
 
-    ctx.cloudflare.next = { outcome: "failed", message: "Token expired" };
+    ctx.cloudflare.identity({ status: "expired" });
     await expect(
       ctx.controller.replaceEstateCredential(
         { params: { estateId: created.id }, body: { token: replacement } },
         { user },
       ),
-    ).rejects.toThrow(BadRequestError);
+    ).rejects.toThrow(/expired/);
 
     // All or nothing: the token the owner already had keeps working.
     const untouched = (await ctx.repos.estates.findOne({
@@ -345,7 +321,7 @@ describe("EstateController, the credential", () => {
     ).toBe(CF_TOKEN);
     expect(untouched.secretPrefix).toBe(CF_TOKEN.slice(0, 13));
 
-    ctx.cloudflare.next = { outcome: "passed" };
+    ctx.cloudflare.reset();
     const replaced = await ctx.controller.replaceEstateCredential(
       { params: { estateId: created.id }, body: { token: replacement } },
       { user },
