@@ -39,6 +39,11 @@ export interface CloudflarePermissionProbe {
    */
   path: string;
   /**
+   * What the failure sentence calls this, written the way a person would say
+   * it rather than as a route fragment: "Queues", not "QUEUES".
+   */
+  subject: string;
+  /**
    * Cloudflare's own wording for the permission, in the spelling the
    * **dashboard** uses. Its API permission-group names say `Write` where the
    * dashboard says `Edit`; the reader is looking at the dashboard.
@@ -121,24 +126,42 @@ export class EstateCloudflareService {
    */
   public static readonly PERMISSION_PROBES: readonly CloudflarePermissionProbe[] =
     [
-      { key: "account", path: "", permission: "Account Settings: Read" },
+      {
+        key: "account",
+        path: "",
+        subject: "this account",
+        permission: "Account Settings: Read",
+      },
       {
         key: "workers",
         path: "/workers/scripts",
+        subject: "Workers",
         permission: "Workers Scripts: Edit",
       },
-      { key: "d1", path: "/d1/database", permission: "D1: Edit" },
+      {
+        key: "d1",
+        path: "/d1/database",
+        subject: "D1",
+        permission: "D1: Edit",
+      },
       {
         key: "kv",
         path: "/storage/kv/namespaces",
+        subject: "Workers KV",
         permission: "Workers KV Storage: Edit",
       },
       {
         key: "r2",
         path: "/r2/buckets",
+        subject: "Workers R2",
         permission: "Workers R2 Storage: Edit",
       },
-      { key: "queues", path: "/queues", permission: "Queues: Edit" },
+      {
+        key: "queues",
+        path: "/queues",
+        subject: "Queues",
+        permission: "Queues: Edit",
+      },
     ];
 
   /**
@@ -211,7 +234,7 @@ export class EstateCloudflareService {
       return {
         outcome: "failed",
         field: "token",
-        message: `This token cannot reach ${probe.key === "workers" ? "Workers" : probe.key.toUpperCase()} on this account. Add "${probe.permission}" to it and try again.`,
+        message: `This token cannot reach ${probe.subject} on this account. Add "${probe.permission}" to it and try again.`,
       };
     }
 
