@@ -146,9 +146,26 @@ export const AdminEstates = () => {
             label: "State",
             cell: (estate) => (
               <span className="flex items-center gap-1">
-                <Badge variant={estate.online ? "default" : "outline"}>
-                  {estate.online ? "online" : "offline"}
-                </Badge>
+                {/* A cloudflare account never connects, so `online` says
+                    nothing about one. Whether its credential still works
+                    does (#1630). */}
+                {estate.type === "cloudflare" ? (
+                  <Badge
+                    variant={
+                      estate.credentialStatus === "valid"
+                        ? "default"
+                        : "destructive"
+                    }
+                  >
+                    {estate.credentialStatus === "valid"
+                      ? "credential valid"
+                      : "credential invalid"}
+                  </Badge>
+                ) : (
+                  <Badge variant={estate.online ? "default" : "outline"}>
+                    {estate.online ? "online" : "offline"}
+                  </Badge>
+                )}
                 <Badge variant="secondary">
                   {estate.deployAllowed ? "deploys" : "stats only"}
                 </Badge>

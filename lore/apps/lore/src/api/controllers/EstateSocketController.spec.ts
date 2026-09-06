@@ -134,8 +134,20 @@ const createOwner = async (ctx: TestContext): Promise<UserAccountToken> => {
   return { id: user.id, roles: ["user"] };
 };
 
-const mint = async (ctx: TestContext, owner: UserAccountToken, slug: string) =>
-  ctx.estateApi.createEstate({ body: { slug } }, { user: owner });
+const mint = async (
+  ctx: TestContext,
+  owner: UserAccountToken,
+  slug: string,
+) => {
+  const minted = await ctx.estateApi.createEstate(
+    { body: { slug } },
+    { user: owner },
+  );
+  // A bay create always mints. The response type allows an absent secret
+  // because a cloudflare create mints nothing (#1629), and this whole spec
+  // is about the machine that dials in with one.
+  return { ...minted, secret: minted.secret! };
+};
 
 const rowOf = (ctx: TestContext, id: string) =>
   ctx.repos.estates.getOne({ where: { id: { eq: id } } });
@@ -236,7 +248,7 @@ describe("EstateSocketController, the handshake", () => {
     );
     expect(await refusal(ctx, minted.secret)).toBe(401);
 
-    const client = await connect(ctx, rotated.secret);
+    const client = await connect(ctx, rotated.secret!);
     await close(client);
   });
 });

@@ -101,7 +101,7 @@ const enrol = async (
     estate: await ctx.repos.estates.getOne({
       where: { id: { eq: minted.id } },
     }),
-    secret: minted.secret,
+    secret: minted.secret!,
   };
 };
 

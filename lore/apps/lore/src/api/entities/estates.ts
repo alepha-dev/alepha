@@ -79,16 +79,72 @@ export const estates = $entity({
      */
     label: z.string().max(100).optional(),
     /**
-     * `bay` only. The secret Lore minted, stored as a hash for the reason a
-     * password is: a database that leaks must not be a fleet that leaks.
-     * Nothing ever returns it; rotation is the only way to a new one.
+     * `bay` only, and null on every `cloudflare` row. The secret Lore
+     * minted, stored as a hash for the reason a password is: a database that
+     * leaks must not be a fleet that leaks. Nothing ever returns it;
+     * rotation is the only way to a new one.
+     *
+     * A cloudflare estate has nothing to put here: its credential is one its
+     * owner pasted, it has to be replayed against Cloudflare, and so it is
+     * sealed in {@link credential} rather than hashed. The unique index
+     * tolerates that because SQLite and Postgres both treat NULLs as
+     * distinct in a unique index, so any number of cloudflare rows coexist
+     * while two `bay` rows still cannot share a secret.
      */
     secretHash: z.string().max(256).optional(),
     /**
-     * The first characters of the secret, so the UI can name a credential
-     * it can never rebuild.
+     * The first characters of whichever credential the type holds, so the UI
+     * can name a credential it can never rebuild: the minted secret for
+     * `bay`, the pasted token for `cloudflare` (#1629). Both are the kind's
+     * marker plus eight characters.
      */
     secretPrefix: z.string().max(32).optional(),
+    /**
+     * `cloudflare` only. The API token its owner pasted, sealed by
+     * `CredentialSealService` under `lore:estates:v1` (#1631).
+     *
+     * `z.string().max(1024)` and never `z.text()`: `z.text()` caps at 255,
+     * and a sealed 60-character token is already about 200 hex characters,
+     * so the shorter column would refuse the write. Never written by a
+     * client: the only writer is the create-and-check path.
+     */
+    credential: z.string().max(1024).optional(),
+    /**
+     * Which key derivation sealed {@link credential}, so re-sealing after an
+     * `APP_SECRET` rotation is a script rather than a crisis. See
+     * `CredentialSealService.KEY_VERSION`.
+     */
+    credentialKeyVersion: z.integer().optional(),
+    /**
+     * `cloudflare` only. The Cloudflare account the token is checked
+     * against, so no probe has to guess one and none ever reads Lore's own
+     * `CLOUDFLARE_ACCOUNT_ID`.
+     *
+     * Loose here and strict on the way in (32 hex characters, #1629), for
+     * the reason `estateSlugSchema` gives: a constraint tightened on a
+     * column makes a pre-existing row fail to decode, and a row that fails
+     * its schema throws every query that touches the table.
+     */
+    accountId: z.string().max(64).optional(),
+    /**
+     * When the token was last proven against Cloudflare, ISO, server-written
+     * (#1630). Never null on a cloudflare row: the checks run before the row
+     * is written, so an estate that exists has passed at least once.
+     */
+    credentialCheckedAt: z.string().optional(),
+    /**
+     * Why the last check failed, naming the permission group in Cloudflare's
+     * own words; null when it passed (#1630). Server-written. It is what the
+     * derived `credentialStatus` reads, together with
+     * {@link credentialExpiresAt}.
+     */
+    credentialError: z.string().max(1024).optional(),
+    /**
+     * When Cloudflare says the token expires, ISO, from the verify endpoint
+     * (#1630). Applied at READ time, so a token that expires at noon reads
+     * invalid at noon rather than at the next midnight sweep.
+     */
+    credentialExpiresAt: z.string().optional(),
     /**
      * Whether CPU and memory pushes are also written to the `$analytics`
      * series. Gates the series only: the live gauge on this row is always

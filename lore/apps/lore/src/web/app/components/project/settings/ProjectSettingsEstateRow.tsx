@@ -44,16 +44,33 @@ const ProjectSettingsEstateRow = (props: ProjectSettingsEstateRowProps) => {
         <span className="text-muted-foreground text-xs">
           {tr("estates.project.lentBy", { args: [estate.owner.name] })}
           {" · "}
-          {estate.lastSeenAt
-            ? tr("estates.lastSeen", {
-                args: [String(l(estate.lastSeenAt, { date: "lll" }))],
-              })
-            : tr("estates.neverSeen")}
+          {estate.type === "cloudflare"
+            ? tr("estates.type.cloudflare")
+            : estate.lastSeenAt
+              ? tr("estates.lastSeen", {
+                  args: [String(l(estate.lastSeenAt, { date: "lll" }))],
+                })
+              : tr("estates.neverSeen")}
         </span>
       </div>
-      <Badge variant={estate.online ? "default" : "outline"}>
-        {estate.online ? tr("estates.online") : tr("estates.offline")}
-      </Badge>
+      {/* A member deciding whether to deploy needs "invalid" more than
+          "offline", and "offline" is false for a row that never connects
+          (#1630). Read as optional: a bay row has no status. */}
+      {estate.type === "cloudflare" ? (
+        <Badge
+          variant={
+            estate.credentialStatus === "valid" ? "default" : "destructive"
+          }
+        >
+          {estate.credentialStatus === "valid"
+            ? tr("estates.credential.valid")
+            : tr("estates.credential.invalid")}
+        </Badge>
+      ) : (
+        <Badge variant={estate.online ? "default" : "outline"}>
+          {estate.online ? tr("estates.online") : tr("estates.offline")}
+        </Badge>
+      )}
       <Badge variant="secondary">
         {estate.deployAllowed
           ? tr("estates.deploys.allowed")
