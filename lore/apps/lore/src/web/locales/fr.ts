@@ -1151,13 +1151,18 @@ export default {
   "insights.errors.worst.note":
     "Les compteurs sont le total de chaque défaillance depuis toujours, pas celui de la période. Le graphique ci-dessus, lui, correspond à la période.",
   "app.settings.credential": "Accès",
-  "app.settings.danger": "Zone dangereuse",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":
     "Génère un nouveau jeton et invalide l'actuel immédiatement. Tout ce que cette application a remonté est conservé : c'est ainsi qu'on révoque un jeton fuité sans perdre son historique.",
-  "app.settings.delete.title": "Supprimer cette application",
-  "app.settings.delete.description":
-    "Supprime l'application et tout ce qu'elle a remonté : pages vues, Web Vitals, visiteurs uniques et budget d'erreurs. Les fléaux déjà déposés sont conservés. Cette action est irréversible.",
+  "app.settings.sigil.description":
+    "Un sigil est la clé avec laquelle cette copie remonte ses données. Créez-en un et collez-le dans l’application comme SIGIL_KEY ; Analytics, Vitals, Erreurs et Explorer apparaissent dès lors.",
+  "app.settings.sigil.none": "Pas encore de sigil",
+  "app.settings.sigil.noneDescription":
+    "Rien ne remonte pour cette copie. Ce n’est pas un défaut : c’est un déploiement dans lequel personne n’a branché la télémétrie.",
+  "app.settings.sigil.create": "Créer un sigil",
+  "app.settings.sigil.remove.title": "Retirer le sigil",
+  "app.settings.sigil.remove.description":
+    "Arrête les remontées de cette copie et efface ce qu’elle a remonté. L’application elle-même est conservée. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "app.settings.ownerOnly":
     "Seul le propriétaire du projet peut effectuer cette action.",
 
@@ -1312,6 +1317,7 @@ export default {
   "sigils.delete.confirmDescription":
     "Cela efface tout ce que cette application a remonté (pages vues, Web Vitals, visiteurs uniques et son budget d’erreurs) ainsi que son jeton. Les fléaux déjà déposés sont conservés. Pour révoquer un jeton fuité sans perdre l’historique, renouvelez-le plutôt.",
   "sigils.delete.confirm": "Supprimer",
+  "sigils.toast.created": "Sigil créé",
   "sigils.toast.rotated": "Jeton renouvelé",
   "sigils.toast.copied": "Jeton copié",
   "sigils.toast.deleted": "Sigil supprimé",

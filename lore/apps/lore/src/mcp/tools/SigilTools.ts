@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
 
+import { AppController } from "../../api/controllers/AppController.ts";
 import { SigilController } from "../../api/controllers/SigilController.ts";
 import {
   sigilCreateParamsSchema,
@@ -28,6 +29,7 @@ import { ProjectTools } from "./ProjectTools.ts";
  */
 export class SigilTools {
   protected readonly sigils = $inject(SigilController);
+  protected readonly apps = $inject(AppController);
   protected readonly projects = $inject(ProjectTools);
 
   sigil_list = $tool({
@@ -63,9 +65,20 @@ export class SigilTools {
         params.project,
         params.project_name,
       );
+      // ⚠️ The one MCP tool that composes two calls, and it has to: since
+      // Apps v3 a credential hangs off a deployed copy, and `createSigil` is
+      // 404 without one. The instance is created here rather than inside the
+      // controller, so there is exactly one endpoint that creates instances and
+      // the composition is visible where it happens. #1778 gives this tool its
+      // own `app` + `env` parameters; until then the name is the app and the
+      // env is `production`.
+      await this.apps.createApp({
+        params: { projectId },
+        body: { app: params.name, env: "production" },
+      });
       return await this.sigils.createSigil({
         params: { projectId },
-        body: { name: params.name },
+        body: { app: params.name, env: "production" },
       });
     },
   });

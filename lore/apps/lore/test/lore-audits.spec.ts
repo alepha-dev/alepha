@@ -8,6 +8,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { AppController } from "../src/api/controllers/AppController.ts";
 import { FeedbackController } from "../src/api/controllers/FeedbackController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
@@ -223,9 +224,19 @@ describe("Lore domain audits", () => {
     const user = await aUser();
     const project = await aProject(user);
 
+    await ctx.alepha.inject(AppController).createApp.fetch(
+      {
+        params: { projectId: project.id },
+        body: { app: "web", env: "production" },
+      },
+      { user },
+    );
     const sigil = (
       await ctx.sigilController.createSigil.fetch(
-        { params: { projectId: project.id }, body: { name: "web" } },
+        {
+          params: { projectId: project.id },
+          body: { app: "web", env: "production" },
+        },
         { user },
       )
     ).data;

@@ -1136,13 +1136,18 @@ export default {
   "insights.errors.worst.note":
     "Counts are each failure's all-time total, not this window's. The chart above is the window.",
   "app.settings.credential": "Credential",
-  "app.settings.danger": "Danger zone",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":
     "Mints a new token and stops the current one immediately. Everything this app has reported is kept: this is how a leaked token is revoked without losing its history.",
-  "app.settings.delete.title": "Delete this app",
-  "app.settings.delete.description":
-    "Removes the app and everything it ever reported: page views, web vitals, unique visitors and its error budget. Blights already filed are kept. This cannot be undone.",
+  "app.settings.sigil.description":
+    "A sigil is the key this copy reports with. Create one and paste it into the app as SIGIL_KEY; Analytics, Vitals, Errors and Explore appear once it does.",
+  "app.settings.sigil.none": "No sigil yet",
+  "app.settings.sigil.noneDescription":
+    "Nothing is reporting for this copy. It is not broken: it is a deployment nobody wired telemetry into.",
+  "app.settings.sigil.create": "Create a sigil",
+  "app.settings.sigil.remove.title": "Remove the sigil",
+  "app.settings.sigil.remove.description":
+    "Stops this copy reporting and erases what it has reported. The app itself stays. To revoke a leaked token without losing the history, rotate it instead.",
   "app.settings.ownerOnly": "Only the project owner can do this.",
 
   "insights.range.1d": "Today",
@@ -1291,6 +1296,7 @@ export default {
   "sigils.delete.confirmDescription":
     "This erases everything this app ever reported (page views, web vitals, unique visitors and its error budget) along with its token. Blights already filed are kept. To revoke a leaked token without losing the history, rotate it instead.",
   "sigils.delete.confirm": "Delete",
+  "sigils.toast.created": "Sigil created",
   "sigils.toast.rotated": "Token rotated",
   "sigils.toast.copied": "Token copied",
   "sigils.toast.deleted": "Sigil deleted",

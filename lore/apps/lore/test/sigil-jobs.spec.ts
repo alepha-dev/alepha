@@ -8,6 +8,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { AppController } from "../src/api/controllers/AppController.ts";
 import { InsightsController } from "../src/api/controllers/InsightsController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
@@ -84,11 +85,20 @@ const setup = async (): Promise<TestContext> => {
   );
 
   const sigilApi = alepha.inject(SigilController);
+  const appApi = alepha.inject(AppController);
+  // The instance first: a credential hangs off a deployed copy since Apps v3.
   const mkSigil = async (name: string) => {
+    await appApi.createApp.fetch(
+      {
+        params: { projectId: project.data.id },
+        body: { app: name, env: "production" },
+      },
+      { user },
+    );
     const res = await sigilApi.createSigil.fetch(
       {
         params: { projectId: project.data.id },
-        body: { name, kinds: ["beacon"] },
+        body: { app: name, env: "production", kinds: ["beacon"] },
       },
       { user },
     );
