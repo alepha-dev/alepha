@@ -7,6 +7,7 @@ import { useRouter, useRouterState } from "alepha/react/router";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
+import BayActions from "./BayActions.tsx";
 import { bayInstanceRows, bayProcessState } from "./bayInstanceRow.ts";
 import BayLogTail from "./BayLogTail.tsx";
 import BayStateBadge from "./BayStateBadge.tsx";
@@ -99,6 +100,8 @@ const BayInstance = () => {
               {tr("bay.instance.expected")}
             </p>
           )}
+
+          <BayActions row={row} />
 
           {reported && (
             <>

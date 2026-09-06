@@ -1431,6 +1431,29 @@ export default {
     "Nothing is deployed here, and Lore expects nothing here either.",
   "bay.apps.noMatch": "No instance matches",
   "bay.apps.noMatch.description": "Try adjusting or clearing the filters.",
+  "bay.apps.col.actions": "Actions",
+  "bay.actions.restart": "Restart",
+  "bay.actions.stop": "Stop",
+  "bay.actions.start": "Start",
+  "bay.actions.backup": "Back up",
+  "bay.actions.refresh": "Refresh",
+  "bay.actions.stop.title": "Stop $1/$2?",
+  "bay.actions.stop.description":
+    "It stops serving $1 immediately, and it stays stopped: the stop survives a reboot and a Bay upgrade. The way back is Start, or a deploy.",
+  "bay.actions.stop.description.noDomains":
+    "It stops immediately, and it stays stopped: the stop survives a reboot and a Bay upgrade. The way back is Start, or a deploy.",
+  "bay.actions.queued":
+    "Queued. The machine is not connected; this runs when it comes back, or is given up on after a day.",
+  "bay.actions.running": "Running ($1)…",
+  "bay.actions.done": "Done.",
+  "bay.actions.failed": "The machine refused it: $1",
+  "bay.actions.noReason": "no reason given",
+  "bay.actions.offline":
+    "The machine is offline. Commands wait for it; a refresh and a log tail do not.",
+  "bay.actions.refresh.asked":
+    "Asked. The answer arrives on the machine's own connection, in a few seconds.",
+  "bay.actions.refresh.cooldown":
+    "Already asked a few times this minute. Wait a moment.",
   "bay.apps.col.app": "Instance",
   "bay.apps.col.state": "State",
   "bay.apps.col.runtime": "Runtime",

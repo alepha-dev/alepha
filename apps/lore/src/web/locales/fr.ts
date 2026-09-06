@@ -1449,6 +1449,29 @@ export default {
     "Rien n'est déployé ici, et Lore n'y attend rien non plus.",
   "bay.apps.noMatch": "Aucune instance ne correspond",
   "bay.apps.noMatch.description": "Ajustez ou effacez les filtres.",
+  "bay.apps.col.actions": "Actions",
+  "bay.actions.restart": "Redémarrer",
+  "bay.actions.stop": "Arrêter",
+  "bay.actions.start": "Démarrer",
+  "bay.actions.backup": "Sauvegarder",
+  "bay.actions.refresh": "Actualiser",
+  "bay.actions.stop.title": "Arrêter $1/$2 ?",
+  "bay.actions.stop.description":
+    "Le service sur $1 s'arrête immédiatement, et le reste : l'arrêt survit à un redémarrage de la machine comme à une mise à jour de Bay. Le retour se fait par Démarrer, ou par un déploiement.",
+  "bay.actions.stop.description.noDomains":
+    "L'instance s'arrête immédiatement, et le reste : l'arrêt survit à un redémarrage de la machine comme à une mise à jour de Bay. Le retour se fait par Démarrer, ou par un déploiement.",
+  "bay.actions.queued":
+    "En file d'attente. La machine n'est pas connectée ; la commande s'exécutera à son retour, ou sera abandonnée après un jour.",
+  "bay.actions.running": "En cours ($1)…",
+  "bay.actions.done": "Terminé.",
+  "bay.actions.failed": "La machine a refusé : $1",
+  "bay.actions.noReason": "aucune raison donnée",
+  "bay.actions.offline":
+    "La machine est hors ligne. Les commandes l'attendent ; une actualisation ou un extrait de journal, non.",
+  "bay.actions.refresh.asked":
+    "Demandé. La réponse arrive par la connexion de la machine, dans quelques secondes.",
+  "bay.actions.refresh.cooldown":
+    "Déjà demandé plusieurs fois cette minute. Patientez un instant.",
   "bay.apps.col.app": "Instance",
   "bay.apps.col.state": "État",
   "bay.apps.col.runtime": "Runtime",
