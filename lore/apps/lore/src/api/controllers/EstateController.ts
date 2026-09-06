@@ -3,18 +3,20 @@ import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
-import { ESTATE_TYPES, estates } from "../entities/estates.ts";
+import { estates } from "../entities/estates.ts";
+import { cloudflareTokenSchema } from "../schemas/cloudflareCredentialSchema.ts";
+import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
 import {
   type EstateResource,
   estateResourceSchema,
   type MintedEstate,
   mintedEstateSchema,
 } from "../schemas/estateResourceSchema.ts";
-import { estateSlugSchema } from "../schemas/estateSlugSchema.ts";
 import {
   type OwnedEstateResource,
   ownedEstateResourceSchema,
 } from "../schemas/ownedEstateResourceSchema.ts";
+import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
@@ -32,15 +34,16 @@ export type { EstateResource, MintedEstate, OwnedEstateResource };
  * backstop is the admin's (#1838). Both read the same masked resource, and
  * neither can read a secret, the owner included.
  *
- * `bay` is the only type this controller can create or rotate. The
- * `cloudflare` variant arrives with epic #22 and is refused by name until
- * then, so the discriminator is live without the row ever holding a
- * credential this code does not know how to seal.
+ * Both types are created here, and the difference is what a credential is.
+ * A `bay` secret is one Lore mints and hands back once, so it is rotated; a
+ * `cloudflare` token is one its owner pastes, so it is checked, sealed and
+ * replaced. Neither is ever readable again, the owner included.
  */
 export class EstateController {
   protected readonly estates = $repository(estates);
   protected readonly service = $inject(EstateService);
   protected readonly tokens = $inject(EstateTokenService);
+  protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly transport = $inject(EstateCommandTransport);
   protected readonly audits = $inject(LoreAudits);
 
@@ -66,33 +69,31 @@ export class EstateController {
   });
 
   /**
-   * Enrol a machine, and hand back its secret once.
+   * Enrol a deploy destination.
    *
-   * The minting itself is `EstateService.createBay`, shared with the
-   * create-from-inside-a-project flow (#1837), so the two cannot disagree
-   * about normalisation, uniqueness or the audit row.
+   * Two shapes behind one route (`createEstateBodySchema`): a `bay` estate,
+   * whose secret Lore mints and hands back exactly once, or a `cloudflare`
+   * estate, whose token the owner pastes and Lore checks before writing
+   * anything. Both go through `EstateService`, shared with the
+   * create-from-inside-a-project flow (#1837), so the two entry points
+   * cannot disagree about normalisation, uniqueness or the audit row.
+   *
+   * ⚠️ `secret` is present only when Lore minted one, so it is **absent** on
+   * a cloudflare create rather than empty. That is what #1865's "the reveal
+   * dialog does not open" rests on: an absent field, not a falsy string.
    */
   createEstate = $action({
     use: [$secure({ permissions: ["estate:create"] })],
     method: "POST",
     path: "/estates",
     schema: {
-      body: z.object({
-        slug: estateSlugSchema,
-        label: z.string().max(100).optional(),
-        /**
-         * Omitted means `bay`, the only type this epic implements.
-         */
-        type: z.enum(ESTATE_TYPES).meta({ mode: "text" }).optional(),
-      }),
+      body: createEstateBodySchema,
       response: mintedEstateSchema,
     },
     handler: async ({ body, user }) => {
-      const type = body.type ?? "bay";
-      if (type !== "bay") {
-        throw new BadRequestError(
-          "Cloudflare estates are not available yet; only bay estates can be created",
-        );
+      if (body.type === "cloudflare") {
+        const { estate } = await this.service.createCloudflare(user, body);
+        return this.service.toResource(estate);
       }
 
       const { estate, secret } = await this.service.createBay(user, body);
@@ -167,9 +168,13 @@ export class EstateController {
       // (deploys, the gauge interval) is pushed as `config` the moment it
       // changes. Best effort: an offline machine learns it from its next
       // `welcome`, and the label is nothing the machine reads.
+      // A cloudflare estate has no machine and no socket, so there is
+      // nothing to tell: offering the transport a row it can never reach
+      // would queue a push against an estate that has no connector.
       if (
-        body.deployAllowed !== undefined ||
-        body.statsIntervalSeconds !== undefined
+        updated.type === "bay" &&
+        (body.deployAllowed !== undefined ||
+          body.statsIntervalSeconds !== undefined)
       ) {
         await this.transport.push(
           updated,
@@ -200,7 +205,7 @@ export class EstateController {
       const estate = await this.service.loadOwned(params.estateId, user);
       if (estate.type !== "bay") {
         throw new BadRequestError(
-          "Only a bay estate holds a secret Lore minted; a cloudflare credential is replaced, not rotated",
+          "Only a bay estate holds a secret Lore minted; replace a cloudflare token with POST /estates/:estateId/credential",
         );
       }
 
@@ -223,6 +228,78 @@ export class EstateController {
 
       const rotated = await this.service.loadOwned(params.estateId, user);
       return { ...this.service.toResource(rotated), secret: minted.secret };
+    },
+  });
+
+  /**
+   * Replace the token on a cloudflare estate.
+   *
+   * Write-only: there is no GET that returns the token and no PATCH that
+   * carries it, so replacing is never a read-modify-write through the
+   * client. Checked before it is written and **all or nothing** on a
+   * failure, so the token the owner already had keeps working when the new
+   * one does not (#1630).
+   *
+   * Audited as `rotate`, the verb `LoreAudits.estate` already declares, with
+   * the same `warning` severity as the bay rotation: "when was this
+   * credential last changed" is one question, whichever kind it was. The UI
+   * says "Replace token"; the Activity filter does not grow a verb.
+   */
+  replaceEstateCredential = $action({
+    use: [$secure({ permissions: ["estate:update"] })],
+    method: "POST",
+    path: "/estates/:estateId/credential",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      body: z.object({ token: cloudflareTokenSchema }),
+      response: estateResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      const replaced = await this.service.replaceCredential(
+        user,
+        estate,
+        body.token,
+      );
+      return this.service.toResource(replaced);
+    },
+  });
+
+  /**
+   * Ask Cloudflare again, now, and record what it said.
+   *
+   * The owner's own button, for the case the nightly sweep would otherwise
+   * answer up to a day later: they have just widened a token at Cloudflare
+   * and want the estate to agree. An inconclusive answer leaves the row
+   * untouched and says so, exactly as the sweep does.
+   */
+  checkEstateCredential = $action({
+    use: [$secure({ permissions: ["estate:update"] })],
+    method: "POST",
+    path: "/estates/:estateId/credential/check",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: estateResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      if (estate.type !== "cloudflare") {
+        throw new BadRequestError(
+          "Only a cloudflare estate has a token to check",
+        );
+      }
+
+      const check = await this.cloudflare.recheck(estate);
+      if (check.outcome === "inconclusive") {
+        // No verdict, so no row change and no pretending otherwise: the
+        // drawer shows this sentence and the estate keeps the status it
+        // had.
+        throw new BadRequestError(check.message);
+      }
+
+      return this.service.toResource(
+        await this.service.loadOwned(params.estateId, user),
+      );
     },
   });
 
