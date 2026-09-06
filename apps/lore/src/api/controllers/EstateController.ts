@@ -5,6 +5,10 @@ import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { ESTATE_TYPES, estates } from "../entities/estates.ts";
 import {
+  type EstateInventoryResource,
+  estateInventoryResourceSchema,
+} from "../schemas/estateInventoryResourceSchema.ts";
+import {
   type EstateResource,
   estateResourceSchema,
   type MintedEstate,
@@ -16,11 +20,17 @@ import {
   ownedEstateResourceSchema,
 } from "../schemas/ownedEstateResourceSchema.ts";
 import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
+import { EstateInventoryService } from "../services/EstateInventoryService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
-export type { EstateResource, MintedEstate, OwnedEstateResource };
+export type {
+  EstateInventoryResource,
+  EstateResource,
+  MintedEstate,
+  OwnedEstateResource,
+};
 
 /**
  * Owner-facing CRUD for estates: the deploy destinations a user owns, across
@@ -42,6 +52,7 @@ export class EstateController {
   protected readonly service = $inject(EstateService);
   protected readonly tokens = $inject(EstateTokenService);
   protected readonly transport = $inject(EstateCommandTransport);
+  protected readonly inventories = $inject(EstateInventoryService);
   protected readonly audits = $inject(LoreAudits);
 
   /**
@@ -110,6 +121,33 @@ export class EstateController {
     },
     handler: async ({ params, user }) =>
       this.service.toResource(
+        await this.service.loadOwned(params.estateId, user),
+      ),
+  });
+
+  /**
+   * What is running on the machine, reconciled against what Lore tracks.
+   *
+   * ⚠️ A machine that has never connected answers `{ inventory: null }` and
+   * NOT a 404. "Nothing reported yet" is a state the console renders, and the
+   * `expected` list is still worth showing beside it: those are the instances
+   * Lore believes belong here. Only the estate itself 404s, through
+   * `loadOwned`, like every sibling in this controller.
+   *
+   * Owner only, deliberately. Sharing a read-only view with members of a
+   * project this estate is lent to is wanted later and is a filter on
+   * `reconcile`, not a change here.
+   */
+  getEstateInventory = $action({
+    use: [$secure({ permissions: ["estate:read"] })],
+    method: "GET",
+    path: "/estates/:estateId/inventory",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: estateInventoryResourceSchema,
+    },
+    handler: async ({ params, user }) =>
+      this.inventories.reconcile(
         await this.service.loadOwned(params.estateId, user),
       ),
   });

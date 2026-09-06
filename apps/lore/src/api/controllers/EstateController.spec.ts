@@ -265,6 +265,9 @@ describe("EstateController, ownership and switches", () => {
     await expect(
       ctx.controller.deleteEstate({ params }, { user: grace }),
     ).rejects.toThrow(NotFoundError);
+    await expect(
+      ctx.controller.getEstateInventory({ params }, { user: grace }),
+    ).rejects.toThrow(NotFoundError);
 
     const theirs = await ctx.controller.listMyEstates({}, { user: grace });
     expect(theirs.items).toEqual([]);
@@ -272,6 +275,25 @@ describe("EstateController, ownership and switches", () => {
     // Nothing above changed the row.
     const stillMine = await ctx.controller.getEstate({ params }, { user: ada });
     expect(stillMine.deployAllowed).toBe(false);
+  });
+
+  /**
+   * A machine that never connected is not a missing estate. The 404 belongs
+   * to the estate, through `loadOwned`; a null inventory belongs to the
+   * machine, and the page renders it as "nothing reported yet".
+   */
+  it("answers the owner a null inventory for a machine that never reported", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const minted = await createEstate(ctx, user, "ovh-inv");
+
+    const result = await ctx.controller.getEstateInventory(
+      { params: { estateId: minted.id } },
+      { user },
+    );
+    expect(result.inventory).toBeNull();
+    expect(result.expected).toEqual([]);
   });
 
   it("starts with every switch off and lets the owner flip them", async ({

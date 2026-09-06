@@ -16,15 +16,31 @@ export const estateLoanSchema = z.object({
 export type EstateLoan = Infer<typeof estateLoanSchema>;
 
 /**
+ * What the machine last reported, in two numbers.
+ *
+ * The whole point of the denormalised `appCount`: the list says "7 apps,
+ * reported 4 minutes ago" without deserializing any host's app array and
+ * without waking a machine. Absent for one that has never connected.
+ */
+export const estateInventorySummarySchema = z.object({
+  appCount: z.integer().min(0),
+  reportedAt: z.string().max(40),
+});
+
+export type EstateInventorySummary = Infer<typeof estateInventorySummarySchema>;
+
+/**
  * An estate as its owner lists it: the resource plus the projects it is
- * lent to (#1838).
+ * lent to (#1838), and what the machine last reported.
  *
  * The loans are the one fact about an estate the owner's page needs that the
  * row does not hold. Resolved for the whole list in two queries rather than
- * one per row, in `EstateService.withLoans`.
+ * one per row, in `EstateService.withLoans`; the inventory summary is one
+ * more `inArray` in the same method, for the same reason.
  */
 export const ownedEstateResourceSchema = estateResourceSchema.extend({
   projects: z.array(estateLoanSchema),
+  inventory: estateInventorySummarySchema.optional(),
 });
 
 export type OwnedEstateResource = Infer<typeof ownedEstateResourceSchema>;
