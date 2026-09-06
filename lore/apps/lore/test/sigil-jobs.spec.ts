@@ -80,7 +80,12 @@ const setup = async (): Promise<TestContext> => {
 
   const projects = alepha.inject(ProjectController);
   const project = await projects.createProject.fetch(
-    { body: { title: "Retention", features: { sigils: true } } },
+    {
+      body: {
+        title: "Retention",
+        capabilities: [{ key: "apps", options: { track: true } }],
+      },
+    },
     { user },
   );
 

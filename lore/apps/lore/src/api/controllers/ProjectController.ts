@@ -29,13 +29,13 @@ import { type Member, members } from "../entities/members.ts";
 import {
   defaultProjectFeatures,
   type Project,
-  projectFeaturesSchema,
   projects,
 } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
+import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projectActivityRowSchema } from "../schemas/projectActivityRowSchema.ts";
@@ -48,6 +48,7 @@ import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { AreaService } from "../services/AreaService.ts";
+import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
@@ -112,6 +113,7 @@ export class ProjectController {
   limits = $inject(ProjectLimits);
   slugs = $inject(ProjectSlugService);
   projectSecurity = $inject(ProjectSecurityService);
+  protected readonly capabilityRegistry = $inject(CapabilityRegistry);
   audits = $inject(LoreAudits);
   auditService = $inject(AuditService);
   areaService = $inject(AreaService);
@@ -180,12 +182,28 @@ export class ProjectController {
          */
         title: projectTitleSchema,
         /**
-         * Subset of module toggles to override at creation time. Anything
-         * omitted falls back to `defaultProjectFeatures`. Lets the wizard
-         * surface a "select modules" step without forcing the client to
-         * resend the full feature payload.
+         * The capabilities this project starts with, as the wizard's second
+         * step collected them, each with the options its third step set.
+         *
+         * ⚠️ **Replaces `features`, which is gone from this body.** A key
+         * here is the closed enum, and an unknown OPTION is refused rather
+         * than dropped - `features` was `.partial()`, so a mistyped key has
+         * been silently accepted for as long as this endpoint has existed,
+         * and its own comment said so.
+         *
+         * Omitted means a project with no capability at all, which is a legal
+         * state on the write path. The wizard's at-least-one rule lives in the
+         * wizard, because a wizard is asking a question and "none" is not an
+         * answer to it; nothing else in the system needs a floor.
          */
-        features: projectFeaturesSchema.partial().optional(),
+        capabilities: z
+          .array(
+            z.object({
+              key: capabilityKeySchema,
+              options: z.record(z.text(), z.boolean()).optional(),
+            }),
+          )
+          .optional(),
       }),
       response: projectResourceSchema,
     },
@@ -210,10 +228,17 @@ export class ProjectController {
         await this.assertSlugAvailable(slug);
       }
 
+      const { capabilities, ...columns } = body;
+
       const project = await this.projects.create({
-        ...body,
+        ...columns,
         slug: slug || undefined,
-        features: { ...defaultProjectFeatures, ...body.features },
+        // ⚠️ Still written, and still `defaultProjectFeatures`. Nothing reads
+        // it any more, but every row on disk has to keep decoding against the
+        // schema that still describes it, and four of its keys are REQUIRED.
+        // The column is frozen rather than dropped, because dropping one from
+        // `projects` is the D1 rebuild that cascade-wipes its children.
+        features: defaultProjectFeatures,
         createdBy: user.id,
       });
 
@@ -232,6 +257,25 @@ export class ProjectController {
         owner: true,
       });
 
+      // ⚠️ The fourth and fifth writes of a create that is not
+      // `$transactional()`, so a failure here leaves a project with no
+      // capabilities rather than no project. Recoverable from Settings, which
+      // the two writes above it are not; wrapping the whole handler is wanted
+      // for a second reason by Ranks and belongs to whichever lands first.
+      const rows = [];
+      for (const capability of capabilities ?? []) {
+        rows.push(
+          await this.projectSecurity.capabilities.create({
+            projectId: project.id,
+            key: capability.key,
+            options: this.capabilityRegistry.strictOptionsOf(
+              capability.key,
+              capability.options,
+            ),
+          }),
+        );
+      }
+
       await this.audits.project.logSuccess("create", {
         ...this.audits.actor(user),
         resourceType: "project",
@@ -239,7 +283,7 @@ export class ProjectController {
         description: project.title,
       });
 
-      return this.projectMapper.toResource(project);
+      return this.projectMapper.toResource(project, rows);
     },
   });
 
@@ -281,9 +325,17 @@ export class ProjectController {
       // paged a filter whose id list had already been read in full, so the
       // work was never bounded by page size to begin with. The per-user
       // ownership limit keeps the list small.
-      return all
-        .slice(page * size, page * size + size)
-        .map((it) => this.projectMapper.toResource(it));
+      const paged = all.slice(page * size, page * size + size);
+      // One query for the page, never one per row: `inArray` over the ids the
+      // list already holds, the same shape `countByProjectIds` uses on the
+      // Home overview below.
+      const byProject = await this.projectSecurity.capabilityRowsForProjects(
+        paged.map((it) => it.id),
+      );
+
+      return paged.map((it) =>
+        this.projectMapper.toResource(it, byProject.get(it.id) ?? []),
+      );
     },
   });
 
@@ -323,18 +375,22 @@ export class ProjectController {
       // the Home page's "N areas" stat is re-sourced from the `areas` table
       // here instead, one batched query rather than one per card.
       const projectIds = result.map((it) => it.id);
-      const [areaCounts, openQuestCounts] = await Promise.all([
+      const [areaCounts, openQuestCounts, capabilityRows] = await Promise.all([
         this.areaService.countByProjectIds(projectIds),
         // The dashboard rail's per-project number. Counted through the same
         // scope as the sidebar badge and the Active Quests tile: all three are
         // visible together, and a disagreement between them is one of them
         // lying rather than a rounding difference.
         this.openQuests.countByProject(projectIds),
+        // Third batched read on the same id list. The Home cards, the create
+        // menu and the sidebar all read the capability set, and one query per
+        // card is N round trips on D1 for a list already in memory.
+        this.projectSecurity.capabilityRowsForProjects(projectIds),
       ]);
 
       return {
         projects: result.map((it) => ({
-          ...this.projectMapper.toResource(it),
+          ...this.projectMapper.toResource(it, capabilityRows.get(it.id) ?? []),
           areaCount: areaCounts.get(it.id) ?? 0,
           openQuestCount: openQuestCounts.get(it.id) ?? 0,
         })),
@@ -514,7 +570,10 @@ export class ProjectController {
       body: z.object({
         title: projectTitleSchema.optional(),
         icon: z.uuid().nullable().optional(),
-        features: projectFeaturesSchema.partial().optional(),
+        // `features` is gone from this body. Capabilities are written by
+        // `ProjectCapabilityController.setCapability`, one row at a time, and
+        // dual-writing was rejected: a second source of truth for the length
+        // of an epic is how the two come to disagree.
         preferredLanguage: z.string().max(8).nullable().optional(),
         // The repository a quest's commit shas link into. `null` clears it,
         // and the shas go back to being plain text.
@@ -598,14 +657,6 @@ export class ProjectController {
         project.repositoryUrl = url ? url : undefined;
       }
 
-      if (body.features) {
-        project.features = {
-          ...defaultProjectFeatures,
-          ...project.features,
-          ...body.features,
-        };
-      }
-
       await this.projects.save(project);
       // Scoped, unlike `create` and `delete`. Those two are app-layer events:
       // a creation belongs to the deployment rather than to a project that
@@ -621,7 +672,10 @@ export class ProjectController {
         metadata: { fields: Object.keys(body) },
       });
 
-      return this.projectMapper.toResource(project);
+      return this.projectMapper.toResource(
+        project,
+        await this.projectSecurity.capabilityRowsOf(project.id),
+      );
     },
   });
 
@@ -679,7 +733,12 @@ export class ProjectController {
       });
 
       return {
-        ...this.projectMapper.toResource(project),
+        ...this.projectMapper.toResource(
+          project,
+          // The gate already read these for this request, so the memo answers
+          // without a second query.
+          await this.projectSecurity.capabilityRowsOf(params.id),
+        ),
         quests: projectQuests.map((quest) =>
           this.questMapper.mapQuestToResource(quest),
         ),
@@ -757,7 +816,10 @@ export class ProjectController {
       });
 
       return {
-        ...this.projectMapper.toResource(project),
+        ...this.projectMapper.toResource(
+          project,
+          await this.projectSecurity.capabilityRowsOf(project.id),
+        ),
         quests: projectQuests.map((quest) =>
           this.questMapper.mapQuestToResource(quest),
         ),

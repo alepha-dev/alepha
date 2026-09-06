@@ -10,6 +10,7 @@ import { AlephaServer } from "alepha/server";
 import { describe, expect, it } from "vitest";
 
 import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { projectCapabilities } from "../src/api/entities/projectCapabilities.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -31,6 +32,7 @@ import { LoreSigilSinkProvider } from "../src/api/providers/LoreSigilSinkProvide
 
 class Probe {
   projects = $repository(projects);
+  capabilities = $repository(projectCapabilities);
   sigils = $repository(sigils);
 }
 
@@ -73,21 +75,25 @@ const KEY = "sg_lore_fixed_secret_for_the_test";
 /**
  * Every project flag that still means something.
  *
- * `blights` / `beacon` / `vitals` are deliberately absent: they are retired
- * `@deprecated` columns nothing reads since capabilities moved onto each
- * sigil's own `kinds`. Writing them here would suggest the gate still consults
- * them — it consults `sigils` and the sigil's kinds.
+ * Only the two capabilities the ingest gate reads: `apps` with `track` on
+ * (what `features.sigils` used to be) and `support` (which the `feedback`
+ * kind additionally needs). Work and Knowledge would suggest the gate
+ * consults them - it consults these two and the sigil's own `kinds`.
  */
-const allOn = {
-  kanban: true,
-  folios: true,
-  feedback: true,
-  milestones: true,
-  sigils: true,
-};
+const allOn: Array<{
+  key: "apps" | "support";
+  options: Record<string, boolean>;
+}> = [
+  { key: "apps", options: { track: true } },
+  { key: "support", options: {} },
+];
 
 const setup = async (
-  over: { features?: unknown; key?: string; kinds?: string[] } = {},
+  over: {
+    capabilities?: Array<{ key: string; options: Record<string, boolean> }>;
+    key?: string;
+    kinds?: string[];
+  } = {},
 ) => {
   const alepha = Alepha.create({
     env: {
@@ -131,8 +137,15 @@ const setup = async (
   const project = await probe.projects.create({
     title: "Lore",
     createdBy: owner.id,
-    features: over.features ?? allOn,
   } as any);
+
+  for (const capability of over.capabilities ?? allOn) {
+    await probe.capabilities.create({
+      projectId: project.id,
+      key: capability.key as never,
+      options: capability.options,
+    });
+  }
 
   // The row is written with the hash of a token we chose, rather than minting
   // one, because `SIGIL_KEY` has to be known before the container boots and
@@ -192,8 +205,10 @@ describe("Lore reports to Lore", () => {
   });
 
   it("should honour a switched-off project by writing nothing", async () => {
+    // Apps off entirely: an option of a capability that is not there reads
+    // false, so `track` is off without anyone having to store a `false`.
     const { analytics, sigil, sink } = await setup({
-      features: { ...allOn, sigils: false },
+      capabilities: [{ key: "support", options: {} }],
     });
 
     await sink.ingest({ views: [{ path: "/dogfood" }] }, {});

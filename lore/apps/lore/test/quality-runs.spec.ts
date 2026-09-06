@@ -123,11 +123,21 @@ describe("quality runs", () => {
     await ctx.alepha.stop();
   });
 
-  const aProject = async (features?: Record<string, boolean>) => {
+  /**
+   * `quality` was a project flag and is not one any more: Quality joins the
+   * Apps baseline, so what these cases used to say with `{ quality: true }`
+   * they now say by giving the project the Apps capability. The push path is
+   * unaffected either way - a CI credential is never gated on a switch in the
+   * UI, which is the rule this file exists to hold.
+   */
+  const aProject = async (apps = false) => {
     const owner = await createTestUser(ctx);
     const project = await ctx.projectController.createProject.fetch(
       {
-        body: { title: `Quality ${crypto.randomUUID().slice(0, 8)}`, features },
+        body: {
+          title: `Quality ${crypto.randomUUID().slice(0, 8)}`,
+          capabilities: apps ? [{ key: "apps" as const }] : [],
+        },
       },
       { user: owner },
     );
@@ -311,7 +321,7 @@ describe("quality runs", () => {
      * written; the tab is what stays hidden.
      */
     it("is accepted while features.quality is off", async ({ expect }) => {
-      const { owner, projectId } = await aProject({ quality: false });
+      const { owner, projectId } = await aProject(false);
 
       const response = await push(projectId, owner);
 
@@ -345,7 +355,7 @@ describe("quality runs", () => {
     it("returns the latest run and the series behind it", async ({
       expect,
     }) => {
-      const { owner, projectId } = await aProject({ quality: true });
+      const { owner, projectId } = await aProject(true);
 
       await seed(projectId, "2026-08-29");
       await push(projectId, owner, aRun({ commitSha: "2222222" }));
@@ -370,7 +380,7 @@ describe("quality runs", () => {
      * before they were measured.
      */
     it("carries both stamps and the day", async ({ expect }) => {
-      const { owner, projectId } = await aProject({ quality: true });
+      const { owner, projectId } = await aProject(true);
 
       const response = await push(projectId, owner);
 

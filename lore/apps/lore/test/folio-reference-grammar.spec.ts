@@ -85,12 +85,15 @@ describe("the reference grammar is one grammar on both sides", () => {
       );
     const owner = { id: created.data.id, roles: created.data.roles };
 
-    const project = await alepha
-      .inject(ProjectController)
-      .createProject.fetch(
-        { body: { title: `Grammar ${Date.now()}` } },
-        { user: owner },
-      );
+    const project = await alepha.inject(ProjectController).createProject.fetch(
+      {
+        body: {
+          title: `Grammar ${Date.now()}`,
+          capabilities: [{ key: "support" as const }],
+        },
+      },
+      { user: owner },
+    );
     const projectId = project.data.id;
 
     const folio = await alepha

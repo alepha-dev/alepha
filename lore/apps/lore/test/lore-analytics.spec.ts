@@ -16,6 +16,7 @@ import { AlephaServerCors } from "alepha/server/cors";
 import { describe, expect, it } from "vitest";
 
 import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { projectCapabilities } from "../src/api/entities/projectCapabilities.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
 import { LoreApi } from "../src/api/index.ts";
@@ -41,6 +42,7 @@ class ThrowingAnalyticsProvider extends MemoryAnalyticsProvider {
 
 class Probe {
   projects = $repository(projects);
+  capabilities = $repository(projectCapabilities);
   sigils = $repository(sigils);
 }
 
@@ -93,17 +95,21 @@ const setup = async (
   const project = await probe.projects.create({
     title: "Test",
     createdBy: owner.id,
-    features: {
-      kanban: true,
-      folios: true,
-      feedback: true,
-      milestones: true,
-      sigils: true,
-      blights: true,
-      beacon: true,
-      vitals: true,
-    },
   } as any);
+
+  // `apps.track` is the switch above the telemetry surfaces, and `support`
+  // the second one the `feedback` kind needs: `gatesFor` reads a capability
+  // to NARROW another, never to widen it.
+  await probe.capabilities.create({
+    projectId: project.id,
+    key: "apps",
+    options: { track: true },
+  });
+  await probe.capabilities.create({
+    projectId: project.id,
+    key: "support",
+    options: {},
+  });
 
   const minted = await tokens.mint(project.id);
   const sigil = await probe.sigils.create({

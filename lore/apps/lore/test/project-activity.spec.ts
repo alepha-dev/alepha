@@ -68,7 +68,16 @@ const setup = async () => {
     asUser(userId, () => tool.execute(params));
 
   const project = await asUser(OWNER, () =>
-    projectApi.createProject({ body: { title: "Test" } } as any),
+    projectApi.createProject({
+      body: {
+        title: "Test",
+        capabilities: [
+          { key: "work" },
+          { key: "knowledge" },
+          { key: "support" },
+        ],
+      },
+    } as any),
   );
 
   // The second account has to be a member before it can act on the project.
@@ -214,7 +223,16 @@ describe("Lore MCP: project_activity", () => {
     } = await setup();
 
     const other = await asUser(OWNER, () =>
-      projectApi.createProject({ body: { title: "Other" } } as any),
+      projectApi.createProject({
+        body: {
+          title: "Other",
+          capabilities: [
+            { key: "work" },
+            { key: "knowledge" },
+            { key: "support" },
+          ],
+        },
+      } as any),
     );
     await (projectApi as any).members.create({
       userId: MATE,

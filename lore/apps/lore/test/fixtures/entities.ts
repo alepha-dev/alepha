@@ -8,9 +8,11 @@ import { feedback } from "@/api/entities/feedback.ts";
 import { folioDirectories } from "@/api/entities/folioDirectories.ts";
 import { type Folio, folios } from "@/api/entities/folios.ts";
 import { type Member, members } from "@/api/entities/members.ts";
+import { projectCapabilities } from "@/api/entities/projectCapabilities.ts";
 import { type Project, projects } from "@/api/entities/projects.ts";
 import { type Quest, type QuestInsert, quests } from "@/api/entities/quests.ts";
 import { releases } from "@/api/entities/releases.ts";
+import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
 
 type ProjectInsert = Infer<typeof projects.insertSchema>;
 type EpicInsert = Infer<typeof epics.insertSchema>;
@@ -47,6 +49,11 @@ export class TestEntityRepositories {
   // `folios.directoryId` refs this table — needed pre-`start()` whenever
   // `folios` is, for the same reason `quests`'s own FK closure is.
   folioDirectories = $repository(folioDirectories);
+  // Needed pre-`start()` like the rest: `project_capabilities.projectId` refs
+  // `projects`, and a fixture that writes one after `start()` without this
+  // fails at BOOT with "Referenced table not found", nowhere near the call
+  // that needed it.
+  capabilities = $repository(projectCapabilities);
 }
 
 /**
@@ -77,14 +84,28 @@ let folioSeq = 0;
  */
 export const createTestProject = async (
   alepha: Alepha,
-  overrides: Partial<ProjectInsert> = {},
+  overrides: Partial<ProjectInsert> & {
+    /**
+     * Which capabilities the project has, and the options inside each.
+     *
+     * Defaults to NONE, which is what a bare `projects.create` produces and
+     * is a legal state. A spec that needs quests, folios, apps or feedback
+     * says so - which is also the documentation: reading the fixture tells
+     * you what surface the case is about.
+     */
+    capabilities?: Array<{
+      key: CapabilityKey;
+      options?: Record<string, boolean>;
+    }>;
+  } = {},
 ): Promise<Project> => {
   const repo = alepha.inject(TestEntityRepositories);
   const owner = await repo.users.create({});
   projectSeq += 1;
   const title = overrides.title ?? `Test Project ${projectSeq}`;
-  return repo.projects.create({
-    ...overrides,
+  const { capabilities, ...columns } = overrides;
+  const project = await repo.projects.create({
+    ...columns,
     // Spread first, defaults last: `Partial<ProjectInsert>` types every
     // field as `T | undefined`, and a trailing spread would otherwise
     // widen `title` / `createdBy` to that even when `overrides` doesn't
@@ -99,6 +120,16 @@ export const createTestProject = async (
       `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${projectSeq}`,
     createdBy: overrides.createdBy ?? owner.id,
   });
+
+  for (const capability of capabilities ?? []) {
+    await repo.capabilities.create({
+      projectId: project.id,
+      key: capability.key,
+      options: capability.options ?? {},
+    });
+  }
+
+  return project;
 };
 
 /**

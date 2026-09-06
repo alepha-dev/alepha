@@ -60,7 +60,9 @@ const setup = async () => {
     asUser(userId, () => tool.execute(params));
 
   const project = await asUser(OWNER, () =>
-    projectApi.createProject({ body: { title: "Test" } } as any),
+    projectApi.createProject({
+      body: { title: "Test", capabilities: [{ key: "support" }] },
+    } as any),
   );
 
   const report = async (title: string, source?: Record<string, unknown>) =>

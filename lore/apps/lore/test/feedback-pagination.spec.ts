@@ -107,7 +107,12 @@ describe("feedback list pagination", () => {
     const owner = await createTestUser(ctx);
     const projectId = (
       await ctx.projectController.createProject.fetch(
-        { body: { title: "Paging" } },
+        {
+          body: {
+            title: "Paging",
+            capabilities: [{ key: "support" as const }],
+          },
+        },
         { user: owner },
       )
     ).data.id;

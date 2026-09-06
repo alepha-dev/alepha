@@ -108,7 +108,7 @@ describe("Lore domain audits", () => {
   ) =>
     (
       await ctx.projectController.createProject.fetch(
-        { body: { title } },
+        { body: { title, capabilities: [{ key: "support" as const }] } },
         { user },
       )
     ).data;

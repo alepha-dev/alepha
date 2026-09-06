@@ -7,7 +7,10 @@ import {
 import { ForbiddenError } from "alepha/server";
 
 import { type Member, members } from "../entities/members.ts";
-import { projectCapabilities } from "../entities/projectCapabilities.ts";
+import {
+  type ProjectCapability,
+  projectCapabilities,
+} from "../entities/projectCapabilities.ts";
 import { type Project, projects } from "../entities/projects.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import type { RoadmapVisibility } from "../schemas/roadmapVisibilitySchema.ts";
@@ -299,24 +302,77 @@ export class ProjectSecurityService {
    * work. That is the test that the modularity is real.
    */
   async capabilitiesOf(projectId: number): Promise<ProjectCapabilitySet> {
+    const rows = await this.capabilityRowsOf(projectId);
+
+    const set: ProjectCapabilitySet = {};
+    for (const row of rows) {
+      // A row this build has no descriptor for is skipped rather than thrown
+      // on: a rollback must not make every project unreadable.
+      if (!this.registry.find(row.key)) continue;
+      set[row.key] = this.registry.optionsOf(row.key, row.options);
+    }
+    return set;
+  }
+
+  /**
+   * The rows themselves, for the callers that need `enabledAt` too - the
+   * project resource, and the activity feed.
+   *
+   * This is where the query, the window and the memo actually live;
+   * {@link capabilitiesOf} folds these into the shape a gate wants, so the two
+   * callers share one read rather than issuing two.
+   */
+  async capabilityRowsOf(projectId: number): Promise<ProjectCapability[]> {
     return this.memo.resolve(
       `${ProjectSecurityService.CAPABILITY_MEMO_PREFIX}${projectId}`,
-      async () => {
-        const rows = await this.capabilities.findMany(
+      () =>
+        this.capabilities.findMany(
           { where: { projectId: { eq: projectId } } },
           { cache: { ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS } },
-        );
-
-        const set: ProjectCapabilitySet = {};
-        for (const row of rows) {
-          // A row this build has no descriptor for is skipped rather than
-          // thrown on: a rollback must not make every project unreadable.
-          if (!this.registry.find(row.key)) continue;
-          set[row.key] = this.registry.optionsOf(row.key, row.options);
-        }
-        return set;
-      },
+        ),
     );
+  }
+
+  /**
+   * Every listed project's rows, in ONE query.
+   *
+   * The Home page reads a member's whole project list and the create menu,
+   * the sidebar and each card all want the capability set. Reading it per row
+   * is N round trips on D1 for a list that already exists in memory - the
+   * same shape `AreaService.countByProjectIds` and `openQuests.countByProject`
+   * were written to avoid on this exact endpoint.
+   *
+   * ⚠️ Guarded on the empty list: `inArray: []` throws rather than matching
+   * nothing, so a user with no projects would take the whole page down.
+   *
+   * Deliberately NOT memoized per project id. A list read answers for many
+   * ids at once and its own key would be the id set, which no single-project
+   * gate can hit; seeding the per-id entries from here would then have to
+   * decide what a missing row means, and get it wrong for a project the list
+   * was filtered out of.
+   */
+  async capabilityRowsForProjects(
+    projectIds: number[],
+  ): Promise<Map<number, ProjectCapability[]>> {
+    const byProject = new Map<number, ProjectCapability[]>();
+    if (projectIds.length === 0) {
+      return byProject;
+    }
+
+    const rows = await this.capabilities.findMany(
+      { where: { projectId: { inArray: projectIds } } },
+      { cache: { ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS } },
+    );
+
+    for (const row of rows) {
+      const existing = byProject.get(row.projectId);
+      if (existing) {
+        existing.push(row);
+      } else {
+        byProject.set(row.projectId, [row]);
+      }
+    }
+    return byProject;
   }
 
   /**

@@ -103,7 +103,12 @@ describe("editing a completed quest", () => {
     const owner = await createTestUser(ctx);
     const project = (
       await ctx.projectController.createProject.fetch(
-        { body: { title: `Frozen ${Date.now()}` } },
+        {
+          body: {
+            title: `Frozen ${Date.now()}`,
+            capabilities: [{ key: "support" as const }],
+          },
+        },
         { user: owner },
       )
     ).data;

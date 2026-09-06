@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { projects } from "../entities/projects.ts";
+import { projectCapabilityResourceSchema } from "./projectCapabilityResourceSchema.ts";
 
 /**
  * A project as the API hands it out.
@@ -22,6 +23,19 @@ import { projects } from "../entities/projects.ts";
  */
 export const projectResourceSchema = projects.schema.extend({
   slug: z.string(),
+  /**
+   * The capabilities this project has turned on, each with its options.
+   *
+   * ⚠️ **Declared on the RESPONSE schema, which is what makes it exist.** A
+   * field added to the entity, the type and the component still does not
+   * reach the wire unless it is here, and it fails silently.
+   *
+   * Every web-side gate reads `currentProjectAtom`, filled by the `project`
+   * route loader from `getProjectBySlug`. So the capability set has to ride
+   * the resource: the alternative is each surface fetching it, which is one
+   * request per gate and four sources of truth for one answer.
+   */
+  capabilities: z.array(projectCapabilityResourceSchema),
 });
 
 /**
