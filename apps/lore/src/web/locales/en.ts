@@ -585,6 +585,48 @@ export default {
     "Imported $1 quests ($2 updated, $3 skipped)",
   "project.settings.data.import.details": "View details",
   "project.settings.data.import.error.title": "Import failed",
+  // ── Capabilities ────────────────────────────────────────────────────────
+  // The four product surfaces a project composes, and the switches inside
+  // each. Labels move; the persisted keys never do.
+  "project.capability.work.label": "Plan and track work",
+  "project.capability.work.description": "Quests, epics, releases, a board.",
+  "project.capability.work.option.board.label": "Board",
+  "project.capability.work.option.board.description":
+    "A kanban board, columns you name.",
+  "project.capability.work.option.epics.label": "Epics",
+  "project.capability.work.option.epics.description":
+    "Phases, with a workflow.",
+  "project.capability.work.option.releases.label": "Releases",
+  "project.capability.work.option.releases.description":
+    "Named versions that ship.",
+  "project.capability.work.option.estimate.label": "Estimates",
+  "project.capability.work.option.estimate.description":
+    "Plan how long a quest should take.",
+  "project.capability.work.option.chrono.label": "Timer",
+  "project.capability.work.option.chrono.description":
+    "Track the time a quest actually took.",
+  "project.capability.work.option.reminder.label": "Reminders",
+  "project.capability.work.option.reminder.description":
+    "Nudge whoever holds a quest that has gone quiet.",
+  "project.capability.knowledge.label": "Write and keep knowledge",
+  "project.capability.knowledge.description":
+    "Wiki linked folios, files, revisions.",
+  "project.capability.knowledge.option.agentSummary.label":
+    "Summaries for agents",
+  "project.capability.knowledge.option.agentSummary.description":
+    "Show the summary field on a folio. It is written and read over MCP either way.",
+  "project.capability.apps.label": "Deploy and watch apps",
+  "project.capability.apps.description":
+    "Instances, analytics, errors, vitals.",
+  "project.capability.apps.option.track.label": "Track apps",
+  "project.capability.apps.option.track.description":
+    "Analytics, vitals and errors. Each app gets a sigil.",
+  "project.capability.apps.option.deploy.label": "Deploy apps",
+  "project.capability.apps.option.deploy.description":
+    "Push a build to a machine you own.",
+  "project.capability.support.label": "Collect feedback",
+  "project.capability.support.description":
+    "A public request form and a triage inbox.",
   "project.settings.nav.group.features": "Features",
   "project.settings.areas.title": "Areas",
   "project.settings.areas.description":

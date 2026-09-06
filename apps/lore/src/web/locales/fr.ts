@@ -590,6 +590,47 @@ export default {
     "$1 quêtes importées ($2 mises à jour, $3 ignorées)",
   "project.settings.data.import.details": "Voir les détails",
   "project.settings.data.import.error.title": "L'import a échoué",
+  // ── Capacités ───────────────────────────────────────────────────────────
+  "project.capability.work.label": "Planifier et suivre le travail",
+  "project.capability.work.description":
+    "Quêtes, épopées, versions, un tableau.",
+  "project.capability.work.option.board.label": "Tableau",
+  "project.capability.work.option.board.description":
+    "Un tableau kanban, avec vos propres colonnes.",
+  "project.capability.work.option.epics.label": "Épopées",
+  "project.capability.work.option.epics.description":
+    "Des phases, avec un cycle de vie.",
+  "project.capability.work.option.releases.label": "Versions",
+  "project.capability.work.option.releases.description":
+    "Des versions nommées, qui sortent.",
+  "project.capability.work.option.estimate.label": "Estimations",
+  "project.capability.work.option.estimate.description":
+    "Prévoir le temps que devrait prendre une quête.",
+  "project.capability.work.option.chrono.label": "Chronomètre",
+  "project.capability.work.option.chrono.description":
+    "Mesurer le temps réellement passé sur une quête.",
+  "project.capability.work.option.reminder.label": "Rappels",
+  "project.capability.work.option.reminder.description":
+    "Relancer qui détient une quête restée silencieuse.",
+  "project.capability.knowledge.label": "Écrire et conserver le savoir",
+  "project.capability.knowledge.description":
+    "Des folios liés entre eux, des fichiers, des révisions.",
+  "project.capability.knowledge.option.agentSummary.label":
+    "Résumés pour les agents",
+  "project.capability.knowledge.option.agentSummary.description":
+    "Afficher le champ résumé sur un folio. Il est écrit et lu via MCP dans tous les cas.",
+  "project.capability.apps.label": "Déployer et surveiller des applications",
+  "project.capability.apps.description":
+    "Instances, analytique, erreurs, Web Vitals.",
+  "project.capability.apps.option.track.label": "Surveiller les applications",
+  "project.capability.apps.option.track.description":
+    "Analytique, Web Vitals et erreurs. Chaque application reçoit un sigil.",
+  "project.capability.apps.option.deploy.label": "Déployer les applications",
+  "project.capability.apps.option.deploy.description":
+    "Envoyer un build sur une machine qui vous appartient.",
+  "project.capability.support.label": "Recueillir les retours",
+  "project.capability.support.description":
+    "Un formulaire public et une boîte de tri.",
   "project.settings.nav.group.features": "Fonctionnalités",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
