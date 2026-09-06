@@ -15,9 +15,9 @@ import {
   useState,
 } from "react";
 
+import type { FolioDropPosition, FolioTreeNode } from "./folioTree.ts";
 import FolioTreeContextMenu from "./FolioTreeContextMenu.tsx";
 import FolioTreeDirectoryIcon from "./FolioTreeDirectoryIcon.tsx";
-import type { FolioDropPosition, FolioTreeNode } from "./folioTreeModel.ts";
 import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeRowProps {
@@ -64,7 +64,7 @@ export interface FolioTreeRowProps {
 const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
   const node = props.node;
   const tree = props.commands;
-  const isDirectory = node.kind === "directory";
+  const isDirectory = node.data.kind === "directory";
   const { isCollapsed, isSelected, isRenaming, isDragging, dropHere } = props;
 
   const [draftName, setDraftName] = useState(node.name);
@@ -196,7 +196,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
     }
   };
 
-  const Icon = node.kind === "protected" ? Lock : FileText;
+  const Icon = node.data.kind === "protected" ? Lock : FileText;
 
   return (
     <ContextMenu>
@@ -316,7 +316,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
         ) : (
           <span className="min-w-0 flex-1 truncate">{node.name}</span>
         )}
-        {!isRenaming && node.pinned && (
+        {!isRenaming && node.data.pinned && (
           <Pin className="text-primary size-3 shrink-0" />
         )}
       </ContextMenuTrigger>
