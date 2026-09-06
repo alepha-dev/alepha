@@ -5,6 +5,7 @@ import { type ReactElement, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import type { Folio } from "@/api/entities/folios.ts";
+import { capabilityOption } from "@/web/app/services/projectCapabilities.ts";
 
 import { currentFolioAttachmentsAtom } from "../../../../atoms/currentFolioAttachmentsAtom.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
@@ -140,11 +141,11 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
     [attachments],
   );
 
-  // Absent on every project that has not opted in — the key is deliberately
-  // missing from `defaultProjectFeatures` (adding it there would change the
-  // `projects` column DEFAULT and trigger the D1 rebuild that cascade-wipes
-  // prod), so `?? false` is the default, not a fallback.
-  const summaryVisible = project?.features?.folioSummary ?? false;
+  // Off unless the project says otherwise: an absent option reads as false,
+  // which is the read rule of the whole capability model. Off is also the
+  // right default here - the summary is written for `project_context`, so for
+  // a human reading a folio it is chrome between the title and the first line.
+  const summaryVisible = capabilityOption(project, "knowledge", "agentSummary");
 
   // `props.actions.directoryId` (LIVE — moved by `confirmMove`'s own
   // success), NOT `props.folio?.directoryId`. The latter is the

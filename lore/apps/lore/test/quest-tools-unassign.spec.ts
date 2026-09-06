@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 
@@ -37,6 +38,7 @@ const setup = async () => {
   const questTools = alepha.inject(QuestTools);
   const questApi = alepha.inject(QuestController);
   const projectApi = alepha.inject(ProjectController);
+  const security = alepha.inject(ProjectSecurityService);
   const users = alepha.inject(UserService);
   await alepha.start();
 
@@ -71,15 +73,16 @@ const setup = async () => {
 
   /**
    * Turn on the reminder sweep for this quest, so unassigning has something
-   * to clear. `questReminder` is a per-project toggle and off by default, so
-   * flip it on the row first, the same way `quest-reminder.spec.ts` does.
+   * to clear. `reminder` is an option inside Work, off by default, so it is
+   * written on the capability row first - the same way `quest-reminder.spec.ts`
+   * asks for it at creation.
    */
   const remind = async () => {
-    const row = await projectApi.projects.getOne({
-      where: { id: { eq: project.id } },
+    const row = await security.capabilities.getOne({
+      where: { projectId: { eq: project.id }, key: { eq: "work" } },
     });
-    row.features = { ...row.features, questReminder: true };
-    await projectApi.projects.save(row);
+    row.options = { ...row.options, reminder: true };
+    await security.capabilities.save(row);
 
     return asUser(OWNER, () =>
       questApi.setQuestReminder({
