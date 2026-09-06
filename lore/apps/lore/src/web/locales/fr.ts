@@ -1547,8 +1547,10 @@ export default {
   "bay.commands.col.reason": "Issue",
   "bay.commands.byNobody": "—",
   "bay.commands.result": "Ouvrir le résultat stocké",
-  "bay.settings.title": "Paramètres",
-  "bay.soon": "Rien ici pour l'instant.",
+  "account.estates.inventory": "$1 application(s), communiqué $2",
+  "account.estates.inventory.none": "rien de communiqué",
+  "bay.settings.rotate.warning":
+    "La rotation révoque le secret actuel immédiatement. La machine est refusée à sa prochaine connexion et reste hors ligne jusqu'à ce que vous relanciez `bay connector set` dessus avec le nouveau.",
   "bay.open": "Ouvrir la console",
   "estates.online": "en ligne",
   "estates.offline": "hors ligne",
