@@ -1,5 +1,6 @@
 import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
+import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import {
@@ -13,14 +14,17 @@ import { artifacts } from "../entities/artifacts.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import {
+  type EstateCommandListItem,
   type EstateCommandResource,
+  estateCommandListItemSchema,
   estateCommandResourceSchema,
 } from "../schemas/estateCommandResourceSchema.ts";
 import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateService } from "../services/EstateService.ts";
+import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
-export type { EstateCommandResource };
+export type { EstateCommandListItem, EstateCommandResource };
 
 /**
  * The owner's view of an estate's queue, and the commands an owner can
@@ -51,18 +55,71 @@ export class EstateCommandController {
   protected readonly grants = $repository(estateProjects);
   protected readonly rows = $repository(estateCommands);
   protected readonly files = $inject(FileService);
+  protected readonly users = $repository(users);
+  protected readonly limits = $inject(ProjectLimits);
 
+  /**
+   * The queue and its history, newest first.
+   *
+   * `limit` is bounded by the retention cap the sweep enforces, so the page
+   * can fetch the whole kept history once and filter it in memory: at most a
+   * couple of hundred rows, and the endpoint stays a plain read.
+   *
+   * `requestedByName` is resolved here, in ONE `inArray` query over the users
+   * the page actually shows, the same shape `withLoans` uses. `requestedBy` is
+   * a bare uuid on the row (set null when the person is deleted, because the
+   * command outlives them), and a name per row would be a query per row.
+   */
   listEstateCommands = $action({
     use: [$secure({ permissions: ["estate:read"] })],
     method: "GET",
     path: "/estates/:estateId/commands",
     schema: {
       params: z.object({ estateId: z.uuid() }),
-      response: z.object({ items: z.array(estateCommandResourceSchema) }),
+      query: z.object({ limit: z.integer().min(1).max(1000).optional() }),
+      response: z.object({ items: z.array(estateCommandListItemSchema) }),
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, query, user }) => {
       const estate = await this.estates.loadOwned(params.estateId, user);
-      return { items: await this.commands.listFor(estate.id) };
+      const cap = await this.limits.maxCommandsPerEstate();
+      const items = await this.commands.listFor(
+        estate.id,
+        Math.min(query.limit ?? cap, cap),
+      );
+
+      const requesters = [
+        ...new Set(
+          items.flatMap((item) => (item.requestedBy ? [item.requestedBy] : [])),
+        ),
+      ];
+      // `username` and not `name`: the realm runs in `username: "email"` mode
+      // and `displayName` across the UI reads the handle, deliberately
+      // ignoring the IDP-supplied full name.
+      const named = new Map<string, string>(
+        requesters.length
+          ? (
+              await this.users.findMany({
+                where: { id: { inArray: requesters } },
+                columns: ["id", "username", "email"],
+              })
+            ).flatMap((row) => {
+              const label = row.username?.trim() || row.email?.split("@")[0];
+              return label ? ([[row.id, label]] as [string, string][]) : [];
+            })
+          : [],
+      );
+
+      return {
+        items: items.map((item) => {
+          const name = item.requestedBy
+            ? named.get(item.requestedBy)
+            : undefined;
+          // Absent rather than empty when the person is gone: the row is set
+          // null on deletion because the command outlives them, and "nobody
+          // to attribute this to" is the honest reading.
+          return { ...item, ...(name ? { requestedByName: name } : {}) };
+        }),
+      };
     },
   });
 
