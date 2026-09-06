@@ -72,6 +72,16 @@ func TestWireServerFramesDecode(t *testing.T) {
 	if deploy.Kind != "deploy" || deploy.Artifact == nil || len(deploy.Artifact.SHA256) != 64 || deploy.Artifact.Size != 1234 {
 		t.Fatalf("deploy decoded wrong: %+v", deploy)
 	}
+
+	// A refresh: a type and nothing else. A field here would make it a
+	// request with arguments, which is the shape that becomes a command.
+	query, err := decodeFrame(fixture(t, "query.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if query.Type != "query" || query.ID != "" || query.Kind != "" || query.Artifact != nil {
+		t.Fatalf("query decoded wrong: %+v", query)
+	}
 }
 
 func TestWireClientFramesEncode(t *testing.T) {

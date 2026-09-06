@@ -26,6 +26,7 @@ const SERVER_FRAMES = [
   "config.json",
   "command-restart.json",
   "command-deploy.json",
+  "query.json",
 ];
 
 const CLIENT_FRAMES = [
