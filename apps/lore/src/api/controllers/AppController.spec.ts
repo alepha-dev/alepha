@@ -363,6 +363,63 @@ describe("AppController", () => {
     expect(pointed.estate?.slug).toBe("ovh-1");
   });
 
+  it("clears the estate through the endpoint, and unblocks the detach", async ({
+    expect,
+  }) => {
+    // ⚠️ Driven through the CONTROLLER rather than the service: `null` has to
+    // survive the body schema to reach `setEstate`, and an `estateId` that
+    // arrived as `undefined` would skip the branch entirely and leave the
+    // column set - which reads as a cleared select and a refusal that never
+    // lifts.
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    await ctx.controller.createApp(
+      {
+        params: { projectId: project.id },
+        body: { app: "club", env: "production" },
+      },
+      { user },
+    );
+    const owner = await ctx.alepha
+      .inject(TestEntityRepositories)
+      .users.create({});
+    const estate = await ctx.repos.estates.create({
+      ownerUserId: owner.id,
+      type: "bay",
+      slug: "ovh-clear",
+    });
+    await ctx.repos.grants.create({
+      estateId: estate.id,
+      projectId: project.id,
+    });
+    await ctx.controller.updateApp(
+      {
+        params: { projectId: project.id, app: "club", env: "production" },
+        body: { estateId: estate.id },
+      },
+      { user },
+    );
+
+    // ⚠️ Through `.fetch()`, which runs the body SCHEMA, rather than calling the
+    // handler directly. `null` has to survive `z.uuid().nullable().optional()`
+    // to reach `setEstate`; an `estateId` that arrived as `undefined` would skip
+    // the branch and leave the column set, which is invisible to a spec that
+    // hands the handler a already-parsed object.
+    const cleared = await ctx.controller.updateApp.fetch(
+      {
+        params: { projectId: project.id, app: "club", env: "production" },
+        body: { estateId: null },
+      },
+      { user },
+    );
+
+    expect(cleared.data.estate).toBeUndefined();
+    const stored = await ctx.repos.instances.findOne({
+      where: { projectId: { eq: project.id }, app: { eq: "club" } },
+    });
+    expect(stored?.estateId ?? null).toBeNull();
+  });
+
   it("takes the sigil with the instance on delete", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);

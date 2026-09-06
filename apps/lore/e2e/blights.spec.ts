@@ -20,7 +20,7 @@ import {
  *
  * Scope: this file guards the inbox *component*. Filing a blight and watching
  * it arrive belongs to the credential that files it, and lives in
- * `sigil.spec.ts` — which covers the ingest → inbox → merge path end to end.
+ * `apps.spec.ts` — which covers the ingest → inbox → merge path end to end.
  * The previous second test here drove `POST /api/c/:id/sources` and
  * `POST /api/blights/ingest`, both deleted with the source model.
  */

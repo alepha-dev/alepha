@@ -20,6 +20,7 @@ import { estateProjects } from "../entities/estateProjects.ts";
 import { estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
 import { EstateService } from "../services/EstateService.ts";
+import { AppController } from "./AppController.ts";
 import { EstateController } from "./EstateController.ts";
 import { ProjectEstateController } from "./ProjectEstateController.ts";
 
@@ -254,6 +255,59 @@ describe("ProjectEstateController, detaching", () => {
 
   afterEach(async () => {
     await ctx.alepha.stop();
+  });
+
+  it("refuses while a copy deploys there, and lifts once it is repointed", async ({
+    expect,
+  }) => {
+    // ⚠️ The whole sequence the e2e drives, in one place: point, refuse, clear,
+    // detach. `EstateService.assertUnreferenced` and `AppService.setEstate`
+    // read and write the same column through two different repositories, so a
+    // refusal that never lifted would look exactly like a clear that never
+    // landed.
+    const ada = await createUser(ctx, "ada");
+    const estate = await mintEstate(ctx, ada, "ovh-1");
+    const project = await createProject(ctx, ada, []);
+    await ctx.controller.attachEstate(
+      { params: { projectId: project.id }, body: { estateId: estate.id } },
+      { user: ada },
+    );
+
+    const apps = ctx.alepha.inject(AppController);
+    await apps.createApp(
+      {
+        params: { projectId: project.id },
+        body: { app: "club", env: "production" },
+      },
+      { user: ada },
+    );
+    await apps.updateApp(
+      {
+        params: { projectId: project.id, app: "club", env: "production" },
+        body: { estateId: estate.id },
+      },
+      { user: ada },
+    );
+
+    await expect(
+      ctx.controller.detachEstate(
+        { params: { projectId: project.id, estateId: estate.id } },
+        { user: ada },
+      ),
+    ).rejects.toThrow(/club\/production/);
+
+    await apps.updateApp(
+      {
+        params: { projectId: project.id, app: "club", env: "production" },
+        body: { estateId: null },
+      },
+      { user: ada },
+    );
+
+    await ctx.controller.detachEstate(
+      { params: { projectId: project.id, estateId: estate.id } },
+      { user: ada },
+    );
   });
 
   it("takes either owner, and refuses a plain member", async ({ expect }) => {

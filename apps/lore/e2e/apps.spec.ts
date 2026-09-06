@@ -5,13 +5,20 @@ import { expect, test } from "./_fixtures.ts";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
 /**
- * Sigils, end to end: enrol an app, report as it, triage what arrives, rotate
- * the credential, delete the app.
+ * Apps, end to end: create a deployed copy, add a second, mint the key one of
+ * them reports with, report as it, triage what arrives, rotate, remove, delete.
  *
- * The surface under test: a sigil is **one named app**, unique within its
- * project, credentialed by an `sg_` bearer token that is shown exactly once and
- * stored hashed. Ingest is a root `$route` (`POST /sigils/ingest`),
+ * The surface under test: an **app instance** is `(app, env)`, both required,
+ * created by typing two names and minting nothing. A **sigil** is an optional
+ * unlock on one of those - an `sg_` bearer token, shown exactly once and stored
+ * hashed - and its presence is what puts Analytics, Vitals, Errors and Explore
+ * on the tab bar. Ingest is a root `$route` (`POST /sigils/ingest`),
  * authenticated by that token and by nothing else.
+ *
+ * ⚠️ **This file was `sigil.spec.ts`, rewritten in place rather than doubled.**
+ * Its first two steps drove a project-settings enrol page that #1770 deleted;
+ * everything from ingest onwards is the only e2e coverage of the ingest path
+ * and survives on top of the new creation flow.
  *
  * Two mechanical traps, both of which have cost this codebase time before:
  *
@@ -71,17 +78,85 @@ const takeMintedToken = async (page: Page): Promise<string> => {
 };
 
 /**
- * The rows of the sigil list carrying `name`.
+ * The rows of the Apps list carrying a string.
  *
- * Scoped to `data-testid="sigil-row"` rather than `page.getByText(name)`,
- * because the conflict message embeds the sigil's name — "A sigil already
- * exists named X" — so a page-wide count of X counts the error toast as well as
- * the row. The question this list answers is *how many rows*, and a page-wide
- * count answered it correctly only while the message happened not to contain the
- * value being counted.
+ * Scoped to the table rather than to `page.getByText(...)`, because a refusal
+ * message embeds the pair it is refusing, so a page-wide count of `hello`
+ * counts the error toast as well as the row. The question this list answers is
+ * *how many rows*.
  */
-const sigilRows = (page: Page, name: string) =>
-  page.getByTestId("sigil-row").filter({ hasText: name });
+const appRows = (page: Page, text: string) =>
+  page.getByTestId("apps-table").locator("tbody tr").filter({ hasText: text });
+
+/**
+ * Poll `GET /api/projects/:projectId/apps` until the pair is present or gone.
+ *
+ * Same shape as {@link waitForProjectFeature}, one level down, and for the same
+ * reason: every `$action` the SPA makes is multiplexed through
+ * `POST /api/_batch`, so `waitForResponse` on a per-action URL never fires.
+ * Read the state back from the plain GET route instead.
+ *
+ * ⚠️ **`cache: "no-store"`, and it is load-bearing.** Without it the browser
+ * serves a poll from its own HTTP cache, so the loop settles on the state
+ * BEFORE the write it is waiting for and the next step races it. That cost an
+ * hour on the estate step below, where a cleared deploy target read as cleared
+ * and the server refused the detach anyway.
+ */
+const waitForInstance = async (
+  page: Page,
+  projectId: number,
+  app: string,
+  env: string,
+  present: boolean,
+): Promise<void> => {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          async ({ projectId, app, env }) => {
+            const r = await fetch(`/api/projects/${projectId}/apps`, {
+              cache: "no-store",
+              credentials: "include",
+            });
+            if (!r.ok) return undefined;
+            const body = (await r.json()) as {
+              items: { app: string; env: string }[];
+            };
+            return body.items.some((it) => it.app === app && it.env === env);
+          },
+          { projectId, app, env },
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(present);
+};
+
+/**
+ * Creates an instance through the API.
+ *
+ * The dialog has its own step; re-driving it wherever a second copy is needed
+ * would test the create form over and over instead of the thing under test.
+ */
+const createInstance = async (
+  page: Page,
+  projectId: number,
+  app: string,
+  env: string,
+): Promise<void> => {
+  const ok = await page.evaluate(
+    async ({ projectId, app, env }) => {
+      const r = await fetch(`/api/projects/${projectId}/apps`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ app, env }),
+      });
+      return r.ok;
+    },
+    { projectId, app, env },
+  );
+  expect(ok).toBe(true);
+};
 
 /**
  * One aggregated client error, as the cable would forward it.
@@ -125,6 +200,7 @@ const waitForProjectFeature = async (
         page.evaluate(
           async ({ projectId, key }) => {
             const r = await fetch(`/api/getProjectById/${projectId}`, {
+              cache: "no-store",
               credentials: "include",
             });
             if (!r.ok) return undefined;
@@ -212,6 +288,8 @@ const setSigilKinds = async (
       const body = (await list.json()) as {
         items: { id: string; name: string }[];
       };
+      // `sigils.name` is the `"<app>/<env>"` mirror since Apps v3, so the
+      // caller passes the pair and this matches it verbatim.
       const sigil = body.items.find((it) => it.name === name);
       if (!sigil) return false;
       const res = await fetch(`/api/projects/${projectId}/sigils/${sigil.id}`, {
@@ -240,6 +318,7 @@ const waitForSigilKind = async (
         page.evaluate(
           async ({ projectId, name, kind }) => {
             const r = await fetch(`/api/projects/${projectId}/sigils`, {
+              cache: "no-store",
               credentials: "include",
             });
             if (!r.ok) return undefined;
@@ -256,8 +335,8 @@ const waitForSigilKind = async (
     .toBe(present);
 };
 
-test.describe("Sigils", () => {
-  test("enrol an app, report as it, rotate it, delete it", async ({
+test.describe("Apps", () => {
+  test("create a copy, mint its key, report as it, remove it", async ({
     page,
     request,
     baseURL,
@@ -268,11 +347,20 @@ test.describe("Sigils", () => {
     const email = `sigil${t}@example.com`;
     const projectTitle = `Sig${t}`.slice(0, 20);
     // Distinct from the project title so `getByText` cannot match the header,
-    // and constrained to `APP_NAME_PATTERN` — it's the app's URL segment now
-    // (`/:projectSlug/apps/:appName`), so a capital or a space would be
-    // refused rather than just cosmetic.
+    // and constrained to `APP_NAME_PATTERN`: both halves are URL segments
+    // (`/:projectSlug/apps/:app/:env`), so a capital or a space is refused
+    // rather than just cosmetic.
     const appName = `app-${t}`;
+    const envName = "world";
+    const secondEnv = "staging";
+    // What `sigils.name` mirrors, and what `setSigilKinds` looks a credential
+    // up by.
+    const pair = `${appName}/${envName}`;
     const blightMessage = `SigilE2E_${t} is not a function`;
+    // ⚠️ Unique per run: `(ownerUserId, slug)` is a unique index, and the suite
+    // shares a worker's database with nothing but itself only because every
+    // fixture here is stamped with `t`.
+    const estateSlug = `ovh-${t}`.slice(0, 20);
 
     await registerAndVerify(page, email, "SigilTest123!");
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
@@ -282,12 +370,14 @@ test.describe("Sigils", () => {
 
     const ingest = `${baseURL}/sigils/ingest`;
 
-    await test.step("the owner turns Sigils on from settings", async () => {
+    await test.step("the owner turns Apps on, from a page that no longer enrols", async () => {
       await page.goto(`/${projectSlug}/settings/sigils`);
       await page.waitForLoadState("networkidle");
 
       // The settings page rendering at all is worth asserting: removing this
       // route without editing the nav array crashed every settings page once.
+      // ⚠️ The route name and path still say `sigils` while the page says Apps,
+      // which is deliberate - a `$page` rename is not typecheck-protected.
       await expect(
         page.getByRole("switch", { name: "Enable", exact: true }),
       ).toBeVisible({ timeout: 15_000 });
@@ -296,74 +386,179 @@ test.describe("Sigils", () => {
 
       // The switch's own `checked` state is optimistic (see
       // `waitForProjectFeature`) — wait on the server directly, since
-      // everything from here on (enrolling, ingest's config gate, the app
-      // and blights route loaders, the sidebar's Apps group) depends on
+      // everything from here on (creating, ingest's config gate, the app and
+      // blights route loaders, the sidebar's Apps entry) depends on
       // `features.sigils` actually being on, not just the switch looking on.
       await waitForProjectFeature(page, projectId, "sigils", true);
 
-      // Capabilities moved off this page (Task 8): what an app may report is
-      // per-app now, set on that app's own Settings tab, not a project-wide
-      // Capabilities card here. A newly enrolled sigil carries all four
-      // kinds by default, so nothing else is needed before ingest.
-      await expect(page.getByText(/No app enrolled yet/i)).toBeVisible();
+      // ⚠️ The enrol block and the credential list are GONE (#1770). Creating a
+      // deployed copy is what /apps is for, and a list of the same things here
+      // was a second door onto one room. What survives is the switch and the
+      // ignore rules, which are project-scoped and cannot follow a sigil down
+      // to an instance.
+      await expect(page.getByText(/Ignore rules/i)).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(
+        page.getByRole("button", { name: "Enroll", exact: true }),
+      ).toHaveCount(0);
+    });
+
+    await test.step("New app creates a copy from two names, and mints nothing", async () => {
+      await page.goto(`/${projectSlug}`);
+      await page.waitForLoadState("networkidle");
+
+      // The header's existing "+", not a second button beside it.
+      await page.getByTestId("project-create-menu").click();
+      await page
+        .getByRole("menuitem", { name: "New app", exact: true })
+        .click();
+
+      // ⚠️ Named, not `getByRole("dialog")`: the combobox popup below is also
+      // `role="dialog"`, so the bare role is a strict-mode violation the moment
+      // it opens.
+      const dialog = page.getByRole("dialog", { name: "New app" });
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+      // The app field is a combobox over the names that already exist, with an
+      // explicit create-new row: without it a typo silently makes a second app,
+      // since `club` and `clbu` are two apps and nothing complains.
+      await dialog.getByRole("combobox").click();
+      // ⚠️ The popup is a portal, so it is not under the dialog, and BOTH the
+      // trigger and the popup's search field carry `role="combobox"` - reaching
+      // by role alone can land on the button, which `fill` refuses.
+      const search = page.locator('input[role="combobox"]');
+      await expect(search).toBeVisible({ timeout: 15_000 });
+      await search.fill(appName);
+      await page
+        .getByRole("option")
+        .filter({ hasText: appName })
+        .first()
+        .click();
+
+      // ⚠️ By id, not by label: `Control` renders a required field's label as
+      // "Environment*", so `getByLabel(..., { exact: true })` matches nothing.
+      await dialog.locator("#app-create-env").fill(envName);
+      await dialog.getByRole("button", { name: "Create", exact: true }).click();
+      await expect(dialog).toBeHidden({ timeout: 15_000 });
+      // Base UI leaves `pointer-events: none` behind after the combobox popover
+      // and the dialog close; the next click is otherwise the flaky one.
+      await releasePointerEvents(page);
+
+      // Landed on the instance it just made.
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/apps/${appName}/${envName}`),
+        { timeout: 15_000 },
+      );
+      await waitForInstance(page, projectId, appName, envName, true);
+    });
+
+    await test.step("a copy with nothing unlocked has three tabs and next steps", async () => {
+      // ⚠️ Assert the bar RENDERED before asserting what is missing from it: a
+      // negative assertion passes happily against a page that has not painted.
+      const tabs = page.getByTestId("app-tabs");
+      await expect(
+        tabs.getByRole("link", { name: "Overview", exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+
+      for (const label of ["Artifacts", "Settings"]) {
+        await expect(
+          tabs.getByRole("link", { name: label, exact: true }),
+        ).toBeVisible();
+      }
+      for (const label of ["Analytics", "Vitals", "Errors", "Explore"]) {
+        await expect(
+          tabs.getByRole("link", { name: label, exact: true }),
+        ).toHaveCount(0);
+      }
+
+      // Not a card grid with holes in it: both Overview cards read a sigil, and
+      // this is the normal state right after creation.
+      await expect(page.getByTestId("app-next-steps")).toBeVisible({
+        timeout: 15_000,
+      });
+
+      // ⚠️ And it reads as "nothing reports", never as "silent". A copy with no
+      // sigil has no `lastSeenAt`, never will, and the old two-state check
+      // rendered it as a fault forever.
+      await page.goto(`/${projectSlug}/apps`);
+      await page.waitForLoadState("networkidle");
+      const dot = page
+        .getByTestId("apps-table")
+        .locator('[role="img"][data-state]')
+        .first();
+      await expect(dot).toHaveAttribute("data-state", "none", {
+        timeout: 15_000,
+      });
+      await expect(dot).toHaveAttribute("aria-label", /no sigil/i);
+    });
+
+    await test.step("a second copy of the same app is a second flat row", async () => {
+      await createInstance(page, projectId, appName, secondEnv);
+      await page.goto(`/${projectSlug}/apps`);
+      await page.waitForLoadState("networkidle");
+
+      // Flat: two rows, the app name repeating rather than blank-filled,
+      // because a blank cell breaks sorting on every other column.
+      await expect(appRows(page, appName)).toHaveCount(2, { timeout: 15_000 });
+      await expect(appRows(page, envName)).toHaveCount(1);
+      await expect(appRows(page, secondEnv)).toHaveCount(1);
+    });
+
+    await test.step("the name filter matches the env half too", async () => {
+      // What makes a tenant-ish substring find anything at all: the app half is
+      // the same on both rows.
+      const search = page.getByRole("textbox", { name: "Search", exact: true });
+      await search.fill(secondEnv);
+
+      await expect(appRows(page, appName)).toHaveCount(1, { timeout: 15_000 });
+      await appRows(page, secondEnv).first().click();
+      await expect(page).toHaveURL(
+        new RegExp(`/${projectSlug}/apps/${appName}/${secondEnv}`),
+        { timeout: 15_000 },
+      );
     });
 
     let token = "";
-    await test.step("enrolling an app mints a token, once", async () => {
-      // The card-button and the dialog's own submit share the accessible
-      // name "Enroll" — only one is on screen before the dialog opens.
-      await page.getByRole("button", { name: "Enroll", exact: true }).click();
+    await test.step("creating a sigil unlocks four tabs, on that copy only", async () => {
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}/settings`);
+      await page.waitForLoadState("networkidle");
 
-      const dialog = page.getByRole("dialog");
-      await expect(dialog).toBeVisible({ timeout: 15_000 });
-      await dialog
-        .getByRole("textbox", { name: "App name", exact: true })
-        .fill(appName);
-      await dialog.getByRole("button", { name: "Enroll", exact: true }).click();
-      await expect(dialog).toBeHidden({ timeout: 10_000 });
-      await releasePointerEvents(page);
+      await page
+        .getByRole("button", { name: "Create a sigil", exact: true })
+        .click();
 
       token = await takeMintedToken(page);
-
-      // Exactly one row, and it names the credential by its prefix and says the
-      // app has not reported — the two facts the list exists to carry. Asserted
-      // *on the row* rather than on the page, so "the list shows this" cannot be
-      // satisfied by a toast that happens to say the same thing.
       // The minted token names the project it reports into, which is what
       // spares the app a second variable saying so. Asserted here rather than
       // only in the unit specs because this is the one place the whole chain
       // runs: a real project, its real slug, and the token an operator copies.
       expect(sigilKeyProject(token)).toBeTruthy();
+      expect(sigilKeyPrefix(token)).toBeTruthy();
 
-      const row = sigilRows(page, appName);
-      await expect(row).toHaveCount(1, { timeout: 15_000 });
-      await expect(row.getByText(`${sigilKeyPrefix(token)}…`)).toBeVisible();
-      await expect(row.getByText(/never reported/i)).toBeVisible();
-    });
+      // ⚠️ A navigation, not a re-render: wait for the bar rather than
+      // asserting straight after the click.
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}`);
+      await page.waitForLoadState("networkidle");
+      const tabs = page.getByTestId("app-tabs");
+      for (const label of ["Analytics", "Vitals", "Errors", "Explore"]) {
+        await expect(
+          tabs.getByRole("link", { name: label, exact: true }),
+        ).toBeVisible({ timeout: 15_000 });
+      }
 
-    await test.step("the same name cannot be enrolled twice", async () => {
-      await page.getByRole("button", { name: "Enroll", exact: true }).click();
-
-      const dialog = page.getByRole("dialog");
-      await expect(dialog).toBeVisible({ timeout: 15_000 });
-      await dialog
-        .getByRole("textbox", { name: "App name", exact: true })
-        .fill(appName);
-      await dialog.getByRole("button", { name: "Enroll", exact: true }).click();
-
-      // A 409 surfaces as an error toast, and no second row appears — a second
-      // sigil would split that app's history across two credentials. The toast
-      // names the offending sigil, so the row count is scoped to the list.
-      await expect(page.getByText(/already exists/i)).toBeVisible({
-        timeout: 15_000,
-      });
-      await expect(sigilRows(page, appName)).toHaveCount(1);
-
-      // Only a successful submit closes the dialog — dismiss it explicitly
-      // so the next click doesn't land on a `pointer-events: none` body.
-      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-      await expect(dialog).toBeHidden({ timeout: 10_000 });
-      await releasePointerEvents(page);
+      // And NOT on the sibling: an unlock belongs to one deployed copy.
+      await page.goto(`/${projectSlug}/apps/${appName}/${secondEnv}`);
+      await page.waitForLoadState("networkidle");
+      const siblingTabs = page.getByTestId("app-tabs");
+      await expect(
+        siblingTabs.getByRole("link", { name: "Overview", exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+      for (const label of ["Analytics", "Vitals", "Errors", "Explore"]) {
+        await expect(
+          siblingTabs.getByRole("link", { name: label, exact: true }),
+        ).toHaveCount(0);
+      }
     });
 
     await test.step("the token, and only the token, opens ingest", async () => {
@@ -467,7 +662,7 @@ test.describe("Sigils", () => {
       // The other side of #1749. The Blights inbox below answers "has anyone
       // triaged this"; this tab answers "is it still happening HERE", which
       // the inbox cannot, because it keys on `(project, fingerprint)`.
-      await page.goto(`/${projectSlug}/apps/${appName}/errors`);
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}/errors`);
       await page.waitForLoadState("networkidle");
 
       const group = page.getByTestId("app-error-group");
@@ -478,13 +673,16 @@ test.describe("Sigils", () => {
       await expect(group).toContainText("3");
 
       // And the card is gone from the page it was asked to leave.
-      await page.goto(`/${projectSlug}/apps/${appName}/analytics`);
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}/analytics`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByTestId("insights-errors")).toHaveCount(0);
     });
 
-    await test.step("the settings row now says the app reported", async () => {
-      await page.reload();
+    await test.step("the plate now says the copy reported", async () => {
+      // The credential list this used to read is gone with the enrol page
+      // (#1770); last-reported is on the instance's own plate, pushed to the
+      // right edge, and absent rather than "never" when there is no sigil.
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(/last reported/i)).toBeVisible({
         timeout: 15_000,
@@ -523,32 +721,32 @@ test.describe("Sigils", () => {
       });
     });
 
-    await test.step("the sidebar's Apps section opens the app's own page", async () => {
-      // The section is the only way in that does not require knowing a UUID.
-      // It's a collapsible group, but with one app it starts *open* — the
-      // shell only leaves it collapsed past five — so there is nothing to
-      // click before the app's own link is reachable.
+    await test.step("the sidebar's Apps entry opens the list, and the list the copy", async () => {
+      // ⚠️ One entry, not a group. It used to expand one child per app, which
+      // is a list that grows without bound in the one piece of chrome that must
+      // not; the list page is the search surface now and this is its door.
       await page.goto(`/${projectSlug}`);
       await page.waitForLoadState("networkidle");
 
       await expect(
         page.getByRole("button", { name: "Apps", exact: true }),
-      ).toBeVisible({ timeout: 15_000 });
-      await page.getByRole("link", { name: appName, exact: true }).click();
+      ).toHaveCount(0);
+      await page.getByRole("link", { name: "Apps", exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`/${projectSlug}/apps$`), {
+        timeout: 15_000,
+      });
 
+      await appRows(page, envName).first().click();
       await expect(page).toHaveURL(
-        new RegExp(`/${projectSlug}/apps/${appName}`),
+        new RegExp(`/${projectSlug}/apps/${appName}/${envName}`),
         { timeout: 15_000 },
       );
-      await expect(
-        page.getByRole("heading", { name: appName, exact: true }),
-      ).toBeVisible({ timeout: 15_000 });
 
       // Every tab exists. Scoped to the tab bar: "Settings" is also a
       // project-level sidebar entry, so a page-wide match proves nothing.
       const tabs = page.getByTestId("app-tabs");
       for (const label of [
-        "Dashboard",
+        "Overview",
         "Analytics",
         "Vitals",
         // #1749: the error budget left the Analytics page (feedback #2080,
@@ -568,46 +766,52 @@ test.describe("Sigils", () => {
       }
     });
 
-    await test.step("the Apps crumb opens the inventory, which the sidebar does not", async () => {
-      // The crumb used to render as dead text because there was no list route
-      // at all. It is the ONLY door: a sidebar entry beside the disclosure
-      // group would be a second one to the same information.
-      await page
-        .getByLabel("breadcrumb")
-        .getByRole("link", { name: "Apps", exact: true })
-        .click();
+    await test.step("the breadcrumb mirrors the route, with the app half inert", async () => {
+      const crumbs = page.getByLabel("breadcrumb");
+      // ⚠️ Four segments, and `${appName}` is a plain LABEL: `/apps/:app`
+      // redirects to a sibling copy, so a link there would move the reader
+      // sideways rather than up.
+      //
+      // Asserted on the HREF, not on the role: shadcn's `BreadcrumbPage` marks
+      // an inert crumb `role="link" aria-disabled`, so "is it a link" is true of
+      // both halves and says nothing. What separates them is where they go.
+      const appCrumb = crumbs.getByText(appName, { exact: true });
+      await expect(appCrumb).toBeVisible({ timeout: 15_000 });
+      await expect(appCrumb).not.toHaveAttribute("href", /./);
+      await expect(crumbs.getByText(envName, { exact: true })).toBeVisible();
+
+      await crumbs.getByRole("link", { name: "Apps", exact: true }).click();
 
       await expect(page).toHaveURL(new RegExp(`/${projectSlug}/apps$`), {
         timeout: 15_000,
       });
       const table = page.getByTestId("apps-table");
-      await expect(table.getByRole("link", { name: appName })).toBeVisible({
+      await expect(
+        table.getByRole("link", { name: appName }).first(),
+      ).toBeVisible({
         timeout: 15_000,
       });
-      // The address it reported, resolved the same way the app header does.
+      // The address it reported, resolved the same way the plate does.
       await expect(table.getByText("docs.alepha.dev")).toBeVisible();
 
-      // #1751, feedback #2081. Two notes on this page, one assertion each.
-      //
-      // The heading is gone: the breadcrumb already says "Apps" two lines up,
-      // and no other project list carries one.
+      // #1751, feedback #2081: the heading is gone, because the breadcrumb
+      // already says "Apps" two lines up and no other project list carries one.
       await expect(table.locator("h1")).toHaveCount(0);
 
-      // And the Reports column holds its badges on ONE line. This app carries
-      // all four kinds, and the cell used to be `flex-wrap`, so it stacked
-      // them into a column and made the row four times the height of a
-      // neighbour. Measured rather than asserted on a class: a row that fits
-      // is the claim.
+      // A row is a LINE. The Reports column that used to stack four badges into
+      // one is cut entirely now, and the three that remain are single values -
+      // measured rather than asserted on a class, because a row that fits is
+      // the claim.
       const rowHeight = await table
         .locator("tbody tr")
         .first()
         .evaluate((el) => Math.round(el.getBoundingClientRect().height));
       expect(rowHeight).toBeLessThan(60);
 
-      // Back to the app, which the rest of this flow addresses directly.
-      await table.getByRole("link", { name: appName }).click();
+      // Back to the copy, which the rest of this flow addresses directly.
+      await appRows(page, envName).first().click();
       await expect(page).toHaveURL(
-        new RegExp(`/${projectSlug}/apps/${appName}`),
+        new RegExp(`/${projectSlug}/apps/${appName}/${envName}`),
         { timeout: 15_000 },
       );
     });
@@ -617,7 +821,7 @@ test.describe("Sigils", () => {
       // counters out of an insights payload, so opening the front page of an
       // app cost ten aggregate queries against Analytics Engine.
       const calls = await insightsCalls(page, async () => {
-        await page.goto(`/${projectSlug}/apps/${appName}`);
+        await page.goto(`/${projectSlug}/apps/${appName}/${envName}`);
         await page.waitForLoadState("networkidle");
         await expect(page.getByTestId("app-identity")).toBeVisible({
           timeout: 15_000,
@@ -666,7 +870,7 @@ test.describe("Sigils", () => {
         .getByRole("link", { name: "Settings", exact: true })
         .click();
 
-      const field = page.getByRole("textbox", { name: "App URL", exact: true });
+      const field = page.getByRole("textbox", { name: "Address", exact: true });
       await expect(field).toBeVisible({ timeout: 15_000 });
       // The detected host as the placeholder is what makes an empty field read
       // as "using what the app reports" instead of as "nobody filled this in".
@@ -699,16 +903,20 @@ test.describe("Sigils", () => {
       // screen — which is why folio #1121 records this as verified by hand
       // once and never pinned. Asked of the server instead.
       const stored = await page.evaluate(
-        async ({ projectId, name }) => {
-          const r = await fetch(`/api/projects/${projectId}/sigils`, {
+        async ({ projectId, app, env }) => {
+          const r = await fetch(`/api/projects/${projectId}/apps`, {
+            cache: "no-store",
             credentials: "include",
           });
           const body = (await r.json()) as {
-            items: { name: string; url?: string | null }[];
+            items: { app: string; env: string; url?: string | null }[];
           };
-          return body.items.find((it) => it.name === name)?.url ?? null;
+          return (
+            body.items.find((it) => it.app === app && it.env === env)?.url ??
+            null
+          );
         },
-        { projectId, name: appName },
+        { projectId, app: appName, env: envName },
       );
       expect(stored).toBeNull();
     });
@@ -885,7 +1093,7 @@ test.describe("Sigils", () => {
 
       // Back to Analytics on the default window, so the steps below see the
       // numbers they pin.
-      await page.goto(`/${projectSlug}/apps/${appName}/analytics`);
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}/analytics`);
       await page.waitForLoadState("networkidle");
     });
 
@@ -979,7 +1187,7 @@ test.describe("Sigils", () => {
       // Back to Analytics on the default window: the step above this one
       // ended there deliberately, so the leaderboard steps below can pin the
       // numbers they expect.
-      await page.goto(`/${projectSlug}/apps/${appName}/analytics`);
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}/analytics`);
       await page.waitForLoadState("networkidle");
     });
 
@@ -1030,7 +1238,9 @@ test.describe("Sigils", () => {
       // Reached by URL rather than by a More link, which the overview does not
       // grow until the Umami-shaped rebuild. The loop this asserts is the one
       // the page exists for: leaderboard row -> filter -> overview.
-      await page.goto(`/${projectSlug}/apps/${appName}/analytics/path`);
+      await page.goto(
+        `/${projectSlug}/apps/${appName}/${envName}/analytics/path`,
+      );
       await page.waitForLoadState("networkidle");
 
       const table = page.getByTestId("insights-dimension-table");
@@ -1056,7 +1266,9 @@ test.describe("Sigils", () => {
       // The segment is user input on its way to a query. It is refused by the
       // route before anything sees it, so this renders the app's own not-found
       // page rather than a 400 surfacing out of a fetch.
-      await page.goto(`/${projectSlug}/apps/${appName}/analytics/nonsense`);
+      await page.goto(
+        `/${projectSlug}/apps/${appName}/${envName}/analytics/nonsense`,
+      );
       await page.waitForLoadState("networkidle");
       await expect(page.getByTestId("insights-dimension-table")).toHaveCount(0);
     });
@@ -1064,7 +1276,7 @@ test.describe("Sigils", () => {
     await test.step("the Vitals tab reports a range, a sample count and no rating", async () => {
       // Back to the app page: the two steps above left the browser on a
       // detail URL, and the tab bar is what the rest of this flow drives.
-      await page.goto(`/${projectSlug}/apps/${appName}`);
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}`);
       await page.waitForLoadState("networkidle");
 
       await page
@@ -1078,7 +1290,7 @@ test.describe("Sigils", () => {
       // like this one would notice `/vitals` regressing. The suite never
       // referenced the old `/performance` either, which is why this had to be
       // written rather than edited.
-      await expect(page).toHaveURL(/\/apps\/[^/]+\/vitals/, {
+      await expect(page).toHaveURL(/\/apps\/[^/]+\/[^/]+\/vitals/, {
         timeout: 15_000,
       });
       await expect(page.getByText("Web Vitals")).toBeVisible({
@@ -1125,10 +1337,10 @@ test.describe("Sigils", () => {
       // Settings page with the rebuild (they were a second, unaware copy of a
       // decision `SIGIL_CONFIG` already makes). The GATE did not move, so what
       // it does to the page is still worth guarding.
-      await setSigilKinds(page, projectId, appName, ["feedback"]);
-      await waitForSigilKind(page, projectId, appName, "beacon", false);
+      await setSigilKinds(page, projectId, pair, ["feedback"]);
+      await waitForSigilKind(page, projectId, pair, "beacon", false);
 
-      await page.goto(`/${projectSlug}/apps/${appName}`);
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}`);
       await page.waitForLoadState("networkidle");
 
       const tabs = page.getByTestId("app-tabs");
@@ -1138,15 +1350,15 @@ test.describe("Sigils", () => {
         ).toHaveCount(0, { timeout: 15_000 });
       }
 
-      await setSigilKinds(page, projectId, appName, [
+      await setSigilKinds(page, projectId, pair, [
         "feedback",
         "blights",
         "beacon",
         "vitals",
       ]);
-      await waitForSigilKind(page, projectId, appName, "beacon", true);
+      await waitForSigilKind(page, projectId, pair, "beacon", true);
 
-      await page.goto(`/${projectSlug}/apps/${appName}`);
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}`);
       await page.waitForLoadState("networkidle");
       for (const label of ["Analytics", "Vitals"]) {
         await expect(
@@ -1168,102 +1380,76 @@ test.describe("Sigils", () => {
     });
 
     let rotated = "";
-    await test.step("renaming the app moves its page and its sidebar entry", async () => {
-      await page.goto(`/${projectSlug}/apps/${appName}/settings`);
+    await test.step("renaming either half moves the page", async () => {
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}/settings`);
       await page.waitForLoadState("networkidle");
 
-      const field = page.getByRole("textbox", { name: "Name", exact: true });
+      // The ENV half, which is the one that tells two copies of an app apart.
+      const field = page.getByRole("textbox", {
+        name: "Environment",
+        exact: true,
+      });
       await expect(field).toBeVisible({ timeout: 15_000 });
-      await field.fill(`${appName}-renamed`);
-      await page.getByRole("button", { name: "Rename", exact: true }).click();
+      await field.fill("renamed");
+      // Scoped: the two rename rows are the same component twice, so their
+      // buttons carry the same label.
+      await page
+        .getByTestId("app-settings-rename-env")
+        .getByRole("button", { name: "Rename", exact: true })
+        .click();
       await confirmDialog(page, "Rename");
 
-      // The name is the URL segment, so a rename moves the page. Leaving the
-      // old address in the bar would leave a 404 behind.
+      // Both halves are the URL, so a rename moves the page. Leaving the old
+      // address in the bar would leave a 404 behind.
       await expect(page).toHaveURL(
-        new RegExp(`/${projectSlug}/apps/${appName}-renamed/settings`),
+        new RegExp(`/${projectSlug}/apps/${appName}/renamed/settings`),
         { timeout: 15_000 },
       );
-      // Both atoms, not just the page's: the sidebar renders from the other
-      // one and the two must not disagree. Scoped to the sidebar entry itself,
-      // because the breadcrumb carries the same NAME and the Dashboard tab
-      // carries the same HREF - either alone is a strict-mode violation the
-      // moment the rename lands everywhere it should.
-      await expect(
-        page.locator(
-          `[data-sidebar="menu-sub-button"][href="/${projectSlug}/apps/${appName}-renamed/"]`,
-        ),
-      ).toBeVisible({ timeout: 15_000 });
+      // Both atoms, not just the page's: the list renders from the other one
+      // and the two must not disagree.
+      await waitForInstance(page, projectId, appName, "renamed", true);
 
-      // Back, so the rest of this flow keeps addressing the app by `appName`.
-      await field.fill(appName);
-      await page.getByRole("button", { name: "Rename", exact: true }).click();
+      // Back, so the rest of this flow keeps addressing the copy by its pair.
+      await field.fill(envName);
+      // Scoped: the two rename rows are the same component twice, so their
+      // buttons carry the same label.
+      await page
+        .getByTestId("app-settings-rename-env")
+        .getByRole("button", { name: "Rename", exact: true })
+        .click();
       await confirmDialog(page, "Rename");
       await expect(page).toHaveURL(
-        new RegExp(`/${projectSlug}/apps/${appName}/settings`),
+        new RegExp(`/${projectSlug}/apps/${appName}/${envName}/settings`),
         { timeout: 15_000 },
       );
     });
 
-    await test.step("renaming onto a taken name is refused, and says so", async () => {
-      // A second app to collide with. `(projectId, name)` is a unique index,
-      // so without a check before the write this would surface as a driver
-      // constraint violation — a 500 for what is the operator's typo.
-      // Enrolled through the API rather than the dialog: the dialog has its own
-      // step several hundred lines up, and re-driving it here would test the
-      // enrolment form a second time instead of the collision.
-      const taken = `${appName}-two`;
-      const enrolled = await page.evaluate(
-        async ({ projectId, name }) => {
-          const r = await fetch(`/api/projects/${projectId}/sigils`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ name }),
-          });
-          return r.ok;
-        },
-        { projectId, name: taken },
-      );
-      expect(enrolled).toBe(true);
-
-      await page.goto(`/${projectSlug}/apps/${appName}/settings`);
-      await page.waitForLoadState("networkidle");
-      const field = page.getByRole("textbox", { name: "Name", exact: true });
-      await field.fill(taken);
-      await page.getByRole("button", { name: "Rename", exact: true }).click();
+    await test.step("renaming onto a taken pair is refused, and says so", async () => {
+      // The sibling copy created several steps up is the thing to collide with.
+      // `(projectId, app, env)` is a unique index, so without a check before
+      // the write this would surface as a driver constraint violation - a 500
+      // for what is the operator's typo.
+      const field = page.getByRole("textbox", {
+        name: "Environment",
+        exact: true,
+      });
+      await field.fill(secondEnv);
+      // Scoped: the two rename rows are the same component twice, so their
+      // buttons carry the same label.
+      await page
+        .getByTestId("app-settings-rename-env")
+        .getByRole("button", { name: "Rename", exact: true })
+        .click();
       await confirmDialog(page, "Rename");
 
-      await expect(page.getByText(/already exists named/)).toBeVisible({
+      await expect(page.getByText(/already exists/)).toBeVisible({
         timeout: 15_000,
       });
-      // Refused, not half-applied: the page is still the app it was.
+      // Refused, not half-applied: the page is still the copy it was.
       await expect(page).toHaveURL(
-        new RegExp(`/${projectSlug}/apps/${appName}/settings`),
+        new RegExp(`/${projectSlug}/apps/${appName}/${envName}/settings`),
       );
-
-      // Retired again, so the delete step at the end of this flow still lands
-      // on a project with nothing enrolled — which is the state its own
-      // assertions are about.
-      const removed = await page.evaluate(
-        async ({ projectId, name }) => {
-          const list = await fetch(`/api/projects/${projectId}/sigils`, {
-            credentials: "include",
-          });
-          const body = (await list.json()) as {
-            items: { id: string; name: string }[];
-          };
-          const sigil = body.items.find((it) => it.name === name);
-          if (!sigil) return false;
-          const r = await fetch(
-            `/api/projects/${projectId}/sigils/${sigil.id}`,
-            { method: "DELETE", credentials: "include" },
-          );
-          return r.ok;
-        },
-        { projectId, name: taken },
-      );
-      expect(removed).toBe(true);
+      await waitForInstance(page, projectId, appName, envName, true);
     });
 
     await test.step("rotating revokes the old token and keeps the history", async () => {
@@ -1309,49 +1495,33 @@ test.describe("Sigils", () => {
       });
     });
 
-    await test.step("deleting the sigil retires its token", async () => {
-      // Back to the app's Settings tab — the same page rotate was driven
-      // from. Still one app, so the group is still open by default — no
-      // click needed to reach the link.
-      await page.goto(`/${projectSlug}`);
+    await test.step("removing the sigil retires its token and keeps the copy", async () => {
+      // ⚠️ Before Apps v3 this removed the APP. It removes a credential now:
+      // the foreign key is `set null`, so the deployed copy survives with its
+      // four unlocked tabs gone. An agent or an operator following an old note
+      // must not be surprised silently.
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}/settings`);
       await page.waitForLoadState("networkidle");
-      await page.getByRole("link", { name: appName, exact: true }).click();
-      await page
-        .getByTestId("app-tabs")
-        .getByRole("link", { name: "Settings", exact: true })
-        .click();
 
-      await page.getByRole("button", { name: "Delete", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Delete", exact: true })
+        .first()
+        .click();
       await confirmDialog(page, "Delete");
 
-      // Its own page no longer has a subject, so the delete lands the operator
-      // back on the enrolment page — which now says there is nothing enrolled.
-      await expect(page).toHaveURL(
-        new RegExp(`/${projectSlug}/settings/sigils`),
-        { timeout: 15_000 },
-      );
-      await expect(page.getByText(/No app enrolled yet/i)).toBeVisible({
-        timeout: 15_000,
-      });
-
-      // The Apps group is only built when the project has apps or the read
-      // failed (ProjectView.tsx) — with zero apps left, the whole section
-      // vanishes rather than rendering an empty shell.
+      // The instance is still here, and its tab bar has shrunk back to three.
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}`);
+      await page.waitForLoadState("networkidle");
+      const tabs = page.getByTestId("app-tabs");
       await expect(
-        page.getByRole("button", { name: "Apps", exact: true }),
-      ).toHaveCount(0);
-      // Blights, by contrast, stays. The blight outlives the credential that
-      // filed it — `blights.sigilId` is `ON DELETE SET NULL`, because a triage
-      // decision is not the sigil's — and it is still open, so the inbox must
-      // still be reachable. Deriving the entry from the enrolled apps alone
-      // would have hidden an inbox that still holds crashes. It renders as a
-      // link (a leaf item), not a button — only the collapsible Apps group
-      // above is a button.
-      const blightsEntry = page.getByRole("link", {
-        name: "Blights",
-        exact: true,
-      });
-      await expect(blightsEntry).toBeVisible({ timeout: 15_000 });
+        tabs.getByRole("link", { name: "Overview", exact: true }),
+      ).toBeVisible({ timeout: 15_000 });
+      for (const label of ["Analytics", "Vitals", "Errors", "Explore"]) {
+        await expect(
+          tabs.getByRole("link", { name: label, exact: true }),
+        ).toHaveCount(0);
+      }
+      await waitForInstance(page, projectId, appName, envName, true);
 
       const revoked = await request.post(ingest, {
         headers: {
@@ -1362,8 +1532,16 @@ test.describe("Sigils", () => {
       });
       expect(revoked.status()).toBe(401);
 
-      // Reachable, not merely rendered: the surviving blight is one click from
-      // the sidebar, no deep link needed.
+      // Blights survive the credential that filed them - `blights.sigilId` is
+      // `ON DELETE SET NULL`, because a triage decision is not the sigil's -
+      // and the inbox is still reachable from the sidebar. Deriving that entry
+      // from the enrolled apps alone would have hidden an inbox that still
+      // holds crashes.
+      const blightsEntry = page.getByRole("link", {
+        name: "Blights",
+        exact: true,
+      });
+      await expect(blightsEntry).toBeVisible({ timeout: 15_000 });
       await blightsEntry.click();
       await expect(page).toHaveURL(new RegExp(`/${projectSlug}/blights`), {
         timeout: 15_000,
@@ -1372,6 +1550,160 @@ test.describe("Sigils", () => {
       await expect(page.getByText(blightMessage)).toBeVisible({
         timeout: 15_000,
       });
+    });
+
+    await test.step("an estate cannot be detached while a copy deploys to it", async () => {
+      // ⚠️ The only path that drives `EstateService.assertUnreferenced`. It was
+      // a seam doing nothing until #1767 filled it, and without the estate
+      // select on the instance's Settings tab there would be no user path to
+      // reach either refusal.
+      await page.goto(`/${projectSlug}/settings/estates`);
+      await page.waitForLoadState("networkidle");
+
+      await page
+        .getByRole("button", { name: "Add an estate", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+      // The caller owns no estate yet, so the dialog opens on "create a new
+      // one" - clicked explicitly rather than relied on, since the mode it
+      // lands in depends on what the account happens to hold.
+      await dialog
+        .getByRole("button", { name: "Create a new one", exact: true })
+        .click();
+      await dialog
+        .getByRole("textbox", { name: "Estate slug" })
+        .fill(estateSlug);
+      await dialog
+        .getByRole("button", { name: "Create and lend", exact: true })
+        .click();
+      await expect(dialog).toBeHidden({ timeout: 15_000 });
+      await releasePointerEvents(page);
+      // The secret is shown once, like a token, and dismissing it is what
+      // finishes the flow.
+      await page.getByRole("button", { name: "Done", exact: true }).click();
+      await releasePointerEvents(page);
+      await expect(page.getByText(estateSlug).first()).toBeVisible({
+        timeout: 15_000,
+      });
+
+      // Point the copy at it.
+      await page.goto(`/${projectSlug}/apps/${appName}/${envName}/settings`);
+      await page.waitForLoadState("networkidle");
+      const select = page.locator("[data-slot=select-trigger]");
+      await expect(select).toBeVisible({ timeout: 15_000 });
+      await select.click();
+      await page.getByRole("option", { name: estateSlug }).click();
+      await releasePointerEvents(page);
+      await expect(page.getByText(/Deploy target saved/i)).toBeVisible({
+        timeout: 15_000,
+      });
+
+      // Refused, and the message NAMES the copy, because the operator's next
+      // action is to open it and repoint it.
+      const detached = await page.evaluate(
+        async ({ projectId }) => {
+          const list = await fetch(`/api/projects/${projectId}/estates`, {
+            cache: "no-store",
+            credentials: "include",
+          });
+          const body = (await list.json()) as { items: { id: string }[] };
+          const estate = body.items[0];
+          const r = await fetch(
+            `/api/projects/${projectId}/estates/${estate.id}`,
+            { method: "DELETE", credentials: "include" },
+          );
+          return { status: r.status, body: await r.text() };
+        },
+        { projectId },
+      );
+      expect(detached.status).toBe(409);
+      expect(detached.body).toContain(`${appName}/${envName}`);
+
+      // Cleared, and the detach goes through.
+      //
+      // ⚠️ Waited on the SERVER, not on the toast: one is already on screen
+      // from the save above, so `toBeVisible` is satisfied by the wrong one and
+      // the detach below races the PATCH. That cost an hour, reading as a
+      // refusal that never lifts.
+      await select.click();
+      await page
+        .getByRole("option", { name: "No estate", exact: true })
+        .click();
+      await releasePointerEvents(page);
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(
+              async ({ projectId, app, env }) => {
+                const r = await fetch(`/api/projects/${projectId}/apps`, {
+                  cache: "no-store",
+                  credentials: "include",
+                });
+                if (!r.ok) return undefined;
+                const body = (await r.json()) as {
+                  items: {
+                    app: string;
+                    env: string;
+                    estateId?: string | null;
+                  }[];
+                };
+                return (
+                  body.items.find((it) => it.app === app && it.env === env)
+                    ?.estateId ?? null
+                );
+              },
+              { projectId, app: appName, env: envName },
+            ),
+          { timeout: 15_000 },
+        )
+        .toBeNull();
+
+      const again = await page.evaluate(
+        async ({ projectId }) => {
+          const list = await fetch(`/api/projects/${projectId}/estates`, {
+            cache: "no-store",
+            credentials: "include",
+          });
+          const body = (await list.json()) as { items: { id: string }[] };
+          const estate = body.items[0];
+          const r = await fetch(
+            `/api/projects/${projectId}/estates/${estate.id}`,
+            { method: "DELETE", credentials: "include" },
+          );
+          return r.status;
+        },
+        { projectId },
+      );
+      expect(again).toBe(200);
+    });
+
+    await test.step("deleting both copies empties the list", async () => {
+      for (const env of [envName, secondEnv]) {
+        await page.goto(`/${projectSlug}/apps/${appName}/${env}/settings`);
+        await page.waitForLoadState("networkidle");
+
+        await page
+          .getByRole("button", { name: "Delete", exact: true })
+          .last()
+          .click();
+        await confirmDialog(page, "Delete");
+
+        // The page's subject no longer exists, so it lands on the list.
+        await expect(page).toHaveURL(new RegExp(`/${projectSlug}/apps$`), {
+          timeout: 15_000,
+        });
+        await waitForInstance(page, projectId, appName, env, false);
+      }
+
+      // ⚠️ Empty, and rendered as empty rather than as a failed read: an empty
+      // state on a transient failure would claim a project has no apps.
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByText(/No app yet/i)).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(page.getByText(/Couldn/i)).toHaveCount(0);
     });
   });
 });
