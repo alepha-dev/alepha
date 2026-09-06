@@ -37,6 +37,17 @@ export interface CapabilityOptionDescriptor {
    */
   preselected: boolean;
   /**
+   * Offered in the creation wizard's setup step.
+   *
+   * Two filters decide this, and both must pass: the option has to change what
+   * the project looks like on day one, and it has to be something we cannot
+   * pick for the reader. **The wizard asks what surfaces exist; Settings asks
+   * how you work.** So Board, Epics, Releases, Track and Deploy are here, and
+   * `estimate` / `chrono` / `reminder` are not - those three are a methodology
+   * adopted later, which their own doc already says.
+   */
+  wizard: boolean;
+  /**
    * Rendered disabled, with a Soon badge, rather than hidden.
    */
   soon?: boolean;
@@ -140,36 +151,42 @@ export class CapabilityRegistry {
           key: "board",
           labelKey: "project.capability.work.option.board.label",
           descriptionKey: "project.capability.work.option.board.description",
+          wizard: true,
           preselected: false,
         },
         {
           key: "epics",
           labelKey: "project.capability.work.option.epics.label",
           descriptionKey: "project.capability.work.option.epics.description",
+          wizard: true,
           preselected: false,
         },
         {
           key: "releases",
           labelKey: "project.capability.work.option.releases.label",
           descriptionKey: "project.capability.work.option.releases.description",
+          wizard: true,
           preselected: false,
         },
         {
           key: "estimate",
           labelKey: "project.capability.work.option.estimate.label",
           descriptionKey: "project.capability.work.option.estimate.description",
+          wizard: false,
           preselected: false,
         },
         {
           key: "chrono",
           labelKey: "project.capability.work.option.chrono.label",
           descriptionKey: "project.capability.work.option.chrono.description",
+          wizard: false,
           preselected: false,
         },
         {
           key: "reminder",
           labelKey: "project.capability.work.option.reminder.label",
           descriptionKey: "project.capability.work.option.reminder.description",
+          wizard: false,
           preselected: false,
         },
       ],
@@ -226,6 +243,7 @@ export class CapabilityRegistry {
           labelKey: "project.capability.knowledge.option.agentSummary.label",
           descriptionKey:
             "project.capability.knowledge.option.agentSummary.description",
+          wizard: false,
           preselected: false,
         },
       ],
@@ -264,12 +282,14 @@ export class CapabilityRegistry {
           key: "track",
           labelKey: "project.capability.apps.option.track.label",
           descriptionKey: "project.capability.apps.option.track.description",
+          wizard: true,
           preselected: true,
         },
         {
           key: "deploy",
           labelKey: "project.capability.apps.option.deploy.label",
           descriptionKey: "project.capability.apps.option.deploy.description",
+          wizard: true,
           preselected: false,
           soon: true,
         },
@@ -418,6 +438,16 @@ export class CapabilityRegistry {
       string,
       boolean
     >;
+  }
+
+  /**
+   * The options this capability offers in the creation wizard's setup step.
+   *
+   * A capability with none contributes no section, which is what lets a
+   * Knowledge-only project skip the step entirely.
+   */
+  wizardOptionsOf(key: CapabilityKey): CapabilityOptionDescriptor[] {
+    return this.get(key).options.filter((option) => option.wizard);
   }
 
   /**

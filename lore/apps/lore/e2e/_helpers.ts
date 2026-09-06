@@ -412,9 +412,11 @@ export const createProjectViaWizard = async (
   await page.goto("/new-project");
   await page.waitForLoadState("networkidle");
   await page.locator('input[type="text"]').first().fill(title);
-  // Step 1 → Step 2 (logo)
+  // Step 1 (name) → Step 2 (what is this project). The icon step is gone:
+  // Settings ▸ Banner carries the identical upload.
   await page.getByRole("button", { name: /^next$/i }).click();
-  // Step 2 → Step 3 (modules) — icon is optional, skip via Next
+  // Step 2 → Step 3 (set it up). Work and Knowledge are preselected, and Work
+  // has options, so there is always a third step from these defaults.
   await page.getByRole("button", { name: /^next$/i }).click();
   // Step 3 → submit
   await page.getByRole("button", { name: /create project/i }).click();

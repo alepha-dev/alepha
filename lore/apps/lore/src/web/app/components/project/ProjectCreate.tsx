@@ -1,4 +1,3 @@
-import { ControlUpload } from "@alepha/ui/components/control-upload/control-upload";
 import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
@@ -10,55 +9,62 @@ import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
+  AppWindow,
   ArrowLeft,
   ArrowRight,
   BookOpen,
   Hammer,
-  Flag,
-  LayoutGrid,
+  Inbox,
+  Swords,
   Tag,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
-import type { ProjectFeatures } from "@/api/entities/projects.ts";
+import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
 import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
+import type {
+  CapabilityDescriptor,
+  CapabilityOptionDescriptor,
+} from "@/api/services/CapabilityRegistry.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
+import { capabilityRegistry as registry } from "../../services/capabilityRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
 import PageHeader from "../shared/header/PageHeader.tsx";
 
-const TOTAL_STEPS = 3;
 const MIN_BUILD_DURATION_MS = 1500;
 
 /**
- * ⚠️ `milestones` is the Releases module. This draft is sent verbatim as the
- * project's `features` JSON, so its keys ARE the persisted keys — and
- * `createProject`'s body schema is `.partial()`, so a mistyped key is
- * accepted silently rather than rejected. The persisted name stays
- * pre-rename; see `projectFeaturesSchema`.
+ * The icon for each capability's row in the pick step.
+ *
+ * Web-side because an icon is a React element and the registry has to stay
+ * importable by the server. Keyed by the same enum, so a fifth capability is
+ * one entry here and one declaration there.
  */
-type FeaturesDraft = Pick<
-  ProjectFeatures,
-  "kanban" | "folios" | "feedback" | "milestones"
->;
-
-const DEFAULT_FEATURES: FeaturesDraft = {
-  // Folios + Kanban + Releases opt-in by default. Feedback is no longer a
-  // wizard-surfaced module — it's the project's own module switch now,
-  // enabled from Settings → Feedback (its own page, split out of the Sigils
-  // page). It is not a Sigils sub-capability: an app's own `feedback` kind
-  // is a separate, per-app decision made on that app's Settings tab. We
-  // still send `feedback: false` here so new projects start with no
-  // feedback inbox; we can't move that default into
-  // `defaultProjectFeatures` (feedback=true there) without triggering a
-  // D1 `projects` table rebuild — see CLAUDE.md "Migration safety on D1".
-  folios: true,
-  kanban: true,
-  milestones: true,
-  feedback: false,
+const CAPABILITY_ICONS: Record<
+  CapabilityKey,
+  React.ComponentType<{ className?: string }>
+> = {
+  work: Swords,
+  knowledge: BookOpen,
+  apps: AppWindow,
+  support: Inbox,
 };
+
+/**
+ * What the wizard has collected: which capabilities, and the options inside
+ * each.
+ *
+ * Options are kept for every capability, enabled or not, so unchecking one and
+ * changing your mind does not silently reset what you had already set up.
+ * Only the enabled ones are sent.
+ */
+interface CapabilityDraft {
+  enabled: CapabilityKey[];
+  options: Record<string, Record<string, boolean>>;
+}
 
 const ProjectCreate = () => {
   const client = useClient<ProjectController>();
@@ -67,17 +73,41 @@ const ProjectCreate = () => {
   const alepha = useAlepha();
   const dateTime = useInject(DateTimeProvider);
   const { tr } = useI18n<I18n, "en">();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [features, setFeatures] = useState<FeaturesDraft>(DEFAULT_FEATURES);
-  // useForm builds its FormModel inside useMemo(..., []) — the handler
-  // is created ONCE on first render and closes over `features` from
-  // that render. Toggling setFeatures re-renders this component but
-  // the form's stored handler still sees DEFAULT_FEATURES. Read via a
-  // ref that's always current to dodge the stale closure (alternative:
-  // pass deps:[features] to useForm, but that rebuilds the model on
-  // every toggle and wipes whatever title/icon the user already typed).
-  const featuresRef = useRef(features);
-  featuresRef.current = features;
+  const [step, setStep] = useState<number>(1);
+  const [draft, setDraft] = useState<CapabilityDraft>(() => ({
+    enabled: registry
+      .all()
+      .filter((it) => it.preselectedCapability)
+      .map((it) => it.key),
+    options: Object.fromEntries(
+      registry
+        .all()
+        .map((it) => [it.key, registry.preselectedOptionsOf(it.key)]),
+    ),
+  }));
+  // useForm builds its FormModel inside useMemo(..., []) — the handler is
+  // created ONCE on first render and closes over `draft` from that render.
+  // Toggling a capability re-renders this component but the form's stored
+  // handler still sees the initial draft. Read via a ref that is always
+  // current to dodge the stale closure (the alternative, `deps: [draft]`,
+  // rebuilds the model on every toggle and wipes whatever title was typed).
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+
+  /**
+   * Which capabilities have something to ask on the setup step.
+   *
+   * ⚠️ **This is what makes `TOTAL_STEPS` stop being a constant.** A
+   * Knowledge-only or Support-only project has nothing to set up, so the
+   * wizard is two steps instead of three - and a variable step count is
+   * exactly the condition that fires the React 19 button hazard below.
+   */
+  const setupSections = draft.enabled.filter(
+    (key) => registry.wizardOptionsOf(key).length > 0,
+  );
+  const hasSetup = setupSections.length > 0;
+  const totalSteps = hasSetup ? 3 : 2;
+  const forgingStep = totalSteps + 1;
 
   const initialValues = useMemo(() => {
     try {
@@ -94,44 +124,43 @@ const ProjectCreate = () => {
     schema: z.object({
       // The server's own rule, so a title it refuses is refused here first.
       title: projectTitleSchema,
-      icon: z.uuid().optional(),
     }),
     onError: (error) => {
       toaster.error(error.message);
-      // Back to the last step: the "building" screen has no controls, and a
-      // 409 (slug taken) or 403 (project cap) used to strand the user on it.
-      setStep(3);
+      // Back to the last step with controls on it: the "building" screen has
+      // none, and a 409 (slug taken) or 403 (project cap) used to strand the
+      // user on it. Read from the ref rather than `totalSteps`, which is
+      // captured by the form model on first render.
+      setStep(
+        draftRef.current.enabled.some(
+          (key) => registry.wizardOptionsOf(key).length > 0,
+        )
+          ? 3
+          : 2,
+      );
     },
     handler: async (body) => {
-      setStep(4);
+      // The forging screen. Computed rather than the literal 4, because the
+      // wizard is two steps for a project with nothing to set up.
+      setStep(
+        draftRef.current.enabled.some(
+          (key) => registry.wizardOptionsOf(key).length > 0,
+        )
+          ? 4
+          : 3,
+      );
       const startedAt = dateTime.nowMillis();
       const project = await client.createProject({
-        // ⚠️ A bridge, not the shape this wizard will keep. The step below
-        // still asks the three old module questions; the capability step that
-        // replaces it is its own quest. Translating here rather than leaving
-        // `features` on the body means there is exactly one write path for a
-        // capability from the day the table exists, which is what stops the
-        // two from disagreeing for the length of the epic.
-        //
-        // Work goes on unconditionally because quests never had a flag, so
-        // this reproduces today's wizard exactly.
         body: {
           ...body,
-          capabilities: [
-            {
-              key: "work" as const,
-              options: {
-                board: featuresRef.current.kanban,
-                releases: featuresRef.current.milestones,
-              },
-            },
-            ...(featuresRef.current.folios
-              ? [{ key: "knowledge" as const }]
-              : []),
-            ...(featuresRef.current.feedback
-              ? [{ key: "support" as const }]
-              : []),
-          ],
+          // Only the enabled ones. A row exists only for an enabled
+          // capability, and the options of the others are kept in the draft
+          // purely so unchecking one and changing your mind does not reset
+          // what you had set up.
+          capabilities: draftRef.current.enabled.map((key) => ({
+            key,
+            options: draftRef.current.options[key] ?? {},
+          })),
         },
       });
       const elapsed = dateTime.nowMillis() - startedAt;
@@ -155,18 +184,49 @@ const ProjectCreate = () => {
   const titleValue = String(formState.values?.title ?? "").trim();
   const canAdvanceFromName = titleValue.length >= 3;
 
+  /**
+   * The step actually on screen.
+   *
+   * ⚠️ Clamped during render rather than corrected in an effect. Unchecking
+   * the last capability with options while standing on step 3 leaves `step`
+   * pointing at a step that no longer exists, and the obvious fix - a
+   * `useEffect` calling `setStep` - is a cascading render that paints the
+   * missing step for one frame first. Deriving it costs nothing and cannot
+   * flash.
+   */
+  const activeStep = step === forgingStep ? step : Math.min(step, totalSteps);
+
   const titleInputId = form.input.title.props.id;
   useEffect(() => {
-    if (step !== 1 || !titleInputId) return;
+    if (activeStep !== 1 || !titleInputId) return;
     const el = document.getElementById(titleInputId) as HTMLInputElement | null;
     el?.focus();
-  }, [step, titleInputId]);
+  }, [activeStep, titleInputId]);
 
-  const goNext = () =>
-    setStep((s) => Math.min(TOTAL_STEPS, s + 1) as 1 | 2 | 3);
-  const goBack = () => setStep((s) => Math.max(1, s - 1) as 1 | 2 | 3);
+  const goNext = () => setStep(Math.min(totalSteps, activeStep + 1));
+  const goBack = () => setStep(Math.max(1, activeStep - 1));
 
-  if (step === 4) {
+  const toggleCapability = (key: CapabilityKey) =>
+    setDraft((current) => ({
+      ...current,
+      enabled: current.enabled.includes(key)
+        ? current.enabled.filter((it) => it !== key)
+        : [...current.enabled, key],
+    }));
+
+  const toggleOption = (key: CapabilityKey, option: string) =>
+    setDraft((current) => ({
+      ...current,
+      options: {
+        ...current.options,
+        [key]: {
+          ...current.options[key],
+          [option]: !current.options[key]?.[option],
+        },
+      },
+    }));
+
+  if (activeStep === forgingStep) {
     return (
       <div className="bg-background flex h-screen w-full flex-col items-center justify-center">
         <PageHeader showHome={false} />
@@ -179,7 +239,7 @@ const ProjectCreate = () => {
     <div className="bg-background flex h-screen w-full flex-col items-center justify-center">
       <PageHeader />
       <div className="mx-auto w-full max-w-xl px-4">
-        <StepIndicator current={step} total={TOTAL_STEPS} />
+        <StepIndicator current={activeStep} total={totalSteps} />
         <Card className="mt-4 shadow-sm">
           <CardContent className="flex flex-col gap-6 pt-2">
             {/* A form-level key handler that stops Enter submitting from a text
@@ -191,20 +251,20 @@ const ProjectCreate = () => {
               onKeyDown={(e) => {
                 if (
                   e.key === "Enter" &&
-                  step < TOTAL_STEPS &&
+                  activeStep < totalSteps &&
                   !(e.target instanceof HTMLTextAreaElement)
                 ) {
                   e.preventDefault();
-                  if (step === 1 && !canAdvanceFromName) return;
+                  if (activeStep === 1 && !canAdvanceFromName) return;
                   goNext();
                 }
               }}
             >
               <div
-                key={step}
+                key={activeStep}
                 className="animate-in fade-in slide-in-from-right-2 flex flex-col gap-5 duration-300"
               >
-                {step === 1 && (
+                {activeStep === 1 && (
                   <StepName
                     title={tr("project.create.step.name")}
                     nameLabel={tr("project.create.name")}
@@ -212,34 +272,31 @@ const ProjectCreate = () => {
                     input={form.input.title}
                   />
                 )}
-                {step === 2 && (
-                  <StepLogo
-                    title={tr("project.create.step.logo")}
-                    helper={tr("project.create.step.logo.helper")}
-                    input={form.input.icon}
-                    disabled={submitting}
+                {activeStep === 2 && (
+                  <StepCapabilities
+                    title={String(tr("project.create.step.capabilities"))}
+                    helper={String(
+                      tr("project.create.step.capabilities.helper"),
+                    )}
+                    capabilities={registry.all()}
+                    enabled={draft.enabled}
+                    onToggle={toggleCapability}
+                    tr={tr}
                   />
                 )}
-                {step === 3 && (
-                  <StepModules
-                    title={tr("project.create.step.modules")}
-                    helper={tr("project.create.step.modules.helper")}
-                    value={features}
-                    onChange={setFeatures}
-                    labels={{
-                      folios: tr("project.create.module.folios"),
-                      foliosHelper: String(
-                        tr("project.create.module.folios.helper"),
-                      ),
-                      kanban: tr("project.create.module.kanban"),
-                      kanbanHelper: String(
-                        tr("project.create.module.kanban.helper"),
-                      ),
-                      releases: tr("project.create.module.releases"),
-                      releasesHelper: String(
-                        tr("project.create.module.releases.helper"),
-                      ),
-                    }}
+                {activeStep === 3 && hasSetup && (
+                  <StepSetup
+                    title={String(tr("project.create.step.setup"))}
+                    helper={String(tr("project.create.step.setup.helper"))}
+                    sections={setupSections.map((key) => ({
+                      key,
+                      capability: registry.get(key),
+                      options: registry.wizardOptionsOf(key),
+                    }))}
+                    values={draft.options}
+                    onToggle={toggleOption}
+                    soonLabel={String(tr("project.create.soon"))}
+                    tr={tr}
                   />
                 )}
               </div>
@@ -250,14 +307,14 @@ const ProjectCreate = () => {
                   variant="ghost"
                   size="sm"
                   onClick={goBack}
-                  disabled={step === 1 || submitting}
+                  disabled={activeStep === 1 || submitting}
                 >
                   <ArrowLeft className="size-4" />
                   {tr("project.create.back")}
                 </Button>
 
                 <div className="flex items-center gap-2">
-                  {step < TOTAL_STEPS ? (
+                  {activeStep < totalSteps ? (
                     // `key` is critical: React 19 reconciles the ternary by
                     // reusing the same <button> DOM node and just flipping
                     // `type` between renders. When `goNext` advances step
@@ -273,7 +330,10 @@ const ProjectCreate = () => {
                       type="button"
                       size="lg"
                       onClick={goNext}
-                      disabled={step === 1 && !canAdvanceFromName}
+                      disabled={
+                        (activeStep === 1 && !canAdvanceFromName) ||
+                        (activeStep === 2 && draft.enabled.length === 0)
+                      }
                       className="h-11 px-6"
                     >
                       {tr("project.create.next")}
@@ -284,7 +344,11 @@ const ProjectCreate = () => {
                       key="submit"
                       type="submit"
                       size="lg"
-                      disabled={submitting || !canAdvanceFromName}
+                      disabled={
+                        submitting ||
+                        !canAdvanceFromName ||
+                        draft.enabled.length === 0
+                      }
                       className="h-11 px-6"
                     >
                       <Hammer className="size-4" />
@@ -348,59 +412,24 @@ const StepName = (props: StepNameProps) => {
   );
 };
 
-interface StepLogoProps {
+interface StepCapabilitiesProps {
   title: string;
   helper: string;
-  input: any;
-  disabled: boolean;
+  capabilities: CapabilityDescriptor[];
+  enabled: CapabilityKey[];
+  onToggle: (key: CapabilityKey) => void;
+  tr: (key: never) => string | number;
 }
 
-const StepLogo = (props: StepLogoProps) => {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">{props.title}</h1>
-        <p className="text-muted-foreground text-sm">{props.helper}</p>
-      </div>
-      {/*
-        Bucket value stays "campaign-icons" — see the note on `iconBucket`
-        in `ProjectController.ts`.
-      */}
-      <ControlUpload
-        input={props.input}
-        accept="image/*"
-        maxSize={2 * 1024 * 1024}
-        bucket="campaign-icons"
-        // Matches `iconBucket`'s server-side `image` constraint. Doing it here
-        // as well is not redundant: it is what stops the megabytes leaving the
-        // machine, and lossy WebP with alpha is smaller than anything the
-        // server's wasm encoder can produce.
-        image={{ maxWidth: 256 }}
-        disabled={props.disabled}
-      />
-    </div>
-  );
-};
-
-interface StepModulesProps {
-  title: string;
-  helper: string;
-  value: FeaturesDraft;
-  onChange: (next: FeaturesDraft) => void;
-  labels: {
-    folios: string;
-    foliosHelper: string;
-    kanban: string;
-    kanbanHelper: string;
-    releases: string;
-    releasesHelper: string;
-  };
-}
-
-const StepModules = (props: StepModulesProps) => {
-  const toggle = (key: keyof FeaturesDraft) =>
-    props.onChange({ ...props.value, [key]: !props.value[key] });
-
+/**
+ * "What is this project?" - the question the old step 3 never asked.
+ *
+ * It offered Folios, Kanban and Releases: one product, one *view* of quests,
+ * and one *grouping* of quests, with nothing on screen saying what Lore is
+ * for. These four are the surfaces, and the reader picks the ones they came
+ * for.
+ */
+const StepCapabilities = (props: StepCapabilitiesProps) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
@@ -408,28 +437,72 @@ const StepModules = (props: StepModulesProps) => {
         <p className="text-muted-foreground text-sm">{props.helper}</p>
       </div>
       <div className="flex flex-col gap-2">
-        <ModuleToggle
-          icon={BookOpen}
-          label={props.labels.folios}
-          helper={props.labels.foliosHelper}
-          checked={props.value.folios}
-          onChange={() => toggle("folios")}
-        />
-        <ModuleToggle
-          icon={LayoutGrid}
-          label={props.labels.kanban}
-          helper={props.labels.kanbanHelper}
-          checked={props.value.kanban}
-          onChange={() => toggle("kanban")}
-        />
-        <ModuleToggle
-          icon={Flag}
-          label={props.labels.releases}
-          helper={props.labels.releasesHelper}
-          checked={props.value.milestones}
-          onChange={() => toggle("milestones")}
-        />
+        {props.capabilities.map((capability) => (
+          <ModuleToggle
+            key={capability.key}
+            icon={CAPABILITY_ICONS[capability.key]}
+            label={String(props.tr(capability.labelKey as never))}
+            helper={String(props.tr(capability.descriptionKey as never))}
+            checked={props.enabled.includes(capability.key)}
+            onChange={() => props.onToggle(capability.key)}
+          />
+        ))}
       </div>
+    </div>
+  );
+};
+
+interface StepSetupProps {
+  title: string;
+  helper: string;
+  sections: Array<{
+    key: CapabilityKey;
+    capability: CapabilityDescriptor;
+    options: CapabilityOptionDescriptor[];
+  }>;
+  values: Record<string, Record<string, boolean>>;
+  onToggle: (key: CapabilityKey, option: string) => void;
+  soonLabel: string;
+  tr: (key: never) => string | number;
+}
+
+/**
+ * "Set it up" - one section per enabled capability that has something to ask.
+ *
+ * ⚠️ A capability with no wizard options contributes nothing, which is what
+ * lets a Knowledge-only project skip this step entirely rather than see an
+ * empty screen. That is also what makes the step count variable, and the
+ * button below carries a React 19 hazard because of it.
+ */
+const StepSetup = (props: StepSetupProps) => {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight">{props.title}</h1>
+        <p className="text-muted-foreground text-sm">{props.helper}</p>
+      </div>
+      {props.sections.map((section) => (
+        <div key={section.key} className="flex flex-col gap-2">
+          <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            {String(props.tr(section.capability.labelKey as never))}
+          </span>
+          {section.options.map((option) => (
+            <ModuleToggle
+              key={option.key}
+              icon={CAPABILITY_ICONS[section.key]}
+              label={String(props.tr(option.labelKey as never))}
+              helper={String(props.tr(option.descriptionKey as never))}
+              checked={props.values[section.key]?.[option.key] === true}
+              onChange={() => props.onToggle(section.key, option.key)}
+              // Rendered disabled rather than hidden: the wizard is where
+              // someone decides what Lore is for, and hiding Deploy means the
+              // reader who deploys elsewhere never learns Lore will do it.
+              disabled={option.soon}
+              badge={option.soon ? props.soonLabel : undefined}
+            />
+          ))}
+        </div>
+      ))}
     </div>
   );
 };
@@ -440,6 +513,11 @@ interface ModuleToggleProps {
   helper: string;
   checked: boolean;
   onChange: () => void;
+  disabled?: boolean;
+  /**
+   * A chip beside the label, for an option that exists but is not shipped.
+   */
+  badge?: string;
 }
 
 const ModuleToggle = (props: ModuleToggleProps) => {
@@ -449,10 +527,13 @@ const ModuleToggle = (props: ModuleToggleProps) => {
       type="button"
       onClick={props.onChange}
       aria-pressed={props.checked}
+      disabled={props.disabled}
       className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-all ${
-        props.checked
-          ? "border-primary bg-primary/5 ring-primary/30 ring-1"
-          : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
+        props.disabled
+          ? "border-border opacity-60"
+          : props.checked
+            ? "border-primary bg-primary/5 ring-primary/30 ring-1"
+            : "border-border hover:border-muted-foreground/40 hover:bg-muted/30"
       }`}
     >
       <div
@@ -465,7 +546,14 @@ const ModuleToggle = (props: ModuleToggleProps) => {
         <Icon className="size-4" />
       </div>
       <div className="flex flex-1 flex-col gap-0.5">
-        <span className="text-sm font-semibold">{props.label}</span>
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          {props.label}
+          {props.badge ? (
+            <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-medium uppercase">
+              {props.badge}
+            </span>
+          ) : null}
+        </span>
         <span className="text-muted-foreground text-xs">{props.helper}</span>
       </div>
       <div
