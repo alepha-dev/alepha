@@ -220,7 +220,8 @@ func (s *server) connectorLoop(ctx context.Context) {
 		Log:     s.log,
 		Reload:  s.connectorReload,
 		Handler: newActions(s),
-		Gauge:   connector.HostGauge(),
+		Gauge:   connector.HostGauge(s.root),
+		Version: version,
 	}
 	client.Run(ctx)
 }

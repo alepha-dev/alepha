@@ -481,6 +481,8 @@ type fixedGauge struct {
 
 func (g fixedGauge) Sample(context.Context) (Reading, bool) { return g.reading, g.ok }
 
+func (g fixedGauge) Host(context.Context) (Host, bool) { return g.reading.Host, g.ok }
+
 func (s *loreSession) statsFrame(t *testing.T, within time.Duration) (map[string]any, bool) {
 	t.Helper()
 	deadline := time.After(within)
