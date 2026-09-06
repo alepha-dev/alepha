@@ -240,6 +240,46 @@ test.describe("Project capabilities", () => {
     await expect(page.locator(`a[href="/${slug}/reports/quests"]`)).toHaveCount(
       0,
     );
+    // Quality is Apps baseline and self-hides until a run exists, so it is
+    // absent right up to the push below.
+    await expect(
+      page.locator(`a[href="/${slug}/reports/quality"]`),
+    ).toHaveCount(0);
+
+    // ⚠️ Quality has no switch, and this is why an Apps-only project needs
+    // Reports to stay Core: pushed by CI under a CI credential, its tab is the
+    // one thing an Apps-only project reads there besides Members. If Reports
+    // had stayed under Work, the entry would have taken this with it.
+    const pushed = await page.evaluate(
+      async ({ projectId }) => {
+        const r = await fetch(`/api/projects/${projectId}/quality/runs`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            commitSha: "abcdef1234567",
+            branch: "main",
+            coverage: {
+              lines: 91.2,
+              statements: 90.4,
+              functions: 88,
+              branches: 79.5,
+            },
+            tests: { total: 120, passed: 119, failed: 0, skipped: 1 },
+            durationMs: 42_000,
+          }),
+        });
+        return r.ok;
+      },
+      { projectId: id },
+    );
+    expect(pushed).toBe(true);
+
+    await page.goto(`/${slug}/reports`);
+    await page.waitForLoadState("networkidle");
+    await expect(
+      page.locator(`a[href="/${slug}/reports/quality"]`),
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test("everything off leaves a project that still works, and gives it all back", async ({
