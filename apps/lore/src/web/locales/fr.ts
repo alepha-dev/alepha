@@ -1897,7 +1897,6 @@ export default {
     "$1 quêtes dont vous êtes l'auteur seront également supprimées, y compris celles se trouvant dans les projets d'autres personnes.",
 
   // --- folios ---------------------------------------------------------------
-  "folio.tree.resize": "Redimensionner l'arborescence",
   "folios.wikilink.loading": "Chargement…",
   "folios.wikilink.unavailable": "Aperçu indisponible",
 

@@ -85,6 +85,7 @@ export const uiFr: Record<string, string> = {
 
   // The tree: inline rename, and the pane resizer.
   "treeView.rename": "Nouveau nom",
+  "treeView.resize": "Redimensionner l'arborescence",
 
   // Schema-generated forms.
   "autoForm.cancel": "Annuler",
