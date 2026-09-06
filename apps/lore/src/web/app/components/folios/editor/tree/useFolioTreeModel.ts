@@ -1,3 +1,4 @@
+import { resolveDrop } from "@alepha/ui/components/tree-view/tree-model.ts";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import {
   useAction,
@@ -26,8 +27,7 @@ import {
   type FolioTreeRow,
   findFolioNode,
   flattenFolioTree,
-  resolveFolioDrop,
-} from "./folioTreeModel.ts";
+} from "./folioTree.ts";
 
 export interface UseFolioTreeModelInput {
   projectId: number;
@@ -152,12 +152,12 @@ export interface FolioTreeState {
  * `buildFolioTree` breaks a `parentId` cycle by promoting one member to the
  * tree's root, so that directory *displays* at root while the database
  * still records its cyclic parent (`FolioTreeNode.declaredParentId` carries
- * the true stored value on exactly those nodes). `resolveFolioDrop`
+ * the true stored value on exactly those nodes). `resolveDrop`
  * accounts for this: dragging such a node to root resolves to
  * `{ parentId: undefined }` — a real, necessary write that clears the
  * corruption — even though the node is ALREADY rendered at root and
  * nothing visibly moves. `onDrop` below always issues the move whenever
- * `resolveFolioDrop` returns a target, and NEVER infers "nothing to do"
+ * `resolveDrop` returns a target, and NEVER infers "nothing to do"
  * from whether the drop's `targetId` sits at the same visual position as
  * `dragId` — the return value is the only signal trusted. Both an ordinary
  * move and this repair are treated identically (no toast either way): an
@@ -438,13 +438,13 @@ export const useFolioTreeModel = (
   };
 
   const select = (node: FolioTreeNode): void => {
-    if (node.kind === "directory") {
+    if (node.data.kind === "directory") {
       toggle(node.id);
       return;
     }
     void router.push(
       router.path("projectFoliosFolio", {
-        params: { projectSlug: input.projectSlug, shortId: node.shortId },
+        params: { projectSlug: input.projectSlug, shortId: node.data.shortId },
       }),
     );
   };
@@ -456,7 +456,7 @@ export const useFolioTreeModel = (
         if (!node) return;
         const trimmed = name.trim();
         if (!trimmed || trimmed === node.name) return;
-        if (node.kind === "directory") {
+        if (node.data.kind === "directory") {
           const updated = await directoryApi.renameDirectory({
             params: { id },
             body: { name: trimmed },
@@ -563,16 +563,16 @@ export const useFolioTreeModel = (
     setDrop(undefined);
     if (!currentDragId || !position) return;
 
-    const target = resolveFolioDrop(tree, currentDragId, targetId, position);
+    const target = resolveDrop(tree, currentDragId, targetId, position);
     // `undefined` covers BOTH an illegal drop (into your own subtree) AND
-    // a true no-op (already at that parent) — see `resolveFolioDrop`'s own
+    // a true no-op (already at that parent) — see `resolveDrop`'s own
     // doc. Either way, nothing to write.
     if (!target) return;
 
     const dragged = findFolioNode(tree, currentDragId);
     if (!dragged) return;
 
-    if (dragged.kind === "directory") {
+    if (dragged.data.kind === "directory") {
       await moveDirectoryAction.run(currentDragId, target.parentId);
     } else {
       await moveFolioAction.run(currentDragId, target.parentId);
@@ -712,7 +712,7 @@ export const useFolioTreeModel = (
   );
 
   const remove = async (node: FolioTreeNode): Promise<void> => {
-    if (node.kind === "directory") {
+    if (node.data.kind === "directory") {
       const confirmed = await dialog.confirm({
         title: tr("folios.editor.tree.confirm-delete-directory-title"),
         description: tr("folios.editor.tree.confirm-delete-directory-body"),
@@ -727,7 +727,7 @@ export const useFolioTreeModel = (
       const removedDirIds = new Set<string>();
       const removedFolioIds = new Set<string>();
       const collect = (n: FolioTreeNode): void => {
-        if (n.kind === "directory") removedDirIds.add(n.id);
+        if (n.data.kind === "directory") removedDirIds.add(n.id);
         else removedFolioIds.add(n.id);
         for (const child of n.children ?? []) collect(child);
       };
@@ -747,7 +747,7 @@ export const useFolioTreeModel = (
   const duplicateAction = useAction<[FolioTreeNode], void>(
     {
       handler: async (node: FolioTreeNode) => {
-        if (node.kind === "directory") return;
+        if (node.data.kind === "directory") return;
         // The source's `content` is copied AS-IS, whether plaintext or a
         // protected envelope — a passphrase-encrypted envelope is opaque
         // JSON the server never interprets, so duplicating it byte-for-byte
@@ -795,10 +795,10 @@ export const useFolioTreeModel = (
   const pinAction = useAction<[FolioTreeNode], void>(
     {
       handler: async (node: FolioTreeNode) => {
-        if (node.kind === "directory") return;
+        if (node.data.kind === "directory") return;
         const updated = await folioApi.update({
           params: { id: node.id },
-          body: { pinned: !node.pinned },
+          body: { pinned: !node.data.pinned },
         });
         setFolios(
           folios.map((f) => (f.id === node.id ? { ...f, ...updated } : f)),
