@@ -60,6 +60,12 @@ const KNOBS = z.object({
   breadcrumbs: z.boolean().default(true).meta({ title: "breadcrumbs" }),
   topbar: z.boolean().default(true).meta({ title: "topbarActions" }),
   footer: z.boolean().default(true).meta({ title: "sidebarFooter" }),
+  navAccordion: z.boolean().default(true).meta({ title: "navAccordion" }),
+  navAnimate: z.boolean().default(true).meta({ title: "navAnimate" }),
+  navToggleIcon: z
+    .enum(["caret", "plusMinus"])
+    .default("caret")
+    .meta({ title: "navToggleIcon" }),
 });
 
 const GROUPS: {
@@ -76,7 +82,19 @@ const GROUPS: {
   {
     label: "Workspace",
     items: [
-      { key: "projects", label: "Projects", icon: FolderKanban },
+      // A second collapsible group, and deliberately in a different
+      // `SidebarGroup` from Insights: `navAccordion` coordinates ACROSS the
+      // groups, so one expandable rail would have shown the knob doing
+      // nothing.
+      {
+        key: "projects",
+        label: "Projects",
+        icon: FolderKanban,
+        children: [
+          { key: "projects-active", label: "Active" },
+          { key: "projects-archived", label: "Archived" },
+        ],
+      },
       { key: "quests", label: "Quests", icon: ListChecks, badge: 12 },
       { key: "folios", label: "Folios", icon: BookText },
     ],
@@ -167,6 +185,9 @@ const Shell = () => {
         breadcrumbs: true,
         topbar: true,
         footer: true,
+        navAccordion: true,
+        navAnimate: true,
+        navToggleIcon: "caret",
       }}
       fill
     >
@@ -183,6 +204,9 @@ const Shell = () => {
             variant={v.variant}
             headerOutside={v.headerOutside}
             nav={nav}
+            navAccordion={v.navAccordion}
+            navAnimate={v.navAnimate}
+            navToggleIcon={v.navToggleIcon}
             brand={
               <div className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
                 <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">

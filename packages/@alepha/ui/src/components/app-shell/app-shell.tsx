@@ -69,8 +69,10 @@ import { useSidebarState } from "alepha/react/ui";
 import {
   ChevronRight,
   Lock,
+  Minus,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
 } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import { Fragment, useState } from "react";
@@ -209,6 +211,66 @@ function hasActiveDescendant(item: NavItem): boolean {
 }
 
 /**
+ * The one open branch of the nav tree, when `navAccordion` is on.
+ *
+ * A single path rather than a set of open ids, because "one group open" has to
+ * mean one group open PER LEVEL: a nested group closing its own parent to open
+ * itself would be a bug, not exclusivity. A path says both things at once - a
+ * group is open exactly when its path is a prefix of this one, so opening a
+ * sibling replaces the path (the sibling closes) while opening a child extends
+ * it (the parent stays).
+ *
+ * Paths are indices into `nav`: `[groupIndex, itemIndex, ...childIndex]`.
+ */
+interface NavAccordion {
+  openPath: number[];
+  setOpenPath: (path: number[]) => void;
+}
+
+function isOpenPathPrefix(path: number[], openPath: number[]): boolean {
+  if (path.length === 0 || path.length > openPath.length) return false;
+  return path.every((index, depth) => openPath[depth] === index);
+}
+
+function samePath(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((index, i) => b[i] === index);
+}
+
+/**
+ * The path the accordion should be showing: the DEEPEST group holding the
+ * active page, or failing that the first group asking for `defaultOpen`.
+ *
+ * Computed here, from the tree, rather than reported upwards by the item that
+ * notices it is active. An item cannot set its parent's state during render
+ * (React refuses to update another component mid-render), and doing it in an
+ * effect costs a frame of the wrong group being open on every navigation.
+ */
+function findOpenPath(nav: NavGroup[]): number[] {
+  let fallback: number[] = [];
+
+  const walk = (item: NavItem, path: number[]): number[] | undefined => {
+    const children = item.children ?? [];
+    if (children.length === 0) return undefined;
+    for (let ci = 0; ci < children.length; ci++) {
+      const deeper = walk(children[ci]!, [...path, ci]);
+      if (deeper) return deeper;
+    }
+    if (hasActiveDescendant(item)) return path;
+    if (fallback.length === 0 && item.defaultOpen) fallback = path;
+    return undefined;
+  };
+
+  for (let gi = 0; gi < nav.length; gi++) {
+    const items = nav[gi]?.items ?? [];
+    for (let ii = 0; ii < items.length; ii++) {
+      const found = walk(items[ii]!, [gi, ii]);
+      if (found) return found;
+    }
+  }
+  return fallback;
+}
+
+/**
  * Render a NavItem icon. An already-created element (e.g. `<Users />`, which
  * `React.isValidElement` recognises) is returned as-is; anything else is
  * treated as a component *type* — including lucide's `forwardRef` icons, which
@@ -233,23 +295,102 @@ function renderNavIcon(icon: NavItem["icon"], className: string): ReactNode {
   return <Icon className={className} />;
 }
 
-const SidebarNavItem = (props: { item: NavItem }) => {
-  const { item } = props;
+/**
+ * The open/close animation for a nav group.
+ *
+ * `grid-template-rows: 0fr -> 1fr` on a wrapper whose child is
+ * `overflow: hidden`. That is the one way to transition to an INTRINSIC
+ * height in CSS alone: `height: auto` is not interpolable, so the usual
+ * alternatives are a hardcoded max-height (which either clips a long group or
+ * makes a short one crawl through empty space) or measuring the subtree in an
+ * effect (a layout read on every toggle, and a frame of the wrong height).
+ *
+ * ⚠️ The children stay MOUNTED while closed, which is what makes the height
+ * animatable, so something has to do what unmounting used to: clipped content
+ * is invisible but still focusable and still read aloud. `inert` does it, and
+ * it is the right tool rather than `visibility: hidden` because it needs no
+ * animation of its own - the clipping already hides the group, so the only
+ * job left is taking it out of the tab order and the a11y tree, which is a
+ * state rather than a transition.
+ *
+ * `min-h-0` on the inner element is load-bearing, not tidiness: a grid item's
+ * automatic minimum size is its content, so without it the row never shrinks
+ * below the subtree's natural height and nothing appears to animate.
+ */
+const NavCollapse = (props: {
+  open: boolean;
+  animate: boolean;
+  children: ReactNode;
+}) => (
+  <div
+    data-state={props.open ? "open" : "closed"}
+    inert={!props.open}
+    className={cn(
+      "grid grid-rows-[0fr] data-[state=open]:grid-rows-[1fr]",
+      props.animate &&
+        "transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+    )}
+  >
+    <div className="min-h-0 overflow-hidden">{props.children}</div>
+  </div>
+);
+
+const SidebarNavItem = (props: {
+  item: NavItem;
+  /**
+   * This item's position in `nav`, used only by the accordion. See
+   * {@link NavAccordion}.
+   */
+  path: number[];
+  /**
+   * Present when `navAccordion` is on, and then it OWNS the open state: the
+   * local `useState` below is still declared (hooks cannot be conditional) but
+   * nothing reads it.
+   */
+  accordion?: NavAccordion;
+  /**
+   * `navAnimate`, threaded down so a nested group animates like its parent.
+   */
+  animate: boolean;
+  /**
+   * `navToggleIcon`, threaded down for the same reason.
+   */
+  toggleIcon: "caret" | "plusMinus";
+}) => {
+  const { item, path, accordion, animate, toggleIcon } = props;
   const { state, isMobile } = useSidebar();
   const children = item.children;
   const isGroup = !!children && children.length > 0;
   const hasActive = isGroup && hasActiveDescendant(item);
-  const [open, setOpen] = useState(item.defaultOpen ?? hasActive);
+  const [localOpen, setLocalOpen] = useState(item.defaultOpen ?? hasActive);
   // Reveal a collapsed group when navigation makes one of its descendants
   // active — SPA nav, spotlight (⌘K), breadcrumb, or a deep-link that doesn't
   // remount this item (useState's initializer runs only at mount, so without
   // this the group stays stuck closed and the active page is hidden — petition
   // #4). Only OPENS; never auto-collapses, so a manual toggle is preserved.
+  //
+  // Accordion mode does the same job in `AppShell` instead, from the tree, and
+  // skips this: the state lives there, and a child cannot write it mid-render.
   const [wasActive, setWasActive] = useState(hasActive);
-  if (hasActive !== wasActive) {
+  if (!accordion && hasActive !== wasActive) {
     setWasActive(hasActive);
-    if (hasActive) setOpen(true);
+    if (hasActive) setLocalOpen(true);
   }
+
+  const open = accordion
+    ? isOpenPathPrefix(path, accordion.openPath)
+    : localOpen;
+
+  // Closing means handing the branch back to this item's PARENT, not clearing
+  // it: a nested group that closed itself by emptying the path would collapse
+  // every ancestor along with it.
+  const toggle = () => {
+    if (accordion) {
+      accordion.setOpenPath(open ? path.slice(0, -1) : path);
+    } else {
+      setLocalOpen((v) => !v);
+    }
+  };
 
   if (!isGroup) {
     // Disabled rows render with a muted, dashed-border treatment plus a
@@ -371,22 +512,42 @@ const SidebarNavItem = (props: { item: NavItem }) => {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         isActive={item.active}
         tooltip={typeof item.label === "string" ? item.label : undefined}
       >
         {renderNavIcon(item.icon, "size-4")}
         <span className="flex-1 text-left">{item.label}</span>
-        <ChevronRight
-          className={`size-4 transition-transform ${open ? "rotate-90" : ""}`}
-        />
+        {/*
+          Plus and minus are SWAPPED, never rotated: a plus turned 45° is a
+          close button, which is a different promise. The caret is the one
+          that turns, and it stays the default because it is what every app
+          using this shell already had.
+        */}
+        {toggleIcon === "plusMinus" ? (
+          open ? (
+            <Minus className="size-4" />
+          ) : (
+            <Plus className="size-4" />
+          )
+        ) : (
+          <ChevronRight
+            className={`size-4 transition-transform ${open ? "rotate-90" : ""}`}
+          />
+        )}
       </SidebarMenuButton>
-      {open && (
+      <NavCollapse open={open} animate={animate}>
         <SidebarMenuSub>
           {children.map((child, ci) => (
             <SidebarMenuSubItem key={child.href ?? ci}>
               {child.children && child.children.length > 0 ? (
-                <SidebarNavItem item={child} />
+                <SidebarNavItem
+                  item={child}
+                  path={[...path, ci]}
+                  accordion={accordion}
+                  animate={animate}
+                  toggleIcon={toggleIcon}
+                />
               ) : (
                 <SidebarMenuSubButton
                   isActive={child.active}
@@ -399,7 +560,7 @@ const SidebarNavItem = (props: { item: NavItem }) => {
             </SidebarMenuSubItem>
           ))}
         </SidebarMenuSub>
-      )}
+      </NavCollapse>
     </SidebarMenuItem>
   );
 };
@@ -480,6 +641,51 @@ export interface AppShellProps {
    */
   nav?: NavGroup[];
   /**
+   * Keep at most ONE nav group open at a time. Defaults to `true`.
+   *
+   * Opening a group closes the one that was open beside it, the way an
+   * accordion does. Exclusivity is per level, so a nested group opens inside
+   * its parent rather than replacing it, and the open branch always runs from
+   * the root to the deepest open group.
+   *
+   * On means the sidebar owns the open state, so `NavItem.defaultOpen` seeds
+   * the branch rather than opening a group of its own: the first item asking
+   * for it wins, and only when nothing is active. Pass `false` for the older
+   * behaviour, where every group keeps its own state and any number can be
+   * open at once.
+   *
+   * ⚠️ Nothing changes in the icon rail. Collapsed to icons a group is a
+   * dropdown, and one dropdown at a time is already all a menu can do.
+   */
+  navAccordion?: boolean;
+  /**
+   * Slide a nav group open and shut instead of swapping it in. Defaults to
+   * `true`.
+   *
+   * `false` is a snap, not a shorter animation: an app that wants a different
+   * duration or curve should style
+   * `[data-slot=sidebar-menu-item] [data-state]` rather than turn this off.
+   *
+   * ⚠️ Honours `prefers-reduced-motion` on its own, so this is not the switch
+   * for accessibility. It exists for a shell embedded somewhere that owns its
+   * own motion, and for a test that would rather not wait 200ms.
+   */
+  navAnimate?: boolean;
+  /**
+   * Which glyph a collapsible nav group carries. Defaults to `"caret"`.
+   *
+   * - `"caret"` - a chevron that turns a quarter clockwise when the group
+   *   opens. One glyph, and the rotation is the state.
+   * - `"plusMinus"` - a plus when shut, a minus when open. Two glyphs that
+   *   name the two states outright, where a caret only points and leaves the
+   *   reader to learn which direction means open.
+   *
+   * ⚠️ Nothing in the icon rail. Collapsed, a group is a dropdown that opens
+   * to the RIGHT, so its chevron is a direction rather than a state and there
+   * is no minus that could answer it.
+   */
+  navToggleIcon?: "caret" | "plusMinus";
+  /**
    * Content rendered at the bottom of the sidebar (user menu, etc.).
    */
   sidebarFooter?: ReactNode;
@@ -552,6 +758,25 @@ export interface AppShellProps {
 export const AppShell = (props: AppShellProps) => {
   const { collapsed, setCollapsed } = useSidebarState();
   const nav = props.nav ?? [];
+
+  // The accordion's one open branch. Held here because exclusivity is a
+  // question about SIBLINGS, and no nav item can see its own.
+  const navAccordion = props.navAccordion ?? true;
+  const navAnimate = props.navAnimate ?? true;
+  const navToggleIcon = props.navToggleIcon ?? "caret";
+  const wantedOpenPath = findOpenPath(nav);
+  const [openPath, setOpenPath] = useState(wantedOpenPath);
+  // Follow the active page. Set during render of THIS component, which is the
+  // supported way to react to changed input without a wasted frame; the same
+  // pattern a nav item uses for its own state when the accordion is off.
+  // Only ever opens: `findOpenPath` returns an empty path when nothing is
+  // active and nothing asked for `defaultOpen`, and adopting that would slam
+  // the branch shut on every navigation to a top-level page.
+  const [lastWanted, setLastWanted] = useState(wantedOpenPath);
+  if (!samePath(wantedOpenPath, lastWanted)) {
+    setLastWanted(wantedOpenPath);
+    if (wantedOpenPath.length > 0) setOpenPath(wantedOpenPath);
+  }
   const variant = props.variant ?? "sidebar";
   const progress = props.progress ?? true;
   const headerOutside = !!props.headerOutside && variant === "inset";
@@ -693,6 +918,12 @@ export const AppShell = (props: AppShellProps) => {
                         <SidebarNavItem
                           key={item.href ?? `${gi}-${ii}`}
                           item={item}
+                          path={[gi, ii]}
+                          accordion={
+                            navAccordion ? { openPath, setOpenPath } : undefined
+                          }
+                          animate={navAnimate}
+                          toggleIcon={navToggleIcon}
                         />
                       ))}
                     </SidebarMenu>
