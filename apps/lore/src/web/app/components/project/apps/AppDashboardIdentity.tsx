@@ -51,8 +51,10 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
   return (
     <Card data-testid="app-identity">
       <CardHeader>
+        {/* The plate above already carries `club / b14-production`, so this
+            card names what it is rather than repeating it. */}
         <CardTitle className="text-base">
-          {instance.app} / {instance.env}
+          {tr("app.dashboard.identity")}
         </CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-x-6">
@@ -97,14 +99,30 @@ const AppDashboardIdentity = (props: AppDashboardIdentityProps) => {
           {sigil ? `${sigil.tokenPrefix}…` : tr("app.dashboard.token.none")}
         </code>
 
+        {/* "Created", not "Enrolled": nothing enrols any more, and the date
+            that matters is the instance's - the sigil is an unlock added to it,
+            possibly much later. */}
         <span className="text-muted-foreground">
-          {tr("app.dashboard.enrolled")}
+          {tr("app.dashboard.created")}
         </span>
-        <span>
-          {sigil
-            ? String(l(sigil.createdAt, { date: "lll" }))
-            : String(l(instance.createdAt, { date: "lll" }))}
-        </span>
+        <span>{String(l(instance.createdAt, { date: "lll" }))}</span>
+
+        {/* The whole visible effect of an estate in v3: Deploy and Environment
+            are epic #1's. Present only when one is attached, because a row
+            reading "none" would be a control that changes nothing. */}
+        {instance.estate && (
+          <>
+            <span className="text-muted-foreground">
+              {tr("app.dashboard.deploysTo")}
+            </span>
+            <span className="flex flex-wrap items-center gap-2">
+              <span>{instance.estate.label ?? instance.estate.slug}</span>
+              <span className="bg-muted text-muted-foreground rounded px-1 text-[10px] tracking-wide uppercase">
+                {instance.estate.type}
+              </span>
+            </span>
+          </>
+        )}
 
         <span className="text-muted-foreground">
           {tr("app.dashboard.lastReport")}

@@ -4,6 +4,7 @@ import { AlephaDateTime, DateTimeProvider } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
+import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
@@ -74,6 +75,19 @@ const instanceOf = (
   ...instance,
 });
 
+/**
+ * The one route the next-steps card links to. Declared here rather than booted
+ * from `AppRouter`, which would pull the whole route table and every loader
+ * with it.
+ */
+class Routes {
+  appSettings = $page({
+    name: "appSettings",
+    path: "/:projectSlug/apps/:app/:env/settings",
+    component: () => null,
+  });
+}
+
 describe("AppDashboard", () => {
   const mount = async () => {
     const alepha = Alepha.create()
@@ -83,7 +97,9 @@ describe("AppDashboard", () => {
       // too late.
       .with({ provide: LinkProvider, use: RecordingLinkProvider })
       .with(AlephaReact)
+      .with(AlephaReactRouter)
       .with(AlephaReactI18n);
+    alepha.inject(Routes);
     // The dictionaries are lazy chunks on a service, so nothing loads them
     // until something injects it.
     alepha.inject(I18n);
@@ -240,6 +256,55 @@ describe("AppDashboard", () => {
       }),
     );
     expect(recent.queryByText("Silent")).toBeNull();
+  });
+
+  /**
+   * The normal state right after creation, and where you land - so it is the
+   * first impression of the whole feature. A card grid with holes in it is
+   * what this replaced: both cards read a sigil, so without one the
+   * capabilities card has nothing and the identity card's token and
+   * last-report rows are blank.
+   */
+  it("offers next steps for an instance with nothing unlocked", async ({
+    expect,
+  }) => {
+    const { getByTestId, queryByTestId } = await show({
+      id: "00000000-0000-4000-8000-000000000011",
+      projectId: 1,
+      app: "club",
+      env: "production",
+      createdAt: "2026-08-01T10:00:00.000Z",
+      updatedAt: "2026-08-01T10:00:00.000Z",
+    } as AppInstanceResource);
+
+    expect(getByTestId("app-next-steps")).toBeTruthy();
+    expect(queryByTestId("app-identity")).toBeNull();
+    expect(queryByTestId("app-capabilities")).toBeNull();
+  });
+
+  /**
+   * The whole visible effect of an estate in v3. Present only when one is
+   * attached: a row reading "none" would be a control that changes nothing.
+   */
+  it("names the estate it deploys to, when it has one", async ({ expect }) => {
+    const withEstate = await show(
+      instanceOf(
+        {},
+        {
+          estateId: "00000000-0000-4000-8000-0000000000e1",
+          estate: {
+            id: "00000000-0000-4000-8000-0000000000e1",
+            slug: "ovh-1",
+            type: "bay",
+          },
+        },
+      ),
+    );
+    expect(withEstate.getByText("Deploys to")).toBeTruthy();
+    expect(withEstate.getByText("ovh-1")).toBeTruthy();
+
+    const without = await show(instanceOf());
+    expect(without.queryByText("Deploys to")).toBeNull();
   });
 
   it("says the address is not known rather than inventing one", async ({

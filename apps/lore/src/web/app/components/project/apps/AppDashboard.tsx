@@ -3,6 +3,7 @@ import { useStore } from "alepha/react";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import AppDashboardCapabilities from "./AppDashboardCapabilities.tsx";
 import AppDashboardIdentity from "./AppDashboardIdentity.tsx";
+import AppDashboardNextSteps from "./AppDashboardNextSteps.tsx";
 
 /**
  * The app's front page: what this thing is, and what it is doing.
@@ -32,16 +33,30 @@ const AppDashboard = () => {
     return null;
   }
 
+  // An instance with nothing unlocked gets next steps rather than a card grid
+  // with holes in it: both cards below read a sigil, so without one the
+  // Capabilities card has nothing to render and the identity card's token and
+  // last-report rows are blank. It is also the normal state right after
+  // creation, and where you land - the first impression of the whole feature.
+  const bare = !instance.sigil && !instance.url && !instance.estateId;
+
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <AppDashboardIdentity instance={instance} />
-        {/*
-          Capabilities are the sigil's, so the card only exists once one has
-          been minted. An instance without one shows identity alone; #1774
-          gives that state a next-steps body of its own.
-        */}
-        {instance.sigil && <AppDashboardCapabilities sigil={instance.sigil} />}
+        {bare ? (
+          <AppDashboardNextSteps />
+        ) : (
+          <>
+            <AppDashboardIdentity instance={instance} />
+            {/*
+              Capabilities are the sigil's, so the card only exists once one
+              has been minted.
+            */}
+            {instance.sigil && (
+              <AppDashboardCapabilities sigil={instance.sigil} />
+            )}
+          </>
+        )}
       </div>
     </div>
   );

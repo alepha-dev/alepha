@@ -298,7 +298,7 @@ const ProjectApps = () => {
               ),
           },
           createdAt: {
-            label: tr("app.dashboard.enrolled"),
+            label: tr("app.dashboard.created"),
             sortable: true,
             cell: (instance) => (
               <span className="text-muted-foreground text-xs whitespace-nowrap">

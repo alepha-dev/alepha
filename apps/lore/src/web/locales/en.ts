@@ -1104,7 +1104,23 @@ export default {
   "app.tab.settings": "Settings",
   "app.dashboard.token": "Token",
   "app.dashboard.token.none": "No sigil yet",
-  "app.dashboard.enrolled": "Enrolled",
+  "app.dashboard.identity": "Identity",
+  "app.dashboard.created": "Created",
+  "app.dashboard.deploysTo": "Deploys to",
+  "app.switcher.label": "Switch environment",
+  "app.nextSteps.title": "Next steps",
+  "app.nextSteps.description":
+    "None of these is required. This copy is already tracked; each step below buys one more thing.",
+  "app.nextSteps.done": "Done",
+  "app.nextSteps.sigil.title": "Create a sigil",
+  "app.nextSteps.sigil.description":
+    "The key this copy reports with. Unlocks Analytics, Vitals, Errors and Explore.",
+  "app.nextSteps.url.title": "Pin an address",
+  "app.nextSteps.url.description":
+    "Where this copy lives, if it is not going to report one itself.",
+  "app.nextSteps.estate.title": "Choose an estate",
+  "app.nextSteps.estate.description":
+    "Where this copy deploys to, out of the estates lent to this project.",
   "app.dashboard.address": "Address",
   "app.dashboard.address.unknown": "Not known yet",
   "app.dashboard.address.pinned": "Pinned on the Settings tab",
