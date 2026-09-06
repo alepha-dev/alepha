@@ -25,6 +25,23 @@ export const estateCommandPayloadSchema = z.object({
       size: z.integer().min(0),
     })
     .optional(),
+  /**
+   * How much of the journal a `logs` command asks for.
+   *
+   * Three bounded numbers and one bounded string, never a path and never a
+   * shell fragment. `lines` stops at 2000 because that is Bay's own
+   * `maxLogRequest`: the control API answers in memory while holding a lock
+   * nothing else can take. `grep` is a pattern Bay runs through Go's RE2,
+   * which has no backtracking, so a hostile one is linear rather than a way
+   * to hang the machine.
+   */
+  logs: z
+    .object({
+      lines: z.integer().min(1).max(2000),
+      sinceSeconds: z.integer().min(0).max(604_800).optional(),
+      grep: z.string().max(200).optional(),
+    })
+    .optional(),
 });
 
 export type EstateCommandPayload = Infer<typeof estateCommandPayloadSchema>;

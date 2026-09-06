@@ -39,6 +39,13 @@ export class ProjectSlugService {
     // those paths answered by the server before its own pages.
     "ws",
     "estates",
+    // The per-type console roots. `/estates/:id` as a page cannot exist -
+    // that segment is already the machine-facing one above - so each estate
+    // type gets its own: `/bay/:estateId` today, `/cloudflare/:id` with #E22.
+    // Reserving stops a NEW project claiming the name; an existing one would
+    // be shadowed silently, which is why production was checked before this
+    // landed.
+    "bay",
     "assets",
     "static",
     "public",

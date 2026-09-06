@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
-import { Input } from "@alepha/ui/components/ui/input";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
 import { useClient, useStore } from "alepha/react";
@@ -23,11 +22,17 @@ import type {
   LentEstateResource,
   ProjectEstateController,
 } from "@/api/controllers/ProjectEstateController.ts";
-import {
-  ESTATE_SLUG_MAX_LENGTH,
-  ESTATE_SLUG_PATTERN,
-} from "@/api/schemas/estateSlugSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import {
+  type EstateCreateDraft,
+  emptyEstateDraft,
+  estateDraftBody,
+  estateDraftSlug,
+  estateDraftValid,
+  estateErrorField,
+  estateErrorMessage,
+} from "@/web/app/components/shared/estateCreateDraft.ts";
+import EstateCreateFields from "@/web/app/components/shared/EstateCreateFields.tsx";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 export interface ProjectSettingsEstatesAddDialogProps {
@@ -70,8 +75,11 @@ const ProjectSettingsEstatesAddDialog = (
   const [mode, setMode] = useState<Mode>("existing");
   const [mine, setMine] = useState<EstateResource[] | undefined>();
   const [selected, setSelected] = useState<string | undefined>();
-  const [slug, setSlug] = useState("");
+  const [draft, setDraft] = useState<EstateCreateDraft>(emptyEstateDraft);
   const [busy, setBusy] = useState(false);
+  const [createError, setCreateError] = useState<
+    { message: string; field?: "accountId" | "token" } | undefined
+  >();
 
   useEffect(() => {
     if (!props.open) return;
@@ -99,21 +107,29 @@ const ProjectSettingsEstatesAddDialog = (
   const nothingToPick = mine !== undefined && available.length === 0;
   const activeMode: Mode = nothingToPick ? "new" : mode;
 
-  const normalized = slug.trim().toLowerCase();
-  const slugValid = ESTATE_SLUG_PATTERN.test(normalized);
-  const showSlugError = normalized.length > 0 && !slugValid;
+  const normalized = estateDraftSlug(draft);
+  const draftValid = estateDraftValid(draft);
   const chosen = available.find((item) => item.id === selected);
   const target =
     activeMode === "existing"
       ? chosen?.slug
-      : slugValid
+      : draftValid
         ? normalized
         : undefined;
+  // The trust sentence names what is actually being granted, and that is not
+  // the same thing for the two types: a machine, or a Cloudflare account
+  // with its storage and secrets bound to it.
+  const grantsCloudflare =
+    activeMode === "existing"
+      ? chosen?.type === "cloudflare"
+      : draft.type === "cloudflare";
 
   const close = (open: boolean) => {
     if (busy) return;
     if (!open) {
-      setSlug("");
+      // The token never outlives the dialog that carried it.
+      setDraft(emptyEstateDraft());
+      setCreateError(undefined);
       setSelected(undefined);
       setMode("existing");
     }
@@ -134,17 +150,28 @@ const ProjectSettingsEstatesAddDialog = (
       } else {
         const minted = await projectEstateApi.createProjectEstate({
           params: { projectId: project.id },
-          body: { slug: normalized },
+          body: estateDraftBody(draft),
         });
         const { secret, ...lent } = minted;
+        // Absent for a cloudflare create, because nothing was minted.
         props.onAttached(lent, secret);
         toaster.success(tr("estates.toast.created"));
       }
-      setSlug("");
+      setDraft(emptyEstateDraft());
       setSelected(undefined);
       props.onOpenChange(false);
     } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
+      // The create path keeps the dialog open with the message beside the
+      // field it concerns; attaching an existing estate has no field to
+      // point at, so it stays a toast.
+      if (activeMode === "new") {
+        setCreateError({
+          message: estateErrorMessage(error),
+          field: estateErrorField(error),
+        });
+      } else {
+        toaster.error(estateErrorMessage(error));
+      }
     } finally {
       setBusy(false);
     }
@@ -211,30 +238,26 @@ const ProjectSettingsEstatesAddDialog = (
             ))}
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            <Input
-              value={slug}
-              maxLength={ESTATE_SLUG_MAX_LENGTH}
-              aria-label={tr("estates.add.slug")}
-              placeholder={tr("estates.add.slugPlaceholder")}
-              onChange={(event) => setSlug(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && target && !busy) void submit();
-              }}
-            />
-            {showSlugError && (
-              <span className="text-destructive text-xs">
-                {tr("estates.add.invalid")}
-              </span>
-            )}
-          </div>
+          <EstateCreateFields
+            draft={draft}
+            onChange={setDraft}
+            busy={busy}
+            error={createError}
+          />
         )}
 
         {target && (
-          <div className="border-destructive/30 bg-destructive/5 flex gap-2 rounded-md border p-3">
+          <div
+            className="border-destructive/30 bg-destructive/5 flex gap-2 rounded-md border p-3"
+            data-testid="estate-add-trust"
+          >
             <TriangleAlert className="text-destructive mt-0.5 size-4 shrink-0" />
             <span className="text-sm">
-              {tr("estates.add.trust", { args: [project.title, target] })}
+              {grantsCloudflare
+                ? tr("estates.add.trust.cloudflare", {
+                    args: [project.title, target],
+                  })
+                : tr("estates.add.trust", { args: [project.title, target] })}
             </span>
           </div>
         )}
@@ -243,11 +266,17 @@ const ProjectSettingsEstatesAddDialog = (
           <Button variant="ghost" onClick={() => close(false)} disabled={busy}>
             {tr("common.cancel")}
           </Button>
-          <Button onClick={() => void submit()} disabled={busy || !target}>
+          <Button
+            onClick={() => void submit()}
+            disabled={busy || !target}
+            data-testid="estate-add-submit"
+          >
             {busy && <Loader2 className="size-4 animate-spin" />}
-            {activeMode === "existing"
-              ? tr("estates.add.submit")
-              : tr("estates.add.submitNew")}
+            {busy && activeMode === "new" && draft.type === "cloudflare"
+              ? tr("estates.cloudflare.checking")
+              : activeMode === "existing"
+                ? tr("estates.add.submit")
+                : tr("estates.add.submitNew")}
           </Button>
         </DialogFooter>
       </DialogContent>

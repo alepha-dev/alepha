@@ -1,4 +1,5 @@
 import { FileImage } from "@alepha/ui/components/file-image/file-image";
+import { formatBytes } from "@alepha/ui/lib/utils";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
@@ -172,13 +173,6 @@ const BROKEN_REASON_KEY: Record<BrokenReason, string> = {
   "attachment-not-found": "folios.wikilink.broken.attachmentNotFound",
   "feedback-not-found": "folios.wikilink.broken.feedbackNotFound",
   "release-not-found": "folios.wikilink.broken.releaseNotFound",
-};
-
-const formatBytes = (bytes: number | undefined): string => {
-  if (bytes == null) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
 const stripMarkdown = (raw: string): string =>
