@@ -242,6 +242,32 @@ describe("TreeView drag and drop", () => {
     expect(rowOf("Child")).toBeTruthy();
   });
 
+  it("withholds the inside ring on a forbidden target too", () => {
+    // ⚠️ A case of its own, because the ring is a CLASS on the row while the
+    // before/after markers are elements: guarding one and not the other looks
+    // identical in a diff, and only the browser notices.
+    const NESTED = buildTree([
+      { id: "d-0", name: "Branch", branch: true },
+      { id: "inner", name: "Inner", branch: true, parentId: "d-0" },
+    ]);
+
+    render(
+      <TreeView
+        label="Files"
+        rows={flattenTree(NESTED, new Set())}
+        collapsed={new Set()}
+        onSelect={() => {}}
+        onToggle={() => {}}
+        draggable
+        dragId="d-0"
+        drop={{ id: "inner", position: "inside" }}
+        onDragOver={() => {}}
+      />,
+    );
+
+    expect(rowOf("Inner").className).not.toContain("ring-inset");
+  });
+
   it("marks the dragged row and draws the drop marker where the drop is", () => {
     const { rerender } = render(
       <Harness dragId="leaf" drop={{ id: "d-0", position: "inside" }} />,

@@ -236,6 +236,7 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
       isSelected && "bg-muted font-medium",
       props.isDragging && "opacity-45",
       props.dropHere === "inside" &&
+        !props.isDropForbidden &&
         "bg-primary/10 ring-primary/60 ring-1 ring-inset",
     ),
     style: {

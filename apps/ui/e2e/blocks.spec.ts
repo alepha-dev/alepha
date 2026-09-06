@@ -355,8 +355,11 @@ test.describe("blocks", () => {
 
     // Three trees, one per specimen, each with the fixture's rows in it.
     await expect(page.getByRole("tree", { name: "Files" })).toHaveCount(3);
+    // ⚠️ `LICENSE` rather than `README.md`, and not arbitrarily: the third
+    // specimen draws a trailing badge, so that row's text is "README.md3" and
+    // an anchored match finds two rows out of three. LICENSE carries no count.
     await expect(
-      page.locator('[data-slot="tree-view-row"]', { hasText: /^README\.md$/ }),
+      page.locator('[data-slot="tree-view-row"]', { hasText: /^LICENSE$/ }),
     ).toHaveCount(3);
 
     // The line the drag specimen reports its resolved parent on, which
