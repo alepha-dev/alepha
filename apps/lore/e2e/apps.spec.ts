@@ -370,13 +370,13 @@ test.describe("Apps", () => {
     const ingest = `${baseURL}/sigils/ingest`;
 
     await test.step("the owner turns Apps on, from a page that no longer enrols", async () => {
-      await page.goto(`/${projectSlug}/settings/sigils`);
+      await page.goto(`/${projectSlug}/settings/apps`);
       await page.waitForLoadState("networkidle");
 
       // The settings page rendering at all is worth asserting: removing this
       // route without editing the nav array crashed every settings page once.
-      // ⚠️ The route name and path still say `sigils` while the page says Apps,
-      // which is deliberate - a `$page` rename is not typecheck-protected.
+      // The route is `/settings/apps` now - the key finally matches the label,
+      // which it could not while it lived inside `projects.features`.
       await expect(
         page.getByRole("switch", { name: "Enable", exact: true }),
       ).toBeVisible({ timeout: 15_000 });
@@ -625,7 +625,7 @@ test.describe("Apps", () => {
       // the Sigils page (Task 8) onto its own page (Task 7), which
       // otherwise has no e2e coverage at all — this step earns its keep
       // twice.
-      await page.goto(`/${projectSlug}/settings/feedback`);
+      await page.goto(`/${projectSlug}/settings/support`);
       await page.waitForLoadState("networkidle");
 
       const toggle = page.getByRole("switch", { name: "Enable", exact: true });
@@ -641,7 +641,7 @@ test.describe("Apps", () => {
       // wants" step below only makes API calls (no navigation of its own),
       // and the step after that reloads *this* page expecting to still be
       // looking at the sigil row.
-      await page.goto(`/${projectSlug}/settings/sigils`);
+      await page.goto(`/${projectSlug}/settings/apps`);
       await page.waitForLoadState("networkidle");
     });
 

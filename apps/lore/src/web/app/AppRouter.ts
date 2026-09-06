@@ -1421,15 +1421,11 @@ export class AppRouter {
       this.projectSettingsMembers,
       this.projectSettingsAreas,
       this.projectSettingsArea,
-      this.projectSettingsKanban,
-      this.projectSettingsFolios,
-      this.projectSettingsEpics,
-      this.projectSettingsFeedback,
-      this.projectSettingsSigils,
+      this.projectSettingsWork,
+      this.projectSettingsKnowledge,
+      this.projectSettingsApps,
+      this.projectSettingsSupport,
       this.projectSettingsEstates,
-      this.projectSettingsReleases,
-      this.projectSettingsQuality,
-      this.projectSettingsQuests,
     ],
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Settings`,
@@ -1556,98 +1552,59 @@ export class AppRouter {
     },
   });
 
-  projectSettingsKanban = $page({
-    name: "projectSettingsKanban",
-    path: "/kanban",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Kanban`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsKanbanPage.tsx"),
-  });
-
-  projectSettingsFolios = $page({
-    name: "projectSettingsFolios",
-    path: "/folios",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Folios`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsFoliosPage.tsx"),
-  });
-
-  projectSettingsEpics = $page({
-    name: "projectSettingsEpics",
-    path: "/epics",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Epics`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsEpicsPage.tsx"),
-  });
-
   /**
-   * The `features.quality` switch. The Reports Quality tab is gated on it and
-   * the flag is absent from every project's defaults, so until this page
-   * existed nothing in the UI could ever show a run CI had pushed.
-   */
-  projectSettingsQuality = $page({
-    name: "projectSettingsQuality",
-    path: "/quality",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Quality`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsQualityPage.tsx"),
-  });
-
-  projectSettingsFeedback = $page({
-    name: "projectSettingsFeedback",
-    path: "/feedback",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Feedback`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsFeedbackPage.tsx"),
-  });
-
-  /**
-   * Apps — the module switch, and the blight ignore rules.
+   * The four capability pages, one per capability.
    *
-   * ⚠️ **The name and the path deliberately still say `sigils`** while the page
-   * says Apps (#1770). Renaming a `$page` is not typecheck-protected, and this
-   * name is carried as a plain string in `ProjectSettings.tsx`'s nav array,
-   * which crashed every settings page once when this route moved. The label is
-   * the only thing that changed.
+   * They replace nine: Quests, Kanban, Folios, Epics, Feedback, Sigils,
+   * Releases, Quality and the Folios summary switch. Four of those nine were a
+   * single switch and nothing else, and the group they sat in was called
+   * Features - which named the storage rather than the thing.
+   *
+   * ⚠️ **The names and the paths moved, and `$page` renames are not
+   * typecheck-protected.** `ProjectSettings.tsx`'s nav carries them as plain
+   * strings, and `app-routes.spec.ts` is what turns a missed one into a red
+   * test rather than a dead link. Estates keeps its own page beside Members
+   * and Areas: a project can be lent one with no sigils, and folding it under
+   * Apps would hide it from exactly that project.
    */
-  projectSettingsSigils = $page({
-    name: "projectSettingsSigils",
-    path: "/sigils",
+  projectSettingsWork = $page({
+    name: "projectSettingsWork",
+    path: "/work",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Work`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsWorkPage.tsx"),
+  });
+
+  projectSettingsKnowledge = $page({
+    name: "projectSettingsKnowledge",
+    path: "/knowledge",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Knowledge`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsKnowledgePage.tsx"),
+  });
+
+  projectSettingsApps = $page({
+    name: "projectSettingsApps",
+    path: "/apps",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Apps`,
     }),
     lazy: () =>
-      import("./components/project/settings/ProjectSettingsSigilsPage.tsx"),
+      import("./components/project/settings/ProjectSettingsAppsPage.tsx"),
   });
 
-  projectSettingsReleases = $page({
-    name: "projectSettingsReleases",
-    path: "/releases",
+  projectSettingsSupport = $page({
+    name: "projectSettingsSupport",
+    path: "/support",
     head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Releases`,
+      title: `${previous?.title ?? ""} › Support`,
     }),
     lazy: () =>
-      import("./components/project/settings/ProjectSettingsReleasesPage.tsx"),
-  });
-
-  projectSettingsQuests = $page({
-    name: "projectSettingsQuests",
-    path: "/quests",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Quests`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsQuestsPage.tsx"),
+      import("./components/project/settings/ProjectSettingsSupportPage.tsx"),
   });
 
   projectQuest = $page({

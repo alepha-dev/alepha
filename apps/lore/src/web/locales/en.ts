@@ -556,6 +556,7 @@ export default {
   "project.settings.general.title": "Project",
   "project.settings.nav.banner": "General",
   "project.settings.nav.members": "Members",
+  "project.settings.nav.group.capabilities": "Capabilities",
   "project.settings.nav.areas": "Areas",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
@@ -619,7 +620,6 @@ export default {
   "project.capability.support.label": "Collect feedback",
   "project.capability.support.description":
     "A public request form and a triage inbox.",
-  "project.settings.nav.group.features": "Features",
   "project.settings.areas.title": "Areas",
   "project.settings.areas.description":
     "The parts of your system. Every quest belongs to exactly one. Rename an area onto an existing one to merge them.",
@@ -651,15 +651,7 @@ export default {
     "Delete this area? It has no quests, and this cannot be undone.",
   "project.settings.areas.delete.blocked":
     "This area still holds quests. Merge it into another area instead.",
-  "project.settings.nav.kanban": "Kanban",
-  "project.settings.nav.folios": "Folios",
-  "project.settings.nav.epics": "Epics",
-  "project.settings.nav.feedback": "Feedback",
-  "project.settings.nav.sigils": "Apps",
   "project.settings.nav.estates": "Estates",
-  "project.settings.nav.releases": "Releases",
-  "project.settings.nav.quests": "Quests",
-  "project.settings.nav.quality": "Quality",
   "project.reports.nav.overview": "Overview",
   "project.reports.nav.quests": "Quests",
   "project.reports.nav.members": "Members",
@@ -723,21 +715,7 @@ export default {
   "reports.members.idle.empty": "Everyone's been active.",
   "reports.members.idle.lastCompleted": "last completed $1",
   "reports.members.idle.never": "never",
-  "project.settings.quests.title": "Quest features",
-  "project.settings.quests.subtitle":
-    "Toggle the per-quest features visible across this project.",
-  "project.settings.quests.estimate.label": "Quest estimate",
-  "project.settings.quests.estimate.description":
-    "Plan how long a quest should take, shown as a badge on the quest and in the list.",
-  "project.settings.quests.reminder.label": "Quest reminder",
-  "project.settings.quests.reminder.description":
-    "Periodic email reminders for accepted quests.",
-  "project.settings.quests.chrono.label": "Quest chrono",
-  "project.settings.quests.chrono.description":
-    "Stopwatch attached to a quest. Start/stop a session from the quest view.",
   "project.settings.feature.enable": "Enable",
-  "project.settings.feature.kanban.description":
-    "A drag & drop board to move quests between New, In Progress and Completed.",
   "project.settings.kanban.tagColors.title": "Tag colours",
   "project.settings.kanban.tagColors.description":
     "Give each tag a colour so board cards and quest pages can be read at a glance. Tags with no colour stay neutral.",
@@ -756,17 +734,12 @@ export default {
   "project.settings.kanban.columns.wip.none": "No limit",
   "project.settings.kanban.columns.delete": "Delete",
   "project.settings.kanban.columns.reorder": "Reorder column",
-  "project.settings.feature.folios.description":
-    "Markdown notes attached to the project: searchable, taggable, AI-accessible.",
-  "project.settings.folios.summary.label": "Show summary for agents",
-  "project.settings.folios.summary.description":
-    "Reveal the short summary each folio carries for AI agents. It is always written and always readable over MCP. This only decides whether the field shows while you read or edit.",
-  "project.settings.feature.releases.description":
-    "Group epics and quests into named releases, each with its own progress and changelog.",
   "project.settings.roadmap.title": "Roadmap",
   "project.settings.roadmap.description":
     "A read-only page listing your open releases and the epics inside them. No quests, no names, no backlog.",
   "project.settings.roadmap.visibility.label": "Who can see it",
+  "project.settings.capability.delay":
+    "A change here can take up to a minute to reach a session already open elsewhere.",
   "project.settings.roadmap.delay":
     "Changes can take up to a minute to reach visitors.",
   "project.settings.roadmap.level.off": "Off",
@@ -779,14 +752,6 @@ export default {
   "project.settings.roadmap.publicConfirm.description":
     "Anyone with the link will see your release tags, their target dates, and the titles of the epics inside them, including epics you have not started yet.",
   "project.settings.roadmap.publicConfirm.confirm": "Make it public",
-  "project.settings.feature.sigils.description":
-    "Track the apps this project deploys, one row per app and environment. Each one can hold a key it reports crashes, page views and web vitals with.",
-  "project.settings.feature.feedback.description":
-    "Let any signed-in user send this project a bug report or feature request, and give the owner an inbox to triage them in.",
-  "project.settings.feature.epics.description":
-    "Group quests and folios under a bounded initiative, kept out of the backlog until you begin it.",
-  "project.settings.feature.quality.description":
-    "Show a Quality tab on Reports with the coverage and test totals your CI pushes. Pushes are kept either way; this only decides whether the tab is offered.",
   "project.settings.delete.modal.title": "Delete Project",
   "project.settings.delete.modal.description":
     "This action cannot be undone. This will permanently destroy the project and all its quests.",

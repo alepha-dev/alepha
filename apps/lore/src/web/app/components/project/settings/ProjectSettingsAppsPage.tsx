@@ -7,10 +7,10 @@ import { useState } from "react";
 
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
 import ProjectBlightRulesDialog from "../blights/ProjectBlightRulesDialog.tsx";
-import ProjectSettingsFeatureSection from "./ProjectSettingsFeatureSection.tsx";
-import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
+import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
 
 /**
  * Two blocks: the module switch, and the ignore rules.
@@ -25,22 +25,14 @@ import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
  * the instance that holds it, where the analytics they would destroy are also
  * shown.
  *
- * ## ⚠️ The route name and path did NOT move
+ * ## The key finally matches the label
  *
- * `projectSettingsSigils` at `/settings/sigils`, unchanged. `$page` renames are
- * not typecheck-protected and `ProjectSettings.tsx`'s nav array carries the
- * name as a plain string; moving this route once crashed every settings page.
- * Only the nav label and the head title read "Apps".
- *
- * ## ⚠️ The persisted key is still `features.sigils`
- *
- * Relabelled, never renamed. The key is `z.boolean().optional()`, so unlike the
- * 2026-08-05 `projects.features` incident a rename would not fail to decode -
- * it would do something quieter and just as damaging: every project that had
- * Apps ON reads `undefined` for the new key and silently loses the feature,
- * with the old value still sitting in the JSON column. Exactly the
- * `features.milestones` situation, which has said "Releases" in the UI since
- * 2026-08-30 and `milestones` on disk throughout.
+ * This page was `projectSettingsSigils` at `/settings/sigils`, writing
+ * `features.sigils`, while every label on it said Apps - because a key inside
+ * `projects.features` could not be renamed without every project that had the
+ * module on silently losing it. Moving the storage to a row of its own is what
+ * let the name move: the capability is `apps`, and `track` is the option that
+ * carries what `sigils` actually gated.
  *
  * ## ⚠️ Ignore rules are why this page survives at all
  *
@@ -51,23 +43,18 @@ import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
  * page is a defensible home. Giving Blights its own settings page is the
  * cleaner taxonomy and is deliberately not in this epic.
  */
-const ProjectSettingsSigilsPage = () => {
+const ProjectSettingsAppsPage = () => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
   const [rulesOpen, setRulesOpen] = useState(false);
 
-  const master = useProjectFeatureToggle("sigils");
-  const enabled = master.enabled;
+  const enabled = hasCapability(project, "apps");
 
   if (!project) return null;
 
   return (
     <div className="flex flex-col gap-6">
-      <ProjectSettingsFeatureSection
-        featureKey="sigils"
-        enabled={enabled}
-        onToggle={master.toggle}
-      />
+      <ProjectSettingsCapabilitySection capability="apps" />
 
       {enabled && (
         <div className="flex flex-col gap-2">
@@ -109,4 +96,4 @@ const ProjectSettingsSigilsPage = () => {
   );
 };
 
-export default ProjectSettingsSigilsPage;
+export default ProjectSettingsAppsPage;

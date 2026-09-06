@@ -334,7 +334,9 @@ test.describe("Kanban", () => {
 
     await addKanbanColumn(page, projectId, "Review");
 
-    await page.goto(`/${projectSlug}/settings/kanban`);
+    // The board's column configuration is a section on the Work page now,
+    // gated on `work.board`: nine Features pages collapsed to four.
+    await page.goto(`/${projectSlug}/settings/work`);
     const rows = page.getByTestId("kanban-settings-column");
     await expect(rows).toHaveCount(2, { timeout: 10_000 });
     await expect(rows.nth(0)).toHaveAttribute(
@@ -348,6 +350,17 @@ test.describe("Kanban", () => {
     // a single mouse.move would be treated as a click.
     const source = rows.nth(1).getByRole("button", { name: /reorder/i });
     const target = rows.nth(0);
+    // ⚠️ Centred, and `scrollIntoViewIfNeeded` will not do it. `boundingBox`
+    // is viewport relative and `mouse.move` takes viewport coordinates, and
+    // "if needed" is satisfied by a grip sitting three pixels off the bottom
+    // edge - where the pointerdown lands nowhere and the drag never starts.
+    // The columns section sits under seven switches on the Work page, where
+    // it used to be the second thing on a page of its own.
+    //
+    // ⚠️ And the drop lands ON the first row, never past it: `handleReorder`
+    // returns early when `over` is null, so a move that clears both rows
+    // looks exactly like a drag that never happened.
+    await source.evaluate((el) => el.scrollIntoView({ block: "center" }));
     const from = await source.boundingBox();
     const to = await target.boundingBox();
     if (!from || !to) throw new Error("missing bounding boxes");
@@ -359,6 +372,10 @@ test.describe("Kanban", () => {
 
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
+    // Past the first row's midpoint, not onto it. dnd-kit's sortable strategy
+    // swaps when the pointer crosses the neighbour's centre, and stopping
+    // exactly on it is a coin flip - which is what it became once the section
+    // moved down the Work page and the two rows sat at different offsets.
     await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
       steps: 12,
     });
