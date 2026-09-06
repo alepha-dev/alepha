@@ -783,3 +783,111 @@ func TestInventorySendFailureIsNotFatal(t *testing.T) {
 		t.Fatalf("a failed push must be logged at debug: %q", logs.String())
 	}
 }
+
+/*
+A `query` is answered with an inventory, and answered while the executor is
+busy.
+
+The blocking handler is the point: a refresh arriving during a long deploy has
+to answer immediately rather than queue behind it, so the push path must never
+touch the executor's lock. Here the handler sits inside Command for the whole
+test, and the inventory still goes out.
+*/
+type blockingHandler struct {
+	recordingHandler
+	release chan struct{}
+	entered chan struct{}
+}
+
+func (h *blockingHandler) Command(_ context.Context, cmd Command, send func(Ack) error) {
+	close(h.entered)
+	_ = send(NewAck(cmd.ID, "running", "", ""))
+	<-h.release
+	_ = send(NewAck(cmd.ID, "done", "", ""))
+}
+
+func TestClientAnswersAQueryWithAnInventory(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{
+		configured: true,
+		gauge:      fixedGauge{ok: true, reading: Reading{CPUPercent: 1, MemoryPercent: 2}},
+		inventory:  sampleInventory(),
+	})
+	s := f.lore.session(t)
+	_ = s.frame(t) // hello
+
+	w := welcomeFrame()
+	// Long enough that nothing ticks: every frame below was asked for.
+	w["statsIntervalSeconds"] = 3600
+	s.send(t, w)
+	if _, ok := s.inventoryFrame(t, 2*time.Second); !ok {
+		t.Fatal("the welcome must push an inventory")
+	}
+
+	s.send(t, map[string]any{"type": "query"})
+	if _, ok := s.inventoryFrame(t, 3*time.Second); !ok {
+		t.Fatal("a query must be answered with an inventory")
+	}
+}
+
+func TestQueryAnswersWhileTheExecutorIsBusy(t *testing.T) {
+	handler := &blockingHandler{
+		release: make(chan struct{}),
+		entered: make(chan struct{}),
+	}
+	lore := newFakeLore(t)
+	store := NewStore(t.TempDir())
+	if err := store.Set(Config{Sink: lore.sink(), Secret: clientSecret}); err != nil {
+		t.Fatal(err)
+	}
+	handler.inventory = sampleInventory()
+	client := &Client{
+		Store: store, Status: NewStatus(), Reload: make(chan struct{}, 1),
+		Log:          slog.New(slog.NewTextHandler(io.Discard, nil)),
+		PingInterval: 40 * time.Millisecond, PongWait: 40 * time.Millisecond,
+		MinBackoff: 5 * time.Millisecond, MaxBackoff: 20 * time.Millisecond,
+		Gauge:                fixedGauge{ok: true, reading: Reading{CPUPercent: 1, MemoryPercent: 2}},
+		MinStatsInterval:     10 * time.Millisecond,
+		MinInventoryInterval: time.Millisecond,
+		Handler:              handler,
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		client.Run(ctx)
+		close(done)
+	}()
+	t.Cleanup(func() {
+		close(handler.release)
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Error("Run did not return after cancel")
+		}
+	})
+
+	s := lore.session(t)
+	_ = s.frame(t) // hello
+	w := welcomeFrame()
+	w["statsIntervalSeconds"] = 3600
+	s.send(t, w)
+	if _, ok := s.inventoryFrame(t, 2*time.Second); !ok {
+		t.Fatal("the welcome must push an inventory")
+	}
+
+	// A command that never finishes, holding whatever the executor holds.
+	s.send(t, map[string]any{
+		"type": "command", "id": "11111111-2222-3333-4444-555555555555",
+		"kind": "restart", "app": "lore", "environment": "production",
+	})
+	select {
+	case <-handler.entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the command never reached the executor")
+	}
+
+	s.send(t, map[string]any{"type": "query"})
+	if _, ok := s.inventoryFrame(t, 3*time.Second); !ok {
+		t.Fatal("a query during a running command must still answer")
+	}
+}

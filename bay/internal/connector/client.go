@@ -484,6 +484,18 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			return
 		}
 		go c.Handler.Command(ctx, cmd, c.sendAck)
+	case "query":
+		// "Tell me what you are running, now." Deliberately NOT a command:
+		// it carries no id, gets no ack, never touches Outcomes, and above
+		// all never goes through the executor's mutex, so a refresh arriving
+		// during a long deploy answers immediately instead of queueing
+		// behind it.
+		//
+		// The kick is the whole handling. The loop that already pushes on
+		// the tick pushes now, the buffered channel coalesces a burst into
+		// one, and the 5 s floor bounds what a Lore bug emitting a query per
+		// second can cost this machine.
+		c.KickInventory()
 	default:
 		c.Log.Debug("ignoring an unknown frame from lore", "type", frame.Type)
 	}
