@@ -7,19 +7,26 @@ import { estateInventoryHostSchema } from "./estateInventoryHostSchema.ts";
  * Which of the three states an instance is in, once what the machine reports
  * is held against what Lore tracks.
  *
+ * ⚠️ **Called `tracking`, never `state`, on the rows that carry it.** The
+ * machine already reports a `state` - systemd's `ActiveState` - and the two
+ * answer different questions: one is what Lore knows about the instance, the
+ * other is what the process is doing. Naming both `state` makes the extend
+ * silently overwrite the machine's, which is a whole column of truth
+ * disappearing without an error.
+ *
  * ⚠️ A text enum, so it is never an `ORDER BY`. Lore's board sorted a priority
  * enum in SQL for its whole life and showed `optional` above `high`; the
  * order this wants (matched, then machine-only, then Lore-only) is a
  * comparator over the array in memory.
  */
-export const ESTATE_INVENTORY_APP_STATES = [
+export const ESTATE_INVENTORY_TRACKING = [
   "matched",
   "untracked",
   "missing",
 ] as const;
 
-export type EstateInventoryAppState =
-  (typeof ESTATE_INVENTORY_APP_STATES)[number];
+export type EstateInventoryTracking =
+  (typeof ESTATE_INVENTORY_TRACKING)[number];
 
 /**
  * The project an instance belongs to, as the console names it: enough to
@@ -43,7 +50,7 @@ export type EstateInventoryProject = Infer<typeof estateInventoryProjectSchema>;
  */
 export const estateInventoryReportedAppSchema = estateInventoryAppSchema.extend(
   {
-    state: z.enum(["matched", "untracked"]),
+    tracking: z.enum(["matched", "untracked"]),
     instanceId: z.uuid().optional(),
     project: estateInventoryProjectSchema.optional(),
   },
@@ -66,7 +73,7 @@ export const estateInventoryExpectedAppSchema = z.object({
   env: z.string().max(100),
   instanceId: z.uuid(),
   project: estateInventoryProjectSchema.optional(),
-  state: z.literal("missing"),
+  tracking: z.literal("missing"),
 });
 
 export type EstateInventoryExpectedApp = Infer<
