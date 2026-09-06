@@ -20,6 +20,8 @@ import {
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
+import type { EstateServerFrame } from "../schemas/estateServerFrameSchema.ts";
+import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { EstateController } from "./EstateController.ts";
@@ -48,10 +50,13 @@ interface TestContext {
  * Pinned, like every other lore spec: the ROOT vitest config sets
  * `DATABASE_URL` to a Postgres URL, which this app's SQLite provider rejects.
  */
-const setup = async (): Promise<TestContext> => {
+const setup = async (
+  substitute?: (alepha: Alepha) => void,
+): Promise<TestContext> => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
   });
+  substitute?.(alepha);
 
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
@@ -471,5 +476,99 @@ describe("EstateController, the owner's list", () => {
     for (const item of items) {
       expect(Object.keys(item)).not.toContain("secretHash");
     }
+  });
+});
+
+/**
+ * A counting transport: the refresh path is about whether a frame goes out,
+ * so the spec substitutes the seam the queue already has rather than opening
+ * a socket.
+ */
+class CountingTransport extends EstateCommandTransport {
+  public pushed: EstateServerFrame[] = [];
+
+  override async push(
+    estate: Estate,
+    frame: EstateServerFrame,
+  ): Promise<boolean> {
+    void estate;
+    this.pushed.push(frame);
+    return true;
+  }
+}
+
+describe("EstateController, refresh", () => {
+  let ctx: TestContext;
+  let transport: CountingTransport;
+
+  beforeEach(async () => {
+    ctx = await setup((alepha) =>
+      alepha.with({
+        provide: EstateCommandTransport,
+        use: CountingTransport,
+      }),
+    );
+    transport = ctx.alepha.inject(CountingTransport);
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  /**
+   * A transient frame pushed into nothing would report success for something
+   * that will never happen, so an offline machine is a refusal rather than a
+   * quiet no-op.
+   */
+  it("refuses while the machine is offline, and pushes nothing", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const minted = await createEstate(ctx, user, "ovh-refresh-off");
+
+    await expect(
+      ctx.controller.refreshEstate(
+        { params: { estateId: minted.id } },
+        { user },
+      ),
+    ).rejects.toThrow(BadRequestError);
+    expect(transport.pushed).toEqual([]);
+  });
+
+  it("pushes exactly one query frame while the machine is connected", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const minted = await createEstate(ctx, user, "ovh-refresh-on");
+    const now = new Date().toISOString();
+    await ctx.repos.estates.updateById(minted.id, {
+      connectedAt: now,
+      lastSeenAt: now,
+    });
+
+    const result = await ctx.controller.refreshEstate(
+      { params: { estateId: minted.id } },
+      { user },
+    );
+
+    expect(result).toEqual({ asked: true });
+    // No row, no queue, no ack: the frame is the whole mechanism.
+    expect(transport.pushed).toEqual([{ type: "query" }]);
+  });
+
+  it("answers a non-owner as if the estate did not exist", async ({
+    expect,
+  }) => {
+    const ada = await createUser(ctx);
+    const grace = await createUser(ctx);
+    const minted = await createEstate(ctx, ada, "ovh-refresh-mine");
+
+    await expect(
+      ctx.controller.refreshEstate(
+        { params: { estateId: minted.id } },
+        { user: grace },
+      ),
+    ).rejects.toThrow(NotFoundError);
+    expect(transport.pushed).toEqual([]);
   });
 });

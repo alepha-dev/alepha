@@ -2,6 +2,7 @@ import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
+import { $rateLimit } from "alepha/server/rate-limit";
 
 import { ESTATE_TYPES, estates } from "../entities/estates.ts";
 import {
@@ -150,6 +151,60 @@ export class EstateController {
       this.inventories.reconcile(
         await this.service.loadOwned(params.estateId, user),
       ),
+  });
+
+  /**
+   * Ask the machine for a fresh inventory, instead of waiting up to half an
+   * hour for its next tick.
+   *
+   * ⚠️ **The answer is asynchronous, and nothing here may pretend otherwise.**
+   * The Worker cannot read a Durable Object socket's reply: it emits into the
+   * room and the machine's answer arrives later, on the machine's own
+   * connection, through the ordinary `inventory` path. So this returns
+   * "asked", and the page re-reads {@link getEstateInventory} a moment later.
+   * A promise that resolved with the inventory would be a lie about the
+   * transport.
+   *
+   * ⚠️ **Not a command, deliberately.** A row buys idempotency, a queue, an
+   * ack, redelivery and a sweep, and none of that is worth having here: the
+   * failure mode of a lost refresh is that somebody clicks again.
+   *
+   * Refused rather than silently dropped while the machine is offline. A
+   * transient frame pushed into nothing would report success for something
+   * that will never happen.
+   *
+   * The limit is per estate rather than per caller: the cost being bounded is
+   * the machine's, and one owner with two tabs is the same machine. Bay's own
+   * 5 s coalescing is the hard floor; this is the polite one.
+   */
+  refreshEstate = $action({
+    use: [
+      $secure({ permissions: ["estate:update"] }),
+      $rateLimit({
+        max: 6,
+        windowMs: 60_000,
+        key: (input: { params: { estateId: string } }) =>
+          `estate-refresh:${input.params.estateId}`,
+      }),
+    ],
+    method: "POST",
+    path: "/estates/:estateId/refresh",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: z.object({ asked: z.boolean() }),
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      if (!this.service.isOnline(estate)) {
+        throw new BadRequestError(
+          `Estate "${estate.slug}" is not connected right now, so there is nothing to ask`,
+        );
+      }
+      // `false` here is the race between the liveness stamps and the socket
+      // actually being there. Reported rather than thrown: nothing was lost,
+      // and the next tick answers anyway.
+      return { asked: await this.transport.push(estate, { type: "query" }) };
+    },
   });
 
   /**
