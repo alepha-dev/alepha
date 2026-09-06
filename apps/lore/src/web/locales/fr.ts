@@ -1222,6 +1222,11 @@ export default {
     "Retire de Lore la trace de cette copie déployée, son sigil, et tout ce que ce sigil a remonté : pages vues, Web Vitals, visiteurs uniques et son budget d\u2019erreurs. Les avaries déjà consignées sont conservées. Rien n\u2019est retiré du déploiement : la copie continue de tourner là où elle tourne.",
   "app.settings.delete.confirm": "Supprimer",
   "app.settings.delete.deleted": "App supprimée",
+  "app.settings.sigil.feedback.dropped.title":
+    "Les retours ne sont pas collectés",
+  "app.settings.sigil.feedback.dropped.description":
+    "Cette application envoie des retours et le projet les jette. Activez Recueillir les retours pour les conserver.",
+  "app.settings.sigil.feedback.dropped.action": "Ouvrir les paramètres Support",
   "app.settings.credential": "Accès",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":

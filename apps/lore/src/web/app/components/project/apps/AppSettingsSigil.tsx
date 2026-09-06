@@ -10,10 +10,13 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouter } from "alepha/react/router";
 import { KeyRound, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { SigilController } from "@/api/controllers/SigilController.ts";
+import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
@@ -62,6 +65,8 @@ const AppSettingsSigil = () => {
   const dialog = useDialog();
   const sigilApi = useClient<SigilController>();
 
+  const router = useRouter<AppRouter>();
+
   const [project] = useStore(currentProjectAtom);
   const [member] = useStore(currentProjectMemberAtom);
   const [instance, setInstance] = useStore(currentInstanceAtom);
@@ -77,6 +82,8 @@ const AppSettingsSigil = () => {
   if (!project || !instance) {
     return null;
   }
+
+  const collectsFeedback = hasCapability(project, "support");
 
   const isOwner = member?.owner ?? false;
   const sigil = instance.sigil;
@@ -219,6 +226,38 @@ const AppSettingsSigil = () => {
       >
         {sigil ? (
           <>
+            {/* ⚠️ The bug this row exists for. The reporting client fails open
+                on any config error, so an app whose sigil carries the
+                `feedback` kind while the project does not collect feedback
+                keeps sending it - and `absorb` stamps `lastSeenAt` for a batch
+                every gate rejected, so the app looks healthy while nothing is
+                stored and nothing anywhere says so.
+                `SigilIngestService.gatesFor` needs `apps.track` AND `support`,
+                which is the one place a capability reads another's state: to
+                NARROW what it does, never to widen it. Support must never
+                silently enable tracking. */}
+            {sigil.kinds.includes("feedback") && !collectsFeedback && (
+              <SettingsRow
+                label={tr("app.settings.sigil.feedback.dropped.title")}
+                description={tr(
+                  "app.settings.sigil.feedback.dropped.description",
+                )}
+              >
+                <Button
+                  variant="outline"
+                  render={
+                    <a
+                      href={router.path("projectSettingsSupport", {
+                        params: { projectSlug: project.slug },
+                      })}
+                    />
+                  }
+                >
+                  {tr("app.settings.sigil.feedback.dropped.action")}
+                </Button>
+              </SettingsRow>
+            )}
+
             <SettingsRow
               label={tr("app.settings.rotate.title")}
               description={`${sigil.tokenPrefix}…`}
