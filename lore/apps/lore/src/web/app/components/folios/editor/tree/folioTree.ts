@@ -105,3 +105,14 @@ export const findFolioNode = (
   id: string,
 ): FolioTreeNode | undefined =>
   findNode(nodes, id) as FolioTreeNode | undefined;
+
+/**
+ * The model's node with `data` narrowed back to required, for the render
+ * slots `TreeView` hands a `TreeNode<FolioTreeData>`.
+ *
+ * Sound because every node the tree can hand back came out of
+ * `buildFolioTree`, which sets `data` on every item it builds. A helper
+ * rather than a cast per slot, so there is one place to read the reason.
+ */
+export const asFolioNode = (node: TreeNode<FolioTreeData>): FolioTreeNode =>
+  node as FolioTreeNode;
