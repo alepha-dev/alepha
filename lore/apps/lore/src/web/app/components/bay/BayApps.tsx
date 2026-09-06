@@ -7,6 +7,7 @@ import { useRouter } from "alepha/react/router";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
+import BayActions from "./BayActions.tsx";
 import {
   type BayInstanceRow,
   bayInstanceRows,
@@ -221,6 +222,25 @@ const BayApps = () => {
                 </span>
               );
             },
+          },
+          actions: {
+            label: tr("bay.apps.col.actions"),
+            sortable: false,
+            // The same component the instance page uses, so a verb cannot
+            // appear in one place and not the other, and the state rules are
+            // written once.
+            cell: (row) => (
+              <span
+                // The row opens the instance; the buttons act on it. Without
+                // this every click here would also navigate away from the
+                // outcome it is about to report.
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+                role="presentation"
+              >
+                <BayActions row={row} />
+              </span>
+            ),
           },
           problems: {
             label: tr("bay.apps.col.problems"),
