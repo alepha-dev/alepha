@@ -13,6 +13,7 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { capabilityOption } from "../../../services/projectCapabilities.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { formatEstimate } from "./questEstimate.ts";
 
@@ -27,7 +28,7 @@ const QuestItem = (props: QuestItemProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
-  const questEstimateEnabled = project?.features?.questEstimate === true;
+  const questEstimateEnabled = capabilityOption(project, "work", "estimate");
   const { isActive, anchorProps } = useActive(
     router.path("projectQuest", { params: { shortId: quest.shortId } }),
   );

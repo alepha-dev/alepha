@@ -241,6 +241,24 @@ export class QuestController {
     });
 
   /**
+   * Whether this project's board is on, for the three transitions that seed a
+   * quest's column.
+   *
+   * ⚠️ These are BEHAVIOUR, not a gate, which is why they are here rather
+   * than on the `use:` chain and why the review of this epic did not count
+   * them: seeding a column on a project with no board writes a value nothing
+   * reads, and the quest still transitions either way. The read is memoised
+   * per request, so a transition pays for it once.
+   */
+  protected async boardEnabled(projectId: number): Promise<boolean> {
+    return this.security.capabilityOption(
+      await this.security.capabilitiesOf(projectId),
+      "work",
+      "board",
+    );
+  }
+
+  /**
    * Enrich a quest entity with computed metadata.
    */
   mapQuestToResource(quest: Quest): QuestResource {
@@ -1724,9 +1742,9 @@ export class QuestController {
           action: "unshelved",
         });
       }
-      // When kanban is on, drop the freshly-accepted quest into the first
-      // configured sub-column so it has a place to live on the board.
-      if (project.features?.kanban) {
+      // When the board is on, drop the freshly-accepted quest into the first
+      // configured sub-column so it has a place to live on it.
+      if (await this.boardEnabled(project.id)) {
         quest.kanbanColumn = project.kanbanColumns?.[0];
       }
       quest.history.push({
@@ -1784,7 +1802,7 @@ export class QuestController {
       quest.completedBy = undefined;
       // Back to whoever held it. `completeQuest` leaves `acceptedBy` set, so
       // a reopened quest returns to its assignee rather than to nobody.
-      if (project.features?.kanban) {
+      if (await this.boardEnabled(project.id)) {
         quest.kanbanColumn = project.kanbanColumns?.[0];
       }
       quest.history.push({
@@ -1879,7 +1897,7 @@ export class QuestController {
           action: "unshelved",
         });
       }
-      if (project.features?.kanban && !quest.kanbanColumn) {
+      if ((await this.boardEnabled(project.id)) && !quest.kanbanColumn) {
         quest.kanbanColumn = project.kanbanColumns?.[0];
       }
 
@@ -1969,10 +1987,22 @@ export class QuestController {
         );
       }
 
-      // Reminders are an owner-controlled module toggle. Disabling
-      // (interval=null) is always allowed so a project that turned the
-      // module off can still clear pre-existing reminders.
-      if (body.interval != null && !project.features?.questReminder) {
+      // Reminders are an owner-controlled option inside Work. Disabling
+      // (interval=null) is always allowed so a project that turned the option
+      // off can still clear pre-existing reminders.
+      //
+      // ⚠️ One of four `features.*` reads on this class that neither the spec
+      // nor the review of this epic counted - they looked for a gate and these
+      // are behaviour. The `use:` gate above already refuses a project without
+      // Work, so this only has to answer for the option.
+      if (
+        body.interval != null &&
+        !this.security.capabilityOption(
+          await this.security.capabilitiesOf(project.id),
+          "work",
+          "reminder",
+        )
+      ) {
         throw new ForbiddenError(
           "Quest Reminder is disabled for this project.",
         );

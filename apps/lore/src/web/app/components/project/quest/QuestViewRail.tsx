@@ -31,6 +31,7 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { capabilityOption } from "../../../services/projectCapabilities.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { formatEstimate } from "./questEstimate.ts";
@@ -75,12 +76,14 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const [project] = useStore(currentProjectAtom);
   const [epic, setEpic] = useState<EpicSummary | undefined>(undefined);
 
-  const features = project?.features;
-  const questChronoEnabled = features?.questChrono === true;
-  const questReminderEnabled = features?.questReminder === true;
-  const questEstimateEnabled = features?.questEstimate === true;
-  const epicsEnabled = features?.epics === true;
-  const releasesEnabled = features?.milestones === true;
+  // Every one of these is an option inside Work: a capability that is off
+  // reads its options off, which is the epic's narrow-never-widen rule and
+  // means a project without Work shows none of this rather than all of it.
+  const questChronoEnabled = capabilityOption(project, "work", "chrono");
+  const questReminderEnabled = capabilityOption(project, "work", "reminder");
+  const questEstimateEnabled = capabilityOption(project, "work", "estimate");
+  const epicsEnabled = capabilityOption(project, "work", "epics");
+  const releasesEnabled = capabilityOption(project, "work", "releases");
 
   // Same rule for the epic: `quests.epicId` is a global id and the row wants
   // the per-project number and title, which only the epic list carries.

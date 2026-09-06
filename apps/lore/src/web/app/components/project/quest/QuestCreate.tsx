@@ -41,6 +41,7 @@ import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuests
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { capabilityOption } from "../../../services/projectCapabilities.ts";
 import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
 import { useLoreEditorControl } from "../../shared/element/useLoreEditorControl.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
@@ -66,7 +67,11 @@ const QuestCreate = (props: QuestCreateProps) => {
   const [currentAreas] = useStore(currentAreasAtom);
   const [releases] = useStore(currentReleasesAtom);
 
-  const questEstimateEnabled = props.project.features?.questEstimate === true;
+  const questEstimateEnabled = capabilityOption(
+    props.project,
+    "work",
+    "estimate",
+  );
 
   const update = !!props.quest?.id;
   const acceptAfterCreate = useRef(false);

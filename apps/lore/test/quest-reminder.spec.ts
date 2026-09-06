@@ -67,19 +67,18 @@ const seedAcceptedQuest = async (
   ctx: TestContext,
   user: { id: string; roles: string[] },
 ): Promise<{ id: number; projectId: number }> => {
+  // Reminders are an owner toggle inside Work, off by default. The spec
+  // asserts `setQuestReminder`'s behaviour, not the gate, so it is asked for
+  // at creation rather than flipped afterwards.
   const project = await ctx.projects.createProject.fetch(
-    { body: { title: "Reminder Probe" } },
+    {
+      body: {
+        title: "Reminder Probe",
+        capabilities: [{ key: "work", options: { reminder: true } }],
+      },
+    },
     { user },
   );
-  // Reminders are an owner toggle (off by default). The spec asserts the
-  // setQuestReminder behavior, not the gate — enable it up front.
-  // ORM repo generic is too strict
-  const projectsRepo: any = (ctx.projects as any).projects;
-  const c = await projectsRepo.getOne({
-    where: { id: { eq: project.data.id } },
-  });
-  c.features = { ...c.features, questReminder: true };
-  await projectsRepo.save(c);
 
   const created = await ctx.quests.createQuest.fetch(
     {

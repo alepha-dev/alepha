@@ -30,11 +30,11 @@ export type ProjectNavEntry = Infer<typeof projectNavEntrySchema>;
  *
  * **Pages are derived from the sidebar's own computed nav, not from a second
  * list.** That is the whole point: the sidebar already resolves each entry
- * through `router.path(...)` and applies the project's `features.*` gates. A
+ * through `router.path(...)` and applies the project's capability gates. A
  * hand-written page list in the palette would rot the first time a route was
  * renamed — and route names are famously not typecheck-protected here (see
  * `AppRouter.ts`) — while a second gating pass would drift from the sidebar's
- * the first time a feature flag moved. Reading one computation means the
+ * the first time a capability moved. Reading one computation means the
  * palette cannot disagree with the sidebar about what pages exist.
  *
  * ⚠️ **Instances no longer come from there**, and the exception is deliberate.
@@ -45,12 +45,21 @@ export type ProjectNavEntry = Infer<typeof projectNavEntrySchema>;
  * `currentInstancesAtom` — the atom that IS the data, so there is nothing for
  * it to disagree with.
  *
- * The alternative considered and deferred was moving all of this onto `$page`
- * `nav` metadata so both surfaces derive from the route tree. That is the
- * better end state, but `PageNav` is entirely static and `can()` only receives
- * `{ has }` — it has no way to express per-project feature flags, atom-driven
- * badges, or an Apps group built from runtime rows rather than routes. Doing it
- * properly means extending the framework's nav model first.
+ * ⚠️ **The framework nav model is not coming, and this is the model.** This
+ * doc used to defer to `$page` `nav` metadata as the better end state, with
+ * the framework's model to be extended first. That quest was shelved on
+ * 2026-09-06, and the reason it gives is the reason it will stay shelved:
+ * `PageNav` is entirely static and `can()` receives only `{ has }`, so it can
+ * express neither per-project state, nor an atom-driven badge, nor an entry
+ * that hides itself on runtime rows.
+ *
+ * `capabilityNav.ts` is the model instead, and it takes TWO inputs. The
+ * project's capability set is the first and the only one wired today; the
+ * caller's rank permission set is the second, added by Ranks to the SAME
+ * computation, so an entry whose permission the rank lacks is filtered once
+ * and the palette still cannot disagree. Every entry is a plain data object
+ * with room for the permission it opens on, and there must never be a second
+ * map.
  *
  * `undefined` (not `[]`) while no project is open.
  */

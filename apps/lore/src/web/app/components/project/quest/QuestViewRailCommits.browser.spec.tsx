@@ -100,7 +100,15 @@ describe("QuestViewRail commits", () => {
     // to be the whole required shape; `projectFixture` is what keeps that
     // from being twenty hand-written copies.
     alepha.store.set(currentProjectAtom, {
-      ...projectFixture({ title: "Alepha", slug: "alepha" }),
+      // No capabilities: this file is about the Commits row, and the rail's
+      // Epic and Release rows pull in a chart that needs `ResizeObserver`,
+      // which jsdom does not have. A fixture claiming surfaces the case does
+      // not exercise is how a spec starts failing for somebody else's reason.
+      ...projectFixture({
+        title: "Alepha",
+        slug: "alepha",
+        capabilities: [],
+      }),
       ...(repositoryUrl ? { repositoryUrl } : {}),
     } as never);
 

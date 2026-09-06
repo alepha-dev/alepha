@@ -5,25 +5,9 @@ import {
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { NestedView, useRouter, useRouterState } from "alepha/react/router";
-import {
-  Activity,
-  AppWindow,
-  BarChart3,
-  BookOpen,
-  Bug,
-  Cog,
-  Columns3,
-  Flag,
-  Grid3x2,
-  Inbox,
-  Layers,
-  Package,
-} from "lucide-react";
+import { Cog } from "lucide-react";
 
-import {
-  defaultProjectFeatures,
-  type ProjectFeatures,
-} from "@/api/entities/projects.ts";
+import { CAPABILITY_KEYS } from "@/api/schemas/capabilityKeySchema.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../atoms/currentBlightCountAtom.ts";
@@ -38,10 +22,20 @@ import { currentQuestAtom } from "../../atoms/currentQuestAtom.ts";
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
 import { questLogCollapsedAtom } from "../../atoms/questLogCollapsedAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import {
+  capabilityOption,
+  hasCapability,
+} from "../../services/projectCapabilities.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderRepositoryButton from "../shared/header/HeaderRepositoryButton.tsx";
 import HeaderSearchButton from "../shared/header/HeaderSearchButton.tsx";
+import {
+  CAPABILITY_NAV,
+  type CapabilityNavContext,
+  type CapabilityNavEntry,
+  CORE_NAV,
+} from "./capabilityNav.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
 import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
@@ -83,12 +77,13 @@ const ProjectView = () => {
 
   const projectSlug = project.slug;
 
-  const features: ProjectFeatures = {
-    ...defaultProjectFeatures,
-    ...project.features,
-  };
-
-  // Five unlabelled groups (`NavGroup.label` omitted on purpose, see the great
+  // The sidebar, computed from the capability set rather than written as a
+  // chain of nine `if (features.x)`. `capabilityNav.ts` is the declaration;
+  // this is the only place it is read, and `projectNavAtom` reads THIS, which
+  // is what stops the palette disagreeing with the sidebar about what pages
+  // exist.
+  //
+  // Four bands, unlabelled (`NavGroup.label` omitted on purpose, the great
   // rename Task 9):
   //
   //   Activity  Activity
@@ -105,205 +100,68 @@ const ProjectView = () => {
   // ⚠️ The split is NOT "act versus read", whatever earlier comments here
   // said. It is **the work, versus the record of it**. The old wording never
   // survived contact with Folios, which sits in Record and is the most
-  // written-to surface in the app: always-editable and auto-saved. A group
-  // containing that cannot be the read-only one.
+  // written-to surface in the app.
   //
   // Releases moved back to Record on 2026-08-30, at the owner's request, and
-  // this is the SECOND time this entry has moved, so both trips are written
-  // down rather than left for a third.
+  // this is the SECOND time that entry has moved, so both trips stay written
+  // down rather than left for a third. It sat in Record originally because
+  // the entity was thin; epic #14 falsified every clause of that and moved it
+  // to Work. What that argument got wrong was the axis, not the facts: a
+  // release is a record - the named thing you publish, freeze and keep - and
+  // attaching an epic to one is a write to a record, exactly as editing a
+  // folio is.
   //
-  // It sat in Record originally because the entity was thin: no objective or
-  // target, membership a TIME WINDOW rather than an assignment, no quest
-  // surface able to set `releaseId`, and a cron that auto-closed it into a
-  // rich-markdown changelog. It was a folio the app filled in for you.
-  //
-  // Epic #14 falsified every clause of that, which is why it moved to Work.
-  // What that argument got wrong was the axis, not the facts: it showed a
-  // release is something you ACT on, and then treated Record as the place for
-  // things you do not. Under the real split a release is a record - the named
-  // thing you publish, freeze and keep - and attaching an epic to one is a
-  // write to a record, exactly as editing a folio is.
-  //
-  // Groups with no items are dropped by the `.filter` below, so an
-  // all-gates-off project still renders a clean sidebar.
-  //
-  // Activity is a fifth group above these four - see the `nav` array below
-  // for why it stands alone. It is behind no feature gate on purpose: it is
-  // the one page that says something whatever else a project has turned off,
-  // and it is where a bare `/:projectSlug` lands.
-  const activityItems: NavGroup["items"] = [
-    {
-      label: tr("project.menu.activity"),
-      icon: Activity,
-      href: router.path("projectActivity", { params: { projectSlug } }),
-      active: name === "projectActivity",
-    },
-  ];
-
-  const workItems: NavGroup["items"] = [
-    {
-      label: tr("project.menu.quests"),
-      icon: Grid3x2,
-      href: router.path("projectQuests", { params: { projectSlug } }),
-      // Highlighted from anywhere under Quests, not just the list: opening a
-      // quest used to clear the sidebar entirely, so the one page you were
-      // deepest inside was the one page that said where you were not. Epics
-      // already did this for `projectEpic`, and the breadcrumb has always
-      // treated these as the Quests section (see `SECTION_LABEL_KEYS`).
-      active:
-        name === "projectQuests" ||
-        name === "project" ||
-        name === "projectQuest" ||
-        name === "projectQuestGraph",
-      badge: questCount?.count ? questCount.count : undefined,
-    },
-  ];
-  // The board is a destination, so it gets an entry of its own. It had one
-  // until the 2026-08 rename took it, which is the whole reason
-  // `ProjectQuestsViewSwitcher` had to be invented — the board was
-  // unreachable from the UI at all.
-  //
-  // Not folded into the Quests entry's `active` set: these are two surfaces
-  // now, and the sidebar should say which one you are on.
-  if (features.kanban) {
-    workItems.push({
-      label: tr("project.menu.kanban"),
-      icon: Columns3,
-      href: router.path("projectKanban", { params: { projectSlug } }),
-      active: name === "projectKanban",
-    });
-  }
-  // A lens on quests, so it sits right after them: scope, then the items.
-  if (features.epics) {
-    workItems.push({
-      label: tr("project.menu.epics"),
-      icon: Layers,
-      href: router.path("projectEpics", { params: { projectSlug } }),
-      active: name === "projectEpics" || name === "projectEpic",
-      // Planned epics only, and hidden at zero like every other badge here.
-      // A planned epic is a gate holding its quests out of the Quests count
-      // beside it, so this is the sidebar's only trace of that work.
-      badge: epicCount?.count ? epicCount.count : undefined,
-    });
-  }
-  // Arrived rather than chosen. Feedback leads because a human wrote it; a
-  // blight is filed by a machine.
-  if (features.feedback) {
-    workItems.push({
-      label: tr("project.menu.feedback"),
-      icon: Inbox,
-      href: router.path("projectFeedback", { params: { projectSlug } }),
-      active: name === "projectFeedback",
-      badge: feedbackCount?.count ? feedbackCount.count : undefined,
-    });
-  }
-  // Blights are reported by apps, so the entry appears once some enrolled app
-  // carries the capability, and goes when the last one drops it. `?? []` means
-  // a failed instance read hides the entry, the same "a degraded section costs a
-  // section" trade the Apps group below makes.
-  //
-  // ...unless blights are already filed. They outlive the app that reported
-  // them (`blights.sigilId` is `ON DELETE SET NULL`) and stay for the
-  // retention window, so an owner who deletes their only app, or switches
-  // Blights off on it, would otherwise lose the only way into an inbox that
-  // still holds open crashes. A project that has never collected one still
-  // shows no entry, which is the property this gate exists for.
+  // Groups with no items are dropped by the `.filter` below, so a project with
+  // every capability off still renders a clean sidebar: Activity, Reports and
+  // Settings.
   const collectsBlights = (instances ?? []).some((it) =>
     it.sigil?.kinds.includes("blights"),
   );
-  const hasOpenBlights = (blightCount?.count ?? 0) > 0;
-  if (features.sigils && (collectsBlights || hasOpenBlights)) {
-    workItems.push({
-      label: tr("project.menu.blights"),
-      icon: Bug,
-      href: router.path("projectBlights", { params: { projectSlug } }),
-      active: name === "projectBlights",
-      badge: blightCount?.count ? blightCount.count : undefined,
-    });
-  }
+  const navContext: CapabilityNavContext = {
+    routeName: name,
+    questCount: questCount?.count,
+    epicCount: epicCount?.count,
+    feedbackCount: feedbackCount?.count,
+    blightCount: blightCount?.count,
+    collectsBlights,
+  };
 
-  // Record: what the project keeps. Ordered by how much of it you write
-  // yourself - a folio entirely, a release by deciding what goes in it, a
-  // report not at all.
-  const recordItems: NavGroup["items"] = [];
-  if (features.folios) {
-    recordItems.push({
-      label: tr("project.menu.folios"),
-      icon: BookOpen,
-      href: router.path("projectFolios", { params: { projectSlug } }),
-      active: name.startsWith("projectFolios"),
-    });
-  }
-  // Between Folios and Reports. `active` covers the list and one release,
-  // unchanged by the move.
-  if (features.milestones) {
-    recordItems.push({
-      label: tr("project.menu.releases"),
-      icon: Flag,
-      href: router.path("projectReleases", { params: { projectSlug } }),
-      active: name === "projectReleases" || name === "projectRelease",
-    });
-  }
-  // No feature gate, deliberately, which is also why Record can never be
-  // empty and the `.filter` below never drops it.
-  recordItems.push({
-    label: tr("project.menu.reports"),
-    icon: BarChart3,
-    href: router.path("projectReports", { params: { projectSlug } }),
-    active: name === "projectReports" || name.startsWith("reports"),
+  const toItem = (entry: CapabilityNavEntry): NavGroup["items"][number] => ({
+    label: tr(entry.labelKey as never),
+    icon: entry.icon,
+    href: router.path(entry.route as never, { params: { projectSlug } }),
+    active: entry.activeOn ? entry.activeOn(name) : name === entry.route,
+    badge: entry.badge?.(navContext),
   });
 
-  // Apps — ONE entry, pointing at the list.
-  //
-  // ⚠️ It was a disclosure group with one child per enrolled app, collapsed
-  // past five. That worked while an app existed only because somebody minted a
-  // credential for it; once an instance is something you create freely, it is a
-  // list that grows without bound in the one piece of chrome that must not.
-  // The list page is the search surface (#1773), and this entry is its door.
-  //
-  // No badge, for the reason the children carried none: an app with three
-  // errors and one with three hundred would read the same at a glance, and the
-  // number that matters is per-tab.
-  //
-  // The failed read is not rendered here any more either. It used to be a
-  // "Couldn't load apps" child, which needed a group to live in; `ProjectApps`
-  // renders that state itself now, distinct from empty, and this entry links
-  // there either way.
-  const opsItems: NavGroup["items"] = [];
-  if (features.sigils) {
-    opsItems.push({
-      label: tr("project.menu.apps"),
-      icon: AppWindow,
-      href: router.path("projectApps", { params: { projectSlug } }),
-      active: ROUTES_APP.has(name),
-    });
-  }
-  // Under Apps since 2026-09-06, at the owner's request. It sat in Record
-  // from feedback #2111, between Folios and Releases, on the reading that a
-  // build is something the project keeps. The axis that beat it: an artifact
-  // is a build OF AN APP, and the one other place it is listed is the app's
-  // own Artifacts tab.
-  //
-  // A sibling of Apps, not a child. The disclosure under Apps was collapsed
-  // deliberately (#1771, see above) and one child is not worth reopening it.
-  //
-  // Outside the `features.sigils` gate above, unchanged by the move:
-  // artifacts arrive from CI through `lore artifacts push`, not from anything
-  // an instance collects, so a project with sigils switched off still has a
-  // build history and still needs the door to it. That also means this group
-  // can never be empty, so the `.filter` below never drops it - the Apps
-  // entry may be gone, this one never is.
-  //
-  // No artifact count behind it either: the page carries a real empty state
-  // that prints the push command, which is the only place a reader who has
-  // never pushed one can learn the capability exists. See
-  // `ProjectArtifactsEmpty` for why hiding the entry loses twice.
-  opsItems.push({
-    label: tr("project.menu.artifacts"),
-    icon: Package,
-    href: router.path("projectArtifacts", { params: { projectSlug } }),
-    active: name === "projectArtifacts",
-  });
+  const offered: CapabilityNavEntry[] = [
+    ...CORE_NAV,
+    // Declaration order, not the order the rows came back in: a project's
+    // sidebar must not depend on which capability was turned on first.
+    ...CAPABILITY_KEYS.flatMap((key) =>
+      hasCapability(project, key)
+        ? CAPABILITY_NAV[key].filter(
+            (entry) =>
+              (!entry.option || capabilityOption(project, key, entry.option)) &&
+              (!entry.available || entry.available(navContext)),
+          )
+        : [],
+    ),
+  ];
+
+  // Sorted by the entry's own `order`, not by which capability it came from:
+  // Record reads Folios, Releases, Reports - Knowledge, then Work, then Core -
+  // and the capability enum would put Reports first.
+  const itemsOf = (group: CapabilityNavEntry["group"]) =>
+    offered
+      .filter((entry) => entry.group === group)
+      .sort((a, b) => a.order - b.order)
+      .map(toItem);
+
+  const activityItems = itemsOf("activity");
+  const workItems = itemsOf("work");
+  const recordItems = itemsOf("record");
+  const opsItems = itemsOf("ops");
 
   const nav: NavGroup[] = [
     // Activity is a group of one, above Work, so the separator the groups
