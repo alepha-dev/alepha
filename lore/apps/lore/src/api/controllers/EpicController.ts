@@ -119,6 +119,24 @@ export class EpicController {
     $ownsProject({ repository: () => this.epics, param: "id" });
 
   /**
+   * The same two gates plus the Work capability, for the writes.
+   *
+   * Gated on the capability rather than on `work.epics`, deliberately: the
+   * option decides what the sidebar OFFERS, and a saved link keeps resolving
+   * either way - the rule `projectKanban` set. Reads stay open, because
+   * disabling hides and never deletes.
+   */
+  protected ownsProjectForWork = () =>
+    $ownsProject({ param: "projectId", capability: "work" });
+
+  protected ownsEpicForWork = () =>
+    $ownsProject({
+      repository: () => this.epics,
+      param: "id",
+      capability: "work",
+    });
+
+  /**
    * Per-project sequence for `epics.number`. `$sequence` keys its counter
    * on the PROPERTY NAME — renaming this property restarts every
    * project's counter at 1. A rename needs an `UPDATE alepha_sequences
@@ -241,7 +259,7 @@ export class EpicController {
     use: [
       $secure({ permissions: ["quest:create"] }),
       $transactional(),
-      this.ownsProject(),
+      this.ownsProjectForWork(),
     ],
     schema: {
       params: z.object({ projectId: z.integer() }),
@@ -283,7 +301,7 @@ export class EpicController {
   });
 
   updateEpic = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -378,7 +396,7 @@ export class EpicController {
    * assertion.
    */
   setEpicStatus = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -464,7 +482,7 @@ export class EpicController {
    * them by hand.
    */
   deleteEpic = $action({
-    use: [$secure({ permissions: ["quest:delete"] }), this.ownsEpic()],
+    use: [$secure({ permissions: ["quest:delete"] }), this.ownsEpicForWork()],
     schema: {
       params: z.object({ id: z.integer() }),
       response: okSchema,
@@ -484,7 +502,7 @@ export class EpicController {
   });
 
   attachQuest = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ questId: z.integer() }),
@@ -532,7 +550,7 @@ export class EpicController {
   });
 
   detachQuest = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
     schema: {
       params: z.object({ id: z.integer(), questId: z.integer() }),
       response: epicResourceSchema,
@@ -556,7 +574,7 @@ export class EpicController {
   });
 
   attachFolio = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ folioId: z.uuid() }),
@@ -583,7 +601,7 @@ export class EpicController {
   });
 
   detachFolio = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpic()],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
     schema: {
       params: z.object({ id: z.integer(), folioId: z.uuid() }),
       response: epicResourceSchema,

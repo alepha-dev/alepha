@@ -88,10 +88,12 @@ export const createTestProject = async (
     /**
      * Which capabilities the project has, and the options inside each.
      *
-     * Defaults to NONE, which is what a bare `projects.create` produces and
-     * is a legal state. A spec that needs quests, folios, apps or feedback
-     * says so - which is also the documentation: reading the fixture tells
-     * you what surface the case is about.
+     * ⚠️ **Defaults to ALL FOUR, with every option on.** A fixture that
+     * withheld one would make a spec about quest ordering fail for a reason
+     * that has nothing to do with quest ordering, which is the kind of
+     * failure that gets fixed by copying whatever the neighbouring spec does.
+     * A spec whose SUBJECT is a capability being off says so explicitly, and
+     * reads better for it.
      */
     capabilities?: Array<{
       key: CapabilityKey;
@@ -121,7 +123,27 @@ export const createTestProject = async (
     createdBy: overrides.createdBy ?? owner.id,
   });
 
-  for (const capability of capabilities ?? []) {
+  const ALL_ON: Array<{
+    key: CapabilityKey;
+    options: Record<string, boolean>;
+  }> = [
+    {
+      key: "work",
+      options: {
+        board: true,
+        epics: true,
+        releases: true,
+        estimate: true,
+        chrono: true,
+        reminder: true,
+      },
+    },
+    { key: "knowledge", options: { agentSummary: true } },
+    { key: "apps", options: { track: true, deploy: false } },
+    { key: "support", options: {} },
+  ];
+
+  for (const capability of capabilities ?? ALL_ON) {
     await repo.capabilities.create({
       projectId: project.id,
       key: capability.key,

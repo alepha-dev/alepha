@@ -134,10 +134,10 @@ export class ArtifactController {
    * surfaces read this - the app page, the release page and MCP - and the
    * grouping is done once, here, rather than three times.
    *
-   * Member-gated like every other project read, with no feature check of its
-   * own. `features.sigils` hides the app page and `features.milestones` the
-   * release page; the endpoint under both is the same one, and gating it a
-   * third time would only mean a 404 in a place the router already handles.
+   * Member-gated like every other project read, with no capability check of
+   * its own. Apps hides the app page and `work.releases` the release page; the
+   * endpoint under both is the same one, and gating it a third time would only
+   * mean a 404 in a place the router already handles.
    */
   listArtifacts = $action({
     use: [$secure(), this.ownsProject()],

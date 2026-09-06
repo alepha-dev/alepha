@@ -108,7 +108,20 @@ describe("Lore domain audits", () => {
   ) =>
     (
       await ctx.projectController.createProject.fetch(
-        { body: { title, capabilities: [{ key: "support" as const }] } },
+        {
+          body: {
+            title,
+            // Every capability: this file audits what happens across all four
+            // surfaces, so a fixture missing one turns an audit case into a
+            // capability case.
+            capabilities: [
+              { key: "work" as const },
+              { key: "knowledge" as const },
+              { key: "apps" as const, options: { track: true } },
+              { key: "support" as const },
+            ],
+          },
+        },
         { user },
       )
     ).data;

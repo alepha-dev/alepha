@@ -52,8 +52,26 @@ export interface CapabilityOptionDescriptor {
  */
 export interface CapabilityDescriptor {
   key: CapabilityKey;
+  /**
+   * The capability's name in English, for a refusal message.
+   *
+   * Deliberately beside {@link CapabilityDescriptor.labelKey} rather than
+   * derived from it: a server error is not localized in this application (see
+   * `EpicController`'s phase refusals), and a refusal that named a key rather
+   * than a thing would send its reader looking for a switch called `work`.
+   */
+  name: string;
   labelKey: string;
   descriptionKey: string;
+  /**
+   * Ticked by default in the creation wizard's capability step, and part of
+   * {@link CapabilityRegistry.defaultSet}.
+   *
+   * Work and Knowledge only. Apps and Support are off, which is exactly what
+   * they were before this epic: `features.sigils` was absent from the defaults
+   * and the wizard sent `feedback: false`.
+   */
+  preselectedCapability: boolean;
   options: CapabilityOptionDescriptor[];
   /**
    * The MCP tools this capability owns. A call into one of them, on a project
@@ -113,8 +131,10 @@ export class CapabilityRegistry {
   protected readonly capabilities: CapabilityDescriptor[] = [
     {
       key: "work",
+      name: "Plan and track work",
       labelKey: "project.capability.work.label",
       descriptionKey: "project.capability.work.description",
+      preselectedCapability: true,
       options: [
         {
           key: "board",
@@ -196,8 +216,10 @@ export class CapabilityRegistry {
     },
     {
       key: "knowledge",
+      name: "Write and keep knowledge",
       labelKey: "project.capability.knowledge.label",
       descriptionKey: "project.capability.knowledge.description",
+      preselectedCapability: true,
       options: [
         {
           key: "agentSummary",
@@ -233,8 +255,10 @@ export class CapabilityRegistry {
     },
     {
       key: "apps",
+      name: "Deploy and watch apps",
       labelKey: "project.capability.apps.label",
       descriptionKey: "project.capability.apps.description",
+      preselectedCapability: false,
       options: [
         {
           key: "track",
@@ -281,8 +305,10 @@ export class CapabilityRegistry {
     },
     {
       key: "support",
+      name: "Collect feedback",
       labelKey: "project.capability.support.label",
       descriptionKey: "project.capability.support.description",
+      preselectedCapability: false,
       options: [],
       mcpTools: [
         "feedback_list",
@@ -392,6 +418,32 @@ export class CapabilityRegistry {
       string,
       boolean
     >;
+  }
+
+  /**
+   * What a project gets when the caller says nothing about capabilities.
+   *
+   * The wizard's own preselection - Work and Knowledge on, each with its
+   * preselected options - so `createProject` with no `capabilities` field
+   * produces the project the wizard would have made. That is the same shape
+   * `features` had, where an absent body fell back to
+   * `defaultProjectFeatures`.
+   *
+   * ⚠️ Derived from the declarations rather than written out, so a fifth
+   * capability decides for itself whether it is in the default set by
+   * declaring `preselectedCapability`. A second list would rot against the
+   * first the way every second list does.
+   */
+  defaultSet(): Array<{
+    key: CapabilityKey;
+    options: Record<string, boolean>;
+  }> {
+    return this.capabilities
+      .filter((capability) => capability.preselectedCapability)
+      .map((capability) => ({
+        key: capability.key,
+        options: this.preselectedOptionsOf(capability.key),
+      }));
   }
 
   /**

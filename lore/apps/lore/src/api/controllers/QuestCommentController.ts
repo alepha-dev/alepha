@@ -63,6 +63,28 @@ export class QuestCommentController {
     });
 
   /**
+   * The same two gates plus the Work capability, for the writes.
+   *
+   * A comment is part of a quest, so it belongs to Work: a project that has
+   * turned Work off has no quest page to comment on. Reading the thread stays
+   * open, because disabling hides and never deletes.
+   */
+  protected ownsQuestForWork = () =>
+    $ownsProject({
+      repository: () => this.quests,
+      param: "id",
+      capability: "work",
+    });
+
+  protected ownsCommentForWork = () =>
+    $ownsProject({
+      repository: () => this.comments,
+      param: "id",
+      hops: [{ column: "questId", repository: () => this.quests }],
+      capability: "work",
+    });
+
+  /**
    * Comment counts and the newest comment stamp for a page of quests, in
    * one query rather than one per quest.
    *
@@ -140,7 +162,7 @@ export class QuestCommentController {
   });
 
   createQuestComment = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -186,7 +208,10 @@ export class QuestCommentController {
   });
 
   updateQuestComment = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsComment()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      this.ownsCommentForWork(),
+    ],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -212,7 +237,10 @@ export class QuestCommentController {
   });
 
   deleteQuestComment = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsComment()],
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      this.ownsCommentForWork(),
+    ],
     schema: {
       params: z.object({ id: z.integer() }),
       response: okSchema,

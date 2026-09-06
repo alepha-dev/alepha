@@ -34,6 +34,19 @@ export class DirectoryController {
     $ownsProject({ repository: () => this.directories, param: "id" });
 
   /**
+   * The same two gates plus the Knowledge capability, for the writes.
+   */
+  protected ownsProjectForKnowledge = () =>
+    $ownsProject({ param: "projectId", capability: "knowledge" });
+
+  protected ownsDirectoryForKnowledge = () =>
+    $ownsProject({
+      repository: () => this.directories,
+      param: "id",
+      capability: "knowledge",
+    });
+
+  /**
    * List the immediate children of `parentDirectoryId` (or the
    * project root when omitted). Mixed contents - folios +
    * sub-directories under a single `entries` array, each tagged with
@@ -312,7 +325,7 @@ export class DirectoryController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsProject(),
+      this.ownsProjectForKnowledge(),
     ],
     path: "/projects/:projectId/folio/directories",
     description: "Create a new folio directory.",
@@ -338,7 +351,7 @@ export class DirectoryController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsDirectory(),
+      this.ownsDirectoryForKnowledge(),
     ],
     path: "/folio/directories/:id/rename",
     description: "Rename a folio directory.",
@@ -357,7 +370,7 @@ export class DirectoryController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsDirectory(),
+      this.ownsDirectoryForKnowledge(),
     ],
     path: "/folio/directories/:id/move",
     description: "Move a folio directory under a new parent (or to root).",
@@ -384,7 +397,7 @@ export class DirectoryController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsDirectory(),
+      this.ownsDirectoryForKnowledge(),
     ],
     path: "/folio/directories/:id",
     description: "Delete a folio directory. Pass cascade=true for non-empty.",

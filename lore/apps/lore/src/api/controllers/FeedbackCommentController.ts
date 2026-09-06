@@ -154,6 +154,13 @@ export class FeedbackCommentController {
     },
     handler: async ({ params, body, user }) => {
       const row = await this.loadReadable(params.id, user);
+      // Gated by hand: this controller resolves the project through the
+      // feedback row rather than from a param, so it checks membership in its
+      // handler. Reading the thread stays open, because disabling Support
+      // hides feedback and deletes none of it.
+      await this.security.assertCapability(row.projectId, "support", {
+        action: "comment on feedback",
+      });
 
       const created = await this.comments.create({
         feedbackId: row.id,

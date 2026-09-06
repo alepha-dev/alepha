@@ -4,7 +4,7 @@ import {
   ResourceGateMemoProvider,
   type UserAccountToken,
 } from "alepha/security";
-import { ForbiddenError } from "alepha/server";
+import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import { type Member, members } from "../entities/members.ts";
 import {
@@ -70,9 +70,11 @@ export class ProjectSecurityService {
    * DIFFERENT process: `DbCacheProvider` is a per-process `Map`, and on
    * Workers that means per isolate.
    *
-   * 30s is what that cross-isolate staleness is worth here. The values
-   * it gates are `features.*` toggles and `retentionDays` — a settings
-   * change taking up to half a minute to reach another isolate is fine.
+   * 30s is what that cross-isolate staleness is worth here. The values it
+   * gates are `retentionDays` and the roadmap's visibility — a settings change
+   * taking up to half a minute to reach another isolate is fine. The
+   * capability read below takes the same window, for the same reason: it is
+   * configuration, not membership.
    */
   public static readonly PROJECT_CACHE_TTL_MS = 30_000;
 
@@ -373,6 +375,55 @@ export class ProjectSecurityService {
       }
     }
     return byProject;
+  }
+
+  /**
+   * Refuse unless this project has the capability, and the option inside it.
+   *
+   * The one gate, reached three ways: as a `capability` option on
+   * `$ownsProject` where the gate is middleware, called by hand beside
+   * `assertMember` / `assertOwner` in the controllers that still gate in their
+   * handlers, and called by hand in MCP tools.
+   *
+   * ⚠️ **A 400, never a 404 or a 403.** A route under a disabled capability is
+   * a page that does not exist, so the router answers 404; an API call into
+   * one is a request the project understands and declines, so it answers 400
+   * and says which switch would allow it. Both shapes already existed in this
+   * tree; what was missing was writing down which applies where.
+   *
+   * The wording follows the shape epic #E31 set for epic phases: name the
+   * thing, then name the fix. A refusal an agent cannot act on is a refusal it
+   * will retry.
+   *
+   * ⚠️ **Machine writers never reach this.** Sigil ingest, artifact push and
+   * quality push are accepted whatever the switches say, because a toggle in
+   * the UI must never turn someone's build red. They are exempt by
+   * construction rather than by an exception here: none of the three goes
+   * through `$ownsProject`, each holds its own credential.
+   */
+  async assertCapability(
+    projectId: number,
+    key: CapabilityKey,
+    options: { option?: string; action?: string } = {},
+  ): Promise<void> {
+    const set = await this.capabilitiesOf(projectId);
+    const allowed = options.option
+      ? this.capabilityOption(set, key, options.option)
+      : this.hasCapability(set, key);
+
+    if (allowed) {
+      return;
+    }
+
+    const capability = this.registry.get(key);
+    const what = options.option
+      ? `${capability.name} with ${options.option} on`
+      : capability.name;
+    const prefix = options.action ? `Cannot ${options.action}: ` : "";
+
+    throw new BadRequestError(
+      `${prefix}this project does not have ${what}. Turn it on in Settings.`,
+    );
   }
 
   /**

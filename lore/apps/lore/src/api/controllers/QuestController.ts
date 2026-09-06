@@ -220,6 +220,27 @@ export class QuestController {
     $ownsProject({ repository: () => this.quests, param: "id" });
 
   /**
+   * The same three gates, plus the Work capability.
+   *
+   * ⚠️ **Writes only.** Every read on this class keeps the plain gate, because
+   * disabling a capability HIDES and never deletes: a project that turns Work
+   * back on has to find every quest exactly where it left them, and an
+   * endpoint that refuses to read them would make that impossible to verify.
+   */
+  protected ownsProjectForWork = () =>
+    $ownsProject({ param: "projectId", capability: "work" });
+
+  protected ownsProjectFromBodyForWork = () =>
+    $ownsProject({ param: "projectId", from: "body", capability: "work" });
+
+  protected ownsQuestForWork = () =>
+    $ownsProject({
+      repository: () => this.quests,
+      param: "id",
+      capability: "work",
+    });
+
+  /**
    * Enrich a quest entity with computed metadata.
    */
   mapQuestToResource(quest: Quest): QuestResource {
@@ -620,7 +641,7 @@ export class QuestController {
    * project memory, and the sha is usually known only after the merge.
    */
   addQuestCommit = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -649,7 +670,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:create"] }),
       $transactional(),
-      this.ownsProjectFromBody(),
+      this.ownsProjectFromBodyForWork(),
     ],
     schema: {
       body: questCreateSchema,
@@ -812,7 +833,7 @@ export class QuestController {
   });
 
   addAttachment = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1025,7 +1046,7 @@ export class QuestController {
   }
 
   removeAttachment = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1534,7 +1555,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:update"] }),
       $transactional(),
-      this.ownsQuest(),
+      this.ownsQuestForWork(),
     ],
     schema: {
       params: z.object({
@@ -1582,7 +1603,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:update"] }),
       $transactional(),
-      this.ownsQuest(),
+      this.ownsQuestForWork(),
     ],
     schema: {
       params: z.object({
@@ -1622,7 +1643,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:update"] }),
       $transactional(),
-      this.ownsQuest(),
+      this.ownsQuestForWork(),
     ],
     schema: {
       params: z.object({
@@ -1654,7 +1675,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:update"] }),
       $transactional(),
-      this.ownsQuest(),
+      this.ownsQuestForWork(),
     ],
     schema: {
       params: z.object({
@@ -1742,7 +1763,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:update"] }),
       $transactional(),
-      this.ownsQuest(),
+      this.ownsQuestForWork(),
     ],
     schema: {
       params: z.object({
@@ -1796,7 +1817,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:update"] }),
       $transactional(),
-      this.ownsQuest(),
+      this.ownsQuestForWork(),
     ],
     schema: {
       params: z.object({
@@ -1878,7 +1899,7 @@ export class QuestController {
   });
 
   setQuestKanbanColumn = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1923,7 +1944,7 @@ export class QuestController {
    * nightly sweep advances from there.
    */
   setQuestReminder = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1977,7 +1998,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:update"] }),
       $transactional(),
-      this.ownsQuest(),
+      this.ownsQuestForWork(),
     ],
     schema: {
       params: z.object({
@@ -2167,7 +2188,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:update"] }),
       $transactional(),
-      this.ownsQuest(),
+      this.ownsQuestForWork(),
     ],
     schema: {
       params: z.object({
@@ -2458,7 +2479,7 @@ export class QuestController {
   });
 
   completeObjective = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2529,7 +2550,7 @@ export class QuestController {
   });
 
   updateQuestObjectives = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2597,7 +2618,7 @@ export class QuestController {
     use: [
       $secure({ permissions: ["quest:delete"] }),
       $transactional(),
-      this.ownsQuest(),
+      this.ownsQuestForWork(),
     ],
     schema: {
       params: z.object({
@@ -2671,7 +2692,7 @@ export class QuestController {
   });
 
   startTimer = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -2704,7 +2725,7 @@ export class QuestController {
   });
 
   stopTimer = $action({
-    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuest()],
+    use: [$secure({ permissions: ["quest:update"] }), this.ownsQuestForWork()],
     schema: {
       params: z.object({
         id: z.integer(),

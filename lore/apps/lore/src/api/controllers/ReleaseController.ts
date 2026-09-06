@@ -106,6 +106,24 @@ export class ReleaseController {
     });
 
   /**
+   * The same two owner gates plus the Work capability, for the writes.
+   *
+   * A release holds the epics and quests due to ship in it, so it belongs to
+   * Work. Reads stay open: turning Work off hides releases and deletes none
+   * of them.
+   */
+  protected ownsProjectAsOwnerForWork = () =>
+    $ownsProject({ param: "projectId", owner: true, capability: "work" });
+
+  protected ownsReleaseAsOwnerForWork = () =>
+    $ownsProject({
+      repository: () => this.releases,
+      param: "id",
+      owner: true,
+      capability: "work",
+    });
+
+  /**
    * Per-project sequence for `releases.number`. Replaces the old MAX+1
    * lookup with an atomic counter — race-safe even under concurrent creates.
    *
@@ -197,7 +215,7 @@ export class ReleaseController {
     use: [
       $secure({ permissions: ["quest:create"] }),
       $transactional(),
-      this.ownsProjectAsOwner(),
+      this.ownsProjectAsOwnerForWork(),
     ],
     schema: {
       params: z.object({
@@ -271,7 +289,7 @@ export class ReleaseController {
   publishRelease = $action({
     use: [
       $secure({ permissions: ["quest:create"] }),
-      this.ownsReleaseAsOwner(),
+      this.ownsReleaseAsOwnerForWork(),
     ],
     schema: {
       params: z.object({
@@ -324,7 +342,7 @@ export class ReleaseController {
   reopenRelease = $action({
     use: [
       $secure({ permissions: ["quest:create"] }),
-      this.ownsReleaseAsOwner(),
+      this.ownsReleaseAsOwnerForWork(),
     ],
     schema: {
       params: z.object({
@@ -360,7 +378,7 @@ export class ReleaseController {
   updateRelease = $action({
     use: [
       $secure({ permissions: ["quest:create"] }),
-      this.ownsReleaseAsOwner(),
+      this.ownsReleaseAsOwnerForWork(),
     ],
     schema: {
       params: z.object({
@@ -398,7 +416,7 @@ export class ReleaseController {
   deleteRelease = $action({
     use: [
       $secure({ permissions: ["quest:delete"] }),
-      this.ownsReleaseAsOwner(),
+      this.ownsReleaseAsOwnerForWork(),
     ],
     schema: {
       params: z.object({

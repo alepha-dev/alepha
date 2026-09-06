@@ -126,7 +126,12 @@ const createProject = async (
 ): Promise<number> => {
   projectSeq += 1;
   const created = await ctx.projectController.createProject.fetch(
-    { body: { title: `Sigil Test ${projectSeq}` } },
+    {
+      body: {
+        title: `Sigil Test ${projectSeq}`,
+        capabilities: [{ key: "apps" as const, options: { track: true } }],
+      },
+    },
     { user },
   );
   return created.data.id;

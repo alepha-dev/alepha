@@ -83,6 +83,10 @@ export class SigilController {
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "mint a sigil",
+      });
 
       const instance = await this.apps.load(
         params.projectId,
@@ -168,6 +172,10 @@ export class SigilController {
     },
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "rotate a sigil",
+      });
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
       const minted = await this.tokens.mint(params.projectId);
@@ -235,6 +243,10 @@ export class SigilController {
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "update a sigil",
+      });
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
       // Still shaped as an optional field, so an omitted key means "leave it
@@ -269,6 +281,10 @@ export class SigilController {
     },
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "delete a sigil",
+      });
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
       await this.sigils.deleteById(sigil.id);

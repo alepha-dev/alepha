@@ -71,11 +71,27 @@ const setup = async () => {
   // a membership record, and `resolveProjectId` looks the project up among
   // the ones the caller belongs to. A bare row is a project nobody owns.
   const project = await asUser(OWNER, () =>
-    projectApi.createProject({ body: { title: "Test" } } as any),
+    projectApi.createProject({
+      body: {
+        title: "Test",
+        capabilities: [
+          { key: "work" },
+          { key: "apps", options: { track: true } },
+        ],
+      },
+    } as any),
   );
 
   const otherProject = await asUser(OWNER, () =>
-    projectApi.createProject({ body: { title: "Elsewhere" } } as any),
+    projectApi.createProject({
+      body: {
+        title: "Elsewhere",
+        capabilities: [
+          { key: "work" },
+          { key: "apps", options: { track: true } },
+        ],
+      },
+    } as any),
   );
 
   return {
