@@ -981,7 +981,7 @@ export default {
   "kanban.composer.placeholder": "Titre, puis Entrée",
   "kanban.composer.submit": "Ajouter",
   "kanban.composer.needsArea":
-    "Créez d'abord un domaine — une quête doit appartenir à l'un d'eux.",
+    "Créez d'abord un domaine : une quête doit appartenir à l'un d'eux.",
   "kanban.reopen.title": "Rouvrir cette quête ?",
   "kanban.reopen.confirm":
     "Elle repart en cours. Son résumé de complétion est conservé.",
@@ -1545,7 +1545,7 @@ export default {
   "bay.commands.col.status": "Statut",
   "bay.commands.col.by": "Demandé par",
   "bay.commands.col.reason": "Issue",
-  "bay.commands.byNobody": "—",
+  "bay.commands.byNobody": "-",
   "bay.commands.result": "Ouvrir le résultat stocké",
   "account.estates.inventory": "$1 application(s), communiqué $2",
   "account.estates.inventory.none": "rien de communiqué",

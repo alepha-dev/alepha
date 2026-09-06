@@ -158,7 +158,7 @@ backupRefused is a reason not to try, as opposed to an attempt that failed.
 
 The distinction is the whole point of the type. A refusal must NOT touch
 `LastBackupError`: an app with no database Bay owns would then sit at "last
-backup failed" forever, and only a success could clear it — a warning that is
+backup failed" forever, and only a success could clear it - a warning that is
 permanent and wrong, which is how people learn to ignore warnings.
 */
 type backupRefused struct{ reason string }
@@ -175,8 +175,8 @@ type backupOutcome struct {
 /*
 backupInstance is THE backup path: snapshot, verify, upload, record, prune.
 
-One implementation for the three callers that need it — `bay backup`, the
-scheduler, and the console's verb — because it used to be two near-copies that
+One implementation for the three callers that need it - `bay backup`, the
+scheduler, and the console's verb - because it used to be two near-copies that
 had already drifted. `runDueBackups` skipped an app whose manifest declared no
 database; `handleBackup` did not, so `bay backup` on a BYO-database app ran
 `VACUUM INTO` against a file that is not there and recorded a failure only a
@@ -185,7 +185,7 @@ success could clear. Gating here fixes the CLI as a side effect.
 ⚠️ Under a per-instance lock, and the scheduler takes the same one. Two
 snapshots of one database at once is the failure this prevents; two snapshots
 of DIFFERENT databases are fine and are not serialised here (the scheduler is
-sequential for its own reasons — it spawns a runtime per app on a 2-vCPU box).
+sequential for its own reasons - it spawns a runtime per app on a 2-vCPU box).
 
 ⚠️ Never under the machine-wide action mutex. A snapshot plus an upload is
 minutes, and holding that lock would queue an unrelated restart behind it.

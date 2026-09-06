@@ -269,7 +269,7 @@ const Fact = (props: FactProps) => (
         props.value ? "font-medium tabular-nums" : "text-muted-foreground"
       }
     >
-      {props.value ?? "—"}
+      {props.value ?? "-"}
     </dd>
   </div>
 );

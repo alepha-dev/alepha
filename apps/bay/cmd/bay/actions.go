@@ -85,7 +85,7 @@ type actions struct {
 
 	// kick asks the connection to push a fresh inventory. Wired by
 	// connectorLoop to the client that owns the socket, and nil everywhere
-	// else — a CLI path with no connection has nothing to tell.
+	// else - a CLI path with no connection has nothing to tell.
 	kick func()
 }
 
@@ -182,7 +182,7 @@ before anything is acked or pushed.
 A function of its own so the unlock is a `defer` rather than a line somebody
 has to remember after every return: an action that panics must still release
 the machine. It also puts the ack and the inventory push OUTSIDE the mutex,
-which matters because that mutex serialises every action on this host — pushing
+which matters because that mutex serialises every action on this host - pushing
 an inventory while holding it would turn each push into a lock on the deploy
 path.
 */
@@ -212,8 +212,8 @@ Recorded first: an ack that cannot be sent is re-sent from the store on the
 next delivery, and an outcome that was not stored would be run again instead.
 
 The kick is last and is not part of the outcome. Every action that reaches here
-may have changed what the console shows — a restart moves the uptime, a deploy
-moves the release, a backup moves lastBackupAt — and the alternative is a page
+may have changed what the console shows - a restart moves the uptime, a deploy
+moves the release, a backup moves lastBackupAt - and the alternative is a page
 that shows the old state for up to half an hour after the click that changed it.
 */
 func (a *actions) finish(id, status, step, reason string, send func(connector.Ack) error) {
@@ -250,7 +250,7 @@ func (a *actions) restart(cmd connector.Command) (status, step, reason string) {
 		return "failed", "", key + " is a static site: it has no process to restart"
 	}
 	if !a.s.runner.Running(key) {
-		return "failed", "", key + " is not running; it was stopped on this host, and a restart does not reverse that — start it instead"
+		return "failed", "", key + " is not running; it was stopped on this host, and a restart does not reverse that - start it instead"
 	}
 
 	// Requests wait rather than 502, the same way they do through a deploy.

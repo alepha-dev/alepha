@@ -50,7 +50,7 @@ computeStatus is the arithmetic, for one instance.
 
 Extracted so it has exactly one implementation. The connector pushes the same
 derived facts to Lore, and a second copy of the backup-staleness rule and the
-not-running rule would drift — invisibly, because each copy looks right on its
+not-running rule would drift - invisibly, because each copy looks right on its
 own. `printStatusJSON` is a loop over this, and its output is unchanged.
 
 `now` and `interval` are arguments rather than read here for the reason this
@@ -79,7 +79,7 @@ func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLin
 	}
 	// A static site has no process, so `Running` is false for it forever.
 	// Calling that a problem would make this command exit non-zero on a
-	// healthy host every time it ran — and a status command that always
+	// healthy host every time it ran - and a status command that always
 	// fails is one nobody reads on the day something is actually wrong.
 	if !a.Running && !a.Static {
 		line.Problems = append(line.Problems, "not running")

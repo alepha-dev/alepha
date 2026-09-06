@@ -85,7 +85,7 @@ func TestInventoryRowCarriesStaticSoASiteIsNotReadAsDown(t *testing.T) {
 }
 
 // `Usage` is a pointer and is legitimately nil: an unsupervised child process
-// or an app that is not running has none. Absent, never zero — "0 restarts"
+// or an app that is not running has none. Absent, never zero - "0 restarts"
 // from a supervisor that measured nothing is a claim, not a reading.
 func TestInventoryRowLeavesUsageAbsentRatherThanZero(t *testing.T) {
 	now := inventoryFixtureTime(t)
