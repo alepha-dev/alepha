@@ -22,7 +22,7 @@ import type { OwnedEstateResource } from "@/api/schemas/ownedEstateResourceSchem
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
-import MyEstateCommands from "./MyEstateCommands.tsx";
+import BayCommands from "../bay/BayCommands.tsx";
 
 export interface MyEstateDrawerProps {
   /**
@@ -353,7 +353,7 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
             </div>
 
             <div className="border-t pt-4">
-              <MyEstateCommands estateId={estate.id} />
+              <BayCommands estateId={estate.id} />
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-2 border-t px-4 pt-4 pb-4">
