@@ -111,15 +111,35 @@ describe("Project capabilities", () => {
     });
   });
 
-  it("creates a project with no capability at all", async ({ expect }) => {
+  it("falls back to the wizard's own set when the field is absent", async ({
+    expect,
+  }) => {
     const user = await createTestUser(ctx);
     const created = await ctx.projectController.createProject.fetch(
-      { body: { title: "Bare Project" } },
+      { body: { title: "Default Project" } },
       { user },
     );
 
-    // The modularity test. A project with nothing turned on is a legal state,
-    // not an error, and every core read still answers for it.
+    // The same shape `features` had: an absent body fell back to
+    // `defaultProjectFeatures`. A caller who did not think about the field
+    // means "what the wizard would have made", not "a project with no
+    // surfaces and nothing on the way in to say so".
+    expect(created.data.capabilities.map((it) => it.key).sort()).toEqual([
+      "knowledge",
+      "work",
+    ]);
+  });
+
+  it("creates a project with no capability at all", async ({ expect }) => {
+    const user = await createTestUser(ctx);
+    const created = await ctx.projectController.createProject.fetch(
+      { body: { title: "Bare Project", capabilities: [] } },
+      { user },
+    );
+
+    // The modularity test, and the reason an explicit `[]` has to be
+    // distinguishable from an absent field. A project with nothing turned on
+    // is a legal state, not an error, and every core read still answers.
     expect(created.data.capabilities).toEqual([]);
 
     const fetched = await ctx.projectController.getProjectById.fetch(

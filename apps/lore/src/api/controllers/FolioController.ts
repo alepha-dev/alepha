@@ -126,6 +126,27 @@ export class FolioController {
     $ownsProject({ repository: () => this.folios, param: "id" });
 
   /**
+   * The same two gates plus the Knowledge capability, for the writes.
+   *
+   * Reads stay open on purpose: a project that turns Knowledge back on has to
+   * find every folio exactly where it left them, and an endpoint refusing to
+   * read them is how that becomes impossible to verify.
+   */
+  protected ownsProjectFromBodyForKnowledge = () =>
+    $ownsProject({
+      param: "projectId",
+      from: "body",
+      capability: "knowledge",
+    });
+
+  protected ownsFolioForKnowledge = () =>
+    $ownsProject({
+      repository: () => this.folios,
+      param: "id",
+      capability: "knowledge",
+    });
+
+  /**
    * Per-project sequence for `folios.shortId`. Powers the human-friendly
    * `/p/:projectId/folios/:shortId` URL.
    */
@@ -612,7 +633,7 @@ export class FolioController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsProjectFromBody(),
+      this.ownsProjectFromBodyForKnowledge(),
     ],
     description: "Create a new folio.",
     schema: {
@@ -707,7 +728,7 @@ export class FolioController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsFolio(),
+      this.ownsFolioForKnowledge(),
     ],
     description: "Update a folio.",
     schema: {
@@ -904,7 +925,10 @@ export class FolioController {
   });
 
   delete = $action({
-    use: [$secure({ permissions: ["folio:write"] }), this.ownsFolio()],
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      this.ownsFolioForKnowledge(),
+    ],
     description: "Delete a folio.",
     schema: {
       params: folioIdParamsSchema,
@@ -1192,7 +1216,7 @@ export class FolioController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsFolio(),
+      this.ownsFolioForKnowledge(),
     ],
     path: "/folios/:id/history/:revisionId/revert",
     description: "Revert a folio to a prior revision (creates a new revision).",
@@ -1247,7 +1271,10 @@ export class FolioController {
    * older non-pinned revisions get dropped.
    */
   pinHistory = $action({
-    use: [$secure({ permissions: ["folio:write"] }), this.ownsFolio()],
+    use: [
+      $secure({ permissions: ["folio:write"] }),
+      this.ownsFolioForKnowledge(),
+    ],
     path: "/folios/:id/history/:revisionId/pin",
     description: "Toggle pin on a folio revision.",
     schema: {

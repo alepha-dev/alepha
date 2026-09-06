@@ -49,12 +49,15 @@ export class QualityController {
    * Record what a CI run measured, replacing whatever that branch already
    * pushed today.
    *
-   * ## ⚠️ Accepted while `features.quality` is off
+   * ## ⚠️ Accepted whatever the project's capabilities say
    *
-   * There is no feature check here and that is the decision, not an oversight.
-   * The flag gates the TAB. A push refused because someone flipped a switch in
-   * the UI turns a build red for a reason that has nothing to do with the
-   * build, and the person who flipped it would never connect the two.
+   * There is no capability check here and that is the decision, not an
+   * oversight. A push refused because someone flipped a switch in the UI turns
+   * a build red for a reason that has nothing to do with the build, and the
+   * person who flipped it would never connect the two. Artifact push and sigil
+   * ingest hold the same rule, and it is why Quality lost its own switch and
+   * joined the Apps baseline: the tab self-hides until a run exists, so there
+   * was never anything for the switch to decide.
    *
    * A failed push exits non-zero on the CLI side. The safety is where the
    * command runs: the push step is `continue-on-error` and gates no deploy, so

@@ -215,7 +215,9 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
   });
 
   it("answers {} for a project with no rows", async ({ expect }) => {
-    const project = await createTestProject(ctx.alepha);
+    // Explicitly none: the fixture defaults to all four, so a spec whose
+    // subject is the empty state has to say so.
+    const project = await createTestProject(ctx.alepha, { capabilities: [] });
 
     // Not an error and not a default set. Every capability may be turned off,
     // the last one included, and a project with none must still work — that
@@ -224,11 +226,8 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
   });
 
   it("reads a row as on, with its options defaulted", async ({ expect }) => {
-    const project = await createTestProject(ctx.alepha);
-    await ctx.security.capabilities.create({
-      projectId: project.id,
-      key: "work",
-      options: { board: true },
+    const project = await createTestProject(ctx.alepha, {
+      capabilities: [{ key: "work", options: { board: true } }],
     });
 
     const set = await ctx.security.capabilitiesOf(project.id);
@@ -244,11 +243,8 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
   it("makes seven concurrent gates in one request pay one query", async ({
     expect,
   }) => {
-    const project = await createTestProject(ctx.alepha);
-    await ctx.security.capabilities.create({
-      projectId: project.id,
-      key: "knowledge",
-      options: {},
+    const project = await createTestProject(ctx.alepha, {
+      capabilities: [{ key: "knowledge", options: {} }],
     });
 
     ctx.counter.reset();
@@ -268,7 +264,7 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
   });
 
   it("serves a later request from the 30 s window", async ({ expect }) => {
-    const project = await createTestProject(ctx.alepha);
+    const project = await createTestProject(ctx.alepha, { capabilities: [] });
     const url = `${ctx.alepha.inject(ServerProvider).hostname}/probe/capabilities/${project.id}`;
 
     ctx.counter.reset();
@@ -286,7 +282,7 @@ describe("ProjectSecurityService.capabilitiesOf", () => {
   it("shows a write made in this process at once, window or not", async ({
     expect,
   }) => {
-    const project = await createTestProject(ctx.alepha);
+    const project = await createTestProject(ctx.alepha, { capabilities: [] });
     const url = `${ctx.alepha.inject(ServerProvider).hostname}/probe/capabilities/${project.id}`;
 
     const before = (await (await fetch(url)).json()) as { keys: string[][] };

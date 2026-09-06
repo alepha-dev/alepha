@@ -191,10 +191,22 @@ export class ProjectController {
          * been silently accepted for as long as this endpoint has existed,
          * and its own comment said so.
          *
-         * Omitted means a project with no capability at all, which is a legal
-         * state on the write path. The wizard's at-least-one rule lives in the
-         * wizard, because a wizard is asking a question and "none" is not an
-         * answer to it; nothing else in the system needs a floor.
+         * ⚠️ **Omitted means the wizard's own default set** - Work and
+         * Knowledge, each with the options the wizard preselects - the same
+         * shape `features` had, where an absent body fell back to
+         * `defaultProjectFeatures`. An explicit `[]` is how a caller asks for
+         * a project with nothing turned on, which stays a legal state.
+         *
+         * Omitted meaning NONE was the other reading, and it is worse in the
+         * one way that matters: a client that forgets the field gets a project
+         * with no surfaces, and nothing on the way in says so. The wizard
+         * always sends the field, so this default only ever serves a caller
+         * who did not think about it - and for that caller, "what the wizard
+         * would have made" is the answer they meant.
+         *
+         * The at-least-one rule lives in the wizard, because a wizard is
+         * asking a question and "none" is not an answer to it; nothing else in
+         * the system needs a floor.
          */
         capabilities: z
           .array(
@@ -228,7 +240,8 @@ export class ProjectController {
         await this.assertSlugAvailable(slug);
       }
 
-      const { capabilities, ...columns } = body;
+      const { capabilities: requested, ...columns } = body;
+      const capabilities = requested ?? this.capabilityRegistry.defaultSet();
 
       const project = await this.projects.create({
         ...columns,
@@ -263,7 +276,7 @@ export class ProjectController {
       // the two writes above it are not; wrapping the whole handler is wanted
       // for a second reason by Ranks and belongs to whichever lands first.
       const rows = [];
-      for (const capability of capabilities ?? []) {
+      for (const capability of capabilities) {
         rows.push(
           await this.projectSecurity.capabilities.create({
             projectId: project.id,

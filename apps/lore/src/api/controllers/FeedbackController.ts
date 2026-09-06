@@ -647,6 +647,12 @@ export class FeedbackController {
     },
     handler: async ({ params, user }) => {
       await this.ensureOwner(params.projectId, user);
+      // Triage is Support's. Gated by hand: this controller still checks
+      // membership in its handlers, and porting fifty of those is its own
+      // quest.
+      await this.security.assertCapability(params.projectId, "support", {
+        action: "accept feedback",
+      });
       const feedback = await this.loadFeedback(
         params.projectId,
         params.feedbackId,
@@ -693,6 +699,12 @@ export class FeedbackController {
     },
     handler: async ({ params, user }) => {
       await this.ensureOwner(params.projectId, user);
+      // Triage is Support's. Gated by hand: this controller still checks
+      // membership in its handlers, and porting fifty of those is its own
+      // quest.
+      await this.security.assertCapability(params.projectId, "support", {
+        action: "reject feedback",
+      });
       const feedback = await this.loadFeedback(
         params.projectId,
         params.feedbackId,
@@ -731,6 +743,12 @@ export class FeedbackController {
     },
     handler: async ({ params, user }) => {
       await this.ensureOwner(params.projectId, user);
+      // Triage is Support's. Gated by hand: this controller still checks
+      // membership in its handlers, and porting fifty of those is its own
+      // quest.
+      await this.security.assertCapability(params.projectId, "support", {
+        action: "delete feedback",
+      });
       const feedback = await this.loadFeedback(
         params.projectId,
         params.feedbackId,

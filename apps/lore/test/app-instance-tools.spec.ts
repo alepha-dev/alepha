@@ -60,7 +60,15 @@ const setup = async () => {
   // a membership record, and `resolveProjectId` looks the project up among the
   // ones the caller belongs to.
   const project = await asUser(owner.id, () =>
-    projectApi.createProject({ body: { title: "Apps MCP" } } as any),
+    projectApi.createProject({
+      body: {
+        title: "Apps MCP",
+        capabilities: [
+          { key: "work" },
+          { key: "apps", options: { track: true } },
+        ],
+      },
+    } as any),
   );
 
   return { alepha, appTools, sigilTools, project, call };

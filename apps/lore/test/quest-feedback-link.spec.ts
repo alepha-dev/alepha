@@ -70,7 +70,14 @@ const createProject = async (
 ): Promise<number> => {
   const created = await ctx.projectController.createProject.fetch(
     {
-      body: { title: "Link Test", capabilities: [{ key: "support" as const }] },
+      body: {
+        title: "Link Test",
+        capabilities: [
+          { key: "work" as const },
+          { key: "knowledge" as const },
+          { key: "support" as const },
+        ],
+      },
     },
     { user },
   );

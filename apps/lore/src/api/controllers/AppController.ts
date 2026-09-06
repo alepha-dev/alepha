@@ -154,6 +154,10 @@ export class AppController {
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand rather than on `$ownsProject`: this controller still checks membership in its handlers, and porting fifty of those is its own quest.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "create an app instance",
+      });
 
       const instance = await this.service.create({
         projectId: params.projectId,
@@ -225,6 +229,10 @@ export class AppController {
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand rather than on `$ownsProject`: this controller still checks membership in its handlers, and porting fifty of those is its own quest.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "update an app instance",
+      });
       let instance = await this.service.load(
         params.projectId,
         params.app,
@@ -283,6 +291,10 @@ export class AppController {
     },
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand rather than on `$ownsProject`: this controller still checks membership in its handlers, and porting fifty of those is its own quest.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "delete an app instance",
+      });
       const instance = await this.service.load(
         params.projectId,
         params.app,

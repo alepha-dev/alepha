@@ -62,6 +62,22 @@ export class FolioAttachmentController {
     $ownsProject({ repository: () => this.folioRows, param: "folioId" });
 
   /**
+   * The same two gates plus the Knowledge capability, for the writes.
+   *
+   * An attachment hangs off a folio, so it belongs to Knowledge. Reading and
+   * downloading one stays open: the bytes are still there.
+   */
+  protected ownsProjectForKnowledge = () =>
+    $ownsProject({ param: "projectId", capability: "knowledge" });
+
+  protected ownsBlobForKnowledge = () =>
+    $ownsProject({
+      repository: () => this.attachments,
+      param: "id",
+      capability: "knowledge",
+    });
+
+  /**
    * Storage for Folio attachments. Declared here so `?bucket=archive-blobs`
    * resolves — without it every Folio upload 404s with
    * "Storage 'archive-blobs' not found." (Bucket value kept as
@@ -195,7 +211,7 @@ export class FolioAttachmentController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsProject(),
+      this.ownsProjectForKnowledge(),
     ],
     path: "/projects/:projectId/folio/attachments",
     description:
@@ -224,7 +240,7 @@ export class FolioAttachmentController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsBlob(),
+      this.ownsBlobForKnowledge(),
     ],
     path: "/folio/attachments/:id/rename",
     description: "Rename a folio attachment.",
@@ -243,7 +259,7 @@ export class FolioAttachmentController {
     use: [
       $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsBlob(),
+      this.ownsBlobForKnowledge(),
     ],
     path: "/folio/attachments/:id",
     description: "Delete a folio attachment (and reclaim framework storage).",

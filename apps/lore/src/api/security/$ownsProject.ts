@@ -1,7 +1,13 @@
-import { $context, type Middleware } from "alepha";
+import { $context, createMiddleware, type Middleware, OPTIONS } from "alepha";
 import type { Repository } from "alepha/orm";
-import { $owns, type OwnsHop, type OwnsOptions } from "alepha/security";
+import {
+  $owns,
+  currentAuthorityAtom,
+  type OwnsHop,
+  type OwnsOptions,
+} from "alepha/security";
 
+import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
@@ -69,7 +75,7 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
   const { alepha } = $context();
   const security = alepha.inject(ProjectSecurityService);
 
-  return $owns({
+  const gate = $owns({
     param: options.param,
     from: options.from,
     secure: options.secure,
@@ -122,6 +128,55 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
       ? "Only the project owner can perform this action"
       : "Not a member of this project",
   });
+
+  if (!options.capability) {
+    return gate;
+  }
+
+  const capability = options.capability;
+  const required =
+    typeof capability === "string" ? { key: capability } : capability;
+
+  // Runs AFTER the ownership gate, and the order is the whole point: a
+  // stranger must learn that they are not a member, never which capabilities
+  // somebody else's project has. Composing rather than returning two
+  // middlewares keeps this one option bag - Ranks adds `requires:` to the same
+  // one, and a page and an endpoint disagreeing about which gates apply is how
+  // a leak survives a green test.
+  const withCapability = createMiddleware({
+    name: "$ownsProject.capability",
+    options: required,
+    handler: ({ alepha: container, next }) => {
+      return (async (...args: any[]) => {
+        // The project row `$owns` just read and published. Taking the id from
+        // here rather than from a param is what makes this work identically on
+        // the direct branch and on every hop: with a hop the param names a
+        // quest or a folio, and only the authority row is the project.
+        const authority = container.store.get(currentAuthorityAtom) as
+          | { id?: number }
+          | undefined;
+
+        if (typeof authority?.id === "number") {
+          await container
+            .inject(ProjectSecurityService)
+            .assertCapability(authority.id, required.key, {
+              option: required.option,
+              action: required.action,
+            });
+        }
+
+        return next(...args);
+      }) as any;
+    },
+  });
+
+  // Applied so the ownership gate wraps the capability check: `use:` composes
+  // outermost-first, so `gate(withCapability(handler))` runs membership, then
+  // this, then the handler.
+  const composed = ((handler: any) =>
+    gate(withCapability(handler))) as never as Middleware;
+  (composed as any)[OPTIONS] = (gate as any)[OPTIONS];
+  return composed;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -181,4 +236,37 @@ export interface OwnsProjectOptions extends Pick<
    * endpoint was read first.
    */
   owner?: boolean;
+
+  /**
+   * Refuse unless the project has this capability, checked AFTER membership.
+   *
+   * ```typescript
+   * $ownsProject({ param: "projectId", capability: "work" })
+   * $ownsProject({ param: "projectId", capability: { key: "work", option: "epics" } })
+   * ```
+   *
+   * On the same option bag as everything else here, deliberately: Ranks adds
+   * `requires:` beside it, and one middleware carrying both is what stops a
+   * page and an endpoint disagreeing about which gates apply.
+   *
+   * ⚠️ **Writes only.** Reads of existing data stay open, because disabling a
+   * capability hides it and never deletes anything: a project that turns Work
+   * back on has to find every quest where it left them, and a read refused
+   * halfway is how a UI ends up showing an error where it meant to show
+   * nothing.
+   */
+  capability?: CapabilityKey | RequiredCapability;
+}
+
+export interface RequiredCapability {
+  key: CapabilityKey;
+  /**
+   * An option inside the capability. Both must be on.
+   */
+  option?: string;
+  /**
+   * What the caller was trying to do, for the refusal: `create a quest`
+   * becomes `Cannot create a quest: this project does not have ...`.
+   */
+  action?: string;
 }

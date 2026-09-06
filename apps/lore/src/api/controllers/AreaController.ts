@@ -105,6 +105,10 @@ export class AreaController {
     handler: async ({ params, body, user }) => {
       const area = await this.areas.getById(params.id);
       await this.security.assertOwner(area.projectId, user);
+      // Areas belong to Work: a quest carries one, and a blight forwards into one.
+      await this.security.assertCapability(area.projectId, "work", {
+        action: "update an area",
+      });
 
       await this.areas.updateById(params.id, {
         ...(body.description !== undefined
@@ -141,6 +145,10 @@ export class AreaController {
     handler: async ({ params, body, user }) => {
       const area = await this.areas.getById(params.id);
       await this.security.assertOwner(area.projectId, user);
+      // Areas belong to Work: a quest carries one, and a blight forwards into one.
+      await this.security.assertCapability(area.projectId, "work", {
+        action: "rename an area",
+      });
 
       const result = await this.service.rename(params.id, body.name);
 
@@ -165,6 +173,10 @@ export class AreaController {
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Areas belong to Work: a quest carries one, and a blight forwards into one.
+      await this.security.assertCapability(params.projectId, "work", {
+        action: "merge areas",
+      });
 
       const { movedQuests } = await this.service.merge(
         params.projectId,
@@ -191,6 +203,10 @@ export class AreaController {
     handler: async ({ params, user }) => {
       const area = await this.areas.getById(params.id);
       await this.security.assertOwner(area.projectId, user);
+      // Areas belong to Work: a quest carries one, and a blight forwards into one.
+      await this.security.assertCapability(area.projectId, "work", {
+        action: "delete an area",
+      });
 
       // A direct count, not `listWithStats(area.projectId)` — that rolls
       // up every area of the project just to read one integer for this

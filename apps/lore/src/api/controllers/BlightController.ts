@@ -166,6 +166,10 @@ export class BlightController {
     },
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "resolve a blight",
+      });
       const blight = await this.loadBlight(params.projectId, params.blightId);
       await this.currentBlights.updateById(blight.id, { status: "resolved" });
       return { ok: true };
@@ -192,6 +196,17 @@ export class BlightController {
     },
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "forward a blight",
+      });
+      // ⚠️ The one cross-capability write in the app, and the rule it follows
+      // is the epic's: a capability may read another's state to NARROW what it
+      // does, never to widen it. Forwarding creates a quest, so it needs Work
+      // as well as Apps; the button hides in the UI and the API refuses here.
+      await this.security.assertCapability(params.projectId, "work", {
+        action: "forward a blight into a quest",
+      });
       const blight = await this.loadBlight(params.projectId, params.blightId);
 
       if (blight.status.startsWith(QUEST_STATUS_PREFIX)) {
@@ -265,6 +280,10 @@ export class BlightController {
     },
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "delete a blight",
+      });
       const blight = await this.loadBlight(params.projectId, params.blightId);
       await this.currentBlights.deleteById(blight.id);
       return { ok: true };
@@ -290,6 +309,10 @@ export class BlightController {
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "delete blights",
+      });
       // Scoped by `projectId`, not by the project's sigil ids: a blight whose
       // sigil was deleted keeps `projectId` and loses `sigilId`, and the
       // sigil-list version silently refused to delete exactly those rows.
@@ -345,6 +368,10 @@ export class BlightController {
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "create a blight rule",
+      });
       const pattern = body.pattern.trim();
       if (pattern.length === 0) {
         throw new BadRequestError("Pattern must not be empty");
@@ -374,6 +401,10 @@ export class BlightController {
     },
     handler: async ({ params, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      // Gated by hand: this controller still checks membership in its handlers.
+      await this.security.assertCapability(params.projectId, "apps", {
+        action: "delete a blight rule",
+      });
       const ok = await this.ruleService.deleteForProject(
         params.projectId,
         params.ruleId,
