@@ -463,21 +463,13 @@ export default {
   "project.update.rename.cancel": "Garder le nom actuel",
   "project.create.submit": "Lancer le projet",
   "project.create.step.name": "Nommez votre projet",
-  "project.create.step.logo": "Ajouter un logo",
-  "project.create.step.logo.helper":
-    "Choisissez une icône pour votre projet. Vous pourrez la changer plus tard.",
-  "project.create.step.modules": "Choisir les modules",
-  "project.create.step.modules.helper":
-    "Activez les surfaces que vous utiliserez. Chaque module peut être (dés)activé plus tard depuis les paramètres.",
-  "project.create.module.folios": "Folios : Notes + fichiers + dossiers",
-  "project.create.module.folios.helper":
-    "Notes markdown propres à ce projet, accessibles à vos agents IA (Claude, ChatGPT) via MCP.",
-  "project.create.module.kanban": "Kanban : Tableau visuel",
-  "project.create.module.kanban.helper":
-    "Colonnes drag-and-drop pour suivre l'avancement, à côté de la vue tableau.",
-  "project.create.module.releases": "Versions : Livraisons",
-  "project.create.module.releases.helper":
-    "Des objectifs nommés (0.1.0, demo-1) qui portent les épopées et les quêtes à livrer.",
+  "project.create.step.capabilities": "Qu'est-ce que ce projet ?",
+  "project.create.step.capabilities.helper":
+    "Choisissez ce qu'il fait. Vous pourrez en ajouter plus tard.",
+  "project.create.step.setup": "Configurez-le",
+  "project.create.step.setup.helper":
+    "Tout cela reste modifiable plus tard dans les paramètres.",
+  "project.create.soon": "Bientôt",
   "project.create.next": "Suivant",
   "project.create.back": "Retour",
   "project.create.building": "Forge en cours…",

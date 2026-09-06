@@ -463,21 +463,13 @@ export default {
   "project.update.rename.cancel": "Keep current name",
   "project.create.submit": "Create Project",
   "project.create.step.name": "Name your project",
-  "project.create.step.logo": "Add a logo",
-  "project.create.step.logo.helper":
-    "Pick an icon to represent your project. You can change it later.",
-  "project.create.step.modules": "Choose modules",
-  "project.create.step.modules.helper":
-    "Turn on the surfaces you'll use. Each one can be toggled later from settings.",
-  "project.create.module.folios": "Folios: Notes + files + directories",
-  "project.create.module.folios.helper":
-    "Drive-style storage scoped to this project: markdown folios (your shared memory), file uploads, and directories to organize them. AI agents read/write via MCP.",
-  "project.create.module.kanban": "Kanban: Visual board",
-  "project.create.module.kanban.helper":
-    "Drag-and-drop columns for tracking work in progress alongside the table view.",
-  "project.create.module.releases": "Releases: Shipping",
-  "project.create.module.releases.helper":
-    "Named goals (0.1.0, demo-1) holding the epics and quests due to ship in them.",
+  "project.create.step.capabilities": "What is this project?",
+  "project.create.step.capabilities.helper":
+    "Pick what it does. You can add more later.",
+  "project.create.step.setup": "Set it up",
+  "project.create.step.setup.helper":
+    "All of this is changeable later in Settings.",
+  "project.create.soon": "Soon",
   "project.create.next": "Next",
   "project.create.back": "Back",
   "project.create.building": "Forging your project…",
