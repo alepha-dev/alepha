@@ -196,6 +196,11 @@ type Client struct {
 	Reload <-chan struct{}
 	// Gauge reads the host for the stats frames; nil pushes nothing.
 	Gauge Gauge
+	// Version is what `bay version` prints, carried on the inventory frame so
+	// the console can say which Bay reported. It enters here rather than
+	// being read: `version` is a package main variable stamped at link time
+	// and internal/connector cannot import main.
+	Version string
 	// MinStatsInterval floors whatever interval Lore names.
 	MinStatsInterval time.Duration
 
