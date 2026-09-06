@@ -204,10 +204,31 @@ export class LoreAnalyticsStore {
     return sql``;
   }
 
+  /**
+   * The app set, as ONE bound parameter rather than one per app.
+   *
+   * ⚠️ **This table is D1 in production, and D1 refuses a statement carrying
+   * more than 100 bound parameters** (probed in folio #F1173: 100 ok, 101
+   * fails). The obvious `IN (?, ?, …)` binds one per sigil, so a project with
+   * 101 apps got a failed Insights page and a failed dashboard tile, with no
+   * error anyone reads until then. Apps v3 makes one sigil per instance
+   * normal, so a project with several environments reaches the ceiling long
+   * before it has a hundred apps.
+   *
+   * The ids ride inside a single JSON array parameter and are unpacked by
+   * `json_each`, which SQLite and D1 both provide (a Lore migration already
+   * uses it over `projects.areas`). One parameter whatever the list's length,
+   * and the query keeps its exact meaning.
+   *
+   * Chunking, the other way out of the ceiling, is **wrong here** and it is
+   * worth saying why: `uniqueVisitors` counts DISTINCT `(day, visitorHash)`
+   * across the whole set precisely so one person visiting two of a project's
+   * apps counts once. Summing per-chunk counts would count them twice, which
+   * is the exact error this class exists to avoid. A chunked merge is fine for
+   * a read whose rows each belong to one sigil — `InsightsController`'s error
+   * groups do it — and never for a distinct count.
+   */
   protected scope(window: LoreAnalyticsWindow) {
-    return sql.join(
-      window.sigilIds.map((id) => sql`${id}`),
-      sql`, `,
-    );
+    return sql`SELECT value FROM json_each(${JSON.stringify(window.sigilIds)})`;
   }
 }

@@ -199,6 +199,28 @@ export class InsightsController {
    */
   protected readonly VITALS_PATH_MIN_SAMPLES = 30;
 
+  /**
+   * How many sigil ids may ride in one relational `IN (…)`.
+   *
+   * ⚠️ **D1 refuses a statement carrying more than 100 bound parameters**
+   * (folio #F1173, probed: 100 ok, 101 fails), and a project-wide read binds
+   * one per app. Ninety leaves room for the read's other terms - the error
+   * budget adds two date bounds - and the margin is deliberate rather than
+   * tuned: nothing here is faster at 98.
+   *
+   * ⚠️ **In-memory SQLite does not enforce the ceiling**, so a spec that
+   * "passes with 101 sigils" proves nothing on its own. The cap is D1's, and
+   * `InsightsController.spec.ts` asserts the SHAPE - that no chunk exceeds
+   * this, and that a chunked read still answers about the whole set.
+   *
+   * Only the reads that hit D1 need it. `sigil_error_groups` and
+   * `sigil_uniques_daily` are relational tables; views, vitals and the error
+   * SERIES are `$analytics()` datasets, answered in production by Analytics
+   * Engine, whose provider quotes its `IN` lists as literals and binds
+   * nothing. Each site says which it is where it is built.
+   */
+  protected readonly SIGIL_CHUNK = 90;
+
   protected analytics = $inject(LoreAnalyticsStore);
   protected datasets = $inject(LoreAnalytics);
   protected security = $inject(ProjectSecurityService);
@@ -382,6 +404,14 @@ export class InsightsController {
       // other dimension - hence `uniqueVisitorsIgnores` on the response. The
       // error budget is narrowed by neither, because an error is not a view
       // and a crawler's crash is still this app's crash.
+      //
+      // ⚠️ **`$analytics()`, not D1** — so this list is NOT under the
+      // hundred-parameter ceiling `SIGIL_CHUNK` exists for. In production the
+      // datasets are Analytics Engine, whose provider quotes an `IN` list as
+      // SQL literals and binds nothing; the relational provider binds, and is
+      // never D1, because a deployment with D1 has Analytics Engine too. The
+      // two reads that DO hit D1 from this handler are `uniqueVisitors`
+      // (through `window`) and `readErrorGroups`, and both are bounded there.
       const filters = {
         sigilId: { inArray: sigilIds },
         ...this.trafficFilter(traffic),
@@ -518,6 +548,9 @@ export class InsightsController {
         // REJECTED query rather than a narrower answer, and the whole
         // Insights read 500s. `whereFor` exists for exactly this and would
         // have made it silent instead; the filters simply do not apply here.
+        //
+        // ⚠️ The error SERIES, not the error GROUPS: `$analytics()` again, so
+        // no hundred-parameter ceiling. `readErrorGroups` is the D1 one.
         this.datasets.errors.query({
           since,
           until,
@@ -768,6 +801,10 @@ export class InsightsController {
         throw new NotFoundError("Page is past the end of this leaderboard");
       }
 
+      // ⚠️ `$analytics()` views, not D1: literals on Analytics Engine, and
+      // never D1 on the relational provider. Nothing this handler asks
+      // touches `sigil_uniques_daily` or `sigil_error_groups`, so the whole
+      // read is outside the hundred-parameter ceiling.
       const filters = {
         sigilId: { inArray: sigilIds },
         ...this.trafficFilter(traffic),
@@ -872,6 +909,7 @@ export class InsightsController {
         return empty;
       }
 
+      // ⚠️ `$analytics()` vitals, not D1 — same reasoning as the two above.
       const where = this.whereFor(this.datasets.vitals.dataset, {
         sigilId: { inArray: sigilIds },
         ...this.viewFilters(query),
@@ -1056,14 +1094,37 @@ export class InsightsController {
     since: string,
     until: string,
   ): Promise<InsightsResource["errorGroups"]> {
-    const rows = await this.errorGroups.findMany({
-      where: {
-        sigilId: { inArray: sigilIds },
-        lastSeenAt: { gte: since, lte: `${until}~` },
-      },
-      orderBy: [{ column: "count", direction: "desc" }],
-      limit: this.TOP_ERROR_GROUPS,
-    });
+    // ⚠️ D1, and one bound parameter per app — see `SIGIL_CHUNK`. Chunked
+    // rather than scoped by a `projectId` subquery because the repository's
+    // where-filter has no way to express one: `FilterOperators` offers value
+    // comparisons and set membership, and nothing that takes a SELECT.
+    //
+    // The merge is where a chunked leaderboard goes wrong, so it is done
+    // BEFORE the slice: each chunk returns its own top twenty, and the top
+    // twenty overall are then taken from the union. Taking twenty per chunk is
+    // what makes that sound — a row in the global top twenty has at most
+    // nineteen rows above it anywhere, so it cannot be pushed out of its own
+    // chunk's twenty. Slicing each chunk to a share of twenty would drop real
+    // rows the moment a project's errors clustered in one app.
+    //
+    // With one chunk this is the query it has always been, in the order the
+    // database returned it: `sort` is stable, so equal counts keep it.
+    const pages = await Promise.all(
+      this.chunked(sigilIds).map((ids) =>
+        this.errorGroups.findMany({
+          where: {
+            sigilId: { inArray: ids },
+            lastSeenAt: { gte: since, lte: `${until}~` },
+          },
+          orderBy: [{ column: "count", direction: "desc" }],
+          limit: this.TOP_ERROR_GROUPS,
+        }),
+      ),
+    );
+    const rows = pages
+      .flat()
+      .sort((left, right) => (right.count ?? 1) - (left.count ?? 1))
+      .slice(0, this.TOP_ERROR_GROUPS);
 
     return rows.map((row) => ({
       sigilId: row.sigilId,
@@ -1078,6 +1139,24 @@ export class InsightsController {
       firstSeenAt: row.firstSeenAt,
       lastSeenAt: row.lastSeenAt,
     }));
+  }
+
+  /**
+   * The sigil ids, cut into lists a relational statement can bind.
+   *
+   * No chunks at all for an empty list, which is what makes the caller's
+   * `Promise.all` answer "no rows" rather than ask a question it cannot
+   * phrase: `{ inArray: [] }` is an `AlephaError` from the repository, not an
+   * empty result. Every read that reaches here has already returned early on
+   * an empty app set, so this is a guard against the next caller, not this
+   * one.
+   */
+  protected chunked(sigilIds: string[]): string[][] {
+    const chunks: string[][] = [];
+    for (let index = 0; index < sigilIds.length; index += this.SIGIL_CHUNK) {
+      chunks.push(sigilIds.slice(index, index + this.SIGIL_CHUNK));
+    }
+    return chunks;
   }
 
   /**
