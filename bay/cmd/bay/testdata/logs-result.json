@@ -1,0 +1,16 @@
+{
+  "supervised": true,
+  "undated": 1,
+  "truncated": 12,
+  "lines": [
+    {
+      "at": "2026-09-06T11:59:41Z",
+      "level": "info",
+      "text": "listening on 41001",
+      "raw": "{\"level\":\"info\",\"msg\":\"listening on 41001\"}"
+    },
+    {
+      "raw": "a plain line with no envelope at all"
+    }
+  ]
+}
