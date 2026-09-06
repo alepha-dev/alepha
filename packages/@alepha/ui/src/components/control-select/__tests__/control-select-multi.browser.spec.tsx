@@ -66,6 +66,41 @@ describe("ControlSelect multi", () => {
     );
   };
 
+  /**
+   * The server-mode half: a real async loader, above the threshold, so the
+   * component is in long mode and its list is whatever the last query
+   * returned.
+   *
+   * The loader answers a query with its matches and an EMPTY query with a
+   * first page - which is what an autocomplete does, and what makes a value
+   * found by searching disappear from the list the moment the query is
+   * cleared.
+   */
+  const ServerProbe = () => {
+    const form = useForm({
+      schema: z.object({ status: z.array(z.text()).optional() as never }),
+      handler: () => {},
+    });
+    return (
+      <>
+        <ControlSelect
+          input={form.input.status}
+          label="Status"
+          clearable
+          clearLabel="All status"
+          loaderThreshold={0}
+          loaderDebounce={0}
+          loader={async (q: string) =>
+            q
+              ? ["alpha", "beta", "gamma", "delta"].filter((i) => i.includes(q))
+              : ["alpha", "beta"]
+          }
+        />
+        <Reporter input={form.input.status} />
+      </>
+    );
+  };
+
   const Reporter = (props: { input: BaseInputField }) => {
     const [value] = useFieldValue(props.input);
     return (
@@ -75,7 +110,16 @@ describe("ControlSelect multi", () => {
     );
   };
 
-  const trigger = (ui: ReturnType<typeof render>) => ui.getByRole("combobox");
+  /**
+   * ⚠️ The BUTTON, picked out of the two elements carrying `role="combobox"`.
+   *
+   * The popup's search field is the other one, so a bare `getByRole` throws
+   * "found multiple elements" for any case that reads the trigger while an
+   * open popup has a search field - which is every list with
+   * `createNewEntry`, a server loader, or more rows than the threshold.
+   */
+  const trigger = (ui: ReturnType<typeof render>) =>
+    ui.getAllByRole("combobox").find((el) => el.tagName === "BUTTON")!;
   const openPopup = (ui: ReturnType<typeof render>) =>
     fireEvent.keyDown(trigger(ui), { key: "ArrowDown" });
 
@@ -192,5 +236,164 @@ describe("ControlSelect multi", () => {
       expect(ui.getByTestId("value").textContent).toBe("∅");
     });
     expect(trigger(ui).textContent).toContain("All status");
+  });
+  /*
+    Feedback #2115: on the showcase's `Tags (multi + create)` field, selecting
+    A and B then creating C left the trigger reading "3 selected" while the
+    popup listed four options with two check marks. C was selected, counted,
+    and invisible - so it could not be deselected from the list it was
+    missing from.
+
+    The component built its list strictly from `props.data`, so a selected
+    value that is not in `data` had no row. It was already half-aware of
+    this: `labelCache` exists for exactly these values and its own comment
+    names both ways in - a freshly created entry, and one a server-filtered
+    `data` set has dropped. The LABEL problem was solved and the LIST problem
+    was not.
+
+    ⚠️ The caller cannot fix this one. The showcase declares its items as a
+    static literal inside a zod `.meta({ $control })`, with no caller state to
+    append to, and `useForm` anchors its schema at mount anyway - which is the
+    normal declarative way controls are written here. `createNewEntry` was
+    broken by construction for every such caller.
+  */
+  describe("a selected value with no option to be selected from", () => {
+    const selectedRows = (ui: ReturnType<typeof render>) =>
+      ui.getAllByRole("option").filter((o) => o.ariaSelected === "true");
+
+    const type = (ui: ReturnType<typeof render>, text: string) =>
+      fireEvent.change(ui.getByPlaceholderText("Search…"), {
+        target: { value: text },
+      });
+
+    it("gives a created value a row, and the check marks match the count", async () => {
+      const alepha = await start();
+      const ui = mount(alepha, <Probe createNewEntry />);
+
+      openPopup(ui);
+      fireEvent.click(await ui.findByRole("option", { name: /In progress/ }));
+      openPopup(ui);
+      fireEvent.click(await ui.findByRole("option", { name: /Completed/ }));
+
+      openPopup(ui);
+      type(ui, "urgent");
+      fireEvent.click(await ui.findByRole("option", { name: /urgent/ }));
+      await waitFor(() => {
+        expect(ui.getByTestId("value").textContent).toBe(
+          "accepted,completed,urgent",
+        );
+      });
+
+      // The report, exactly: the trigger says three and the list has to agree.
+      expect(trigger(ui).textContent).toContain("3 selected");
+      openPopup(ui);
+      await waitFor(() => {
+        expect(selectedRows(ui)).toHaveLength(3);
+      });
+    });
+
+    it("lets a created value be deselected from the list it now appears in", async () => {
+      const alepha = await start();
+      const ui = mount(alepha, <Probe createNewEntry />);
+
+      openPopup(ui);
+      type(ui, "urgent");
+      fireEvent.click(await ui.findByRole("option", { name: /urgent/ }));
+      await waitFor(() => {
+        expect(ui.getByTestId("value").textContent).toBe("urgent");
+      });
+
+      openPopup(ui);
+      // With the query cleared, the created value is a row like any other.
+      fireEvent.click(await ui.findByRole("option", { name: "urgent" }));
+      await waitFor(() => {
+        expect(ui.getByTestId("value").textContent).toBe("∅");
+      });
+    });
+
+    /**
+     * The bonus the injection point buys: `showCreate`'s guard reads
+     * `options`, so putting the orphans there rather than in `filtered` stops
+     * a second Create row being offered for a value that already exists.
+     */
+    it("stops offering Create for a value it has already created", async () => {
+      const alepha = await start();
+      const ui = mount(alepha, <Probe createNewEntry />);
+
+      openPopup(ui);
+      type(ui, "urgent");
+      fireEvent.click(await ui.findByRole("option", { name: /urgent/ }));
+      await waitFor(() => {
+        expect(ui.getByTestId("value").textContent).toBe("urgent");
+      });
+
+      openPopup(ui);
+      type(ui, "urgent");
+      await waitFor(() => {
+        expect(ui.getAllByRole("option", { name: /urgent/ })).toHaveLength(1);
+      });
+      // One row, and it is the real value rather than an offer to make it
+      // again.
+      expect(selectedRows(ui)).toHaveLength(1);
+    });
+
+    /**
+     * ⚠️ The DECISION, pinned so it stays one: an orphan is filtered by the
+     * typed query like every other row. A search that kept showing rows it
+     * did not match would stop being a search.
+     */
+    it("hides a created value under a query that does not match it", async () => {
+      const alepha = await start();
+      const ui = mount(alepha, <Probe createNewEntry />);
+
+      openPopup(ui);
+      type(ui, "urgent");
+      fireEvent.click(await ui.findByRole("option", { name: /urgent/ }));
+      await waitFor(() => {
+        expect(ui.getByTestId("value").textContent).toBe("urgent");
+      });
+
+      openPopup(ui);
+      type(ui, "prog");
+      await waitFor(() => {
+        expect(ui.queryByRole("option", { name: "urgent" })).toBeNull();
+      });
+      expect(ui.getByRole("option", { name: /In progress/ })).not.toBeNull();
+    });
+
+    /**
+     * The second door, and the one `labelCache`'s comment already named: a
+     * server-filtered list drops the picked value, so its row goes while the
+     * trigger keeps counting it. Driven through a real async loader in long
+     * mode rather than by shrinking a static array, because the disappearance
+     * has to come from the same place it does in production.
+     */
+    it("gives a server-dropped value a row once the query is cleared", async () => {
+      const alepha = await start();
+      const ui = mount(alepha, <ServerProbe />);
+
+      openPopup(ui);
+      await ui.findByRole("option", { name: "alpha" });
+      type(ui, "gamma");
+      fireEvent.click(await ui.findByRole("option", { name: "gamma" }));
+      await waitFor(() => {
+        expect(ui.getByTestId("value").textContent).toBe("gamma");
+      });
+
+      // Back to the first page, which does not contain gamma. Before the fix
+      // the trigger said "gamma" and the list showed alpha and beta only.
+      openPopup(ui);
+      type(ui, "");
+      await waitFor(() => {
+        expect(ui.getByRole("option", { name: "alpha" })).not.toBeNull();
+      });
+      expect(ui.getByRole("option", { name: "gamma" })).not.toBeNull();
+      expect(selectedRows(ui)).toHaveLength(1);
+
+      fireEvent.click(ui.getByRole("option", { name: "gamma" }));
+      await waitFor(() => {
+        expect(ui.getByTestId("value").textContent).toBe("∅");
+      });
+    });
   });
 });
