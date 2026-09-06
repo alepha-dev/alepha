@@ -1872,7 +1872,6 @@ export default {
     "$1 quests you authored will also be deleted, including any in other people's projects.",
 
   // --- folios ---------------------------------------------------------------
-  "folio.tree.resize": "Resize folio tree",
   "folios.wikilink.loading": "Loading…",
   "folios.wikilink.unavailable": "Preview unavailable",
 
