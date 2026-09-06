@@ -148,6 +148,8 @@ func main() {
 		err = cmdRemove(os.Args[2:])
 	case "stop":
 		err = cmdStop(os.Args[2:])
+	case "start":
+		err = cmdStart(os.Args[2:])
 	case "config":
 		// Named by CONSUMER, not by technology. `s3` vs `storage` said "S3"
 		// twice and never said which one an app gets — a distinction you could
@@ -246,7 +248,9 @@ func usageText() string {
   bay status  [--json]            # releases, traffic + backup freshness
   bay logs    <name/env> [-n 200] [--since 15m] [--grep RE] [--json]
               # journald on a real host, logs/app.log under the child runner
-  bay stop    <name/env>
+  bay stop    <name/env>          # out of service until "bay start" or a deploy;
+                                  # survives a reboot and a bay upgrade
+  bay start   <name/env>          # back into service
   bay remove  <name/env> [--purge]  # unregister; data is KEPT unless --purge
   bay version
   bay config s3:backups --endpoint URL --bucket NAME [--keep N]
@@ -640,12 +644,7 @@ func cmdServe(args []string) error {
 		srv.pruneReleases(app)
 	}
 
-	// Bring previously deployed apps back up after a bay restart.
-	for _, app := range store.Apps() {
-		if err := srv.start(app); err != nil {
-			log.Error("restore failed", "app", app.Key(), "err", err)
-		}
-	}
+	srv.restoreApps()
 
 	// Scheduled backups. Started after the apps are up so the first catch-up run
 	// snapshots databases that are being served, which is the state a restore has
@@ -747,6 +746,96 @@ func (s *server) pruneReleases(app state.App, protect ...string) []string {
 // Starting and being ready are different things: routing traffic at a process
 // that is still running migrations is exactly the mistake this separation
 // prevents.
+/*
+restoreApps brings previously deployed apps back up after a bay restart.
+
+Except the ones somebody took out of service. Before the flag existed, this
+loop was what undid `bay stop` on the next upgrade: the app came back with
+nothing saying why, which is the surprise that pages somebody at 3 am. On
+systemd the parked unit is already disabled and would stay down through a
+REBOOT on its own; this skip is what keeps a Bay RESTART from resurrecting it,
+and on the child runner it is the whole mechanism.
+
+A method rather than a loop inside `cmdServe` so a test can run it: `cmdServe`
+binds sockets and never returns.
+*/
+func (s *server) restoreApps() {
+	for _, app := range s.store.Apps() {
+		if app.Stopped {
+			s.log.Info("skipping a stopped app", "app", app.Key(),
+				"hint", "bay start "+app.Key())
+			continue
+		}
+		if err := s.start(app); err != nil {
+			s.log.Error("restore failed", "app", app.Key(), "err", err)
+		}
+	}
+}
+
+/*
+stopInstance takes one instance out of service, durably.
+
+The one implementation behind `bay stop`, the control route and the connector's
+`stop` verb, so the CLI, the socket and Lore cannot end up meaning three
+different things by the same word.
+
+Two halves, and both are needed. The persisted intent is what the boot loop
+reads, and it is what makes the stop survive a Bay upgrade on any runner. The
+park is what makes it survive a host reboot on systemd, where an enabled unit
+comes back whatever Bay thinks.
+
+⚠️ No `holdDuring`. A stop means the site goes dark on purpose, and holding
+requests for ninety seconds before answering 502 is worse than answering 502
+now.
+
+⚠️ The intent is recorded FIRST. A park that fails leaves an app that is still
+running and is marked stopped, which the next boot corrects; the other order
+leaves one that is down and marked running, which nothing corrects.
+*/
+func (s *server) stopInstance(key string) error {
+	app, ok := s.store.Get(key)
+	if !ok {
+		return fmt.Errorf("unknown app %q", key)
+	}
+	if app.Static {
+		return fmt.Errorf("%s is a static site: it has no process to stop", key)
+	}
+	if err := s.store.SetStopped(key, true); err != nil {
+		return err
+	}
+	return s.runner.Park(key, stopGrace)
+}
+
+/*
+startInstance puts a stopped instance back into service.
+
+Clears the intent, then starts, which on systemd re-enables the unit: `Start`
+runs `systemctl enable` before it restarts, so the two halves of a stop are
+undone by the two halves of a start.
+
+⚠️ An instance that is already running is left ALONE and reported as started.
+`Systemd.Start` runs `systemctl restart`, so calling it here would restart a
+healthy app in disguise - a "start" that bounces production is not what anyone
+clicking it expects.
+*/
+func (s *server) startInstance(key string) error {
+	app, ok := s.store.Get(key)
+	if !ok {
+		return fmt.Errorf("unknown app %q", key)
+	}
+	if app.Static {
+		return fmt.Errorf("%s is a static site: it has no process to start", key)
+	}
+	if err := s.store.SetStopped(key, false); err != nil {
+		return err
+	}
+	if s.runner.Running(key) {
+		return nil
+	}
+	app.Stopped = false
+	return s.start(app)
+}
+
 func (s *server) start(app state.App) error {
 	// A static site has no process. It is serving the moment `current` points at
 	// the new release, because the proxy reads the files straight off disk —
@@ -840,11 +929,19 @@ func (s *server) controlMux() *http.ServeMux {
 	mux.HandleFunc("DELETE /apps/{name}/{env}", s.handleRemove)
 	mux.HandleFunc("POST /apps/{name}/{env}/stop", func(w http.ResponseWriter, r *http.Request) {
 		key := r.PathValue("name") + "/" + r.PathValue("env")
-		if err := s.runner.Stop(key, stopGrace); err != nil {
+		if err := s.stopInstance(key); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"stopped": key})
+	})
+	mux.HandleFunc("POST /apps/{name}/{env}/start", func(w http.ResponseWriter, r *http.Request) {
+		key := r.PathValue("name") + "/" + r.PathValue("env")
+		if err := s.startInstance(key); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"started": key})
 	})
 	mux.HandleFunc("GET /apps/{name}/{env}/logs", s.handleLogs)
 	// What this server was started with, for the commands that have to judge
@@ -1821,13 +1918,19 @@ func appKey(args []string, cmd string) (string, error) {
 	return key, nil
 }
 
+/*
+cmdStop takes an instance out of service until somebody puts it back.
+
+⚠️ Durable since the console's stop verb landed, and that is a change in what
+this command means. It used to be undone by the next reboot (the unit stayed
+enabled) and by the next `bay serve` restart (the boot loop started every
+stored app). Both are closed now: the intent is persisted and the unit is
+disabled, so the way back is `bay start` or a deploy.
+*/
 func cmdStop(args []string) error {
-	if len(args) == 0 {
-		return errors.New("usage: bay stop <name/env>")
-	}
-	key := args[0]
-	if !strings.Contains(key, "/") {
-		key += "/production"
+	key, err := instanceKey(args, "stop")
+	if err != nil {
+		return err
 	}
 	res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/stop", nil)
 	if err != nil {
@@ -1835,6 +1938,40 @@ func cmdStop(args []string) error {
 	}
 	fmt.Println(res)
 	return nil
+}
+
+/*
+cmdStart puts a stopped instance back into service.
+
+It exists because the stop became durable. Without it an operator over ssh who
+stopped an app would have no way back short of a redeploy, and `restart` is not
+that way: it refuses an app that is not running, on purpose, because whoever
+stopped it owns that decision.
+*/
+func cmdStart(args []string) error {
+	key, err := instanceKey(args, "start")
+	if err != nil {
+		return err
+	}
+	res, err := call(http.MethodPost, controlHost+"/apps/"+key+"/start", nil)
+	if err != nil {
+		return err
+	}
+	fmt.Println(res)
+	return nil
+}
+
+// instanceKey reads the `<name/env>` argument these two share, defaulting the
+// environment the way `bay stop` always has.
+func instanceKey(args []string, cmd string) (string, error) {
+	if len(args) == 0 {
+		return "", errors.New("usage: bay " + cmd + " <name/env>")
+	}
+	key := args[0]
+	if !strings.Contains(key, "/") {
+		key += "/production"
+	}
+	return key, nil
 }
 
 /*

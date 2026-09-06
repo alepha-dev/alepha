@@ -39,6 +39,16 @@ type Spec struct {
 type Runner interface {
 	Start(spec Spec) error
 	Stop(key string, grace time.Duration) error
+	// Park takes the app out of service and keeps it out across a reboot: for
+	// systemd, `systemctl disable --now`.
+	//
+	// Separate from Stop, and it has to be. Deploy calls Stop then Start
+	// internally on every redeploy; if that Stop disabled the unit and Bay
+	// crashed between the two, the app would be gone after the next reboot
+	// with nothing saying why. Park is only ever reached by an operator or a
+	// console saying "take this out of service", and Start re-enables, so a
+	// deploy or a start undoes it by construction.
+	Park(key string, grace time.Duration) error
 	// Remove uninstalls whatever the supervisor installed for the app, after
 	// Stop: for systemd that is the unit file and its enable symlink, without
 	// which an unregistered app comes back at the next reboot.
@@ -220,6 +230,13 @@ func (r *Child) Running(key string) bool {
 	defer r.mu.Unlock()
 	_, ok := r.procs[key]
 	return ok
+}
+
+// Park is a plain Stop for a child process: there is no unit to disable, and
+// nothing survives Bay's own exit anyway. What makes the stop durable on this
+// runner is the persisted intent the boot loop reads, not anything here.
+func (r *Child) Park(key string, grace time.Duration) error {
+	return r.Stop(key, grace)
 }
 
 // State is the child runner's two-value version of systemd's ActiveState: it
