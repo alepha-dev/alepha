@@ -376,19 +376,23 @@ func (s *Systemd) Park(key string, grace time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), grace+stopCallMargin)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx, "systemctl", "disable", "--now",
-		unitName(key)+".service").CombinedOutput()
-	if err == nil {
-		return nil
+	// The argv and the not-loaded tolerance live in `parkUnit`, so they are
+	// asserted on a host with no systemd. What stays here is the bound on the
+	// call, which is this method's own concern: a systemd that never returns
+	// must not wedge the action that asked for the park.
+	run := s.run
+	if run == nil {
+		run = func(name string, args ...string) ([]byte, error) {
+			return exec.CommandContext(ctx, name, args...).CombinedOutput()
+		}
 	}
-	if ctx.Err() != nil {
-		return fmt.Errorf("park %s: systemctl did not return within %s", key, grace+stopCallMargin)
+	if err := parkUnit(run, unitName(key)); err != nil {
+		if ctx.Err() != nil {
+			return fmt.Errorf("park %s: systemctl did not return within %s", key, grace+stopCallMargin)
+		}
+		return fmt.Errorf("park %s: %w", key, err)
 	}
-	text := strings.TrimSpace(string(out))
-	if notLoaded(text) {
-		return nil
-	}
-	return fmt.Errorf("park %s: %w: %s", key, err, text)
+	return nil
 }
 
 /*

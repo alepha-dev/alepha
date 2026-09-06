@@ -450,6 +450,33 @@ interface ArtifactRow {
   tag: string;
 }
 
+/**
+ * The shape of what `getEstateInventory` answers, as far as this file reads
+ * it.
+ *
+ * Declared locally rather than imported from Lore for the reason every other
+ * row type here is: this spec drives Lore over HTTP, by action name, and a
+ * compile-time import would make it agree with the source it is supposed to
+ * be testing from the outside. The field names it names are the contract.
+ */
+interface InventoryApp {
+  app: string;
+  env: string;
+  running: boolean;
+  stopped?: boolean;
+  state?: string;
+}
+
+interface InventorySnapshot {
+  at: string;
+  reportedAt: string;
+  apps: InventoryApp[];
+}
+
+interface InventoryResponse {
+  inventory: InventorySnapshot | null;
+}
+
 describe("Bay connector against a real Lore", () => {
   const work = mkdtempSync(join(tmpdir(), "bay-e2e-"));
   const bay: Bay = {
@@ -628,6 +655,155 @@ describe("Bay connector against a real Lore", () => {
 
     const listed = await bayCli(bay, ["list"]);
     expect(listed.out).toContain("demo");
+  });
+
+  /**
+   * The inventory loop, end to end: the machine reports, Lore stores, and a
+   * refresh asks for a fresh one rather than waiting out the tick.
+   *
+   * The whole epic hangs off this frame and every other test of it drives a
+   * stub on one side: the Go suite pushes into a fake Lore, the Lore specs
+   * store a hand-written frame. Only here does a real `bay serve` fill
+   * `estate_inventories` through the real socket.
+   *
+   * ⚠️ `refreshEstate` answers `{ asked: true }` and nothing else. The Worker
+   * cannot read the machine's reply, so the proof a query was ANSWERED is a
+   * second row with a later `reportedAt` - which is also the one assertion
+   * that would fail if `query` were quietly ignored by the connector, since
+   * the tick alone would eventually produce a later stamp anyway. Bay's own
+   * 5 s coalescing floor is why this waits rather than reads once.
+   */
+  it("reports an inventory after the welcome, and answers a query with a fresher one", async () => {
+    const first = await until(
+      "the first inventory to land",
+      async () => {
+        const read = await ok<InventoryResponse>(
+          call(lore, owner, "getEstateInventory", {
+            params: { estateId: estate.id },
+          }),
+        );
+        return read.inventory ?? undefined;
+      },
+      60_000,
+    );
+
+    expect(first.reportedAt).toBeTruthy();
+    expect(first.at).toBeTruthy();
+
+    /*
+     * The post-welcome push is the row above, and it is legitimately EMPTY:
+     * it goes out before anything is deployed, and an estate with no apps
+     * reporting an empty list is the honest frame. So the app is waited for
+     * rather than expected in that first row - which is also what the 5 s
+     * coalescing floor means in practice, since the restart's own kick lands
+     * after the ack the previous case already saw settle.
+     */
+    const listed = await until(
+      "an inventory listing the app the restart case deployed",
+      async () => {
+        const read = await ok<InventoryResponse>(
+          call(lore, owner, "getEstateInventory", {
+            params: { estateId: estate.id },
+          }),
+        );
+        return read.inventory?.apps.some(
+          (a) => a.app === "demo" && a.env === "production",
+        )
+          ? read.inventory
+          : undefined;
+      },
+      60_000,
+    );
+
+    const asked = await ok<{ asked: boolean }>(
+      call(lore, owner, "refreshEstate", { params: { estateId: estate.id } }),
+    );
+    expect(asked.asked).toBe(true);
+
+    const fresher = await until(
+      "the query to be answered with a second inventory",
+      async () => {
+        const read = await ok<InventoryResponse>(
+          call(lore, owner, "getEstateInventory", {
+            params: { estateId: estate.id },
+          }),
+        );
+        return read.inventory && read.inventory.reportedAt > listed.reportedAt
+          ? read.inventory
+          : undefined;
+      },
+      60_000,
+    );
+    expect(fresher.reportedAt > listed.reportedAt).toBe(true);
+    // The refresh asked for the state, it did not reset it: an answer that
+    // came back without the app would mean the query path builds a different
+    // frame from the tick, which is the drift this case exists to catch.
+    expect(fresher.apps.map((a) => `${a.app}/${a.env}`)).toContain(
+      "demo/production",
+    );
+  });
+
+  /**
+   * Stop, then start, on the child runner, which is real on macOS too.
+   *
+   * Asserted through the inventory rather than through the ack: an ack says
+   * the command finished, and the failure this guards against is the one
+   * where it finished and the machine kept serving. `running: false` in a
+   * frame the machine pushed itself is the only statement of that here.
+   *
+   * `stopped` beside it is the durable half. `running: false` alone is also
+   * what a crashed app looks like, and the console draws the two differently
+   * for a reason: only one of them survives a reboot on purpose.
+   */
+  it("stops an instance and starts it again, and the machine reports both", async () => {
+    const instanceIn = (inv: InventorySnapshot) =>
+      inv.apps.find((a) => a.app === "demo" && a.env === "production");
+
+    const inventoryShows = (
+      what: string,
+      predicate: (app: InventoryApp) => boolean,
+    ) =>
+      until(
+        what,
+        async () => {
+          const read = await ok<InventoryResponse>(
+            call(lore, owner, "getEstateInventory", {
+              params: { estateId: estate.id },
+            }),
+          );
+          const app = read.inventory && instanceIn(read.inventory);
+          return app && predicate(app) ? app : undefined;
+        },
+        60_000,
+      );
+
+    const stopped = await ok(
+      enqueue({ kind: "stop", app: "demo", environment: "production" }),
+    );
+    const stopSettled = await commandSettles(stopped.id);
+    expect(stopSettled.status, stopSettled.reason).toBe("done");
+
+    const down = await inventoryShows(
+      "the machine to report the instance down and stopped on purpose",
+      (app) => app.running === false && app.stopped === true,
+    );
+    expect(down.running).toBe(false);
+    expect(down.stopped).toBe(true);
+
+    const started = await ok(
+      enqueue({ kind: "start", app: "demo", environment: "production" }),
+    );
+    const startSettled = await commandSettles(started.id);
+    expect(startSettled.status, startSettled.reason).toBe("done");
+
+    const up = await inventoryShows(
+      "the machine to report the instance back up with the intent cleared",
+      (app) => app.running === true,
+    );
+    // Cleared, not merely overridden: the flag is what the boot loop reads,
+    // so an app left `stopped: true` while running goes down at the next
+    // restart of Bay for no reason anybody would connect to this click.
+    expect(up.stopped).toBeFalsy();
   });
 
   it("refuses a deploy at enqueue while deployAllowed is off, then runs one to done with an empty secret set", async () => {
