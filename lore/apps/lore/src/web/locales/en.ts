@@ -301,6 +301,7 @@ export default {
   "board.bulk.unshelve.skipped": "$1 skipped: not shelved.",
 
   "project.menu.create-quest": "New Quest",
+  "project.menu.create-app": "New app",
   "project.menu.create-folio": "New Folio",
   "project.menu.invite-member": "Invite Member",
   "project.menu.create-feedback": "New Feedback",
@@ -1074,6 +1075,20 @@ export default {
   "apps.filter.allApps": "All apps",
   "apps.filter.reporting": "Reporting",
   "apps.filter.silent": "Silent",
+  "apps.create.title": "New app",
+  "apps.create.description":
+    "One row per deployed copy: the app, and which copy of it. Nothing is minted here.",
+  "apps.create.app": "App",
+  "apps.create.appDescription":
+    "Pick an app you already deploy, or start a new one. Lowercase letters, digits and hyphens.",
+  "apps.create.env": "Environment",
+  "apps.create.envDescription":
+    "Which copy: production, staging, b14-production. Free text, and nothing parses it.",
+  "apps.create.withSigil": "Create a sigil too",
+  "apps.create.withSigilDescription":
+    "Mints the key this copy reports with, shown once. You can always add one later from its Settings tab.",
+  "apps.create.cancel": "Cancel",
+  "apps.create.submit": "Create",
   "apps.table.name": "App",
   "apps.table.env": "Env",
   "apps.table.address": "Address",
