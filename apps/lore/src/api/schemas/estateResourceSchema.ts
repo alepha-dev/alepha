@@ -5,10 +5,15 @@ import { estates } from "../entities/estates.ts";
 /**
  * An estate as its owner's account page sees it.
  *
- * The entity minus the one field nothing outside the server may read,
- * `secretHash`, plus two facts derived at read time: `online`, from the
- * liveness stamps (see `EstateService.isOnline`), and `acceptedRuntimes`,
- * from the type, which is what epic #1's runtime gate (#1598) reads.
+ * The entity minus the fields nothing outside the server may read, plus two
+ * facts derived at read time: `online`, from the liveness stamps (see
+ * `EstateService.isOnline`), and `acceptedRuntimes`, from the type, which is
+ * what epic #1's runtime gate (#1598) reads.
+ *
+ * ⚠️ Subtractive, which is the wrong direction and is why the list below
+ * has to be maintained by hand: a secret column added to the entity reaches
+ * a browser unless someone remembers this file. #1629 turns it into a `pick`
+ * allowlist for exactly that reason.
  *
  * ⚠️ There is no read path that returns the secret, for the owner included.
  * `secretPrefix` stays so the UI can name a credential it can never rebuild.
@@ -20,7 +25,11 @@ import { estates } from "../entities/estates.ts";
  * and the database provider into the client bundle.
  */
 export const estateResourceSchema = estates.schema
-  .omit({ secretHash: true })
+  .omit({
+    secretHash: true,
+    credential: true,
+    credentialKeyVersion: true,
+  })
   .extend({
     online: z.boolean(),
     acceptedRuntimes: z.array(z.string()),
