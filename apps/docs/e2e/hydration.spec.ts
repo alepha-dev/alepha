@@ -86,4 +86,46 @@ test.describe("Hydration", () => {
     await expect(page.locator("#root")).not.toBeEmpty();
     expect(consoleErrors.filter(isHydrationError)).toHaveLength(0);
   });
+
+  /**
+   * `/changelog` is prerendered like every other route, and Workers Static
+   * Assets matches on the path alone: `/changelog?scope=ui` is answered with
+   * the file built for `/changelog`, which is unfiltered. A client that read
+   * the param during its first render would hydrate a filtered list onto
+   * unfiltered HTML - #418 on every deep link into the changelog. The filter
+   * is gated behind a `useSyncExternalStore` mount flag for exactly that.
+   *
+   * ⚠️ The prerendered file has to be served here explicitly, the same way
+   * the 404 test above does it. `yarn start` is a node server that renders
+   * whatever URL it is handed, query included, so it answers this request
+   * with a filtered page and the two sides agree - the suite went green with
+   * the gate deleted, which is the one result a hydration test must not give.
+   */
+  test("a deep link into the changelog filter hydrates without errors", async ({
+    page,
+  }) => {
+    const prerendered = readFileSync(
+      join(process.cwd(), "dist/public/changelog.html"),
+      "utf8",
+    );
+    await page.route("**/changelog?scope=ui", (route) =>
+      route.fulfill({ contentType: "text/html", body: prerendered }),
+    );
+
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+
+    await page.goto("/changelog?scope=ui");
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(500);
+
+    // The filter still arrives, so the gate delays it rather than losing it.
+    await expect(page.getByRole("button", { name: "UI" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(consoleErrors.filter(isHydrationError)).toHaveLength(0);
+  });
 });

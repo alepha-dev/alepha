@@ -5,17 +5,24 @@ import { AlephaCommands } from "./scripts/commands.ts";
 
 export default defineConfig({
   plugins: [
-    // The changelog is the note that ships with the npm packages, so it lists
-    // what npm ships: the `alepha` modules, its `api/*` sub-modules, and every
-    // published `@alepha/*` package. Everything else, the apps and the private
+    // The changelog is the release note for everything this repository ships:
+    // the `alepha` modules, its `api/*` sub-modules, every published
+    // `@alepha/*` package, and the two applications that are products in their
+    // own right, Lore and Bay. Everything else, the examples and the private
     // packages, is invisible here without anyone having to remember it.
     //
-    // This was a denylist until 0.25, and the denylist is why `bay`, `pulse`,
-    // `sigil`, `ui` and `shop` reached the notes for a release nobody shipped
-    // them in: it only ever excluded what someone thought to add, and an app
-    // born after the last edit is published by default. An allowlist fails the
-    // other way, which is the one you notice: a missing entry gets reported,
-    // a leaked one does not.
+    // `lore` and `bay` were added in 0.29. They are deployed products with
+    // their own pages on the site, and a reader of alepha.dev/changelog wants
+    // to know what moved in them; the page's scope filter is what keeps them
+    // out of the way of someone who only cares about the framework.
+    //
+    // This was a denylist until 0.25, and the denylist is why `pulse` and
+    // `shop` reached the notes for a release nobody shipped them in: it only
+    // ever excluded what someone thought to add, and an app born after the
+    // last edit is published by default. An allowlist fails the other way,
+    // which is the one you notice: a missing entry gets reported, a leaked one
+    // does not. Adding `bay` and `lore` above is that report being acted on,
+    // not the rule being loosened.
     //
     // Scopes match on the segment before `/`, so `api` covers `api/users` and
     // `react` covers `react/form`.
@@ -73,6 +80,9 @@ export default defineConfig({
         "auth",
         "cookies",
         "platform",
+        // applications shipped from this repository
+        "bay",
+        "lore",
       ],
     }),
   ],

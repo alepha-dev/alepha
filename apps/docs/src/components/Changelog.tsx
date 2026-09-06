@@ -1,9 +1,15 @@
 import { IconArrowLeft } from "@tabler/icons-react";
-import { Link } from "alepha/react/router";
-import { useCallback, useState } from "react";
+import { Link, useQueryParams } from "alepha/react/router";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 
+import { changelogScopeQuerySchema } from "../config/changelogScopeQuerySchema.ts";
+import {
+  matchesChangelogScope,
+  parseChangelogScope,
+} from "../config/changelogScopes.ts";
 import type { ChangelogEntry } from "../config/docs.ts";
 import ChangelogRelease from "./ChangelogRelease.tsx";
+import ChangelogScopeFilter from "./ChangelogScopeFilter.tsx";
 import StatusBar from "./layout/StatusBar.tsx";
 
 import styles from "./Changelog.module.css";
@@ -13,33 +19,94 @@ export interface ChangelogProps {
 }
 
 /**
- * The full release history on one route.
+ * How many releases the page carries. Roughly a year of them.
  *
- * Releases are collapsed by default and mount their change lists only when
- * open. Rendering every release in full put the entire history on the page at
- * once, which made it enormous to scroll and to download.
+ * The limit is the whole reason the releases can be open again. The full
+ * history is 97 releases and grows every fortnight, and rendering all of it
+ * was what made collapsing them look necessary. A fixed window does not grow.
+ *
+ * It is not small: ten releases is 1109 changes and 886 KB of prerendered
+ * HTML, 49 KB of it over the wire once brotli has had it, which is what the
+ * edge actually serves. Adding an eleventh is a decision to be taken with that
+ * measured again, not assumed.
+ */
+const RELEASE_LIMIT = 10;
+
+const CHANGELOG_URL =
+  "https://github.com/alepha-dev/alepha/blob/main/CHANGELOG.md";
+
+/**
+ * The recent release history on one route, every release open.
+ *
+ * `?scope=` narrows it: a group id from the buttons (`framework`, `cli`, `ui`,
+ * `lore`, `bay`) or a raw comma-separated list of scope tokens. A release with
+ * nothing left after filtering drops off the timeline rather than showing an
+ * empty card.
  */
 const Changelog = (props: ChangelogProps) => {
-  const [openVersions, setOpenVersions] = useState<Set<string>>(new Set());
+  const [params, setParams] = useQueryParams(changelogScopeQuerySchema, {
+    format: "querystring",
+  });
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
+  /**
+   * ⚠️ The filter is applied only after hydration, and this is why.
+   *
+   * Every route here is prerendered (`static: true`), and a static host serves
+   * one file per path: `/changelog?scope=ui` is answered with the HTML built
+   * for `/changelog`, which is unfiltered. Reading the param during the first
+   * client render would then disagree with that HTML and hydration would fail
+   * (React #418), which the `hydration` e2e suite treats as a failure. So the
+   * first render reproduces the prerender, and the filter arrives one render
+   * later - visible only on a deep link that already carries a scope.
+   *
+   * `useSyncExternalStore` rather than a `useState` + `useEffect` mount flag,
+   * the same way `ClientOnly` does it: it reports `false` for both the server
+   * render and the hydration pass, then `true`.
+   */
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  const scope = hydrated ? params.scope : undefined;
+
   const toggleItem = useCallback((key: string) => {
-    setExpandedItems((prev) => toggled(prev, key));
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
   }, []);
 
-  const toggleVersion = useCallback((version: string) => {
-    setOpenVersions((prev) => toggled(prev, version));
-  }, []);
+  const onSelect = useCallback(
+    (next: string | undefined) => setParams({ scope: next }),
+    [setParams],
+  );
 
-  const allOpen = openVersions.size === props.entries.length;
+  const releases = useMemo(() => {
+    const recent = props.entries.slice(0, RELEASE_LIMIT);
+    const tokens = parseChangelogScope(scope);
+    if (tokens.length === 0) return recent;
 
-  const toggleAll = useCallback(() => {
-    setOpenVersions((prev) =>
-      prev.size === props.entries.length
-        ? new Set()
-        : new Set(props.entries.map((entry) => entry.version)),
-    );
-  }, [props.entries]);
+    return recent
+      .map((entry) => ({
+        ...entry,
+        features: entry.features.filter((change) =>
+          matchesChangelogScope(change.scope, tokens),
+        ),
+        fixes: entry.fixes.filter((change) =>
+          matchesChangelogScope(change.scope, tokens),
+        ),
+      }))
+      .filter((entry) => entry.features.length + entry.fixes.length > 0);
+  }, [props.entries, scope]);
+
+  const latest = props.entries[0]?.version;
 
   return (
     <div className="terminal-page">
@@ -54,14 +121,7 @@ const Changelog = (props: ChangelogProps) => {
             Changelog
             <small aria-hidden="true">.md</small>
           </h1>
-          <button
-            type="button"
-            className={styles.expandAll}
-            onClick={toggleAll}
-            aria-expanded={allOpen}
-          >
-            {allOpen ? "Collapse all" : "Expand all"}
-          </button>
+          <ChangelogScopeFilter scope={scope} onSelect={onSelect} />
         </header>
 
         {/* Timeline */}
@@ -70,22 +130,34 @@ const Changelog = (props: ChangelogProps) => {
           role="feed"
           aria-label="Changelog entries"
         >
-          {props.entries.map((entry, index) => (
+          {releases.map((entry) => (
             <ChangelogRelease
               key={entry.version}
               entry={entry}
-              isLatest={index === 0}
-              isOpen={openVersions.has(entry.version)}
-              onToggle={toggleVersion}
+              isLatest={entry.version === latest}
               expandedItems={expandedItems}
               onToggleItem={toggleItem}
             />
           ))}
 
+          {releases.length === 0 && (
+            <p className={styles.empty}>
+              No change in the last {RELEASE_LIMIT} releases matches{" "}
+              <code>{scope}</code>.
+            </p>
+          )}
+
           {/* Timeline end */}
-          <div className={styles.end} aria-hidden="true">
-            <div className={styles.endDot} />
-            <span className={styles.endText}>The Beginning</span>
+          <div className={styles.end}>
+            <div className={styles.endDot} aria-hidden="true" />
+            <a
+              className={styles.endLink}
+              href={CHANGELOG_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Older releases on GitHub
+            </a>
           </div>
         </div>
       </div>
@@ -99,15 +171,5 @@ const Changelog = (props: ChangelogProps) => {
     </div>
   );
 };
-
-function toggled(set: Set<string>, key: string): Set<string> {
-  const next = new Set(set);
-  if (next.has(key)) {
-    next.delete(key);
-  } else {
-    next.add(key);
-  }
-  return next;
-}
 
 export default Changelog;

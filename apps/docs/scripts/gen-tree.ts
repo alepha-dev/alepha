@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path, { join } from "node:path";
 
 import { $command } from "alepha/command";
@@ -857,7 +857,7 @@ export class TreeCommand {
   /**
    * Parse CHANGELOG.md and extract structured changelog entries
    */
-  parseChangelog(content: string): ChangelogEntry[] {
+  parseChangelog(content: string, apiModules: Set<string>): ChangelogEntry[] {
     this.log.debug("Parsing CHANGELOG.md");
     const entries: ChangelogEntry[] = [];
 
@@ -882,7 +882,7 @@ export class TreeCommand {
       if (featuresMatch) {
         const featureLines = featuresMatch[1].trim().split("\n");
         for (const line of featureLines) {
-          const change = this.parseChangelogLine(line);
+          const change = this.parseChangelogLine(line, apiModules);
           if (change) features.push(change);
         }
       }
@@ -894,7 +894,7 @@ export class TreeCommand {
       if (fixesMatch) {
         const fixLines = fixesMatch[1].trim().split("\n");
         for (const line of fixLines) {
-          const change = this.parseChangelogLine(line);
+          const change = this.parseChangelogLine(line, apiModules);
           if (change) fixes.push(change);
         }
       }
@@ -915,7 +915,10 @@ export class TreeCommand {
    * Parse a single changelog line like:
    * - **cli**: add openapi extractor (`5e87f93e`)
    */
-  parseChangelogLine(line: string): ChangelogChange | null {
+  parseChangelogLine(
+    line: string,
+    apiModules: Set<string>,
+  ): ChangelogChange | null {
     // Match: - **scope**: message (`commit`)
     const match = line.match(
       /^- \*\*([^*]+)\*\*:\s*(.+?)(?:\s*\(`([^`]+)`\))?$/,
@@ -923,10 +926,85 @@ export class TreeCommand {
     if (!match) return null;
 
     return {
-      scope: match[1].trim(),
+      scope: this.normalizeScope(match[1].trim(), apiModules),
       message: match[2].trim(),
       commit: match[3]?.trim(),
     };
+  }
+
+  /**
+   * Namespaces whose sub-modules were written with a dash before `/` settled
+   * as the separator. `server-rate-limit` is `server/rate-limit`, and only the
+   * FIRST dash separates - the rest belong to the module's own name.
+   *
+   * `payments` is deliberately absent: `payments-stripe` is the published
+   * package `@alepha/payments-stripe`, not a sub-module of `payments`.
+   */
+  protected readonly scopeNamespaces = [
+    "api",
+    "bucket",
+    "cli",
+    "email",
+    "orm",
+    "react",
+    "server",
+    "ui",
+  ];
+
+  /**
+   * Rewrite a changelog scope into the module path it actually names.
+   *
+   * A commit is scoped by hand, so the same module reaches the file under
+   * several spellings: `users` and `api/users` are both `alepha/api/users`,
+   * `react-form` is `react/form`, `@alepha/rocket` is `rocket`. Left alone
+   * they read as different subjects and, worse, the page's scope filter treats
+   * them as different subjects: `?scope=api` would miss half of `api/users`.
+   *
+   * Done here rather than in `CHANGELOG.md`, because that file is the record
+   * of what each release said and is appended to, never rewritten. This is the
+   * reading of it.
+   *
+   * A multi-scope commit (`fix(orm,cli)`) is normalised segment by segment.
+   */
+  normalizeScope(scope: string, apiModules: Set<string>): string {
+    return scope
+      .split(",")
+      .map((segment) => this.normalizeScopeSegment(segment.trim(), apiModules))
+      .join(",");
+  }
+
+  protected normalizeScopeSegment(
+    segment: string,
+    apiModules: Set<string>,
+  ): string {
+    let scope = segment.replace(/^@alepha\//, "");
+
+    const dash = scope.indexOf("-");
+    if (dash > 0) {
+      const namespace = scope.slice(0, dash);
+      if (this.scopeNamespaces.includes(namespace)) {
+        scope = `${namespace}/${scope.slice(dash + 1)}`;
+      }
+    }
+
+    return apiModules.has(scope) ? `api/${scope}` : scope;
+  }
+
+  /**
+   * The `alepha/api/*` sub-modules, read from the source tree rather than
+   * listed here, so the normalisation above cannot drift from the modules it
+   * claims to match.
+   */
+  async readApiModules(rootDir: string): Promise<Set<string>> {
+    const dir = join(rootDir, "packages/alepha/src/api");
+    const entries = await readdir(dir, { withFileTypes: true });
+    const modules = new Set(
+      entries
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith("__"))
+        .map((entry) => entry.name),
+    );
+    this.log.debug(`Found ${modules.size} api sub-modules`);
+    return modules;
   }
 
   tree = $command({
@@ -1037,7 +1115,10 @@ export class TreeCommand {
         // Parse changelog
         const changelogPath = join(rootDir, "CHANGELOG.md");
         const changelogContent = await readFile(changelogPath, "utf-8");
-        const changelog = this.parseChangelog(changelogContent);
+        const changelog = this.parseChangelog(
+          changelogContent,
+          await this.readApiModules(rootDir),
+        );
         this.log.debug(`Parsed ${changelog.length} changelog entries`);
 
         // Custom JSON replacer to handle POSITIVE_INFINITY
