@@ -18,7 +18,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 import { I18n } from "../../../../services/I18n.ts";
-import FolioTree from "./FolioTree.tsx";
+import FolioTree, { type FolioTreeProps } from "./FolioTree.tsx";
 import FolioTreeRowDefault from "./FolioTreeRow.tsx";
 
 const DIR_A = "11111111-1111-4111-8111-111111111111";
@@ -103,16 +103,21 @@ describe("FolioTree", () => {
    * component is torn down and rebuilt while the app around it, and its
    * atoms, live on.
    */
-  const renderTree = () =>
+  const renderTree = (props: Partial<FolioTreeProps> = {}) =>
     render(
       <AlephaContext.Provider value={alepha!}>
         <DialogProvider>
-          <FolioTree projectId={1} projectSlug="alepha" width={260} />
+          <FolioTree
+            projectId={1}
+            projectSlug="alepha"
+            width={260}
+            {...props}
+          />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
 
-  const mount = async () => {
+  const mount = async (props: Partial<FolioTreeProps> = {}) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -134,7 +139,7 @@ describe("FolioTree", () => {
       folioOf("44444444-4444-4444-8444-444444444444", "At the root"),
     ] as never);
 
-    const view = renderTree();
+    const view = renderTree(props);
     await screen.findByText("Framework");
     // ⚠️ Wait for the collapse SEED, which is an effect and always was: the
     // tree paints fully expanded for one frame and the seed then closes every
@@ -143,7 +148,16 @@ describe("FolioTree", () => {
     // failed to collapse. It became visible when the state moved into
     // `folioTreeCollapsedAtom` (feedback #2100), because an atom write is not
     // wrapped by testing-library's `act` the way a `setState` in an effect is.
-    await waitFor(() => expect(screen.queryByText("Inside A")).toBeNull());
+    //
+    // With a folio open inside Framework the seed settles the OTHER way, on
+    // purpose: that folio's ancestors are exactly what the seed keeps open.
+    // Waiting for the row to disappear there would time out and report the
+    // reveal as a failure to collapse.
+    await waitFor(() =>
+      props.currentFolioId
+        ? expect(screen.getByText("Inside A")).not.toBeNull()
+        : expect(screen.queryByText("Inside A")).toBeNull(),
+    );
     return view;
   };
 
@@ -399,5 +413,118 @@ describe("FolioTree", () => {
     const view = await mount();
     expect(view.queryByText("Inside A")).toBeNull();
     expect(view.getByText("Framework")).not.toBeNull();
+  });
+  /*
+    Feedback #2114: "we can't close directory when we select a folio inside
+    it. I want to be able to close directory, even if I'm selected folio
+    inside."
+
+    The reveal effect had `collapsed` in its dependency list, which turned it
+    from a RESPONSE TO A NAVIGATION into an INVARIANT - "a selected folio's
+    ancestors may never be collapsed". Collapsing the row wrote `collapsed`,
+    which re-ran the effect, which deleted the id again, so the row sprang
+    back open on every click for as long as that folio stayed selected. An
+    invariant cannot be overridden by the person using it, which is the bug.
+  */
+  describe("the directory holding the open folio", () => {
+    const INSIDE_A = "33333333-3333-4333-8333-333333333333";
+    const AT_ROOT = "44444444-4444-4444-8444-444444444444";
+
+    it("opens on entry, because the folio inside it is selected", async () => {
+      // `mount` waits for exactly this, so the case is a restatement rather
+      // than a new assertion - kept so the property is not only an implicit
+      // precondition of the three below it.
+      await mount({ currentFolioId: INSIDE_A });
+
+      expect(screen.getByText("Inside A")).not.toBeNull();
+    });
+
+    it("stays closed once the reader closes it", async () => {
+      await mount({ currentFolioId: INSIDE_A });
+
+      await click(rowFor("Framework"));
+
+      // Against the old effect this row is back a tick later, every time.
+      expect(screen.queryByText("Inside A")).toBeNull();
+    });
+
+    it("does not spring back open on a second attempt either", async () => {
+      await mount({ currentFolioId: INSIDE_A });
+
+      await click(rowFor("Framework"));
+      await click(rowFor("Framework"));
+      await click(rowFor("Framework"));
+
+      expect(screen.queryByText("Inside A")).toBeNull();
+    });
+
+    /**
+     * ⚠️ The half the fix must NOT take with it. Navigating to another folio
+     * is a change of target, so its path is revealed even though the reader
+     * had closed that directory while looking at something else.
+     */
+    it("is revealed again by navigating away and back", async () => {
+      const view = await mount({ currentFolioId: INSIDE_A });
+
+      await click(rowFor("Framework"));
+      expect(screen.queryByText("Inside A")).toBeNull();
+
+      // To a root-level folio: nothing to reveal, and nothing re-opened.
+      view.rerender(
+        <AlephaContext.Provider value={alepha!}>
+          <DialogProvider>
+            <FolioTree
+              projectId={1}
+              projectSlug="alepha"
+              width={260}
+              currentFolioId={AT_ROOT}
+            />
+          </DialogProvider>
+        </AlephaContext.Provider>,
+      );
+      await waitFor(() => expect(screen.queryByText("Inside A")).toBeNull());
+
+      // ...and back to the one inside the directory.
+      await act(async () => {
+        view.rerender(
+          <AlephaContext.Provider value={alepha!}>
+            <DialogProvider>
+              <FolioTree
+                projectId={1}
+                projectSlug="alepha"
+                width={260}
+                currentFolioId={INSIDE_A}
+              />
+            </DialogProvider>
+          </AlephaContext.Provider>,
+        );
+      });
+
+      expect(screen.getByText("Inside A")).not.toBeNull();
+    });
+
+    /**
+     * ⚠️ The secondary path the fix had to close too: `expandDirIds` is a
+     * memo over `nodeById`, which takes a new identity whenever the folio or
+     * directory lists change. Before the signature was compared by VALUE, a
+     * rename re-fired the reveal and re-opened a directory the reader had
+     * just closed.
+     */
+    it("stays closed when a folio elsewhere is renamed", async () => {
+      await mount({ currentFolioId: INSIDE_A });
+
+      await click(rowFor("Framework"));
+      expect(screen.queryByText("Inside A")).toBeNull();
+
+      await act(async () => {
+        alepha!.store.set(userFoliosAtom, [
+          folioOf(INSIDE_A, "Inside A", DIR_A),
+          folioOf(AT_ROOT, "Renamed at the root"),
+        ] as never);
+      });
+
+      expect(screen.queryByText("Inside A")).toBeNull();
+      expect(screen.getByText("Renamed at the root")).not.toBeNull();
+    });
   });
 });
