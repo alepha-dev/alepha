@@ -8,6 +8,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer, HttpError } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { AppController } from "../src/api/controllers/AppController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { members } from "../src/api/entities/members.ts";
@@ -37,6 +38,7 @@ interface TestContext {
   alepha: Alepha;
   adminUserController: AdminUserController;
   projectController: ProjectController;
+  appController: AppController;
   sigilController: SigilController;
   tokens: SigilTokenService;
   probe: Probe;
@@ -46,12 +48,11 @@ interface TestContext {
 /**
  * A token service that mints one token, forever.
  *
- * Substituted in to force the *other* unique index on `sigils` — `tokenHash` —
- * to be the one that refuses an insert. It is the only unique index a test can
- * trip deterministically: the `(projectId, name)` one is guarded
- * by a `findOne` that a single-connection in-memory database never lets a
- * second caller slip past, which is exactly why the handler cannot rely on
- * that check alone in production.
+ * Substituted in to force the one unique index on `sigils` a caller can still
+ * reach: `tokenHash`. Since Apps v3 the other, `(projectId, name)`, cannot be
+ * violated at all - the name is the `"<app>/<env>"` mirror and the pair is
+ * itself unique - which is why the handler's conflict branch has exactly one
+ * meaning now.
  */
 class FixedTokenService extends SigilTokenService {
   override async mint(): Promise<{
@@ -93,6 +94,7 @@ const setup = async (
     alepha,
     adminUserController: alepha.inject(AdminUserController),
     projectController: alepha.inject(ProjectController),
+    appController: alepha.inject(AppController),
     sigilController: alepha.inject(SigilController),
     tokens: alepha.inject(SigilTokenService),
     probe,
@@ -130,6 +132,25 @@ const createProject = async (
   return created.data.id;
 };
 
+/**
+ * The instance a sigil hangs off. Since Apps v3 a credential cannot be minted
+ * without one, so every case here creates the deployed copy first and then
+ * turns telemetry on for it.
+ */
+const createInstance = async (
+  ctx: TestContext,
+  projectId: number,
+  user: { id: string; roles: string[] },
+  app: string,
+  env = "production",
+): Promise<{ app: string; env: string }> => {
+  const created = await ctx.appController.createApp.fetch(
+    { params: { projectId }, body: { app, env } },
+    { user },
+  );
+  return { app: created.data.app, env: created.data.env };
+};
+
 const expectStatus = async (promise: Promise<unknown>, status: number) => {
   const error = await promise.catch((e) => e);
   if (!(error instanceof HttpError)) {
@@ -155,8 +176,9 @@ describe("SigilController", () => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
+    const instance = await createInstance(ctx, projectId, owner, "lore");
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
 
@@ -190,89 +212,66 @@ describe("SigilController", () => {
     expect("token" in list.data.items[0]).toBe(false);
   });
 
-  it("lowercases and trims the name before storing it", async ({ expect }) => {
+  it("names the sigil after the instance, and links the two", async ({
+    expect,
+  }) => {
+    // `sigils.name` is a mirror written by `AppService` and by nobody else, so
+    // the credential a caller gets back already says which deployed copy it
+    // belongs to - which is what the blights filter and the insights dimension
+    // render.
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
+    const instance = await createInstance(ctx, projectId, owner, "club", "b14");
 
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "  Lore-Staging  " } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
 
-    expect(created.data.name).toBe("lore-staging");
+    expect(created.data.name).toBe("club/b14");
+
+    const app = await ctx.appController.getApp.fetch(
+      { params: { projectId, ...instance } },
+      { user: owner },
+    );
+    expect(app.data.sigilId).toBe(created.data.id);
+    expect(app.data.sigil?.tokenPrefix).toBe(created.data.tokenPrefix);
   });
 
-  it("refuses a name with a space", async ({ expect }) => {
+  it("404s when the instance does not exist", async () => {
+    // The controller composes nothing: the two places a one-step flow is wanted
+    // call `createApp` and then this, where the composition is visible.
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
-    await expect(
-      ctx.sigilController.createSigil.fetch(
-        { params: { projectId }, body: { name: "lore staging" } },
-        { user: owner },
-      ),
-    ).rejects.toThrow(/lowercase letters, digits and hyphens/i);
-  });
-
-  it("refuses a leading or trailing hyphen", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-
-    for (const name of ["-lore", "lore-"]) {
-      await expect(
-        ctx.sigilController.createSigil.fetch(
-          { params: { projectId }, body: { name } },
-          { user: owner },
-        ),
-      ).rejects.toThrow(/lowercase letters, digits and hyphens/i);
-    }
-  });
-
-  it("refuses a name longer than 64 characters", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-
-    await expect(
-      ctx.sigilController.createSigil.fetch(
-        { params: { projectId }, body: { name: "a".repeat(65) } },
-        { user: owner },
-      ),
-    ).rejects.toThrow();
-  });
-
-  it("refuses a name that is only whitespace", async () => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-
-    // `min(1)` accepts "   ", so without the handler's own guard this reaches
-    // the insert as an empty name and fails entity validation as a 500.
     await expectStatus(
       ctx.sigilController.createSigil.fetch(
-        { params: { projectId }, body: { name: "   " } },
+        { params: { projectId }, body: { app: "club", env: "production" } },
         { user: owner },
       ),
-      400,
+      404,
     );
   });
 
-  it("refuses a second sigil with the same name", async ({ expect }) => {
+  it("409s when the instance already has a sigil", async ({ expect }) => {
+    // A second credential for one deployed copy splits its history in two and
+    // makes every aggregate wrong. Replacing one is `rotateSigil`.
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
+    const instance = await createInstance(ctx, projectId, owner, "club");
 
     await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
 
-    // A duplicate would split that app's history across two rows and make every
-    // aggregate wrong — 409, not a silent second sigil.
-    const error: unknown = await ctx.sigilController.createSigil
-      .fetch({ params: { projectId }, body: { name: "lore" } }, { user: owner })
-      .catch((e) => e);
-    expect(error).toBeInstanceOf(HttpError);
-    expect((error as HttpError).status).toBe(409);
-    // The message names the clash, so an operator knows which name to change.
-    expect((error as HttpError).message).toMatch(/already exists named "lore"/);
+    await expectStatus(
+      ctx.sigilController.createSigil.fetch(
+        { params: { projectId }, body: instance },
+        { user: owner },
+      ),
+      409,
+    );
 
     const list = await ctx.sigilController.listSigils.fetch(
       { params: { projectId } },
@@ -281,25 +280,30 @@ describe("SigilController", () => {
     expect(list.data.items).toHaveLength(1);
   });
 
-  it("lets two projects each have a sigil of the same name", async ({
+  it("leaves the instance alive when its sigil is removed", async ({
     expect,
   }) => {
+    // The foreign key is `set null`, so removing a credential clears the link
+    // and keeps the deployed copy: the four unlocked tabs go, the app does not.
     const owner = await createTestUser(ctx);
-    const projectA = await createProject(ctx, owner);
-    const projectB = await createProject(ctx, owner);
-
-    // Uniqueness is `(projectId, name)`, not `name` — two people tracking an
-    // app called `lore` do not collide with each other.
-    await ctx.sigilController.createSigil.fetch(
-      { params: { projectId: projectA }, body: { name: "lore" } },
-      { user: owner },
-    );
-    const second = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId: projectB }, body: { name: "lore" } },
+    const projectId = await createProject(ctx, owner);
+    const instance = await createInstance(ctx, projectId, owner, "club");
+    const created = await ctx.sigilController.createSigil.fetch(
+      { params: { projectId }, body: instance },
       { user: owner },
     );
 
-    expect(second.data.name).toBe("lore");
+    await ctx.sigilController.deleteSigil.fetch(
+      { params: { projectId, sigilId: created.data.id } },
+      { user: owner },
+    );
+
+    const app = await ctx.appController.getApp.fetch(
+      { params: { projectId, ...instance } },
+      { user: owner },
+    );
+    expect(app.data.sigilId ?? null).toBeNull();
+    expect(app.data.sigil).toBeUndefined();
   });
 
   it("lists a project's sigils, newest first", async ({ expect }) => {
@@ -307,11 +311,17 @@ describe("SigilController", () => {
     const projectId = await createProject(ctx, owner);
 
     await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore-staging" } },
+      {
+        params: { projectId },
+        body: await createInstance(ctx, projectId, owner, "lore", "staging"),
+      },
       { user: owner },
     );
     await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      {
+        params: { projectId },
+        body: await createInstance(ctx, projectId, owner, "lore"),
+      },
       { user: owner },
     );
 
@@ -320,16 +330,18 @@ describe("SigilController", () => {
       { user: owner },
     );
     expect(list.data.items).toHaveLength(2);
-    expect(list.data.items.map((s) => s.name)).toContain("lore");
-    expect(list.data.items.map((s) => s.name)).toContain("lore-staging");
+    // The names are the mirror, written by `AppService` and by nothing else.
+    expect(list.data.items.map((s) => s.name)).toContain("lore/production");
+    expect(list.data.items.map((s) => s.name)).toContain("lore/staging");
   });
 
   it("rotates the token, keeping the app's history", async ({ expect }) => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
+    const instance = await createInstance(ctx, projectId, owner, "lore");
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
     await ctx.probe.views.create({
@@ -365,8 +377,9 @@ describe("SigilController", () => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
+    const instance = await createInstance(ctx, projectId, owner, "lore");
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
     expect(created.data.kinds).toEqual([
@@ -391,8 +404,9 @@ describe("SigilController", () => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
+    const instance = await createInstance(ctx, projectId, owner, "lore");
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
 
@@ -411,8 +425,9 @@ describe("SigilController", () => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
+    const instance = await createInstance(ctx, projectId, owner, "lore");
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
 
@@ -432,8 +447,9 @@ describe("SigilController", () => {
     const owner = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
+    const instance = await createInstance(ctx, projectId, owner, "lore");
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
     await ctx.probe.views.create({
@@ -479,8 +495,9 @@ describe("SigilController", () => {
     const projectId = await createProject(ctx, owner);
     await ctx.probe.members.create({ userId: member.id, projectId });
 
+    const instance = await createInstance(ctx, projectId, owner, "lore");
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
 
@@ -494,7 +511,7 @@ describe("SigilController", () => {
 
     await expectStatus(
       ctx.sigilController.createSigil.fetch(
-        { params: { projectId }, body: { name: "shop" } },
+        { params: { projectId }, body: { app: "shop", env: "production" } },
         { user: member },
       ),
       403,
@@ -530,8 +547,9 @@ describe("SigilController", () => {
     const stranger = await createTestUser(ctx);
     const projectId = await createProject(ctx, owner);
 
+    const instance = await createInstance(ctx, projectId, owner, "lore");
     const created = await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      { params: { projectId }, body: instance },
       { user: owner },
     );
 
@@ -576,7 +594,7 @@ describe("SigilController", () => {
     const created = await ctx.sigilController.createSigil.fetch(
       {
         params: { projectId: projectA },
-        body: { name: "lore" },
+        body: await createInstance(ctx, projectA, owner, "lore"),
       },
       { user: owner },
     );
@@ -630,34 +648,37 @@ describe("SigilController — unique-index violations", () => {
     const projectId = await createProject(ctx, owner);
 
     await ctx.sigilController.createSigil.fetch(
-      { params: { projectId }, body: { name: "lore" } },
+      {
+        params: { projectId },
+        body: await createInstance(ctx, projectId, owner, "lore"),
+      },
       { user: owner },
     );
 
-    // Different name, so the handler's own duplicate check passes — the insert
-    // reaches the `tokenHash` unique index and the driver refuses it. Without
-    // the catch this is an unhandled DbConflictError and a 500.
+    // A DIFFERENT instance, so the 409 for "this one already has a sigil" does
+    // not fire — the insert reaches the `tokenHash` unique index and the driver
+    // refuses it. Without the catch this is an unhandled DbConflictError and a
+    // 500.
+    const second = await createInstance(
+      ctx,
+      projectId,
+      owner,
+      "lore",
+      "staging",
+    );
     await expectStatus(
       ctx.sigilController.createSigil.fetch(
-        {
-          params: { projectId },
-          body: { name: "lore-staging" },
-        },
+        { params: { projectId }, body: second },
         { user: owner },
       ),
       409,
     );
 
-    // And the message points at the token, not at a sigil that does not exist:
-    // the same status has to mean two different things to the caller.
+    // ⚠️ And the failed insert left nothing behind: the sigil row is deleted
+    // before the error is rethrown, because a credential no `app_instances` row
+    // points at is unreachable from every page and still accepts ingest.
     const error: unknown = await ctx.sigilController.createSigil
-      .fetch(
-        {
-          params: { projectId },
-          body: { name: "lore-staging" },
-        },
-        { user: owner },
-      )
+      .fetch({ params: { projectId }, body: second }, { user: owner })
       .catch((e) => e);
     expect(error).toBeInstanceOf(HttpError);
     expect((error as HttpError).message).toMatch(/unique token/i);

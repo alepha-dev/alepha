@@ -1,22 +1,17 @@
 import { $inject, z } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { $secure } from "alepha/security";
-import {
-  $action,
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-  okSchema,
-} from "alepha/server";
+import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
 
 import { SIGIL_KINDS, type Sigil, sigils } from "../entities/sigils.ts";
-import { APP_NAME_PATTERN, appNameSchema } from "../schemas/appNameSchema.ts";
+import { appNameSchema } from "../schemas/appNameSchema.ts";
 import {
   type MintedSigil,
   mintedSigilSchema,
   type SigilResource,
   sigilResourceSchema,
 } from "../schemas/sigilResourceSchema.ts";
+import { AppService } from "../services/AppService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { SigilTokenService } from "../services/SigilTokenService.ts";
@@ -37,20 +32,28 @@ export class SigilController {
   protected security = $inject(ProjectSecurityService);
   protected audits = $inject(LoreAudits);
   protected tokens = $inject(SigilTokenService);
+  protected apps = $inject(AppService);
 
   /**
-   * Enrol an app, and hand back its token once.
+   * Mint the credential one deployed copy reports with, and hand back its token
+   * once.
    *
-   * `(projectId, name)` is unique, because the name is the identity: a second
-   * sigil called `lore` would split that app's history in two and make every
-   * aggregate wrong. A repeat is a 409 rather than a silent second row, and the
-   * way to replace a credential is {@link rotateSigil}.
+   * ⚠️ **This does not create anything an operator can see.** Since Apps v3 the
+   * instance exists first (`POST /projects/:projectId/apps`) and this turns
+   * telemetry ON for it: Analytics, Vitals, Errors and Explore appear the
+   * moment it succeeds. That is why the body names an instance rather than
+   * carrying a `name` of its own — the name is `"<app>/<env>"`, derived by
+   * `AppService`, and `claimName` went with the field.
    *
-   * The duplicate is refused twice, on purpose. The `findOne` names the clash
-   * in the message an operator reads; the `DbConflictError` catch covers the
-   * window between that read and the insert, where a second concurrent create
-   * would otherwise reach the unique index and surface as a 500. The index is
-   * what actually guarantees integrity — the check is only there to explain it.
+   * **404 without an instance, and deliberately so.** The controller composes
+   * nothing: the two places a one-step flow is wanted (the create dialog's
+   * checkbox and the MCP `sigil_create` shim) call `createApp` and then this,
+   * where the composition is visible. Building it in here would give a second
+   * way to create an instance, which is the shape this epic removed.
+   *
+   * **409 when the instance already has one.** A second credential for one
+   * deployed copy splits its history in two and makes every aggregate wrong;
+   * replacing one is {@link rotateSigil}.
    */
   createSigil = $action({
     use: [$secure({ permissions: ["project:update"] })],
@@ -60,14 +63,16 @@ export class SigilController {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
         /**
-         * Display name of the app, and its URL segment. Unique within the
-         * project. Trimmed and lowercased before it is validated.
+         * The instance this credential belongs to, as its two names. Both are
+         * trimmed and lowercased before they are looked up, so a caller that
+         * echoes what a user typed resolves the same row the URL does.
          */
-        name: appNameSchema,
+        app: appNameSchema,
+        env: appNameSchema,
         /**
          * Capability buckets the ingest endpoint will accept from this sigil.
-         * Omitted grants all of them; the project's own feature toggles are
-         * what an operator normally turns things off with.
+         * Omitted grants all of them; the instance's own Settings tab is where
+         * an operator narrows them afterwards.
          */
         kinds: z
           .array(z.enum([...SIGIL_KINDS]).meta({ mode: "text" }))
@@ -79,15 +84,14 @@ export class SigilController {
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
 
-      const name = await this.claimName(params.projectId, body.name);
+      const instance = await this.apps.load(
+        params.projectId,
+        this.apps.normalize(body.app, "app"),
+        this.apps.normalize(body.env, "environment"),
+      );
 
-      const minted = await this.tokens.mint(params.projectId);
       try {
-        const created = await this.sigils.create({
-          projectId: params.projectId,
-          name,
-          tokenHash: minted.hash,
-          tokenPrefix: minted.prefix,
+        const { sigil, token } = await this.apps.createSigil(instance, {
           kinds: body.kinds ?? [...SIGIL_KINDS],
           createdBy: user.id,
         });
@@ -98,15 +102,18 @@ export class SigilController {
           ...this.audits.actor(user),
           ...this.audits.scope(params.projectId),
           resourceType: "sigil",
-          resourceId: created.id,
-          description: created.name,
+          resourceId: sigil.id,
+          description: sigil.name,
         });
 
-        return { ...this.toResource(created), token: minted.token };
+        return { ...this.toResource(sigil), token };
       } catch (error) {
         if (error instanceof DbConflictError) {
+          // Only one index can fire here now. `(projectId, name)` is satisfied
+          // by construction — the mirror is unique because `(app, env)` is —
+          // so a conflict is the token hash, and the answer is "retry".
           throw new ConflictError(
-            await this.explainConflict(params.projectId, name),
+            "Could not mint a unique token for this sigil — retry.",
           );
         }
         throw error;
@@ -282,33 +289,6 @@ export class SigilController {
   });
 
   /**
-   * Works out which unique index refused the insert, and says so.
-   *
-   * `sigils` carries two: `(projectId, name)` and `tokenHash`.
-   * `DbConflictError` does not name the one that fired, and the two mean
-   * opposite things to a caller — the first says "you already have this app",
-   * the second says "try again and you will get a different token". Answering
-   * the first message to the second case would send an operator looking for a
-   * sigil that does not exist.
-   *
-   * One extra read, only on the error path.
-   */
-  protected async explainConflict(
-    projectId: number,
-    name: string,
-  ): Promise<string> {
-    const clash = await this.sigils.findOne({
-      where: {
-        projectId: { eq: projectId },
-        name: { eq: name },
-      },
-    });
-    return clash
-      ? `A sigil already exists named "${name}"`
-      : "Could not mint a unique token for this sigil — retry.";
-  }
-
-  /**
    * Load a sigil, asserting it belongs to the project in the path.
    *
    * The project filter is the cross-project guard: without it, an id from
@@ -333,45 +313,6 @@ export class SigilController {
   /**
    * Project a row into the owner-facing resource — `tokenHash` never crosses.
    */
-  /**
-   * Normalises an app name, checks it, and proves it is free.
-   *
-   * Shared by enrolment and rename because the two must agree: a name that
-   * could not be created must not be reachable by renaming into it, and the
-   * normalisation has to be identical or `Lore-Staging` would enrol as
-   * `lore-staging` and rename to something else.
-   *
-   * Normalised BEFORE it is validated. `appNameSchema` is `min(1).max(64)` and
-   * carries no pattern on purpose, so `"   "` passes the schema; without the
-   * trim it would reach the write as an empty name and fail the entity's own
-   * validation as a 500 rather than the 400 it is. Lowercasing rather than
-   * refusing is deliberate too: the name is a URL segment, and the case is not
-   * a distinction an operator means to draw.
-   *
-   * `exclude` is the sigil being renamed, so renaming an app to the name it
-   * already has is a no-op rather than a collision with itself.
-   */
-  protected async claimName(
-    projectId: number,
-    raw: string,
-    exclude?: string,
-  ): Promise<string> {
-    const name = raw.trim().toLowerCase();
-    if (!APP_NAME_PATTERN.test(name)) {
-      throw new BadRequestError(
-        "An app name may only contain lowercase letters, digits and hyphens, and must start and end with a letter or digit",
-      );
-    }
-
-    const existing = await this.sigils.findOne({
-      where: { projectId: { eq: projectId }, name: { eq: name } },
-    });
-    if (existing && existing.id !== exclude) {
-      throw new ConflictError(`A sigil already exists named "${name}"`);
-    }
-    return name;
-  }
-
   protected toResource(sigil: Sigil): SigilResource {
     return {
       id: sigil.id,

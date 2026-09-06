@@ -9,6 +9,7 @@ import { AlephaSecurity } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
+import { AppController } from "../src/api/controllers/AppController.ts";
 import { InsightsController } from "../src/api/controllers/InsightsController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { SigilController } from "../src/api/controllers/SigilController.ts";
@@ -232,16 +233,27 @@ const createProject = async (
   return created.data.id;
 };
 
+/**
+ * An app instance and the sigil that reports for it. Since Apps v3 the
+ * credential hangs off a deployed copy, so the instance comes first; `name` is
+ * read as the app and the env is `production`.
+ */
 const createSigil = async (
   ctx: TestContext,
   projectId: number,
   name: string,
   user: { id: string; roles: string[] },
 ): Promise<string> => {
+  await ctx.alepha
+    .inject(AppController)
+    .createApp.fetch(
+      { params: { projectId }, body: { app: name, env: "production" } },
+      { user },
+    );
   const created = await ctx.sigilController.createSigil.fetch(
     {
       params: { projectId },
-      body: { name, kinds: ["beacon", "vitals"] },
+      body: { app: name, env: "production", kinds: ["beacon", "vitals"] },
     },
     { user },
   );
@@ -951,7 +963,9 @@ describe("InsightsController", () => {
       expect(res.data.errorGroups).toHaveLength(2);
       expect(res.data.errorGroups[0]).toMatchObject({
         sigilId: staging,
-        sigilLabel: "lore-staging",
+        // The label is the `"<app>/<env>"` mirror since Apps v3, which is what
+        // makes it unique when one app has two deployed copies.
+        sigilLabel: "lore-staging/production",
         fingerprint: "fp-shared",
         name: "TypeError",
         message: "boom",
@@ -959,7 +973,7 @@ describe("InsightsController", () => {
       });
       expect(res.data.errorGroups[1]).toMatchObject({
         sigilId: prod,
-        sigilLabel: "lore-prod",
+        sigilLabel: "lore-prod/production",
         count: 4,
       });
     });

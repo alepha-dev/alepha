@@ -1,14 +1,16 @@
+import { $inject } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
-import { sigils } from "../entities/sigils.ts";
+import { type Sigil, sigils } from "../entities/sigils.ts";
 import {
   APP_NAME_PATTERN,
   SIGIL_NAME_PAIR_MAX_LENGTH,
 } from "../schemas/appNameSchema.ts";
 import { defaultAppInstance } from "../schemas/defaultAppInstance.ts";
+import { SigilTokenService } from "./SigilTokenService.ts";
 
 /**
  * What an app instance IS, stated once: how its two names are normalised, what
@@ -30,6 +32,7 @@ export class AppService {
   protected readonly instances = $repository(appInstances);
   protected readonly sigils = $repository(sigils);
   protected readonly grants = $repository(estateProjects);
+  protected readonly tokens = $inject(SigilTokenService);
 
   /**
    * Normalises one half of the pair, then checks it.
@@ -192,6 +195,51 @@ export class AppService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Mints this instance's sigil, names it after the instance, and links it.
+   *
+   * One sigil per instance: a second credential for one deployed copy would
+   * split its history in two and make every aggregate wrong, which is what
+   * `rotateSigil` exists to avoid. The 409 is the caller's answer.
+   *
+   * ⚠️ **The orphan cleanup is load-bearing.** D1 gives no transaction across
+   * the insert and the link, and a sigil whose `app_instances.sigilId` never
+   * landed is not inert: it is a live credential that `POST /sigils/ingest`
+   * accepts, writing rows attributed to a project through a token no page can
+   * show, rotate or delete. Deleting it before rethrowing is the only way back,
+   * because nothing else in the app can ever reach it.
+   */
+  async createSigil(
+    instance: AppInstance,
+    input: { kinds: string[]; createdBy?: string },
+  ): Promise<{ sigil: Sigil; token: string }> {
+    if (instance.sigilId) {
+      throw new ConflictError(
+        `"${instance.app}/${instance.env}" already has a sigil`,
+      );
+    }
+    this.assertPairFits(instance.app, instance.env);
+
+    const minted = await this.tokens.mint(instance.projectId);
+    const created = await this.sigils.create({
+      projectId: instance.projectId,
+      name: this.mirrorName(instance.app, instance.env),
+      tokenHash: minted.hash,
+      tokenPrefix: minted.prefix,
+      kinds: input.kinds,
+      ...(input.createdBy ? { createdBy: input.createdBy } : {}),
+    });
+
+    try {
+      await this.instances.updateById(instance.id, { sigilId: created.id });
+    } catch (error) {
+      await this.sigils.deleteById(created.id);
+      throw error;
+    }
+
+    return { sigil: created, token: minted.token };
   }
 
   /**
