@@ -8,6 +8,7 @@ import type { Folio } from "@/api/entities/folios.ts";
 
 import { currentFolioAttachmentsAtom } from "../../../../atoms/currentFolioAttachmentsAtom.ts";
 import { currentProjectAtom } from "../../../../atoms/currentProjectAtom.ts";
+import { folioTextSizeAtom } from "../../../../atoms/folioTextSizeAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import type { ElementRef } from "../../../shared/element/elementRef.ts";
 import LoreEditor from "../../../shared/element/LoreEditor.tsx";
@@ -118,6 +119,7 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
   const [attachments] = useStore(currentFolioAttachmentsAtom);
   const [project] = useStore(currentProjectAtom);
+  const [textSize] = useStore(folioTextSizeAtom);
 
   useFolioShortcuts(
     props.actions.handlers,
@@ -156,7 +158,17 @@ const FolioDocument = (props: FolioDocumentProps): ReactElement => {
     // `data-slot` is what `FolioTitleField` scopes its Enter-moves-to-body
     // lookup to — the tree and the inspector carry `contenteditable` nodes
     // of their own, so a document-wide query would land in the wrong one.
-    <div data-slot="folio-document" className="flex flex-col gap-0">
+    //
+    // `data-text-size` is the reading size, and it goes HERE rather than on
+    // either face: `main.css` resolves it to `--folio-text-size`, which the
+    // one rule under this slot applies to the rendered body and the editor
+    // together. The menubar writes the same atom without either component
+    // knowing about the other.
+    <div
+      data-slot="folio-document"
+      data-text-size={textSize.level}
+      className="flex flex-col gap-0"
+    >
       {/* A LAYOUT portal, nothing more. The menubar used to be created
           inside MDXEditor's realm and portalled up here, which forced a
           `loadingChrome` stand-in for the second before the editor chunk

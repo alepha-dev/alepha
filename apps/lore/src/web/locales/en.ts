@@ -172,6 +172,10 @@ export default {
   "folios.editor.action.toggle-tree": "Folio tree",
   "folios.editor.action.toggle-inspector": "Inspector",
   "folios.editor.action.focus-mode": "Focus mode",
+  "folios.editor.action.text-size": "Text size",
+  "folios.editor.action.text-size.small": "Small",
+  "folios.editor.action.text-size.medium": "Medium",
+  "folios.editor.action.text-size.large": "Large",
   "folios.editor.action.revisions": "Revisions",
 
   "folios.editor.summary.label": "Summary for agents",

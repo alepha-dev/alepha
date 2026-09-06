@@ -864,11 +864,21 @@ body::before {
  * Applied to BOTH faces, which is the point - View and Edit have to agree
  * on measure and rhythm or the toggle visibly reflows the text.
  *
- * `ch` rather than a pixel width: the comfortable range for continuous
- * prose is 60-75 characters per line and `ch` is the only unit that says
- * that directly. At the previous 16.5px across the 748px column a line ran
- * to roughly 90 characters, which is past the point where the eye starts
- * losing its place on the return sweep.
+ * The width was `68ch` until 2026-09-06 and is 710px now, which is what
+ * `68ch` resolved to at the default 18px - so the default column is
+ * unchanged and only the two smaller levels below differ. `ch` was chosen
+ * because the comfortable range for continuous prose is 60-75 characters a
+ * line and it is the only unit that says so directly: at the previous
+ * 16.5px across a 748px column a line ran to roughly 90 characters, past
+ * the point where the eye loses its place on the return sweep.
+ *
+ * ⚠️ It was pinned when the reading size became a preference, at the
+ * owner's call, because `ch` made the COLUMN move with the type: picking
+ * Small narrowed the page as well as the text, which reads as the document
+ * shrinking rather than as the text getting smaller, and "Text size" does
+ * not promise that. The cost is real and accepted - Medium runs ~74
+ * characters a line and Small ~82, so Small trades the measure for fitting
+ * more on screen. That is the choice the reader is making by picking it.
  *
  * This is what actually makes the surface read as a page. A bordered card
  * with a shadow was tried on 2026-08-28 and removed the same day: it drew
@@ -878,11 +888,40 @@ body::before {
  * 18px because Literata's x-height is modest; it sets smaller than a
  * geometric sans at the same nominal size.
  */
+/*
+ * The reading size, three steps, chosen from View ▸ Text size and stored in
+ * `folioTextSizeAtom`. `FolioDocument` puts the level on its own root as
+ * `data-text-size`; these rules turn it into the one variable the measure
+ * rule below reads.
+ *
+ * ⚠️ ONE variable for both faces, which is the whole reason this is a
+ * variable and not two copies of the rule below: View and Edit read the
+ * same declaration, so ⌘E cannot land on a different size. `line-height`
+ * is unitless and follows it; `max-width` deliberately does NOT - see the
+ * measure comment above for why the column is pinned instead.
+ *
+ * Level 3 is the bare default rather than an entry in the list, so a
+ * document with no attribute at all - a state that exists for one paint if
+ * the atom ever fails to read - renders at the size the folio has always
+ * had.
+ */
+[data-slot="folio-document"] {
+  --folio-text-size: 18px;
+}
+
+[data-slot="folio-document"][data-text-size="2"] {
+  --folio-text-size: 16.5px;
+}
+
+[data-slot="folio-document"][data-text-size="1"] {
+  --folio-text-size: 15px;
+}
+
 [data-slot="folio-document"] .lore-md-view,
 [data-slot="folio-document"] .cm-content {
-  max-width: 68ch;
+  max-width: 710px;
   margin-inline: auto;
-  font-size: 18px;
+  font-size: var(--folio-text-size);
   line-height: 1.75;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -1033,6 +1072,49 @@ body::before {
 
 .dark [data-slot="folio-document"] [data-slot="markdown-view"] pre {
   background-color: color-mix(in oklch, var(--color-muted) 55%, black);
+}
+
+/*
+ * The headings and the table follow the reading size, like everything else.
+ *
+ * `MarkdownView` sets them in Tailwind's rem-based sizes - `text-2xl`,
+ * `text-xl`, `text-base`, `text-xs` - which are deaf to the container by
+ * design: they are absolute, and a component that may be dropped into any
+ * surface has no business scaling with one. That is right for its compact
+ * callers and wrong here, where the whole document is one reading surface
+ * the reader sets the size of. Before this, picking Small shrank the prose
+ * and the code around headings that did not move, so a small document had
+ * enormous headings and a 12px table nailed to the body at every level.
+ *
+ * ⚠️ `calc(4em / 3)` rather than `1.3333em`: the ratios are thirds and
+ * ninths, so a decimal literal lands a fraction of a pixel off and the
+ * DEFAULT stops being the size the folio already had. Written as a
+ * division the browser multiplies first - `4em` is 72px at an 18px body,
+ * and 72/3 is exactly 24 - so level 3 reproduces today's 24 / 20 / 16 / 12
+ * exactly and only the smaller levels are new.
+ *
+ * ⚠️ h3 sets SMALLER than the paragraph it heads (0.889em, 16px against
+ * 18px). That is `@alepha/ui`'s hierarchy, not a rounding error, and it is
+ * preserved rather than corrected: changing which sizes the headings are
+ * is a separate decision from making them follow the reader's.
+ *
+ * Scoped to the folio document, exactly like the fence rule above, so the
+ * quest-graph tooltip and the attachment lightbox keep their defaults.
+ */
+[data-slot="folio-document"] [data-slot="markdown-view"] h1 {
+  font-size: calc(4em / 3);
+}
+
+[data-slot="folio-document"] [data-slot="markdown-view"] h2 {
+  font-size: calc(10em / 9);
+}
+
+[data-slot="folio-document"] [data-slot="markdown-view"] h3 {
+  font-size: calc(8em / 9);
+}
+
+[data-slot="folio-document"] [data-slot="markdown-view"] table {
+  font-size: calc(2em / 3);
 }
 
 /*
