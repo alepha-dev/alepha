@@ -145,7 +145,7 @@ func bucketDeployableArtifact(t *testing.T) string {
 			"entry": "index.js",
 			"runtime": "node",
 			"runtimeVersion": "24",
-			"resources": { "hasBucket": true }
+			"resources": { "hasBucket": true, "hasDatabase": true }
 		}`,
 		"dist/index.js": "process.exit(0)",
 	}
