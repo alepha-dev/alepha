@@ -1,4 +1,5 @@
 import { $inject, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
@@ -23,6 +24,7 @@ import {
 import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
 import { EstateInventoryService } from "../services/EstateInventoryService.ts";
 import { EstateService } from "../services/EstateService.ts";
+import { EstateStatsService } from "../services/EstateStatsService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
@@ -54,6 +56,8 @@ export class EstateController {
   protected readonly tokens = $inject(EstateTokenService);
   protected readonly transport = $inject(EstateCommandTransport);
   protected readonly inventories = $inject(EstateInventoryService);
+  protected readonly stats = $inject(EstateStatsService);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly audits = $inject(LoreAudits);
 
   /**
@@ -151,6 +155,60 @@ export class EstateController {
       this.inventories.reconcile(
         await this.service.loadOwned(params.estateId, user),
       ),
+  });
+
+  /**
+   * The CPU and memory series, one point per day.
+   *
+   * `EstateStatsService.series` was written for #Q1627 and had no caller in
+   * the tree until this route: it divides the dataset's sums by the sample
+   * count and carries the `estimated` / `sampleInterval` disclosure, and both
+   * halves of that stay there rather than being redone here. On Analytics
+   * Engine a window is SAMPLED, and a chart that hides its own sampling is one
+   * that gets trusted more than it deserves.
+   *
+   * ⚠️ `since` is declared in `schema.query` and has to be: a `$page` loader's
+   * `query` holds only what the schema declares, so an undeclared param reads
+   * `undefined` and the page takes whichever branch that implies, silently.
+   *
+   * ⚠️ The series is off by default (`collectSeries`), so an empty answer is
+   * the common case rather than an error. The page says which of the two it
+   * is; this route answers what the dataset holds either way.
+   */
+  getEstateStats = $action({
+    use: [$secure({ permissions: ["estate:read"] })],
+    method: "GET",
+    path: "/estates/:estateId/stats",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      query: z.object({ since: z.string().max(40).optional() }),
+      response: z.object({
+        collecting: z.boolean(),
+        estimated: z.boolean(),
+        sampleInterval: z.number().optional(),
+        points: z.array(
+          z.object({
+            day: z.string().max(40),
+            cpuPercent: z.number(),
+            memoryPercent: z.number(),
+            samples: z.integer().min(0),
+          }),
+        ),
+      }),
+    },
+    handler: async ({ params, query, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      // Thirty days by default: the dataset rolls up by day, so a shorter
+      // window is a handful of points and a longer one outlives the hot
+      // retention.
+      const since =
+        query.since ??
+        new Date(this.dateTime.nowMillis() - 30 * 24 * 3600_000).toISOString();
+      const series = await this.stats.series(estate.id, since);
+      // The switch travels with the answer so the page can tell "collecting,
+      // nothing yet" from "not collecting at all" without a second read.
+      return { collecting: estate.collectSeries, ...series };
+    },
   });
 
   /**
