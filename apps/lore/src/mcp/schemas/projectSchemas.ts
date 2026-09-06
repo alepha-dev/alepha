@@ -1,5 +1,7 @@
 import { z } from "alepha";
 
+import { capabilityKeySchema } from "@/api/schemas/capabilityKeySchema.ts";
+
 import { projectActivityRowSchema } from "../../api/schemas/projectActivityRowSchema.ts";
 import { epicStatusSchema } from "./epicStatusSchema.ts";
 import { prioritySchema } from "./prioritySchema.ts";
@@ -97,19 +99,42 @@ export const projectContextResultSchema = z.object({
   id: z.integer(),
   title: z.string(),
   public: z.boolean(),
-  areas: z.array(
+  /**
+   * What this project is: the capabilities it has turned on, and the options
+   * inside each.
+   *
+   * ⚠️ **Read this before anything else, because it says which of the
+   * sections below exist at all.** A section a disabled capability owns is
+   * OMITTED rather than emptied, deliberately: `epics: []` on a project that
+   * has no Work reads as "there are no epics yet", which is a different and
+   * wrong answer. Absent means "this project does not do that".
+   */
+  capabilities: z.array(
     z.object({
-      name: z.string(),
-      description: z.string(),
+      key: capabilityKeySchema,
+      options: z.record(z.text(), z.boolean()),
     }),
   ),
+  /**
+   * The parts of the system a quest belongs to. **Work's**, so absent when
+   * the project has no Work - a quest carries an area, and a blight forwards
+   * into one.
+   */
+  areas: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string(),
+      }),
+    )
+    .optional(),
   createdAt: z.datetime(),
   /**
    * Quests the calling user has accepted and not yet completed. Matches the
    * `project_info` semantic — "what is the user currently working on" — so
    * agents pick up the same signal humans see in the project board.
    */
-  activeQuests: z.array(questOrientationRefSchema),
+  activeQuests: z.array(questOrientationRefSchema).optional(),
   /**
    * The project's epic index — every epic, planned/active/done alike (this
    * is never gated, same as an epic's own view of itself). Kept to number,
@@ -122,19 +147,21 @@ export const projectContextResultSchema = z.object({
    * 9 specified" and "planned, 9 shipped" read the same, and epic #27 was
    * the second for a day before anyone noticed.
    */
-  epics: z.array(
-    z.object({
-      number: z.integer(),
-      title: z.string(),
-      status: epicStatusSchema,
-      questCount: z.integer(),
-      completed: z
-        .integer()
-        .describe(
-          "How many of questCount are completed. Equal to questCount on an epic whose work is done, whatever its status says.",
-        ),
-    }),
-  ),
+  epics: z
+    .array(
+      z.object({
+        number: z.integer(),
+        title: z.string(),
+        status: epicStatusSchema,
+        questCount: z.integer(),
+        completed: z
+          .integer()
+          .describe(
+            "How many of questCount are completed. Equal to questCount on an epic whose work is done, whatever its status says.",
+          ),
+      }),
+    )
+    .optional(),
   /**
    * The releases still OPEN in this project, by number ascending.
    *
@@ -144,32 +171,36 @@ export const projectContextResultSchema = z.object({
    *
    * Several open at once is the normal state, not a warning sign.
    */
-  openReleases: z.array(
-    z.object({
-      tag: z.string().optional(),
-      title: z.string(),
-      targetDate: z.datetime().optional(),
-      completed: z.integer(),
-      total: z.integer(),
-    }),
-  ),
+  openReleases: z
+    .array(
+      z.object({
+        tag: z.string().optional(),
+        title: z.string(),
+        targetDate: z.datetime().optional(),
+        completed: z.integer(),
+        total: z.integer(),
+      }),
+    )
+    .optional(),
   /**
    * The calling user's folios in this project, newest-updated first. Bodies
    * are intentionally omitted — call `folio_get` only after deciding what's
    * relevant from this index.
    */
-  folios: z.object({
-    /**
-     * Number of entries returned (≤ 30).
-     */
-    shown: z.integer(),
-    /**
-     * `true` if the index was capped at the limit — the agent should call
-     * `folio_list` with a higher `limit` to see the rest.
-     */
-    capped: z.boolean(),
-    items: z.array(folioIndexEntrySchema),
-  }),
+  folios: z
+    .object({
+      /**
+       * Number of entries returned (≤ 30).
+       */
+      shown: z.integer(),
+      /**
+       * `true` if the index was capped at the limit — the agent should call
+       * `folio_list` with a higher `limit` to see the rest.
+       */
+      capped: z.boolean(),
+      items: z.array(folioIndexEntrySchema),
+    })
+    .optional(),
   /**
    * Full content of pinned folios — the project's CLAUDE.md / AGENTS.md
    * equivalent. Returned in `(pinned DESC, updatedAt DESC)` order; the
@@ -177,26 +208,30 @@ export const projectContextResultSchema = z.object({
    * Protected (encrypted) folios are excluded since their content is
    * opaque ciphertext.
    */
-  pinnedFolios: z.array(
-    z.object({
-      id: z.uuid(),
-      shortId: z.integer(),
-      title: z.string(),
-      content: z.string(),
-      /**
-       * When set, the folio's content exceeded the per-call cap and was
-       * truncated to this many characters. Renderers may show a
-       * "truncated" badge so the agent knows to `folio_get` for the rest.
-       */
-      truncatedAt: z.integer().optional(),
-    }),
-  ),
+  pinnedFolios: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        shortId: z.integer(),
+        title: z.string(),
+        content: z.string(),
+        /**
+         * When set, the folio's content exceeded the per-call cap and was
+         * truncated to this many characters. Renderers may show a
+         * "truncated" badge so the agent knows to `folio_get` for the rest.
+         */
+        truncatedAt: z.integer().optional(),
+      }),
+    )
+    .optional(),
   /**
    * `true` if the total pinned content exceeded the cap and at least one
    * pinned folio was dropped from the response. The agent can fall back
    * to `folio_get` on the dropped ones, or the user can unpin some.
+   *
+   * Absent with `pinnedFolios`, which belongs to Knowledge.
    */
-  pinnedFoliosTruncated: z.boolean(),
+  pinnedFoliosTruncated: z.boolean().optional(),
   /**
    * `true` when the calling user owns (created) this project.
    */
