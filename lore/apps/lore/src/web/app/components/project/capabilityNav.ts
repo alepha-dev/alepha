@@ -173,7 +173,10 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
       icon: AppWindow,
       group: "ops",
       order: 10,
-      option: "track",
+      // ⚠️ BASELINE, with no option. Instances, artifacts and quality are
+      // there whenever Apps is on; `track` adds telemetry to them. Gating
+      // this entry on `track` would leave a project that deploys elsewhere
+      // with no way to reach the copies it has recorded.
     },
     {
       // ⚠️ Baseline, with no option: artifacts arrive from CI through

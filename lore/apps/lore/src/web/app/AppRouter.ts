@@ -1351,6 +1351,29 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Reports`,
     }),
     lazy: () => import("./components/project/reports/ReportsLayout.tsx"),
+    /**
+     * Whether any quality run exists, which is what decides the Quality tab
+     * now that the flag is gone.
+     *
+     * ⚠️ Read HERE and not on the `project` loader. That one already runs
+     * three parallel reads on every project navigation, and most projects
+     * will never push a run - so this is paid when Reports opens, by the one
+     * page that needs the answer.
+     *
+     * `.catch(() => false)`: a failed read hides a tab, never the page. The
+     * route itself is not gated either way, so a link someone already holds
+     * keeps resolving.
+     */
+    loader: async () => ({
+      hasQualityRun: await this.qualityApi
+        .getQualityRuns({
+          params: {
+            projectId: this.alepha.store.get(currentProjectAtom)?.id ?? -1,
+          },
+        })
+        .then((it) => it.runs.length > 0)
+        .catch(() => false),
+    }),
   });
 
   reportsOverview = $page({
@@ -1395,11 +1418,13 @@ export class AppRouter {
   /**
    * The one Reports tab whose data is INGESTED rather than derived.
    *
-   * Deliberately not 404'd when `features.quality` is off, matching how the
-   * `projectKanban` route stays reachable while only its sidebar entry is
-   * gated: the flag decides whether the tab is offered, and a link someone
-   * already holds should not break because a switch moved. What the flag does
-   * gate is `reportsTabs`, so the tab is not advertised.
+   * Deliberately not 404'd when the project has no Apps and no run, matching
+   * how the `projectKanban` route stays reachable while only its sidebar entry
+   * is gated: a link someone already holds should not break because a switch
+   * moved. What decides whether the tab is OFFERED is `reportsTabs`, which
+   * asks for Apps and for a run to exist - Quality lost its own flag when it
+   * joined the Apps baseline, since a tab that appears once there is something
+   * in it needs no switch.
    */
   reportsQuality = $page({
     name: "reportsQuality",

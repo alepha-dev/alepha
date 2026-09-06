@@ -10,10 +10,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { QualityController } from "../src/api/controllers/QualityController.ts";
-import {
-  defaultProjectFeatures,
-  projectFeaturesSchema,
-} from "../src/api/entities/projects.ts";
 import { qualityRuns } from "../src/api/entities/qualityRuns.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { QualityJobs } from "../src/api/jobs/QualityJobs.ts";
@@ -187,22 +183,16 @@ describe("quality runs", () => {
       ...overrides,
     });
 
-  describe("the feature flag", () => {
-    it("is optional, so an existing row decodes without it", ({ expect }) => {
-      const shape = z.schema.shape(projectFeaturesSchema);
-
-      expect(shape.quality).toBeDefined();
-      expect(z.schema.isOptional(shape.quality)).toBe(true);
-    });
-
-    /**
-     * A key here changes the column DEFAULT, and on D1 that rebuilds
-     * `projects` - the CASCADE parent that wiped production once already.
-     */
-    it("stays out of defaultProjectFeatures", ({ expect }) => {
-      expect("quality" in defaultProjectFeatures).toBe(false);
-    });
-  });
+  /**
+   * ⚠️ The two cases that used to live here are gone with the flag they
+   * guarded: `features.quality` was optional, and absent on every project
+   * that predated the module, so both asked which way ABSENT read. Quality has
+   * no switch now - it joined the Apps baseline, and its Reports tab appears
+   * once a run exists. `reportsTabs.spec.ts` asks that question instead.
+   *
+   * The `features` column itself keeps its `quality` key forever: dropping a
+   * column from `projects` is the D1 rebuild that cascade-wipes its children.
+   */
 
   describe("pushing a run", () => {
     it("records the totals", async ({ expect }) => {
@@ -320,7 +310,9 @@ describe("quality runs", () => {
      * The decision that keeps a UI switch from turning CI red. The row is
      * written; the tab is what stays hidden.
      */
-    it("is accepted while features.quality is off", async ({ expect }) => {
+    it("is accepted whatever the project's capabilities say", async ({
+      expect,
+    }) => {
       const { owner, projectId } = await aProject(false);
 
       const response = await push(projectId, owner);

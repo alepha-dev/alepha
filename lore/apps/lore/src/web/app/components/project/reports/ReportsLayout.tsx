@@ -21,23 +21,33 @@ import { reportsTabs } from "./reportsTabs.ts";
  * else. The cap went with it: a report is a table and a chart, and both want
  * the width.
  *
- * The tab list is not a constant: Quality only exists where
- * `features.quality` is on. See `reportsTabs.ts` for why an ingested tab is
- * gated where a derived one is not.
+ * The tab list is not a constant: Overview and Quests need Work, Quality
+ * needs Apps AND a run to exist, and Members needs nothing. See
+ * `reportsTabs.ts` for why an ingested tab is gated where a derived one is
+ * not, and why this section is Core while its tabs are not.
  */
-const ReportsLayout = () => {
+export interface ReportsLayoutProps {
+  /**
+   * Whether this project has ever received a quality run, from the loader.
+   */
+  hasQualityRun: boolean;
+}
+
+const ReportsLayout = (props: ReportsLayoutProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
 
-  const tabs: PlateTab[] = reportsTabs(project?.features).map((tab) => ({
-    key: tab.route,
-    label: String(tr(tab.labelKey)),
-    // Each tab is its own route, so each is a link: middle-click, copy-link
-    // and the back button all depend on it.
-    href: router.path(tab.route),
-  }));
+  const tabs: PlateTab[] = reportsTabs(project, props.hasQualityRun).map(
+    (tab) => ({
+      key: tab.route,
+      label: String(tr(tab.labelKey)),
+      // Each tab is its own route, so each is a link: middle-click, copy-link
+      // and the back button all depend on it.
+      href: router.path(tab.route),
+    }),
+  );
 
   return (
     <PlateLayout

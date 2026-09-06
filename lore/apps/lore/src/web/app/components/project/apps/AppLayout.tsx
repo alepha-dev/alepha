@@ -6,6 +6,8 @@ import { NestedView, useRouter, useRouterState } from "alepha/react/router";
 import { ExternalLink } from "lucide-react";
 import { useEffect } from "react";
 
+import { capabilityOption } from "@/web/app/services/projectCapabilities.ts";
+
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
@@ -70,7 +72,9 @@ const AppLayout = () => {
   const [instance] = useStore(currentInstanceAtom);
 
   const activeRoute = routerState.name ?? "";
-  const tabs = instance ? appTabsFor(instance) : [];
+  const tabs = instance
+    ? appTabsFor(instance, capabilityOption(project, "apps", "track"))
+    : [];
   const slug = project?.slug;
 
   /**

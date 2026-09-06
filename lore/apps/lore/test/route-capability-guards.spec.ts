@@ -1,11 +1,10 @@
 import { Alepha, AlephaError } from "alepha";
 import { $page, AlephaReactRouter } from "alepha/react/router";
-import { describe, it } from "vitest";
+import { afterEach, describe, it } from "vitest";
 
 import { projectFixture } from "@/testing/projectFixture.ts";
-
-import { AppRouter } from "./AppRouter.ts";
-import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
+import { AppRouter } from "@/web/app/AppRouter.ts";
+import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 
 /**
  * The route loaders that 404 under a disabled capability.
@@ -24,10 +23,28 @@ import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
  * decision rather than an omission.
  */
 describe("route guards on a capability", () => {
+  /**
+   * ⚠️ A NODE spec, though it boots the router - and it has to be. As a
+   * `.browser.spec.tsx` it ran under jsdom, where a booted router keeps React
+   * work scheduled past the point jsdom tears its `window` down: every case
+   * passed and the run failed anyway, on an uncaught
+   * `ReferenceError: window is not defined` attributed to whichever file went
+   * next. Nothing here renders, so there was never a reason to be there.
+   * `app-routes.spec.ts` boots the same router from the same place.
+   *
+   * Containers are stopped in an `afterEach` regardless.
+   */
+  const containers: Alepha[] = [];
+
+  afterEach(async () => {
+    await Promise.all(containers.splice(0).map((it) => it.stop()));
+  });
+
   const bootRouter = async () => {
     const alepha = Alepha.create().with(AlephaReactRouter);
     alepha.inject(AppRouter);
     await alepha.start();
+    containers.push(alepha);
     return alepha;
   };
 
