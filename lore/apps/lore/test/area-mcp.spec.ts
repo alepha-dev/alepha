@@ -113,8 +113,11 @@ describe("Area over MCP", () => {
       ctx.projectTools.project_context.execute({ project: project.id }),
     );
 
-    const long = result.areas.find((a) => a.name === "long");
-    const short = result.areas.find((a) => a.name === "short");
+    // `areas` is Work's, so it is absent on a project without it - and the
+    // fixture below has Work, which is what makes the non-null assertion
+    // honest rather than hopeful.
+    const long = result.areas?.find((a) => a.name === "long");
+    const short = result.areas?.find((a) => a.name === "short");
 
     expect(long?.description).toBe(`${"x".repeat(160)}…`);
     expect(short?.description).toBe(shortDescription);

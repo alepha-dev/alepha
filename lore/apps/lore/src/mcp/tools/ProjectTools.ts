@@ -8,6 +8,7 @@ import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
+import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
 import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
 import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
@@ -227,14 +228,23 @@ export class ProjectTools {
   });
 
   /**
-   * One-shot orientation tool. Returns project metadata + active quests +
-   * the folio index in a single ~2K-token payload. Designed as the FIRST
-   * call any agent makes when picking up a project-scoped task — folios
+   * One-shot orientation tool. Returns the project's metadata and capability
+   * set, then only the sections those capabilities own. Designed as the FIRST
+   * call any agent makes when picking up a project-scoped task - folios
    * act as the project's memory for Claude (see apps/lore/CLAUDE.md).
+   *
+   * ⚠️ **A disabled capability's sections are ABSENT, never empty.** An agent
+   * reading `epics: []` concludes the project tracks epics and has none yet,
+   * then files one; reading no `epics` key at all, it does not. That is why
+   * every capability-owned key on `projectContextResultSchema` is optional.
+   *
+   * Measured on a Knowledge-only project holding five folios: 947 chars
+   * (~237 tokens) here against 1216 (~304) with all four capabilities on.
+   * The saving is small and the reason to do it is not the saving.
    */
   project_context = $tool({
     description:
-      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, areas (each with a `name` and a `description` of what it covers — read these before filing a quest, and REUSE an existing area's exact name rather than registering a new one), the calling user's currently-active quests, the epic index (number, title, status, questCount; every epic, planned/active/done alike), the folio index (titles + summaries + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). An epic's status is the permission on its quests: filed into it only while `planned`, worked (accepted, completed) only while `active`, and `done` is terminal, with epic_set_status moving it forward one way. A planned epic's quests are hidden from `quest_list`'s default view, like the UI's backlog; pass `epic:` or `includePlanned: true` to read them, and check the epic index (each entry carries `completed` beside `questCount`, so a planned epic with all its quests done reads as what it is) before treating a cluster of related-looking quests as unrelated noise. Folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. ~2K tokens of complete situational awareness in one round-trip; the folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a higher `limit` to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped, and a pinned entry carrying `truncatedAt` was cut at that character — `folio_get` either kind by id to read it whole. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
+      "ORIENTATION TOOL — call FIRST on any project-scoped task. Returns project metadata, the capability set (what this project DOES: `work`, `knowledge`, `apps`, `support`, each with its options), and then only the sections those capabilities own — a section a project has turned off is ABSENT, never an empty array, because `epics: []` would read as 'no epics yet' rather than 'this project does not track epics'. Work brings areas (each with a `name` and a `description` of what it covers — read these before filing a quest, and REUSE an existing area's exact name rather than registering a new one), the calling user's currently-active quests, the epic index (number, title, status, questCount; every epic, planned/active/done alike), the folio index (titles + summaries + updatedAt, NO content bodies), AND the full content of any pinned folios (the per-project CLAUDE.md / AGENTS.md — read these first, they're the project rules). An epic's status is the permission on its quests: filed into it only while `planned`, worked (accepted, completed) only while `active`, and `done` is terminal, with epic_set_status moving it forward one way. A planned epic's quests are hidden from `quest_list`'s default view, like the UI's backlog; pass `epic:` or `includePlanned: true` to read them, and check the epic index (each entry carries `completed` beside `questCount`, so a planned epic with all its quests done reads as what it is) before treating a cluster of related-looking quests as unrelated noise. Knowledge brings the folio index and the pinned folios; folios are this project's shared memory for AI agents — read the index here, then call `folio_get` only on the ones that look relevant. A write into a capability the project does not have is refused with a 400 naming it and how to turn it on. Complete situational awareness in one round-trip, and its size follows the capability set rather than a fixed budget: a Knowledge-only project with five folios measures ~240 tokens, and ~2K is the ceiling with everything on, almost all of it the pinned-folio bodies. The folio index is capped at 30 entries (sorted by pinned DESC, updatedAt DESC) — when `folios.capped` is true, use `folio_list` with a higher `limit` to fetch the rest. Pinned-folio total content is capped at ~8K chars; when `pinnedFoliosTruncated` is true some pinned bodies were dropped, and a pinned entry carrying `truncatedAt` was cut at that character — `folio_get` either kind by id to read it whole. When `preferredLanguage` is set (ISO 639-1 — e.g. `fr`, `ja`), generated content (quest titles, descriptions, folio bodies) MUST be written in that language unless the user explicitly asks for another.",
     title: "Project context (orientation)",
     annotations: {
       readOnlyHint: true,
@@ -257,39 +267,58 @@ export class ProjectTools {
         params: { id: projectId },
       });
 
+      // ⚠️ **What this project has decides what the rest of this call does.**
+      // A section a disabled capability owns is OMITTED, never emptied:
+      // `epics: []` on a project with no Work reads as "no epics yet", which
+      // is a different and wrong answer. It also stops paying for reads whose
+      // results the project has no use for - a Knowledge-only project ran
+      // three of them for three empty arrays.
+      const capabilities = result.capabilities;
+      const has = (key: CapabilityKey) =>
+        capabilities.some((it) => it.key === key);
+      const hasWork = has("work");
+      const hasKnowledge = has("knowledge");
+
       // `areas` table is the source of truth for the list (`projects.areas`
       // is a deprecated rollback net nothing else reads — see
       // `QuestService.createQuest`). Only `name` + `description` cross the
       // MCP boundary: this call is paid for on every `project_context`
       // round-trip, and the stats (`questCount`, dates) are a settings-page
       // concern, not an orientation one.
-      const areaStats = await this.areaService.listWithStats(projectId);
+      //
+      // Work's, because a quest carries an area and a blight forwards into
+      // one.
+      const areaStats = hasWork
+        ? await this.areaService.listWithStats(projectId)
+        : [];
 
-      // The epic index. Never gated (same as an epic's own view of
-      // itself) — orientation is exactly what failed for the work that
-      // motivated this: thirteen quests parked under one epic read as
-      // noise with no signal they were one subject.
-      const epics = await this.epicController.getEpics({
-        params: { projectId },
-      });
+      // The epic index. Never gated on an epic's STATUS (same as an epic's
+      // own view of itself) — orientation is exactly what failed for the work
+      // that motivated this: thirteen quests parked under one epic read as
+      // noise with no signal they were one subject. It is Work's, though.
+      const epics = hasWork
+        ? await this.epicController.getEpics({ params: { projectId } })
+        : [];
 
       // The open releases, so an agent opens a session already knowing what
       // `0.28.0` is meant to contain. Published ones are dropped: this index
       // is for planning into, and a shipped release is not.
-      const openReleases = (
-        await this.releaseController.getReleases({ params: { projectId } })
-      )
-        .filter((release) => !release.releasedAt)
-        .sort((a, b) => a.number - b.number);
+      const openReleases = hasWork
+        ? (await this.releaseController.getReleases({ params: { projectId } }))
+            .filter((release) => !release.releasedAt)
+            .sort((a, b) => a.number - b.number)
+        : [];
 
       // Fetch one over the cap to detect truncation without a separate count
       // query — cheap on D1 (single LIKE-free indexed range scan).
-      const folios = await this.folioController.list({
-        query: {
-          projectId,
-          limit: FOLIO_INDEX_CAP + 1,
-        },
-      });
+      const folios = hasKnowledge
+        ? await this.folioController.list({
+            query: {
+              projectId,
+              limit: FOLIO_INDEX_CAP + 1,
+            },
+          })
+        : [];
       const capped = folios.length > FOLIO_INDEX_CAP;
       // The epic index above already holds every epic's number; a folio
       // only needs to point into it.
@@ -332,40 +361,56 @@ export class ProjectTools {
         id: result.id,
         title: result.title,
         public: result.public ?? false,
-        areas: this.toAreaSummaries(areaStats),
+        capabilities: capabilities.map((it) => ({
+          key: it.key,
+          options: it.options,
+        })),
         createdAt: result.createdAt,
-        activeQuests: result.quests.map((quest) => ({
-          id: quest.id,
-          shortId: quest.shortId,
-          title: quest.title,
-          area: quest.area,
-          priority: quest.priority,
-        })),
-        epics: epics.map((epic) => ({
-          number: epic.number,
-          title: epic.title,
-          status: epic.status,
-          questCount: epic.questCount,
-          // Beside the count, so "planned, 9 specified" and "planned, 9
-          // shipped" are distinguishable at orientation. Epic #27 was worked
-          // to 9 of 9 while planned, and this is the field that would have
-          // shown it. `getEpics` already carries the rollup.
-          completed: epic.progress.completed,
-        })),
-        openReleases: openReleases.map((release) => ({
-          tag: release.tag,
-          title: release.title,
-          targetDate: release.targetDate,
-          completed: release.progress.completed,
-          total: release.progress.total,
-        })),
-        folios: {
-          shown: items.length,
-          capped,
-          items,
-        },
-        pinnedFolios,
-        pinnedFoliosTruncated,
+        ...(hasWork
+          ? {
+              areas: this.toAreaSummaries(areaStats),
+              activeQuests: result.quests.map((quest) => ({
+                id: quest.id,
+                shortId: quest.shortId,
+                title: quest.title,
+                area: quest.area,
+                priority: quest.priority,
+              })),
+            }
+          : {}),
+        ...(hasWork
+          ? {
+              epics: epics.map((epic) => ({
+                number: epic.number,
+                title: epic.title,
+                status: epic.status,
+                questCount: epic.questCount,
+                // Beside the count, so "planned, 9 specified" and "planned, 9
+                // shipped" are distinguishable at orientation. Epic #27 was
+                // worked to 9 of 9 while planned, and this is the field that
+                // would have shown it.
+                completed: epic.progress.completed,
+              })),
+              openReleases: openReleases.map((release) => ({
+                tag: release.tag,
+                title: release.title,
+                targetDate: release.targetDate,
+                completed: release.progress.completed,
+                total: release.progress.total,
+              })),
+            }
+          : {}),
+        ...(hasKnowledge
+          ? {
+              folios: {
+                shown: items.length,
+                capped,
+                items,
+              },
+              pinnedFolios,
+              pinnedFoliosTruncated,
+            }
+          : {}),
         isOwner: result.member?.owner ?? false,
         preferredLanguage: result.preferredLanguage,
       };
