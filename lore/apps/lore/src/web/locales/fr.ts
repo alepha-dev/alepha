@@ -1797,6 +1797,8 @@ export default {
   "dashboard.scope.pick": "Portee",
   "dashboard.scope.noApps":
     "Aucune app de vos projets ne remonte cela pour l'instant.",
+  "dashboard.scope.noProjects":
+    "Aucun de vos projets ne fait cela pour l'instant.",
 
   "dashboard.group.quests": "Quetes",
   "dashboard.group.epics": "Epopees et versions",
@@ -1932,4 +1934,6 @@ export default {
   "activity.resource.sigil": "Application",
   "activity.resource.project": "Projet",
   "activity.fields": "a modifié $1",
+  "activity.capability.enabled": "a activé $1",
+  "activity.capability.disabled": "a désactivé $1",
 };

@@ -68,11 +68,28 @@ export class LoreAudits {
    * ⚠️ `transfer` is NOT declared. `leaveProject` says outright that ownership
    * transfer is not implemented, and an action nobody can perform would sit in
    * the filter promising rows that cannot exist.
+   *
+   * ## `capability` is an event, not a derivation
+   *
+   * Turning a capability on or off is `project:capability`, with the key and
+   * the new state in `metadata`. Epic #36 first proposed reading it off
+   * `project_capabilities.enabledAt` instead, and that cannot work in either
+   * direction: disabling DELETES the row, so the column can only ever
+   * describe the half of the history that is still true, and the Activity
+   * feed is one indexed table read with server-side paging - an event merged
+   * in at read time is the shape the old `ProjectActivityService` had, which
+   * could not sort, page or filter and is why it was replaced.
+   *
+   * Filed under `project` rather than a `capability` type of its own because
+   * the resource IS the project: the row links to it, carries its title, and
+   * a type per switch would put "enable" in the admin's `type:action`
+   * dropdown meaning nothing else. Not coalesced, so turning four
+   * capabilities on in one sitting reads as four rows.
    */
   readonly project = $audit({
     type: "project",
     description: "Project lifecycle",
-    actions: ["create", "update", "delete"],
+    actions: ["create", "update", "delete", "capability"],
     // A session editing one resource repeatedly is the everyday case here -
     // an MCP agent, or somebody working through a form - so `update` folds
     // into one row with a count. Five minutes, measured from the row's

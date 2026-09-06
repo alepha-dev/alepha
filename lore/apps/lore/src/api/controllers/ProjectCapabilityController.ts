@@ -121,7 +121,11 @@ export class ProjectCapabilityController {
         where: { id: { eq: params.projectId } },
       });
 
-      await this.audits.project.logSuccess("update", {
+      // `capability`, not `update`: the Activity feed's "what" filter is the
+      // action column, and a member looking for when Support was turned off
+      // must not have to read every rename to find it. `metadata` carries the
+      // key and the new state, which is what the row's details column prints.
+      await this.audits.project.logSuccess("capability", {
         ...this.audits.actor(user),
         ...this.audits.scope(params.projectId),
         resourceType: "project",

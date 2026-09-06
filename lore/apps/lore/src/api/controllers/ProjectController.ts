@@ -35,7 +35,10 @@ import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
-import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
+import {
+  type CapabilityKey,
+  capabilityKeySchema,
+} from "../schemas/capabilityKeySchema.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { projectActivityRowSchema } from "../schemas/projectActivityRowSchema.ts";
@@ -59,6 +62,17 @@ import { ProjectSlugService } from "../services/ProjectSlugService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class ProjectController {
+  /**
+   * The audit `type` the Activity feed asks for when every kind the caller
+   * wanted belongs to a capability that is off.
+   *
+   * A value nothing declares, so it matches nothing. Needed because
+   * `AuditService.find` drops blank entries from its comma-separated list,
+   * which would turn "show me nothing" into "show me everything" - the exact
+   * inversion a filter must never make.
+   */
+  protected static readonly NO_ACTIVITY_KIND = "__disabled__";
+
   log = $logger();
   alepha = $inject(Alepha);
   projectDeletion = $inject(ProjectDeletionService);
@@ -500,6 +514,7 @@ export class ProjectController {
     handler: async ({ params, query }) => {
       const page = await this.auditService.find({
         ...query,
+        type: await this.activityTypes(params.id, query.type),
         // Both halves, always: every project-layer index leads on the pair,
         // and a `scopeId` alone would fall off them onto a scan.
         scopeType: "project",
@@ -565,14 +580,88 @@ export class ProjectController {
         actions: z.array(z.text()),
       }),
     },
-    handler: async () => {
-      const pairs = this.audits.projectLayerActions();
+    handler: async ({ params }) => {
+      const enabled = await this.projectSecurity.capabilitiesOf(params.id);
+      const pairs = this.audits
+        .projectLayerActions()
+        .filter((pair) =>
+          this.capabilityRegistry.isOwnerEnabled(
+            this.capabilityRegistry.ownerOfActivityKind(pair.type),
+            Object.keys(enabled) as CapabilityKey[],
+          ),
+        );
       return {
         types: [...new Set(pairs.map((pair) => pair.type))].sort(),
         actions: [...new Set(pairs.map((pair) => pair.action))].sort(),
       };
     },
   });
+
+  /**
+   * The audit `type` filter the Activity feed reads with.
+   *
+   * ⚠️ **The feed is Core; what it SHOWS is not.** A project that turns Work
+   * off keeps every quest it had, and every audit row about them - disabling
+   * hides and never deletes. So the rows of a capability that is off are
+   * filtered out here rather than purged, and come back untouched when the
+   * switch does.
+   *
+   * Returns `undefined` when nothing is disabled, which is the common case
+   * and leaves the query exactly as it was: an unfiltered index seek, no
+   * `type IN (…)` at all. `AuditService.find` takes a comma-separated list,
+   * so the narrowed form is still one statement.
+   *
+   * The caller's own `type` wins where it is narrower, and is intersected
+   * rather than replaced: a member asking for `quest` on a project without
+   * Work gets nothing, which is the true answer, not every other kind.
+   */
+  protected async activityTypes(
+    projectId: number,
+    asked?: string,
+  ): Promise<string | undefined> {
+    const declared = [
+      ...new Set(this.audits.projectLayerActions().map((pair) => pair.type)),
+    ];
+    const allowed = await this.enabledActivityKinds(projectId, declared);
+
+    const wanted = asked
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (!wanted?.length) {
+      return allowed.length === declared.length ? undefined : allowed.join(",");
+    }
+
+    const kept = wanted.filter((type) => allowed.includes(type));
+    // Every kind the caller asked for belongs to a capability that is off.
+    // An empty string reads as "no filter" downstream - `AuditService` drops
+    // blank entries - and would widen the answer to everything, so name a
+    // type nothing ever writes.
+    return kept.length ? kept.join(",") : ProjectController.NO_ACTIVITY_KIND;
+  }
+
+  /**
+   * Which of `declared` this project's capabilities allow.
+   *
+   * Core kinds are owned by nobody and always pass, which today is `member`
+   * and `project` - a project with no capabilities at all still has members
+   * and still gets renamed.
+   */
+  protected async enabledActivityKinds(
+    projectId: number,
+    declared: string[],
+  ): Promise<string[]> {
+    const enabled = Object.keys(
+      await this.projectSecurity.capabilitiesOf(projectId),
+    ) as CapabilityKey[];
+    return declared.filter((type) =>
+      this.capabilityRegistry.isOwnerEnabled(
+        this.capabilityRegistry.ownerOfActivityKind(type),
+        enabled,
+      ),
+    );
+  }
 
   updateProjectById = $action({
     use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],

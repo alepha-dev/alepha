@@ -1772,6 +1772,7 @@ export default {
   "dashboard.scope.apps": "$1 apps",
   "dashboard.scope.pick": "Scope",
   "dashboard.scope.noApps": "No app in your projects reports this yet.",
+  "dashboard.scope.noProjects": "No project of yours does this yet.",
 
   "dashboard.group.quests": "Quests",
   "dashboard.group.epics": "Epics & releases",
@@ -1907,4 +1908,6 @@ export default {
   "activity.resource.sigil": "App",
   "activity.resource.project": "Project",
   "activity.fields": "changed $1",
+  "activity.capability.enabled": "turned on $1",
+  "activity.capability.disabled": "turned off $1",
 };

@@ -8,6 +8,7 @@ import type { DashboardMetricDescriptor } from "@/api/services/DashboardMetricCa
 
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
+import { eligibleApps, eligibleProjects } from "./dashboardEligibility.ts";
 
 /**
  * One app the reader can point a card at.
@@ -44,15 +45,21 @@ export interface DashboardScopeStepProps {
  * from visitors. A beacon-less app reports no page views at all and its
  * analytics page 404s, so a visitors card scoped to one would show a
  * permanent zero and link to an error.
+ *
+ * ⚠️ **A target that does not do this is not listed at all**, rather than
+ * listed and refused. A Knowledge-only project is absent from the Active
+ * Quests picker; if it is the reader's only project, the metric never got
+ * past the catalogue. Both filters come from `dashboardEligibility.ts`, which
+ * reads the metric's own `needs` - this file names no metric, which is the
+ * property the panel's docblock asks for and which the beacon rule used to
+ * break by testing `metric.key === "uniqueVisitors"` here.
  */
 const DashboardScopeStep = (props: DashboardScopeStepProps) => {
   const { tr } = useI18n<I18n, "en">();
   const kinds = props.metric.scopeKinds;
 
-  const apps =
-    props.metric.key === "uniqueVisitors"
-      ? props.apps.filter((app) => app.beacon)
-      : props.apps;
+  const projects = eligibleProjects(props.metric, props.projects);
+  const apps = eligibleApps(props.metric, props.apps, props.projects);
 
   const selectProject = (projectId: number) =>
     props.onChange({ kind: "projects", projectIds: [projectId] });
@@ -97,7 +104,7 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
       )}
 
       {kinds.includes("projects") &&
-        props.projects.map((project) => {
+        projects.map((project) => {
           const selected =
             props.scope.kind === "projects" &&
             (props.scope.projectIds ?? []).includes(project.id);
@@ -143,6 +150,19 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
       {kinds.includes("apps") && apps.length === 0 && (
         <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
           {tr("dashboard.scope.noApps")}
+        </div>
+      )}
+
+      {/*
+        Reachable only from "Change scope" on a card already on the board:
+        the catalogue refuses to open this step for a metric with no eligible
+        target. It is here because a capability turned off after the card was
+        added lands exactly there, and an empty list over a dead Save button
+        says nothing about why.
+      */}
+      {kinds.includes("projects") && projects.length === 0 && (
+        <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
+          {tr("dashboard.scope.noProjects")}
         </div>
       )}
     </div>
