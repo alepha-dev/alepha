@@ -13,7 +13,7 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { RefreshCw, Trash2, Unlink } from "lucide-react";
+import { RefreshCw, SquareTerminal, Trash2, Unlink } from "lucide-react";
 import { useState } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
@@ -217,6 +217,26 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                   : tr("account.estates.gauge.none")}
               </SheetDescription>
             </SheetHeader>
+
+            {/* The console (#E37) is where a `bay` estate's apps, gauges and
+                actions live. Linked from here the day the shell lands, so
+                nothing this drawer does becomes unreachable before D8 moves
+                the row's own click target. `cloudflare` has no console yet. */}
+            {estate.type === "bay" && (
+              <div className="px-4">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  data-testid="estate-open-console"
+                  onClick={() =>
+                    router.push("bay", { params: { estateId: estate.id } })
+                  }
+                >
+                  <SquareTerminal className="size-4" />
+                  {tr("bay.open")}
+                </Button>
+              </div>
+            )}
 
             <div className="flex flex-col gap-3 px-4">
               <div className="flex items-center justify-between gap-4 text-sm">
