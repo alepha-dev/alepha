@@ -146,3 +146,31 @@ func notLoaded(text string) bool {
 		strings.Contains(text, "not found") ||
 		strings.Contains(text, "does not exist")
 }
+
+/*
+parkUnit takes a unit out of service and keeps it out across a reboot.
+
+`disable --now` is one call that stops the unit AND removes its
+multi-user.target.wants symlink, so the app does not come back at the next
+boot. The same argv `removeUnit` issues, for the same reason.
+
+It lives here rather than beside `Systemd.Park` on the same grounds as its two
+neighbours: systemd.go is `//go:build linux`, so an argv written there is
+asserted by no test on any machine this project builds on, and a park that
+quietly ran `stop` instead would look identical until the host rebooted.
+
+A unit that is not loaded is not a failure. Parking something already gone is
+the outcome the caller asked for, and `handleRemove` is not the only path that
+reaches a unit systemd has never heard of.
+*/
+func parkUnit(run commandRunner, unit string) error {
+	out, err := run("systemctl", "disable", "--now", unit+".service")
+	if err == nil {
+		return nil
+	}
+	text := strings.TrimSpace(string(out))
+	if notLoaded(text) {
+		return nil
+	}
+	return fmt.Errorf("disable: %w: %s", err, text)
+}

@@ -172,3 +172,64 @@ func asRefusal(err error, target *backupRefused) bool {
 	}
 	return ok
 }
+
+/*
+The verb's own ack sequence, on a backup that actually succeeds.
+
+The refusal above and the mutex test both end in `failed`, so neither says
+anything about the happy path. `running` is what lets the console tell a
+snapshot in progress from a machine that stopped answering, and this is the
+one verb where the gap is measured in minutes rather than seconds: a backup
+that only acked on completion would show as pending for the whole upload.
+
+It also asserts the trace, because a `done` that recorded nothing is the
+manual-backup bug in a different costume: the ack says success and
+`bay status` still calls the backup stale.
+*/
+func TestBackupAcksRunningThenDoneAndRecordsTheSuccess(t *testing.T) {
+	f := newBackupFixture(t)
+	acts := newActions(f.server)
+	rec := &ackRecorder{}
+
+	acts.Command(context.Background(), backupCommand("c-backup-ok", "demo"), rec.send)
+
+	if got := rec.statuses(); !equalStrings(got, []string{"running", "done"}) {
+		t.Fatalf("acks = %v, want running then done", got)
+	}
+	app := mustGet(t, f, "demo/production")
+	if app.LastBackupAt == "" {
+		t.Fatal("a done backup must leave the trace bay status reads for staleness")
+	}
+	if app.LastBackupError != "" {
+		t.Fatalf("a success must clear the failure, not sit beside it: %q", app.LastBackupError)
+	}
+}
+
+/*
+A redelivered backup is re-acked from the store, never taken twice.
+
+Generic redelivery is proved on `restart`, which is cheap and idempotent.
+This is the verb where running it twice actually costs something: a second
+snapshot of the same database, a second upload, and a retention prune that
+counts them both.
+*/
+func TestRedeliveredBackupIsNotTakenTwice(t *testing.T) {
+	f := newBackupFixture(t)
+	acts := newActions(f.server)
+
+	acts.Command(context.Background(), backupCommand("c-backup-dup", "demo"), (&ackRecorder{}).send)
+	first := mustGet(t, f, "demo/production").LastBackupAt
+	if first == "" {
+		t.Fatal("the first delivery must have taken a backup")
+	}
+
+	rec := &ackRecorder{}
+	acts.Command(context.Background(), backupCommand("c-backup-dup", "demo"), rec.send)
+
+	if got := rec.statuses(); !equalStrings(got, []string{"done"}) {
+		t.Fatalf("acks = %v, want the stored outcome re-acked and nothing run", got)
+	}
+	if again := mustGet(t, f, "demo/production").LastBackupAt; again != first {
+		t.Fatalf("a redelivered id took a second backup: %q -> %q", first, again)
+	}
+}

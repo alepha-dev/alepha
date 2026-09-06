@@ -216,3 +216,69 @@ func TestDeleteUserIsQuietWhenThereIsNoUser(t *testing.T) {
 		t.Error("ran userdel for a user that does not exist")
 	}
 }
+
+/*
+The reboot bug, pointing the other way.
+
+A park that ran plain `stop` would look identical to a correct one: the app is
+down, the ack says done, and the console agrees. The difference appears only at
+the next host reboot, when systemd starts the unit again because its
+`[Install]` symlink is still there and nobody on the machine ever asked for it
+back. `--now` is what makes one call do both halves, and this is the only place
+it is checked.
+*/
+func TestParkUnitDisablesAndStopsInOneCall(t *testing.T) {
+	rec := &recorder{}
+
+	if err := parkUnit(rec.run, "bay-demo-production"); err != nil {
+		t.Fatal(err)
+	}
+
+	if !rec.ran("systemctl disable --now bay-demo-production.service") {
+		t.Errorf("did not disable the unit for the next boot; ran %v", rec.calls)
+	}
+	// A park is one call and nothing else: a `stop` alongside it would leave
+	// the unit enabled, and a `daemon-reload` would be a unit change nobody
+	// made. Both would pass the assertion above.
+	if len(rec.calls) != 1 {
+		t.Errorf("a park is exactly one call; ran %v", rec.calls)
+	}
+}
+
+// Parking a unit systemd has never heard of is the outcome the caller wanted.
+// An app deployed on the child runner and then adopted by systemd has no unit
+// file at all, and `stop` says so with exit 1.
+func TestParkUnitToleratesAnAbsentUnit(t *testing.T) {
+	rec := &recorder{answer: func(_ string, args ...string) ([]byte, error) {
+		if len(args) > 0 && args[0] == "disable" {
+			return []byte("Failed to disable unit: Unit file bay-gone.service does not exist."), errors.New("exit status 1")
+		}
+		return nil, nil
+	}}
+
+	if err := parkUnit(rec.run, "bay-gone"); err != nil {
+		t.Fatalf("parking something already gone must succeed: %v", err)
+	}
+}
+
+/*
+A real failure is reported, carrying systemctl's own words.
+
+The tolerance above is matched on the message, so a park refused for any other
+reason (a read-only /etc, a unit systemd cannot write) must come back as an
+error rather than be folded into the absent-unit case. The alternative is an
+app the console says is stopped, still serving.
+*/
+func TestParkUnitReportsAFailureThatIsNotAMissingUnit(t *testing.T) {
+	rec := &recorder{answer: func(string, ...string) ([]byte, error) {
+		return []byte("Failed to disable unit: Read-only file system"), errors.New("exit status 1")
+	}}
+
+	err := parkUnit(rec.run, "bay-demo-production")
+	if err == nil {
+		t.Fatal("a refused park must be reported")
+	}
+	if !strings.Contains(err.Error(), "Read-only file system") {
+		t.Errorf("the reason must carry systemctl's answer: %v", err)
+	}
+}
