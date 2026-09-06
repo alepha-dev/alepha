@@ -123,10 +123,10 @@ export class FeedbackController {
 
   /**
    * Submit feedback for a project. Any logged-in Lore user can submit so
-   * long as the target project has the feedback module enabled
-   * (`features.feedback === true`). Membership is NOT required — feedback
-   * is explicitly the "outside-the-team feedback channel". The feedback
-   * module toggle is the project owner's only opt-in/out lever.
+   * long as the target project has the **Support** capability
+   * (`assertFeedbackOpen`). Membership is NOT required - feedback is
+   * explicitly the "outside-the-team feedback channel", and the capability
+   * switch on Settings is the project owner's only opt-in/out lever.
    *
    * The per-user daily rate limit applies only to NON-members: owners and
    * members belong to the project and submit without limit. Exceeding the

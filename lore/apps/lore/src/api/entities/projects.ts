@@ -5,127 +5,101 @@ import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 
+/**
+ * ⚠️ **FROZEN. Nothing reads this, and nothing may start.** The live surface
+ * is the `project_capabilities` table, four rows at most per project, read
+ * through `ProjectSecurityService.capabilitiesOf` on the server and
+ * `hasCapability` / `capabilityOption` in the browser. Epic #36 moved every
+ * gate off this object; `test/project-features-frozen.spec.ts` is what keeps
+ * it that way.
+ *
+ * ## Why the column stays on disk forever
+ *
+ * Dropping a column from `projects` is drizzle's table-rebuild path, and
+ * `projects` is the `ON DELETE CASCADE` parent that wiped lore-production on
+ * 2026-05-13 - `DROP TABLE projects` took members, quests, releases, folios
+ * and feedback with it. So this joins `unlockedFeatures`, `unlockHistory`,
+ * `public`, `areas`, `milestoneDuration` and `defaultSurface` as a frozen
+ * dead column. `createProject` keeps writing `defaultProjectFeatures` into it
+ * so every row on disk stays decodable by the schema that still describes it,
+ * and `defaultProjectFeatures` itself must not change: it IS the column
+ * DEFAULT, and changing a DEFAULT is the same rebuild.
+ *
+ * ## Why the keys can never be renamed either
+ *
+ * Four of them are REQUIRED `z.boolean()`, and a missing required key does not
+ * read as `undefined` and fall back to false - the whole row fails to decode
+ * and every query touching `projects` throws. That is verbatim the 2026-08-05
+ * incident: the great rename renamed the table and the columns, left
+ * `petitions` and `chapters` inside the JSON on all 54 existing rows, and took
+ * production down on every project read minutes after deploy. It is why
+ * Releases is stored as `milestones` here and why the capability option that
+ * replaced it could finally be called `releases`: moving the storage is what
+ * let the name move with it.
+ *
+ * ## What each key became
+ *
+ * | this key | its replacement |
+ * | --- | --- |
+ * | `kanban` | option `work.board` |
+ * | `folios` | capability `knowledge` |
+ * | `feedback` | capability `support` |
+ * | `milestones` | option `work.releases` |
+ * | `epics` | option `work.epics` |
+ * | `questEstimate` / `questChrono` / `questReminder` | options `work.estimate` / `work.chrono` / `work.reminder` |
+ * | `sigils` | capability `apps`, and its option `apps.track` |
+ * | `quality` | nothing - Quality joined the Apps baseline and its Reports tab self-hides until a run exists |
+ * | `folioSummary` | option `knowledge.agentSummary` |
+ * | `blights` / `beacon` / `vitals` | per-app `sigils.kinds`, already dead since 2026-08-06 |
+ *
+ * @deprecated Read `project_capabilities` instead. This exists so old rows
+ * decode, and for no other reason.
+ */
 export const projectFeaturesSchema = z.object({
   kanban: z.boolean(),
   folios: z.boolean(),
-  /**
-   * Gates both the feedback inbox (owner triage) and the sigil feedback
-   * capability (`POST /sigils/:id/feedback`). For sigil feedback, ALL
-   * three gates must be on: `features.sigils` (master) AND
-   * `features.feedback` AND the sigil's `kinds.includes("feedback")`.
-   * Feedback arrive via TWO paths, both gated on this flag: the
-   * first-party form at `/p/:projectId/request` (route
-   * `projectFeedbackRequest`) and the sigil in-app dialog. Both land on
-   * `POST /projects/:id/feedback`.
-   */
   feedback: z.boolean(),
   /**
-   * Gates the Releases module (sidebar entry, settings page, routes).
-   *
-   * ⚠️ The KEY stays `milestones` forever, even though the module was
-   * renamed to Releases. This is a REQUIRED key inside the
-   * `projects.features` JSON column: renaming it leaves every existing row
-   * missing a required key, and a missing required key does not read as
-   * `undefined` and fall back — the whole row fails to decode and every
-   * query touching `projects` throws. That is verbatim the 2026-08-05
-   * incident (see CLAUDE.md, "Renaming a REQUIRED key inside a JSON column
-   * takes production down"). Only the UI label moved to "Releases".
+   * ⚠️ The KEY stays `milestones` forever. See the block above: it is a
+   * required key inside a JSON column, and renaming one of those is what took
+   * production down on 2026-08-05.
    */
   milestones: z.boolean(),
-  /**
-   * Per-quest feature toggles. All default OFF for new projects —
-   * keeps the quest view minimal until the owner opts in. Plain
-   * owner-controlled switches: the Shop that used to sell `questReminder`
-   * was removed along with the gold economy, so the toggle is now the
-   * only gate.
-   *
-   * The three are one family: `questEstimate` plans time, `questChrono`
-   * tracks it, `questReminder` nudges about it. Each is a methodology a
-   * project may or may not practise, so none is on by default.
-   *
-   * These gate the UI only. `quests.estimateMinutes` and the timer
-   * columns keep being accepted, stored and returned whatever the switch
-   * says — flipping one off hides existing data, it never deletes it.
-   */
   questEstimate: z.boolean().optional(),
   questReminder: z.boolean().optional(),
   questChrono: z.boolean().optional(),
-  /**
-   * The Apps module master switch. Still live: it gates the sidebar section,
-   * the settings page and every capability in `SigilIngestService.gatesFor`.
-   *
-   * Intentionally optional and absent from `defaultProjectFeatures` — adding a
-   * key there changes the column DEFAULT and triggers a D1 `projects` table
-   * rebuild that cascade-wipes prod. It defaults to `false` via the
-   * `useProjectFeatureToggle` hook.
-   */
   sigils: z.boolean().optional(),
-  /**
-   * Reveal the "Summary for agents" field on a folio. Off by default: the
-   * summary is written for `project_context` / `folio_list`, so for a human
-   * reading a folio it is chrome between the title and the first line.
-   *
-   * Hiding it never stops it being persisted — MCP keeps writing it and
-   * turning the switch back on shows the stored value unchanged.
-   *
-   * Optional and absent from `defaultProjectFeatures` for the same reason as
-   * `sigils` above: a key there changes the column DEFAULT and triggers the
-   * D1 `projects` rebuild that cascade-wipes prod.
-   */
   folioSummary: z.boolean().optional(),
-  /**
-   * The Epics module switch. Optional and ABSENT from
-   * `defaultProjectFeatures` for the same reason as `sigils` and
-   * `folioSummary`: adding a key there changes the column DEFAULT and
-   * triggers a D1 `projects` table rebuild that cascade-wipes members,
-   * quests, releases, folios and feedback. Defaults to `false` via the
-   * `useProjectFeatureToggle` hook.
-   */
   epics: z.boolean().optional(),
-  /**
-   * The Quality tab on Reports: coverage and test totals pushed by a CI job.
-   *
-   * Gates the TAB ONLY. `QualityController.pushQualityRun` accepts a push
-   * whatever this says, and that asymmetry is deliberate: a switch in the UI
-   * must never be able to turn someone's build red. Turning it off hides a
-   * history that keeps being written, exactly as the quest toggles hide
-   * `estimateMinutes` without deleting it.
-   *
-   * Optional and ABSENT from `defaultProjectFeatures` for the same reason as
-   * `sigils`, `folioSummary` and `epics`: a key there changes the column
-   * DEFAULT and triggers the D1 `projects` rebuild that cascade-wipes prod.
-   * Defaults to `false` via the `useProjectFeatureToggle` hook.
-   */
   quality: z.boolean().optional(),
-  /**
-   * @deprecated Superseded by per-app `sigils.kinds` (2026-08-06). Nothing
-   * reads these three. They stay in the schema because dropping a `projects`
-   * column risks the D1 rebuild path, and `projects` is the CASCADE parent
-   * that wiped prod in 2026-05. Do not write them; do not re-read them.
-   */
   blights: z.boolean().optional(),
-  /**
-   * @deprecated See {@link projectFeaturesSchema.blights}.
-   */
   beacon: z.boolean().optional(),
-  /**
-   * @deprecated See {@link projectFeaturesSchema.blights}.
-   */
   vitals: z.boolean().optional(),
 });
 
 export type ProjectFeatures = Infer<typeof projectFeaturesSchema>;
 
 /**
- * Default feature flags. NB: the per-quest toggles (`questEstimate`,
- * `questReminder`, `questChrono`) are intentionally
- * absent from this object. Including them here changes the column's
- * Drizzle DEFAULT — and on D1 that triggers a table rebuild
- * (`DROP TABLE projects`) which cascade-wipes members, quests,
- * releases, folios, feedback. See CLAUDE.md "Migration safety on D1".
+ * ⚠️ **This object IS the column DEFAULT. Changing it is the wipe bomb.**
  *
- * They're optional in the schema and default to `false` via the
- * `useProjectFeatureToggle` hook (`persisted[key] ?? false`).
+ * A key added or removed here changes drizzle's `DEFAULT` clause on
+ * `projects.features`, which drizzle-kit expresses as a table rebuild -
+ * `CREATE __new`, `INSERT FROM SELECT`, `DROP TABLE projects`, `RENAME` - and
+ * D1 ignores `PRAGMA foreign_keys=OFF`, so the `DROP` cascades through
+ * members, quests, releases, folios and feedback. That is not a hypothetical:
+ * it is migration `0023_special_purifiers.sql`, 2026-05-13, which flipped
+ * exactly these defaults and wiped lore-production. See CLAUDE.md, "Migration
+ * safety on D1".
+ *
+ * It is why the four keys below are the only ones here, why every switch
+ * added afterwards had to be `.optional()` with no default, and ultimately why
+ * epic #36 moved capabilities to their own table: a bag that cannot grow is
+ * not a place to keep configuration.
+ *
+ * `createProject` still stamps this on every new row so the row decodes
+ * against {@link projectFeaturesSchema}, and nothing else writes it.
+ *
+ * @deprecated Frozen with the column. See {@link projectFeaturesSchema}.
  */
 export const defaultProjectFeatures: ProjectFeatures = {
   kanban: true,
@@ -184,6 +158,14 @@ export const projects = $entity({
      * `public` / `unlockedFeatures` / `unlockHistory`.
      */
     areas: db.default(z.array(z.string()), []),
+    /**
+     * @deprecated Frozen since epic #36 (2026-09-06). The live surface is the
+     * `project_capabilities` table; see {@link projectFeaturesSchema} for what
+     * each key became and why neither the column, its DEFAULT nor any key
+     * inside it can ever change. Still WRITTEN by `createProject`, with
+     * `defaultProjectFeatures` and nothing else, so every row stays decodable
+     * - which is not a reason to read it.
+     */
     features: db.default(projectFeaturesSchema, defaultProjectFeatures),
     /**
      * @deprecated Dead since the release recorder was deleted (2026-08-30).
@@ -240,7 +222,7 @@ export const projects = $entity({
     retentionDays: z.integer().min(1).max(3_650).optional(),
     /**
      * The Kanban board's configurable column NAMES, in order. Only
-     * meaningful when `features.kanban` is on. Capped at 5 by the
+     * meaningful when the `work.board` option is on. Capped at 5 by the
      * controller. Default is a single "In Progress" lane so existing
      * accepted quests keep a coherent column to live in.
      *

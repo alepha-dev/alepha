@@ -14,7 +14,7 @@ import {
 export interface ProjectViewNavPublisherProps {
   /**
    * The sidebar as `ProjectView` built it, already gated on this project's
-   * features.
+   * capabilities.
    */
   nav: NavGroup[];
 }

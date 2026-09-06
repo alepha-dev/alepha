@@ -66,15 +66,6 @@ const setup = async () => {
     } as any),
   );
 
-  /**
-   * Feedback is opt-in per project, and a submit needs the module on.
-   */
-  const row = await (projectApi as any).projects.getOne({
-    where: { id: { eq: project.id } },
-  });
-  row.features = { ...row.features, feedback: true };
-  await (projectApi as any).projects.save(row);
-
   const report = (title: string, reporterId = REPORTER) =>
     asUser(reporterId, () =>
       feedbackApi.submitFeedback({

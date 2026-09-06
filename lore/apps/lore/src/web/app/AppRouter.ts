@@ -687,9 +687,9 @@ export class AppRouter {
   /**
    * Every deployed copy of every app, in one flat table.
    *
-   * Gated on `features.sigils` the same way `projectApp` is, and for the same
-   * reason: the module toggle is the whole gate, so reaching this by URL with
-   * it off is a 404 rather than a 403.
+   * Gated on the Apps capability the same way `projectApp` is, and for the
+   * same reason: the capability is the whole gate, so reaching this by URL
+   * without it is a 404 rather than a 403.
    */
   projectApps = $page({
     name: "projectApps",
