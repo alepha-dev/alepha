@@ -1150,6 +1150,45 @@ export default {
   "insights.errors.worst.title": "Worst offenders",
   "insights.errors.worst.note":
     "Counts are each failure's all-time total, not this window's. The chart above is the window.",
+  "app.settings.general": "General",
+  "app.settings.rename.save": "Rename",
+  "app.settings.rename.confirmTitle": "Rename $1?",
+  "app.settings.rename.confirmDescription":
+    "This copy moves to a new address and any link to the old one stops resolving. Reporting is unaffected: the key carries the project, not these names, so there is nothing to redeploy or rotate.",
+  "app.settings.rename.renamed": "Renamed to $1",
+  "app.settings.rename.appDescription":
+    "Which app this is a copy of. It is a URL segment: lowercase letters, digits and hyphens.",
+  "app.settings.rename.envDescription":
+    "Which copy this is. Free text within the same charset, and nothing parses it.",
+  "app.settings.url.title": "Address",
+  "app.settings.url.description":
+    "Where this copy lives. Nothing knows yet: pin an address here, or let the app report one.",
+  "app.settings.url.detected":
+    "Using $1, the address this copy last reported from. Set a URL here to show a different one, or clear the field to go back to the detected address.",
+  "app.settings.url.save": "Save",
+  "app.settings.url.saved": "Address saved",
+  "app.settings.estate.title": "Estate",
+  "app.settings.estate.description":
+    "Where this copy deploys to. Selecting one is a fact about the copy; deploying through it arrives later.",
+  "app.settings.estate.label": "Deploys to",
+  "app.settings.estate.rowDescription":
+    "Only estates lent to this project are offered.",
+  "app.settings.estate.none": "No estate is lent to this project yet.",
+  "app.settings.estate.manage": "Manage estates",
+  "app.settings.estate.clear": "No estate",
+  "app.settings.estate.saved": "Deploy target saved",
+  "app.settings.danger": "Danger zone",
+  "app.settings.delete.title": "Delete this app",
+  "app.settings.delete.description":
+    "Removes this deployed copy from Lore. It does not undeploy anything.",
+  "app.settings.delete.action": "Delete",
+  "app.settings.delete.confirmTitle": "Delete $1?",
+  "app.settings.delete.confirmDescription":
+    "Removes Lore\u2019s record of this deployed copy. It keeps running wherever it runs; nothing is undeployed.",
+  "app.settings.delete.confirmWithSigil":
+    "Removes Lore\u2019s record of this deployed copy, its sigil, and everything that sigil reported: page views, web vitals, unique visitors and its error budget. Blights already filed are kept. Nothing is undeployed: the copy keeps running wherever it runs.",
+  "app.settings.delete.confirm": "Delete",
+  "app.settings.delete.deleted": "App deleted",
   "app.settings.credential": "Credential",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":

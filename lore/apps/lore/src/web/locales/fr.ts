@@ -1165,6 +1165,46 @@ export default {
   "insights.errors.worst.title": "Les plus fréquentes",
   "insights.errors.worst.note":
     "Les compteurs sont le total de chaque défaillance depuis toujours, pas celui de la période. Le graphique ci-dessus, lui, correspond à la période.",
+  "app.settings.general": "Général",
+  "app.settings.rename.save": "Renommer",
+  "app.settings.rename.confirmTitle": "Renommer $1 ?",
+  "app.settings.rename.confirmDescription":
+    "Cette copie change d\u2019adresse et tout lien vers l\u2019ancienne cesse de fonctionner. Les remontées ne sont pas affectées : la clé porte le projet, pas ces noms, il n\u2019y a donc rien à redéployer ni à faire tourner.",
+  "app.settings.rename.renamed": "Renommée en $1",
+  "app.settings.rename.appDescription":
+    "De quelle application il s\u2019agit. C\u2019est un segment d\u2019URL : minuscules, chiffres et tirets.",
+  "app.settings.rename.envDescription":
+    "De quelle copie il s\u2019agit. Texte libre dans le même jeu de caractères, et rien ne l\u2019interprète.",
+  "app.settings.url.title": "Adresse",
+  "app.settings.url.description":
+    "L\u2019adresse de cette copie. Rien ne la connaît encore : saisissez-en une, ou laissez l\u2019application en remonter une.",
+  "app.settings.url.detected":
+    "Utilise $1, l\u2019adresse depuis laquelle cette copie a remonté ses dernières données. Saisissez une URL pour en afficher une autre, ou videz le champ pour revenir à l\u2019adresse détectée.",
+  "app.settings.url.save": "Enregistrer",
+  "app.settings.url.saved": "Adresse enregistrée",
+  "app.settings.estate.title": "Domaine",
+  "app.settings.estate.description":
+    "Où cette copie est déployée. Le choisir est un fait à propos de la copie ; y déployer viendra plus tard.",
+  "app.settings.estate.label": "Déploie vers",
+  "app.settings.estate.rowDescription":
+    "Seuls les domaines prêtés à ce projet sont proposés.",
+  "app.settings.estate.none":
+    "Aucun domaine n\u2019est prêté à ce projet pour l\u2019instant.",
+  "app.settings.estate.manage": "Gérer les domaines",
+  "app.settings.estate.clear": "Aucun domaine",
+  "app.settings.estate.saved": "Cible de déploiement enregistrée",
+  "app.settings.danger": "Zone dangereuse",
+  "app.settings.delete.title": "Supprimer cette app",
+  "app.settings.delete.description":
+    "Retire cette copie déployée de Lore. Cela ne déploie ni ne retire rien.",
+  "app.settings.delete.action": "Supprimer",
+  "app.settings.delete.confirmTitle": "Supprimer $1 ?",
+  "app.settings.delete.confirmDescription":
+    "Retire de Lore la trace de cette copie déployée. Elle continue de tourner là où elle tourne ; rien n\u2019est retiré du déploiement.",
+  "app.settings.delete.confirmWithSigil":
+    "Retire de Lore la trace de cette copie déployée, son sigil, et tout ce que ce sigil a remonté : pages vues, Web Vitals, visiteurs uniques et son budget d\u2019erreurs. Les avaries déjà consignées sont conservées. Rien n\u2019est retiré du déploiement : la copie continue de tourner là où elle tourne.",
+  "app.settings.delete.confirm": "Supprimer",
+  "app.settings.delete.deleted": "App supprimée",
   "app.settings.credential": "Accès",
   "app.settings.rotate.title": "Renouveler le jeton",
   "app.settings.rotate.description":
