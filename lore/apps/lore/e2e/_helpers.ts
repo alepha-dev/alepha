@@ -461,6 +461,17 @@ export const createProjectViaWizard = async (
     });
   }
 
+  // ⚠️ Reloaded once, and only when there was setup to apply. The wizard has
+  // already landed on `/<slug>` and seeded `currentProjectAtom` from the
+  // project as CREATED, so every write above is invisible to the page the
+  // caller is holding - the sidebar would still be the one the wizard made.
+  // Without this the first assertion in a spec reads a stale nav and the
+  // failure looks like the capability write not working.
+  if (setup.capabilities?.length || Object.keys(setup.options ?? {}).length) {
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+  }
+
   return { id: project.id, slug: slug! };
 };
 

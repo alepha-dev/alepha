@@ -11,7 +11,7 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
-import ProjectSettingsSigilsPage from "./ProjectSettingsSigilsPage.tsx";
+import ProjectSettingsAppsPage from "./ProjectSettingsAppsPage.tsx";
 
 interface SetCapabilityCall {
   params: { projectId: number; key: string };
@@ -81,7 +81,7 @@ describe("the Apps settings page", () => {
 
     const view = render(
       <AlephaContext.Provider value={alepha}>
-        <ProjectSettingsSigilsPage />
+        <ProjectSettingsAppsPage />
       </AlephaContext.Provider>,
     );
 
@@ -93,16 +93,18 @@ describe("the Apps settings page", () => {
   }) => {
     const { alepha, fake, view } = await mount();
 
-    fireEvent.click(await view.findByRole("switch"));
+    fireEvent.click(await view.findByRole("switch", { name: "Enable" }));
 
-    // `track` rides along: the old `sigils` flag gated the telemetry
-    // surfaces, so the capability alone would be a quieter project than the
-    // one this switch used to produce.
+    // ⚠️ `track` rides along, and only because this is the FIRST enable.
+    // There is no row to carry options from, and sending `{}` would give Apps
+    // with nothing tracked - not what the wizard makes, and a dead end the
+    // reader has to discover. On a capability that already has a row the
+    // stored options are sent unchanged instead.
     await waitFor(() =>
       expect(fake.calls).toEqual([
         {
           params: { projectId: 1, key: "apps" },
-          body: { enabled: true, options: { track: true } },
+          body: { enabled: true, options: { track: true, deploy: false } },
         },
       ]),
     );
@@ -121,7 +123,7 @@ describe("the Apps settings page", () => {
     // those. A second door onto the same room is what this quest closed.
     const { view } = await mount();
 
-    fireEvent.click(await view.findByRole("switch"));
+    fireEvent.click(await view.findByRole("switch", { name: "Enable" }));
 
     await waitFor(() =>
       expect(view.container.textContent).toContain("Ignore rules"),
@@ -136,16 +138,21 @@ describe("the Apps settings page", () => {
     const { view } = await mount();
 
     // The dictionaries are `lazy`, one dynamic import per locale, so the first
-    // paint carries keys rather than copy.
+    // paint carries keys rather than copy. The description comes from the
+    // capability's own declaration now, not from a hand-maintained `Record`
+    // keyed by feature name.
     await waitFor(() =>
-      expect(view.container.textContent).toMatch(/one row per app/i),
+      expect(view.container.textContent).toMatch(
+        /instances, analytics, errors, vitals/i,
+      ),
     );
 
     expect(view.container.textContent).not.toContain(
-      "project.settings.feature.sigils",
+      "project.capability.apps.description",
     );
-    // The copy this quest replaced. Every clause of it was stale: a sigil is
-    // optional now, and it belongs to one deployed copy rather than to an app.
+    // The copy this page carried while its key said `sigils` and every label
+    // said Apps. Every clause of it was stale: a sigil is optional now, and it
+    // belongs to one deployed copy rather than to an app.
     expect(view.container.textContent).not.toContain("one token per app");
   });
 });

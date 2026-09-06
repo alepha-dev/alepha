@@ -1,159 +1,112 @@
 import { expect, test } from "./_fixtures.ts";
 import { createProjectViaWizard, registerAndVerify } from "./_helpers.ts";
 
-test.describe("Project settings — feature toggles", () => {
-  test("toggle a feature ON, sidebar updates, persists on reload", async ({
+/**
+ * The four capability pages, from the only side that matters: a switch here
+ * has to change what the sidebar offers, and survive a reload.
+ *
+ * ⚠️ **Every switch on these pages is optimistic.** `aria-checked` flips the
+ * instant the click fires and proves nothing about what was stored, and the
+ * client batches calls in a ~10ms window, so navigating right after a click
+ * cancels a request that has not been sent. Both cases below therefore arm
+ * `waitForResponse` BEFORE the click, or reload and look again.
+ *
+ * The Quality case that used to live here is gone with the switch it drove:
+ * Quality joined the Apps baseline, and its Reports tab self-hides until a run
+ * exists rather than waiting on a flag.
+ */
+test.describe("Project settings — capabilities", () => {
+  test("an option toggled off leaves the sidebar, and stays off across a reload", async ({
     page,
   }) => {
     test.setTimeout(120_000);
 
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        console.log("BROWSER ERROR:", msg.text());
-      }
-    });
-    page.on("response", async (res) => {
-      if (res.url().includes("/api/") && !res.ok()) {
-        const body = await res.text().catch(() => "<body unreadable>");
-        console.log(
-          `API ${res.status()} ${res.request().method()} ${res.url()}: ${body}`,
-        );
-      }
-    });
     const ts = Date.now();
-    const email = `feat${ts}@example.com`;
-    const password = "GoodPassw0rd";
-    const projectTitle = `Camp${ts}`.slice(0, 20);
-
-    await registerAndVerify(page, email, password);
-
-    // Create project (3-step wizard: name → logo (skip) → modules → submit)
-    await page.goto("/new-project");
-    await page.waitForLoadState("networkidle");
-    await page.locator('input[type="text"]').first().fill(projectTitle);
-    await page.getByRole("button", { name: /^next$/i }).click();
-    // Step 2 (logo) — skip via Next
-    await page.getByRole("button", { name: /^next$/i }).click();
-    // Step 3 (modules) — submit with defaults
-    await page.getByRole("button", { name: /create project/i }).click();
-    await page.waitForURL(
-      (url) =>
-        url.pathname !== "/new-project" &&
-        url.pathname.split("/").filter(Boolean).length === 1,
-      { timeout: 15_000 },
+    await registerAndVerify(page, `feat${ts}@example.com`, "GoodPassw0rd");
+    const { slug } = await createProjectViaWizard(
+      page,
+      `Camp${ts}`.slice(0, 20),
+      { options: { work: ["releases"] } },
     );
-    // The wizard lands on `/<slug>` — the project's URL identity is the whole
-    // first segment now, not an id behind a `/p/` prefix.
-    const projectSlug = new URL(page.url()).pathname.split("/").find(Boolean);
-    expect(projectSlug).toBeTruthy();
 
-    // Kanban is a view of the Quests page now, not a
-    // sidebar entry (the great rename, Task 8), so it can no longer prove
-    // that a feature toggle updates the sidebar. Releases is still a
-    // plain gated sidebar link (ProjectView.tsx), so it drives the same
-    // regression check the test was written for.
-    const sidebarReleases = page.locator(`a[href="/${projectSlug}/releases"]`);
-
-    // Releases is ON by default → sidebar link is visible
+    const sidebarReleases = page.locator(`a[href="/${slug}/releases"]`);
     await expect(sidebarReleases).toBeVisible();
 
-    // Navigate directly to the Releases settings sub-page
-    await page.goto(`/${projectSlug}/settings/releases`);
+    await page.goto(`/${slug}/settings/work`);
     await page.waitForLoadState("networkidle");
 
-    // Switch should be checked
-    const releasesSwitch = page.getByRole("switch", { name: /enable/i });
-    await expect(releasesSwitch).toHaveAttribute("aria-checked", "true");
+    // By its own label, not `/enable/i`: the Work page has seven switches now
+    // (the master and six options), where the page this replaced had one.
+    const releases = page.getByRole("switch", { name: /^releases$/i });
+    await expect(releases).toHaveAttribute("aria-checked", "true");
 
-    // Toggle OFF
-    await releasesSwitch.click();
-    await expect(releasesSwitch).toHaveAttribute("aria-checked", "false", {
-      timeout: 5_000,
-    });
-
-    // Sidebar should drop the Releases link
+    const off = page.waitForResponse((res) =>
+      res.url().includes("/capabilities/work"),
+    );
+    await releases.click();
+    expect((await off).ok()).toBe(true);
     await expect(sidebarReleases).toHaveCount(0);
 
-    // Reload, verify persistence: Switch still OFF and sidebar link still absent
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(
+      page.getByRole("switch", { name: /^releases$/i }),
+    ).toHaveAttribute("aria-checked", "false", { timeout: 10_000 });
+    await expect(sidebarReleases).toHaveCount(0);
+
+    const on = page.waitForResponse((res) =>
+      res.url().includes("/capabilities/work"),
+    );
+    await page.getByRole("switch", { name: /^releases$/i }).click();
+    expect((await on).ok()).toBe(true);
+    await expect(sidebarReleases).toBeVisible();
+  });
+
+  test("the master goes off, and the whole capability leaves with it", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const ts = Date.now();
+    await registerAndVerify(page, `master${ts}@example.com`, "GoodPassw0rd");
+    const { slug } = await createProjectViaWizard(
+      page,
+      `Mast${ts}`.slice(0, 20),
+    );
+
+    const sidebarFolios = page.locator(`a[href="/${slug}/folios"]`);
+    await expect(sidebarFolios).toBeVisible();
+
+    await page.goto(`/${slug}/settings/knowledge`);
+    await page.waitForLoadState("networkidle");
+
+    const master = page.getByRole("switch", { name: /enable/i });
+    await expect(master).toHaveAttribute("aria-checked", "true");
+
+    const saved = page.waitForResponse((res) =>
+      res.url().includes("/capabilities/knowledge"),
+    );
+    await master.click();
+    expect((await saved).ok()).toBe(true);
+
+    // The entry goes, and the settings page it was turned off from stays
+    // reachable - a page you cannot reach is a capability you cannot turn back
+    // on, which is why the four are listed unconditionally.
+    await expect(sidebarFolios).toHaveCount(0);
     await page.reload();
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("switch", { name: /enable/i })).toHaveAttribute(
       "aria-checked",
       "false",
-      { timeout: 5_000 },
+      { timeout: 10_000 },
     );
-    await expect(sidebarReleases).toHaveCount(0);
 
-    // Toggle back ON
+    // And back. Nothing was deleted, so the folios are where they were.
+    const back = page.waitForResponse((res) =>
+      res.url().includes("/capabilities/knowledge"),
+    );
     await page.getByRole("switch", { name: /enable/i }).click();
-    await expect(page.getByRole("switch", { name: /enable/i })).toHaveAttribute(
-      "aria-checked",
-      "true",
-      { timeout: 5_000 },
-    );
-    await expect(sidebarReleases).toBeVisible();
-  });
-
-  /**
-   * Quality is the one module that ships OFF and has to be turned on by hand:
-   * its data is pushed by a foreign CI job, so the flag is deliberately absent
-   * from every project's defaults and the Reports tab hides until it is set.
-   * This page is the only switch there is. Before it existed, the Alepha
-   * project received a run a day and showed none of them.
-   */
-  test("Quality is off until its settings page turns it on, then Reports grows the tab", async ({
-    page,
-  }) => {
-    test.setTimeout(120_000);
-
-    const ts = Date.now();
-    await registerAndVerify(page, `qual${ts}@example.com`, "GoodPassw0rd");
-    const { slug } = await createProjectViaWizard(
-      page,
-      `Qual${ts}`.slice(0, 20),
-    );
-
-    const qualityTab = page.locator(`a[href="/${slug}/reports/quality"]`);
-
-    await test.step("a new project has no Quality tab", async () => {
-      await page.goto(`/${slug}/reports`);
-      await page.waitForLoadState("networkidle");
-      // A sibling tab proves Reports rendered at all: a missing Quality tab
-      // on a blank page would prove nothing.
-      await expect(
-        page.locator(`a[href="/${slug}/reports/quests"]`),
-      ).toBeVisible();
-      await expect(qualityTab).toHaveCount(0);
-    });
-
-    await test.step("its settings page reads off, and turns it on", async () => {
-      await page.goto(`/${slug}/settings/quality`);
-      await page.waitForLoadState("networkidle");
-      const qualitySwitch = page.getByRole("switch", { name: /enable/i });
-      await expect(qualitySwitch).toHaveAttribute("aria-checked", "false");
-      // Armed BEFORE the click and awaited before leaving the page. The
-      // switch flips optimistically, so `aria-checked` proves nothing about
-      // the save, and the client batches calls in a 10ms window: a navigation
-      // right after the click cancels a request that has not been sent yet.
-      // Same trap as the folio tree drag.
-      const saved = page.waitForResponse((res) =>
-        (res.request().postData() ?? "").includes('"quality"'),
-      );
-      await qualitySwitch.click();
-      expect((await saved).ok()).toBe(true);
-      await expect(qualitySwitch).toHaveAttribute("aria-checked", "true", {
-        timeout: 5_000,
-      });
-    });
-
-    await test.step("Reports offers the tab, and it opens on the nothing-pushed-yet panel", async () => {
-      await page.goto(`/${slug}/reports`);
-      await page.waitForLoadState("networkidle");
-      await expect(qualityTab).toBeVisible();
-      await qualityTab.click();
-      await expect(page).toHaveURL(new RegExp(`/${slug}/reports/quality$`));
-      // The panel prints the push command with THIS project's slug in it.
-      await expect(page.locator("pre code")).toContainText(`--project ${slug}`);
-    });
+    expect((await back).ok()).toBe(true);
+    await expect(sidebarFolios).toBeVisible();
   });
 });

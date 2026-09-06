@@ -26,11 +26,15 @@ import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "@/web/app/atoms/userProjectsAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+import {
+  capabilityOption,
+  hasCapability,
+} from "@/web/app/services/projectCapabilities.ts";
 
 import { KanbanColumnOrder } from "./kanbanColumnOrder.ts";
-import ProjectSettingsFeatureSection from "./ProjectSettingsFeatureSection.tsx";
+import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
+import ProjectSettingsRoadmapSection from "./ProjectSettingsRoadmapSection.tsx";
 import ProjectSettingsTagColors from "./ProjectSettingsTagColors.tsx";
-import { useProjectFeatureToggle } from "./useProjectFeatureToggle.ts";
 
 const MAX_COLUMNS = 5;
 
@@ -51,13 +55,22 @@ const columnStatusSchema = z.object({
  */
 const columnOrder = new KanbanColumnOrder();
 
-const ProjectSettingsKanbanPage = () => {
-  const { enabled, toggle } = useProjectFeatureToggle("kanban");
+/**
+ * Work: the capability, its six options, and the configuration that only
+ * means anything once the board is on.
+ *
+ * It was the Kanban page. Four single-switch pages (Epics, Releases, Quests,
+ * and Folios' master) folded into the section at the top, which is where the
+ * nine Features pages went: four of them were a switch and nothing else.
+ */
+const ProjectSettingsWorkPage = () => {
   const toaster = useToast();
   const { tr } = useI18n<I18n, "en">();
   const alepha = useAlepha();
   const projectApi = useClient<ProjectController>();
   const [project] = useStore(currentProjectAtom);
+  const workEnabled = hasCapability(project, "work");
+  const boardEnabled = capabilityOption(project, "work", "board");
 
   const persisted = project?.kanbanColumns ?? ["In Progress"];
   // Seeded once, on mount. There is deliberately no "the project changed
@@ -212,13 +225,11 @@ const ProjectSettingsKanbanPage = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <ProjectSettingsFeatureSection
-        featureKey="kanban"
-        enabled={enabled}
-        onToggle={toggle}
-      />
+      <ProjectSettingsCapabilitySection capability="work" />
 
-      {enabled && (
+      {/* Column configuration only means anything once the board exists, so
+          it hangs off the option rather than the capability. */}
+      {boardEnabled && (
         <Card className={cn(settingsCardEdge, "py-4")}>
           <CardContent className="flex flex-col gap-3 px-4">
             <div className="flex flex-col gap-1">
@@ -268,13 +279,20 @@ const ProjectSettingsKanbanPage = () => {
         </Card>
       )}
 
-      {enabled && (
+      {/* Tag colours belong to quests, not to the board: they render on the
+          list too. Gated on the capability, not on `board`. */}
+      {workEnabled && (
         <Card className={cn(settingsCardEdge, "py-4")}>
           <CardContent className="px-4">
             <ProjectSettingsTagColors />
           </CardContent>
         </Card>
       )}
+
+      {/* Who may read `/:projectSlug/roadmap`. It draws releases and the
+          epics inside them, so it moved here with them from the Releases
+          page. */}
+      {workEnabled && <ProjectSettingsRoadmapSection />}
     </div>
   );
 };
@@ -448,4 +466,4 @@ const ColumnRow = (props: ColumnRowProps) => {
   );
 };
 
-export default ProjectSettingsKanbanPage;
+export default ProjectSettingsWorkPage;

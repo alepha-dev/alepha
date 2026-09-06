@@ -561,6 +561,7 @@ export default {
   "project.settings.general.title": "Projet",
   "project.settings.nav.banner": "Général",
   "project.settings.nav.members": "Membres",
+  "project.settings.nav.group.capabilities": "Capacités",
   "project.settings.nav.areas": "Domaines",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
@@ -623,7 +624,6 @@ export default {
   "project.capability.support.label": "Recueillir les retours",
   "project.capability.support.description":
     "Un formulaire public et une boîte de tri.",
-  "project.settings.nav.group.features": "Fonctionnalités",
   "project.settings.areas.title": "Domaines",
   "project.settings.areas.description":
     "Les parties de votre système. Chaque quête appartient à exactement une. Renommez un domaine vers un domaine existant pour les fusionner.",
@@ -655,15 +655,7 @@ export default {
     "Supprimer ce domaine ? Il ne contient aucune quête, et cette action est irréversible.",
   "project.settings.areas.delete.blocked":
     "Ce domaine contient encore des quêtes. Fusionnez-le vers un autre domaine.",
-  "project.settings.nav.kanban": "Kanban",
-  "project.settings.nav.folios": "Folios",
-  "project.settings.nav.epics": "Épopées",
-  "project.settings.nav.feedback": "Retours",
-  "project.settings.nav.sigils": "Apps",
   "project.settings.nav.estates": "Domaines",
-  "project.settings.nav.releases": "Versions",
-  "project.settings.nav.quests": "Quêtes",
-  "project.settings.nav.quality": "Qualité",
   "project.reports.nav.overview": "Vue d'ensemble",
   "project.reports.nav.quests": "Quêtes",
   "project.reports.nav.members": "Groupe",
@@ -728,21 +720,7 @@ export default {
   "reports.members.idle.empty": "Tout le monde a été actif.",
   "reports.members.idle.lastCompleted": "dernière quête terminée $1",
   "reports.members.idle.never": "jamais",
-  "project.settings.quests.title": "Fonctionnalités des quêtes",
-  "project.settings.quests.subtitle":
-    "Activez les fonctionnalités par-quête disponibles dans ce projet.",
-  "project.settings.quests.estimate.label": "Estimation de quête",
-  "project.settings.quests.estimate.description":
-    "Planifiez la durée prévue d'une quête, affichée sur la quête et dans la liste.",
-  "project.settings.quests.reminder.label": "Rappel de quête",
-  "project.settings.quests.reminder.description":
-    "Rappels e-mail périodiques pour les quêtes acceptées.",
-  "project.settings.quests.chrono.label": "Chrono de quête",
-  "project.settings.quests.chrono.description":
-    "Chronomètre attaché à une quête. Start/stop une session depuis la vue quête.",
   "project.settings.feature.enable": "Activer",
-  "project.settings.feature.kanban.description":
-    "Un tableau drag & drop pour déplacer les quêtes entre Nouvelle, En cours et Terminée.",
   "project.settings.kanban.tagColors.title": "Couleurs des étiquettes",
   "project.settings.kanban.tagColors.description":
     "Donnez une couleur à chaque étiquette pour lire les cartes et les quêtes d'un coup d'œil. Les étiquettes sans couleur restent neutres.",
@@ -761,17 +739,12 @@ export default {
   "project.settings.kanban.columns.wip.none": "Sans limite",
   "project.settings.kanban.columns.delete": "Supprimer",
   "project.settings.kanban.columns.reorder": "Réordonner la colonne",
-  "project.settings.feature.folios.description":
-    "Notes markdown rattachées au projet : cherchables, taguables, accessibles à l’IA.",
-  "project.settings.folios.summary.label": "Afficher le résumé pour les agents",
-  "project.settings.folios.summary.description":
-    "Affiche le court résumé que chaque folio conserve pour les agents IA. Il est toujours enregistré et toujours lisible via MCP. Ceci décide seulement si le champ apparaît à la lecture ou à l’édition.",
-  "project.settings.feature.releases.description":
-    "Regroupez épopées et quêtes dans des versions nommées, avec leur avancement et leur journal.",
   "project.settings.roadmap.title": "Feuille de route",
   "project.settings.roadmap.description":
     "Une page en lecture seule listant vos versions ouvertes et les épopées qu’elles contiennent. Ni quêtes, ni noms, ni backlog.",
   "project.settings.roadmap.visibility.label": "Qui peut la voir",
+  "project.settings.capability.delay":
+    "Un changement ici peut mettre jusqu'à une minute à atteindre une session déjà ouverte ailleurs.",
   "project.settings.roadmap.delay":
     "Un changement peut mettre jusqu’à une minute à atteindre les visiteurs.",
   "project.settings.roadmap.level.off": "Désactivée",
@@ -785,14 +758,6 @@ export default {
   "project.settings.roadmap.publicConfirm.description":
     "Toute personne disposant du lien verra vos étiquettes de version, leurs dates cibles et les titres des épopées qu’elles contiennent, y compris les épopées que vous n’avez pas encore commencées.",
   "project.settings.roadmap.publicConfirm.confirm": "Rendre publique",
-  "project.settings.feature.sigils.description":
-    "Suivez les applications que ce projet déploie, une ligne par application et environnement. Chacune peut porter une clé avec laquelle elle remonte plantages, pages vues et Web Vitals.",
-  "project.settings.feature.feedback.description":
-    "Autorisez tout utilisateur connecté à envoyer un rapport de bug ou une demande de fonctionnalité à ce projet, et donnez au propriétaire une boîte de réception pour les trier.",
-  "project.settings.feature.epics.description":
-    "Regroupez quêtes et folios sous une initiative bornée, tenue hors du backlog tant qu'elle n'est pas commencée.",
-  "project.settings.feature.quality.description":
-    "Affiche un onglet Qualité dans les rapports, avec la couverture et le total des tests envoyés par votre CI. Les envois sont conservés dans tous les cas ; ce réglage décide seulement si l'onglet est proposé.",
   "project.settings.delete.modal.title": "Détruire le projet",
   "project.settings.delete.modal.description":
     "Cette action est irréversible. Le projet et toutes ses quêtes seront définitivement perdus.",
