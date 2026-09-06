@@ -257,3 +257,128 @@ describe("EstateCommandController, enqueuing by hand", () => {
     ).rejects.toThrow(NotFoundError);
   });
 });
+
+/**
+ * The one verb that refuses instead of queueing.
+ *
+ * A log tail delivered three hours later, after nobody is looking, is worse
+ * than an error: it is a read, and a stale read is worthless. This is where
+ * the epic deliberately breaks the queue-and-redeliver pattern #E20 built,
+ * and the refusal happens before any row exists.
+ */
+describe("EstateCommandController, logs", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  const online = async (ctx: TestContext, estate: Estate) => {
+    const now = new Date().toISOString();
+    await ctx.repos.estates.updateById(estate.id, {
+      connectedAt: now,
+      lastSeenAt: now,
+    });
+  };
+
+  it("refuses while the machine is offline, and queues nothing", async ({
+    expect,
+  }) => {
+    const owner = await createUser(ctx);
+    const estate = await createEstate(ctx, owner, "ovh-logs-off", false);
+
+    await expect(
+      ctx.commands.enqueueEstateCommand(
+        {
+          params: { estateId: estate.id },
+          body: { kind: "logs", app: "demo", environment: "production" },
+        },
+        { user: owner },
+      ),
+    ).rejects.toThrow(/not connected/);
+
+    const listed = await ctx.commands.listEstateCommands(
+      { params: { estateId: estate.id } },
+      { user: owner },
+    );
+    expect(listed.items).toEqual([]);
+  });
+
+  it("queues a bounded ask while the machine is connected, defaulting the line count", async ({
+    expect,
+  }) => {
+    const owner = await createUser(ctx);
+    const estate = await createEstate(ctx, owner, "ovh-logs-on", false);
+    await online(ctx, estate);
+
+    const command = await ctx.commands.enqueueEstateCommand(
+      {
+        params: { estateId: estate.id },
+        body: {
+          kind: "logs",
+          app: "demo",
+          environment: "production",
+          grep: "ERROR",
+        },
+      },
+      { user: owner },
+    );
+
+    expect(command.kind).toBe("logs");
+    expect(command.payload.logs).toEqual({ lines: 200, grep: "ERROR" });
+  });
+
+  /**
+   * A row whose blob the 24 h sweep has taken is the NORMAL end state, and it
+   * reads as "expired" rather than a 500 about a missing file. A row that
+   * never had one reads as "no result".
+   */
+  it("answers the owner a 404 for a command with no stored result", async ({
+    expect,
+  }) => {
+    const owner = await createUser(ctx);
+    const estate = await createEstate(ctx, owner, "ovh-logs-result", false);
+    await online(ctx, estate);
+    const command = await ctx.commands.enqueueEstateCommand(
+      {
+        params: { estateId: estate.id },
+        body: { kind: "logs", app: "demo", environment: "production" },
+      },
+      { user: owner },
+    );
+
+    await expect(
+      ctx.commands.getEstateCommandResult(
+        { params: { estateId: estate.id, commandId: command.id } },
+        { user: owner },
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("answers a non-owner as if the estate did not exist", async ({
+    expect,
+  }) => {
+    const ada = await createUser(ctx);
+    const grace = await createUser(ctx);
+    const estate = await createEstate(ctx, ada, "ovh-logs-mine", false);
+    await online(ctx, estate);
+    const command = await ctx.commands.enqueueEstateCommand(
+      {
+        params: { estateId: estate.id },
+        body: { kind: "logs", app: "demo", environment: "production" },
+      },
+      { user: ada },
+    );
+
+    await expect(
+      ctx.commands.getEstateCommandResult(
+        { params: { estateId: estate.id, commandId: command.id } },
+        { user: grace },
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+});
