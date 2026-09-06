@@ -17,6 +17,7 @@ import {
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { formatBytes } from "@alepha/ui/lib/utils";
 import type { FileController } from "alepha/api/files";
 import { useClient } from "alepha/react";
 import {
@@ -494,14 +495,4 @@ const ItemThumb = (props: { url: string; alt: string }) => {
       onError={() => setBroken(true)}
     />
   );
-};
-
-const formatBytes = (n: number): string => {
-  if (!n) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const i = Math.min(
-    units.length - 1,
-    Math.floor(Math.log(n) / Math.log(1024)),
-  );
-  return `${(n / 1024 ** i).toFixed(1)} ${units[i]}`;
 };
