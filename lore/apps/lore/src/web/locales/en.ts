@@ -1211,6 +1211,10 @@ export default {
     "Removes Lore\u2019s record of this deployed copy, its sigil, and everything that sigil reported: page views, web vitals, unique visitors and its error budget. Blights already filed are kept. Nothing is undeployed: the copy keeps running wherever it runs.",
   "app.settings.delete.confirm": "Delete",
   "app.settings.delete.deleted": "App deleted",
+  "app.settings.sigil.feedback.dropped.title": "Feedback is not collected",
+  "app.settings.sigil.feedback.dropped.description":
+    "This app sends feedback and the project drops it. Turn on Collect feedback to keep it.",
+  "app.settings.sigil.feedback.dropped.action": "Open Support settings",
   "app.settings.credential": "Credential",
   "app.settings.rotate.title": "Rotate the token",
   "app.settings.rotate.description":
