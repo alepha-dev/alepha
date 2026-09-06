@@ -93,6 +93,20 @@ export class ShowcaseMembers {
    * Deterministic on purpose. Random names would make every prerender produce a
    * different page, so the deployed HTML would churn on every build and the e2e
    * suite would have nothing stable to assert.
+   *
+   * Which is also why this stayed a literal list when it grew from 24 to 75
+   * rather than moving to `alepha/fake`. A seeded faker is deterministic within
+   * a build but not ACROSS versions: bumping `@faker-js/faker` would silently
+   * rewrite every prerendered row here. `FakeProvider` also keeps its faker
+   * `protected` and generates whole rows from a schema, so the only reachable
+   * generator is the `fake` singleton, whose own docs call reseeding it from
+   * application code a footgun - and generating from the schema would break
+   * the one thing that makes these rows read as real, which is that the email
+   * is derived from the name.
+   *
+   * 75 is enough that a full-height table scrolls its own body at any page
+   * size the footer offers. The first 24 are unchanged and stay first: the e2e
+   * suite asserts on Ada Lovelace being the top row.
    */
   public rows(): ShowcaseMember[] {
     const names = [
@@ -120,6 +134,57 @@ export class ShowcaseMembers {
       "Peter Naur",
       "Lynn Conway",
       "Vint Cerf",
+      "Barbara Grosz",
+      "Shafi Goldwasser",
+      "Silvio Micali",
+      "Manuel Blum",
+      "Andrew Yao",
+      "Judea Pearl",
+      "Michael Stonebraker",
+      "Jim Gray",
+      "Butler Lampson",
+      "Alan Kay",
+      "Ivan Sutherland",
+      "Douglas Engelbart",
+      "Fernando Corbato",
+      "Charles Bachman",
+      "Edgar Codd",
+      "John Backus",
+      "Kristen Nygaard",
+      "Ole-Johan Dahl",
+      "Barbara Simons",
+      "Fran Berman",
+      "Anita Borg",
+      "Jean Sammet",
+      "Kathleen Booth",
+      "Mary Allen Wilkes",
+      "Evelyn Boyd Granville",
+      "Annie Easley",
+      "Dorothy Vaughan",
+      "Katherine Johnson",
+      "Mary Jackson",
+      "Erna Hoover",
+      "Susan Kare",
+      "Elizabeth Feinler",
+      "Sandra Lerner",
+      "Whitfield Diffie",
+      "Martin Hellman",
+      "Ralph Merkle",
+      "Ron Rivest",
+      "Adi Shamir",
+      "Leonard Adleman",
+      "Peter Shor",
+      "Cynthia Dwork",
+      "Nancy Lynch",
+      "Maurice Wilkes",
+      "David Wheeler",
+      "Christopher Strachey",
+      "Peter Landin",
+      "John Hopcroft",
+      "Robert Tarjan",
+      "Stephen Cook",
+      "Richard Karp",
+      "Michael Rabin",
     ];
     const teams = ["Platform", "Design", "Growth", "Security"];
     const roles = ["Owner", "Admin", "Member", "Viewer"];

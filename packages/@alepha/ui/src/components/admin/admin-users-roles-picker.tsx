@@ -89,6 +89,10 @@ export const AdminUsersRolesPicker = (props: AdminUsersRolesPickerProps) => {
             const checked = userRoles.includes(role.name);
             const disabled = role.default === true || pending === role.name;
             return (
+              // `cursor-pointer` stays: the global rule in
+              // `@alepha/ui/src/styles.css` covers controls and menu items,
+              // and a `<label>` is neither. The whole row is the click target
+              // here, not just the Checkbox inside it.
               <label
                 key={role.name}
                 className={

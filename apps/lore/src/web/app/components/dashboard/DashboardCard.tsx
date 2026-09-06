@@ -157,7 +157,7 @@ const DashboardCard = (props: DashboardCardProps) => {
           type="button"
           onClick={open}
           data-testid="dashboard-card-open"
-          className="flex flex-1 cursor-pointer flex-col items-start justify-start gap-1 text-left"
+          className="flex flex-1 flex-col items-start justify-start gap-1 text-left"
         >
           <DashboardCardValue value={props.value} />
           <DashboardCardFooter metric={props.card.metric} value={props.value} />

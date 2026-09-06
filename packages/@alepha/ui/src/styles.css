@@ -70,7 +70,44 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
+  /*
+   * The border a field takes on hover.
+   *
+   * Defined ONCE, and only here, because it is relative: the field's own
+   * border pulled 20% toward the text colour. `--foreground` is near-black in
+   * light and near-white in dark, so the same expression darkens the border in
+   * one mode and lightens it in the other, with no `.dark` counterpart to keep
+   * in step. It also follows every theme in `apps/ui`'s palette switcher for
+   * free, keeping each one's hue instead of washing toward neutral grey the
+   * way a mix with plain black or white would.
+   *
+   * `oklab` rather than sRGB so the step is perceptually even across a light
+   * grey border and a dark tinted one. Where `--input` is translucent (dark
+   * mode ships `oklch(1 0 0 / 15%)`) the mix raises the alpha too, which is
+   * the same direction: a hovered field reads as more present, not less.
+   */
+  --input-hover: color-mix(in oklab, var(--input), var(--foreground) 20%);
   --ring: oklch(0.708 0 0);
+  /*
+   * The bevel: a 1px inset line laid along the TOP edge of a chrome surface,
+   * immediately under the `--border` that already closes that edge. The pair
+   * is the whole illusion: two adjacent lines of OPPOSITE polarity read as a
+   * fold, so the surface looks raised out of the page instead of painted onto
+   * it. One line alone is just a divider.
+   *
+   * Which polarity is the bevel's is decided by the border, and the border
+   * changes sides between the modes. In light, `--border` is DARKER than the
+   * surface it edges, so the bevel is the highlight: pure white, because these
+   * surfaces are `bg-muted`, already within a few percent of the page, and
+   * nothing short of actual white separates them.
+   *
+   * In dark the border is LIGHTER than its surface (`oklch(1 0 0 / 10%)` over
+   * a near-black card), so it is already the highlight and the bevel has to be
+   * the shadow under it. A white line there does not make a fold, it makes the
+   * border look 2px thick and desaturated, which is what a neutral white wash
+   * does to a tinted theme.
+   */
+  --bevel: oklch(1 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -106,6 +143,7 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+  --bevel: oklch(0 0 0 / 30%);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -128,6 +166,58 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /*
+   * The pointer cursor on anything clickable.
+   *
+   * Tailwind v3's Preflight carried `button, [role="button"] { cursor: pointer }`
+   * and v4 dropped it, deliberately, to match the browser default. The browser
+   * default is defensible and the result is not: `<a href>` still gets a
+   * pointer from the UA stylesheet, `<button>` gets `default`, and Base UI's
+   * span-based switches and checkboxes get `auto`. So a page ends up telling
+   * the reader that half its controls are clickable and the other half are
+   * text, with the split falling on an implementation detail they cannot see.
+   * Measured on the Table showcase before this rule: 37 controls, 8 pointers.
+   *
+   * Here rather than on the components: `yarn w @alepha/ui sync` overwrites
+   * every `src/components/ui/*.tsx` wholesale, so a per-component `cursor-pointer`
+   * survives only as a `LOCAL_PATCHES` entry, one per primitive, forever. The
+   * fifteen hand-written `cursor-pointer` classes already scattered through the
+   * repo are what that approach looks like halfway through.
+   *
+   * Roles as well as tags, because Base UI renders several controls as a
+   * `<span>` carrying the role. Disabled is excluded three ways: `:disabled`
+   * for native controls, and the two attributes Base UI sets on the ones that
+   * are not - a control that refuses the click should not invite it.
+   */
+  :is(
+    button,
+    summary,
+    [role="button"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [role="tab"],
+    [role="option"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="combobox"],
+    input[type="checkbox"],
+    input[type="radio"]
+  ):not(
+    :disabled,
+    [aria-disabled="true"],
+    [data-disabled],
+    /* A Combobox carries `role="combobox"` on TWO elements: the trigger
+       button, and the typeahead input inside the popup. The input wants a
+       caret, not a hand. Text entry is excluded by shape rather than by
+       listing the types, so a future `[role]` on an input cannot reopen it. */
+    input:not([type="checkbox"], [type="radio"]),
+    textarea
+  ) {
+    cursor: pointer;
   }
 }
 
@@ -275,4 +365,105 @@
   width: 3px;
   border-radius: 9999px;
   background-color: var(--sidebar-primary);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Menu and list items, which are the OTHER half of the cursor problem.
+ *
+ * The rule in `@layer base` above cannot reach these. shadcn ships
+ * `cursor-default` as an explicit utility on every menu item, select item,
+ * combobox item, command item and context-menu item, and a utility outranks
+ * anything in the base layer, so those items stayed on `default` while the
+ * buttons beside them turned into pointers. That is the same split the rule
+ * was written to close, moved one layer down.
+ *
+ * Unlayered on purpose: unlayered CSS beats every `@layer`, including
+ * Tailwind's `utilities`, which is what the sidebar rules below already rely
+ * on. Targeted by ROLE rather than by `data-slot` so it covers the checkbox
+ * and radio variants of a menu item without naming five primitives, each of
+ * which `yarn w @alepha/ui sync` would happily rename.
+ *
+ * This is a deliberate departure from shadcn, whose `cursor-default` copies
+ * the macOS convention that native menus do not show a hand. The convention
+ * is real, and it belongs to the menu bar - not to a popover inside a web
+ * page, where a row of text with no pointer reads as inert. Leaving these
+ * alone would have fixed half the inconsistency and kept the other half.
+ *
+ * Disabled items are excluded, and they also carry `pointer-events-none`
+ * already, so the guard is belt and braces.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+:is(
+  [role="option"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"]
+):not([data-disabled], [aria-disabled="true"], [data-disabled="true"]) {
+  cursor: pointer;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * The hover border on a field.
+ *
+ * Every bordered surface a `Control` can render, addressed by `data-slot`
+ * rather than patched into each primitive: `yarn w @alepha/ui sync` overwrites
+ * `src/components/ui/*.tsx` wholesale, so a class added there survives only as
+ * a `LOCAL_PATCHES` entry per primitive. Same reasoning as the cursor rules
+ * above.
+ *
+ * Unlayered, because `border-input` is a utility and `@layer base` loses to
+ * it. All six slots carry `transition-colors` already, so the change eases in
+ * and out on its own; `combobox-trigger` gets both the border and the
+ * transition from `control-select`, which is the one that is not obvious.
+ *
+ * SPLIT IN TWO, because the primitives disagree about which pseudo-class earns
+ * the focus border, and this rule outranks all of them. Whatever is excluded
+ * here has to match what actually paints `border-ring`, exactly: exclude too
+ * little and the hover paints over a focus ring, exclude too much and the
+ * field stops responding to the mouse.
+ *
+ * The second failure is the one that happened. Excluding `:focus-within` as a
+ * safe superset looked harmless and was not: Base UI returns focus to the
+ * trigger after a selection, so choosing a value left the field `:focus` -
+ * measured `:focus` true, `:focus-visible` FALSE, `:active` false - and the
+ * hover border silently stopped working for the rest of the visit. Nothing was
+ * painting `border-ring` in that state either, since it keys on
+ * `:focus-visible`, so the exclusion was protecting nothing at all.
+ *
+ * Hence: `:focus-visible` for the five slots whose focus border keys on it,
+ * and `:focus-within` only for `combobox-chips`, which really does use
+ * `focus-within:border-ring`. `input-group` keys on a `:has()` of the first,
+ * so it needs the `:has(:focus-visible)` spelling.
+ *
+ * Invalid and disabled are excluded in both the direct and the `:has()` form,
+ * because half these slots are wrappers carrying the state on a descendant.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+:is(
+    [data-slot="input"],
+    [data-slot="textarea"],
+    [data-slot="select-trigger"],
+    [data-slot="input-group"],
+    [data-slot="combobox-trigger"]
+  ):hover:not(
+    :disabled,
+    :focus-visible,
+    :has(:focus-visible),
+    [aria-invalid="true"],
+    [data-disabled],
+    :has(:disabled),
+    :has([aria-invalid="true"])
+  ) {
+  border-color: var(--input-hover);
+}
+
+/* The one that genuinely takes `focus-within:border-ring`. */
+[data-slot="combobox-chips"]:hover:not(
+    :focus-within,
+    [aria-invalid="true"],
+    [data-disabled],
+    :has(:disabled),
+    :has([aria-invalid="true"])
+  ) {
+  border-color: var(--input-hover);
 }

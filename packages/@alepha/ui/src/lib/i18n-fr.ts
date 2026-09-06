@@ -63,7 +63,11 @@ export const uiFr: Record<string, string> = {
   "alephaTable.sortClear": "Annuler le tri",
   "alephaTable.sortDesc": "Trier par ordre décroissant",
   "alephaTable.columns": "Colonnes",
-  "alephaTable.empty": "Aucun résultat.",
+  "alephaTable.emptyTitle": "Aucun élément",
+  "alephaTable.emptyDescription": "Il n'y a rien ici pour le moment.",
+  "alephaTable.noMatchTitle": "Aucun résultat",
+  "alephaTable.noMatchDescription":
+    "Essayez d'ajuster ou d'effacer les filtres.",
   "alephaTable.filters": "Filtres",
   "alephaTable.filtersDone": "Terminé",
   "alephaTable.filtersHint": "Les changements s'appliquent au fur et à mesure.",

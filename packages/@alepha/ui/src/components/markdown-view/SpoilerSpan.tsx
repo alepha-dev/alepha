@@ -48,7 +48,7 @@ export const SpoilerSpan = (props: SpoilerSpanProps) => {
       tabIndex={0}
       aria-expanded={false}
       aria-label="Hidden text, activate to reveal"
-      className="cursor-pointer rounded-[3px] px-0.5"
+      className="rounded-[3px] px-0.5"
       onClick={() => setRevealed(true)}
       onKeyDown={(event) => {
         // Enter and Space, because `role="button"` promises both and a `span`

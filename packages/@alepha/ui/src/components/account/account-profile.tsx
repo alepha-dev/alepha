@@ -235,7 +235,7 @@ const AccountProfile = (props: AccountProfileProps) => {
                   aria-label={tr("account.profile.avatarChange", {
                     default: "Change avatar",
                   })}
-                  className="relative size-14 shrink-0 cursor-pointer"
+                  className="relative size-14 shrink-0"
                 >
                   {/* Only the image is clipped to a circle; the camera badge sits
                   outside the wrapper so the round mask cannot crop it. */}

@@ -25,7 +25,7 @@ const DashboardAddTile = (props: DashboardAddTileProps) => {
       type="button"
       onClick={props.onClick}
       data-testid="dashboard-add-tile"
-      className="border-border hover:border-muted-foreground/50 flex h-full cursor-pointer flex-col items-start justify-center gap-2 rounded-xl border border-dashed p-3.5 text-left transition-colors"
+      className="border-border hover:border-muted-foreground/50 flex h-full flex-col items-start justify-center gap-2 rounded-xl border border-dashed p-3.5 text-left transition-colors"
     >
       <Plus className="text-muted-foreground size-[18px]" />
       <span className="text-[13px] font-medium">{tr("dashboard.addCard")}</span>

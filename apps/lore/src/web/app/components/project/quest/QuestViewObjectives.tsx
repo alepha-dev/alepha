@@ -52,6 +52,9 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
   return (
     <div className="flex flex-col gap-2 px-3 py-2">
       {quest.objectives.map((objective) => (
+        // `cursor-pointer` stays: the global cursor rule in
+        // `@alepha/ui/src/styles.css` covers controls and menu items, and a
+        // `<label>` is neither. The row is the click target, not the Checkbox.
         <label
           key={objective.id}
           className="flex cursor-pointer items-start gap-2"

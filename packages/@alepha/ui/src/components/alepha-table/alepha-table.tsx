@@ -66,6 +66,7 @@ import {
   FunnelX,
   GripVertical,
   Inbox,
+  SearchX,
   MoreVertical,
   RefreshCw,
   X,
@@ -250,6 +251,36 @@ export interface TableAction {
    * primary buttons has no primary action.
    */
   primary?: boolean;
+}
+
+/**
+ * One of the table's two empty states: an icon, a title and a description,
+ * centred in the body.
+ *
+ * Which one is shown is decided by the table, not the caller: a page that
+ * came back empty with no filter set means "there is nothing here", and the
+ * same page with a filter set means "nothing matched". Those ask the reader
+ * for opposite things - create something, or widen the filter - so one
+ * sentence for both sends half of them the wrong way. Override the wording
+ * per mode, never the choice between them.
+ */
+export interface AlephaTableEmptyState {
+  icon?: IconType;
+  title?: ReactNode;
+  description?: ReactNode;
+  /**
+   * A call to action under the description, typically one `<Button>`.
+   *
+   * A slot rather than a `{ label, onClick }` pair, because the button an
+   * empty state wants is rarely just a button: it opens a dialog, it is a
+   * `<Link>`, it is disabled while a permission is loading. The table owns the
+   * layout and centring and nothing else.
+   *
+   * Most useful on {@link AlephaTableBaseProps.emptyState}, where "there is
+   * nothing here" has an obvious answer - create the first one. The no-match
+   * side takes it too, for a "Clear filters" button.
+   */
+  action?: ReactNode;
 }
 
 /**
@@ -506,12 +537,34 @@ export interface AlephaTableBaseProps<T> {
    */
   className?: string;
   /**
-   * Message shown when the page is empty. Defaults to "No results".
+   * Title shown in both empty states, replacing their defaults.
+   *
+   * Kept as the one-line escape hatch it has always been, so it also
+   * suppresses the default description: a caller who wrote the whole message
+   * in here does not want "Nothing here yet." underneath it. For a title AND
+   * a description, or for wording that differs between the two states, use
+   * {@link emptyState} and {@link noMatchState}.
    */
   emptyMessage?: string;
   /**
+   * The empty state shown when the page came back empty and NO filter is set.
+   * Defaults to an inbox icon, "No items" and "Nothing here yet.".
+   */
+  emptyState?: AlephaTableEmptyState;
+  /**
+   * The empty state shown when the page came back empty and at least one
+   * filter IS set. Defaults to a struck-through search icon, "No match" and
+   * "Try adjusting or clearing the filters.".
+   *
+   * Only reachable when `filters` is set: with no filter form there is
+   * nothing to be filtered by, so an empty page can only mean {@link
+   * emptyState}.
+   */
+  noMatchState?: AlephaTableEmptyState;
+  /**
    * Rich empty-state node rendered when the page is empty — e.g. an icon +
-   * message + optional call-to-action. Overrides `emptyMessage` when set.
+   * message + optional call-to-action. Replaces the whole thing, both states
+   * included, so it outranks every prop above.
    */
   empty?: ReactNode;
   /**
@@ -1343,6 +1396,44 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   }, [props.filters, form, refreshKey]);
   const hasActiveFilters = activeFilterCount > 0;
 
+  // Which empty state applies, resolved here rather than in the JSX because
+  // the answer is one boolean and the branch is four values deep.
+  //
+  // `hasActiveFilters` is already false whenever `props.filters` is unset, so
+  // a table with no filter form can only ever reach the "no items" side.
+  const emptyOverride =
+    (hasActiveFilters ? props.noMatchState : props.emptyState) ?? {};
+  const EmptyIcon = emptyOverride.icon ?? (hasActiveFilters ? SearchX : Inbox);
+  const emptyTitle =
+    emptyOverride.title ??
+    props.emptyMessage ??
+    String(
+      hasActiveFilters
+        ? tr("alephaTable.noMatchTitle", { default: "No match" })
+        : tr("alephaTable.emptyTitle", { default: "No items" }),
+    );
+  // Suppressed by a bare `emptyMessage`: that prop is the whole message, and
+  // pairing someone's "No artifacts yet" with a stock second line reads as a
+  // component talking over its caller.
+  // The empty state is showing, as opposed to the skeleton that also renders
+  // on `data.length === 0`. Read by the `<Table>` height as well as the body,
+  // so the two cannot disagree.
+  const isEmptyState = !loading && data.length === 0;
+  const emptyAction = emptyOverride.action;
+  const emptyDescription =
+    emptyOverride.description ??
+    (props.emptyMessage
+      ? undefined
+      : String(
+          hasActiveFilters
+            ? tr("alephaTable.noMatchDescription", {
+                default: "Try adjusting or clearing the filters.",
+              })
+            : tr("alephaTable.emptyDescription", {
+                default: "Nothing here yet.",
+              }),
+        ));
+
   const showToolbar =
     Boolean(props.filters) ||
     Boolean(props.toolbar) ||
@@ -1383,7 +1474,11 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           // WHITE wash that leaves the field lighter than the bar. Only the
           // dark-scoped rule (0,3,0) outranks it, and without it the two
           // controls disagreed: the trigger went dark, the input stayed light.
-          <div className="bg-muted [&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2">
+          // The `--bevel` line, laid just inside the bar's own top border,
+          // the same fold the header and the footer carry. This one is the
+          // top edge of the whole table block, so it is the one that decides
+          // whether the block sits ON the page or IN it.
+          <div className="bg-muted [&_:is(input,[role=combobox])]:bg-background dark:[&_:is(input,[role=combobox])]:bg-background flex flex-wrap items-end gap-2 rounded-md rounded-b-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]">
             {props.filters && form && !isMobile ? (
               <form
                 {...form.props}
@@ -1622,14 +1717,46 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
             "flex min-h-0 flex-1 flex-col overflow-auto rounded-md border",
             showToolbar && "-mt-2 rounded-t-none border-t-0",
             "rounded-b-none border-b-0",
+            // shadcn's `<Table>` wraps the table in a container div whose
+            // classes it hardcodes, and `scripts/sync.ts` overwrites that file
+            // wholesale - so the one class it needs is set from out here
+            // instead, where sync cannot reach.
+            //
+            // `grow`, NOT `flex-1`: `flex-1` sets the basis to 0, and in the
+            // ordinary case this wrapper has no height of its own, so a 0
+            // basis with nothing to grow into collapses the table to nothing.
+            // `grow` keeps the content basis and only spends space that is
+            // actually free, which is the full-height case.
+            "[&>[data-slot=table-container]]:grow",
           )}
         >
-          <Table>
+          {/* `h-full` ONLY while the empty state is what is in the body.
+              It is what lets that one row take the height the scroller grew
+              into, so `align-middle` can centre the state in it.
+
+              ⚠️ Never unconditionally. A CSS table given a height larger
+              than its content does not leave the surplus at the bottom, it
+              DISTRIBUTES IT ACROSS THE ROWS - so an unconditional `h-full`
+              silently turns a short table into a tall one: Lore's Apps page,
+              two rows in a full-height pane, rendered them 239px each. No
+              unit test sees it (jsdom computes no layout) and it is invisible
+              on a table long enough to fill its own container, which is why
+              it reached e2e rather than review. */}
+          <Table className={cn(isEmptyState && "h-full")}>
             {/* `bg-muted`, fully opaque, NOT the base header's `bg-muted/50`:
                 this header is sticky, so anything translucent lets the rows
                 scroll visibly through the column labels. Same tint, no
-                transparency. */}
-            <TableHeader className="bg-muted sticky top-0 z-10 shadow-[inset_0_-1px_0_0_var(--border)]">
+                transparency.
+
+                Two inset lines, not one. The bottom is the divider against the
+                first row; the top is the `--bevel` highlight, which is what
+                gives the band its thickness. Inset shadows rather than borders
+                because a border on a sticky `<thead>` is dropped by the
+                collapsed table border model, and because the two lines have to
+                sit INSIDE the header's own height: it is pinned at `top-0`
+                against a scrolling body, so anything painted outside it is
+                painted over. */}
+            <TableHeader className="bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]">
               <TableRow>
                 {hasCheckbox && (
                   <TableHead className="w-10">
@@ -1683,7 +1810,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                           <button
                             type="button"
                             onClick={() => toggleSort(key, def)}
-                            className="group/sort hover:text-foreground inline-flex cursor-pointer items-center gap-1 select-none"
+                            className="group/sort hover:text-foreground inline-flex items-center gap-1 select-none"
                           >
                             {def.label}
                             {/* A sortable column says so at rest. The arrow
@@ -1814,19 +1941,37 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                       (hasCheckbox ? 1 : 0) +
                       (hasRowActions ? 1 : 0)
                     }
-                    className="p-0"
+                    // `h-full` and the cell's inherited `align-middle` are
+                    // what centre the state vertically. The chain is three
+                    // links long and every one is load-bearing: the scroller
+                    // above grows to the container, the `<table>` takes its
+                    // height, and this - the only body row - takes what the
+                    // header leaves. Break any of them and the state sits
+                    // tucked under the header instead of in the middle.
+                    //
+                    // `whitespace-normal` undoes the `whitespace-nowrap` every
+                    // cell carries, which is right for a data cell and wrong
+                    // for a sentence: the description would run off the side
+                    // and widen the table's own horizontal scroller.
+                    className="h-full p-0 whitespace-normal"
                   >
                     {props.empty ?? (
-                      <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-12 text-center">
-                        <Inbox className="size-8 opacity-40" />
-                        <p className="text-sm">
-                          {props.emptyMessage ??
-                            String(
-                              tr("alephaTable.empty", {
-                                default: "No results.",
-                              }),
-                            )}
+                      <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
+                        <EmptyIcon className="text-muted-foreground size-8 opacity-40" />
+                        <p className="text-foreground text-sm font-medium">
+                          {emptyTitle}
                         </p>
+                        {emptyDescription ? (
+                          <p className="text-muted-foreground max-w-xs text-sm text-balance">
+                            {emptyDescription}
+                          </p>
+                        ) : null}
+                        {/* `pt-2` on top of the block's `gap-2`: the action is
+                            a separate beat from the sentence explaining it,
+                            and at one gap it reads as a third line of text. */}
+                        {emptyAction ? (
+                          <div className="pt-2">{emptyAction}</div>
+                        ) : null}
                       </div>
                     )}
                   </TableCell>
@@ -1840,6 +1985,10 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                       key={key}
                       onClick={() => props.onRowClick?.(item)}
                       className={cn(
+                        // Stays: the global cursor rule in `styles.css` covers
+                        // controls and menu items, and a `<tr>` is neither. It
+                        // is also conditional, which no blanket rule could be -
+                        // a row is only clickable when a handler was given.
                         props.onRowClick && "cursor-pointer",
                         isSelected && "bg-muted/30",
                       )}
@@ -1894,8 +2043,11 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
           {orderAnnouncement}
         </span>
 
-        {/* `bg-muted`, paired with the filter bar above — see the note there. */}
-        <div className="bg-muted -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2">
+        {/* `bg-muted`, paired with the filter bar above, see the note there.
+            Carries the same `--bevel` fold under its top border: the three
+            chrome bands (filter bar, header, footer) are lit from one side, so
+            they read as the same material at three different heights. */}
+        <div className="bg-muted -mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md rounded-t-none border p-2 shadow-[inset_0_1px_0_0_var(--bevel)]">
           {/* The size picker sits with the count, not in the toolbar above:
               this line already answers "how many, where am I", while the
               toolbar answers "which rows". Mixing the two turns the toolbar

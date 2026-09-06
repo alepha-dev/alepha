@@ -182,7 +182,7 @@ export const AccountMfaDialog = (props: AccountMfaDialogProps) => {
                 />
 
                 <details className="text-muted-foreground text-center text-xs">
-                  <summary className="cursor-pointer">
+                  <summary>
                     {tr("account.mfa.cannotScan", {
                       default: "Cannot scan the code?",
                     })}

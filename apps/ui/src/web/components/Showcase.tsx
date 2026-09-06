@@ -71,6 +71,21 @@ export interface ShowcaseProps<T extends ZObject> {
    * the frame. For a single control, filling looks like a bug.
    */
   center?: boolean;
+  /**
+   * Lays the preview out as a bounded flex column, so a child that asks for
+   * `flex-1` takes the pane's height and scrolls inside itself.
+   *
+   * Opt-in per page, and it replaces the `min-h-full` every other preview
+   * carries rather than adding to it. Both halves are load-bearing, and each
+   * fails differently on its own: without the flex column a child's `h-full`
+   * resolves against an auto height and silently does nothing, and without the
+   * definite `h-full` here the column keeps growing with its rows, so the PAGE
+   * scrolls and the child's own scroller is never reached.
+   *
+   * Off by default because the other blocks grow with their content, and a
+   * preview that stops growing would cut them off.
+   */
+  fill?: boolean;
 }
 
 /**
@@ -186,6 +201,13 @@ export const Showcase = <T extends ZObject>(props: ShowcaseProps<T>) => {
         className={cn(
           "p-6",
           props.center && "grid min-h-svh place-items-center",
+          // `fill` has to hold on this side too, or the knob that turns it on
+          // silently stops working the moment the reader picks a viewport -
+          // the framed preview is this same component rendered inside the
+          // iframe, and it draws none of the chrome above. `svh` rather than
+          // `%`: the iframe IS the viewport here, and a percentage would need
+          // a chain of heights up to a document nobody styled.
+          props.fill && "flex h-svh min-h-0 flex-col",
         )}
       >
         {props.children(values as Infer<T>)}
@@ -258,7 +280,13 @@ export const Showcase = <T extends ZObject>(props: ShowcaseProps<T>) => {
               width
                 ? "h-full min-h-96 overflow-hidden rounded-lg shadow-sm"
                 : cn(
-                    "min-h-full p-6",
+                    "p-6",
+                    // `h-full`, NOT the `min-h-full` every other preview gets.
+                    // A minimum is a floor: the column still grows with its
+                    // content, so the page scrolls and the child never reaches
+                    // its own overflow. Only a definite height caps the child
+                    // and hands the scrolling to it.
+                    props.fill ? "flex h-full min-h-0 flex-col" : "min-h-full",
                     props.center && "flex items-center justify-center",
                   ),
             )}

@@ -50,7 +50,7 @@ const ProjectFeedbackCard = (props: ProjectFeedbackCardProps) => {
         }
       }}
       className={cn(
-        "hover:bg-accent/50 flex cursor-pointer items-center gap-2 border-b px-3 py-2.5 transition-colors select-none",
+        "hover:bg-accent/50 flex items-center gap-2 border-b px-3 py-2.5 transition-colors select-none",
         props.selected && "bg-accent text-accent-foreground",
       )}
     >

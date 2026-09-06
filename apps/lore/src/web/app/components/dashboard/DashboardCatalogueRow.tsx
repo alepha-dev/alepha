@@ -40,7 +40,7 @@ const DashboardCatalogueRow = (props: DashboardCatalogueRowProps) => {
       disabled={!!props.unavailableKey}
       data-testid="dashboard-catalogue-row"
       data-metric={props.metric.key}
-      className="border-border hover:border-muted-foreground/40 flex cursor-pointer items-center gap-2.5 rounded-[9px] border px-2.5 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+      className="border-border hover:border-muted-foreground/40 flex items-center gap-2.5 rounded-[9px] border px-2.5 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
     >
       <Icon className="text-muted-foreground size-3.5 shrink-0" />
       <span className="min-w-0 flex-1">
