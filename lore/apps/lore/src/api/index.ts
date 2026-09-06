@@ -43,9 +43,11 @@ import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
+import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
+import { EstateNotifications } from "./notifications/EstateNotifications.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
@@ -57,6 +59,7 @@ import { AreaService } from "./services/AreaService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
+import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
@@ -165,8 +168,10 @@ export const LoreApi = $module({
     SigilJobs,
     QualityJobs,
     EstateCommandJobs,
+    EstateCredentialJobs,
     UserDeletionHook,
     QuestNotifications,
+    EstateNotifications,
     InvitationNotifications,
     FeedbackRateLimiter,
     QuestCsvParser,
@@ -223,7 +228,9 @@ export const LoreApi = $module({
     CredentialSealService,
     // What Lore does with a pasted Cloudflare token: mask it for a read
     // path, and prove it against the account it names before any row is
-    // written (#1629, #1630).
+    // written (#1629, #1630). The probe underneath is one authenticated GET
+    // over `globalThis.fetch`, and the seam every spec substitutes.
+    CloudflareProbeService,
     EstateCloudflareService,
     EstateService,
     // The queue behind the connection, and the seam the websocket endpoint

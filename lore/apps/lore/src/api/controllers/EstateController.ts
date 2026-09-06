@@ -16,6 +16,7 @@ import {
   type OwnedEstateResource,
   ownedEstateResourceSchema,
 } from "../schemas/ownedEstateResourceSchema.ts";
+import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
@@ -42,6 +43,7 @@ export class EstateController {
   protected readonly estates = $repository(estates);
   protected readonly service = $inject(EstateService);
   protected readonly tokens = $inject(EstateTokenService);
+  protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly transport = $inject(EstateCommandTransport);
   protected readonly audits = $inject(LoreAudits);
 
@@ -260,6 +262,44 @@ export class EstateController {
         body.token,
       );
       return this.service.toResource(replaced);
+    },
+  });
+
+  /**
+   * Ask Cloudflare again, now, and record what it said.
+   *
+   * The owner's own button, for the case the nightly sweep would otherwise
+   * answer up to a day later: they have just widened a token at Cloudflare
+   * and want the estate to agree. An inconclusive answer leaves the row
+   * untouched and says so, exactly as the sweep does.
+   */
+  checkEstateCredential = $action({
+    use: [$secure({ permissions: ["estate:update"] })],
+    method: "POST",
+    path: "/estates/:estateId/credential/check",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: estateResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      if (estate.type !== "cloudflare") {
+        throw new BadRequestError(
+          "Only a cloudflare estate has a token to check",
+        );
+      }
+
+      const check = await this.cloudflare.recheck(estate);
+      if (check.outcome === "inconclusive") {
+        // No verdict, so no row change and no pretending otherwise: the
+        // drawer shows this sentence and the estate keeps the status it
+        // had.
+        throw new BadRequestError(check.message);
+      }
+
+      return this.service.toResource(
+        await this.service.loadOwned(params.estateId, user),
+      );
     },
   });
 

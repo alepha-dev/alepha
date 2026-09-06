@@ -59,6 +59,18 @@ export const estateResourceSchema = estates.schema
   .extend({
     online: z.boolean(),
     acceptedRuntimes: z.array(z.string()),
+    /**
+     * Whether the credential currently works. Optional and **cloudflare
+     * only**: a bay row has no credential to check, and the UI already
+     * branches on `type`.
+     *
+     * Two values and no `unknown`, because a cloudflare estate cannot exist
+     * without a passed check (#1629). Derived rather than stored, and the
+     * expiry is applied at read time, so a token that expires at noon reads
+     * invalid at noon rather than at the next midnight sweep. See
+     * `EstateCloudflareService.credentialStatus`.
+     */
+    credentialStatus: z.enum(["valid", "invalid"]).optional(),
   });
 
 export type EstateResource = Infer<typeof estateResourceSchema>;

@@ -21,6 +21,7 @@ import {
   type MintedLentEstate,
   mintedLentEstateSchema,
 } from "../schemas/lentEstateResourceSchema.ts";
+import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
@@ -64,6 +65,7 @@ export class ProjectEstateController {
   protected readonly users = $repository(users);
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly service = $inject(EstateService);
+  protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly audits = $inject(LoreAudits);
 
   /**
@@ -269,6 +271,7 @@ export class ProjectEstateController {
       online: this.service.isOnline(estate),
       deployAllowed: estate.deployAllowed,
       acceptedRuntimes: this.service.acceptedRuntimes(estate.type),
+      credentialStatus: this.cloudflare.credentialStatus(estate),
       lastSeenAt: estate.lastSeenAt ?? undefined,
       cpuPercent: estate.cpuPercent ?? undefined,
       memoryPercent: estate.memoryPercent ?? undefined,
