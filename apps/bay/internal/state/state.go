@@ -292,6 +292,13 @@ func (s *Store) Upsert(app App) error {
 			// deploy — so the staleness badge would be blank for exactly the apps
 			// someone is actively working on.
 			app.LastRequestAt = a.LastRequestAt
+			// ⚠️ `Stopped` is deliberately NOT carried forward, unlike every
+			// other runtime-owned field above. A deploy is an instruction to
+			// run THIS release, and `deployArtifact` already calls `start`
+			// unconditionally at the end of a successful one - so carrying
+			// the flag would leave an app running and marked stopped, which
+			// the next boot would then take down. Dropping it makes the
+			// existing behaviour explicit rather than accidental.
 			s.state.Apps[i] = app
 			return s.flush()
 		}
@@ -371,6 +378,18 @@ func (s *Store) mutate(key string, fn func(*App)) error {
 		}
 	}
 	return fmt.Errorf("unknown app %q", key)
+}
+
+/*
+SetStopped records whether an instance is deliberately out of service.
+
+The intent, persisted, and the one thing that makes a stop survive a Bay
+restart on any runner: the boot loop reads it. Never the truth - whether a
+process is alive is asked of the supervisor, per request, so a crash is never
+reported as a deliberate stop.
+*/
+func (s *Store) SetStopped(key string, stopped bool) error {
+	return s.mutate(key, func(a *App) { a.Stopped = stopped })
 }
 
 // ClaimedBy reports which app already serves a domain, if any.

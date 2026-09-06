@@ -42,6 +42,9 @@ type fakeRunner struct {
 	// removes records every Remove call, so a test can assert that removing an
 	// app uninstalls it and whether the purge flag was carried through.
 	removes []removeCall
+	// parked records every Park call, which is what tells a deploy's internal
+	// Stop apart from a deliberate take-out-of-service.
+	parked []string
 }
 
 // removeCall is one `Remove(key, purge)` the server made.
@@ -85,6 +88,13 @@ func (f *fakeRunner) Running(key string) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.running[key]
+}
+
+func (f *fakeRunner) Park(key string, grace time.Duration) error {
+	f.mu.Lock()
+	f.parked = append(f.parked, key)
+	f.mu.Unlock()
+	return f.Stop(key, grace)
 }
 
 func (f *fakeRunner) State(key string) string {

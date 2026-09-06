@@ -16,16 +16,21 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 export type { EstateCommandResource };
 
 /**
- * The owner's view of an estate's queue, and the two commands an owner can
- * enqueue by hand in this epic.
+ * The owner's view of an estate's queue, and the commands an owner can
+ * enqueue by hand.
  *
- * `restart` names an instance on the machine and nothing else. `deploy`
- * names an artifact by id: the app comes from the artifact row, the digest
- * is snapshotted into the payload, and Bay pulls the bytes by command id
- * (#1844). Three gates on a deploy, each server-side: the caller owns the
- * estate, is a member of the artifact's project, and the estate is lent to
- * that project. The estate's own `deployAllowed` switch is the fourth,
+ * `restart`, `stop` and `start` name an instance on the machine and nothing
+ * else. `deploy` names an artifact by id: the app comes from the artifact row,
+ * the digest is snapshotted into the payload, and Bay pulls the bytes by
+ * command id (#1844). Three gates on a deploy, each server-side: the caller
+ * owns the estate, is a member of the artifact's project, and the estate is
+ * lent to that project. The estate's own `deployAllowed` switch is the fourth,
  * enforced by `EstateCommandService.enqueue` and again by the connector.
+ *
+ * ⚠️ `stop` and `start` QUEUE for an offline machine, like `restart`, bounded
+ * by `PENDING_TIMEOUT_SECONDS`. A stop that lands when the machine comes back
+ * is still the operator's intent; a refresh or a log tail would be worthless
+ * by then, which is why those two refuse instead.
  *
  * Epic #1's deploy endpoint (#1201) is the one that resolves an estate from
  * an environment row; this is the owner's hand-driven path, which is what
@@ -65,7 +70,7 @@ export class EstateCommandController {
       params: z.object({ estateId: z.uuid() }),
       body: z.union([
         z.object({
-          kind: z.literal("restart"),
+          kind: z.enum(["restart", "stop", "start"]),
           app: z.string().min(1).max(100),
           environment: z.string().min(1).max(100),
         }),
@@ -80,11 +85,14 @@ export class EstateCommandController {
     handler: async ({ params, body, user }) => {
       const estate = await this.estates.loadOwned(params.estateId, user);
 
-      if (body.kind === "restart") {
+      if (body.kind !== "deploy") {
+        // `restart`, `stop` and `start` all name one instance on the machine
+        // and nothing else, so they share a shape and a gate. The deploy path
+        // below is the one that needs an artifact, a project and a lending.
         return this.commands.enqueue(
           estate,
           {
-            kind: "restart",
+            kind: body.kind,
             payload: { app: body.app, environment: body.environment },
           },
           user.id,

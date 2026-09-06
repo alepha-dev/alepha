@@ -43,6 +43,17 @@ const (
 	// actionDeploy fetches an artifact by digest and hands it to the deploy
 	// path every other deploy goes through (#1622).
 	actionDeploy actionKind = "deploy"
+	// actionStop takes one instance out of service, durably: the intent is
+	// persisted and the unit is disabled, so a reboot and a Bay upgrade both
+	// leave it down. The way back is `start` or a deploy.
+	//
+	// ⚠️ The first verb here that can make a live site go dark from a click in
+	// a browser. Everything else in this vocabulary either replaces a running
+	// app with another running app, or asks a question.
+	actionStop actionKind = "stop"
+	// actionStart puts a stopped instance back, and is the way back from
+	// `stop`: `restart` deliberately refuses an app nobody is running.
+	actionStart actionKind = "start"
 )
 
 /*
@@ -112,12 +123,12 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	}
 
 	switch actionKind(cmd.Kind) {
-	case actionRestart, actionDeploy:
+	case actionRestart, actionDeploy, actionStop, actionStart:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s and %s, nothing else",
-			cmd.Kind, actionRestart, actionDeploy)
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s and %s, nothing else",
+			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -161,6 +172,10 @@ func (a *actions) runExclusive(ctx context.Context, cmd connector.Command, send 
 		return a.restart(cmd)
 	case actionDeploy:
 		return a.deploy(ctx, cmd, send)
+	case actionStop:
+		return a.stop(cmd)
+	case actionStart:
+		return a.start(cmd)
 	}
 	// Unreachable: Command refuses an unknown kind before it ever takes the
 	// lock. Said out loud rather than left as three empty strings, which would
@@ -213,7 +228,7 @@ func (a *actions) restart(cmd connector.Command) (status, step, reason string) {
 		return "failed", "", key + " is a static site: it has no process to restart"
 	}
 	if !a.s.runner.Running(key) {
-		return "failed", "", key + " is not running; it was stopped on this host, and a restart does not reverse that"
+		return "failed", "", key + " is not running; it was stopped on this host, and a restart does not reverse that — start it instead"
 	}
 
 	// Requests wait rather than 502, the same way they do through a deploy.
@@ -224,6 +239,39 @@ func (a *actions) restart(cmd connector.Command) (status, step, reason string) {
 	}
 	if err := a.s.start(app); err != nil {
 		return "failed", "start", "the app did not come back up: " + err.Error()
+	}
+	return "done", "", ""
+}
+
+/*
+stop takes the instance out of service, durably.
+
+Through `stopInstance`, the same helper `bay stop` and the control route go
+through, so the CLI, the socket and Lore cannot end up meaning three different
+things by one word.
+
+Stopping an already-stopped instance SUCCEEDS. `systemctl disable --now` exits
+0 on an inactive unit and the child runner returns nil when nothing is running,
+so the effect is idempotent for free - and a console that reported a failure
+for reaching the state it asked for would be wrong about what it did.
+*/
+func (a *actions) stop(cmd connector.Command) (status, step, reason string) {
+	if err := a.s.stopInstance(cmd.App + "/" + cmd.Environment); err != nil {
+		return "failed", "", err.Error()
+	}
+	return "done", "", ""
+}
+
+/*
+start puts a stopped instance back.
+
+⚠️ An instance that is already running is answered `done` without being
+touched. `Systemd.Start` runs `systemctl restart`, so starting a healthy app
+would bounce production in disguise; `startInstance` carries that rule.
+*/
+func (a *actions) start(cmd connector.Command) (status, step, reason string) {
+	if err := a.s.startInstance(cmd.App + "/" + cmd.Environment); err != nil {
+		return "failed", "", err.Error()
 	}
 	return "done", "", ""
 }

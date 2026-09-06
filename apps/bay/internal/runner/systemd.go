@@ -360,6 +360,38 @@ func (s *Systemd) Running(key string) bool {
 }
 
 /*
+Park takes the unit out of service until somebody says otherwise.
+
+`disable --now` is one call that stops the unit AND removes its
+multi-user.target.wants symlink, so the app does not come back at the next
+reboot. The same argv `removeUnit` uses, with the same tolerance: a unit that
+is not loaded is not a failure, since parking something already gone is the
+outcome the caller wanted.
+
+⚠️ Never called by deploy. `Stop` is what a redeploy uses, and it deliberately
+leaves the unit enabled - see the Runner interface for what a crash between a
+disabling Stop and the following Start would cost.
+*/
+func (s *Systemd) Park(key string, grace time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), grace+stopCallMargin)
+	defer cancel()
+
+	out, err := exec.CommandContext(ctx, "systemctl", "disable", "--now",
+		unitName(key)+".service").CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("park %s: systemctl did not return within %s", key, grace+stopCallMargin)
+	}
+	text := strings.TrimSpace(string(out))
+	if notLoaded(text) {
+		return nil
+	}
+	return fmt.Errorf("park %s: %w: %s", key, err, text)
+}
+
+/*
 State asks systemd what it calls the unit right now.
 
 `show --property=ActiveState` rather than `is-active`, because `is-active`

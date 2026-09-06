@@ -1,0 +1,7 @@
+{
+  "type": "command",
+  "id": "7c4b1a92-3e5d-4f81-a6c2-8d9e0f1a2b3c",
+  "kind": "stop",
+  "app": "shop",
+  "environment": "staging"
+}
