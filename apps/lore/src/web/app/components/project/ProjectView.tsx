@@ -94,7 +94,7 @@ const ProjectView = () => {
   //   Activity  Activity
   //   Work      Quests, Kanban, Epics, Feedback, Blights
   //   Record    Folios, Releases, Reports
-  //   Ops       Apps
+  //   Ops       Apps, Artifacts
   //   Settings
   //
   // Work is ordered chosen-then-arrived: Quests and Epics are what you put in,
@@ -234,17 +234,6 @@ const ProjectView = () => {
       active: name.startsWith("projectFolios"),
     });
   }
-  // Between Folios and Releases, where feedback #2111 asked for it. No
-  // feature gate and no artifact count behind it: the page carries a real
-  // empty state that prints the push command, which is the only place a
-  // reader who has never pushed one can learn the capability exists. See
-  // `ProjectArtifactsEmpty` for why hiding the entry loses twice.
-  recordItems.push({
-    label: tr("project.menu.artifacts"),
-    icon: Package,
-    href: router.path("projectArtifacts", { params: { projectSlug } }),
-    active: name === "projectArtifacts",
-  });
   // Between Folios and Reports. `active` covers the list and one release,
   // unchanged by the move.
   if (features.milestones) {
@@ -289,6 +278,32 @@ const ProjectView = () => {
       active: ROUTES_APP.has(name),
     });
   }
+  // Under Apps since 2026-09-06, at the owner's request. It sat in Record
+  // from feedback #2111, between Folios and Releases, on the reading that a
+  // build is something the project keeps. The axis that beat it: an artifact
+  // is a build OF AN APP, and the one other place it is listed is the app's
+  // own Artifacts tab.
+  //
+  // A sibling of Apps, not a child. The disclosure under Apps was collapsed
+  // deliberately (#1771, see above) and one child is not worth reopening it.
+  //
+  // Outside the `features.sigils` gate above, unchanged by the move:
+  // artifacts arrive from CI through `lore artifacts push`, not from anything
+  // an instance collects, so a project with sigils switched off still has a
+  // build history and still needs the door to it. That also means this group
+  // can never be empty, so the `.filter` below never drops it - the Apps
+  // entry may be gone, this one never is.
+  //
+  // No artifact count behind it either: the page carries a real empty state
+  // that prints the push command, which is the only place a reader who has
+  // never pushed one can learn the capability exists. See
+  // `ProjectArtifactsEmpty` for why hiding the entry loses twice.
+  opsItems.push({
+    label: tr("project.menu.artifacts"),
+    icon: Package,
+    href: router.path("projectArtifacts", { params: { projectSlug } }),
+    active: name === "projectArtifacts",
+  });
 
   const nav: NavGroup[] = [
     // Activity is a group of one, above Work, so the separator the groups
