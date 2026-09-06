@@ -29,6 +29,7 @@ const SERVER_FRAMES = [
   "command-stop.json",
   "command-start.json",
   "command-backup.json",
+  "command-logs.json",
   "query.json",
 ];
 
