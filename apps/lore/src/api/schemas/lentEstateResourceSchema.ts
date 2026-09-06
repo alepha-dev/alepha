@@ -33,12 +33,15 @@ export const lentEstateResourceSchema = z.object({
 export type LentEstateResource = Infer<typeof lentEstateResourceSchema>;
 
 /**
- * A lent estate plus the one cleartext copy of its secret, for the
- * create-from-inside-a-project flow. Same rule as `mintedEstateSchema`:
- * nothing can produce the secret again.
+ * A lent estate plus the one cleartext copy of a secret Lore minted, if it
+ * minted one, for the create-from-inside-a-project flow.
+ *
+ * Same rule as `mintedEstateSchema`, including the optionality: nothing can
+ * produce the secret again, and a cloudflare create produces none at all, so
+ * the field is **absent** rather than empty.
  */
 export const mintedLentEstateSchema = lentEstateResourceSchema.extend({
-  secret: z.string(),
+  secret: z.string().optional(),
 });
 
 export type MintedLentEstate = Infer<typeof mintedLentEstateSchema>;

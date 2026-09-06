@@ -20,6 +20,13 @@ import {
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
+import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
+import { CredentialSealService } from "../services/CredentialSealService.ts";
+import {
+  EstateCloudflareService,
+  type EstateCredentialCheck,
+} from "../services/EstateCloudflareService.ts";
+import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { EstateController } from "./EstateController.ts";
@@ -34,12 +41,31 @@ class EstateRepositories {
   grants = $repository(estateProjects);
 }
 
+/**
+ * The Cloudflare seam, scripted.
+ *
+ * #1630 fills `EstateCloudflareService.check` with seven real `GET`s; what
+ * this spec needs is control over its three answers, so the subclass returns
+ * whatever the case sets and keeps the real `mask`, which is not
+ * provisional.
+ */
+class ScriptedCloudflareService extends EstateCloudflareService {
+  public next: EstateCredentialCheck = { outcome: "passed" };
+
+  override async check(): Promise<EstateCredentialCheck> {
+    return this.next;
+  }
+}
+
 interface TestContext {
   alepha: Alepha;
   controller: EstateController;
   service: EstateService;
   tokens: EstateTokenService;
   crypto: CryptoProvider;
+  seal: CredentialSealService;
+  cloudflare: ScriptedCloudflareService;
+  commands: EstateCommandService;
   repos: EstateRepositories;
   entities: TestEntityRepositories;
 }
@@ -50,9 +76,21 @@ interface TestContext {
  */
 const setup = async (): Promise<TestContext> => {
   const alepha = Alepha.create({
-    env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
+    // `APP_SECRET` because `CredentialSealService` refuses the published
+    // default in every environment, tests included (#1631).
+    env: {
+      LOG_LEVEL: "error",
+      DATABASE_URL: ":memory:",
+      APP_SECRET: "estate-controller-spec-secret",
+    },
   });
 
+  // Substituted BEFORE the module that registers the real one: a
+  // substitution declared after the service is in use is refused.
+  alepha.with({
+    provide: EstateCloudflareService,
+    use: ScriptedCloudflareService,
+  });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
@@ -71,6 +109,9 @@ const setup = async (): Promise<TestContext> => {
     service: alepha.inject(EstateService),
     tokens: alepha.inject(EstateTokenService),
     crypto: alepha.inject(CryptoProvider),
+    seal: alepha.inject(CredentialSealService),
+    cloudflare: alepha.inject(ScriptedCloudflareService),
+    commands: alepha.inject(EstateCommandService),
     repos,
     entities,
   };
@@ -86,6 +127,33 @@ const createEstate = async (
   user: UserAccountToken,
   slug: string,
 ) => ctx.controller.createEstate({ body: { slug } }, { user });
+
+/**
+ * A real Cloudflare token shape: the marker, 40 alphanumerics and an 8-hex
+ * checksum. Long enough to pass `cloudflareTokenSchema`, and shaped so the
+ * mask assertions mean something.
+ */
+const CF_TOKEN = `cfut_${"a1B2c3D4e5".repeat(4)}0123abcd`;
+
+const CF_ACCOUNT = "0123456789abcdef0123456789abcdef";
+
+const createCloudflare = async (
+  ctx: TestContext,
+  user: UserAccountToken,
+  slug: string,
+  token = CF_TOKEN,
+) =>
+  ctx.controller.createEstate(
+    {
+      body: {
+        type: "cloudflare",
+        slug,
+        accountId: CF_ACCOUNT,
+        token,
+      },
+    },
+    { user },
+  );
 
 describe("EstateController, the credential", () => {
   let ctx: TestContext;
@@ -105,8 +173,8 @@ describe("EstateController, the credential", () => {
 
     const minted = await createEstate(ctx, user, "ovh-1");
 
-    expect(minted.secret.startsWith("est_")).toBe(true);
-    expect(minted.secretPrefix).toBe(minted.secret.slice(0, 12));
+    expect(minted.secret!.startsWith("est_")).toBe(true);
+    expect(minted.secretPrefix).toBe(minted.secret!.slice(0, 12));
     expect(minted).not.toHaveProperty("secretHash");
     expect(minted.type).toBe("bay");
     expect(minted.acceptedRuntimes).toEqual(["node"]);
@@ -115,7 +183,7 @@ describe("EstateController, the credential", () => {
     const row = (await ctx.repos.estates.findOne({
       where: { id: { eq: minted.id } },
     })) as Estate;
-    expect(row.secretHash).toBe(ctx.crypto.hash(minted.secret));
+    expect(row.secretHash).toBe(ctx.crypto.hash(minted.secret!));
 
     const listed = await ctx.controller.listMyEstates({}, { user });
     expect(listed.items).toHaveLength(1);
@@ -159,15 +227,257 @@ describe("EstateController, the credential", () => {
     expect(ctx.tokens.bearer(undefined)).toBeUndefined();
   });
 
-  it("refuses a cloudflare estate until epic #22 lands", async ({ expect }) => {
+  it("seals a cloudflare token, masks it, and mints nothing", async ({
+    expect,
+  }) => {
     const user = await createUser(ctx);
 
+    const created = await createCloudflare(ctx, user, "cf-1");
+
+    // Nothing was minted, so nothing comes back. Absent rather than empty:
+    // #1865's "the reveal dialog does not open" rests on the field being
+    // missing, not on `Boolean("")`.
+    expect(created).not.toHaveProperty("secret");
+    expect(created.type).toBe("cloudflare");
+    expect(created.acceptedRuntimes).toEqual(["workerd"]);
+    expect(created.accountId).toBe(CF_ACCOUNT);
+    // The kind marker plus eight characters, the bay rule: `cfut_` is five,
+    // so a total of eight would name almost nothing.
+    expect(created.secretPrefix).toBe(CF_TOKEN.slice(0, 13));
+    // A Cloudflare account has no stats phase and exists to be deployed to.
+    expect(created.deployAllowed).toBe(true);
+
+    const row = (await ctx.repos.estates.findOne({
+      where: { id: { eq: created.id } },
+    })) as Estate;
+    // On the row: sealed, never the token, and openable only in process.
+    expect(row.credential).toBeTruthy();
+    expect(row.credential).not.toContain(CF_TOKEN);
+    expect(
+      ctx.seal.open(row.credential!, CredentialSealService.ESTATE_PURPOSE),
+    ).toBe(CF_TOKEN);
+    expect(row.credentialKeyVersion).toBe(CredentialSealService.KEY_VERSION);
+    // The check ran before the insert, so an estate that exists has passed.
+    expect(row.credentialCheckedAt).toBeTruthy();
+    expect(row.secretHash).toBeFalsy();
+  });
+
+  it("returns no credential on any read path, the owner included", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const created = await createCloudflare(ctx, user, "cf-1");
+
+    const read = await ctx.controller.getEstate(
+      { params: { estateId: created.id } },
+      { user },
+    );
+    const listed = await ctx.controller.listMyEstates({}, { user });
+
+    for (const resource of [created, read, listed.items[0]!]) {
+      expect(resource).not.toHaveProperty("credential");
+      expect(resource).not.toHaveProperty("credentialKeyVersion");
+      expect(resource).not.toHaveProperty("secretHash");
+      expect(resource.secretPrefix).toBe(CF_TOKEN.slice(0, 13));
+      expect(resource.accountId).toBe(CF_ACCOUNT);
+    }
+  });
+
+  it("writes no row when the check refuses the token", async ({ expect }) => {
+    const user = await createUser(ctx);
+    ctx.cloudflare.next = {
+      outcome: "failed",
+      message: "This token cannot manage D1 (D1: Edit)",
+    };
+
+    await expect(createCloudflare(ctx, user, "cf-1")).rejects.toThrow(
+      BadRequestError,
+    );
+
+    // Not a half-made estate that a later check could rescue: no row at all,
+    // which is what lets `credentialStatus` have two values (#1630).
+    expect(
+      await ctx.repos.estates.findMany({ where: { slug: { eq: "cf-1" } } }),
+    ).toHaveLength(0);
+  });
+
+  it("writes no row when Cloudflare could not be reached", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    ctx.cloudflare.next = {
+      outcome: "inconclusive",
+      message: "Cloudflare could not be reached, try again",
+    };
+
+    await expect(createCloudflare(ctx, user, "cf-1")).rejects.toThrow(
+      BadRequestError,
+    );
+    expect(
+      await ctx.repos.estates.findMany({ where: { slug: { eq: "cf-1" } } }),
+    ).toHaveLength(0);
+  });
+
+  it("replaces a token write-only, and leaves the old one on a failure", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const created = await createCloudflare(ctx, user, "cf-1");
+    const replacement = `cfat_${"z9Y8x7W6v5".repeat(4)}beef0123`;
+
+    ctx.cloudflare.next = { outcome: "failed", message: "Token expired" };
     await expect(
-      ctx.controller.createEstate(
-        { body: { slug: "cf-1", type: "cloudflare" } },
+      ctx.controller.replaceEstateCredential(
+        { params: { estateId: created.id }, body: { token: replacement } },
         { user },
       ),
     ).rejects.toThrow(BadRequestError);
+
+    // All or nothing: the token the owner already had keeps working.
+    const untouched = (await ctx.repos.estates.findOne({
+      where: { id: { eq: created.id } },
+    })) as Estate;
+    expect(
+      ctx.seal.open(
+        untouched.credential!,
+        CredentialSealService.ESTATE_PURPOSE,
+      ),
+    ).toBe(CF_TOKEN);
+    expect(untouched.secretPrefix).toBe(CF_TOKEN.slice(0, 13));
+
+    ctx.cloudflare.next = { outcome: "passed" };
+    const replaced = await ctx.controller.replaceEstateCredential(
+      { params: { estateId: created.id }, body: { token: replacement } },
+      { user },
+    );
+
+    // The response is the masked resource and carries no token, in either
+    // direction: nothing GETs one, nothing PATCHes one.
+    expect(replaced).not.toHaveProperty("credential");
+    expect(replaced.secretPrefix).toBe(replacement.slice(0, 13));
+    const row = (await ctx.repos.estates.findOne({
+      where: { id: { eq: created.id } },
+    })) as Estate;
+    expect(
+      ctx.seal.open(row.credential!, CredentialSealService.ESTATE_PURPOSE),
+    ).toBe(replacement);
+  });
+
+  it("answers 404 when somebody else replaces the token", async ({
+    expect,
+  }) => {
+    const owner = await createUser(ctx);
+    const stranger = await createUser(ctx);
+    const created = await createCloudflare(ctx, owner, "cf-1");
+
+    // The owner filter is the whole access rule: a non-owner learns nothing
+    // an unknown id would not have told them.
+    await expect(
+      ctx.controller.replaceEstateCredential(
+        { params: { estateId: created.id }, body: { token: CF_TOKEN } },
+        { user: stranger },
+      ),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("refuses to rotate a cloudflare estate, and names the replace route", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const created = await createCloudflare(ctx, user, "cf-1");
+
+    await expect(
+      ctx.controller.rotateEstate(
+        { params: { estateId: created.id } },
+        { user },
+      ),
+    ).rejects.toThrow(/credential/);
+  });
+
+  it("refuses to replace the credential of a bay estate", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const minted = await createEstate(ctx, user, "ovh-1");
+
+    await expect(
+      ctx.controller.replaceEstateCredential(
+        { params: { estateId: minted.id }, body: { token: CF_TOKEN } },
+        { user },
+      ),
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  it("refuses to queue a command for a cloudflare estate", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const created = await createCloudflare(ctx, user, "cf-1");
+    const row = (await ctx.repos.estates.findOne({
+      where: { id: { eq: created.id } },
+    })) as Estate;
+
+    // Without this the command would sit `pending` for a day and then fail
+    // as "the machine never came for it", which is true about the wrong
+    // thing: there is no machine, and epic #1 deploys over HTTP.
+    await expect(
+      ctx.commands.enqueue(row, {
+        kind: "restart",
+        payload: { app: "club", environment: "production" },
+      }),
+    ).rejects.toThrow(/Cloudflare/);
+  });
+});
+
+describe("createEstateBodySchema", () => {
+  // The handler cases above call the controller directly, which skips body
+  // validation entirely. This is the half that runs over HTTP: what the
+  // discriminated body accepts, and what it refuses before any handler sees
+  // it.
+  it("reads an omitted type as bay", async ({ expect }) => {
+    // The shape the existing e2e sends (`estates.spec.ts` fills the slug and
+    // submits, nothing else) and the one the Bay install guide documents.
+    const parsed = createEstateBodySchema.parse({ slug: "ovh-1" });
+
+    expect(parsed).toEqual({ slug: "ovh-1" });
+  });
+
+  it("requires an account id and a token for cloudflare", async ({
+    expect,
+  }) => {
+    // There is no create-then-set path: a cloudflare estate without a token
+    // is not a state the API can express.
+    expect(() =>
+      createEstateBodySchema.parse({ type: "cloudflare", slug: "cf-1" }),
+    ).toThrow();
+    expect(() =>
+      createEstateBodySchema.parse({
+        type: "cloudflare",
+        slug: "cf-1",
+        accountId: "not-an-account-id",
+        token: CF_TOKEN,
+      }),
+    ).toThrow();
+    expect(
+      createEstateBodySchema.parse({
+        type: "cloudflare",
+        slug: "cf-1",
+        accountId: CF_ACCOUNT,
+        token: CF_TOKEN,
+      }),
+    ).toMatchObject({ type: "cloudflare", accountId: CF_ACCOUNT });
+  });
+
+  it("refuses a token on a bay body", async ({ expect }) => {
+    // Extra keys are stripped rather than refused, which is what matters
+    // here: a token sent to the bay branch is dropped, never sealed under a
+    // row that has nowhere to put it.
+    const parsed = createEstateBodySchema.parse({
+      slug: "ovh-1",
+      token: CF_TOKEN,
+    });
+
+    expect(parsed).not.toHaveProperty("token");
   });
 });
 
