@@ -9,6 +9,8 @@ import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
 import { DiagramErrorBoundary } from "./diagram/DiagramErrorBoundary.tsx";
+import { remarkSpoiler } from "./remarkSpoiler.ts";
+import { SpoilerSpan } from "./SpoilerSpan.tsx";
 
 /**
  * Both parsers, both layouts (`graphre` for the flowchart, arithmetic for
@@ -77,6 +79,18 @@ export interface MarkdownViewProps {
  * invalid mermaid, and a red box in the middle of a document is worse than
  * a grey fence. See `packages/@alepha/ui/DOC.md` for the full table.
  *
+ * ## Spoilers
+ *
+ * `||text||` renders as a covered box that reveals on click, on Enter or on
+ * Space, Discord's syntax and Discord's behaviour. Inline markdown inside it
+ * survives, a code span or a fence keeps its pipes literally, and an
+ * unterminated `||` renders as the two characters the author typed rather
+ * than swallowing the rest of the paragraph.
+ *
+ * ⚠️ **It is not a security feature.** The text is in the DOM from the first
+ * paint, in the raw markdown, in an export, over MCP and in any search
+ * snippet. It hides a plot point from a reader's eye and nothing more.
+ *
  * ## Raw HTML
  *
  * No raw HTML is ever rendered as markup: react-markdown's default is to
@@ -101,7 +115,11 @@ export const MarkdownView = (props: MarkdownViewProps) => {
       className={`max-w-none text-sm leading-relaxed ${props.className ?? ""}`}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        // ⚠️ `remarkSpoiler` runs AFTER `remarkGfm`, and the order is
+        // load-bearing: by then a `| a | b |` row is a table with cells, so
+        // the pipes are structure and the spoiler walk never sees them as
+        // text. Reversed, every two-column table would be a spoiler.
+        remarkPlugins={[remarkGfm, remarkSpoiler]}
         rehypePlugins={[
           // `plainText` claims the fence BEFORE highlighting runs: hljs would
           // otherwise tokenise the diagram source, and the fallback would be a
@@ -174,6 +192,24 @@ export const MarkdownView = (props: MarkdownViewProps) => {
                 </Suspense>
               </DiagramErrorBoundary>
             );
+          },
+          // The only `<span>` this renderer ever produces is a spoiler's, and
+          // the only thing that marks one is the `data-spoiler` property
+          // `remarkSpoiler` puts there.
+          //
+          // ⚠️ The cast is not laziness: react-markdown types a span's props
+          // as `HTMLAttributes<HTMLSpanElement>`, which PERMITS writing a
+          // `data-*` attribute in JSX and does not declare one for reading.
+          // The alternative - a custom `hName` with its own `components` key -
+          // needs a cast into `components`, whose type is keyed on intrinsic
+          // elements, so it buys nothing (the same note `mermaidSource`
+          // already carries).
+          span: ({ children, ...rest }) => {
+            const marked = (rest as { "data-spoiler"?: unknown })[
+              "data-spoiler"
+            ];
+            if (marked) return <SpoilerSpan>{children}</SpoilerSpan>;
+            return <span {...rest}>{children}</span>;
           },
           blockquote: ({ children }) => (
             <blockquote className="border-muted-foreground/30 my-3 border-l-2 pl-4 italic">

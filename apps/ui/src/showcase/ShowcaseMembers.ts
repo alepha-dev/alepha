@@ -46,14 +46,24 @@ export class ShowcaseMembers {
       rows = rows.filter((r) => r.status === query.status);
     }
 
+    // ⚠️ Alepha's pagination convention is `field` for ascending and `-field`
+    // for descending, NOT `field,direction`: a comma separates COLUMNS in a
+    // multi-column sort, so `name,desc` asks for a second column called
+    // "desc".
+    //
+    // This parsed the comma form, which made descending a silent no-op:
+    // `-name` was read as the whole field name, every row's value came back
+    // undefined, every comparison returned 0, and `Array.sort` being stable
+    // handed back the original order. The header arrow flipped and the rows
+    // did not move.
     const sort = String(query.sort ?? "");
     if (sort) {
-      const [field, direction = "asc"] = sort.split(",");
-      const key = field as keyof ShowcaseMember;
+      const descending = sort.startsWith("-");
+      const key = (descending ? sort.slice(1) : sort) as keyof ShowcaseMember;
       rows = [...rows].sort((a, b) => {
         const left = String(a[key] ?? "");
         const right = String(b[key] ?? "");
-        return direction === "desc"
+        return descending
           ? right.localeCompare(left)
           : left.localeCompare(right);
       });

@@ -143,6 +143,14 @@ export class DashboardScopeService {
 
     if (scope.kind === "apps") {
       const ids = scope.sigilIds ?? [];
+      // ⚠️ D1, and one bound parameter per app — but bounded already, and by
+      // the schema rather than by anything here: `dashboardScopeSchema` caps
+      // `sigilIds` at 50, well under D1's hundred-parameter ceiling (folio
+      // #F1173). Said out loud because the cap is a validation rule two files
+      // away, and raising it past 90 would break this read with no error
+      // anyone reads until a card with that many apps is resolved. The
+      // project-wide sets, which have no such cap, are bounded where they are
+      // built: `LoreAnalyticsStore.scope` and `InsightsController.chunked`.
       const rows = await this.sigils.findMany({
         where: { id: { inArray: ids } },
       });

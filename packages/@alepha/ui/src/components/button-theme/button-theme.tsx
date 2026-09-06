@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -87,20 +88,27 @@ export const ButtonTheme = (props: ButtonThemeProps) => {
         <DropdownMenuGroup>
           <DropdownMenuLabel>{props.heading ?? "Themes"}</DropdownMenuLabel>
           <DropdownMenuSeparator />
+          {/*
+            `DropdownMenuItem`, not a raw `<button>`. These were plain buttons
+            inside a `role="menu"`, which cost two things that are the menu
+            primitive's whole job: the container announced itself as a menu
+            with NO items to assistive technology, and picking a theme left the
+            menu open - alone among every dropdown in the app - because only an
+            Item tells the root to close on select.
+          */}
           {themes.map((t) => (
-            <button
+            <DropdownMenuItem
               key={t.id}
-              type="button"
               onClick={() => setTheme(t.id)}
               className={cn(
-                "hover:bg-accent flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm",
+                "flex w-full items-center gap-2.5 px-2 py-1.5 text-sm",
                 theme === t.id && "bg-accent",
               )}
             >
               {t.swatch && <ThemeSwatch colors={t.swatch} />}
               <span className="flex-1 text-left">{t.label}</span>
               {theme === t.id && <Check className="size-3.5" />}
-            </button>
+            </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
       </DropdownMenuContent>

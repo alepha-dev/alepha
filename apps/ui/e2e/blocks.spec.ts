@@ -121,6 +121,51 @@ test.describe("Showcase", () => {
     expect(inner.sm).toBe(false);
   });
 
+  test("a stored colour mode does not break hydration", async ({ page }) => {
+    // Every page here is `static: true`, so its HTML is built with the DEFAULT
+    // preference. `ButtonDark` used to pick one icon from the colour mode
+    // during render, so a returning visitor's first render disagreed with the
+    // prerendered HTML: React #418 on every cold load, and the prerendered
+    // tree thrown away and re-rendered. It renders every icon now and lets CSS
+    // reveal one, which is what `apps/docs` had already settled on.
+    //
+    // ⚠️ Only a visitor who has ALREADY chosen a mode saw it, which is why a
+    // cold crawl with empty storage stayed green throughout.
+    const errors: string[] = [];
+    page.on("console", (m) => {
+      if (m.type() === "error") errors.push(m.text());
+    });
+    page.on("pageerror", (e) => errors.push(String(e)));
+
+    await page.goto("/blocks/table");
+    await page
+      .getByRole("button", { name: /toggle color mode/i })
+      .first()
+      .click();
+    await expect(page.locator("html")).toHaveAttribute("data-color-mode", /.+/);
+
+    errors.length = 0;
+    // A different prerendered page, loaded cold with the preference stored.
+    await page.goto("/blocks/buttons");
+    await expect(
+      page.getByRole("button", { name: /toggle color mode/i }).first(),
+    ).toBeVisible();
+
+    expect(errors.filter((e) => /#418|#423|[Hh]ydrat/.test(e))).toEqual([]);
+
+    // And exactly one icon shows - the swap must reveal one, not hide all.
+    const visible = await page
+      .getByRole("button", { name: /toggle color mode/i })
+      .first()
+      .evaluate(
+        (b) =>
+          [...b.querySelectorAll("svg")].filter(
+            (s) => s.getBoundingClientRect().width > 0,
+          ).length,
+      );
+    expect(visible).toBe(1);
+  });
+
   test("a props row keeps its label off its input", async ({ page }) => {
     // `Control` in row layout gives a text input a flat 256px, and this panel's
     // rows are 293px: the label column collapsed to 9px and its text rendered
@@ -253,6 +298,39 @@ test.describe("blocks", () => {
     await page.goto("/blocks/control/date");
     await expect(page.getByLabel("Birthday")).toBeVisible();
     await expect(page.getByLabel("Alarm")).toBeVisible();
+  });
+
+  test("a scalar-array control can actually be given a value", async ({
+    page,
+  }) => {
+    // Every one of these rendered, was labelled, and was completely unusable:
+    // an array of scalars becomes a MULTI-SELECT, and one with no `items` is a
+    // select over an empty list. It opened on "No results." and no value could
+    // ever be entered, while the page's own help text called it a tag list.
+    // Nothing that asserts a control is PRESENT can see that.
+    const cases = [
+      ["/blocks/control/text", "Tags", "alepha"],
+      ["/blocks/control/number", "Seats", "42"],
+      ["/blocks/auto-form/array", "Ports", "8080"],
+    ] as const;
+
+    for (const [path, label, typed] of cases) {
+      await page.goto(path);
+      const combo = page.getByRole("combobox", { name: label }).first();
+      await combo.click();
+
+      const search = page.getByRole("combobox", { name: "Search\u2026" });
+      await search.fill(typed);
+
+      const create = page.getByRole("option", {
+        name: new RegExp(`Create.*${typed}`),
+      });
+      await expect(create).toBeVisible();
+      await create.click();
+
+      await expect(combo).toContainText(typed);
+      await page.keyboard.press("Escape");
+    }
   });
 
   test("AutoForm splits objects from arrays", async ({ page }) => {

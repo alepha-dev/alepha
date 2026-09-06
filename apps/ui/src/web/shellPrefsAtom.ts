@@ -16,12 +16,20 @@ import { $atom, z } from "alepha";
  * server rendered HTML didn't match... this won't be patched up" - leaving the
  * DOM attribute permanently disagreeing with what React believes it rendered.
  * `Layout` therefore gates on a mounted flag: first paint matches the server,
- * the stored value lands on the pass after. That is the cost of localStorage
- * over `persist: "cookie"`, which ships the value in a `Set-Cookie` header and
- * so is available to the very first render.
+ * the stored value lands on the pass after.
+ *
+ * ⚠️ **`persist: "cookie"` does NOT fix that here, and it was tried.** The
+ * server logs a warning per render recommending it, and the recommendation is
+ * right for a server-RENDERED app. Every page here is `static: true`, so it is
+ * PRERENDERED at build time and no request ever renders it: `AtomCookiePersistence`
+ * seeds state on `server:onRequest`, which never runs for an asset served off
+ * the manifest. Measured, on a cold load of a prerendered page with the cookie
+ * set: the shell came back `floating` when the cookie said `inset`, so the
+ * preference was lost outright rather than merely arriving a frame late. The
+ * warning is noise this app has to live with until a page stops being static.
  *
  * ⚠️ `headerOutside` only does anything when `variant` is `inset`; `AppShell`
- * ignores it otherwise. The tweak panel says so rather than offering a switch
+ * ignores it otherwise. `/blocks/shell` says so rather than offering a switch
  * that silently does nothing.
  */
 export const SHELL_PREFS_DEFAULT = {

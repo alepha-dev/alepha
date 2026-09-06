@@ -9,6 +9,7 @@ import {
   List,
   Quote,
   SquareCode,
+  EyeOff,
 } from "lucide-react";
 
 import type { MarkdownCommandId } from "./markdownCommands.ts";
@@ -28,6 +29,7 @@ export interface MarkdownToolbarAction {
     | "folios.editor.action.bold"
     | "folios.editor.action.italic"
     | "folios.editor.action.code"
+    | "folios.editor.action.spoiler"
     | "folios.editor.action.link"
     | "folios.editor.action.heading1"
     | "folios.editor.action.heading2"
@@ -60,6 +62,11 @@ export const MARKDOWN_TOOLBAR_GROUPS: MarkdownToolbarAction[][] = [
       Icon: Italic,
     },
     { id: "edit.code", labelKey: "folios.editor.action.code", Icon: Code },
+    {
+      id: "edit.spoiler",
+      labelKey: "folios.editor.action.spoiler",
+      Icon: EyeOff,
+    },
     { id: "insert.link", labelKey: "folios.editor.action.link", Icon: Link },
   ],
   [

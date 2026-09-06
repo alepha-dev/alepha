@@ -104,14 +104,43 @@ describe("ShowcaseController", () => {
     expect(filtered.content.every((m) => m.status === "disabled")).toBe(true);
   });
 
-  it("sorts on the server", async ({ expect }) => {
+  /**
+   * ⚠️ `-name`, not `name,desc`.
+   *
+   * Alepha's pagination convention is `field` ascending and `-field`
+   * descending; a comma separates COLUMNS in a multi-column sort, so
+   * `name,desc` asks for a second column called "desc". This spec asserted the
+   * comma form and passed, because the fixture parsed the same wrong thing -
+   * two halves agreeing with each other and with nothing else. What `AlephaTable`
+   * actually sends is `-name`, which the fixture read as one long field name:
+   * every row's value came back undefined, every comparison returned 0, and a
+   * stable sort handed back the original order. Descending did nothing, on the
+   * page, with the spec green.
+   */
+  it("sorts ascending on the server", async ({ expect }) => {
     const api = (await start()).client() as unknown as ShowcaseClient;
     const page = await api.findShowcaseMembers({
-      query: { page: 0, size: 50, sort: "name,desc" },
+      query: { page: 0, size: 50, sort: "name" },
+    });
+
+    const names = page.content.map((m) => m.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it("sorts descending on the server, with the `-field` convention", async ({
+    expect,
+  }) => {
+    const api = (await start()).client() as unknown as ShowcaseClient;
+    const page = await api.findShowcaseMembers({
+      query: { page: 0, size: 50, sort: "-name" },
     });
 
     const names = page.content.map((m) => m.name);
     expect(names).toEqual([...names].sort((a, b) => b.localeCompare(a)));
+    // And it is genuinely reversed, not merely "some order" that a no-op sort
+    // would also satisfy on an already-ordered fixture.
+    expect(names[0]).not.toBe(names[names.length - 1]);
+    expect(names[0].localeCompare(names[1])).toBeGreaterThan(0);
   });
 
   it("counts consistently with what it pages", async ({ expect }) => {

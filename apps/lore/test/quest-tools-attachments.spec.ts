@@ -177,124 +177,184 @@ describe("Lore MCP: quest attachments", () => {
     expect(opened.content[0].text).toContain("p75 = 118ms");
   });
 
-  it("quest_attachment_add round-trips a png through quest_attachment_get", async () => {
-    const { questTools, quest, call } = await setup();
+  it("reads a png back through quest_attachment_get", async () => {
+    const { questTools, quest, call, attach } = await setup();
 
-    const added = await call(questTools.quest_attachment_add, {
-      id: quest.id,
-      name: "p75-after.png",
-      mimeType: "image/png",
-      data: PNG_BYTES.toString("base64"),
-    });
-    expect(added.name).toBe("p75-after.png");
-    expect(added.mimeType).toBe("image/png");
-    expect(added.size).toBe(PNG_BYTES.byteLength);
+    const fileId = await attach("p75-after.png", "image/png", PNG_BYTES);
 
     const opened = await call(questTools.quest_attachment_get, {
       id: quest.id,
-      attachmentId: added.id,
+      attachmentId: fileId,
     });
     expect(opened.content[0].type).toBe("image");
     expect(Buffer.from(opened.content[0].data, "base64")).toEqual(PNG_BYTES);
 
     // And it is listed, so the agent that wrote it can point at it.
     const res = await call(questTools.quest_get, { id: quest.id });
-    expect(res.attachments.map((a: any) => a.id)).toEqual([added.id]);
+    expect(res.attachments.map((a: any) => a.id)).toEqual([fileId]);
   });
 
-  it("round-trips an HTML mockup, decoded on the way back", async () => {
-    const { questTools, quest, call } = await setup();
+  it("reads an HTML mockup back decoded", async () => {
+    const { questTools, quest, call, attach } = await setup();
 
-    const added = await call(questTools.quest_attachment_add, {
-      id: quest.id,
-      name: "Mockup.html",
-      mimeType: "text/html",
-      data: Buffer.from(MOCKUP_HTML, "utf8").toString("base64"),
-    });
-    expect(added.mimeType).toBe("text/html");
+    const fileId = await attach(
+      "Mockup.html",
+      "text/html",
+      Buffer.from(MOCKUP_HTML, "utf8"),
+    );
 
     const opened = await call(questTools.quest_attachment_get, {
       id: quest.id,
-      attachmentId: added.id,
+      attachmentId: fileId,
     });
     expect(opened.content[0].type).toBe("text");
     expect(opened.content[0].text).toContain("<h1>Quest board</h1>");
   });
 
   it("takes a type it cannot render inline, and says so on read", async () => {
-    const { questTools, quest, call } = await setup();
+    const { questTools, quest, call, attach } = await setup();
 
     // This used to be "refuses a type it could not read back": the tool held
     // an eight-type allowlist so that everything an agent could attach, an
     // agent could also read. It cost the quest the files it is worked from
     // to buy a property nobody needed, since an agent attaching a zip knows
     // it attached a zip and the human on the other end is who opens it.
-    const added = await call(questTools.quest_attachment_add, {
-      id: quest.id,
-      name: "bundle.zip",
-      mimeType: "application/zip",
-      data: PNG_BYTES.toString("base64"),
-    });
-    expect(added.mimeType).toBe("application/zip");
+    const fileId = await attach("bundle.zip", "application/zip", PNG_BYTES);
 
     const opened = await call(questTools.quest_attachment_get, {
       id: quest.id,
-      attachmentId: added.id,
+      attachmentId: fileId,
     });
     expect(opened.content[0].text).toContain("not inline-viewable");
   });
 
-  it("refuses a mimeType that is not a media type", async () => {
-    const { questTools, quest, call } = await setup();
+  /*
+    ⚠️ `quest_attachment_add` moves NO bytes since 2026-09-06. Base64 through
+    a JSON-RPC frame capped every attachment at 2 MB while the bucket behind
+    it accepts ten, so the bytes went to `lore attachments push` and the tool
+    kept its name, its description and a target check. The cases it used to
+    carry - a media type that is not one, a payload that is not base64 - went
+    with `AttachmentUploadService`; the CLI checks the first and the second
+    cannot exist any more.
+  */
+  describe("quest_attachment_add", () => {
+    it("uploads nothing and answers with the command that does", async () => {
+      const { questTools, project, quest, call } = await setup();
 
-    // The shape is checked because this value is stored and later handed
-    // back as the download's `Content-Type`. A header separator in it has
-    // no business reaching storage.
-    await expect(
-      call(questTools.quest_attachment_add, {
+      const answer = await call(questTools.quest_attachment_add, {
         id: quest.id,
-        name: "Mockup.html",
-        mimeType: "text/html\r\nX-Injected: 1",
-        data: Buffer.from(MOCKUP_HTML, "utf8").toString("base64"),
-      }),
-    ).rejects.toThrowError(/not a media type/i);
-  });
+        file: "./p75-after.png",
+      });
 
-  it("refuses a payload that is not base64", async () => {
-    const { questTools, quest, call } = await setup();
+      expect(answer.command).toBe(
+        `lore attachments push ./p75-after.png --project ${project.id} --quest ${quest.shortId}`,
+      );
+      expect(answer.projectId).toBe(project.id);
+      expect(answer.shortId).toBe(quest.shortId);
 
-    await expect(
-      call(questTools.quest_attachment_add, {
+      // Nothing was attached: the quest is exactly as it was.
+      const after = await call(questTools.quest_get, { id: quest.id });
+      expect(after.attachments).toEqual([]);
+    });
+
+    /**
+     * ⚠️ The global `id` is what an agent holding a reference passes, and the
+     * CLI does not take one. The answer has to carry the shortId or the line
+     * it prints is not runnable.
+     */
+    it("turns a global id into the shortId the command addresses", async () => {
+      const { questTools, alepha, asUser, call, OWNER } = await setup();
+
+      // A SECOND project, so its first quest's per-project shortId restarts at
+      // 1 while the global id keeps counting. In one project the two are equal
+      // and this assertion would pass on a tool answering with either.
+      const other = await asUser(OWNER, () =>
+        alepha
+          .inject(ProjectController)
+          .createProject({ body: { title: "Second" } } as any),
+      );
+      const quest = await call(questTools.quest_create, {
+        project: other.id,
+        title: "Elsewhere",
+        description: "x",
+        area: "core",
+        priority: "medium",
+      });
+      expect(quest.id).not.toBe(quest.shortId);
+
+      const answer = await call(questTools.quest_attachment_add, {
         id: quest.id,
-        name: "notes.txt",
-        mimeType: "text/plain",
-        data: "this is not base64!!",
-      }),
-    ).rejects.toThrowError(/not valid base64/i);
-  });
+        file: "./chart.png",
+      });
 
-  it("accepts an attachment on a completed quest", async () => {
-    const { questTools, project, call } = await setup();
-
-    const closed = await call(questTools.quest_create, {
-      project: project.id,
-      title: "Already shipped",
-      description: "x",
-      area: "core",
-      priority: "medium",
-      accept: true,
+      expect(answer.shortId).toBe(quest.shortId);
+      expect(answer.projectId).toBe(other.id);
+      expect(answer.command).toContain(`--quest ${quest.shortId}`);
     });
-    await call(questTools.quest_complete, { id: closed.id, message: "done" });
 
-    // Evidence arrives at the end, which is the whole reason this is
-    // allowed where every other write on a completed quest is not.
-    const added = await call(questTools.quest_attachment_add, {
-      id: closed.id,
-      name: "proof.png",
-      mimeType: "image/png",
-      data: PNG_BYTES.toString("base64"),
+    it("quotes a path a shell would otherwise split", async () => {
+      const { questTools, quest, call } = await setup();
+
+      const answer = await call(questTools.quest_attachment_add, {
+        id: quest.id,
+        file: "./my notes.csv",
+        name: "notes for #Q1.csv",
+      });
+
+      expect(answer.command).toContain("'./my notes.csv'");
+      expect(answer.command).toContain("--name 'notes for #Q1.csv'");
     });
-    expect(added.id).toBeTruthy();
+
+    /**
+     * The gap the returned message exists to close: the MCP session is
+     * authenticated as the user and a shell is not, so an agent with no
+     * credential would read the CLI's refusal as a broken CLI.
+     */
+    it("names both ways to authenticate the shell it sends you to", async () => {
+      const { questTools, quest, call } = await setup();
+
+      const answer = await call(questTools.quest_attachment_add, {
+        id: quest.id,
+        file: "./chart.png",
+      });
+
+      expect(answer.authentication).toContain("lore login");
+      expect(answer.authentication).toContain("LORE_API_KEY");
+    });
+
+    it("refuses a quest that is not in the project", async () => {
+      const { questTools, project, call } = await setup();
+
+      await expect(
+        call(questTools.quest_attachment_add, {
+          shortId: 9999,
+          project: project.id,
+          file: "./chart.png",
+        }),
+      ).rejects.toThrow();
+    });
+
+    it("answers for a completed quest", async () => {
+      const { questTools, project, call } = await setup();
+
+      const closed = await call(questTools.quest_create, {
+        project: project.id,
+        title: "Already shipped",
+        description: "x",
+        area: "core",
+        priority: "medium",
+        accept: true,
+      });
+      await call(questTools.quest_complete, { id: closed.id, message: "done" });
+
+      // Evidence arrives at the end, which is the whole reason attaching to a
+      // completed quest is allowed where every other write on one is not.
+      const answer = await call(questTools.quest_attachment_add, {
+        id: closed.id,
+        file: "./proof.png",
+      });
+      expect(answer.command).toContain(`--quest ${closed.shortId}`);
+    });
   });
 
   it("refuses a file id that is not on this quest", async () => {

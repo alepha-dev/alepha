@@ -15,23 +15,23 @@ import { LoreMcp } from "../src/mcp/index.ts";
 import { FolioTools } from "../src/mcp/tools/FolioTools.ts";
 
 /**
- * Uploading a folio attachment over MCP.
+ * Attaching a file to a folio, as MCP describes it.
  *
  * The folio surface used to be list / rename / delete only: an agent could
  * organize what a human had uploaded but could not put a file there itself,
  * so a diagram or a CSV an agent produced had to be pasted into the body as
- * text or dropped entirely. Quests got the base64 upload first
- * (`quest-tools-attachments.spec.ts`); this is the same channel for folios,
- * with the folio's own placement rules on top.
+ * text or dropped entirely. Quests got a base64 upload first, folios
+ * followed, and then the BYTES left both: `folio_attachment_add` now returns
+ * the `lore attachments push` line rather than carrying the file, because
+ * base64 inside a JSON-RPC frame capped every attachment at 2 MB while this
+ * bucket has no ceiling at all.
+ *
+ * What is left here is the two checks the tool still makes before sending a
+ * caller to a shell, and the line it composes. The bytes are covered by
+ * `packages/@alepha/lore/src/cli/__tests__/AttachmentUploader.spec.ts`.
  *
  * Same identity-injection shim as `quest-tools-attachments.spec.ts`.
  */
-
-// 1x1 transparent PNG.
-const PNG_BYTES = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-  "base64",
-);
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -80,98 +80,84 @@ const setup = async () => {
 };
 
 describe("Lore MCP: folio attachments", () => {
-  it("folio_attachment_add stores the bytes and folio_attachment_list finds them", async () => {
+  /*
+    ⚠️ `folio_attachment_add` moves NO bytes since 2026-09-06. Base64 through
+    a JSON-RPC frame capped every attachment at 2 MB while `folioBucket` sets
+    no ceiling at all, so the bytes went to `lore attachments push` and the
+    tool kept its name, its description and its two checks. The cases that
+    went with `AttachmentUploadService` - a media type that is not one, a
+    payload that is not base64, a payload over a ceiling that no longer
+    exists - are gone with it; the first is checked by the CLI and the other
+    two cannot happen any more.
+
+    The auto-suffix is still real, and it now happens where the bytes do:
+    `AttachmentUploader.spec.ts` asserts the stored name comes back from
+    `register` rather than being echoed.
+  */
+  it("uploads nothing and answers with the command that does", async () => {
     const { folioTools, project, folio, call } = await setup();
 
-    const added = await call(folioTools.folio_attachment_add, {
+    const answer = await call(folioTools.folio_attachment_add, {
       project: project.id,
       folio_shortId: folio.shortId,
-      name: "p75-after.png",
-      mimeType: "image/png",
-      data: PNG_BYTES.toString("base64"),
+      file: "./p75-after.png",
     });
 
-    expect(added.name).toBe("p75-after.png");
-    expect(added.mimeType).toBe("image/png");
-    expect(added.size).toBe(PNG_BYTES.byteLength);
-    expect(added.shortId).toBeGreaterThan(0);
-    // The reference the agent has to write into the body for the file to
-    // render — the whole point of uploading it from an agent.
-    expect(added.path).toBe("assets/p75-after.png");
+    expect(answer.command).toBe(
+      `lore attachments push ./p75-after.png --project ${project.id} --folio ${folio.shortId}`,
+    );
+    expect(answer.projectId).toBe(project.id);
+    expect(answer.shortId).toBe(folio.shortId);
 
+    // Nothing was stored: the folio has no attachments.
     const listed = await call(folioTools.folio_attachment_list, {
       project: project.id,
       folio_shortId: folio.shortId,
     });
-    expect(listed.attachments).toHaveLength(1);
-    expect(listed.attachments[0]).toMatchObject({
-      shortId: added.shortId,
-      name: "p75-after.png",
-      mimeType: "image/png",
-      size: PNG_BYTES.byteLength,
-    });
+    expect(listed.attachments).toEqual([]);
   });
 
-  it("auto-suffixes a name already taken on the same folio", async () => {
+  it("carries --name through, quoted when a shell would split it", async () => {
     const { folioTools, project, folio, call } = await setup();
 
-    const params = {
+    const answer = await call(folioTools.folio_attachment_add, {
       project: project.id,
       folio_shortId: folio.shortId,
-      name: "chart.png",
-      mimeType: "image/png",
-      data: PNG_BYTES.toString("base64"),
-    };
-    await call(folioTools.folio_attachment_add, params);
-    const second = await call(folioTools.folio_attachment_add, params);
+      file: "./out/chart.png",
+      name: "p75 after.png",
+    });
 
-    // `register` renames on collision, so the tool must report the name the
-    // file actually got — an agent that echoed its own input would write a
-    // reference to a file that is not there.
-    expect(second.name).toBe("chart (1).png");
-    expect(second.path).toBe("assets/chart%20%281%29.png");
+    expect(answer.command).toContain("./out/chart.png");
+    expect(answer.command).toContain("--name 'p75 after.png'");
   });
 
-  it("refuses a mimeType that is not a media type", async () => {
+  /**
+   * The gap the returned message exists to close: the MCP session is
+   * authenticated as the user and a shell is not.
+   */
+  it("names both ways to authenticate the shell it sends you to", async () => {
     const { folioTools, project, folio, call } = await setup();
+
+    const answer = await call(folioTools.folio_attachment_add, {
+      project: project.id,
+      folio_shortId: folio.shortId,
+      file: "./chart.png",
+    });
+
+    expect(answer.authentication).toContain("lore login");
+    expect(answer.authentication).toContain("LORE_API_KEY");
+  });
+
+  it("refuses a folio that does not exist, rather than sending you to a shell", async () => {
+    const { folioTools, project, call } = await setup();
 
     await expect(
       call(folioTools.folio_attachment_add, {
         project: project.id,
-        folio_shortId: folio.shortId,
-        name: "notes.html",
-        mimeType: "text/html\r\nX-Injected: 1",
-        data: PNG_BYTES.toString("base64"),
+        folio_shortId: 9999,
+        file: "./chart.png",
       }),
-    ).rejects.toThrowError(/not a media type/i);
-  });
-
-  it("refuses a payload that is not base64", async () => {
-    const { folioTools, project, folio, call } = await setup();
-
-    await expect(
-      call(folioTools.folio_attachment_add, {
-        project: project.id,
-        folio_shortId: folio.shortId,
-        name: "notes.txt",
-        mimeType: "text/plain",
-        data: "this is not base64!!",
-      }),
-    ).rejects.toThrowError(/not valid base64/i);
-  });
-
-  it("refuses a payload over the size ceiling", async () => {
-    const { folioTools, project, folio, call } = await setup();
-
-    await expect(
-      call(folioTools.folio_attachment_add, {
-        project: project.id,
-        folio_shortId: folio.shortId,
-        name: "huge.bin",
-        mimeType: "application/octet-stream",
-        data: Buffer.alloc(2 * 1024 * 1024 + 1).toString("base64"),
-      }),
-    ).rejects.toThrowError(/byte limit/i);
+    ).rejects.toThrow();
   });
 
   it("refuses a protected folio, the way the editor does", async () => {
@@ -181,8 +167,9 @@ describe("Lore MCP: folio attachments", () => {
     // A protected folio's `content` is a client-side encryption envelope the
     // server cannot read. The editor hides its upload handler for exactly
     // that reason (`useFolioImageUpload` returns undefined), and a rename
-    // there cannot repoint the `assets/` references either. MCP must not be
-    // the door around it.
+    // there cannot repoint the `assets/` references either. Neither MCP nor
+    // the CLI is the door around it - the CLI repeats this refusal rather
+    // than relying on it, and `AttachmentUploader.spec.ts` pins that.
     const secret = await asUser(OWNER, () =>
       folioApi.create({
         body: {
@@ -198,10 +185,8 @@ describe("Lore MCP: folio attachments", () => {
       call(folioTools.folio_attachment_add, {
         project: project.id,
         folio_shortId: secret.shortId,
-        name: "leak.png",
-        mimeType: "image/png",
-        data: PNG_BYTES.toString("base64"),
+        file: "./leak.png",
       }),
-    ).rejects.toThrowError(/protected/i);
+    ).rejects.toThrow(/protected/i);
   });
 });

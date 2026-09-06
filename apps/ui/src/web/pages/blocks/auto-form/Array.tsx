@@ -25,13 +25,17 @@ const KNOBS = z.object({
 });
 
 const schema = z.object({
+  // ⚠️ `createNewEntry`, or these are selects over an EMPTY list: an array of
+  // scalars renders as a multi-select, and one with no `items` opens on "No
+  // results." and can never be given a value. Seeded `tags` hid it here - two
+  // values showed, and there was no way to add a third.
   tags: z
     .array(z.string())
-    .meta({ title: "Tags" })
-    .describe("Scalars: one field, many values."),
+    .meta({ title: "Tags", $control: { createNewEntry: true } })
+    .describe("Scalars: one field, many values, invented as you type."),
   ports: z
     .array(z.integer())
-    .meta({ title: "Ports" })
+    .meta({ title: "Ports", $control: { createNewEntry: true } })
     .describe("Still a tag list, still numeric per entry."),
   environments: z
     .array(z.enum(["dev", "staging", "prod"]))

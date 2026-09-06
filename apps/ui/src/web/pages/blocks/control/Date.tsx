@@ -14,6 +14,14 @@ import { Showcase } from "@/web/components/Showcase.tsx";
  * years - because the picker's unit is the month it is showing. `birthdate` is
  * the shorthand for the one range everybody needs: the last 120 years, with a
  * year dropdown.
+ *
+ * ⚠️ There is no repeated-picker field here, and that is not an omission.
+ * `Control` routes an array by its ELEMENT: an array of objects becomes
+ * `ControlArray`, and an array of anything else becomes a multi-select. An
+ * array of date-formatted strings is therefore a select, not a row of
+ * calendars - and with no `items` it is a select over an empty list, which
+ * opens on "No results." and can never be given a value. It was on this page
+ * claiming to "repeat the picker"; it did nothing at all.
  */
 const KNOBS = z.object({
   disabled: z.boolean().default(false).meta({ title: "disabled" }),
@@ -41,10 +49,6 @@ const schema = z.object({
     .meta({ format: "date", title: "Starts on" })
     .describe("A second date, for comparing two in a row.")
     .optional(),
-  dates: z
-    .array(z.string().meta({ format: "date" }))
-    .meta({ title: "Dates" })
-    .describe("An array of dates repeats the picker, not the text field."),
 });
 
 const DatePage = () => {
@@ -89,10 +93,6 @@ const DatePage = () => {
 
             <Group title="Side by side">
               <Control input={form.input.startsOn} {...shared} />
-            </Group>
-
-            <Group title="Repeated">
-              <Control input={form.input.dates} {...shared} />
             </Group>
           </div>
         );

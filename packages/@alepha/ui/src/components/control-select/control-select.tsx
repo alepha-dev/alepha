@@ -618,7 +618,7 @@ function Combobox(props: ComboboxProps) {
   // `data` set — or for freshly created entries that never existed in `data`.
   const labelCache = useRef(new Map<string, string>());
 
-  const options: ComboOption[] = props.data.map((o) => ({
+  const dataOptions: ComboOption[] = props.data.map((o) => ({
     value: optValue(o),
     label: optLabel(o),
     description: optDesc(o),
@@ -639,18 +639,72 @@ function Combobox(props: ComboboxProps) {
       : [];
 
   const labelFor = (val: string) =>
-    options.find((o) => o.value === val)?.label ??
+    dataOptions.find((o) => o.value === val)?.label ??
     labelCache.current.get(val) ??
     val;
+
+  /**
+   * Rows for values that are selected and have no option to be selected FROM.
+   *
+   * ⚠️ Without these the popup lists strictly `props.data`, so a selected
+   * value absent from it is counted by the trigger, ticked nowhere, and
+   * **cannot be deselected from the list it is missing from** (feedback
+   * #2115). Two ways in, and the component was already half-aware of both -
+   * `labelCache` exists for exactly these values and says so:
+   *
+   * - **`createNewEntry`.** A created entry never existed in `data`, and the
+   *   caller usually cannot add it: the common declaration is a static
+   *   `items: [...]` inside a zod `.meta({ $control })`, which has no state
+   *   to append to, and `useForm` anchors its schema at mount anyway. So the
+   *   feature was broken by construction for every such caller rather than
+   *   missing in one demo page.
+   * - **`onSearch` / server mode.** The upstream query narrows `data`, so
+   *   picking A and then typing something that excludes it takes A's row away
+   *   while the trigger still counts it.
+   *
+   * Labelled through `labelFor`, which is why the cache is read there and not
+   * here: a created value's label is whatever was typed, and a server-dropped
+   * one's is whatever it had when it was picked.
+   *
+   * **Pinned above the real options**, rather than interleaved: a created
+   * value has no place in the source list's order, and inventing one would
+   * imply an ordering `data` does not have.
+   */
+  const orphans: ComboOption[] = selected
+    .filter((val) => !dataOptions.some((o) => o.value === val))
+    .map((val) => ({ value: val, label: labelFor(val) }));
+
+  /**
+   * What the popup may show: the orphans, then `props.data`.
+   *
+   * ⚠️ The injection is here rather than in `filtered`, and that is what makes
+   * `showCreate` stop offering a Create row for a value that has already been
+   * created - its guard reads `options`.
+   */
+  const options: ComboOption[] = orphans.length
+    ? [...orphans, ...dataOptions]
+    : dataOptions;
 
   // Server mode (`onSearch`) filters upstream; for static lists we filter on
   // the visible label — never the value/id (that was the cmdk bug).
   const serverMode = Boolean(props.onSearch);
   const q = query.trim().toLowerCase();
-  const filtered =
-    serverMode || !q
-      ? options
-      : options.filter((o) => o.label.toLowerCase().includes(q));
+  const matchesQuery = (o: ComboOption) => o.label.toLowerCase().includes(q);
+
+  // ⚠️ An orphan is filtered by the typed query like any other row, which is a
+  // DECISION rather than an accident of where the injection happens: a search
+  // that kept showing rows it did not match would stop being a search. With an
+  // empty query every orphan is shown, which is the case that matters - it is
+  // how a created value is deselected.
+  //
+  // And it is filtered HERE even in server mode. The server narrowed `data`
+  // and knows nothing about a row this component invented, so leaving orphans
+  // out of the local pass would make the same typed query mean two different
+  // things in one list.
+  const filtered = [
+    ...(q ? orphans.filter(matchesQuery) : orphans),
+    ...(serverMode || !q ? dataOptions : dataOptions.filter(matchesQuery)),
+  ];
 
   const showCreate =
     Boolean(props.createNewEntry) &&
