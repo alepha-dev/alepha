@@ -13,13 +13,22 @@ import { expect, test } from "@playwright/test";
  * So these specs assert CONTENT, never just that a page returned 200.
  */
 test.describe("shell", () => {
-  test("home lists both subjects in the sidebar", async ({ page }) => {
+  test("home leads with the hero and lists both subjects in the sidebar", async ({
+    page,
+  }) => {
     await page.goto("/");
 
     await expect(
       page.getByRole("heading", {
-        name: "Every component, with its variants.",
+        name: "Blocks for complex & professional use cases.",
       }),
+    ).toBeVisible();
+
+    // The version is the build's own, read off `alepha.meta`. Asserting the
+    // shape rather than a number: pinning one would fail on the next release,
+    // and an empty pill is what a broken read actually looks like.
+    await expect(
+      page.getByRole("link", { name: /^v\S+ Changelog$/ }),
     ).toBeVisible();
 
     // Home sits in an unlabelled group, so these two are the only headings
@@ -27,6 +36,62 @@ test.describe("shell", () => {
     const nav = page.locator('[data-sidebar="group-label"]');
     await expect(nav.filter({ hasText: "Blocks" })).toBeVisible();
     await expect(nav.filter({ hasText: "Pages" })).toBeVisible();
+  });
+
+  test("the hero's search field opens the palette with the caret in it", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    // The field carries its own visible label; the top bar's magnifier is
+    // named "Search". Two controls, one palette, and the names keep them
+    // apart here.
+    await page
+      .getByRole("button", { name: /search blocks and pages/i })
+      .click();
+
+    const palette = page.getByRole("dialog");
+    await expect(palette).toBeVisible();
+
+    // Regression guard: the dialog does NOT focus the field on its own, and
+    // without the caret in it the palette is mouse-only - no typing, no
+    // arrows, no Enter - while still advertising ⌘K.
+    const input = palette.getByPlaceholder("Search blocks and pages…");
+    await expect(input).toBeFocused();
+
+    await input.fill("settings");
+    await expect(palette.getByRole("option")).toHaveCount(1);
+  });
+
+  test("the top bar's magnifier opens the palette away from home", async ({
+    page,
+  }) => {
+    // The point of mounting the palette in the layout rather than in the hero:
+    // a reader deep in `/pages/*` has no search field on the page, and this
+    // button and ⌘K are the only ways in.
+    await page.goto("/pages/admin/jobs");
+
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+
+    const palette = page.getByRole("dialog");
+    await expect(palette).toBeVisible();
+    await expect(
+      palette.getByPlaceholder("Search blocks and pages…"),
+    ).toBeFocused();
+  });
+
+  test("⌘K opens the palette and Enter follows the selection", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/table");
+
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    await page.keyboard.type("audit");
+    await page.keyboard.press("Enter");
+
+    await expect(page).toHaveURL(/\/pages\/admin\/audits$/);
   });
 
   test("the top bar carries a working colour-mode control", async ({

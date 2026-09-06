@@ -3,167 +3,13 @@ import { ButtonDark } from "@alepha/ui/components/button-dark/button-dark";
 import { ButtonTheme } from "@alepha/ui/components/button-theme/button-theme";
 import { TooltipProvider } from "@alepha/ui/components/ui/tooltip";
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
+import { useAlepha } from "alepha/react";
 import { NestedView, useRouterState } from "alepha/react/router";
 import { ColorScheme } from "alepha/react/ui";
-import {
-  FormInput,
-  Home as HomeIcon,
-  LayoutDashboard,
-  MessageSquareWarning,
-  MousePointerClick,
-  PanelsTopLeft,
-  ShieldCheck,
-  SlidersHorizontal,
-  Table2,
-  UserCog,
-} from "lucide-react";
-import type { ComponentType, SVGProps } from "react";
 
-interface NavLeaf {
-  href: string;
-  label: string;
-  icon?: ComponentType<SVGProps<SVGSVGElement>>;
-}
-
-interface NavEntry {
-  label: string;
-  icon?: ComponentType<SVGProps<SVGSVGElement>>;
-  href?: string;
-  children?: NavLeaf[];
-}
-
-interface NavGroup {
-  /**
-   * An empty label renders the items with no heading above them, which is what
-   * puts Home on its own at the top.
-   */
-  label: string;
-  items: NavEntry[];
-}
-
-/**
- * Two subjects: the components a page is built FROM, and the pages built out of
- * them. Home sits above both in an unlabelled group.
- *
- * ⚠️ An entry with `children` becomes a COLLAPSIBLE group and its own `href` is
- * ignored, so a parent must never be a destination.
- */
-const NAV: NavGroup[] = [
-  {
-    label: "",
-    items: [{ href: "/", label: "Home", icon: HomeIcon }],
-  },
-  {
-    label: "Blocks",
-    items: [
-      {
-        label: "Layout",
-        icon: PanelsTopLeft,
-        children: [
-          { href: "/blocks/shell", label: "App shell" },
-          { href: "/blocks/sidebar", label: "Sidebar" },
-          { href: "/blocks/detail", label: "Detail" },
-          { href: "/blocks/plate", label: "Plate" },
-          { href: "/blocks/settings", label: "Settings" },
-        ],
-      },
-      {
-        label: "Control",
-        icon: SlidersHorizontal,
-        children: [
-          { href: "/blocks/control/text", label: "Text" },
-          { href: "/blocks/control/number", label: "Number" },
-          { href: "/blocks/control/date", label: "Date" },
-          { href: "/blocks/control/select", label: "Select" },
-        ],
-      },
-      {
-        label: "AutoForm",
-        icon: FormInput,
-        children: [
-          { href: "/blocks/auto-form/basic", label: "Basic" },
-          { href: "/blocks/auto-form/object", label: "Object" },
-          { href: "/blocks/auto-form/array", label: "Array" },
-        ],
-      },
-      { href: "/blocks/table", label: "Table", icon: Table2 },
-      {
-        label: "Messages",
-        icon: MessageSquareWarning,
-        children: [
-          { href: "/blocks/dialog", label: "Dialog" },
-          { href: "/blocks/toast", label: "Toast" },
-        ],
-      },
-      { href: "/blocks/buttons", label: "Buttons", icon: MousePointerClick },
-    ],
-  },
-  {
-    label: "Pages",
-    items: [
-      {
-        label: "Auth",
-        icon: ShieldCheck,
-        children: [
-          { href: "/pages/auth/login", label: "Sign in" },
-          { href: "/pages/auth/register", label: "Register" },
-          { href: "/pages/auth/reset", label: "Reset password" },
-          { href: "/pages/auth/verify", label: "Verify email" },
-          { href: "/pages/auth/mfa", label: "Second factor" },
-        ],
-      },
-      {
-        label: "Account",
-        icon: UserCog,
-        children: [
-          { href: "/pages/account/profile", label: "Profile" },
-          { href: "/pages/account/security", label: "Security" },
-          { href: "/pages/account/sessions", label: "Sessions" },
-          { href: "/pages/account/keys", label: "API keys" },
-          { href: "/pages/account/connections", label: "Connections" },
-        ],
-      },
-      {
-        label: "Admin",
-        icon: LayoutDashboard,
-        children: [
-          { href: "/pages/admin/dashboard", label: "Dashboard" },
-          { href: "/pages/admin/users", label: "Users" },
-          { href: "/pages/admin/sessions", label: "Sessions" },
-          { href: "/pages/admin/keys", label: "API keys" },
-          { href: "/pages/admin/jobs", label: "Jobs" },
-          { href: "/pages/admin/files", label: "Files" },
-          { href: "/pages/admin/notifications", label: "Notifications" },
-          { href: "/pages/admin/parameters", label: "Parameters" },
-          { href: "/pages/admin/analytics", label: "Analytics" },
-          { href: "/pages/admin/payments", label: "Payments" },
-          { href: "/pages/admin/audits", label: "Audit log" },
-        ],
-      },
-    ],
-  },
-];
-
-const findCrumbs = (pathname: string): { label: string; href?: string }[] => {
-  for (const group of NAV) {
-    for (const entry of group.items) {
-      if (entry.href === pathname) {
-        return group.label
-          ? [{ label: group.label }, { label: entry.label }]
-          : [{ label: entry.label }];
-      }
-      const child = entry.children?.find((c) => c.href === pathname);
-      if (child) {
-        return [
-          { label: group.label },
-          { label: entry.label },
-          { label: child.label },
-        ];
-      }
-    }
-  }
-  return [];
-};
+import { NavPalette } from "./components/NavPalette.tsx";
+import { NavPaletteButton } from "./components/NavPaletteButton.tsx";
+import { findCrumbs, NAV } from "./nav.ts";
 
 const isActive = (href: string, pathname: string) => href === pathname;
 
@@ -187,6 +33,7 @@ const isActive = (href: string, pathname: string) => href === pathname;
  * `min-h-0 flex-1 overflow-hidden` and the scrolling is the preview's own.
  */
 export const Layout = () => {
+  const alepha = useAlepha();
   const state = useRouterState();
 
   const pathname = state.url.pathname;
@@ -196,26 +43,63 @@ export const Layout = () => {
     <TooltipProvider>
       <DialogProvider>
         <ColorScheme />
+        {/*
+          Mounted here, above the router's outlet, so ⌘K and the palette exist
+          on every page rather than only on the one that happens to show a
+          search field.
+        */}
+        <NavPalette />
         <div className="flex h-svh flex-col overflow-hidden">
           <AppShell
             fill
             variant="floating"
             topbarActions={
               <>
+                <NavPaletteButton />
                 <ButtonTheme />
                 <ButtonDark />
               </>
             }
             brand={
+              /*
+                The accessible name is on the ANCHOR, not on the image: both
+                text lines are `display: none` in icon mode, so an `alt`
+                carrying the name would be the only label in one state and a
+                duplicate of the visible text in the other.
+              */
               <a
                 href="/"
-                className="flex items-center gap-2 px-2 py-2 font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+                aria-label="Alepha UI"
+                className="flex items-center gap-2 px-2 py-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
               >
-                <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded">
-                  α
-                </span>
-                <span className="truncate group-data-[collapsible=icon]:hidden">
-                  Alepha UI
+                {/*
+                  `public/logo.svg` carries a `viewBox`, unlike the copy in
+                  `packages/alepha/assets` it was taken from: without one the
+                  artwork is drawn at 1 user unit per pixel and a 32px box
+                  shows its top-left corner instead of the mark.
+                  `object-contain` is what keeps the 300x241 drawing centred in
+                  a square box.
+                */}
+                <img
+                  src="/logo.svg"
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="size-8 shrink-0 object-contain"
+                />
+                <span className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
+                  <span className="truncate text-sm leading-tight font-semibold">
+                    Alepha UI
+                  </span>
+                  {/*
+                    The FRAMEWORK's version, which is what `meta.version` is
+                    set to in `alepha.config.ts` - the showcase carries none of
+                    its own. `latest` outside a build (vitest, a `tsx` script),
+                    so it never renders empty.
+                  */}
+                  <span className="text-muted-foreground truncate text-xs leading-tight">
+                    v{alepha.meta.version}
+                  </span>
                 </span>
               </a>
             }
