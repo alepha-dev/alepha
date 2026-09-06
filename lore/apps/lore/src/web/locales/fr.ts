@@ -1086,9 +1086,15 @@ export default {
   "project.menu.apps.unavailable": "Liste indisponible",
 
   "apps.filter.search": "Rechercher",
-  "apps.filter.allApps": "Toutes les apps",
-  "apps.filter.reporting": "Actives",
-  "apps.filter.silent": "Silencieuses",
+  "apps.status.reporting": "Remonte des données",
+  "apps.status.silent": "Silencieuse depuis plus d\u2019un jour",
+  "apps.status.none": "Pas de sigil, rien ne remonte",
+  "apps.empty": "Aucune app pour l\u2019instant",
+  "apps.empty.description":
+    "Une app est une copie déployée : quelle application, et quelle copie. Créez-en une pour la suivre ici.",
+  "apps.unavailable": "Impossible de charger les apps",
+  "apps.unavailable.description":
+    "La liste n\u2019a pas pu être lue. Ce n\u2019est pas la même chose que ne pas en avoir : rechargez pour réessayer.",
   "apps.create.title": "Nouvelle app",
   "apps.create.description":
     "Une ligne par copie déployée : l’application, et de quelle copie il s’agit. Rien n’est généré ici.",
@@ -1106,9 +1112,6 @@ export default {
   "apps.table.name": "App",
   "apps.table.env": "Env",
   "apps.table.address": "Adresse",
-  "apps.table.reports": "Remontées",
-  "apps.table.lastSeen": "Dernier rapport",
-  "apps.table.token": "Jeton",
   "app.tab.dashboard": "Vue d'ensemble",
   "app.tab.analytics": "Audience",
   "app.tab.vitals": "Vitals",
@@ -1370,8 +1373,6 @@ export default {
   "blights.status.resolved": "Résolu",
   "blights.status.quest": "Transmis à une quête",
 
-  "sigils.empty":
-    "Aucune application enrôlée. Tant qu’il n’y en a pas, rien ne peut remonter ici.",
   "sigils.token.title":
     "Copiez ce jeton maintenant : il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, seule variable nécessaire. Ajoutez SIGIL_SINK pointant vers cette instance si ce n’est pas le collecteur par défaut de l’application.",
   "sigils.token.copy": "Copier le jeton",
