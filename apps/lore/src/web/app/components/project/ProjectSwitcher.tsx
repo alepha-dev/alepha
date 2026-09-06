@@ -80,7 +80,7 @@ const ProjectSwitcher = () => {
             side="bottom"
             sideOffset={4}
             // No width class here on purpose: `DropdownMenuContent` already
-            // carries `w-(--anchor-width)`, and since `cn()` is tailwind-merge
+            // carries `w-(--anchor-width)`, and since `cn()` resolves conflicts
             // any `w-*` passed in REPLACES it. This used to pass
             // `w-(--radix-dropdown-menu-trigger-width)` — a variable nothing in
             // this codebase defines — which silently overrode the working
