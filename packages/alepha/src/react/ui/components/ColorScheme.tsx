@@ -26,7 +26,7 @@ const FONT_LINK_ID = "alepha-theme-fonts";
  * <ColorScheme />
  */
 export const ColorScheme = () => {
-  const { resolved } = useColorMode();
+  const { mode, resolved } = useColorMode();
   const { theme } = useTheme();
   const [list] = useStore(uiThemeListAtom);
 
@@ -39,6 +39,22 @@ export const ColorScheme = () => {
     if (typeof document === "undefined") return;
     document.documentElement.classList.toggle("dark", resolved === "dark");
   }, [resolved]);
+
+  /**
+   * The UNRESOLVED preference, for the things `.dark` cannot express.
+   *
+   * `.dark` says what the page looks like; it cannot say why. "System, which
+   * resolved to dark" and "dark, chosen deliberately" produce the same class,
+   * so a three-state control cannot draw itself from it.
+   *
+   * On `<html>`, outside React's tree, which is the whole point: a component
+   * that renders the same markup and lets CSS choose between the copies cannot
+   * disagree with prerendered HTML at hydration. See `ButtonDark`.
+   */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.setAttribute("data-color-mode", mode);
+  }, [mode]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;

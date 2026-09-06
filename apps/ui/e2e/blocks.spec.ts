@@ -121,6 +121,51 @@ test.describe("Showcase", () => {
     expect(inner.sm).toBe(false);
   });
 
+  test("a stored colour mode does not break hydration", async ({ page }) => {
+    // Every page here is `static: true`, so its HTML is built with the DEFAULT
+    // preference. `ButtonDark` used to pick one icon from the colour mode
+    // during render, so a returning visitor's first render disagreed with the
+    // prerendered HTML: React #418 on every cold load, and the prerendered
+    // tree thrown away and re-rendered. It renders every icon now and lets CSS
+    // reveal one, which is what `apps/docs` had already settled on.
+    //
+    // ⚠️ Only a visitor who has ALREADY chosen a mode saw it, which is why a
+    // cold crawl with empty storage stayed green throughout.
+    const errors: string[] = [];
+    page.on("console", (m) => {
+      if (m.type() === "error") errors.push(m.text());
+    });
+    page.on("pageerror", (e) => errors.push(String(e)));
+
+    await page.goto("/blocks/table");
+    await page
+      .getByRole("button", { name: /toggle color mode/i })
+      .first()
+      .click();
+    await expect(page.locator("html")).toHaveAttribute("data-color-mode", /.+/);
+
+    errors.length = 0;
+    // A different prerendered page, loaded cold with the preference stored.
+    await page.goto("/blocks/buttons");
+    await expect(
+      page.getByRole("button", { name: /toggle color mode/i }).first(),
+    ).toBeVisible();
+
+    expect(errors.filter((e) => /#418|#423|[Hh]ydrat/.test(e))).toEqual([]);
+
+    // And exactly one icon shows - the swap must reveal one, not hide all.
+    const visible = await page
+      .getByRole("button", { name: /toggle color mode/i })
+      .first()
+      .evaluate(
+        (b) =>
+          [...b.querySelectorAll("svg")].filter(
+            (s) => s.getBoundingClientRect().width > 0,
+          ).length,
+      );
+    expect(visible).toBe(1);
+  });
+
   test("a props row keeps its label off its input", async ({ page }) => {
     // `Control` in row layout gives a text input a flat 256px, and this panel's
     // rows are 293px: the label column collapsed to 9px and its text rendered
