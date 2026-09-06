@@ -51,20 +51,49 @@ const MyEstateRow = (props: MyEstateRowProps) => {
         </span>
         <span className="text-muted-foreground truncate text-xs">
           {estate.secretPrefix &&
-            tr("account.estates.secretPrefix", {
-              args: [estate.secretPrefix],
-            })}
+            (estate.type === "cloudflare"
+              ? tr("account.estates.tokenPrefix", {
+                  args: [estate.secretPrefix],
+                })
+              : tr("account.estates.secretPrefix", {
+                  args: [estate.secretPrefix],
+                }))}
           {estate.secretPrefix && " · "}
-          {estate.lastSeenAt
-            ? tr("estates.lastSeen", {
-                args: [String(l(estate.lastSeenAt, { date: "lll" }))],
-              })
-            : tr("estates.neverSeen")}
+          {estate.type === "cloudflare"
+            ? estate.credentialCheckedAt
+              ? tr("estates.credential.checked", {
+                  args: [
+                    String(l(estate.credentialCheckedAt, { date: "lll" })),
+                  ],
+                })
+              : tr("estates.credential.neverChecked")
+            : estate.lastSeenAt
+              ? tr("estates.lastSeen", {
+                  args: [String(l(estate.lastSeenAt, { date: "lll" }))],
+                })
+              : tr("estates.neverSeen")}
         </span>
       </span>
-      <Badge variant={estate.online ? "default" : "outline"}>
-        {estate.online ? tr("estates.online") : tr("estates.offline")}
-      </Badge>
+      {/* A cloudflare account never connects, so `online` is always false
+          on it and says nothing. What a person needs there is whether the
+          credential still works (#1630). Read as optional: a bay row has no
+          status and must not be given one. */}
+      {estate.type === "cloudflare" ? (
+        <Badge
+          variant={
+            estate.credentialStatus === "valid" ? "default" : "destructive"
+          }
+          data-testid="my-estate-credential-status"
+        >
+          {estate.credentialStatus === "valid"
+            ? tr("estates.credential.valid")
+            : tr("estates.credential.invalid")}
+        </Badge>
+      ) : (
+        <Badge variant={estate.online ? "default" : "outline"}>
+          {estate.online ? tr("estates.online") : tr("estates.offline")}
+        </Badge>
+      )}
       <Badge variant="secondary">
         {estate.deployAllowed
           ? tr("estates.deploys.allowed")
