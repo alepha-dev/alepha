@@ -408,3 +408,94 @@ describe("EstateCommandService, the sweep", () => {
     ]);
   });
 });
+
+/**
+ * The two verbs that take an instance out of service and put it back.
+ *
+ * ⚠️ The enum they join is the security boundary of the whole connector, and
+ * so is the machine's own `actionKind`. Neither may grow without the other,
+ * which is what the shared wire fixtures pin.
+ */
+describe("EstateCommandService, stop and start", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("queues both verbs with their own timeouts, naming one instance and nothing else", async ({
+    expect,
+  }) => {
+    const user = await createOwner(ctx);
+    const estate = await createEstate(ctx, user, "ovh-verbs");
+    ctx.transport.connected.add(estate.id);
+
+    for (const kind of ["stop", "start"] as const) {
+      const command = await ctx.service.enqueue(
+        estate,
+        { kind, payload: { app: "lore", environment: "production" } },
+        user.id,
+      );
+      expect(command.kind).toBe(kind);
+      expect(command.status).toBe("sent");
+      // The payload names an instance. No path, no shell command, no
+      // argument list: that is what the closed vocabulary means.
+      expect(command.payload).toEqual({
+        app: "lore",
+        environment: "production",
+      });
+      expect(command.payload.artifact).toBeUndefined();
+      expect(command.timeoutSeconds).toBe(
+        EstateCommandService.RUN_TIMEOUT_SECONDS[kind],
+      );
+    }
+    // A start waits for readiness and gets more room than a stop, which is
+    // one `systemctl disable --now` behind a 30 s grace.
+    expect(EstateCommandService.RUN_TIMEOUT_SECONDS.start).toBeGreaterThan(
+      EstateCommandService.RUN_TIMEOUT_SECONDS.stop,
+    );
+  });
+
+  /**
+   * Unlike a refresh or a log tail, a stop is worth delivering late: it is
+   * the operator's intent about the machine, not a question whose answer goes
+   * stale. So it queues while the machine is offline, bounded by the sweep.
+   */
+  it("queues for an offline machine rather than refusing", async ({
+    expect,
+  }) => {
+    const user = await createOwner(ctx);
+    const estate = await createEstate(ctx, user, "ovh-verbs-offline");
+
+    const command = await ctx.service.enqueue(
+      estate,
+      { kind: "stop", payload: { app: "lore", environment: "production" } },
+      user.id,
+    );
+
+    expect(command.status).toBe("pending");
+  });
+
+  /**
+   * `deployAllowed` gates deploys and nothing else. A stop runs no code the
+   * machine did not already have, so gating it on the deploy switch would
+   * leave a stats-only estate with no way to take an app down.
+   */
+  it("is not gated by the deploy switch", async ({ expect }) => {
+    const user = await createOwner(ctx);
+    const estate = await createEstate(ctx, user, "ovh-verbs-statsonly");
+    expect(estate.deployAllowed).toBe(false);
+
+    await expect(
+      ctx.service.enqueue(
+        estate,
+        { kind: "stop", payload: { app: "lore", environment: "production" } },
+        user.id,
+      ),
+    ).resolves.toBeDefined();
+  });
+});

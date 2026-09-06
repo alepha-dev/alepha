@@ -51,6 +51,18 @@ export class EstateCommandService {
    * How long each kind may spend `running`. A restart is a stop and a start;
    * a deploy downloads, verifies and boots, and a large artifact on a slow
    * link needs the room.
+   *
+   * `start` is given more than `stop` because it waits for readiness: the
+   * machine's `readyTimeout` is 60 s and a cold Node boot can use most of it,
+   * while a stop is one `systemctl disable --now` bounded by a 30 s grace.
+   *
+   * ⚠️ A number too small here is not a harmless approximation. The sweep
+   * fails a `running` command past its stamp and IGNORES the later `done`, so
+   * the queue would say "failed" about work the machine finished.
+   *
+   * The `Record<EstateCommandKind, number>` type is what stops a new kind
+   * shipping without one: it refuses to compile until every variant has a
+   * number.
    */
   public static readonly RUN_TIMEOUT_SECONDS: Record<
     EstateCommandKind,
@@ -58,6 +70,8 @@ export class EstateCommandService {
   > = {
     restart: 120,
     deploy: 900,
+    stop: 120,
+    start: 180,
   };
 
   protected readonly log = $logger();

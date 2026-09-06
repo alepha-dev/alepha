@@ -14,8 +14,22 @@ import { estates } from "./estates.ts";
  * #1152): the capability ceiling is this set, not the channel. `deploy` is
  * already code execution as the app user, so the set bounds the blast radius
  * without making it small, and it is not a list to extend casually.
+ *
+ * ⚠️ `stop` is the first verb here that can make a live site go dark from a
+ * click in a browser: everything before it either replaced a running app with
+ * another running app or asked a question. It is durable on the machine (the
+ * intent is persisted and the unit disabled), so the way back is `start` or a
+ * deploy, and the UI confirms destructively before sending it.
+ *
+ * The machine's own `actionKind` in `apps/bay/cmd/bay/actions.go` is the other
+ * half of this enum, and neither may grow without the other.
  */
-export const ESTATE_COMMAND_KINDS = ["restart", "deploy"] as const;
+export const ESTATE_COMMAND_KINDS = [
+  "restart",
+  "deploy",
+  "stop",
+  "start",
+] as const;
 
 export type EstateCommandKind = (typeof ESTATE_COMMAND_KINDS)[number];
 
