@@ -246,6 +246,7 @@ export default {
     "Les folios épinglés sont envoyés en entier à chaque appel project_context.",
 
   "project.menu.create-quest": "Nouvelle quête",
+  "project.menu.create-app": "Nouvelle app",
   "project.menu.create-folio": "Nouveau folio",
   "project.menu.invite-member": "Inviter un membre",
   "project.menu.create-feedback": "Nouveau retour",
@@ -1088,6 +1089,20 @@ export default {
   "apps.filter.allApps": "Toutes les apps",
   "apps.filter.reporting": "Actives",
   "apps.filter.silent": "Silencieuses",
+  "apps.create.title": "Nouvelle app",
+  "apps.create.description":
+    "Une ligne par copie déployée : l’application, et de quelle copie il s’agit. Rien n’est généré ici.",
+  "apps.create.app": "Application",
+  "apps.create.appDescription":
+    "Choisissez une application que vous déployez déjà, ou démarrez-en une nouvelle. Minuscules, chiffres et tirets.",
+  "apps.create.env": "Environnement",
+  "apps.create.envDescription":
+    "Quelle copie : production, staging, b14-production. Texte libre, rien ne l’interprète.",
+  "apps.create.withSigil": "Créer aussi un sigil",
+  "apps.create.withSigilDescription":
+    "Génère la clé avec laquelle cette copie remonte ses données, affichée une seule fois. Vous pourrez toujours en ajouter un plus tard depuis son onglet Réglages.",
+  "apps.create.cancel": "Annuler",
+  "apps.create.submit": "Créer",
   "apps.table.name": "App",
   "apps.table.env": "Env",
   "apps.table.address": "Adresse",

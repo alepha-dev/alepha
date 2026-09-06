@@ -31,6 +31,7 @@ import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import {
+  AppWindow,
   BookOpen,
   Flag,
   Layers,
@@ -49,6 +50,7 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { useInviteMember } from "../shared/useInviteMember.ts";
+import AppCreateDialog from "./apps/AppCreateDialog.tsx";
 import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";
 import QuestCreate from "./quest/QuestCreate.tsx";
 import ReleaseCreateDialog from "./releases/ReleaseCreateDialog.tsx";
@@ -57,6 +59,7 @@ const ProjectActionsCreateButton = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [showEpic, setShowEpic] = useState(false);
   const [showRelease, setShowRelease] = useState(false);
+  const [showApp, setShowApp] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const inviteMember = useInviteMember();
@@ -86,8 +89,16 @@ const ProjectActionsCreateButton = () => {
   // every project read.
   const releasesEnabled = features.milestones;
   const isOwner = project.createdBy === auth.user?.id;
+  // ⚠️ Gated on ownership as well as on the module. Creating an instance is
+  // owner-only server-side, so a member shown this item would open a dialog
+  // that can only answer 403 - the one create in this menu with that property.
+  const appsEnabled = Boolean(features.sigils) && isOwner;
   const hasCreateAction =
-    epicsEnabled || releasesEnabled || folioEnabled || feedbackEnabled;
+    epicsEnabled ||
+    releasesEnabled ||
+    appsEnabled ||
+    folioEnabled ||
+    feedbackEnabled;
 
   const handleInvite = async () => {
     if (!(await inviteMember.invite(project.id, inviteEmail))) return;
@@ -148,6 +159,14 @@ const ProjectActionsCreateButton = () => {
             <DropdownMenuItem onClick={() => setShowRelease(true)}>
               <Flag className="size-4" />
               {tr("project.menu.create-release")}
+            </DropdownMenuItem>
+          )}
+          {/* After New Release, matching the sidebar's Work then Ops order:
+              an app is where the work is deployed, not part of planning it. */}
+          {appsEnabled && (
+            <DropdownMenuItem onClick={() => setShowApp(true)}>
+              <AppWindow className="size-4" />
+              {tr("project.menu.create-app")}
             </DropdownMenuItem>
           )}
           {folioEnabled && (
@@ -240,6 +259,23 @@ const ProjectActionsCreateButton = () => {
             : router.push("projectReleases", {
                 params: { projectSlug: project.slug },
               }));
+        }}
+      />
+      {/* The one create dialog, mounted here and from the Apps list. It
+          navigates to what it made, the way New Epic and New Release do:
+          creating from the header and landing back where you started is the
+          shape that makes people click twice. */}
+      <AppCreateDialog
+        open={showApp}
+        onOpenChange={setShowApp}
+        onCreated={(instance) => {
+          void router.push("app", {
+            params: {
+              projectSlug: project.slug,
+              app: instance.app,
+              env: instance.env,
+            },
+          });
         }}
       />
       <Dialog open={showInvite} onOpenChange={setShowInvite}>

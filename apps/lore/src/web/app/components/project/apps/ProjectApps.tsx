@@ -6,15 +6,18 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Search, SignalHigh } from "lucide-react";
+import { Plus, Search, SignalHigh } from "lucide-react";
+import { useState } from "react";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
+import AppCreateDialog from "./AppCreateDialog.tsx";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
 
 /**
@@ -67,10 +70,26 @@ const ProjectApps = () => {
 
   const [project] = useStore(currentProjectAtom);
   const [instances] = useStore(currentInstancesAtom);
+  const [member] = useStore(currentProjectMemberAtom);
+  const [creating, setCreating] = useState(false);
 
   if (!project) {
     return null;
   }
+
+  // Creating an instance is owner-only server-side, so the action is hidden
+  // rather than shown and refused. A member reads the list and does not add to
+  // it.
+  const isOwner = member?.owner ?? false;
+
+  const openInstance = (instance: AppInstanceResource) =>
+    void router.push("app", {
+      params: {
+        projectSlug: project.slug,
+        app: instance.app,
+        env: instance.env,
+      },
+    });
 
   const isSilent = (instance: AppInstanceResource) => {
     const lastSeenAt = instance.sigil?.lastSeenAt;
@@ -98,6 +117,21 @@ const ProjectApps = () => {
         // project has no apps on the strength of a transient failure.
         data={instances ?? []}
         emptyMessage={tr("sigils.empty")}
+        // The same dialog the header's create menu opens, mounted here as the
+        // page's primary action: this list is where somebody who came looking
+        // for their apps already is.
+        actions={
+          isOwner
+            ? [
+                {
+                  icon: Plus,
+                  label: String(tr("apps.create.title")),
+                  primary: true,
+                  onClick: () => setCreating(true),
+                },
+              ]
+            : []
+        }
         filters={{
           schema: filtersSchema,
           render: (form) => (
@@ -157,15 +191,7 @@ const ProjectApps = () => {
           }
           return true;
         }}
-        onRowClick={(instance) =>
-          void router.push("app", {
-            params: {
-              projectSlug: project.slug,
-              app: instance.app,
-              env: instance.env,
-            },
-          })
-        }
+        onRowClick={openInstance}
         columns={{
           app: {
             label: tr("apps.table.name"),
@@ -281,6 +307,12 @@ const ProjectApps = () => {
             ),
           },
         }}
+      />
+
+      <AppCreateDialog
+        open={creating}
+        onOpenChange={setCreating}
+        onCreated={openInstance as never}
       />
     </div>
   );
