@@ -1,6 +1,10 @@
 import { type ReactElement, type ReactNode, useMemo, useRef } from "react";
 
-import type { TreeDropPosition, TreeNode, TreeRow } from "./tree-model.ts";
+import {
+  type TreeDropPosition,
+  type TreeNode,
+  type TreeRow,
+} from "./tree-model.ts";
 import { type TreeViewFacade, TreeViewRow } from "./tree-view-row.tsx";
 
 /**
@@ -243,6 +247,33 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
    */
   const isDragActive = props.dragId !== undefined;
 
+  /**
+   * The dragged node and everything beneath it.
+   *
+   * ⚠️ The one legality question this component answers on its own, and it
+   * has to: dropping a branch inside its own subtree would orphan the branch,
+   * which is a fact about the TREE and not about the consumer's domain. The
+   * consumer's `resolveDrop` refuses such a drop at the end anyway, so without
+   * this the row would light up promising a move that never happens.
+   *
+   * Computed once per render as a SET rather than asking `nodeHolds` per row,
+   * so a drag over a large tree stays one walk of the dragged subtree.
+   */
+  const forbidden = useMemo(() => {
+    const ids = new Set<string>();
+    if (props.dragId === undefined) return ids;
+    const dragged = props.rows.find(
+      (row) => row.node.id === props.dragId,
+    )?.node;
+    if (!dragged) return ids;
+    const walk = (node: TreeNode<T>): void => {
+      ids.add(node.id);
+      for (const child of node.children ?? []) walk(child);
+    };
+    walk(dragged);
+    return ids;
+  }, [props.dragId, props.rows]);
+
   return (
     <div role="tree" aria-label={props.label} className={props.className}>
       {props.rows.map((row) => (
@@ -257,6 +288,7 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
           isDragging={props.dragId === row.node.id}
           isDraggable={props.draggable === true}
           isDragActive={isDragActive}
+          isDropForbidden={forbidden.has(row.node.id)}
           dropHere={
             props.drop?.id === row.node.id ? props.drop.position : undefined
           }

@@ -1,6 +1,7 @@
 import {
   FormInput,
   Home as HomeIcon,
+  ListTree,
   LayoutDashboard,
   MessageSquareWarning,
   MousePointerClick,
@@ -85,6 +86,7 @@ export const NAV: NavGroup[] = [
         ],
       },
       { href: "/blocks/table", label: "Table", icon: Table2 },
+      { href: "/blocks/tree", label: "Tree", icon: ListTree },
       {
         label: "Messages",
         icon: MessageSquareWarning,

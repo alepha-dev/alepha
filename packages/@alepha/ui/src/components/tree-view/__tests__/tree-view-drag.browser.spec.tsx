@@ -212,6 +212,36 @@ describe("TreeView drag and drop", () => {
     expect(dropped).toEqual([]);
   });
 
+  it("draws no marker where a drop would orphan the dragged branch", () => {
+    // The one legality question the component answers on its own: a branch
+    // dropped inside its own subtree. The consumer's `resolveDrop` refuses it
+    // at the end anyway, so a marker here promises a move that never happens.
+    const NESTED = buildTree([
+      { id: "d-0", name: "Branch", branch: true },
+      { id: "child", name: "Child", branch: false, parentId: "d-0" },
+    ]);
+
+    render(
+      <TreeView
+        label="Files"
+        rows={flattenTree(NESTED, new Set())}
+        collapsed={new Set()}
+        onSelect={() => {}}
+        onToggle={() => {}}
+        draggable
+        dragId="d-0"
+        drop={{ id: "child", position: "before" }}
+        onDragOver={() => {}}
+      />,
+    );
+
+    expect(
+      rowOf("Child").querySelector('[data-slot="tree-view-drop-before"]'),
+    ).toBeNull();
+    // The row is otherwise untouched; only the promise is withheld.
+    expect(rowOf("Child")).toBeTruthy();
+  });
+
   it("marks the dragged row and draws the drop marker where the drop is", () => {
     const { rerender } = render(
       <Harness dragId="leaf" drop={{ id: "d-0", position: "inside" }} />,

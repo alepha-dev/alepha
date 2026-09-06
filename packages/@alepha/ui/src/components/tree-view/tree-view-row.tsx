@@ -76,6 +76,14 @@ export interface TreeViewRowProps<T = undefined> {
    */
   dropHere?: TreeDropPosition;
   /**
+   * This row is the dragged node or sits beneath it, so a drop here would
+   * orphan the branch and will be refused. The row still REPORTS the zone, so
+   * the marker follows the pointer rather than sticking to the last legal row,
+   * but it draws nothing: a marker promising a move that will not happen is
+   * worse than no marker at all.
+   */
+  isDropForbidden: boolean;
+  /**
    * Whether the consumer supplied a `renderMenu` slot. A primitive rather than
    * the slot itself, so the memo still holds: the slot travels on the facade.
    */
@@ -259,13 +267,13 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
           className="bg-primary pointer-events-none absolute inset-y-0 left-0 w-0.5"
         />
       )}
-      {props.dropHere === "before" && (
+      {props.dropHere === "before" && !props.isDropForbidden && (
         <div
           data-slot="tree-view-drop-before"
           className="bg-primary pointer-events-none absolute inset-x-0 top-0 h-0.5"
         />
       )}
-      {props.dropHere === "after" && (
+      {props.dropHere === "after" && !props.isDropForbidden && (
         <div
           data-slot="tree-view-drop-after"
           className="bg-primary pointer-events-none absolute inset-x-0 bottom-0 h-0.5"
