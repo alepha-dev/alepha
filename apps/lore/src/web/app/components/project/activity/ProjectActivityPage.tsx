@@ -14,6 +14,7 @@ import type { ProjectActivityRow } from "@/api/schemas/projectActivityRowSchema.
 
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { capabilityRegistry } from "../../../services/capabilityRegistry.ts";
 import { displayName } from "../../../services/displayName.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
@@ -315,6 +316,30 @@ const ProjectActivityPage = () => {
           details: {
             label: tr("activity.col.details"),
             cell: (row) => {
+              // A capability row names the switch and its new state. It has
+              // no `fields`, because nothing on the project row changed - the
+              // event is a `project_capabilities` row appearing or going.
+              const capability = row.metadata?.capability;
+              if (typeof capability === "string") {
+                const descriptor = capabilityRegistry.find(capability);
+                return (
+                  <span className="text-muted-foreground text-xs">
+                    {tr(
+                      row.metadata?.enabled
+                        ? "activity.capability.enabled"
+                        : "activity.capability.disabled",
+                      {
+                        args: [
+                          descriptor
+                            ? String(tr(descriptor.labelKey as never))
+                            : capability,
+                        ],
+                      },
+                    )}
+                  </span>
+                );
+              }
+
               const fields = row.metadata?.fields;
               if (!Array.isArray(fields) || fields.length === 0) {
                 return null;

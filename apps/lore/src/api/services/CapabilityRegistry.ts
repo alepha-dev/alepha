@@ -412,6 +412,66 @@ export class CapabilityRegistry {
   }
 
   /**
+   * Which capability owns an audit `type`, or `undefined` for a Core one.
+   *
+   * `member` and `project` answer `undefined` on purpose: both describe the
+   * container rather than any surface inside it, and a project with no
+   * capabilities at all still has members and still gets renamed. The
+   * Activity feed is Core for the same reason - what it SHOWS is filtered,
+   * the page itself never disappears.
+   */
+  ownerOfActivityKind(type: string): CapabilityKey | undefined {
+    return this.capabilities.find((capability) =>
+      capability.activityKinds.includes(type),
+    )?.key;
+  }
+
+  /**
+   * Which capability owns a `searchHitSchema` kind, or `undefined` for a
+   * Core one. Nothing is Core today; the shape matches its two siblings so a
+   * future Core kind needs no new branch.
+   */
+  ownerOfSearchKind(kind: string): CapabilityKey | undefined {
+    return this.capabilities.find((capability) =>
+      capability.searchKinds.includes(kind),
+    )?.key;
+  }
+
+  /**
+   * Which capability owns a `DashboardMetricCatalog` key, or `undefined`.
+   *
+   * ⚠️ The catalogue carries the same fact on each metric's `needs`, because
+   * a card can additionally require an OPTION (`openBlights` needs
+   * `apps.track`, not merely `apps`) and this list has no room to say so.
+   * `dashboard-capabilities.spec.ts` pins the two together: every metric's
+   * `needs.capability` must be the capability that claims it here, and every
+   * key claimed here must exist in the catalogue.
+   */
+  ownerOfDashboardCard(key: string): CapabilityKey | undefined {
+    return this.capabilities.find((capability) =>
+      capability.dashboardCards.includes(key),
+    )?.key;
+  }
+
+  /**
+   * Whether a surface owned by `owner` is on, given the enabled set.
+   *
+   * `undefined` is Core and always true - that single line is what keeps the
+   * three composing surfaces (dashboard, activity, palette) from growing a
+   * branch per capability.
+   */
+  isOwnerEnabled(
+    owner: CapabilityKey | undefined,
+    enabled: Iterable<CapabilityKey>,
+  ): boolean {
+    if (!owner) return true;
+    for (const key of enabled) {
+      if (key === owner) return true;
+    }
+    return false;
+  }
+
+  /**
    * The stored options of a capability, defaults filled in.
    *
    * Every option that is not in `raw` comes back `false`, which is the read

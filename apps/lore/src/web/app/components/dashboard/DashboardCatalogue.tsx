@@ -23,6 +23,7 @@ import {
 
 import type { I18n } from "../../services/I18n.ts";
 import DashboardCatalogueRow from "./DashboardCatalogueRow.tsx";
+import { metricUnavailableKey } from "./dashboardEligibility.ts";
 import { dashboardFilterFields } from "./dashboardFilterFields.ts";
 import DashboardFilterStep from "./DashboardFilterStep.tsx";
 import DashboardScopeStep, {
@@ -109,24 +110,16 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
 
   /**
    * Why a metric cannot be added right now, if it cannot.
+   *
+   * ⚠️ **"No project" means "no project that does this".** A reader whose
+   * only project is Knowledge-only has projects and no quest to count, so
+   * Active Quests is offered greyed out with the reason rather than added as
+   * a tile that can only ever say zero. The rule and the beacon rule both
+   * live in `dashboardEligibility.ts`, read off the metric's own `needs` -
+   * this file, per its docblock, must not name a metric.
    */
-  const unavailable = (
-    metric: DashboardMetricDescriptor,
-  ): string | undefined => {
-    if (
-      metric.scopeKinds.includes("all") ||
-      metric.scopeKinds.includes("projects")
-    ) {
-      return props.projects.length === 0
-        ? "dashboard.catalogue.noProjects"
-        : undefined;
-    }
-    const usable =
-      metric.key === "uniqueVisitors"
-        ? props.apps.filter((app) => app.beacon)
-        : props.apps;
-    return usable.length === 0 ? "dashboard.catalogue.noApps" : undefined;
-  };
+  const unavailable = (metric: DashboardMetricDescriptor): string | undefined =>
+    metricUnavailableKey(metric, props.projects, props.apps);
 
   const start = (metric: DashboardMetricDescriptor) => {
     setPicked(metric);

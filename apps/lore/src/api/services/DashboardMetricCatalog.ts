@@ -1,6 +1,7 @@
 import { AlephaError, type ZType } from "alepha";
 
 import { activeQuestsFiltersSchema } from "../schemas/activeQuestsFiltersSchema.ts";
+import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import type {
   DashboardScope,
   DashboardScopeKind,
@@ -45,6 +46,29 @@ export interface DashboardCardLink {
 export interface DashboardCardTarget {
   projectSlug?: string;
   appName?: string;
+}
+
+/**
+ * The capability a metric's number comes from.
+ *
+ * ⚠️ **Per scope target, not per board.** This is the HOME dashboard: a card
+ * is scoped to `all`, to some projects, or to some apps. So the requirement
+ * is checked against each candidate target - a project is offered when IT has
+ * the capability, an app when ITS project does, and `all` when any project
+ * the reader belongs to does. A single board-wide answer would either hide a
+ * card the reader has one good project for, or offer one that can only ever
+ * say zero.
+ *
+ * `option` is why this lives here rather than only on
+ * `CapabilityRegistry.dashboardCards`, which is a flat list of keys per
+ * capability: blights and visitors both need Apps **with tracking on**, since
+ * Apps without it is a project that deploys and does not watch. The two
+ * declarations are pinned to each other by
+ * `test/dashboard-capabilities.spec.ts`.
+ */
+export interface DashboardMetricRequirement {
+  capability: CapabilityKey;
+  option?: string;
 }
 
 /**
@@ -96,6 +120,24 @@ export interface DashboardMetricDescriptor {
    */
   filters: ZType;
   /**
+   * The capability, and optionally the option, a target must have for this
+   * metric to mean anything there. Every v1 metric has one; the field is
+   * optional so a future Core metric (something about members, say) needs no
+   * placeholder.
+   */
+  needs?: DashboardMetricRequirement;
+  /**
+   * Additionally: the app must report page views.
+   *
+   * Separate from {@link needs} because it is a property of the APP rather
+   * than of its project - two apps in the same tracking project can disagree
+   * about it, and a beacon-less app's analytics page 404s outright
+   * (`assertBeacon`), so a visitors card scoped to one would show a permanent
+   * zero and link to an error. Declared here rather than as
+   * `metric.key === "uniqueVisitors"` in two components, which is what it was.
+   */
+  needsBeacon?: boolean;
+  /**
    * Where clicking goes.
    *
    * ⚠️ **Drill-through is configuration, not derivation.** `link()` is
@@ -139,6 +181,7 @@ export class DashboardMetricCatalog {
       presentation: "scalar",
       scopeKinds: ["projects", "all"],
       filters: activeQuestsFiltersSchema,
+      needs: { capability: "work" },
       /**
        * ⚠️ Deliberately disagrees with the count. The tile counts
        * `new + accepted`, but clicking opens `status=new` only, because the
@@ -165,6 +208,12 @@ export class DashboardMetricCatalog {
       presentation: "scalar",
       scopeKinds: ["apps", "projects", "all"],
       filters: openBlightsFiltersSchema,
+      /**
+       * `apps.track`, not bare `apps`. Blights arrive on the same ingest
+       * path the option governs, so a project that deploys without watching
+       * has no source for this number.
+       */
+      needs: { capability: "apps", option: "track" },
       link: (_scope, target) =>
         target.projectSlug
           ? {
@@ -189,6 +238,7 @@ export class DashboardMetricCatalog {
        */
       scopeKinds: ["projects", "all"],
       filters: untriagedFeedbackFiltersSchema,
+      needs: { capability: "support" },
       link: (_scope, target) =>
         target.projectSlug
           ? {
@@ -206,6 +256,8 @@ export class DashboardMetricCatalog {
       presentation: "scalar",
       scopeKinds: ["apps", "projects"],
       filters: uniqueVisitorsFiltersSchema,
+      needs: { capability: "apps", option: "track" },
+      needsBeacon: true,
       /**
        * The analytics tab 404s when the app's own `kinds` lacks `beacon`
        * (`assertBeacon`), so the resolver only ever reports an app that

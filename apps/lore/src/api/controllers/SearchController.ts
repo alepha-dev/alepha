@@ -28,6 +28,7 @@ import { quests } from "../entities/quests.ts";
  * Round trips were NOT a reason: `BatchCollector` already coalesces
  * concurrent client calls into one `POST /api/_batch`.
  */
+import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { searchHitSchema } from "../schemas/searchHitSchema.ts";
 import { orderSearchHits } from "../searchRanking.ts";
 /**
@@ -39,6 +40,7 @@ import { orderSearchHits } from "../searchRanking.ts";
  * while `kind` says "folio" — and normalising that in each caller is how
  * the palette's first version ended up mis-mapping three fields.
  */
+import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class SearchController {
@@ -52,6 +54,7 @@ export class SearchController {
   protected readonly folios = $repository(folios);
   protected readonly directories = $repository(folioDirectories);
   protected readonly security = $inject(ProjectSecurityService);
+  protected readonly registry = $inject(CapabilityRegistry);
 
   search = $action({
     use: [$secure({ permissions: ["quest:read", "folio:read"] })],
@@ -68,6 +71,22 @@ export class SearchController {
     },
     handler: async ({ params, query, user }) => {
       await this.security.assertMember(params.projectId, user);
+
+      // ⚠️ **The palette is Core; the tables it reaches into are not.** A
+      // Knowledge-only project must never answer with a quest: disabling
+      // hides, so the rows are still there and a search that found them would
+      // be the one surface still offering a way into a capability the project
+      // turned off. Skipped rather than filtered afterwards, so a disabled
+      // kind costs no statement.
+      //
+      // The read is the same memoised, 30s-cached one every gate on this
+      // request already paid for.
+      const capabilities = await this.security.capabilitiesOf(params.projectId);
+      const indexes = (kind: "quest" | "folio" | "directory") =>
+        this.registry.isOwnerEnabled(
+          this.registry.ownerOfSearchKind(kind),
+          Object.keys(capabilities) as CapabilityKey[],
+        );
 
       const raw = query.q.trim();
       const needle = raw.toLowerCase();
@@ -101,48 +120,54 @@ export class SearchController {
       const id = typed?.id ?? untypedId;
 
       const [questRows, folioRows, directoryRows] = await Promise.all([
-        this.quests.findMany({
-          where: {
-            projectId: { eq: params.projectId },
-            ...(questId === undefined
-              ? { title: { ilike: `%${raw}%` } }
-              : {
-                  or: [
-                    { shortId: { eq: questId } },
-                    { title: { ilike: `%${raw}%` } },
-                  ],
-                }),
-          },
-          limit,
-        }),
-        this.folios.findMany({
-          where: {
-            projectId: { eq: params.projectId },
-            ...(folioId === undefined
-              ? { searchText: { like: `%${needle}%` } }
-              : {
-                  or: [
-                    { shortId: { eq: folioId } },
-                    { searchText: { like: `%${needle}%` } },
-                  ],
-                }),
-          },
-          limit,
-        }),
-        this.directories.findMany({
-          where: {
-            projectId: { eq: params.projectId },
-            ...(directoryId === undefined
-              ? { name: { like: `%${raw}%` } }
-              : {
-                  or: [
-                    { shortId: { eq: directoryId } },
-                    { name: { like: `%${raw}%` } },
-                  ],
-                }),
-          },
-          limit,
-        }),
+        !indexes("quest")
+          ? []
+          : this.quests.findMany({
+              where: {
+                projectId: { eq: params.projectId },
+                ...(questId === undefined
+                  ? { title: { ilike: `%${raw}%` } }
+                  : {
+                      or: [
+                        { shortId: { eq: questId } },
+                        { title: { ilike: `%${raw}%` } },
+                      ],
+                    }),
+              },
+              limit,
+            }),
+        !indexes("folio")
+          ? []
+          : this.folios.findMany({
+              where: {
+                projectId: { eq: params.projectId },
+                ...(folioId === undefined
+                  ? { searchText: { like: `%${needle}%` } }
+                  : {
+                      or: [
+                        { shortId: { eq: folioId } },
+                        { searchText: { like: `%${needle}%` } },
+                      ],
+                    }),
+              },
+              limit,
+            }),
+        !indexes("directory")
+          ? []
+          : this.directories.findMany({
+              where: {
+                projectId: { eq: params.projectId },
+                ...(directoryId === undefined
+                  ? { name: { like: `%${raw}%` } }
+                  : {
+                      or: [
+                        { shortId: { eq: directoryId } },
+                        { name: { like: `%${raw}%` } },
+                      ],
+                    }),
+              },
+              limit,
+            }),
       ]);
 
       const hits = [

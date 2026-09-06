@@ -2,16 +2,25 @@ import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
 
+import type { ProjectCapability } from "../entities/projectCapabilities.ts";
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { ActiveQuestsMetric } from "./ActiveQuestsMetric.ts";
-import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
+import { CapabilityRegistry } from "./CapabilityRegistry.ts";
+import {
+  DashboardMetricCatalog,
+  type DashboardMetricDescriptor,
+} from "./DashboardMetricCatalog.ts";
 import type {
   DashboardMetricResolver,
   DashboardResolvable,
 } from "./DashboardMetricResolver.ts";
-import { DashboardScopeService } from "./DashboardScopeService.ts";
+import {
+  DashboardScopeService,
+  type ResolvedDashboardScope,
+} from "./DashboardScopeService.ts";
 import { OpenBlightsMetric } from "./OpenBlightsMetric.ts";
+import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 import { UniqueVisitorsMetric } from "./UniqueVisitorsMetric.ts";
 import { UntriagedFeedbackMetric } from "./UntriagedFeedbackMetric.ts";
 
@@ -53,6 +62,8 @@ export class DashboardMetricRegistry {
   protected readonly log = $logger();
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly scopes = $inject(DashboardScopeService);
+  protected readonly security = $inject(ProjectSecurityService);
+  protected readonly registry = $inject(CapabilityRegistry);
 
   protected readonly activeQuests = $inject(ActiveQuestsMetric);
   protected readonly openBlights = $inject(OpenBlightsMetric);
@@ -89,6 +100,12 @@ export class DashboardMetricRegistry {
     // exists to avoid.
     const visible = await this.scopes.visibleProjects(user);
 
+    // And the capability rows for those projects, also once: one batched
+    // `inArray` for the board rather than one read per card.
+    const capabilities = await this.security.capabilityRowsForProjects(
+      visible.map((project) => project.id),
+    );
+
     // Group first, resolve second. Each card's scope is proven here, once —
     // a resolver never sees an id the caller may not read.
     const byMetric = new Map<string, DashboardResolvable[]>();
@@ -107,7 +124,8 @@ export class DashboardMetricRegistry {
       }
 
       try {
-        const scope = await this.scopes.resolve(card.scope, user, visible);
+        const proven = await this.scopes.resolve(card.scope, user, visible);
+        const scope = this.narrow(descriptor, proven, capabilities);
         const group = byMetric.get(card.metric) ?? [];
         group.push({ card, scope, filters: card.filters });
         byMetric.set(card.metric, group);
@@ -156,6 +174,65 @@ export class DashboardMetricRegistry {
     // Returned in the card list's own order, so the caller never has to sort
     // a response back into the layout it asked about.
     return cards.map((card) => values.get(card.id) ?? this.failed(card, []));
+  }
+
+  /**
+   * Drop from a proven scope the projects that do not have the metric's
+   * capability, and the apps that belong to them.
+   *
+   * ⚠️ **Narrowing, not refusing.** A capability is hidden and never deleted,
+   * so a project that turns Work off still holds every quest it had. Counting
+   * them would put a number on the landing page for a surface the project no
+   * longer has - the exact thing this epic is about - and refusing the whole
+   * card would turn an `all` scope into "unreadable" because one project of
+   * nine changed its mind. So each target is asked separately, and a card
+   * whose every target dropped out resolves to zero through the resolvers'
+   * own empty-scope branch, which each of them already has because
+   * `inArray: []` throws.
+   *
+   * The capability rows come from the caller's one batched read. A metric
+   * with no `needs` is Core and returns the scope untouched, which is the
+   * whole of the not-my-problem path.
+   */
+  protected narrow(
+    descriptor: DashboardMetricDescriptor,
+    scope: ResolvedDashboardScope,
+    capabilities: Map<number, ProjectCapability[]>,
+  ): ResolvedDashboardScope {
+    const needs = descriptor.needs;
+    if (!needs) {
+      return scope;
+    }
+
+    const answers = (projectId: number) => {
+      const row = (capabilities.get(projectId) ?? []).find(
+        (it) => it.key === needs.capability,
+      );
+      if (!row) return false;
+      if (!needs.option) return true;
+      // Through `optionsOf` rather than reading the JSON directly: an absent
+      // key reads as `false` there, which is the epic's read rule, and a key
+      // this build no longer knows is stripped rather than trusted.
+      return (
+        this.registry.optionsOf(needs.capability, row.options)[needs.option] ===
+        true
+      );
+    };
+
+    const projects = scope.projects.filter((project) => answers(project.id));
+    const projectIds = new Set(projects.map((project) => project.id));
+    const sigils = scope.sigils.filter((sigil) =>
+      projectIds.has(sigil.projectId),
+    );
+
+    return {
+      projectIds: [...projectIds],
+      projects,
+      // Kept `undefined` rather than emptied when the card was never
+      // app-scoped: the field's presence is what says which picker filled it.
+      sigilIds: scope.sigilIds ? sigils.map((sigil) => sigil.id) : undefined,
+      sigils,
+    };
   }
 
   /**
