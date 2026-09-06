@@ -88,6 +88,17 @@ func TestWireServerFramesDecode(t *testing.T) {
 		}
 	}
 
+	// The one command that carries an ask. Bounded numbers and a bounded
+	// pattern, and still no path and no argument list.
+	logs, err := decodeFrame(fixture(t, "command-logs.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if logs.Kind != "logs" || logs.Logs == nil || logs.Logs.Lines != 500 ||
+		logs.Logs.SinceSeconds != 900 || logs.Logs.Grep != "ERROR" {
+		t.Fatalf("logs decoded wrong: %+v", logs.Logs)
+	}
+
 	// A refresh: a type and nothing else. A field here would make it a
 	// request with arguments, which is the shape that becomes a command.
 	query, err := decodeFrame(fixture(t, "query.json"))

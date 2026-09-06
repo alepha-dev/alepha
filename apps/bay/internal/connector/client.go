@@ -44,6 +44,20 @@ type Command struct {
 	App         string    `json:"app"`
 	Environment string    `json:"environment"`
 	Artifact    *Artifact `json:"artifact,omitempty"`
+	Logs        *LogsAsk  `json:"logs,omitempty"`
+}
+
+// LogsAsk is how much of a journal a `logs` command wants.
+//
+// Three bounded numbers and one bounded pattern, and nothing that is a path,
+// a shell fragment or an argument list. Lore's schema enforces the bounds;
+// the executor clamps `Lines` again against this machine's own ceiling,
+// because a sink is not something to trust with a limit that protects the
+// host.
+type LogsAsk struct {
+	Lines        int    `json:"lines"`
+	SinceSeconds int    `json:"sinceSeconds,omitempty"`
+	Grep         string `json:"grep,omitempty"`
 }
 
 // Artifact names the bytes a deploy fetches, by digest. The bytes themselves
@@ -117,6 +131,7 @@ type serverFrame struct {
 	App         string    `json:"app,omitempty"`
 	Environment string    `json:"environment,omitempty"`
 	Artifact    *Artifact `json:"artifact,omitempty"`
+	Logs        *LogsAsk  `json:"logs,omitempty"`
 }
 
 // Handler receives what the connection delivers. The executor (#1621) is the
@@ -475,7 +490,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 		}
 	case "command":
 		cmd := Command{ID: frame.ID, Kind: frame.Kind, App: frame.App,
-			Environment: frame.Environment, Artifact: frame.Artifact}
+			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one
