@@ -183,6 +183,27 @@ describe("TreeView", () => {
     expect(screen.getByText("Level1")).toBeTruthy();
   });
 
+  it("marks the chevron and the row as separate targets", () => {
+    // The chevron toggles and stops there; the row selects and does not
+    // toggle. One gesture, one meaning, per element.
+    const selected: string[] = [];
+    render(
+      <TreeView
+        label="Files"
+        rows={flattenTree(NODES, new Set())}
+        collapsed={new Set()}
+        onSelect={(node) => selected.push(node.id)}
+        onToggle={() => {}}
+      />,
+    );
+
+    fireEvent.click(rowOf("Level0").querySelector("button") as HTMLElement);
+    expect(selected).toEqual([]);
+
+    fireEvent.click(rowOf("Level0"));
+    expect(selected).toEqual(["d-0"]);
+  });
+
   it("does not toggle twice on a double click", () => {
     // A real double click fires click, click, dblclick. Without the
     // `e.detail > 1` guard the two clicks toggle the branch twice and it
