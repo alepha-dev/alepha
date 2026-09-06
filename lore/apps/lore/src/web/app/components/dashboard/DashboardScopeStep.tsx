@@ -78,7 +78,7 @@ const DashboardScopeStep = (props: DashboardScopeStepProps) => {
 
   const rowClass = (selected: boolean) =>
     cn(
-      "border-border hover:border-muted-foreground/40 flex cursor-pointer items-center gap-2.5 rounded-[9px] border px-2.5 py-2 text-left text-[12.5px] transition-colors",
+      "border-border hover:border-muted-foreground/40 flex items-center gap-2.5 rounded-[9px] border px-2.5 py-2 text-left text-[12.5px] transition-colors",
       selected && "border-primary/60 bg-accent",
     );
 

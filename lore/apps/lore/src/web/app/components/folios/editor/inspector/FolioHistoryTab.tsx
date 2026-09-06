@@ -280,7 +280,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                     toggle();
                   }
                 }}
-                className="hover:bg-accent/50 flex cursor-pointer items-center gap-2 px-3 py-2.5 transition-colors select-none"
+                className="hover:bg-accent/50 flex items-center gap-2 px-3 py-2.5 transition-colors select-none"
               >
                 <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
                   {actionIcon(revision.action)}
