@@ -3,15 +3,7 @@ import {
   ContextMenuTrigger,
 } from "@alepha/ui/components/ui/context-menu";
 import { cn } from "@alepha/ui/lib/utils";
-import {
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  Folder,
-  FolderOpen,
-  Lock,
-  Pin,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Lock, Pin } from "lucide-react";
 import {
   type DragEvent,
   type KeyboardEvent,
@@ -24,6 +16,7 @@ import {
 } from "react";
 
 import FolioTreeContextMenu from "./FolioTreeContextMenu.tsx";
+import FolioTreeDirectoryIcon from "./FolioTreeDirectoryIcon.tsx";
 import type { FolioDropPosition, FolioTreeNode } from "./folioTreeModel.ts";
 import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
 
@@ -203,13 +196,7 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
     }
   };
 
-  const Icon = isDirectory
-    ? isCollapsed
-      ? Folder
-      : FolderOpen
-    : node.kind === "protected"
-      ? Lock
-      : FileText;
+  const Icon = node.kind === "protected" ? Lock : FileText;
 
   return (
     <ContextMenu>
@@ -230,7 +217,11 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
             onDragEnd={handleDragEnd}
             onClick={handleClick}
             className={cn(
-              "hover:bg-muted/60 relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm select-none",
+              // `group/folio-row` is NAMED, not a bare `group`: the badge disc in
+              // `FolioTreeDirectoryIcon` tracks this row's hover and selected
+              // background, and a bare group here would also be captured by any
+              // `group-*` utility inside the shadcn parts nested below.
+              "group/folio-row hover:bg-muted/60 relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm select-none",
               // ⚠️ Named properties, never `transition-all`. This element is
               // an HTML5 drag SOURCE that already animates `opacity` while
               // dragging and carries the ring and line drop markers; a
@@ -298,22 +289,20 @@ const FolioTreeRow = (props: FolioTreeRowProps): ReactElement => {
             style={{ width: DISCLOSURE_BOX_PX }}
           />
         )}
-        <Icon
-          className={cn(
-            "size-3.5 shrink-0",
-            // ⚠️ Theme tokens, not hardcoded hexes. The reference this was
-            // taken from (`apps/docs`'s file tree) is a single dark theme
-            // and spells its amber and cyan literally; Lore has six themes,
-            // and a literal pair is wrong in five of them. `--chart-*` was
-            // considered and rejected for the same reason: it is defined in
-            // `@alepha/ui`'s base `:root` / `.dark` only, so it is
-            // light/dark aware but NOT theme aware. These two are defined
-            // once per theme in `main.css`.
-            isDirectory
-              ? "text-[var(--folio-tree-directory)]"
-              : "text-[var(--folio-tree-folio)]",
-          )}
-        />
+        {isDirectory ? (
+          <FolioTreeDirectoryIcon name={node.name} isCollapsed={isCollapsed} />
+        ) : (
+          // ⚠️ Theme tokens, not hardcoded hexes. The reference this was
+          // taken from (`apps/docs`'s file tree) is a single dark theme and
+          // spells its amber and cyan literally; Lore has six themes, and a
+          // literal pair is wrong in five of them. `--chart-*` was
+          // considered and rejected for the same reason: it is defined in
+          // `@alepha/ui`'s base `:root` / `.dark` only, so it is light/dark
+          // aware but NOT theme aware. These two are defined once per theme
+          // in `main.css` - the directory half lives in
+          // `FolioTreeDirectoryIcon`.
+          <Icon className="size-3.5 shrink-0 text-[var(--folio-tree-folio)]" />
+        )}
         {isRenaming ? (
           <input
             ref={renameInputRef}
