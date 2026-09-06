@@ -10,10 +10,10 @@ import { ESTATE_TYPES } from "../entities/estates.ts";
  * hand rather than derived from the entity, for the reason the lent view is:
  * a field added to `estates` must be a decision to show here, not a default.
  *
- * ⚠️ No credential, and no exception carved for the admin role. The secret
- * is stored hashed and no read path returns it to anyone; `secretPrefix` is
- * here so the row can name a credential it cannot rebuild, the same as the
- * owner sees.
+ * ⚠️ No credential, and no exception carved for the admin role. A bay secret
+ * is stored hashed and a cloudflare token sealed, and no read path returns
+ * either to anyone; `secretPrefix` is here so the row can name a credential
+ * it cannot rebuild, the same as the owner sees.
  */
 export const adminEstateResourceSchema = z.object({
   id: z.uuid(),
@@ -21,6 +21,12 @@ export const adminEstateResourceSchema = z.object({
   label: z.string().optional(),
   type: z.enum(ESTATE_TYPES),
   secretPrefix: z.string().optional(),
+  /**
+   * `cloudflare` only: the account its token was checked against. The
+   * account id names the destination, which is what an admin looking at
+   * somebody else's estate needs; the token itself never crosses (#1629).
+   */
+  accountId: z.string().optional(),
   ownerUserId: z.uuid(),
   /**
    * Display name for `ownerUserId`, resolved for the page being displayed.

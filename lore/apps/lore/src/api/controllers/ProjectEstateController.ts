@@ -14,7 +14,7 @@ import { displayName } from "../../web/app/services/displayName.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { projects } from "../entities/projects.ts";
-import { estateSlugSchema } from "../schemas/estateSlugSchema.ts";
+import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
 import {
   type LentEstateResource,
   lentEstateResourceSchema,
@@ -107,9 +107,11 @@ export class ProjectEstateController {
   });
 
   /**
-   * Mint a new estate and lend it in one step, without leaving the project.
-   * Same creation path as the account page, so the two cannot disagree, and
-   * the secret is handed back exactly once.
+   * Create a new estate and lend it in one step, without leaving the
+   * project. Same creation path as the account page, so the two cannot
+   * disagree, and the same body (`createEstateBodySchema`): a bay estate
+   * hands its secret back exactly once, a cloudflare estate hands back
+   * nothing because the owner already holds the token.
    */
   createProjectEstate = $action({
     use: [$secure({ permissions: ["estate:lend"] })],
@@ -117,14 +119,15 @@ export class ProjectEstateController {
     path: "/projects/:projectId/estates/new",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      body: z.object({
-        slug: estateSlugSchema,
-        label: z.string().max(100).optional(),
-      }),
+      body: createEstateBodySchema,
       response: mintedLentEstateSchema,
     },
     handler: async ({ params, body, user }) => {
       await this.security.assertOwner(params.projectId, user);
+      if (body.type === "cloudflare") {
+        const { estate } = await this.service.createCloudflare(user, body);
+        return this.lend(params.projectId, estate, user);
+      }
       const { estate, secret } = await this.service.createBay(user, body);
       return { ...(await this.lend(params.projectId, estate, user)), secret };
     },

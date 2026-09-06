@@ -64,6 +64,7 @@ import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
+import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
 import { EstateCommandService } from "./services/EstateCommandService.ts";
 import { EstateCommandTransport } from "./services/EstateCommandTransport.ts";
 import { EstateService } from "./services/EstateService.ts";
@@ -220,6 +221,10 @@ export const LoreApi = $module({
     // it has a writer: the sealer exists first, so no plaintext credential
     // is ever written even once.
     CredentialSealService,
+    // What Lore does with a pasted Cloudflare token: mask it for a read
+    // path, and prove it against the account it names before any row is
+    // written (#1629, #1630).
+    EstateCloudflareService,
     EstateService,
     // The queue behind the connection, and the seam the websocket endpoint
     // fills in. This default transport reaches nothing, which is the correct

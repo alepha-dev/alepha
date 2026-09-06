@@ -21,6 +21,8 @@ import {
   type EstateWelcomeFrame,
 } from "../schemas/estateWelcomeFrameSchema.ts";
 import type { OwnedEstateResource } from "../schemas/ownedEstateResourceSchema.ts";
+import { CredentialSealService } from "./CredentialSealService.ts";
+import { EstateCloudflareService } from "./EstateCloudflareService.ts";
 import { EstateTokenService } from "./EstateTokenService.ts";
 import { LoreAudits } from "./LoreAudits.ts";
 
@@ -40,6 +42,8 @@ export class EstateService {
   protected readonly grants = $repository(estateProjects);
   protected readonly projects = $repository(projects);
   protected readonly tokens = $inject(EstateTokenService);
+  protected readonly seal = $inject(CredentialSealService);
+  protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -104,9 +108,12 @@ export class EstateService {
   }
 
   /**
-   * Projects a row into what its owner may see. `secretHash` never crosses:
-   * the resource schema omits it and parsing strips it, so no future field
-   * added to the row reaches a browser by accident.
+   * Projects a row into what its owner may see.
+   *
+   * No credential crosses, of either kind: `estateResourceSchema` is a
+   * `pick` allowlist and parsing strips everything outside it, so a column
+   * added to the row reaches a browser only when somebody adds a line there
+   * on purpose (#1629).
    */
   toResource(estate: Estate): EstateResource {
     return estateResourceSchema.parse({
@@ -159,6 +166,151 @@ export class EstateService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Creates a `cloudflare` estate from a token its owner pasted, after
+   * proving that token against the account it names.
+   *
+   * ⚠️ **The check runs before the insert, and a failure leaves no row**
+   * (owner's ruling, 2026-09-06: "add estate, Cloudflare, paste the token,
+   * checking, OK"). There is no create-then-set path and no half-made
+   * estate, which is what lets `credentialStatus` have two values instead of
+   * three: a cloudflare estate that exists has passed at least once, and
+   * `credentialCheckedAt` is written in the same insert.
+   *
+   * It mints nothing. `createBay` hands back the one cleartext copy of a
+   * secret Lore generated; here the owner already holds the token, so the
+   * response carries no `secret` at all and the UI must not open its
+   * reveal dialog (#1865).
+   *
+   * `deployAllowed` is **true** at creation, unlike bay. A fresh machine is
+   * stats-only until its owner says otherwise; a Cloudflare account has no
+   * stats phase and exists to be deployed to, and the lending is what gates
+   * who may use it. The switch stays as the owner's kill switch.
+   */
+  async createCloudflare(
+    user: UserAccountToken,
+    input: { slug: string; label?: string; accountId: string; token: string },
+  ): Promise<{ estate: Estate }> {
+    const slug = await this.claimSlug(user.id, input.slug);
+    const check = await this.assertCredential(input);
+
+    try {
+      const estate = await this.estates.create({
+        ownerUserId: user.id,
+        type: "cloudflare",
+        slug,
+        label: input.label?.trim() || undefined,
+        accountId: input.accountId,
+        secretPrefix: this.cloudflare.mask(input.token),
+        credential: this.seal.seal(
+          input.token,
+          CredentialSealService.ESTATE_PURPOSE,
+        ),
+        credentialKeyVersion: CredentialSealService.KEY_VERSION,
+        credentialCheckedAt: this.dateTime.now().toISOString(),
+        credentialExpiresAt: check.expiresAt,
+        // A Cloudflare account is a deploy destination and nothing else.
+        deployAllowed: true,
+      });
+
+      await this.audits.estate.logSuccess("create", {
+        ...this.audits.actor(user),
+        resourceType: "estate",
+        resourceId: estate.id,
+        description: estate.slug,
+      });
+
+      return { estate };
+    } catch (error) {
+      if (error instanceof DbConflictError) {
+        throw new ConflictError(await this.explainConflict(user.id, slug));
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Replaces the token on a cloudflare estate, all or nothing.
+   *
+   * ⚠️ **A failed check leaves the row exactly as it was**: the old
+   * credential stays sealed, the check fields are not cleared, and the
+   * failure is the response rather than the row. The token the owner already
+   * had keeps working, which is the whole point of checking before writing.
+   *
+   * Write-only, and audited as `rotate`: no GET returns the token and no
+   * PATCH carries it, so replacing is never a read-modify-write through the
+   * client. The UI says "Replace token"; the Activity filter does not grow a
+   * verb for it.
+   */
+  async replaceCredential(
+    user: UserAccountToken,
+    estate: Estate,
+    token: string,
+  ): Promise<Estate> {
+    if (estate.type !== "cloudflare") {
+      throw new BadRequestError(
+        "Only a cloudflare estate holds a token you pasted; a bay secret is rotated, not replaced",
+      );
+    }
+    if (!estate.accountId) {
+      throw new BadRequestError(
+        "This estate has no Cloudflare account id to check a token against",
+      );
+    }
+
+    const check = await this.assertCredential({
+      accountId: estate.accountId,
+      token,
+    });
+
+    await this.estates.updateById(estate.id, {
+      secretPrefix: this.cloudflare.mask(token),
+      credential: this.seal.seal(token, CredentialSealService.ESTATE_PURPOSE),
+      credentialKeyVersion: CredentialSealService.KEY_VERSION,
+      credentialCheckedAt: this.dateTime.now().toISOString(),
+      credentialError: null,
+      credentialExpiresAt: check.expiresAt ?? null,
+    });
+
+    // The same verb and the same severity as a bay rotation: "when was this
+    // credential last changed" is the question asked after a leak is found,
+    // and it is one question whichever kind of credential it was.
+    await this.audits.estate.logSuccess("rotate", {
+      ...this.audits.actor(user),
+      severity: "warning",
+      resourceType: "estate",
+      resourceId: estate.id,
+      description: estate.slug,
+    });
+
+    return this.estates.getOne({ where: { id: { eq: estate.id } } });
+  }
+
+  /**
+   * Runs the credential check and turns anything but a pass into a refusal.
+   *
+   * A `failed` and an `inconclusive` both refuse the save, and what differs
+   * is the sentence the caller reads: one names what Cloudflare refused and
+   * is the owner's to fix, the other says Cloudflare could not be reached
+   * and to try again. Both are written by the probe (#1630), so this only
+   * has to not flatten them.
+   *
+   * ⚠️ Neither writes anything. On a create there is no row yet; on a
+   * replace the row is left exactly as it was, which is what "all or
+   * nothing" means: writing "invalid" for an unreachable Cloudflare would be
+   * a lie that outlives the outage.
+   */
+  protected async assertCredential(input: {
+    accountId: string;
+    token: string;
+  }): Promise<{ expiresAt?: string }> {
+    const check = await this.cloudflare.check(input);
+    if (check.outcome !== "passed") {
+      throw new BadRequestError(check.message);
+    }
+    return { expiresAt: check.expiresAt };
   }
 
   /**

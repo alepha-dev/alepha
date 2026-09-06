@@ -94,6 +94,7 @@ export class AdminEstateController {
           label: estate.label,
           type: estate.type,
           secretPrefix: estate.secretPrefix,
+          accountId: estate.accountId,
           ownerUserId: estate.ownerUserId,
           ownerName: names.get(estate.ownerUserId),
           online: this.service.isOnline(estate),

@@ -113,7 +113,12 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
       });
       const { secret, ...rotated } = minted;
       props.onChanged({ ...rotated, projects: estate.projects });
-      props.onSecret(secret);
+      // Rotation only reaches a bay estate, so a secret always comes back;
+      // the field is optional because a cloudflare create mints nothing, and
+      // the guard is what makes that impossible to forget here.
+      if (secret) {
+        props.onSecret(secret);
+      }
       toaster.success(tr("account.estates.toast.rotated"));
     } catch (error) {
       fail(error);
