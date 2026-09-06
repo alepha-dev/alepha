@@ -130,9 +130,10 @@ func welcomeFrame() map[string]any {
 // recordingHandler is the executor's seat, recording what the connection
 // delivers and acking done at once.
 type recordingHandler struct {
-	mu       sync.Mutex
-	welcomes []Welcome
-	commands []Command
+	mu        sync.Mutex
+	welcomes  []Welcome
+	commands  []Command
+	inventory *Inventory
 }
 
 func (h *recordingHandler) Welcome(w Welcome) {
@@ -147,6 +148,17 @@ func (h *recordingHandler) Command(_ context.Context, cmd Command, send func(Ack
 	h.mu.Unlock()
 	_ = send(NewAck(cmd.ID, "running", "", ""))
 	_ = send(NewAck(cmd.ID, "done", "", ""))
+}
+
+// Inventory answers what the test armed, and nothing when it armed nothing —
+// the honest answer for a Bay with no apps to report.
+func (h *recordingHandler) Inventory(context.Context) (Inventory, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.inventory == nil {
+		return Inventory{}, false
+	}
+	return *h.inventory, true
 }
 
 // syncBuffer is a log sink the test may read while the client still writes.

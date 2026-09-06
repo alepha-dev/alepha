@@ -132,6 +132,13 @@ type Handler interface {
 	// the outcome and Lore's reconciliation redelivers the id, so a lost ack
 	// is re-sent from what was stored rather than re-run.
 	Command(ctx context.Context, cmd Command, send func(Ack) error)
+	// Inventory is what the machine reports about its apps, assembled on
+	// demand. False means there is nothing to say, and nothing is pushed:
+	// a frame of zeros would read as a host that lost every app.
+	//
+	// The host block is not filled here. It comes from the gauge, which this
+	// client owns, and the executor knows about apps.
+	Inventory(ctx context.Context) (Inventory, bool)
 }
 
 // Conn is what the client needs from a websocket, satisfied by

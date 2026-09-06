@@ -87,6 +87,13 @@ func (f *fakeRunner) Running(key string) bool {
 	return f.running[key]
 }
 
+func (f *fakeRunner) State(key string) string {
+	if f.Running(key) {
+		return "active"
+	}
+	return "inactive"
+}
+
 func (f *fakeRunner) StopAll(time.Duration)                            {}
 func (f *fakeRunner) Usage(string) (runner.Usage, bool)                { return runner.Usage{}, false }
 func (f *fakeRunner) Logs(string, int) ([]runner.LogLine, bool, error) { return nil, false, nil }
