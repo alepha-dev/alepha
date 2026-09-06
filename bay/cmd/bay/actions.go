@@ -64,6 +64,11 @@ type actions struct {
 
 	welcomeMu sync.Mutex
 	welcome   connector.Welcome
+
+	// kick asks the connection to push a fresh inventory. Wired by
+	// connectorLoop to the client that owns the socket, and nil everywhere
+	// else — a CLI path with no connection has nothing to tell.
+	kick func()
 }
 
 func newActions(s *server) *actions {
@@ -127,16 +132,8 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 		log.Debug("could not ack running", "err", err)
 	}
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
 	log.Info("lore command started")
-	var status, step, reason string
-	switch actionKind(cmd.Kind) {
-	case actionRestart:
-		status, step, reason = a.restart(cmd)
-	case actionDeploy:
-		status, step, reason = a.deploy(ctx, cmd, send)
-	}
+	status, step, reason := a.runExclusive(ctx, cmd, send)
 	if status == "done" {
 		log.Info("lore command done")
 	} else {
@@ -145,9 +142,43 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	a.finish(cmd.ID, status, step, reason, send)
 }
 
-// finish records the terminal outcome, then acks it. Recorded first: an ack
-// that cannot be sent is re-sent from the store on the next delivery, and
-// an outcome that was not stored would be run again instead.
+/*
+runExclusive runs one action with the machine-wide mutex held, and releases it
+before anything is acked or pushed.
+
+A function of its own so the unlock is a `defer` rather than a line somebody
+has to remember after every return: an action that panics must still release
+the machine. It also puts the ack and the inventory push OUTSIDE the mutex,
+which matters because that mutex serialises every action on this host — pushing
+an inventory while holding it would turn each push into a lock on the deploy
+path.
+*/
+func (a *actions) runExclusive(ctx context.Context, cmd connector.Command, send func(connector.Ack) error) (status, step, reason string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	switch actionKind(cmd.Kind) {
+	case actionRestart:
+		return a.restart(cmd)
+	case actionDeploy:
+		return a.deploy(ctx, cmd, send)
+	}
+	// Unreachable: Command refuses an unknown kind before it ever takes the
+	// lock. Said out loud rather than left as three empty strings, which would
+	// ack `done` for an action nobody ran.
+	return "failed", "", "this bay does not know how to run " + cmd.Kind
+}
+
+/*
+finish records the terminal outcome, acks it, and asks for a fresh inventory.
+
+Recorded first: an ack that cannot be sent is re-sent from the store on the
+next delivery, and an outcome that was not stored would be run again instead.
+
+The kick is last and is not part of the outcome. Every action that reaches here
+may have changed what the console shows — a restart moves the uptime, a deploy
+moves the release, a backup moves lastBackupAt — and the alternative is a page
+that shows the old state for up to half an hour after the click that changed it.
+*/
 func (a *actions) finish(id, status, step, reason string, send func(connector.Ack) error) {
 	out, err := a.outcomes.Finish(id, status, step, reason, time.Now())
 	if err != nil {
@@ -156,6 +187,9 @@ func (a *actions) finish(id, status, step, reason string, send func(connector.Ac
 	if err := send(connector.NewAck(id, out.Status, out.Step, out.Reason)); err != nil {
 		a.s.log.Info("lore command outcome stored, ack deferred to the next delivery",
 			"command", id, "err", err)
+	}
+	if a.kick != nil {
+		a.kick()
 	}
 }
 

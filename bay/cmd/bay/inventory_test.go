@@ -295,3 +295,45 @@ func TestActionsInventoryReportsTheDeployedApps(t *testing.T) {
 		t.Fatal("problems must be a list, never null: an empty one means nothing needs a human")
 	}
 }
+
+/*
+Every finished command asks for a fresh inventory, and asks for it with the
+machine-wide action mutex already released.
+
+The mutex is asserted rather than assumed: the kick tries to take it, and a
+kick that ran inside the action would fail. Holding it across a push would turn
+every inventory into a lock on the deploy path.
+*/
+func TestFinishedCommandKicksAnInventoryOutsideTheMutex(t *testing.T) {
+	f := deployedApp(t)
+	acts := newActions(f.server)
+	kicks := 0
+	acts.kick = func() {
+		if !acts.mu.TryLock() {
+			t.Error("the inventory kick must run outside the action mutex")
+			return
+		}
+		acts.mu.Unlock()
+		kicks++
+	}
+	rec := &ackRecorder{}
+
+	acts.Command(context.Background(), restartCommand("c-kick"), rec.send)
+
+	if got := rec.statuses(); len(got) == 0 || got[len(got)-1] != "done" {
+		t.Fatalf("acks = %v, want a terminal done", got)
+	}
+	if kicks != 1 {
+		t.Fatalf("kicks = %d, want one after the command finished", kicks)
+	}
+}
+
+// A Bay with no connection has nothing to tell, and must not panic trying.
+func TestFinishWithNoConnectionDoesNotKick(t *testing.T) {
+	f := deployedApp(t)
+	acts := newActions(f.server)
+	if acts.kick != nil {
+		t.Fatal("a bare executor has no connection wired")
+	}
+	acts.Command(context.Background(), restartCommand("c-none"), (&ackRecorder{}).send)
+}

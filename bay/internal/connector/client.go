@@ -210,6 +210,11 @@ type Client struct {
 	Version string
 	// MinStatsInterval floors whatever interval Lore names.
 	MinStatsInterval time.Duration
+	// MinInventoryInterval is the floor between two inventory pushes,
+	// whatever asked for them. Assembling one is a `systemctl show` per
+	// instance, and a burst of finished commands must cost this machine a
+	// bounded amount of work.
+	MinInventoryInterval time.Duration
 
 	Dial         Dialer
 	PingInterval time.Duration
@@ -226,6 +231,28 @@ type Client struct {
 	// statsKick asks the stats loop for a push now.
 	statsSeconds atomic.Int64
 	statsKick    chan struct{}
+	// inventoryKick is deliberately a SECOND channel rather than a reason
+	// carried on the first. A stats push also writes a series sample when the
+	// estate collects one, so a refresh button wired to statsKick would add a
+	// sample to the day's average every time somebody clicked it.
+	inventoryKick chan struct{}
+	channelsOnce  sync.Once
+
+	inventoryMu   sync.Mutex
+	lastInventory time.Time
+}
+
+// ensureChannels creates the kick channels exactly once, so a kick that
+// arrives before Run has somewhere to go rather than racing with defaults.
+func (c *Client) ensureChannels() {
+	c.channelsOnce.Do(func() {
+		if c.statsKick == nil {
+			c.statsKick = make(chan struct{}, 1)
+		}
+		if c.inventoryKick == nil {
+			c.inventoryKick = make(chan struct{}, 1)
+		}
+	})
 }
 
 func (c *Client) defaults() {
@@ -259,9 +286,10 @@ func (c *Client) defaults() {
 	if c.MinStatsInterval == 0 {
 		c.MinStatsInterval = DefaultMinStatsInterval
 	}
-	if c.statsKick == nil {
-		c.statsKick = make(chan struct{}, 1)
+	if c.MinInventoryInterval == 0 {
+		c.MinInventoryInterval = DefaultMinInventoryInterval
 	}
+	c.ensureChannels()
 }
 
 func gorillaDial(ctx context.Context, url string, header http.Header) (Conn, error) {
@@ -439,6 +467,9 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			c.statsSeconds.Store(int64(frame.StatsIntervalSeconds))
 		}
 		c.kickStats()
+		// Both, on a welcome: a freshly enrolled machine shows its figure and
+		// its app list within seconds rather than an interval later.
+		c.KickInventory()
 		if c.Handler != nil {
 			c.Handler.Welcome(w)
 		}

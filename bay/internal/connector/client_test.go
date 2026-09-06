@@ -186,6 +186,12 @@ type fixtureOptions struct {
 	noExecutor bool
 	logs       io.Writer
 	gauge      Gauge
+	// inventory is what the executor reports; nil means it has nothing to say.
+	inventory *Inventory
+	// inventoryFloor lowers the 5 s production floor so a test runs in
+	// milliseconds, the way MinStatsInterval already does for the gauge.
+	inventoryFloor time.Duration
+	version        string
 }
 
 type clientFixture struct {
@@ -216,7 +222,13 @@ func newClientFixture(t *testing.T, opts fixtureOptions) *clientFixture {
 		PingInterval: 40 * time.Millisecond, PongWait: 40 * time.Millisecond,
 		MinBackoff: 5 * time.Millisecond, MaxBackoff: 20 * time.Millisecond,
 		Gauge: opts.gauge, MinStatsInterval: 10 * time.Millisecond,
+		Version: opts.version,
 	}
+	if opts.inventoryFloor == 0 {
+		opts.inventoryFloor = time.Millisecond
+	}
+	client.MinInventoryInterval = opts.inventoryFloor
+	handler.inventory = opts.inventory
 	if !opts.noExecutor {
 		client.Handler = handler
 	}
@@ -573,5 +585,201 @@ func TestStatsIntervalFloorsAndDefaults(t *testing.T) {
 	c.statsSeconds.Store(3600)
 	if got := c.statsInterval(); got != time.Hour {
 		t.Fatalf("named interval: %v, want 1h", got)
+	}
+}
+
+// sampleInventory is one app, enough to recognise on the wire.
+func sampleInventory() *Inventory {
+	return &Inventory{
+		Apps: []InventoryApp{{
+			App: "lore", Env: "production", Running: true, State: "active",
+			Problems: []string{},
+		}},
+	}
+}
+
+func (s *loreSession) inventoryFrame(t *testing.T, within time.Duration) (map[string]any, bool) {
+	t.Helper()
+	deadline := time.After(within)
+	for {
+		select {
+		case f, ok := <-s.frames:
+			if !ok {
+				t.Fatal("session closed while waiting for an inventory")
+			}
+			if f["type"] == "inventory" {
+				return f, true
+			}
+		case <-deadline:
+			return nil, false
+		}
+	}
+}
+
+// The welcome kicks both frames: a freshly enrolled machine shows its figure
+// AND its app list within seconds, rather than an interval later.
+func TestClientPushesTheInventoryAfterTheWelcomeAndOnTheInterval(t *testing.T) {
+	cores := 4
+	total := uint64(8 << 30)
+	f := newClientFixture(t, fixtureOptions{
+		configured: true,
+		version:    "1.2.3",
+		gauge: fixedGauge{ok: true, reading: Reading{
+			CPUPercent: 12.34, MemoryPercent: 56.78,
+			Host: Host{Cores: &cores, MemTotalBytes: &total},
+		}},
+		inventory: sampleInventory(),
+	})
+	s := f.lore.session(t)
+	_ = s.frame(t) // hello
+
+	if _, got := s.inventoryFrame(t, 50*time.Millisecond); got {
+		t.Fatal("no inventory may go out before the welcome")
+	}
+
+	w := welcomeFrame()
+	w["statsIntervalSeconds"] = 1
+	s.send(t, w)
+
+	first, ok := s.inventoryFrame(t, 2*time.Second)
+	if !ok {
+		t.Fatal("the welcome must be followed by an inventory push")
+	}
+	if _, err := time.Parse(time.RFC3339, first["at"].(string)); err != nil {
+		t.Fatalf("at must be RFC 3339: %v", first["at"])
+	}
+	apps, _ := first["apps"].([]any)
+	if len(apps) != 1 {
+		t.Fatalf("apps = %v", first["apps"])
+	}
+
+	// The two halves meet here: the executor answered for the apps, the gauge
+	// read the host, and the client stamped the version neither of them has.
+	host, _ := first["host"].(map[string]any)
+	if host == nil || host["cores"] != float64(4) || host["memTotalBytes"] != float64(8<<30) {
+		t.Fatalf("the host block must come from the gauge: %v", first["host"])
+	}
+	if host["bayVersion"] != "1.2.3" {
+		t.Fatalf("bayVersion = %v, want the client's", host["bayVersion"])
+	}
+
+	// Then on the interval the welcome named, beside the gauge.
+	if _, ok := s.inventoryFrame(t, 3*time.Second); !ok {
+		t.Fatal("the inventory must keep going out on the interval")
+	}
+}
+
+// An executor with nothing to say sends nothing. A frame of zeros would read
+// as a host that lost every app it was running.
+func TestClientPushesNoInventoryWhenTheExecutorHasNothing(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{configured: true, gauge: fixedGauge{ok: true}})
+	s := f.lore.session(t)
+	_ = s.frame(t)
+	w := welcomeFrame()
+	w["statsIntervalSeconds"] = 1
+	s.send(t, w)
+	if _, got := s.inventoryFrame(t, 300*time.Millisecond); got {
+		t.Fatal("an executor with nothing to report must send nothing")
+	}
+	// The gauge is unaffected: the two pushes are independent.
+	if _, ok := s.statsFrame(t, 2*time.Second); !ok {
+		t.Fatal("the gauge must still push")
+	}
+}
+
+/*
+The two kicks are separate channels, and this is the reason.
+
+A stats push also writes a series sample when the estate collects one, so a
+refresh button wired to the stats kick would add a sample to the day's average
+every time somebody clicked it. KickInventory must produce an inventory and no
+stats frame at all.
+*/
+func TestKickInventoryNeverAddsASeriesSample(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{
+		configured: true,
+		// An interval long enough that nothing ticks during the test: every
+		// frame seen here was asked for.
+		gauge:     fixedGauge{ok: true, reading: Reading{CPUPercent: 1, MemoryPercent: 2}},
+		inventory: sampleInventory(),
+	})
+	s := f.lore.session(t)
+	_ = s.frame(t)
+	w := welcomeFrame()
+	w["statsIntervalSeconds"] = 3600
+	s.send(t, w)
+
+	// Drain the welcome's own pair.
+	if _, ok := s.statsFrame(t, 2*time.Second); !ok {
+		t.Fatal("the welcome must push the gauge")
+	}
+	if _, ok := s.inventoryFrame(t, 2*time.Second); !ok {
+		t.Fatal("the welcome must push the inventory")
+	}
+
+	f.client.KickInventory()
+	if _, ok := s.inventoryFrame(t, 2*time.Second); !ok {
+		t.Fatal("a kick must produce an inventory")
+	}
+	// Everything the session has seen since: no stats frame may be among it.
+	for {
+		select {
+		case frame, open := <-s.frames:
+			if !open {
+				return
+			}
+			if frame["type"] == "stats" {
+				t.Fatal("an inventory kick must never push a gauge sample")
+			}
+		case <-time.After(200 * time.Millisecond):
+			return
+		}
+	}
+}
+
+// The floor bounds the work a burst can cause: assembling an inventory is one
+// `systemctl show` per instance. It WAITS rather than drops, so the state
+// change that asked for the push is not lost until the next tick.
+func TestInventoryPushesRespectTheFloorAndLoseNothing(t *testing.T) {
+	f := newClientFixture(t, fixtureOptions{
+		configured:     true,
+		gauge:          fixedGauge{ok: true, reading: Reading{CPUPercent: 1, MemoryPercent: 2}},
+		inventory:      sampleInventory(),
+		inventoryFloor: 150 * time.Millisecond,
+	})
+	s := f.lore.session(t)
+	_ = s.frame(t)
+	w := welcomeFrame()
+	w["statsIntervalSeconds"] = 3600
+	s.send(t, w)
+
+	if _, ok := s.inventoryFrame(t, 2*time.Second); !ok {
+		t.Fatal("the welcome must push an inventory")
+	}
+	start := time.Now()
+	f.client.KickInventory()
+	if _, ok := s.inventoryFrame(t, 2*time.Second); !ok {
+		t.Fatal("a kick behind the floor must still be honoured, not dropped")
+	}
+	if elapsed := time.Since(start); elapsed < 100*time.Millisecond {
+		t.Fatalf("two pushes %s apart, under the floor", elapsed)
+	}
+}
+
+// A push that cannot go out is a debug line. The connection drops all the
+// time, Lore re-reads the whole picture on the next connect, and a failed push
+// must never fail the command that triggered it.
+func TestInventorySendFailureIsNotFatal(t *testing.T) {
+	logs := &syncBuffer{}
+	c := &Client{
+		Log:                  slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		Handler:              &recordingHandler{inventory: sampleInventory()},
+		MinInventoryInterval: time.Millisecond,
+		Now:                  time.Now,
+	}
+	// No connection at all: Send answers ErrNotConnected.
+	c.pushInventory(context.Background())
+	if !strings.Contains(logs.String(), "inventory not sent") {
+		t.Fatalf("a failed push must be logged at debug: %q", logs.String())
 	}
 }
