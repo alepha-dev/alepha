@@ -123,6 +123,12 @@ export class EstateSocketController {
         await this.commands.ack(estate.id, message);
         return;
       }
+      if (message.type === "inventory") {
+        // Accepted and validated from the moment the schema lands, so a
+        // machine already pushing one is never refused. Stored by
+        // `EstateInventoryService` (#Q1897), which is the next quest.
+        return;
+      }
       await this.stats.record(estate, message);
     },
   });
