@@ -7,8 +7,8 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
-import { defaultProjectFeatures } from "@/api/entities/projects.ts";
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
+import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
@@ -83,23 +83,10 @@ describe("AppArtifacts", () => {
     // The list reads the project for its id and its slug, so without this it
     // would stay disabled and every case below would pass by not running the
     // code it is about.
-    alepha.store.set(currentProjectAtom, {
-      id: 1,
-      createdAt: "2026-08-26T10:00:00.000Z",
-      updatedAt: "2026-08-26T10:00:00.000Z",
-      title: "Alepha",
-      slug: "alepha",
-      createdBy: "00000000-0000-4000-8000-000000000001",
-      areas: [],
-      features: defaultProjectFeatures,
-      // Empty until the surfaces read capabilities: this spec is
-      // about something else, and a fixture that claims capabilities it
-      // does not exercise is a lie the next reader has to check.
-      capabilities: [],
-      kanbanColumns: ["In Progress"],
-      unlockedFeatures: [],
-      unlockHistory: [],
-    } as never);
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ title: "Alepha", slug: "alepha" }) as never,
+    );
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = responses;
     return {

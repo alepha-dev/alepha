@@ -3,7 +3,7 @@ import {
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
-  setProjectFeature,
+  setCapability,
 } from "./_helpers.ts";
 
 /**
@@ -36,7 +36,9 @@ test.describe("the questline stat bar", () => {
       page,
       `SB${t}`.slice(0, 20),
     );
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     const makeEpic = async (title: string) =>
       page.evaluate(

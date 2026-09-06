@@ -7,7 +7,7 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
-import { defaultProjectFeatures } from "@/api/entities/projects.ts";
+import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
@@ -18,22 +18,12 @@ interface SetCapabilityCall {
   body: { enabled: boolean; options?: Record<string, boolean> };
 }
 
-const aProject = {
-  id: 1,
-  createdAt: "2026-08-26T10:00:00.000Z",
-  updatedAt: "2026-08-26T10:00:00.000Z",
-  title: "Lore",
-  slug: "lore",
-  createdBy: "00000000-0000-4000-8000-000000000001",
-  areas: [],
-  features: defaultProjectFeatures,
-  // Apps off: the page's switch is what turns it on, and a row exists only
-  // for an enabled capability.
-  capabilities: [],
-  kanbanColumns: ["In Progress"],
-  unlockedFeatures: [],
-  unlockHistory: [],
-};
+// Apps OFF: the page's switch is what turns it on, and a fixture that
+// already had it would assert nothing. A row exists only for an enabled
+// capability, so "off" is the absence of one.
+const aProject = projectFixture({
+  capabilities: ["work", "knowledge", "support"],
+});
 
 /**
  * Stands in for the HTTP-backed client that `useProjectFeatureToggle` writes

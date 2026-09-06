@@ -2,7 +2,7 @@ import { expect, test } from "./_fixtures.ts";
 import {
   createProjectViaWizard,
   registerAndVerify,
-  setProjectFeature,
+  setCapability,
 } from "./_helpers.ts";
 
 /**
@@ -38,14 +38,12 @@ test.describe("Blights", () => {
       projectTitle,
     );
 
-    // `projectBlights` is gated on `features.sigils`, not a `blights` flag —
-    // `features.blights` is `@deprecated` (Task 3: zero readers, zero
-    // writers) and blights only ever arrive from an enrolled app, so the
-    // route rides the Apps module's own master switch rather than a
-    // dedicated one. Deliberately relaxed this way (Task 5): deriving the
-    // gate from whether any app currently carries the `blights` kind would
-    // turn a transient `listSigils` failure into a 404 on a deep link.
-    await setProjectFeature(page, projectId, "sigils");
+    // `projectBlights` rides the Apps capability, not a blights switch of its
+    // own: blights only ever arrive from an enrolled app. Deliberately
+    // relaxed this way - deriving the gate from whether any app currently
+    // carries the `blights` kind would turn a transient `listSigils` failure
+    // into a 404 on a deep link.
+    await setCapability(page, projectId, "apps", { options: { track: true } });
 
     await page.goto(`/${projectSlug}/blights`);
     await page.waitForLoadState("networkidle");

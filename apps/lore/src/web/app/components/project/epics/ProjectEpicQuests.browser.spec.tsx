@@ -14,9 +14,9 @@ import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { defaultProjectFeatures } from "@/api/entities/projects.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentAreasAtom } from "../../../atoms/currentAreasAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
@@ -150,23 +150,7 @@ describe("ProjectEpicQuests - columns", () => {
     await alepha.inject(I18nProvider).setLang("en");
     // The create sheet reads the project and the areas from the atoms the
     // project route fills; both validate against their full schemas.
-    alepha.store.set(currentProjectAtom, {
-      id: 1,
-      createdAt: "2026-08-26T10:00:00.000Z",
-      updatedAt: "2026-08-26T10:00:00.000Z",
-      title: "Lore",
-      slug: "lore",
-      createdBy: "00000000-0000-4000-8000-000000000001",
-      areas: [],
-      features: defaultProjectFeatures,
-      // Empty until the surfaces read capabilities: this spec is
-      // about something else, and a fixture that claims capabilities it
-      // does not exercise is a lie the next reader has to check.
-      capabilities: [],
-      kanbanColumns: ["In Progress"],
-      unlockedFeatures: [],
-      unlockHistory: [],
-    } as never);
+    alepha.store.set(currentProjectAtom, projectFixture() as never);
     alepha.store.set(currentAreasAtom, [
       {
         id: 1,

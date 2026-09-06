@@ -48,7 +48,7 @@ import { registerAndVerify } from "./_helpers";
  * through the SSR-injected `apiLinks` map: that map is scoped to what the
  * CURRENT page declares, and this spec does its setup from `/`, where
  * `createProject` is not in it. It also has nowhere to put a path parameter -
- * the same reason `setProjectFeature` uses a direct URL. Action routes are
+ * the same reason `setCapability` uses a direct URL. Action routes are
  * name-derived, so the path is the property key.
  */
 const post = async <T>(page: Page, path: string, body: unknown): Promise<T> =>

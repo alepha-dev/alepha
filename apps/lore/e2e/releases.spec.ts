@@ -6,7 +6,7 @@ import {
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
-  setProjectFeature,
+  setCapability,
 } from "./_helpers";
 
 /**
@@ -27,7 +27,7 @@ import {
  * POST to a name-derived action route.
  *
  * `apiPost` resolves an action through `apiLinks`, which has nowhere to put a
- * path parameter — the same reason `setProjectFeature` and `addKanbanColumn`
+ * path parameter — the same reason `setCapability` and `addKanbanColumn`
  * use a direct URL.
  */
 const post = async <T>(page: Page, path: string, body: unknown): Promise<T> =>
@@ -118,6 +118,7 @@ test.describe("Releases", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `RE${t}`.slice(0, 20),
+      { options: { work: ["releases"] } },
     );
 
     // ── The assertion this whole epic exists for ──────────────────────────
@@ -275,6 +276,7 @@ test.describe("Releases", () => {
     const { id: projectId } = await createProjectViaWizard(
       page,
       `RO${t}`.slice(0, 20),
+      { options: { work: ["releases"] } },
     );
 
     // Created OUT of version order on purpose. `number` is a `$sequence`, so
@@ -333,7 +335,9 @@ test.describe("Releases", () => {
 
     const t = Date.now();
     await registerAndVerify(page, `relnew${t}@example.com`, "RelTest123!");
-    const { slug } = await createProjectViaWizard(page, `RN${t}`.slice(0, 20));
+    const { slug } = await createProjectViaWizard(page, `RN${t}`.slice(0, 20), {
+      options: { work: ["releases"] },
+    });
 
     await page.goto(`/${slug}/releases`);
 
@@ -405,9 +409,12 @@ test.describe("Releases", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `RC${t}`.slice(0, 20),
+      { options: { work: ["releases"] } },
     );
-    await setProjectFeature(page, projectId, "milestones", true);
-    await setProjectFeature(page, projectId, "folios", true);
+    await setCapability(page, projectId, "work", {
+      options: { releases: true },
+    });
+    await setCapability(page, projectId, "knowledge", { enabled: true });
 
     const navOrder = async () =>
       await page
@@ -437,9 +444,11 @@ test.describe("Releases", () => {
       // The quest worried this could leave Record holding one item. It
       // cannot: Reports has no feature gate at all, so Record always carries
       // at least it, and the empty-group `.filter` never fires here.
-      await setProjectFeature(page, projectId, "folios", false);
-      await setProjectFeature(page, projectId, "epics", false);
-      await setProjectFeature(page, projectId, "feedback", false);
+      await setCapability(page, projectId, "knowledge", { enabled: false });
+      await setCapability(page, projectId, "work", {
+        options: { epics: false },
+      });
+      await setCapability(page, projectId, "support", { enabled: false });
       await page.goto(`/${slug}/quests`);
       await expect
         .poll(navOrder, { timeout: 15_000 })
@@ -491,6 +500,7 @@ test.describe("Releases", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `RT${t}`.slice(0, 20),
+      { options: { work: ["releases"] } },
     );
 
     // Created OUT of version order, and out of text order too: creation gives

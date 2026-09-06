@@ -7,8 +7,8 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { describe, it } from "vitest";
 
-import { defaultProjectFeatures } from "@/api/entities/projects.ts";
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
+import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -23,23 +23,7 @@ class Routes {
   });
 }
 
-const aProject = {
-  id: 1,
-  createdAt: "2026-08-26T10:00:00.000Z",
-  updatedAt: "2026-08-26T10:00:00.000Z",
-  title: "Alepha",
-  slug: "alepha",
-  createdBy: "00000000-0000-4000-8000-000000000001",
-  areas: [],
-  features: defaultProjectFeatures,
-  // Empty until the surfaces read capabilities: this spec is
-  // about something else, and a fixture that claims capabilities it
-  // does not exercise is a lie the next reader has to check.
-  capabilities: [],
-  kanbanColumns: ["In Progress"],
-  unlockedFeatures: [],
-  unlockHistory: [],
-};
+const aProject = projectFixture({ title: "Alepha", slug: "alepha" });
 
 let seq = 0;
 const anInstance = (app: string, env: string): AppInstanceResource =>

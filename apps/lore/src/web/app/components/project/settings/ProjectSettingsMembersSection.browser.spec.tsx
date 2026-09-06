@@ -10,7 +10,7 @@ import { currentUserAtom } from "alepha/security";
 import { LinkProvider } from "alepha/server/links";
 import { describe, expect, it } from "vitest";
 
-import { defaultProjectFeatures } from "@/api/entities/projects.ts";
+import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { I18n } from "../../../services/I18n.ts";
 import ProjectSettingsMembersSection from "./ProjectSettingsMembersSection.tsx";
@@ -48,23 +48,7 @@ class Links extends LinkProvider {
   }
 }
 
-const project = {
-  id: 1,
-  createdAt: "2026-08-26T10:00:00.000Z",
-  updatedAt: "2026-08-26T10:00:00.000Z",
-  title: "Alepha",
-  slug: "alepha",
-  createdBy: OWNER,
-  areas: [],
-  features: defaultProjectFeatures,
-  // Empty until the surfaces read capabilities: this spec is
-  // about something else, and a fixture that claims capabilities it
-  // does not exercise is a lie the next reader has to check.
-  capabilities: [],
-  kanbanColumns: ["In Progress"],
-  unlockedFeatures: [],
-  unlockHistory: [],
-} as never;
+const project = projectFixture({ title: "Alepha", slug: "alepha" }) as never;
 
 const member = (id: string, username: string) => ({
   id: `m-${id}`,

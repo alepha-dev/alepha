@@ -8,11 +8,11 @@ import { LinkProvider } from "alepha/server/links";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 
-import { defaultProjectFeatures } from "@/api/entities/projects.ts";
 import {
   type QuestResource,
   questResourceSchema,
 } from "@/api/schemas/questResourceSchema.ts";
+import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts";
@@ -96,23 +96,7 @@ describe("useQuestMutations", () => {
     await alepha.start();
 
     const fake = alepha.inject(FakeLinkProvider);
-    alepha.store.set(currentProjectAtom, {
-      id: 1,
-      createdAt: "2026-08-26T10:00:00.000Z",
-      updatedAt: "2026-08-26T10:00:00.000Z",
-      title: "Lore",
-      slug: "lore",
-      createdBy: "00000000-0000-4000-8000-000000000001",
-      areas: [],
-      features: defaultProjectFeatures,
-      // Empty until the surfaces read capabilities: this spec is
-      // about something else, and a fixture that claims capabilities it
-      // does not exercise is a lie the next reader has to check.
-      capabilities: [],
-      kanbanColumns: ["In Progress"],
-      unlockedFeatures: [],
-      unlockHistory: [],
-    } as never);
+    alepha.store.set(currentProjectAtom, projectFixture() as never);
     alepha.store.set(
       currentAssignedQuestsAtom,
       assignedIds.map((id) => fake.quest(id)),

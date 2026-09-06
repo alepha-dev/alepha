@@ -9,8 +9,8 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
-import { defaultProjectFeatures } from "@/api/entities/projects.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
+import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
@@ -124,23 +124,7 @@ describe("ProjectFeedback - Show more", () => {
     await alepha.start();
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.
-    alepha.store.set(currentProjectAtom, {
-      id: 1,
-      createdAt: "2026-09-02T10:00:00.000Z",
-      updatedAt: "2026-09-02T10:00:00.000Z",
-      title: "Lore",
-      slug: "lore",
-      createdBy: "00000000-0000-4000-8000-000000000001",
-      areas: [],
-      features: defaultProjectFeatures,
-      // Empty until the surfaces read capabilities: this spec is
-      // about something else, and a fixture that claims capabilities it
-      // does not exercise is a lie the next reader has to check.
-      capabilities: [],
-      kanbanColumns: ["In Progress"],
-      unlockedFeatures: [],
-      unlockHistory: [],
-    } as never);
+    alepha.store.set(currentProjectAtom, projectFixture() as never);
     return alepha;
   };
 
