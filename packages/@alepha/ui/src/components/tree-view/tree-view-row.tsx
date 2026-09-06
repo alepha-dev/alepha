@@ -1,3 +1,7 @@
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+} from "@alepha/ui/components/ui/context-menu";
 import { cn } from "@alepha/ui/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
@@ -10,6 +14,7 @@ import {
 } from "react";
 
 import type { TreeDropPosition, TreeNode } from "./tree-model.ts";
+import { TreeViewRenameInput } from "./tree-view-rename-input.tsx";
 import type { TreeRowState } from "./tree-view.tsx";
 
 /**
@@ -31,6 +36,9 @@ export interface TreeViewFacade<T = undefined> {
   onDragOver: (id: string, position: TreeDropPosition) => void;
   onDrop: (id: string) => void;
   onDragEnd: () => void;
+  commitRename: (id: string, name: string) => void;
+  cancelRename: () => void;
+  renderMenu: (node: TreeNode<T>) => ReactNode;
 }
 
 export interface TreeViewRowProps<T = undefined> {
@@ -67,6 +75,11 @@ export interface TreeViewRowProps<T = undefined> {
    * Where this row's drop marker is drawn, if the pointer is over it.
    */
   dropHere?: TreeDropPosition;
+  /**
+   * Whether the consumer supplied a `renderMenu` slot. A primitive rather than
+   * the slot itself, so the memo still holds: the slot travels on the facade.
+   */
+  hasMenu: boolean;
 }
 
 /**
@@ -90,7 +103,12 @@ export interface TreeViewRowProps<T = undefined> {
  * consumer's to call, because only it knows whether the resulting parent
  * change is legal in its own domain.
  *
- * Inline rename and the context-menu slot are #Q1941.
+ * ## Inline rename, and the context menu as a SLOT
+ *
+ * A row in rename mode swaps its label for {@link TreeViewRenameInput}. The
+ * verbs of the context menu are never this component's business: it takes a
+ * `renderMenu` slot and wraps the row in `ContextMenu` only when one is
+ * given, so a consumer keeps its own menu with its own routes.
  */
 const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
   const { node, depth, facade, isCollapsed, isSelected } = props;
@@ -167,68 +185,71 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
     facade.onDrop(node.id);
   };
 
-  return (
-    // A tree row that is also a click target. The `tabIndex` and the
-    // Enter/Space handler above are what keep the two a11y rules that would
-    // otherwise fire here satisfied, rather than disabled.
-    <div
-      data-slot="tree-view-row"
-      role="treeitem"
-      // The rows are a flat list rather than nested `role="group"`
-      // elements, so depth is spoken through `aria-level`, which is the
-      // flat equivalent.
-      aria-level={depth + 1}
-      aria-expanded={node.branch ? !isCollapsed : undefined}
-      aria-selected={isSelected || undefined}
-      tabIndex={0}
-      // Selection is otherwise only a background class, which is not
-      // something a test (or a future stylesheet) can address.
-      data-selected={isSelected || undefined}
-      draggable={props.isDraggable && !props.isRenaming}
-      onDragStart={props.isDraggable ? handleDragStart : undefined}
-      onDragOver={props.isDraggable ? handleDragOver : undefined}
-      onDrop={props.isDraggable ? handleDrop : undefined}
-      onDragEnd={props.isDraggable ? facade.onDragEnd : undefined}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      className={cn(
-        // `group/tree-row` is NAMED, not a bare `group`: a consumer's icon
-        // slot tracks this row's hover and selected background through it,
-        // and a bare group here would also be captured by any `group-*`
-        // utility inside the parts nested below.
-        "group/tree-row hover:bg-muted/60 relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm outline-none select-none",
-        // ⚠️ Named properties, never `transition-all`. This element is
-        // also an HTML5 drag SOURCE that animates `opacity` while dragging
-        // and carries the drop markers; a blanket transition puts all
-        // three on a timer, so the drop indicator lags the pointer it is
-        // supposed to track.
-        "transition-[background-color,transform] duration-150",
-        // The press. Suppressed while dragging, because a transform on a
-        // drag source moves the browser's own drag image with it.
-        !props.isDragging && !props.isRenaming && "active:translate-y-px",
-        "focus-visible:bg-muted/60",
-        isSelected && "bg-muted font-medium",
-        props.isDragging && "opacity-45",
-        props.dropHere === "inside" &&
-          "bg-primary/10 ring-primary/60 ring-1 ring-inset",
-      )}
-      style={{
-        paddingLeft: `${INDENT_BASE_PX + depth * INDENT_STEP_PX}px`,
-        // Indent guides, as pure CSS: one hairline per ancestor level,
-        // painted as a repeating gradient clipped to the indent area so it
-        // can never run under the label. A background IMAGE, so the row's
-        // background COLOUR (hover, selection) still shows through
-        // underneath.
-        ...(depth > 0 && {
-          backgroundImage:
-            "repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px " +
-            `${INDENT_STEP_PX}px)`,
-          backgroundPosition: `${INDENT_GUIDE_ORIGIN_PX}px 0`,
-          backgroundSize: `${depth * INDENT_STEP_PX}px 100%`,
-          backgroundRepeat: "no-repeat",
-        }),
-      }}
-    >
+  // The row's own attributes, built once: the same element is rendered
+  // directly, or handed to `ContextMenuTrigger`'s `render` prop when the
+  // consumer supplied a menu. Duplicating the list for the two branches is
+  // exactly how the two would drift.
+  const rowProps = {
+    "data-slot": "tree-view-row",
+    role: "treeitem",
+    // The rows are a flat list rather than nested `role="group"` elements,
+    // so depth is spoken through `aria-level`, which is the flat
+    // equivalent.
+    "aria-level": depth + 1,
+    "aria-expanded": node.branch ? !isCollapsed : undefined,
+    "aria-selected": isSelected || undefined,
+    tabIndex: 0,
+    // Selection is otherwise only a background class, which is not
+    // something a test (or a future stylesheet) can address.
+    "data-selected": isSelected || undefined,
+    draggable: props.isDraggable && !props.isRenaming,
+    onDragStart: props.isDraggable ? handleDragStart : undefined,
+    onDragOver: props.isDraggable ? handleDragOver : undefined,
+    onDrop: props.isDraggable ? handleDrop : undefined,
+    onDragEnd: props.isDraggable ? facade.onDragEnd : undefined,
+    onClick: handleClick,
+    onKeyDown: handleKeyDown,
+    className: cn(
+      // `group/tree-row` is NAMED, not a bare `group`: a consumer's icon
+      // slot tracks this row's hover and selected background through it,
+      // and a bare group here would also be captured by any `group-*`
+      // utility inside the parts nested below.
+      "group/tree-row hover:bg-muted/60 relative flex cursor-default items-center gap-1 py-1 pr-2 text-sm outline-none select-none",
+      // ⚠️ Named properties, never `transition-all`. This element is
+      // also an HTML5 drag SOURCE that animates `opacity` while dragging
+      // and carries the drop markers; a blanket transition puts all
+      // three on a timer, so the drop indicator lags the pointer it is
+      // supposed to track.
+      "transition-[background-color,transform] duration-150",
+      // The press. Suppressed while dragging, because a transform on a
+      // drag source moves the browser's own drag image with it.
+      !props.isDragging && !props.isRenaming && "active:translate-y-px",
+      "focus-visible:bg-muted/60",
+      isSelected && "bg-muted font-medium",
+      props.isDragging && "opacity-45",
+      props.dropHere === "inside" &&
+        "bg-primary/10 ring-primary/60 ring-1 ring-inset",
+    ),
+    style: {
+      paddingLeft: `${INDENT_BASE_PX + depth * INDENT_STEP_PX}px`,
+      // Indent guides, as pure CSS: one hairline per ancestor level,
+      // painted as a repeating gradient clipped to the indent area so it
+      // can never run under the label. A background IMAGE, so the row's
+      // background COLOUR (hover, selection) still shows through
+      // underneath.
+      ...(depth > 0 && {
+        backgroundImage:
+          "repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px " +
+          `${INDENT_STEP_PX}px)`,
+        backgroundPosition: `${INDENT_GUIDE_ORIGIN_PX}px 0`,
+        backgroundSize: `${depth * INDENT_STEP_PX}px 100%`,
+        backgroundRepeat: "no-repeat",
+      }),
+    },
+  };
+
+  const content = (
+    <>
       {isSelected && (
         // The accent bar. A selected row used to differ from its
         // neighbours by a background tint alone, which several themes
@@ -272,16 +293,35 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
         />
       )}
       {facade.renderIcon(node, state)}
-      {/*
-       * The label is its OWN element, separate from the row's click
-       * handler and from the disclosure button, so a consumer that needs
-       * an anchor here one day changes this line rather than the row.
-       */}
-      <span data-slot="tree-view-label" className="min-w-0 flex-1 truncate">
-        {facade.renderLabel(node, state)}
-      </span>
-      {facade.renderTrailing(node, state)}
-    </div>
+      {props.isRenaming ? (
+        <TreeViewRenameInput
+          name={node.name}
+          onCommit={(name) => facade.commitRename(node.id, name)}
+          onCancel={facade.cancelRename}
+        />
+      ) : (
+        /*
+         * The label is its OWN element, separate from the row's click
+         * handler and from the disclosure button, so a consumer that needs
+         * an anchor here one day changes this line rather than the row.
+         */
+        <span data-slot="tree-view-label" className="min-w-0 flex-1 truncate">
+          {facade.renderLabel(node, state)}
+        </span>
+      )}
+      {!props.isRenaming && facade.renderTrailing(node, state)}
+    </>
+  );
+
+  if (!props.hasMenu) return <div {...rowProps}>{content}</div>;
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger render={<div {...rowProps} />}>
+        {content}
+      </ContextMenuTrigger>
+      {facade.renderMenu(node)}
+    </ContextMenu>
   );
 };
 

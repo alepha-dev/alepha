@@ -83,6 +83,9 @@ export const uiFr: Record<string, string> = {
   // to, not under a `t` of its own.
   "table.pageSize": "Lignes par page",
 
+  // The tree: inline rename, and the pane resizer.
+  "treeView.rename": "Nouveau nom",
+
   // Schema-generated forms.
   "autoForm.cancel": "Annuler",
   "autoForm.error": "Erreur",

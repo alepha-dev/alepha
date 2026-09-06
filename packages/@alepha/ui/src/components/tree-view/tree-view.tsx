@@ -227,6 +227,9 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
       onDragOver: (id, position) => implRef.current.onDragOver?.(id, position),
       onDrop: (id) => implRef.current.onDrop?.(id),
       onDragEnd: () => implRef.current.onDragEnd?.(),
+      commitRename: (id, name) => implRef.current.onCommitRename?.(id, name),
+      cancelRename: () => implRef.current.onCancelRename?.(),
+      renderMenu: (node) => implRef.current.renderMenu?.(node),
     }),
     [],
   );
@@ -257,6 +260,7 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
           dropHere={
             props.drop?.id === row.node.id ? props.drop.position : undefined
           }
+          hasMenu={props.renderMenu !== undefined}
         />
       ))}
     </div>
