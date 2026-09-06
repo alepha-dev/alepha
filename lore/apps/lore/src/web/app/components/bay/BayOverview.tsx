@@ -5,6 +5,7 @@ import { useI18n } from "alepha/react/i18n";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import BayStatsChart from "./BayStatsChart.tsx";
 import BayUsageBar from "./BayUsageBar.tsx";
 import { useBayInventory } from "./useBayInventory.ts";
 
@@ -164,6 +165,8 @@ const BayOverview = () => {
           </p>
         </CardContent>
       </Card>
+
+      <BayStatsChart />
     </div>
   );
 };

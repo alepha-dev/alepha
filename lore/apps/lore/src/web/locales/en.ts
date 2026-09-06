@@ -1389,6 +1389,16 @@ export default {
   "bay.nav.apps": "Apps",
   "bay.nav.commands": "Commands",
   "bay.nav.settings": "Settings",
+  "bay.chart.title": "Last 30 days",
+  "bay.chart.cpu": "CPU %",
+  "bay.chart.memory": "Memory %",
+  "bay.chart.off":
+    "This machine is not recording a history. Its live gauges above are always kept; the series is a separate switch, and it starts from the day it is turned on.",
+  "bay.chart.off.link": "Turn it on in Settings",
+  "bay.chart.empty":
+    "Recording, but no day has completed yet. The first point appears once a day of samples is in.",
+  "bay.chart.estimated": "sampled, then scaled back up",
+  "bay.chart.estimated.interval": "sampled 1 in $1, then scaled back up",
   "bay.overview.title": "Overview",
   "bay.overview.usedOf": "$1 of $2",
   "bay.overview.notReported": "not reported",
