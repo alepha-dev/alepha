@@ -80,6 +80,10 @@ export class EstateCommandService {
     // row failed, ignores the later `done`, and the console then says a
     // backup failed while `lastBackupAt` moved.
     backup: 900,
+    // A bounded tail of a journal, answered over the pull route. Short
+    // because it is a read: if it has not come back in a minute, nobody is
+    // still looking at the page that asked.
+    logs: 60,
   };
 
   protected readonly log = $logger();

@@ -1,9 +1,16 @@
 import { $inject, z } from "alepha";
+import { FileService } from "alepha/api/files";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, ForbiddenError, NotFoundError } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  ForbiddenError,
+  NotFoundError,
+} from "alepha/server";
 
 import { artifacts } from "../entities/artifacts.ts";
+import { estateCommands } from "../entities/estateCommands.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import {
   type EstateCommandResource,
@@ -42,6 +49,8 @@ export class EstateCommandController {
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly artifacts = $repository(artifacts);
   protected readonly grants = $repository(estateProjects);
+  protected readonly rows = $repository(estateCommands);
+  protected readonly files = $inject(FileService);
 
   listEstateCommands = $action({
     use: [$secure({ permissions: ["estate:read"] })],
@@ -75,6 +84,14 @@ export class EstateCommandController {
           environment: z.string().min(1).max(100),
         }),
         z.object({
+          kind: z.literal("logs"),
+          app: z.string().min(1).max(100),
+          environment: z.string().min(1).max(100),
+          lines: z.integer().min(1).max(2000).optional(),
+          sinceSeconds: z.integer().min(0).max(604_800).optional(),
+          grep: z.string().max(200).optional(),
+        }),
+        z.object({
           kind: z.literal("deploy"),
           artifactId: z.uuid(),
           environment: z.string().min(1).max(100),
@@ -84,6 +101,37 @@ export class EstateCommandController {
     },
     handler: async ({ params, body, user }) => {
       const estate = await this.estates.loadOwned(params.estateId, user);
+
+      if (body.kind === "logs") {
+        // ⚠️ The one verb in this epic that refuses instead of queueing, and
+        // the one place the queue-and-redeliver pattern #E20 built is
+        // deliberately broken. A tail delivered three hours later, after
+        // nobody is looking, is worse than an error: it is a read, and a
+        // stale read is worthless. Refused before any row is written.
+        if (!this.estates.isOnline(estate)) {
+          throw new BadRequestError(
+            `Estate "${estate.slug}" is not connected right now, so its logs cannot be read`,
+          );
+        }
+        return this.commands.enqueue(
+          estate,
+          {
+            kind: "logs",
+            payload: {
+              app: body.app,
+              environment: body.environment,
+              logs: {
+                lines: body.lines ?? 200,
+                ...(body.sinceSeconds === undefined
+                  ? {}
+                  : { sinceSeconds: body.sinceSeconds }),
+                ...(body.grep === undefined ? {} : { grep: body.grep }),
+              },
+            },
+          },
+          user.id,
+        );
+      }
 
       if (body.kind !== "deploy") {
         // `restart`, `stop`, `start` and `backup` all name one instance on
@@ -135,6 +183,48 @@ export class EstateCommandController {
         },
         user.id,
       );
+    },
+  });
+
+  /**
+   * The answer a `logs` command uploaded, streamed back to the owner.
+   *
+   * ⚠️ A row still pointing at a swept file is the NORMAL end state, not an
+   * error: the blob expires after 24 hours and the framework's `FileJobs`
+   * takes it. That answers 404 with "expired", which the page says in words,
+   * rather than a 500 about a missing file.
+   */
+  getEstateCommandResult = $action({
+    use: [$secure({ permissions: ["estate:read"] })],
+    method: "GET",
+    path: "/estates/:estateId/commands/:commandId/result",
+    schema: {
+      params: z.object({ estateId: z.uuid(), commandId: z.uuid() }),
+      response: z.file(),
+    },
+    handler: async ({ params, user, reply }) => {
+      const estate = await this.estates.loadOwned(params.estateId, user);
+      // Scoped on both in one query, so a command of another estate and one
+      // that does not exist are the same empty result here too.
+      const command = await this.rows.findOne({
+        where: {
+          id: { eq: params.commandId },
+          estateId: { eq: estate.id },
+        },
+      });
+      if (!command?.resultFileId) {
+        throw new NotFoundError("This command has no stored result");
+      }
+      try {
+        const file = await this.files.streamFile(command.resultFileId);
+        reply.setHeader("content-type", "application/json");
+        reply.setHeader("cache-control", "no-store");
+        return file;
+      } catch {
+        throw new NotFoundError(
+          "This command's result has expired; logs are kept for 24 hours",
+        );
+      }
     },
   });
 }

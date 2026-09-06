@@ -499,3 +499,72 @@ describe("EstateCommandService, stop and start", () => {
     ).resolves.toBeDefined();
   });
 });
+
+/**
+ * `logs` is the one verb in this epic that refuses instead of queueing.
+ *
+ * It is a read, and a stale read is worthless: a tail delivered three hours
+ * later, after nobody is looking, is worse than an error. The refusal lives
+ * on the controller, before any row is written, so nothing is queued at all.
+ */
+describe("EstateCommandService, logs", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("carries a bounded ask and a short timeout", async ({ expect }) => {
+    const user = await createOwner(ctx);
+    const estate = await createEstate(ctx, user, "ovh-logs-queue");
+    ctx.transport.connected.add(estate.id);
+
+    const command = await ctx.service.enqueue(
+      estate,
+      {
+        kind: "logs",
+        payload: {
+          app: "lore",
+          environment: "production",
+          logs: { lines: 500, sinceSeconds: 900, grep: "ERROR" },
+        },
+      },
+      user.id,
+    );
+
+    expect(command.payload.logs).toEqual({
+      lines: 500,
+      sinceSeconds: 900,
+      grep: "ERROR",
+    });
+    expect(command.timeoutSeconds).toBe(60);
+    // Nothing here is a path or a shell fragment: three bounded numbers and
+    // one bounded pattern, which Bay runs through RE2.
+    expect(command.payload.artifact).toBeUndefined();
+  });
+
+  it("has no result until the machine uploads one", async ({ expect }) => {
+    const user = await createOwner(ctx);
+    const estate = await createEstate(ctx, user, "ovh-logs-empty");
+    ctx.transport.connected.add(estate.id);
+
+    const command = await ctx.service.enqueue(
+      estate,
+      {
+        kind: "logs",
+        payload: {
+          app: "lore",
+          environment: "production",
+          logs: { lines: 200 },
+        },
+      },
+      user.id,
+    );
+
+    expect(command.resultFileId).toBeUndefined();
+  });
+});

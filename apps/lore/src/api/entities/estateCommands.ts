@@ -30,6 +30,7 @@ export const ESTATE_COMMAND_KINDS = [
   "stop",
   "start",
   "backup",
+  "logs",
 ] as const;
 
 export type EstateCommandKind = (typeof ESTATE_COMMAND_KINDS)[number];
@@ -117,6 +118,21 @@ export const estateCommands = $entity({
      * Why it failed, from the machine's ack or from the sweep.
      */
     reason: z.string().max(2000).optional(),
+    /**
+     * The blob a `logs` command's answer was uploaded as.
+     *
+     * ⚠️ A LOGICAL reference, exactly like `artifacts.fileId`, and for the
+     * reason that entity gives: a physical `db.ref` onto `files` is a table
+     * rebuild on SQLite, which on D1 is the cascade wipe documented in
+     * `apps/lore/CLAUDE.md`. Nothing here cascades, and the file is swept by
+     * the framework's own `FileJobs` when its 24 h expiry passes - which is
+     * why `EstateCommandJobs` needs to know nothing about it and an estate
+     * deletion needs no blob hook.
+     *
+     * A row still pointing at a swept file is the normal end state, and the
+     * owner's read answers "expired" for it rather than 500ing.
+     */
+    resultFileId: z.uuid().optional(),
   }),
   indexes: [
     // The reconciliation on connect and the sweep both ask "which commands
