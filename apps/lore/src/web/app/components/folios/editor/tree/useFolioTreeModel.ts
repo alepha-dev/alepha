@@ -349,22 +349,72 @@ export const useFolioTreeModel = (
     writeCollapsed(defaultCollapsed);
   }, [seededForProject, expandDirIds, directories, folios]);
 
+  /**
+   * The set of ids that must be open, as a value rather than an object.
+   *
+   * ⚠️ This is what makes the reveal below fire on a change of TARGET rather
+   * than on a change of anything the target happens to be derived from.
+   * `expandDirIds` is a memo over `nodeById`, which takes a new identity
+   * whenever the folio or directory lists change - so a rename, or creating a
+   * sibling, used to re-run the reveal and re-open a directory the reader had
+   * just closed. A rename does not move a node, so the id SET is identical
+   * and this string does not change.
+   */
+  const expandSignature = useMemo(
+    () => [...expandDirIds].sort().join("|"),
+    [expandDirIds],
+  );
+
+  /**
+   * The last set this hook actually revealed.
+   *
+   * A ref rather than state: it is read and written inside the effect and
+   * must never cause a render of its own.
+   */
+  const revealedSignatureRef = useRef<string | undefined>(undefined);
+  const collapsedRef = useRef(collapsed);
+  collapsedRef.current = collapsed;
+
   // Later navigations only ever EXPAND the new target's path - never
   // collapse anything else. This is what keeps a directory open when
   // jumping from one of its folios to an unrelated root-level folio, and
   // what makes a `?dir=` link work when the workspace is already mounted.
+  //
+  // ⚠️ **`collapsed` is DELIBERATELY not a dependency, and reading it through
+  // a ref is the point rather than a shortcut.** With it in the list, this
+  // stopped being a response to a navigation and became an invariant: "a
+  // selected folio's ancestors may never be collapsed". Collapsing the
+  // directory holding the open folio wrote `collapsed`, which re-ran this,
+  // which deleted the id again - so the row sprang back open on every click,
+  // for as long as that folio stayed selected, and the chevron looked broken
+  // rather than refused (feedback #2114). An invariant cannot be overridden
+  // by the person using it, which is the whole bug.
+  //
+  // `react-hooks/exhaustive-deps` is OFF in this repo (`.oxlintrc.json` says
+  // why), so nothing mechanical will stop the next reader adding `collapsed`
+  // back to settle the warning their editor shows them. This comment is the
+  // only guard there is.
   useEffect(() => {
     if (!seededForProject) return;
+    if (revealedSignatureRef.current === expandSignature) return;
+    // Recorded BEFORE the early return below, so navigating to a root-level
+    // folio (nothing to reveal) still counts as having moved: coming back to
+    // a folio inside a directory then reveals it again, as a navigation
+    // should. It is also what lets the first pass, before the folio and
+    // directory lists have loaded and while the set is empty, be superseded
+    // once they arrive.
+    revealedSignatureRef.current = expandSignature;
     if (expandDirIds.size === 0) return;
+
     let changed = false;
-    const next = new Set(collapsed);
+    const next = new Set(collapsedRef.current);
     for (const id of expandDirIds) {
       if (next.delete(id)) changed = true;
     }
     // Guarded on `changed`, so it settles in one pass.
     if (!changed) return;
     writeCollapsed(next);
-  }, [expandDirIds, seededForProject, collapsed]);
+  }, [expandSignature, seededForProject]);
 
   const toggle = (id: string): void => {
     const next = new Set(collapsed);
