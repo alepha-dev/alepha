@@ -2,17 +2,35 @@
 
 Lore is an open-source project management app built on Alepha.
 
-Projects hold **quests** (the roadmap and the in-flight work), **epics** (bounded
-initiatives that hold quests and run one way from planned to done, see
-[Epics](/lore/docs/guides-epics)), **folios** (project memory, wiki-linked and
-optionally end-to-end encrypted), **feedback** (inbound bug and feature triage),
-**blights** (deduplicated crash telemetry reported by the apps you deploy), **releases**
-(the named goals epics and quests ship in) and **reports** (analytics and insights
-over all of it).
+A project is not one fixed shape. It is a container that composes four
+**capabilities**, and you pick them when you create it:
+
+- **Work** - **quests** (the roadmap and the in-flight work), **areas**, and
+  optionally **epics** (bounded initiatives that hold quests and run one way
+  from planned to done, see [Epics](/lore/docs/guides-epics)), **releases**
+  (the named goals epics and quests ship in) and a Kanban **board**.
+- **Knowledge** - **folios**: project memory, wiki-linked, optionally
+  end-to-end encrypted, filed in a tree.
+- **Apps** - the copies you deploy, the **sigils** they report with, their
+  analytics, and **blights**: deduplicated crash telemetry.
+- **Support** - **feedback**, inbound bug and feature triage, plus a
+  first-party request form your users can reach.
+
+Turn a capability off and its pages, its menu entries and its search results
+go with it. Nothing is deleted: turn it back on and everything is where you
+left it. A project can have all four or just one, and turning them all off is
+allowed - what remains is the project itself, its members, its activity feed
+and its reports.
+
+**Reports** sits outside the four: every project has it, and each of its tabs
+appears when the capability behind it does.
 
 Every one of those surfaces is exposed over **MCP**, which is the primary consumer:
 an AI agent reads the folio index to orient itself, drives quests as work lands, and
-files what it learned back as a folio.
+files what it learned back as a folio. `project_context` answers the capability
+set first, then only the sections those capabilities own - a section a project
+has turned off is absent rather than empty, so an agent is never told a project
+tracks something it does not.
 
 ## Apps and their instances
 

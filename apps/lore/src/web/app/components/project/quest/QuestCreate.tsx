@@ -268,7 +268,12 @@ const QuestCreate = (props: QuestCreateProps) => {
     q?.dependsOn != null ||
     q?.releaseId != null;
 
-  const releasesEnabled = props.project.features?.milestones === true;
+  // ⚠️ The last live read of `projects.features` in the tree, and the one the
+  // capability migration missed: `features.milestones` is still WRITTEN by
+  // `createProject` so old rows stay decodable, so this went on answering
+  // whatever the frozen column default says and ignored the switch the owner
+  // actually moved - wrong in both directions rather than merely stale.
+  const releasesEnabled = capabilityOption(props.project, "work", "releases");
   const releaseOptions = (releases ?? [])
     .filter((r) => !r.releasedAt || r.id === props.quest?.releaseId)
     .map((r) => ({ value: String(r.id), label: r.tag ?? r.title }));
