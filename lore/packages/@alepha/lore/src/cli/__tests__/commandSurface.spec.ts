@@ -45,10 +45,10 @@ describe("the Lore CLI command surface", () => {
   };
 
   /**
-   * Five, and no root of their own: the binary IS the root, so a `lore`
+   * Six, and no root of their own: the binary IS the root, so a `lore`
    * command inside it would read `lore lore quality push`.
    */
-  it("puts the five Lore verbs at the top level", () => {
+  it("puts the six Lore verbs at the top level", () => {
     const names = setup()
       .testGetTopLevelCommands()
       .map((command) => command.name)
@@ -56,6 +56,7 @@ describe("the Lore CLI command surface", () => {
 
     expect(names).toEqual([
       "artifacts",
+      "attachments",
       "login",
       "logout",
       "quality",
@@ -77,6 +78,7 @@ describe("the Lore CLI command surface", () => {
       ),
     ).toEqual({
       artifacts: ["push"],
+      attachments: ["push"],
       quality: ["push"],
       releases: ["publish"],
     });

@@ -26,6 +26,7 @@ export type MarkdownCommandId =
   | "edit.bold"
   | "edit.italic"
   | "edit.code"
+  | "edit.spoiler"
   | "insert.heading1"
   | "insert.heading2"
   | "insert.heading3"
@@ -45,6 +46,10 @@ export const markdownCommands: Record<
   "edit.bold": (v) => apply(v, toggleInlineMarker(v.state, "**")),
   "edit.italic": (v) => apply(v, toggleInlineMarker(v.state, "*")),
   "edit.code": (v) => apply(v, toggleInlineMarker(v.state, "`")),
+  // `||`, Discord's spoiler. `toggleInlineMarker` already takes a
+  // multi-character marker and refuses to claim one that sits inside a longer
+  // run of the same character, so `|||` is not read as a spoiler around `|`.
+  "edit.spoiler": (v) => apply(v, toggleInlineMarker(v.state, "||")),
   "insert.heading1": (v) => apply(v, toggleLinePrefix(v.state, "# ")),
   "insert.heading2": (v) => apply(v, toggleLinePrefix(v.state, "## ")),
   "insert.heading3": (v) => apply(v, toggleLinePrefix(v.state, "### ")),

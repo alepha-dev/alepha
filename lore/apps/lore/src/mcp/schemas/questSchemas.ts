@@ -3,6 +3,7 @@ import { z } from "alepha";
 import { MAX_QUEST_OBJECTIVES } from "@/api/schemas/questObjectivesLimit.ts";
 
 import { questStatusSchema } from "../../api/schemas/questResourceSchema.ts";
+import { attachmentPushResultSchema } from "./attachmentPushResultSchema.ts";
 import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
 import { diagramWarningsShape } from "./diagramWarningsSchema.ts";
 import { entityRefSchema } from "./entityRefSchema.ts";
@@ -268,29 +269,33 @@ export const questAttachmentGetParamsSchema = entityRefSchema.extend({
     .describe("Attachment id, from a `quest_get` `attachments[].id`."),
 });
 
+/**
+ * ⚠️ No `mimeType` and no `data`, since 2026-09-06.
+ *
+ * This tool moves no bytes: it confirms the quest exists and hands back the
+ * `lore attachments push` line to run. See `AttachmentPushCommand` for why.
+ * The media type is guessed from the file's extension by the CLI, and
+ * `--type` overrides it there.
+ */
 export const questAttachmentAddParamsSchema = entityRefSchema.extend({
+  file: z
+    .string()
+    .min(1)
+    .max(1000)
+    .describe(
+      "Path to the file on the machine you will run the command on, e.g. `./p75-after.png`. Used to fill in the returned command line; nothing is read here.",
+    ),
   name: z
     .string()
     .min(1)
     .max(200)
-    .describe("Filename, e.g. `p75-after.png`. Shown on the quest."),
-  mimeType: z
-    .string()
     .describe(
-      "The file's media type, e.g. `text/html`, `image/png`, `application/pdf`. Any type is accepted; only the shape is checked, since this is what the download is later served as. It decides how `quest_attachment_get` answers: images inline, text-like decoded, anything else a note naming the file.",
-    ),
-  data: z
-    .string()
-    .min(1)
-    // ~2 MB decoded, plus slack for line breaks. The decoded size is
-    // checked too; this only keeps an absurd payload from being parsed.
-    .max(2_900_000)
-    .describe(
-      "The file's bytes, base64-encoded. Capped at 2 MB decoded: anything bigger belongs somewhere else, with a link to it on the quest.",
-    ),
+      "Name to store it under, if it should differ from the file's own. Shown on the quest.",
+    )
+    .optional(),
 });
 
-export const questAttachmentAddResultSchema = questAttachmentSchema;
+export const questAttachmentAddResultSchema = attachmentPushResultSchema;
 
 export const questCommentAddParamsSchema = entityRefSchema.extend({
   body: z
