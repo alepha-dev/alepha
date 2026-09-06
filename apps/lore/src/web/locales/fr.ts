@@ -1465,7 +1465,50 @@ export default {
   "bay.apps.backupNever": "jamais",
   "bay.apps.backupStale": "obsolète",
   "bay.apps.problems.source": "Rapporté par Bay, dans ses propres termes",
-  "bay.instance.title": "Instance",
+  "bay.instance.unknown":
+    "Ni la machine ni Lore ne connaissent cette instance. Elle a peut-être été supprimée depuis l'ouverture de cette page.",
+  "bay.instance.expected":
+    "Lore attend cette instance sur cette machine, et la machine ne l'a pas signalée. C'est à cela que ressemble un déploiement raté ou une unité supprimée.",
+  "bay.instance.openInProject": "Ouvrir dans $1",
+  "bay.instance.memory": "Mémoire",
+  "bay.instance.cpuSeconds": "Temps processeur",
+  "bay.instance.tasks": "Tâches",
+  "bay.instance.restarts": "Redémarrages",
+  "bay.instance.started": "Démarrée",
+  "bay.instance.release": "Version",
+  "bay.instance.runtime": "Runtime",
+  "bay.instance.port": "Port",
+  "bay.instance.domains": "Domaines",
+  "bay.instance.noDomains":
+    "Aucun domaine : cette instance n'est joignable par aucun nom.",
+  "bay.instance.traffic": "Trafic",
+  "bay.instance.lastRequest": "Dernière requête traitée $1.",
+  "bay.instance.neverAnswered": "N'a jamais traité de requête.",
+  "bay.instance.crons":
+    "$1 tâche(s) planifiée(s) déclarée(s) : le silence ici n'est pas de l'inactivité.",
+  "bay.instance.backups": "Sauvegardes",
+  "bay.instance.noDatabase":
+    "Cette application ne déclare aucune base de données provisionnée par Bay : il n'y a rien à sauvegarder.",
+  "bay.instance.lastBackup": "Dernière sauvegarde vérifiée $1.",
+  "bay.instance.neverBackedUp": "Jamais sauvegardée.",
+  "bay.instance.backupStale":
+    "Elle est en retard sur le calendrier en vigueur.",
+  "bay.instance.problems": "Rapport de Bay",
+  "bay.logs.title": "Journaux",
+  "bay.logs.fetch": "Récupérer les journaux",
+  "bay.logs.fetching": "Interrogation de la machine…",
+  "bay.logs.offline":
+    "La machine n'est pas connectée : ses journaux ne peuvent pas être lus. Un extrait livré des heures plus tard n'aurait aucune valeur.",
+  "bay.logs.timeout":
+    "La machine n'a pas répondu à temps. Rien n'est perdu ; réessayez.",
+  "bay.logs.unsupervised":
+    "Ce Bay ne supervise pas cette instance : il n'a aucun journal pour elle.",
+  "bay.logs.static":
+    "Un site statique n'a pas de processus, donc pas de journal.",
+  "bay.logs.truncated": "$1 ligne(s) plus ancienne(s) ont été écartées.",
+  "bay.logs.undated":
+    "$1 ligne(s) sans horodatage ont été conservées malgré la fenêtre demandée.",
+  "bay.logs.empty": "Supervisée, et elle n'a rien dit.",
   "bay.commands.title": "Commandes",
   "bay.settings.title": "Paramètres",
   "bay.soon": "Rien ici pour l'instant.",

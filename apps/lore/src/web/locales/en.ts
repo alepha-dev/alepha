@@ -1447,7 +1447,47 @@ export default {
   "bay.apps.backupNever": "never",
   "bay.apps.backupStale": "stale",
   "bay.apps.problems.source": "Reported by Bay, in its own words",
-  "bay.instance.title": "Instance",
+  "bay.instance.unknown":
+    "Neither the machine nor Lore knows about this instance. It may have been removed since this page was opened.",
+  "bay.instance.expected":
+    "Lore expects this instance on this machine, and the machine did not report it. That is what a failed deploy or a removed unit looks like from here.",
+  "bay.instance.openInProject": "Open in $1",
+  "bay.instance.memory": "Memory",
+  "bay.instance.cpuSeconds": "CPU time",
+  "bay.instance.tasks": "Tasks",
+  "bay.instance.restarts": "Restarts",
+  "bay.instance.started": "Started",
+  "bay.instance.release": "Release",
+  "bay.instance.runtime": "Runtime",
+  "bay.instance.port": "Port",
+  "bay.instance.domains": "Domains",
+  "bay.instance.noDomains":
+    "No domain: this instance is not reachable by name.",
+  "bay.instance.traffic": "Traffic",
+  "bay.instance.lastRequest": "Last answered a request $1.",
+  "bay.instance.neverAnswered": "Never answered a request.",
+  "bay.instance.crons": "$1 cron(s) declared, so silence here is not idleness.",
+  "bay.instance.backups": "Backups",
+  "bay.instance.noDatabase":
+    "This app declares no database Bay provisioned, so there is nothing to snapshot.",
+  "bay.instance.lastBackup": "Last verified backup $1.",
+  "bay.instance.neverBackedUp": "Never backed up.",
+  "bay.instance.backupStale": "It is overdue against the schedule in force.",
+  "bay.instance.problems": "Bay reports",
+  "bay.logs.title": "Logs",
+  "bay.logs.fetch": "Fetch logs",
+  "bay.logs.fetching": "Asking the machine…",
+  "bay.logs.offline":
+    "The machine is not connected, so its logs cannot be read. A tail delivered hours later would be worthless.",
+  "bay.logs.timeout":
+    "The machine did not answer in time. Nothing was lost; try again.",
+  "bay.logs.unsupervised":
+    "This Bay does not supervise this instance, so it has no journal for it.",
+  "bay.logs.static": "A static site has no process, and therefore no log.",
+  "bay.logs.truncated": "$1 older line(s) were dropped to fit.",
+  "bay.logs.undated":
+    "$1 line(s) carried no timestamp and were kept regardless of the window.",
+  "bay.logs.empty": "Supervised, and it has said nothing.",
   "bay.commands.title": "Commands",
   "bay.settings.title": "Settings",
   "bay.soon": "Nothing here yet.",

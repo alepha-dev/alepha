@@ -6,6 +6,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -223,5 +226,53 @@ func TestEncodeLogsResultLeavesASmallTailAlone(t *testing.T) {
 	}
 	if decoded.Truncated != 0 || len(decoded.Lines) != 2 {
 		t.Fatalf("a tail that fits must be untouched: %+v", decoded)
+	}
+}
+
+/*
+The result payload, pinned from both sides.
+
+`apps/lore/test/estate-command-result.spec.ts` validates this same file
+against Lore's `estateCommandResultSchema`, so the two cannot drift. They
+already did once: Lore's first schema accepted `lines: string[]`, which would
+have refused every real upload with a 400 and stripped the three flags in
+silence, and nothing on either side would have gone red.
+*/
+func TestLogsResultMatchesTheSharedFixture(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("testdata", "logs-result.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stamp, err := time.Parse(time.RFC3339, "2026-09-06T11:59:41Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(logsResult{
+		Supervised: true,
+		Undated:    1,
+		Truncated:  12,
+		Lines: []runner.LogLine{
+			{
+				At:    stamp,
+				Level: "info",
+				Text:  "listening on 41001",
+				Raw:   `{"level":"info","msg":"listening on 41001"}`,
+			},
+			{Raw: "a plain line with no envelope at all"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got, want map[string]any
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("encoded %s\nwant     %s", encoded, raw)
 	}
 }

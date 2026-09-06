@@ -445,7 +445,10 @@ describe("EstatePullController, a command's result", () => {
     const res = await pushResult(
       ctx,
       command.id,
-      JSON.stringify({ lines: ["boot", "ready"] }),
+      JSON.stringify({
+        supervised: true,
+        lines: [{ raw: "boot" }, { raw: "ready" }],
+      }),
       machine.secret,
     );
 
@@ -469,14 +472,14 @@ describe("EstatePullController, a command's result", () => {
     const machine = await enrol(ctx, owner, "ovh-logs-twice");
     const command = await sentLogs(ctx, machine);
 
+    const first = `{"supervised":true,"lines":[{"raw":"first"}]}`;
     expect(
-      (await pushResult(ctx, command.id, `{"lines":["first"]}`, machine.secret))
-        .status,
+      (await pushResult(ctx, command.id, first, machine.secret)).status,
     ).toBe(200);
     const second = await pushResult(
       ctx,
       command.id,
-      `{"lines":["second"]}`,
+      `{"supervised":true,"lines":[{"raw":"second"}]}`,
       machine.secret,
     );
     expect(second.status).toBe(404);
@@ -507,7 +510,7 @@ describe("EstatePullController, a command's result", () => {
     const res = await pushResult(
       ctx,
       command.id,
-      `{"lines":["late"]}`,
+      `{"supervised":true,"lines":[{"raw":"late"}]}`,
       machine.secret,
     );
     expect(res.status).toBe(404);
@@ -521,7 +524,7 @@ describe("EstatePullController, a command's result", () => {
     const theirs = await enrol(ctx, owner, "ovh-logs-theirs");
     const command = await sentLogs(ctx, mine);
 
-    const body = `{"lines":["x"]}`;
+    const body = `{"supervised":true,"lines":[{"raw":"x"}]}`;
     const foreign = await pushResult(ctx, command.id, body, theirs.secret);
     const unknown = await pushResult(
       ctx,
