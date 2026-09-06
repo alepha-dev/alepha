@@ -69,8 +69,9 @@ under `components/`; `use-mobile` lives under `hooks/`.
 > toast twice - so a standalone mount (or `app-shell` with `embedded`) has to
 > wrap them itself.
 
-**`lib/*`** - `utils` exports `cn()`, the `clsx` + `tailwind-merge` helper every
-component uses. Also `resize-image` and `i18n-fr`.
+**`lib/*`** - `utils` re-exports `cn()` from shadcn's `cn` package, the
+zero-dependency class merger every component uses. Also `resize-image` and
+`i18n-fr`.
 
 ## Example
 

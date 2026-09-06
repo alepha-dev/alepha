@@ -104,6 +104,16 @@ const run = (
  * Registry paths are not all components: `@/registry/<style>/ui/button` is one,
  * but `@/registry/<style>/lib/utils` and `.../hooks/*` sit next to `components/`
  * in our `src/`, not under it.
+ *
+ * Since 2026-09 the registry no longer goes through `lib/utils` for `cn`: every
+ * primitive does `import { cn } from "cn"`, shadcn's own zero-dependency
+ * engine that replaced `clsx` + `tailwind-merge`. That import is routed back
+ * through `@alepha/ui/lib/utils`, which re-exports it, for two reasons. One
+ * import path for `cn` across the tree, stock and hand-maintained alike. And
+ * `--check` keeps comparing content: left as-is, the import line alone would
+ * list every primitive as drifted, and a list that says everything says
+ * nothing. `lib/utils.ts` itself is never fetched: the directory listing below
+ * is `ui/*.tsx` only.
  */
 const rewriteImports = (content: string): string =>
   content
@@ -118,7 +128,8 @@ const rewriteImports = (content: string): string =>
     .replaceAll(
       /from\s+["']@\/(components|lib|hooks)\/?/g,
       'from "@alepha/ui/$1/',
-    );
+    )
+    .replaceAll(/from(\s+)["']cn["']/g, 'from$1"@alepha/ui/lib/utils"');
 
 /**
  * The base-nova registry ships icons wrapped in `<IconPlaceholder>`, a
