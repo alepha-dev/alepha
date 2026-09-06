@@ -39,6 +39,12 @@ const filtersSchema = z.object({
 /**
  * Every deployed copy of every app, in one flat table.
  *
+ * **The sidebar's Apps entry points here, and that is the only door.** It used
+ * to be a disclosure group with one child per app, which is why this page was
+ * once described as deliberately absent from the nav; #1771 collapsed the group
+ * to a single entry, because a list that grows without bound does not belong in
+ * the chrome. The list is the search surface now, and the entry is its door.
+ *
  * ## Flat, and grouping was tried and rejected
  *
  * ⚠️ Instances were specified to sit under a collapsible app header until

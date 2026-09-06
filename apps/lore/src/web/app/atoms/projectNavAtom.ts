@@ -15,7 +15,7 @@ const projectNavEntrySchema = z.object({
    */
   href: z.string(),
   /**
-   * `app` is one enrolled app rather than a fixed page. Drives the palette's
+   * `app` is one deployed copy rather than a fixed page. Drives the palette's
    * icon and lets the two be told apart in a group heading.
    */
   kind: z.enum(["page", "app"]),
@@ -28,15 +28,22 @@ export type ProjectNavEntry = Infer<typeof projectNavEntrySchema>;
  * published by `ProjectView` so the ⌘K palette can offer pages and apps
  * alongside content hits.
  *
- * **It is derived from the sidebar's own computed nav, not from a second
+ * **Pages are derived from the sidebar's own computed nav, not from a second
  * list.** That is the whole point: the sidebar already resolves each entry
- * through `router.path(...)`, applies the project's `features.*` gates, and
- * expands the Apps group from `currentInstancesAtom`. A hand-written page list in
- * the palette would rot the first time a route was renamed — and route names
- * are famously not typecheck-protected here (see `AppRouter.ts`) — while a
- * second gating pass would drift from the sidebar's the first time a feature
- * flag moved. Reading one computation means the palette cannot disagree with
- * the sidebar about what exists.
+ * through `router.path(...)` and applies the project's `features.*` gates. A
+ * hand-written page list in the palette would rot the first time a route was
+ * renamed — and route names are famously not typecheck-protected here (see
+ * `AppRouter.ts`) — while a second gating pass would drift from the sidebar's
+ * the first time a feature flag moved. Reading one computation means the
+ * palette cannot disagree with the sidebar about what pages exist.
+ *
+ * ⚠️ **Instances no longer come from there**, and the exception is deliberate.
+ * The sidebar used to expand an Apps group with one child per app, so
+ * flattening the nav produced them; #1771 collapsed that to one entry, because
+ * a list that grows without bound does not belong in the chrome. The palette
+ * still offers them, appended by `ProjectViewNavPublisher` from
+ * `currentInstancesAtom` — the atom that IS the data, so there is nothing for
+ * it to disagree with.
  *
  * The alternative considered and deferred was moving all of this onto `$page`
  * `nav` metadata so both surfaces derive from the route tree. That is the
