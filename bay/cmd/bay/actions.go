@@ -57,6 +57,10 @@ const (
 	// actionBackup takes the same snapshot `bay backup` takes: the database
 	// Bay provisioned, and nothing else.
 	actionBackup actionKind = "backup"
+	// actionLogs answers a bounded tail of one instance's journal. The only
+	// verb whose result is a payload rather than an ack, uploaded over the
+	// pull seam.
+	actionLogs actionKind = "logs"
 )
 
 /*
@@ -126,12 +130,12 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	}
 
 	switch actionKind(cmd.Kind) {
-	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup:
+	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s and %s, nothing else",
-			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup)
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s and %s, nothing else",
+			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -148,14 +152,19 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 
 	log.Info("lore command started")
 	var status, step, reason string
-	if actionKind(cmd.Kind) == actionBackup {
+	switch actionKind(cmd.Kind) {
+	case actionBackup:
 		// Outside the machine-wide mutex, deliberately. A snapshot, a verify
 		// and an upload is minutes on a real database, and holding that lock
 		// for it would queue an unrelated app's restart behind a backup.
 		// `backupInstance` takes a per-instance lock the scheduler shares,
 		// which is the overlap that actually matters.
 		status, step, reason = a.backup(ctx, cmd)
-	} else {
+	case actionLogs:
+		// Outside it too, and for a plainer reason: this is a READ. A tail
+		// asked for during a long deploy has to answer now, not after it.
+		status, step, reason = a.logs(ctx, cmd)
+	default:
 		status, step, reason = a.runExclusive(ctx, cmd, send)
 	}
 	if status == "done" {
