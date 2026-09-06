@@ -1420,6 +1420,34 @@ export default {
   "estates.add.invalid": "Lettres minuscules, chiffres et tirets, comme ovh-1.",
   "estates.add.trust":
     "Toute personne pouvant déployer dans $1 pourra exécuter du code sur la machine derrière $2, avec tout ce que cette machine contient. Rien n'est retiré du déploiement ici, et vous pouvez reprendre le prêt à tout moment.",
+  "estates.type.bay": "Une machine",
+  "estates.type.bay.description":
+    "Un VPS qui exécute le connecteur bay. Lore génère un secret, l'affiche une fois, et la machine s'y connecte avec.",
+  "estates.type.cloudflare": "Un compte Cloudflare",
+  "estates.type.cloudflare.description":
+    "Un compte où Lore déploie des Workers via l'API. Vous collez un jeton créé chez Cloudflare ; Lore le vérifie avant que le domaine existe.",
+  "estates.cloudflare.accountId": "Identifiant de compte Cloudflare",
+  "estates.cloudflare.accountId.placeholder":
+    "0123456789abcdef0123456789abcdef",
+  "estates.cloudflare.accountId.hint":
+    "32 caractères, affichés à droite de la page d'aperçu de votre tableau de bord Cloudflare.",
+  "estates.cloudflare.token": "Jeton d'API Cloudflare",
+  "estates.cloudflare.token.placeholder": "cfut_… ou cfat_…",
+  "estates.cloudflare.guide": "Quel jeton, et quelles permissions",
+  "estates.cloudflare.checking": "Vérification chez Cloudflare…",
+  "estates.cloudflare.accountLabel": "compte $1",
+  "estates.credential.valid": "identifiant valide",
+  "estates.credential.invalid": "identifiant invalide",
+  "estates.credential.checked": "vérifié $1",
+  "estates.credential.neverChecked": "jamais vérifié",
+  "estates.credential.expires": "expire $1",
+  "estates.credential.replace": "Remplacer le jeton",
+  "estates.credential.replaced": "Jeton remplacé",
+  "estates.credential.check": "Vérifier maintenant",
+  "estates.credential.checkedNow": "Cloudflare a accepté ce jeton",
+  "estates.add.trust.cloudflare":
+    "Toute personne pouvant déployer dans $1 pourra exécuter du code dans le compte Cloudflare derrière $2, avec le stockage et les secrets de ce compte. Rien n'est retiré du déploiement ici, et vous pouvez reprendre le prêt à tout moment.",
+  "account.estates.tokenPrefix": "jeton $1…",
   "estates.add.submit": "Le prêter à ce projet",
   "estates.add.submitNew": "Créer et prêter",
   "estates.detach.action": "Retirer",
@@ -1446,8 +1474,6 @@ export default {
   "account.estates.empty":
     "Vous ne possédez encore aucun domaine. Créez-en un, puis lancez `bay connector set` sur la machine avec le secret affiché.",
   "account.estates.create": "Créer un domaine",
-  "account.estates.create.description":
-    "Un domaine bay : une machine qui exécute `bay serve`. Il démarre en statistiques seules, déploiements désactivés, jusqu'à ce que vous les autorisiez.",
   "account.estates.create.submit": "Créer",
   "account.estates.new": "Nouveau domaine",
   "account.estates.secretPrefix": "secret $1…",

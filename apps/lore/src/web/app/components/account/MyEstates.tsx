@@ -8,6 +8,7 @@ import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
+import type { CreateEstateBody } from "@/api/schemas/createEstateBodySchema.ts";
 import type { OwnedEstateResource } from "@/api/schemas/ownedEstateResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -57,7 +58,6 @@ const MyEstates = () => {
   const api = useClient<EstateController>();
 
   const [items, setItems] = useState<OwnedEstateResource[] | undefined>();
-  const [busy, setBusy] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [freshSecret, setFreshSecret] = useState<string | undefined>();
   const [openId, setOpenId] = useState<string | undefined>();
@@ -83,21 +83,23 @@ const MyEstates = () => {
   // saved in the drawer redraws it from the same row the list shows.
   const open = (items ?? []).find((item) => item.id === openId);
 
-  const create = async (slug: string) => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const minted = await api.createEstate({ body: { slug } });
-      const { secret, ...estate } = minted;
-      setItems((current) => [{ ...estate, projects: [] }, ...(current ?? [])]);
-      setCreateOpen(false);
+  /**
+   * Rethrows rather than reporting: the dialog stays open and renders a
+   * refusal beside the field it concerns, which a toast cannot do and which
+   * is the whole point of checking the token before the row exists (#1630).
+   */
+  const create = async (body: CreateEstateBody) => {
+    const minted = await api.createEstate({ body });
+    const { secret, ...estate } = minted;
+    setItems((current) => [{ ...estate, projects: [] }, ...(current ?? [])]);
+    setCreateOpen(false);
+    // Present only when Lore minted one, so a cloudflare create leaves the
+    // reveal dialog shut because the FIELD is absent, not because an empty
+    // string happens to be falsy.
+    if (secret) {
       setFreshSecret(secret);
-      toaster.success(tr("account.estates.toast.created"));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
     }
+    toaster.success(tr("account.estates.toast.created"));
   };
 
   return (
@@ -142,8 +144,7 @@ const MyEstates = () => {
       <MyEstateCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
-        busy={busy}
-        onSubmit={(slug) => void create(slug)}
+        onSubmit={create}
       />
 
       <MyEstateDrawer

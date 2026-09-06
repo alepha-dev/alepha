@@ -1,5 +1,6 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
+import { Input } from "@alepha/ui/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -13,12 +14,13 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { RefreshCw, Trash2, Unlink } from "lucide-react";
+import { KeyRound, RefreshCw, Trash2, Unlink } from "lucide-react";
 import { useState } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { ProjectEstateController } from "@/api/controllers/ProjectEstateController.ts";
 import type { OwnedEstateResource } from "@/api/schemas/ownedEstateResourceSchema.ts";
+import { estateErrorMessage } from "@/web/app/components/shared/estateCreateDraft.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
@@ -67,14 +69,18 @@ const INTERVALS = [300, 900, 1800, 3600, 21_600, 86_400];
  * Lore minted itself.
  */
 const MyEstateDrawer = (props: MyEstateDrawerProps) => {
-  const { tr } = useI18n<I18n, "en">();
+  const { tr, l } = useI18n<I18n, "en">();
   const toaster = useToast();
   const dialog = useDialog();
   const router = useRouter<AppRouter>();
   const api = useClient<EstateController>();
   const projectEstateApi = useClient<ProjectEstateController>();
   const [busy, setBusy] = useState(false);
+  // Lives only as long as the drawer, never prefilled and never echoed.
+  const [token, setToken] = useState("");
+  const [credentialError, setCredentialError] = useState<string | undefined>();
   const estate = props.estate;
+  const isCloudflare = estate?.type === "cloudflare";
 
   const fail = (error: unknown) =>
     toaster.error(error instanceof Error ? error.message : String(error));
@@ -122,6 +128,55 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
       toaster.success(tr("account.estates.toast.rotated"));
     } catch (error) {
       fail(error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Replaces the pasted token, all or nothing.
+   *
+   * Nothing is revealed afterwards: this is a write, not a mint. The field
+   * is a password input with autocomplete off for the same reason the
+   * create dialog's is, and it is cleared whether the save worked or not.
+   */
+  const replace = async () => {
+    if (!estate || !token.trim()) return;
+    setBusy(true);
+    setCredentialError(undefined);
+    try {
+      const updated = await api.replaceEstateCredential({
+        params: { estateId: estate.id },
+        body: { token: token.trim() },
+      });
+      setToken("");
+      props.onChanged({ ...updated, projects: estate.projects });
+      toaster.success(tr("estates.credential.replaced"));
+    } catch (error) {
+      // Beside the field, not a toast: a refusal here names a permission the
+      // owner has to add at Cloudflare, and it has to still be on screen
+      // while they go and do it.
+      setCredentialError(estateErrorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Ask Cloudflare again, now, rather than waiting for the nightly sweep.
+   */
+  const recheck = async () => {
+    if (!estate) return;
+    setBusy(true);
+    setCredentialError(undefined);
+    try {
+      const updated = await api.checkEstateCredential({
+        params: { estateId: estate.id },
+      });
+      props.onChanged({ ...updated, projects: estate.projects });
+      toaster.success(tr("estates.credential.checkedNow"));
+    } catch (error) {
+      setCredentialError(estateErrorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -186,7 +241,14 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
   return (
     <Sheet
       open={Boolean(estate)}
-      onOpenChange={(next) => props.onOpenChange(next)}
+      onOpenChange={(next) => {
+        if (!next) {
+          // The token never outlives the drawer that carried it.
+          setToken("");
+          setCredentialError(undefined);
+        }
+        props.onOpenChange(next);
+      }}
     >
       <SheetContent
         side="right"
@@ -199,27 +261,52 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
               <SheetTitle className="flex items-center gap-2">
                 <span className="truncate">{estate.slug}</span>
                 <Badge variant="outline">{estate.type}</Badge>
-                <Badge variant={estate.online ? "default" : "outline"}>
-                  {estate.online ? tr("estates.online") : tr("estates.offline")}
-                </Badge>
+                {isCloudflare ? (
+                  <Badge
+                    variant={
+                      estate.credentialStatus === "valid"
+                        ? "default"
+                        : "destructive"
+                    }
+                  >
+                    {estate.credentialStatus === "valid"
+                      ? tr("estates.credential.valid")
+                      : tr("estates.credential.invalid")}
+                  </Badge>
+                ) : (
+                  <Badge variant={estate.online ? "default" : "outline"}>
+                    {estate.online
+                      ? tr("estates.online")
+                      : tr("estates.offline")}
+                  </Badge>
+                )}
               </SheetTitle>
               <SheetDescription>
-                {/* Truncated, here as in the row: the cleartext is gone the
-                    moment its dialog is dismissed. */}
+                {/* Truncated, here as in the row. A bay secret's cleartext
+                    is gone the moment its dialog is dismissed; a cloudflare
+                    token was never Lore's to show at all. */}
                 {estate.secretPrefix &&
-                  tr("account.estates.secretPrefix", {
-                    args: [estate.secretPrefix],
-                  })}
+                  (isCloudflare
+                    ? tr("account.estates.tokenPrefix", {
+                        args: [estate.secretPrefix],
+                      })
+                    : tr("account.estates.secretPrefix", {
+                        args: [estate.secretPrefix],
+                      }))}
                 {estate.secretPrefix && " · "}
-                {estate.cpuPercent !== undefined &&
-                estate.memoryPercent !== undefined
-                  ? tr("account.estates.gauge", {
-                      args: [
-                        String(Math.round(estate.cpuPercent)),
-                        String(Math.round(estate.memoryPercent)),
-                      ],
+                {isCloudflare
+                  ? tr("estates.cloudflare.accountLabel", {
+                      args: [estate.accountId ?? "?"],
                     })
-                  : tr("account.estates.gauge.none")}
+                  : estate.cpuPercent !== undefined &&
+                      estate.memoryPercent !== undefined
+                    ? tr("account.estates.gauge", {
+                        args: [
+                          String(Math.round(estate.cpuPercent)),
+                          String(Math.round(estate.memoryPercent)),
+                        ],
+                      })
+                    : tr("account.estates.gauge.none")}
               </SheetDescription>
             </SheetHeader>
 
@@ -241,61 +328,149 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                   data-testid="my-estate-deploys"
                 />
               </div>
-              <div className="flex items-center justify-between gap-4 text-sm">
-                <span className="flex flex-col gap-0.5">
-                  <span>{tr("account.estates.switch.series")}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {tr("account.estates.switch.series.description")}
+              {!isCloudflare && (
+                <div className="flex items-center justify-between gap-4 text-sm">
+                  <span className="flex flex-col gap-0.5">
+                    <span>{tr("account.estates.switch.series")}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {tr("account.estates.switch.series.description")}
+                    </span>
                   </span>
-                </span>
-                <Switch
-                  checked={estate.collectSeries}
-                  disabled={busy}
-                  onCheckedChange={(value) => {
-                    void update({ collectSeries: value });
-                  }}
-                  aria-label={tr("account.estates.switch.series")}
-                  data-testid="my-estate-series"
-                />
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span className="flex flex-col gap-0.5">
-                  <span>{tr("account.estates.interval")}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {tr("account.estates.interval.description")}
+                  <Switch
+                    checked={estate.collectSeries}
+                    disabled={busy}
+                    onCheckedChange={(value) => {
+                      void update({ collectSeries: value });
+                    }}
+                    aria-label={tr("account.estates.switch.series")}
+                    data-testid="my-estate-series"
+                  />
+                </div>
+              )}
+              {!isCloudflare && (
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="flex flex-col gap-0.5">
+                    <span>{tr("account.estates.interval")}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {tr("account.estates.interval.description")}
+                    </span>
                   </span>
-                </span>
-                <div className="flex flex-wrap gap-1" role="group">
-                  {INTERVALS.map((seconds) => (
-                    <Button
-                      key={seconds}
-                      type="button"
-                      size="sm"
-                      variant={
-                        estate.statsIntervalSeconds === seconds
-                          ? "default"
-                          : "outline"
-                      }
-                      disabled={busy}
-                      aria-pressed={estate.statsIntervalSeconds === seconds}
-                      onClick={() => {
-                        if (estate.statsIntervalSeconds !== seconds) {
-                          void update({ statsIntervalSeconds: seconds });
+                  <div className="flex flex-wrap gap-1" role="group">
+                    {INTERVALS.map((seconds) => (
+                      <Button
+                        key={seconds}
+                        type="button"
+                        size="sm"
+                        variant={
+                          estate.statsIntervalSeconds === seconds
+                            ? "default"
+                            : "outline"
                         }
-                      }}
+                        disabled={busy}
+                        aria-pressed={estate.statsIntervalSeconds === seconds}
+                        onClick={() => {
+                          if (estate.statsIntervalSeconds !== seconds) {
+                            void update({ statsIntervalSeconds: seconds });
+                          }
+                        }}
+                      >
+                        {seconds < 3600
+                          ? tr("account.estates.interval.minutes", {
+                              args: [String(seconds / 60)],
+                            })
+                          : tr("account.estates.interval.hours", {
+                              args: [String(seconds / 3600)],
+                            })}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {isCloudflare && (
+              <div className="flex flex-col gap-3 border-t px-4 pt-4">
+                <span className="text-muted-foreground text-xs">
+                  {estate.credentialCheckedAt
+                    ? tr("estates.credential.checked", {
+                        args: [
+                          String(
+                            l(estate.credentialCheckedAt, { date: "lll" }),
+                          ),
+                        ],
+                      })
+                    : tr("estates.credential.neverChecked")}
+                  {estate.credentialExpiresAt &&
+                    ` · ${String(
+                      tr("estates.credential.expires", {
+                        args: [
+                          String(
+                            l(estate.credentialExpiresAt, { date: "lll" }),
+                          ),
+                        ],
+                      }),
+                    )}`}
+                </span>
+
+                {estate.credentialError && (
+                  <span
+                    className="text-destructive text-xs"
+                    data-testid="my-estate-credential-error"
+                  >
+                    {estate.credentialError}
+                  </span>
+                )}
+
+                <div className="flex flex-col gap-1">
+                  <Input
+                    type="password"
+                    autoComplete="off"
+                    value={token}
+                    disabled={busy}
+                    onChange={(event) => setToken(event.target.value)}
+                    placeholder={tr("estates.cloudflare.token.placeholder")}
+                    aria-label={tr("estates.credential.replace")}
+                    maxLength={128}
+                    data-testid="my-estate-token"
+                  />
+                  {credentialError && (
+                    <span
+                      className="text-destructive text-xs"
+                      data-testid="my-estate-credential-action-error"
                     >
-                      {seconds < 3600
-                        ? tr("account.estates.interval.minutes", {
-                            args: [String(seconds / 60)],
-                          })
-                        : tr("account.estates.interval.hours", {
-                            args: [String(seconds / 3600)],
-                          })}
-                    </Button>
-                  ))}
+                      {credentialError}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busy || token.trim().length < 40}
+                    onClick={() => {
+                      void replace();
+                    }}
+                    data-testid="my-estate-replace"
+                  >
+                    <KeyRound className="size-4" />
+                    {tr("estates.credential.replace")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => {
+                      void recheck();
+                    }}
+                    data-testid="my-estate-recheck"
+                  >
+                    <RefreshCw className="size-4" />
+                    {tr("estates.credential.check")}
+                  </Button>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="flex flex-col gap-2 border-t px-4 pt-4">
               <span className="text-muted-foreground text-xs">
@@ -337,9 +512,14 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
               ))}
             </div>
 
-            <div className="border-t pt-4">
-              <MyEstateCommands estateId={estate.id} />
-            </div>
+            {/* The command queue exists because a bay machine dials in and
+                asks for work. A cloudflare account has no connector to come
+                for it, and #1629 refuses one at enqueue. */}
+            {!isCloudflare && (
+              <div className="border-t pt-4">
+                <MyEstateCommands estateId={estate.id} />
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-end gap-2 border-t px-4 pt-4 pb-4">
               {estate.type === "bay" && (
