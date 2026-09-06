@@ -223,9 +223,22 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
         implRef.current.renderLabel?.(node, state) ?? node.name,
       renderTrailing: (node, state) =>
         implRef.current.renderTrailing?.(node, state),
+      onDragStart: (id) => implRef.current.onDragStart?.(id),
+      onDragOver: (id, position) => implRef.current.onDragOver?.(id, position),
+      onDrop: (id) => implRef.current.onDrop?.(id),
+      onDragEnd: () => implRef.current.onDragEnd?.(),
     }),
     [],
   );
+
+  /**
+   * Whether ANY row of this tree is being dragged.
+   *
+   * ⚠️ A different question from "this row is being dragged", and it has to be
+   * answered here rather than in a row: a row can compare its own id, but only
+   * the tree knows whether the drag exists at all.
+   */
+  const isDragActive = props.dragId !== undefined;
 
   return (
     <div role="tree" aria-label={props.label} className={props.className}>
@@ -239,6 +252,11 @@ export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
           isSelected={props.selectedId === row.node.id}
           isRenaming={props.renamingId === row.node.id}
           isDragging={props.dragId === row.node.id}
+          isDraggable={props.draggable === true}
+          isDragActive={isDragActive}
+          dropHere={
+            props.drop?.id === row.node.id ? props.drop.position : undefined
+          }
         />
       ))}
     </div>

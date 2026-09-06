@@ -1,6 +1,7 @@
 import { cn } from "@alepha/ui/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
+  type DragEvent,
   type KeyboardEvent,
   memo,
   type MouseEvent,
@@ -8,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-import type { TreeNode } from "./tree-model.ts";
+import type { TreeDropPosition, TreeNode } from "./tree-model.ts";
 import type { TreeRowState } from "./tree-view.tsx";
 
 /**
@@ -26,6 +27,10 @@ export interface TreeViewFacade<T = undefined> {
   renderIcon: (node: TreeNode<T>, state: TreeRowState) => ReactNode;
   renderLabel: (node: TreeNode<T>, state: TreeRowState) => ReactNode;
   renderTrailing: (node: TreeNode<T>, state: TreeRowState) => ReactNode;
+  onDragStart: (id: string) => void;
+  onDragOver: (id: string, position: TreeDropPosition) => void;
+  onDrop: (id: string) => void;
+  onDragEnd: () => void;
 }
 
 export interface TreeViewRowProps<T = undefined> {
@@ -46,6 +51,22 @@ export interface TreeViewRowProps<T = undefined> {
   isSelected: boolean;
   isRenaming: boolean;
   isDragging: boolean;
+  /**
+   * Whether this tree has drag and drop turned on. Off, the row attaches no
+   * drag handler at all: a read-only tree must not pay for a capability it
+   * never uses.
+   */
+  isDraggable: boolean;
+  /**
+   * Whether ANY row of this tree is being dragged, which is not the same
+   * question as {@link TreeViewRowProps.isDragging}. `handleDragOver` needs it
+   * to tell an internal drag from an external one that carries no files.
+   */
+  isDragActive: boolean;
+  /**
+   * Where this row's drop marker is drawn, if the pointer is over it.
+   */
+  dropHere?: TreeDropPosition;
 }
 
 /**
@@ -53,9 +74,23 @@ export interface TreeViewRowProps<T = undefined> {
  * spacer on a leaf), the icon slot, the label, and the trailing slot, over the
  * indent geometry.
  *
- * Drag and drop is #Q1940, inline rename and the context-menu slot are #Q1941.
- * Both arrive as opt-ins against the declaration in `tree-view.tsx`, and this
- * file stays the read-only core until then.
+ * ## Drag and drop, and why it is native rather than @dnd-kit
+ *
+ * `@dnd-kit` is the house drag library in the applications that consume this
+ * package (kanban boards, file browsers), and it is the wrong tool **here
+ * specifically**. Three drop zones per row is about forty lines of
+ * `onDragOver` arithmetic natively, against writing custom collision detection
+ * for a library built around a single drop target per area. Recorded so it is
+ * not re-litigated.
+ *
+ * A branch row splits **28% / 44% / 28%** into before / inside / after. A leaf
+ * splits 50/50 with no inside area, because it cannot hold children.
+ *
+ * The row reports gestures and resolves nothing: `resolveDrop` is the
+ * consumer's to call, because only it knows whether the resulting parent
+ * change is legal in its own domain.
+ *
+ * Inline rename and the context-menu slot are #Q1941.
  */
 const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
   const { node, depth, facade, isCollapsed, isSelected } = props;
@@ -94,6 +129,44 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
     facade.toggle(node.id);
   };
 
+  const handleDragStart = (e: DragEvent<HTMLDivElement>): void => {
+    e.stopPropagation();
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", node.id);
+    facade.onDragStart(node.id);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isFileDrag(e)) {
+      // An OS file drag has nowhere to land in a tree of rows, so refuse it
+      // rather than silently treating it as a re-parent.
+      e.dataTransfer.dropEffect = "none";
+      return;
+    }
+    if (!props.isDragActive || props.isDragging) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const position: TreeDropPosition = node.branch
+      ? y < rect.height * 0.28
+        ? "before"
+        : y > rect.height * 0.72
+          ? "after"
+          : "inside"
+      : y < rect.height / 2
+        ? "before"
+        : "after";
+    facade.onDragOver(node.id, position);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>): void => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isFileDrag(e)) return;
+    facade.onDrop(node.id);
+  };
+
   return (
     // A tree row that is also a click target. The `tabIndex` and the
     // Enter/Space handler above are what keep the two a11y rules that would
@@ -111,6 +184,11 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
       // Selection is otherwise only a background class, which is not
       // something a test (or a future stylesheet) can address.
       data-selected={isSelected || undefined}
+      draggable={props.isDraggable && !props.isRenaming}
+      onDragStart={props.isDraggable ? handleDragStart : undefined}
+      onDragOver={props.isDraggable ? handleDragOver : undefined}
+      onDrop={props.isDraggable ? handleDrop : undefined}
+      onDragEnd={props.isDraggable ? facade.onDragEnd : undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
@@ -130,6 +208,9 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
         !props.isDragging && !props.isRenaming && "active:translate-y-px",
         "focus-visible:bg-muted/60",
         isSelected && "bg-muted font-medium",
+        props.isDragging && "opacity-45",
+        props.dropHere === "inside" &&
+          "bg-primary/10 ring-primary/60 ring-1 ring-inset",
       )}
       style={{
         paddingLeft: `${INDENT_BASE_PX + depth * INDENT_STEP_PX}px`,
@@ -155,6 +236,18 @@ const TreeViewRowImpl = <T,>(props: TreeViewRowProps<T>): ReactElement => {
         <span
           aria-hidden
           className="bg-primary pointer-events-none absolute inset-y-0 left-0 w-0.5"
+        />
+      )}
+      {props.dropHere === "before" && (
+        <div
+          data-slot="tree-view-drop-before"
+          className="bg-primary pointer-events-none absolute inset-x-0 top-0 h-0.5"
+        />
+      )}
+      {props.dropHere === "after" && (
+        <div
+          data-slot="tree-view-drop-after"
+          className="bg-primary pointer-events-none absolute inset-x-0 bottom-0 h-0.5"
         />
       )}
       {node.branch ? (
@@ -237,6 +330,21 @@ export const DISCLOSURE_BOX_PX = 14;
  * pixel of offset. Known, not overlooked.
  */
 export const INDENT_GUIDE_ORIGIN_PX = INDENT_BASE_PX + DISCLOSURE_BOX_PX / 2;
+
+/**
+ * Whether a drag carries OS files rather than one of this tree's own rows.
+ *
+ * `dataTransfer.types` is the only readable signal during `dragover`:
+ * `dataTransfer.files` is empty until `drop`, because the browser withholds
+ * the bytes so a page cannot read a file merely by being dragged across it.
+ * Checking the tree's drag id instead would be wrong in the other direction:
+ * it is unset for an external drag, but also unset in the frame before an
+ * internal drag's `dragstart` state lands.
+ *
+ * Exported because a consumer's own tests reach for it.
+ */
+export const isFileDrag = (e: DragEvent<HTMLElement>): boolean =>
+  [...e.dataTransfer.types].includes("Files");
 
 /**
  * Memoised, and the props above are shaped so that the DEFAULT shallow
