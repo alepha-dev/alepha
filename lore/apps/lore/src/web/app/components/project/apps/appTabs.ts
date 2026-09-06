@@ -10,7 +10,7 @@ export type AppTabRoute =
   | "appSettings";
 
 export type AppTabLabelKey =
-  | "app.tab.dashboard"
+  | "app.tab.overview"
   | "app.tab.analytics"
   | "app.tab.vitals"
   | "app.tab.errors"
@@ -55,7 +55,7 @@ export interface AppTab {
  * is reserved here.
  */
 export const APP_TABS: AppTab[] = [
-  { route: "app", labelKey: "app.tab.dashboard" },
+  { route: "app", labelKey: "app.tab.overview" },
   {
     route: "appAnalytics",
     labelKey: "app.tab.analytics",

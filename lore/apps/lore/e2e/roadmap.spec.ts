@@ -19,7 +19,7 @@ import { registerAndVerify } from "./_helpers";
  * with a session attached, and pass again after somebody accidentally
  * required one. Playwright's `request` fixture is a separate context with its
  * own empty cookie jar and no page JavaScript, which is exactly what a
- * stranger's browser and a crawler look like. `e2e/sigil.spec.ts` does the
+ * stranger's browser and a crawler look like. `e2e/apps.spec.ts` does the
  * same thing for the opposite case.
  *
  * ## ⚠️ Three projects, and no visibility is ever flipped

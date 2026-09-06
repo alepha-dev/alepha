@@ -1111,7 +1111,7 @@ export default {
   "apps.table.name": "App",
   "apps.table.env": "Env",
   "apps.table.address": "Adresse",
-  "app.tab.dashboard": "Vue d'ensemble",
+  "app.tab.overview": "Aperçu",
   "app.tab.analytics": "Audience",
   "app.tab.vitals": "Vitals",
   "app.tab.errors": "Erreurs",

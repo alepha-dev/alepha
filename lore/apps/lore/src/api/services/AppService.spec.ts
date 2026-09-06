@@ -543,6 +543,12 @@ describe("AppService — the estate an instance deploys to", () => {
     const cleared = await ctx.service.setEstate(instance, null);
 
     expect(cleared.estateId ?? null).toBeNull();
+    // ⚠️ Read back from the DATABASE, not from the returned object. The method
+    // builds its answer in memory, so asserting on that proves the method
+    // returns what it says and nothing about what it wrote - which is exactly
+    // how a clear that never reached the column would pass.
+    const stored = await ctx.repos.instances.getById(instance.id);
+    expect(stored.estateId ?? null).toBeNull();
   });
 
   it("refuses to detach an estate an instance still points at", async ({
@@ -586,6 +592,32 @@ describe("AppService — the estate an instance deploys to", () => {
     await expect(
       ctx.estateService.assertUnreferenced(estate.id),
     ).rejects.toThrow();
+  });
+
+  it("stops blocking once the instance is repointed at nothing", async ({
+    expect,
+  }) => {
+    // ⚠️ The path the e2e drives: point, refuse, clear, detach. Asserted here
+    // too because the refusal and the clear are two different queries over the
+    // same column, and a `where` that silently stopped filtering would leave
+    // the refusal permanent.
+    const project = await createTestProject(ctx.alepha);
+    const instance = await ctx.service.create({
+      projectId: project.id,
+      app: "club",
+      env: "production",
+    });
+    const estate = await anEstate(ctx, project.id, { lend: true });
+    await ctx.service.setEstate(instance, estate.id);
+    await expect(
+      ctx.estateService.assertUnreferenced(estate.id, project.id),
+    ).rejects.toThrow();
+
+    await ctx.service.setEstate(instance, null);
+
+    await expect(
+      ctx.estateService.assertUnreferenced(estate.id, project.id),
+    ).resolves.toBeUndefined();
   });
 
   it("lets an unreferenced estate through", async ({ expect }) => {

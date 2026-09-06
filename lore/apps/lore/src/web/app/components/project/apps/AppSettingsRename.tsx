@@ -143,7 +143,15 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
           : tr("app.settings.rename.envDescription")
       }
     >
-      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+      {/*
+        Marked, because the two rename rows are the same component twice and
+        their buttons carry the same label. A page-wide `getByRole("button",
+        { name: "Rename" })` cannot say which half it found.
+      */}
+      <div
+        data-testid={`app-settings-rename-${props.half}`}
+        className="flex w-full flex-wrap items-center gap-2 sm:w-auto"
+      >
         <Input
           id={`app-settings-${props.half}`}
           className="min-w-0 flex-1 sm:w-72"

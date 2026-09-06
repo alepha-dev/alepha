@@ -1097,7 +1097,7 @@ export default {
   "apps.table.name": "App",
   "apps.table.env": "Env",
   "apps.table.address": "Address",
-  "app.tab.dashboard": "Dashboard",
+  "app.tab.overview": "Overview",
   "app.tab.analytics": "Analytics",
   "app.tab.vitals": "Vitals",
   "app.tab.errors": "Errors",
