@@ -143,6 +143,28 @@ to text, never promoted to markup: it renders content authored by one user to
 another, so a live raw tag would be an injection point on every surface built on
 this package.
 
+### Spoilers
+
+`||text||` renders as a covered box that reveals on click, on Enter or on
+Space. Discord's syntax, and Discord's behaviour: inline markdown inside it
+survives (`||see [the docs](/d) **now**||` hides a link and a bold word, not
+the text of them), a code span and a fence keep their pipes literally, and an
+unterminated `||` renders as the two characters that were typed rather than
+swallowing the rest of the paragraph. A pair cannot cross a paragraph break.
+
+⚠️ **It is not a security feature, and must never be described as one.** The
+covered text is in the DOM from the first paint - the box is a colour, not an
+absence - and it is also in the raw markdown, in an export, in whatever an API
+or an MCP tool serves, and in any search snippet built from the source. It
+hides a plot point from a reader's eye. It does not store a secret, and the
+same words go in any UI that explains it.
+
+A revealed spoiler stays revealed: re-hiding on blur would make it unreadable
+with a keyboard, since reading what is around it is exactly what a reader does
+next.
+
+### Diagrams
+
 A ` ```mermaid ` fence containing a **`flowchart`** or a **`sequenceDiagram`**
 is drawn as an SVG diagram instead of a code block. The renderer is in-house
 rather than mermaid itself: mermaid is roughly 500-900 kB gzip in a browser and

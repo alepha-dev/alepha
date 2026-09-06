@@ -17,6 +17,7 @@ export type FolioActionId =
   | "edit.bold"
   | "edit.italic"
   | "edit.code"
+  | "edit.spoiler"
   | "insert.heading1"
   | "insert.heading2"
   | "insert.heading3"
@@ -172,6 +173,11 @@ export const FOLIO_MENUS: FolioMenu[] = [
         id: "edit.code",
         labelKey: "folios.editor.action.code",
         syntaxHint: "`",
+      },
+      {
+        id: "edit.spoiler",
+        labelKey: "folios.editor.action.spoiler",
+        syntaxHint: "||",
       },
       sep,
       {
@@ -406,6 +412,7 @@ const NEEDS_EDIT_MODE = new Set<FolioActionId>([
   "edit.bold",
   "edit.italic",
   "edit.code",
+  "edit.spoiler",
   "insert.heading1",
   "insert.heading2",
   "insert.heading3",

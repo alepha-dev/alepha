@@ -1141,6 +1141,7 @@ export const useFolioActions = (
     "edit.bold": () => input.format.run("edit.bold"),
     "edit.italic": () => input.format.run("edit.italic"),
     "edit.code": () => input.format.run("edit.code"),
+    "edit.spoiler": () => input.format.run("edit.spoiler"),
     "insert.heading1": () => input.format.run("insert.heading1"),
     "insert.heading2": () => input.format.run("insert.heading2"),
     "insert.heading3": () => input.format.run("insert.heading3"),

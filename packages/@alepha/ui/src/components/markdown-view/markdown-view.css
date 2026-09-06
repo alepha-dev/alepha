@@ -177,3 +177,47 @@
       )
       right center / 18px 100% no-repeat scroll;
 }
+
+/*
+ * Discord-style `||spoilers||`.
+ *
+ * ⚠️ Not a security feature. The text is in the DOM from the first paint -
+ * this covers it, it does not withhold it - and it is in the raw markdown, in
+ * an export, over MCP and in any search snippet too. See `SpoilerSpan`.
+ *
+ * Both states are painted from `--foreground` through `color-mix`, so the
+ * dark theme needs no second block: the token already flips, and a hidden
+ * spoiler is a strong wash of it while a revealed one is the faint wash every
+ * other inline surface here uses.
+ *
+ * The hidden state sets the text to `transparent` rather than hiding it,
+ * which is what keeps the line's metrics: a `display: none` would reflow the
+ * paragraph on reveal and move the sentence out from under the reader who
+ * just clicked it. `user-select: none` stops a drag-select from lifting the
+ * covered text out through the clipboard by accident.
+ */
+[data-slot="markdown-view"] [data-spoiler="hidden"] {
+  background-color: color-mix(in oklab, var(--foreground) 82%, transparent);
+  color: transparent;
+  user-select: none;
+  transition: background-color 120ms ease;
+}
+
+[data-slot="markdown-view"] [data-spoiler="hidden"]:hover {
+  background-color: color-mix(in oklab, var(--foreground) 70%, transparent);
+}
+
+/*
+ * A visible focus ring, because the hidden state has nothing else to show
+ * one against: the box IS the content, so the browser's default outline on a
+ * `color: transparent` span is the only thing telling a keyboard reader where
+ * they are.
+ */
+[data-slot="markdown-view"] [data-spoiler="hidden"]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+[data-slot="markdown-view"] [data-spoiler="revealed"] {
+  background-color: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
