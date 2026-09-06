@@ -29,6 +29,7 @@ export const ESTATE_COMMAND_KINDS = [
   "deploy",
   "stop",
   "start",
+  "backup",
 ] as const;
 
 export type EstateCommandKind = (typeof ESTATE_COMMAND_KINDS)[number];

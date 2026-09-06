@@ -72,6 +72,14 @@ export class EstateCommandService {
     deploy: 900,
     stop: 120,
     start: 180,
+    // ⚠️ A placeholder until `time bay backup <largest app>/production` is run
+    // once on the OVH box and this is set to double it (the owner's Q3
+    // ruling). `deploy`'s number, because a snapshot plus a verify plus an
+    // upload is the same order of work as a download plus an unpack plus a
+    // boot. Too small here is the failure that matters: the sweep marks the
+    // row failed, ignores the later `done`, and the console then says a
+    // backup failed while `lastBackupAt` moved.
+    backup: 900,
   };
 
   protected readonly log = $logger();
