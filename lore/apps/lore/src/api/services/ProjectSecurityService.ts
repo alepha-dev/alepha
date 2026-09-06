@@ -1,11 +1,17 @@
+import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
-import type { UserAccountToken } from "alepha/security";
+import {
+  ResourceGateMemoProvider,
+  type UserAccountToken,
+} from "alepha/security";
 import { ForbiddenError } from "alepha/server";
 
 import { type Member, members } from "../entities/members.ts";
 import { projectCapabilities } from "../entities/projectCapabilities.ts";
 import { type Project, projects } from "../entities/projects.ts";
+import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import type { RoadmapVisibility } from "../schemas/roadmapVisibilitySchema.ts";
+import { CapabilityRegistry } from "./CapabilityRegistry.ts";
 
 /**
  * Project access gates.
@@ -46,6 +52,8 @@ export class ProjectSecurityService {
    * than membership's.
    */
   capabilities = $repository(projectCapabilities);
+  protected readonly registry = $inject(CapabilityRegistry);
+  protected readonly memo = $inject(ResourceGateMemoProvider);
 
   /**
    * How long `assertMember`'s project read may be served from the ORM's
@@ -64,6 +72,14 @@ export class ProjectSecurityService {
    * change taking up to half a minute to reach another isolate is fine.
    */
   public static readonly PROJECT_CACHE_TTL_MS = 30_000;
+
+  /**
+   * Request-memo key prefix for {@link capabilitiesOf}.
+   *
+   * Namespaced rather than a bare id: the memo `Map` is shared with `$owns`,
+   * which keys its own authority and membership reads into the same store.
+   */
+  public static readonly CAPABILITY_MEMO_PREFIX = "lore.projectCapabilities:";
 
   /**
    * Membership gate. Requires the caller to be the project owner or a
@@ -252,9 +268,105 @@ export class ProjectSecurityService {
 
     return { project };
   }
+
+  /**
+   * Which capabilities this project has turned on, and the options inside
+   * each.
+   *
+   * One query on `project_capabilities`, never a join onto `projects`: the
+   * project row is read through a keyed `getOne` whose cache entry the whole
+   * application shares, and a join changes that key. Two statements, both
+   * cheap, is the shape Ranks then hangs its own definitions read off - two
+   * tables belonging to two modules, issued concurrently rather than joined,
+   * because a cross-module join is what folio #F104 rule 3 forbids.
+   *
+   * Two layers of caching, and they answer different questions:
+   *
+   * - **30 s TTL**, the same window {@link assertMember}'s project read takes.
+   *   Capabilities are configuration, exactly what `features.*` was, so they
+   *   get the project row's treatment and not membership's - membership is
+   *   revocable and deliberately never cached. `Repository` invalidates the
+   *   table on every mutation, so this window only ever applies to a write
+   *   made by another isolate, which is the staleness Settings already
+   *   discloses for the roadmap.
+   * - **The request memo**, so a page that loads seven things at once pays for
+   *   this once rather than seven times. It stores the in-flight promise, so
+   *   batch entries that start concurrently all await the first one's query
+   *   instead of each missing a cache nothing has filled yet.
+   *
+   * A project with no row at all comes back `{}`, which is a legal state:
+   * every capability may be turned off, and a project that has none must still
+   * work. That is the test that the modularity is real.
+   */
+  async capabilitiesOf(projectId: number): Promise<ProjectCapabilitySet> {
+    return this.memo.resolve(
+      `${ProjectSecurityService.CAPABILITY_MEMO_PREFIX}${projectId}`,
+      async () => {
+        const rows = await this.capabilities.findMany(
+          { where: { projectId: { eq: projectId } } },
+          { cache: { ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS } },
+        );
+
+        const set: ProjectCapabilitySet = {};
+        for (const row of rows) {
+          // A row this build has no descriptor for is skipped rather than
+          // thrown on: a rollback must not make every project unreadable.
+          if (!this.registry.find(row.key)) continue;
+          set[row.key] = this.registry.optionsOf(row.key, row.options);
+        }
+        return set;
+      },
+    );
+  }
+
+  /**
+   * Whether a capability is on. Absence of a row is disabled — there is no
+   * `false` state stored anywhere, so this is a presence test and nothing
+   * more.
+   */
+  hasCapability(set: ProjectCapabilitySet, key: CapabilityKey): boolean {
+    return set[key] !== undefined;
+  }
+
+  /**
+   * Whether an option inside a capability is on.
+   *
+   * False whenever the capability itself is off, which encodes the one rule
+   * this epic has about capabilities reading each other: **a capability may
+   * read another's state to narrow what it does, never to widen it.** Sigil
+   * feedback is the only instance today, and it needs `apps.track` AND
+   * `support` - Support must never silently enable tracking.
+   */
+  capabilityOption(
+    set: ProjectCapabilitySet,
+    key: CapabilityKey,
+    option: string,
+  ): boolean {
+    return set[key]?.[option] === true;
+  }
 }
 
 export interface ProjectGuard {
   project: Project;
   member?: Member;
+  /**
+   * The project's enabled capabilities, when the gate read them.
+   *
+   * Optional because {@link ProjectSecurityService.assertMember} does not pay
+   * for the read: most endpoints gate on membership and never ask. The gate
+   * that does ask fills it, so a handler behind one need not query again.
+   */
+  capabilities?: ProjectCapabilitySet;
 }
+
+/**
+ * A project's enabled capabilities, each mapped to its options with defaults
+ * filled in.
+ *
+ * **A key is present if and only if the capability is on.** There is no
+ * `false` entry and no `enabled` field, because "no row" and "a row saying no"
+ * would be two places for one answer to live.
+ */
+export type ProjectCapabilitySet = Partial<
+  Record<CapabilityKey, Record<string, boolean>>
+>;
