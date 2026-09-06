@@ -33,6 +33,7 @@ test.describe("Kanban", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     await page.goto(`/${projectSlug}/quests`);
@@ -65,6 +66,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { shortId } = await apiPost<{ shortId: number }>(
@@ -128,6 +130,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { shortId } = await apiPost<{ shortId: number }>(
@@ -198,6 +201,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     for (const title of [kept, filtered]) {
@@ -262,6 +266,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     // A narrow viewport, so the seven columns cannot possibly fit and the
@@ -324,6 +329,7 @@ test.describe("Kanban", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     await addKanbanColumn(page, projectId, "Review");
@@ -411,6 +417,7 @@ test.describe("Kanban", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     await page.setViewportSize({ width: 411, height: 845 });
@@ -473,6 +480,7 @@ test.describe("Kanban", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     await page.setViewportSize({ width: 411, height: 845 });

@@ -137,27 +137,60 @@ export const apiPost = async <T>(
  * per-quest modules (`questReminder`, `questChrono`) are
  * plain owner-controlled switches now, so the e2e just flips the flag.
  */
-export const setProjectFeature = async (
+export type CapabilityKey = "work" | "knowledge" | "apps" | "support";
+
+/**
+ * Turn one of a project's capabilities on or off, and set its options.
+ *
+ * ⚠️ **Options are sent WHOLE and replace what was stored**, which is why this
+ * reads the project back first: a spec turning one option on must not clear
+ * the others by omitting them. The rule is the write path's, and the same one
+ * `kanbanColumnConfig` and `tagColors` already follow - omitting a key is how
+ * it is cleared, and a server-side merge cannot express that.
+ *
+ * Replaced `setProjectFeature`, which posted `{ features: { key: value } }` to
+ * `updateProjectById`. That body no longer exists, and the 19 call sites were
+ * rewritten rather than shimmed: a shim would have kept the old vocabulary
+ * alive in the specs long after the thing it named was gone.
+ */
+export const setCapability = async (
   page: Page,
   projectId: number,
-  featureKey: string,
-  value = true,
+  key: CapabilityKey,
+  over: { enabled?: boolean; options?: Record<string, boolean> } = {},
 ): Promise<void> => {
-  // Action routes are name-derived: `/api/<actionName>/<param>` (same
-  // shape as the acceptQuest / completeQuest URLs used above).
-  const url = `/api/updateProjectById/${projectId}`;
+  const enabled = over.enabled ?? true;
+  const url = `/api/projects/${projectId}/capabilities/${key}`;
   await page.evaluate(
-    async ({ url, featureKey, value }) => {
+    async ({ url, enabled, options, projectId, key }) => {
+      let existing: Record<string, boolean> = {};
+      if (enabled) {
+        const read = await fetch(`/api/getProjectById/${projectId}`, {
+          credentials: "include",
+        });
+        if (read.ok) {
+          const project = (await read.json()) as {
+            capabilities: Array<{
+              key: string;
+              options: Record<string, boolean>;
+            }>;
+          };
+          existing =
+            project.capabilities.find((it) => it.key === key)?.options ?? {};
+        }
+      }
       const r = await fetch(url, {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ features: { [featureKey]: value } }),
+        body: JSON.stringify({
+          enabled,
+          options: { ...existing, ...options },
+        }),
       });
-      if (!r.ok)
-        throw new Error(`setProjectFeature ${r.status} ${await r.text()}`);
+      if (!r.ok) throw new Error(`setCapability ${r.status} ${await r.text()}`);
     },
-    { url, featureKey, value },
+    { url, enabled, options: over.options, projectId, key },
   );
 };
 
@@ -165,7 +198,7 @@ export const setProjectFeature = async (
  * Add one sub-column to a project's Kanban band.
  *
  * A direct URL rather than `apiPost`, for the same reason
- * `setProjectFeature` uses one: `apiPath` resolves an action to its declared
+ * `setCapability` uses one: `apiPath` resolves an action to its declared
  * path, `:id` and all, and has nowhere to put the parameter.
  */
 export const addKanbanColumn = async (
@@ -344,9 +377,37 @@ export const signInAsAdmin = async (page: Page): Promise<void> => {
  * submit. Keeps the module defaults (folios + kanban + releases on,
  * feedback off). Returns the new project id parsed from the URL.
  */
+export interface WizardSetup {
+  /**
+   * Capabilities to end up with, on top of the wizard's own defaults.
+   *
+   * ⚠️ **Applied AFTER the wizard, through `setCapability`.** A spec that
+   * needs Apps is not testing the wizard's Apps checkbox - `project-wizard`
+   * is - and driving four checkboxes and a second step from 29 call sites
+   * would make every one of them a wizard test that happens to be about
+   * something else.
+   */
+  capabilities?: CapabilityKey[];
+  /**
+   * Per-capability options to turn on, e.g. `{ work: ["board"] }`.
+   */
+  options?: Partial<Record<CapabilityKey, string[]>>;
+}
+
+/**
+ * Create a project the way a person does, then set up whatever the spec needs.
+ *
+ * ⚠️ **The wizard's own defaults are what a project gets here**, deliberately.
+ * This helper used to promise "folios + kanban + releases on", which meant no
+ * spec outside `project-wizard` ever exercised the real defaults - and made
+ * every one of them silently depend on three switches it never mentioned. A
+ * spec that needs the board or releases says so now, which is also the
+ * documentation.
+ */
 export const createProjectViaWizard = async (
   page: Page,
   title: string,
+  setup: WizardSetup = {},
 ): Promise<{ id: number; slug: string }> => {
   await page.goto("/new-project");
   await page.waitForLoadState("networkidle");
@@ -372,7 +433,7 @@ export const createProjectViaWizard = async (
   expect(slug).toBeTruthy();
 
   // Both identities, because callers need both: every URL takes the slug,
-  // while `setProjectFeature`, `apiPost` and the rest of the HTTP API still
+  // while `setCapability`, `apiPost` and the rest of the HTTP API still
   // take the integer id.
   const path = await apiPath(page, "getProjectBySlug");
   const project = await page.evaluate(
@@ -383,6 +444,20 @@ export const createProjectViaWizard = async (
     },
     path.replace(":slug", slug!),
   );
+
+  for (const key of setup.capabilities ?? []) {
+    await setCapability(page, project.id, key, {
+      options: Object.fromEntries(
+        (setup.options?.[key] ?? []).map((option) => [option, true]),
+      ),
+    });
+  }
+  for (const [key, options] of Object.entries(setup.options ?? {})) {
+    if ((setup.capabilities ?? []).includes(key as CapabilityKey)) continue;
+    await setCapability(page, project.id, key as CapabilityKey, {
+      options: Object.fromEntries(options.map((option) => [option, true])),
+    });
+  }
 
   return { id: project.id, slug: slug! };
 };

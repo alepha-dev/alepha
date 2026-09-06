@@ -91,7 +91,7 @@ const appRows = (page: Page, text: string) =>
 /**
  * Poll `GET /api/projects/:projectId/apps` until the pair is present or gone.
  *
- * Same shape as {@link waitForProjectFeature}, one level down, and for the same
+ * Same shape as {@link waitForProjectCapability}, one level down, and for the same
  * reason: every `$action` the SPA makes is multiplexed through
  * `POST /api/_batch`, so `waitForResponse` on a per-action URL never fires.
  * Read the state back from the plain GET route instead.
@@ -175,24 +175,23 @@ const errorBatch = (message: string, count: number) => ({
 });
 
 /**
- * Poll `GET /api/getProjectById/:id` until `features[key]` matches `value`.
+ * Poll `GET /api/getProjectById/:id` until the project has `key`.
  *
- * `useProjectFeatureToggle` sets its `checked` prop optimistically the
- * instant a click fires (`enabled = pending ?? persisted[key] ?? false`) and
- * only clears `pending` once the write resolves — `await
+ * The toggle sets its `checked` prop optimistically the instant a click fires
+ * and only clears `pending` once the write resolves — `await
  * expect(toggle).toBeChecked()` is satisfied by that optimistic value and
  * proves nothing about what the server actually has. A step that navigates
  * away (or an assertion downstream that depends on the server's copy — the
- * config gate, a route loader, the sidebar) can then race the write. Every
+ * ingest gate, a route loader, the sidebar) can then race the write. Every
  * `$action` call is multiplexed through `POST /api/_batch`, so waiting on a
- * specific request is fragile; reading the value straight back from the
- * plain `GET` action route is not.
+ * specific request is fragile; reading the value straight back from the plain
+ * `GET` action route is not.
  */
-const waitForProjectFeature = async (
+const waitForProjectCapability = async (
   page: Page,
   projectId: number,
   key: string,
-  value: boolean,
+  present: boolean,
 ): Promise<void> => {
   await expect
     .poll(
@@ -205,22 +204,22 @@ const waitForProjectFeature = async (
             });
             if (!r.ok) return undefined;
             const body = (await r.json()) as {
-              features?: Record<string, boolean>;
+              capabilities?: Array<{ key: string }>;
             };
-            return body.features?.[key];
+            return (body.capabilities ?? []).some((it) => it.key === key);
           },
           { projectId, key },
         ),
       { timeout: 15_000 },
     )
-    .toBe(value);
+    .toBe(present);
 };
 
 /**
  * Poll `GET /api/projects/:projectId/sigils` until the sigil named `name`
  * carries (`present: true`) or has dropped (`present: false`) `kind`.
  *
- * Same shape as {@link waitForProjectFeature}, one level down: reads the
+ * Same shape as {@link waitForProjectCapability}, one level down: reads the
  * capability straight back from the list endpoint rather than trusting the
  * switch on `AppSettings.tsx`'s Capabilities card, which renders from
  * `currentSigilAtom` — the SPA's belief, not a read of the server's row.
@@ -385,11 +384,11 @@ test.describe("Apps", () => {
       await page.getByRole("switch", { name: "Enable", exact: true }).click();
 
       // The switch's own `checked` state is optimistic (see
-      // `waitForProjectFeature`) — wait on the server directly, since
-      // everything from here on (creating, ingest's config gate, the app and
-      // blights route loaders, the sidebar's Apps entry) depends on
-      // `features.sigils` actually being on, not just the switch looking on.
-      await waitForProjectFeature(page, projectId, "sigils", true);
+      // `waitForProjectCapability`) — wait on the server directly, since
+      // everything from here on (creating, the ingest gate, the app and
+      // blights route loaders, the sidebar's Apps entry) depends on the Apps
+      // capability actually being on, not just the switch looking on.
+      await waitForProjectCapability(page, projectId, "apps", true);
 
       // ⚠️ The enrol block and the credential list are GONE (#1770). Creating a
       // deployed copy is what /apps is for, and a list of the same things here
@@ -632,11 +631,11 @@ test.describe("Apps", () => {
       const toggle = page.getByRole("switch", { name: "Enable", exact: true });
       await expect(toggle).toBeVisible({ timeout: 15_000 });
       await toggle.click();
-      // Not `toBeChecked()` — that's satisfied by `useProjectFeatureToggle`'s
-      // optimistic `pending` value the instant the click fires, which proves
-      // nothing about whether `updateProjectById` has actually landed. This
-      // is exactly the write the very next step's assertion depends on.
-      await waitForProjectFeature(page, projectId, "feedback", true);
+      // Not `toBeChecked()` — that's satisfied by the toggle's optimistic
+      // `pending` value the instant the click fires, which proves nothing
+      // about whether the write has actually landed. This is exactly the
+      // write the very next step's assertion depends on.
+      await waitForProjectCapability(page, projectId, "support", true);
 
       // Back to the Sigils settings page — "the sink tells the app what it
       // wants" step below only makes API calls (no navigation of its own),

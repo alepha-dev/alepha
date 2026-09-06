@@ -7,7 +7,7 @@ import {
   apiPost,
   createProjectViaWizard,
   registerAndVerify,
-  setProjectFeature,
+  setCapability,
 } from "./_helpers.ts";
 
 /**
@@ -54,6 +54,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -87,7 +88,9 @@ test.describe("Quest", () => {
       // refusing to keep it.
       await expect(page.getByText(/~30m/)).toHaveCount(0);
 
-      await setProjectFeature(page, projectId, "questEstimate");
+      await setCapability(page, projectId, "work", {
+        options: { estimate: true },
+      });
       await page.reload();
       await page.waitForLoadState("networkidle");
 
@@ -158,6 +161,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       `CM${t}`.slice(0, 20),
+      { options: { work: ["board"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -285,6 +289,7 @@ test.describe("Quest", () => {
       const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
         page,
         `WV${height}${t}`.slice(0, 20),
+        { options: { work: ["board"] } },
       );
 
       const { id: questId, shortId } = await apiPost<{
@@ -384,11 +389,14 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     // Reminders are an owner toggle, off by default — enable it before
     // exercising the reminder UI.
-    await setProjectFeature(page, projectId, "questReminder");
+    await setCapability(page, projectId, "work", {
+      options: { reminder: true },
+    });
 
     const { shortId } = await apiPost<{
       id: number;
@@ -466,6 +474,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
@@ -591,6 +600,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const predecessor = await apiPost<{ id: number; shortId: number }>(
@@ -689,6 +699,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
@@ -778,6 +789,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     // A folio to link to via the `[[#F<n>]]` form.
@@ -860,6 +872,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { shortId } = await apiPost<{
@@ -955,6 +968,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
@@ -1014,6 +1028,7 @@ test.describe("Quest", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const areaCombobox = page.getByRole("combobox", { name: "Area" });
@@ -1094,6 +1109,7 @@ test.describe("Quest", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     await page.goto(`/${projectSlug}/quests`);
@@ -1158,6 +1174,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
@@ -1246,6 +1263,7 @@ test.describe("Quest", () => {
     const { slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     // The log is a `lg:`-and-up fixture — below that breakpoint neither it nor
@@ -1303,6 +1321,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { shortId } = await apiPost<{ id: number; shortId: number }>(
@@ -1415,6 +1434,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const sidebarLink = (href: string) =>
@@ -1520,7 +1540,9 @@ test.describe("Quest", () => {
     });
 
     await test.step("kanban off removes the sidebar entry, not the route", async () => {
-      await setProjectFeature(page, projectId, "kanban", false);
+      await setCapability(page, projectId, "work", {
+        options: { board: false },
+      });
       await page.goto(`/${projectSlug}/quests`);
       await expect(page.getByTestId("quests-table")).toBeVisible({
         timeout: 10_000,
@@ -1555,6 +1577,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -1657,6 +1680,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { id: questId, shortId } = await apiPost<{
@@ -1773,6 +1797,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     for (const [index, area] of areas.entries()) {
@@ -1854,6 +1879,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     const { shortId } = await apiPost<{ shortId: number }>(
@@ -1930,6 +1956,7 @@ test.describe("Quest", () => {
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
+      { options: { work: ["board"] } },
     );
 
     await apiPost(page, "createQuest", {
@@ -2018,6 +2045,7 @@ test.describe("Quest table — the Size column", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `Qs${t}`.slice(0, 20),
+      { options: { work: ["board"] } },
     );
 
     for (const size of [3, 1, 5]) {
@@ -2100,8 +2128,11 @@ test.describe("Quest — the questline route", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `Ql${t}`.slice(0, 20),
+      { options: { work: ["board"] } },
     );
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     const seed = async (title: string, dependsOn?: number) =>
       await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
@@ -2211,6 +2242,7 @@ test.describe("quest table columns", () => {
     const { id: projectId, slug } = await createProjectViaWizard(
       page,
       `CO${t}`.slice(0, 20),
+      { options: { work: ["board"] } },
     );
     await apiPost(page, "createQuest", {
       projectId,

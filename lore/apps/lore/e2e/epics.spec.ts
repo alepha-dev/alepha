@@ -6,7 +6,7 @@ import {
   createProjectViaWizard,
   newUserContext,
   registerAndVerify,
-  setProjectFeature,
+  setCapability,
 } from "./_helpers.ts";
 
 /**
@@ -51,7 +51,9 @@ test.describe("Epics — the backlog gate", () => {
       `Ep${t}`.slice(0, 20),
     );
 
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     const gatedTitle = `Gated${t}`;
     const releasedTitle = `Released${t}`;
@@ -350,7 +352,9 @@ test.describe("Epics — the list", () => {
       page,
       `El${t}`.slice(0, 20),
     );
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     const withQuest = `Alpha${t}`;
     const empty = `Beta${t}`;
@@ -583,7 +587,9 @@ test.describe("Epics — the questline", () => {
       page,
       `Fl${t}`.slice(0, 20),
     );
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     // `createEpic` and `attachQuest` take a path param, which `apiPath` does
     // not substitute, so they go through a raw fetch the way the gate test
@@ -771,7 +777,9 @@ test.describe("Epics — a member, not just the owner", () => {
       page,
       projectTitle,
     );
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     const member = await newUserContext(browser, baseURL!, "epicmember");
     try {
@@ -897,7 +905,9 @@ test.describe("Epics — beginning from the list", () => {
       page,
       `Eb${t}`.slice(0, 20),
     );
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     const title = `Begin${t}`;
     await page.evaluate(
@@ -972,7 +982,9 @@ test.describe("Epics — sorting by release", () => {
       page,
       `Es${t}`.slice(0, 20),
     );
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     const post = async <T>(path: string, body: unknown): Promise<T> =>
       (await page.evaluate(
@@ -1086,7 +1098,9 @@ test.describe("Epics — the release control", () => {
       page,
       `Er${t}`.slice(0, 20),
     );
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     // `apiPost` resolves a bare action name and does not substitute path
     // params, so the param-carrying endpoints are posted directly, the way
@@ -1262,7 +1276,9 @@ test.describe("Epics — the ratchet", () => {
       page,
       `Rt${t}`.slice(0, 20),
     );
-    await setProjectFeature(page, projectId, "epics", true);
+    await setCapability(page, projectId, "work", {
+      options: { epics: true },
+    });
 
     const createEpic = (title: string, dependsOn?: number) =>
       page.evaluate(

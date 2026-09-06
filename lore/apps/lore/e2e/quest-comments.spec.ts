@@ -19,7 +19,7 @@ import {
 
 /**
  * `apiPost` in `_helpers` only carries a body. Comment endpoints take the id
- * in the path (`/api/<action>/<id>`), the same shape `setProjectFeature`
+ * in the path (`/api/<action>/<id>`), the same shape `setCapability`
  * builds by hand.
  */
 const callWithId = async <T>(

@@ -53,6 +53,7 @@ test.describe("Mobile topbar and sidebar", () => {
     const { slug } = await createProjectViaWizard(
       page,
       `${tag}${ts}`.slice(0, 20),
+      { options: { work: ["board", "releases"] } },
     );
     return slug;
   };

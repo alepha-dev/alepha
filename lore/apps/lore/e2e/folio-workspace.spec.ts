@@ -8,7 +8,7 @@ import {
   createProjectViaWizard,
   emailDirOf,
   registerAndVerify,
-  setProjectFeature,
+  setCapability,
 } from "./_helpers.ts";
 
 /**
@@ -106,7 +106,9 @@ test.describe("Folio workspace", () => {
     // The field is hidden unless the project opts in (#137) — the summary is
     // written for agents, so for a reader it is chrome. Turning it on is part
     // of this test's setup, not part of what it asserts.
-    await setProjectFeature(page, projectId, "folioSummary");
+    await setCapability(page, projectId, "knowledge", {
+      options: { agentSummary: true },
+    });
 
     await page.goto(folioUrl);
     const summary = page.getByLabel(/summary for agents/i);
