@@ -48,6 +48,15 @@ type Runner interface {
 	// deleteUser.
 	Remove(key string, purge bool) error
 	Running(key string) bool
+	// State is what the supervisor calls the unit right now, in its own
+	// words: systemd's ActiveState, so `inactive`, `failed`, `activating`,
+	// `active`. Empty when the supervisor cannot say.
+	//
+	// `Running` collapses three of those into one false, and the console has
+	// to tell them apart: an app somebody stopped, an app past its restart
+	// limit, and an auto-restart in flight are three different sentences to
+	// put in front of an operator.
+	State(key string) string
 	StopAll(grace time.Duration)
 	// Usage reports what the supervisor knows about the app right now, or
 	// false when it knows nothing — an unsupervised child process, an app that
@@ -211,6 +220,16 @@ func (r *Child) Running(key string) bool {
 	defer r.mu.Unlock()
 	_, ok := r.procs[key]
 	return ok
+}
+
+// State is the child runner's two-value version of systemd's ActiveState: it
+// supervises a process or it does not, and it has no notion of a unit that
+// failed past a restart limit.
+func (r *Child) State(key string) string {
+	if r.Running(key) {
+		return "active"
+	}
+	return "inactive"
 }
 
 // StopAll shuts every supervised app down, used on bay's own exit.

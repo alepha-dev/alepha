@@ -360,6 +360,28 @@ func (s *Systemd) Running(key string) bool {
 }
 
 /*
+State asks systemd what it calls the unit right now.
+
+`show --property=ActiveState` rather than `is-active`, because `is-active`
+answers `inactive` for a unit that failed and exits non-zero for both, which
+loses exactly the distinction this exists for. An unreadable answer is the
+empty string: the console then says nothing about the state rather than
+inventing one.
+*/
+func (s *Systemd) State(key string) string {
+	out, err := exec.Command("systemctl", "show", unitName(key)+".service",
+		"--property=ActiveState").Output()
+	if err != nil {
+		return ""
+	}
+	_, value, ok := strings.Cut(strings.TrimSpace(string(out)), "=")
+	if !ok {
+		return ""
+	}
+	return value
+}
+
+/*
 Usage asks systemd what the unit is costing.
 
 One `systemctl show` rather than reading the cgroup files directly: the cgroup
