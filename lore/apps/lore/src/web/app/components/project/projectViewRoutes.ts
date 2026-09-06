@@ -104,10 +104,11 @@ export const ROUTES_FULL_WIDTH = new Set([
  * list has no such nested state, so on the list itself the crumb is the open
  * page and should stay inert.
  *
- * Apps now have one, `projectApps`, which is why the "Apps" crumb on an app
- * page is a link rather than the dead text it used to render as. The list has
- * no sidebar entry on purpose - the sidebar already carries a disclosure group
- * with one child per app - so this crumb is its only door.
+ * Apps have one, `projectApps`, which is why the "Apps" crumb on an app page
+ * is a link rather than the dead text it used to render as. It is no longer the
+ * ONLY door: since #1771 the sidebar's Apps entry points at the list too, the
+ * disclosure group with one child per app having been collapsed. Both lead to
+ * the same page, which is the point - the list is the search surface.
  */
 export const SECTION_HREF_ROUTES: Record<
   string,

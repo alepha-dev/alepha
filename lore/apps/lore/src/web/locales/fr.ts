@@ -1083,7 +1083,6 @@ export default {
   "project.menu.feedback": "Retours",
   "project.menu.blights": "Fléaux",
   "project.menu.apps": "Applications",
-  "project.menu.apps.unavailable": "Liste indisponible",
 
   "apps.filter.search": "Rechercher",
   "apps.status.reporting": "Remonte des données",

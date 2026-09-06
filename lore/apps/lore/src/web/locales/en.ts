@@ -1069,7 +1069,6 @@ export default {
   "project.menu.feedback": "Feedback",
   "project.menu.blights": "Blights",
   "project.menu.apps": "Apps",
-  "project.menu.apps.unavailable": "Couldn't load apps",
 
   "apps.filter.search": "Search",
   "apps.status.reporting": "Reporting",

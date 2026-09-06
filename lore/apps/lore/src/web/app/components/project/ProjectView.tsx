@@ -18,7 +18,6 @@ import {
   Inbox,
   Layers,
   Package,
-  TriangleAlert,
 } from "lucide-react";
 
 import {
@@ -265,55 +264,30 @@ const ProjectView = () => {
     active: name === "projectReports" || name.startsWith("reports"),
   });
 
-  // Apps — one collapsible entry per enrolled app. `NavItem.children` is what
-  // makes the parent a group; the shell opens it on its own whenever one of its
-  // descendants is active, so being inside an app reveals the list without any
-  // persisted open/closed state of our own.
+  // Apps — ONE entry, pointing at the list.
   //
-  // Names only, no badges: an app with three errors and one with three hundred
-  // would read the same at a glance, and the number that matters is per-tab.
+  // ⚠️ It was a disclosure group with one child per enrolled app, collapsed
+  // past five. That worked while an app existed only because somebody minted a
+  // credential for it; once an instance is something you create freely, it is a
+  // list that grows without bound in the one piece of chrome that must not.
+  // The list page is the search surface (#1773), and this entry is its door.
+  //
+  // No badge, for the reason the children carried none: an app with three
+  // errors and one with three hundred would read the same at a glance, and the
+  // number that matters is per-tab.
+  //
+  // The failed read is not rendered here any more either. It used to be a
+  // "Couldn't load apps" child, which needed a group to live in; `ProjectApps`
+  // renders that state itself now, distinct from empty, and this entry links
+  // there either way.
   const opsItems: NavGroup["items"] = [];
   if (features.sigils) {
-    const activeApp = ROUTES_APP.has(name)
-      ? String(routerState.params.app ?? "")
-      : "";
-    const activeEnv = ROUTES_APP.has(name)
-      ? String(routerState.params.env ?? "")
-      : "";
-    // Two states worth rendering, and they are not the same claim. `undefined`
-    // means the loader's `listApps` failed and was swallowed to keep the page
-    // alive — that is worth saying, and it links to the settings page where a
-    // retry lives. `[]` renders nothing at all: the group would hold no apps
-    // and no way to add one, since creating lives elsewhere.
-    const appsUnavailable = instances === undefined;
-    const apps = instances ?? [];
-    if (appsUnavailable || apps.length > 0) {
-      opsItems.push({
-        label: tr("project.menu.apps"),
-        icon: AppWindow,
-        // Open by default while the list is short enough to read at a glance,
-        // and once past that left to the shell — `undefined` means "closed
-        // unless a descendant is active".
-        defaultOpen: apps.length > 5 ? undefined : true,
-        children: appsUnavailable
-          ? [
-              {
-                label: tr("project.menu.apps.unavailable"),
-                icon: TriangleAlert,
-                href: router.path("projectSettingsSigils", {
-                  params: { projectSlug },
-                }),
-              },
-            ]
-          : apps.map((it) => ({
-              label: `${it.app} / ${it.env}`,
-              href: router.path("app", {
-                params: { projectSlug, app: it.app, env: it.env },
-              }),
-              active: activeApp === it.app && activeEnv === it.env,
-            })),
-      });
-    }
+    opsItems.push({
+      label: tr("project.menu.apps"),
+      icon: AppWindow,
+      href: router.path("projectApps", { params: { projectSlug } }),
+      active: ROUTES_APP.has(name),
+    });
   }
 
   const nav: NavGroup[] = [
