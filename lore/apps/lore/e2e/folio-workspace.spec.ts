@@ -1316,6 +1316,182 @@ test.describe("Folio workspace", () => {
    * `$createParagraphNode` for paragraph. A heading-only test would stay green
    * with quote broken.
    */
+  test("13 — View ▸ Text size resizes the document and survives a reload", async () => {
+    // ⚠️ Wide, like 08b, and load-bearing for the width half below: at the
+    // default 1280 the document pane is narrower than the measure, so
+    // `max-width` never binds and the column is the same width at every
+    // level whether or not the rule pins it. The assertion passes against
+    // the bug it exists to catch.
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.goto(folioUrl);
+
+    // The rendered body, not the pane around it: the size is set on this
+    // wrapper and `MarkdownView`'s own root inherits from it, which is what
+    // keeps the `68ch` measure and the text in agreement.
+    const SELECTOR = '[data-slot="folio-document"] .lore-md-view';
+    await expect(page.locator(SELECTOR)).toBeVisible({ timeout: 15_000 });
+
+    // ⚠️ `page.evaluate` with a fresh `querySelector`, NOT
+    // `locator.evaluate`. The latter read an empty string off the very
+    // element a `page.evaluate` one line above reported as 18px: this pane
+    // remounts when the async wiki-link rewrite lands, and a computed style
+    // read through a handle that has just been detached answers `""` for
+    // every property rather than throwing. An empty string is not a size,
+    // but it is also not a failure loud enough to trust.
+    const sizeOf = () =>
+      page.evaluate(
+        (selector) =>
+          getComputedStyle(document.querySelector(selector)!).fontSize,
+        SELECTOR,
+      );
+
+    const widthOf = () =>
+      page.evaluate(
+        (selector) =>
+          Math.round(
+            document.querySelector(selector)!.getBoundingClientRect().width,
+          ),
+        SELECTOR,
+      );
+
+    // Level 3, the size the folio has rendered at since the typography
+    // exploration and the default the preference has to open on.
+    await expect.poll(sizeOf).toBe("18px");
+    const measure = await widthOf();
+
+    await page.getByRole("menuitem", { name: "View", exact: true }).click();
+    await page
+      .getByRole("menuitemradio", { name: "Small", exact: true })
+      .click();
+
+    await expect.poll(sizeOf).toBe("15px");
+    // ⚠️ The column does NOT move with the type. It was `68ch` until
+    // 2026-09-06, which held the line at ~68 characters and narrowed the page
+    // at every step down - and read as the document shrinking rather than the
+    // text. Pinned, "text size" changes the text and nothing else, which is
+    // what the control's name promises.
+    expect(await widthOf()).toBe(measure);
+
+    // The point of the cookie: the server reads it while rendering, so the
+    // first paint after a reload is already at the reader's level rather
+    // than snapping to it on hydration.
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(page.locator(SELECTOR)).toBeVisible({ timeout: 15_000 });
+    await expect.poll(sizeOf).toBe("15px");
+  });
+
+  test("14 — the reading size carries every block with it, not just the prose", async () => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    const url = await createFolio(
+      `Blocks-${stamp}`.slice(0, 24),
+      [
+        "# Heading one",
+        "## Heading two",
+        "### Heading three",
+        "",
+        "A paragraph with `inline code` in it.",
+        "",
+        "- a list item",
+        "",
+        "```ts",
+        "const x = 1;",
+        "```",
+        "",
+        "| a | b |",
+        "| - | - |",
+        "| 1 | 2 |",
+      ].join("\n"),
+    );
+    await page.goto(url);
+
+    const ROOT = '[data-slot="folio-document"] [data-slot="markdown-view"]';
+    await expect(page.locator(ROOT)).toBeVisible({ timeout: 15_000 });
+
+    const sizes = () =>
+      page.evaluate((root) => {
+        const px = (selector: string) => {
+          const el = document.querySelector(`${root} ${selector}`);
+          return el ? Number.parseFloat(getComputedStyle(el).fontSize) : 0;
+        };
+        return {
+          root: Number.parseFloat(
+            getComputedStyle(document.querySelector(root)!).fontSize,
+          ),
+          h1: px("h1"),
+          h2: px("h2"),
+          h3: px("h3"),
+          p: px("p"),
+          li: px("li"),
+          inlineCode: px("p code"),
+          pre: px("pre"),
+          table: px("table"),
+        };
+      }, ROOT);
+
+    const pick = async (level: string) => {
+      await page.getByRole("menuitem", { name: "View", exact: true }).click();
+      await page
+        .getByRole("menuitemradio", { name: level, exact: true })
+        .click();
+      await page.keyboard.press("Escape");
+    };
+
+    // ⚠️ Back to Large first, and NOT redundant: test 13 above leaves the
+    // level at Small and the preference is a cookie on a context this file
+    // shares across its tests, so "the default" is not where this one
+    // starts. That it survives from one test to the next is the feature.
+    await pick("Large");
+
+    // Today's look, pinned. Turning a fixed size into a preference must not
+    // move the size everyone already has, so the default is asserted
+    // exactly rather than proportionally.
+    //
+    // ⚠️ h3 sets SMALLER than the paragraph it heads (16 against 18) and
+    // has since the typography exploration. Preserved deliberately: it is
+    // `@alepha/ui`'s own hierarchy and a separate decision from this one.
+    await expect.poll(async () => (await sizes()).root).toBe(18);
+    const large = await sizes();
+    // ⚠️ To a hundredth of a pixel, not exactly. The ratios are thirds and
+    // ninths, so `calc(4em / 3)` reports 23.9999 where `calc(10em / 9)`
+    // reports 20 - the browser multiplies by a float reciprocal and the
+    // rounding falls differently per fraction. Nothing on screen differs;
+    // asserting the bits would make this test a hostage to that.
+    const expected = {
+      root: 18,
+      h1: 24,
+      h2: 20,
+      h3: 16,
+      p: 18,
+      li: 18,
+      inlineCode: 15.3,
+      pre: 14.76,
+      table: 12,
+    };
+    for (const [key, value] of Object.entries(expected)) {
+      expect(
+        large[key as keyof typeof large],
+        `${key} must keep the size it has today`,
+      ).toBeCloseTo(value, 2);
+    }
+
+    await pick("Small");
+    await expect.poll(async () => (await sizes()).root).toBe(15);
+    const small = await sizes();
+
+    // EVERY block scales, in the same proportion as the body. Headings and
+    // the table used to be the exceptions: `@alepha/ui` sets them in
+    // rem-based Tailwind sizes (`text-2xl` / `text-xl` / `text-base` /
+    // `text-xs`), which are deaf to the container, so picking Small shrank
+    // the prose around headings that did not move.
+    for (const [key, before] of Object.entries(expected)) {
+      expect(
+        small[key as keyof typeof small],
+        `${key} must follow the reading size`,
+      ).toBeCloseTo((before * 15) / 18, 1);
+    }
+  });
+
   // ⚠️ DELETED: "13 — the block-type select converts the current block".
   //
   // It drove MDXEditor's `BlockTypeSelect` combobox and asserted that

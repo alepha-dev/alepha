@@ -81,7 +81,29 @@ export interface FolioMenuItem {
   availableWithoutFolio?: boolean;
 }
 
-export type FolioMenuEntry = FolioMenuItem | { separator: true };
+/**
+ * A set of mutually exclusive options inside a menu, drawn as a labelled
+ * radio group.
+ *
+ * ⚠️ It carries no `FolioActionId`, and that is deliberate rather than an
+ * oversight. Every id in that union reaches two exhaustive structures -
+ * `FolioActionHandlers`, the handler map, and `folioShortcutBindings()`,
+ * which reads `.binding` off every item - and a radio group fits neither:
+ * it does not dispatch, it writes a preference atom, and the option you
+ * pick is a value rather than a command. Modelling it as three ids would
+ * have forced three handlers and three no-op bindings to exist so the map
+ * stayed exhaustive.
+ */
+export interface FolioMenuRadioGroup {
+  id: string;
+  labelKey: string;
+  options: { value: number; labelKey: string }[];
+}
+
+export type FolioMenuEntry =
+  | FolioMenuItem
+  | { separator: true }
+  | { radio: FolioMenuRadioGroup };
 
 export interface FolioMenu {
   id: string;
@@ -285,6 +307,26 @@ export const FOLIO_MENUS: FolioMenu[] = [
         availableWhenLocked: true,
         availableWithoutFolio: true,
       },
+      sep,
+      // The reading size, three steps, resolved to `--folio-text-size` in
+      // `main.css`. Last in the menu because it is the only entry here that
+      // is a setting rather than a command: everything above it does
+      // something now, this one changes how the document looks from now on.
+      //
+      // No shortcut. ⌘+ / ⌘- are the browser's own zoom and taking them
+      // would be claiming a key the reader already uses for a bigger
+      // version of this, on a preference they set once.
+      {
+        radio: {
+          id: "view.textSize",
+          labelKey: "folios.editor.action.text-size",
+          options: [
+            { value: 1, labelKey: "folios.editor.action.text-size.small" },
+            { value: 2, labelKey: "folios.editor.action.text-size.medium" },
+            { value: 3, labelKey: "folios.editor.action.text-size.large" },
+          ],
+        },
+      },
     ],
   },
   {
@@ -309,7 +351,9 @@ export const FOLIO_MENUS: FolioMenu[] = [
 
 export const folioMenuItems = (): FolioMenuItem[] =>
   FOLIO_MENUS.flatMap((menu) =>
-    menu.entries.filter((e): e is FolioMenuItem => !("separator" in e)),
+    menu.entries.filter(
+      (e): e is FolioMenuItem => !("separator" in e) && !("radio" in e),
+    ),
   );
 
 /**
@@ -475,3 +519,18 @@ export const isFolioActionEnabled = (
   if (!state.locked) return true;
   return item?.availableWhenLocked === true;
 };
+
+/**
+ * Whether the reading-size group can be used.
+ *
+ * Not routed through `isFolioActionEnabled`: that one keys on a
+ * `FolioActionId`, which this group deliberately has none of.
+ *
+ * The rule is "there is prose on screen to resize". `noFolio` is `/folios`
+ * with nothing open, and `locked` is a protected folio showing
+ * `FolioLockedPanel` instead of its body - in both the control would move a
+ * stored preference with nothing visibly happening, which is the exact trap
+ * `view.inspector` documents one entry above and was disabled for.
+ */
+export const isFolioTextSizeEnabled = (state: FolioActionState): boolean =>
+  !state.noFolio && !state.locked;

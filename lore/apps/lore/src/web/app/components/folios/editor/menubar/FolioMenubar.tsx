@@ -3,14 +3,19 @@ import {
   Menubar,
   MenubarContent,
   MenubarItem,
+  MenubarLabel,
   MenubarMenu,
+  MenubarRadioGroup,
+  MenubarRadioItem,
   MenubarSeparator,
   MenubarShortcut,
   MenubarTrigger,
 } from "@alepha/ui/components/ui/menubar";
+import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactElement } from "react";
 
+import { folioTextSizeAtom } from "../../../../atoms/folioTextSizeAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import type { MarkdownEditorMode } from "../../../shared/markdown-editor/MarkdownEditorInner.tsx";
 import type { FolioActionHandlers } from "../useFolioActions.ts";
@@ -20,6 +25,7 @@ import {
   type FolioMenuItem,
   folioShortcutGlyph,
   isFolioActionEnabled,
+  isFolioTextSizeEnabled,
 } from "./folioMenubarModel.ts";
 
 export interface FolioMenubarProps {
@@ -58,6 +64,11 @@ export interface FolioMenubarProps {
  */
 const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
+  // The document reads the same atom to put the level on its own root, so
+  // the two are not wired to each other at all - which is what lets this
+  // row keep rendering on the empty `/folios` state, where there is no
+  // document to be wired to.
+  const [textSize, setTextSize] = useStore(folioTextSizeAtom);
 
   const dispatch = (id: FolioMenuItem["id"]): void => {
     void props.handlers[id]();
@@ -95,6 +106,29 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
               {menu.entries.map((entry, index) =>
                 "separator" in entry ? (
                   <MenubarSeparator key={`sep-${index}`} />
+                ) : "radio" in entry ? (
+                  // `String(...)` on both sides: Base UI compares the
+                  // group's value against each item's by identity, and the
+                  // levels are numbers in the model because that is what
+                  // they are.
+                  <MenubarRadioGroup
+                    key={entry.radio.id}
+                    value={String(textSize.level)}
+                    onValueChange={(value) =>
+                      setTextSize({ level: Number(value) })
+                    }
+                  >
+                    <MenubarLabel>{tr(entry.radio.labelKey)}</MenubarLabel>
+                    {entry.radio.options.map((option) => (
+                      <MenubarRadioItem
+                        key={option.value}
+                        value={String(option.value)}
+                        disabled={!isFolioTextSizeEnabled(props.state)}
+                      >
+                        {tr(option.labelKey)}
+                      </MenubarRadioItem>
+                    ))}
+                  </MenubarRadioGroup>
                 ) : (
                   <MenubarItem
                     key={entry.id}
