@@ -15,8 +15,10 @@ import { SigilController } from "../src/api/controllers/SigilController.ts";
 import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
 import { members } from "../src/api/entities/members.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
+import { sigils } from "../src/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "../src/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { LoreAnalyticsStore } from "../src/api/services/LoreAnalyticsStore.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
@@ -43,6 +45,15 @@ class Probe {
   members = $repository(members);
   uniques = $repository(sigilUniquesDaily);
   errorGroups = $repository(sigilErrorGroups);
+  /**
+   * Enrolled apps, written straight to the table.
+   *
+   * `SigilController.createSigil` is the honest door and every other test in
+   * this file uses it. The D1-ceiling cases need a hundred-odd apps in one
+   * project, and minting a hundred credentials proves nothing those cases are
+   * about: they are about the shape of the READ.
+   */
+  sigils = $repository(sigils);
   datasets = $inject(LoreAnalytics);
 
   views = {
@@ -2655,6 +2666,181 @@ describe("InsightsController", () => {
           { user: owner },
         ),
       ).rejects.toThrowError();
+    });
+  });
+  /*
+    ⚠️ **In-memory SQLite does not enforce D1's hundred-parameter ceiling**, so
+    none of these can fail by hitting it. They assert the SHAPE that keeps a
+    project-wide read under it, and they are only meaningful read together with
+    the reason recorded on `InsightsController.SIGIL_CHUNK` and
+    `LoreAnalyticsStore.scope`: D1 refuses a statement carrying more than 100
+    bound parameters (folio #F1173, probed: 100 ok, 101 fails), and a
+    project-wide read binds one per app.
+
+    Two D1 reads carry a project-wide app set, and each is bounded a different
+    way because a distinct count cannot be chunked and merged. Views, vitals
+    and the error series are `$analytics()` datasets and are not in this band
+    at all.
+  */
+  describe("a project with more apps than D1 will bind", () => {
+    /**
+     * `count` apps in `projectId`, written straight to the table.
+     *
+     * The names are zero-padded so a lexicographic read of the ids is not
+     * mistaken for the insertion order anywhere in the assertions.
+     */
+    const enrolApps = async (
+      projectId: number,
+      count: number,
+    ): Promise<string[]> => {
+      const rows = Array.from({ length: count }, (_, index) => ({
+        id: crypto.randomUUID(),
+        projectId,
+        name: `app-${String(index).padStart(3, "0")}`,
+        tokenHash: `hash-${index}`,
+        tokenPrefix: `sg_${index}`,
+        kinds: ["beacon", "vitals"],
+      }));
+      await ctx.probe.sigils.createMany(rows);
+      return rows.map((row) => row.id);
+    };
+
+    it("counts one visitor across 120 apps once, not 120 times", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const appIds = await enrolApps(projectId, 120);
+
+      // The same person, on the same day, on every one of the 120 apps. This
+      // is the case a chunked read cannot answer: per-chunk counts sum to two
+      // (or 120, on a naive per-row count), and the truth is one. It is why
+      // `LoreAnalyticsStore.scope` bounds itself with `json_each` and a single
+      // parameter rather than by cutting the list up.
+      await ctx.probe.uniques.createMany(
+        appIds.map((sigilId) => ({
+          sigilId,
+          day: dayUtc(ctx, 0),
+          visitorHash: "one-person",
+        })),
+      );
+      // Somebody else, on one app, so a passing count of 1 cannot be a read
+      // that returned nothing.
+      await ctx.probe.uniques.create({
+        sigilId: appIds[0]!,
+        day: dayUtc(ctx, 0),
+        visitorHash: "somebody-else",
+      });
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.uniqueVisitors).toBe(2);
+    });
+
+    it("returns the worst error groups in the project, not the worst of one chunk", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const appIds = await enrolApps(projectId, 200);
+
+      // One group per app, `count` rising with the index — so at a chunk size
+      // of 90 every one of the twenty worst sits in the LAST chunk. A read
+      // that concatenates the chunks and slices without re-sorting answers
+      // with the first chunk's twenty, which are the mildest failures in the
+      // project.
+      await ctx.probe.errorGroups.createMany(
+        appIds.map((sigilId, index) => ({
+          sigilId,
+          fingerprint: `fp-${index}`,
+          name: "TypeError",
+          message: `boom ${index}`,
+          stackSample: "TypeError: boom",
+          sourceUrl: "https://demo.example.com/cart",
+          firstSeenAt: instantUtc(ctx, 3),
+          lastSeenAt: instantUtc(ctx, 1),
+          count: index + 1,
+        })),
+      );
+
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d" } },
+        { user: owner },
+      );
+
+      expect(res.data.errorGroups.map((group) => group.count)).toEqual(
+        Array.from({ length: 20 }, (_, index) => 200 - index),
+      );
+    });
+
+    it("cuts a project-wide app set into chunks D1 can bind", async ({
+      expect,
+    }) => {
+      // The shape assertion the two cases above cannot make, because the
+      // database they run against binds a thousand parameters happily.
+      //
+      // ⚠️ Reached by a cast rather than by the repo's TestProvider subclass
+      // pattern, and for a reason worth stating: `$action` names are global to
+      // a container, so injecting a second `InsightsController` — even a
+      // subclass whose only addition is a bound method — is a duplicate-name
+      // boot failure. `chunked` is protected, which is a compile-time claim
+      // about who calls it, not a runtime one.
+      const controller = ctx.insightsController as unknown as {
+        chunked(ids: string[]): string[][];
+      };
+      const ids = Array.from({ length: 250 }, () => crypto.randomUUID());
+
+      const chunks = controller.chunked(ids);
+
+      expect(chunks.flat()).toEqual(ids);
+      expect(
+        Math.max(...chunks.map((chunk) => chunk.length)),
+      ).toBeLessThanOrEqual(90);
+      // An empty set asks nothing rather than asking `IN ()`: the repository
+      // throws an `AlephaError` on an empty `inArray`, so a chunk of nothing
+      // is a failure and not an empty answer.
+      expect(controller.chunked([])).toEqual([]);
+    });
+
+    it("binds the app set as one parameter, whatever its length", async ({
+      expect,
+    }) => {
+      // The uniques half of the same ceiling, and the reason it is a different
+      // shape: `uniqueVisitors` counts DISTINCT `(day, visitorHash)` across
+      // the whole set, so chunk-and-merge would count a person once per chunk
+      // they appear in. The ids ride in one JSON parameter instead, unpacked
+      // by `json_each`.
+      //
+      // Cast for the same reason as `chunked` above: `scope` is protected,
+      // which is a compile-time claim about who calls it.
+      const store = ctx.alepha.inject(LoreAnalyticsStore) as unknown as {
+        scope(window: { sigilIds: string[] }): {
+          queryChunks: unknown[];
+        };
+      };
+
+      for (const size of [1, 250]) {
+        const chunk = store.scope({
+          sigilIds: Array.from({ length: size }, () => crypto.randomUUID()),
+        });
+        // Drizzle's own literal fragments carry a `string[]` value; every
+        // other chunk is a value on its way to becoming a bound parameter.
+        const literals = chunk.queryChunks.filter(
+          (part): part is { value: string[] } =>
+            typeof part === "object" &&
+            part !== null &&
+            Array.isArray((part as { value?: unknown }).value),
+        );
+        const bound = chunk.queryChunks.length - literals.length;
+
+        expect(bound).toBe(1);
+        expect(literals.flatMap((part) => part.value).join("")).toContain(
+          "json_each",
+        );
+      }
     });
   });
 });
