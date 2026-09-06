@@ -19,8 +19,8 @@ export type { EstateCommandResource };
  * The owner's view of an estate's queue, and the commands an owner can
  * enqueue by hand.
  *
- * `restart`, `stop` and `start` name an instance on the machine and nothing
- * else. `deploy` names an artifact by id: the app comes from the artifact row,
+ * `restart`, `stop`, `start` and `backup` name an instance on the machine and
+ * nothing else. `deploy` names an artifact by id: the app comes from the artifact row,
  * the digest is snapshotted into the payload, and Bay pulls the bytes by
  * command id (#1844). Three gates on a deploy, each server-side: the caller
  * owns the estate, is a member of the artifact's project, and the estate is
@@ -70,7 +70,7 @@ export class EstateCommandController {
       params: z.object({ estateId: z.uuid() }),
       body: z.union([
         z.object({
-          kind: z.enum(["restart", "stop", "start"]),
+          kind: z.enum(["restart", "stop", "start", "backup"]),
           app: z.string().min(1).max(100),
           environment: z.string().min(1).max(100),
         }),
@@ -86,9 +86,10 @@ export class EstateCommandController {
       const estate = await this.estates.loadOwned(params.estateId, user);
 
       if (body.kind !== "deploy") {
-        // `restart`, `stop` and `start` all name one instance on the machine
-        // and nothing else, so they share a shape and a gate. The deploy path
-        // below is the one that needs an artifact, a project and a lending.
+        // `restart`, `stop`, `start` and `backup` all name one instance on
+        // the machine and nothing else, so they share a shape and a gate. The
+        // deploy path below is the one that needs an artifact, a project and
+        // a lending.
         return this.commands.enqueue(
           estate,
           {

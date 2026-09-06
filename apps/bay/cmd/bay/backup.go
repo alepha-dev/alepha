@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/alepha/bay/internal/backup"
@@ -152,24 +153,65 @@ func (s *server) handleConfigS3(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"configured": true, "keep": body.Keep})
 }
 
-func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
-	app, ok := s.store.Get(r.PathValue("name") + "/" + r.PathValue("env"))
-	if !ok {
-		writeError(w, http.StatusNotFound, "unknown app")
-		return
-	}
+/*
+backupRefused is a reason not to try, as opposed to an attempt that failed.
+
+The distinction is the whole point of the type. A refusal must NOT touch
+`LastBackupError`: an app with no database Bay owns would then sit at "last
+backup failed" forever, and only a success could clear it — a warning that is
+permanent and wrong, which is how people learn to ignore warnings.
+*/
+type backupRefused struct{ reason string }
+
+func (e backupRefused) Error() string { return e.reason }
+
+// backupOutcome is what one snapshot produced, for whichever caller asked.
+type backupOutcome struct {
+	Result      *backup.Result
+	Pruned      []backup.Entry
+	NotBackedUp []string
+}
+
+/*
+backupInstance is THE backup path: snapshot, verify, upload, record, prune.
+
+One implementation for the three callers that need it — `bay backup`, the
+scheduler, and the console's verb — because it used to be two near-copies that
+had already drifted. `runDueBackups` skipped an app whose manifest declared no
+database; `handleBackup` did not, so `bay backup` on a BYO-database app ran
+`VACUUM INTO` against a file that is not there and recorded a failure only a
+success could clear. Gating here fixes the CLI as a side effect.
+
+⚠️ Under a per-instance lock, and the scheduler takes the same one. Two
+snapshots of one database at once is the failure this prevents; two snapshots
+of DIFFERENT databases are fine and are not serialised here (the scheduler is
+sequential for its own reasons — it spawns a runtime per app on a 2-vCPU box).
+
+⚠️ Never under the machine-wide action mutex. A snapshot plus an upload is
+minutes, and holding that lock would queue an unrelated restart behind it.
+*/
+func (s *server) backupInstance(ctx context.Context, app state.App) (backupOutcome, error) {
 	// A static site has nothing Bay can snapshot. Trying anyway used to record
 	// a failure that only a success can clear, so `bay status` reported the
 	// site as broken on every run, forever.
 	if app.Static {
-		writeError(w, http.StatusPreconditionFailed, "a static site has no database to snapshot")
-		return
+		return backupOutcome{}, backupRefused{"a static site has no database to snapshot"}
+	}
+	// The gate the manual path was missing. `state.App.Backups` is false for an
+	// app on a BYO `DATABASE_URL`: there is nothing here Bay could snapshot,
+	// and saying so is the honest answer.
+	if !app.Backups {
+		return backupOutcome{}, backupRefused{
+			app.Key() + " declares no database Bay provisioned, so there is nothing to snapshot"}
 	}
 	mgr, cfg, err := s.backupManager()
 	if err != nil || mgr == nil {
-		writeError(w, http.StatusPreconditionFailed, "backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set")
-		return
+		return backupOutcome{}, backupRefused{"backups are not configured: run `bay config s3:backups --endpoint URL --bucket NAME` with BAY_S3_ACCESS_KEY and BAY_S3_SECRET_KEY set"}
 	}
+
+	unlock := s.lockBackup(app.Key())
+	defer unlock()
+
 	// Recorded on the same terms as the scheduled path, success and failure
 	// alike. Before this, a backup taken by hand touched the store not at all:
 	// it uploaded, answered 200, and left `LastBackupAt` wherever the scheduler
@@ -180,15 +222,12 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 	runtime, dbPath, err := s.appPaths(app)
 	if err != nil {
 		s.recordBackupFailure(app.Key(), "resolve paths", err)
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
+		return backupOutcome{}, err
 	}
-
-	res, err := mgr.Backup(r.Context(), app.Name, app.Env, runtime, dbPath)
+	res, err := mgr.Backup(ctx, app.Name, app.Env, runtime, dbPath)
 	if err != nil {
 		s.recordBackupFailure(app.Key(), "backup", err)
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
+		return backupOutcome{}, err
 	}
 	if err := s.store.RecordBackupSuccess(app.Key(), res.Key, time.Now()); err != nil {
 		// The bytes are in the bucket; only the bookkeeping failed. Reported as a
@@ -196,25 +235,84 @@ func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
 		// data is not safe when it is.
 		s.log.Error("backup succeeded but recording it failed", "app", app.Key(), "err", err)
 	}
-	pruned, pruneErr := mgr.Prune(r.Context(), app.Name, app.Env, cfg.Keep)
-	if pruneErr != nil {
-		// A failed prune must not look like a failed backup: the data is safe.
-		s.log.Error("retention failed after a successful backup", "app", app.Key(), "err", pruneErr)
+
+	// Retention runs here and not on a schedule of its own: pruning is only
+	// meaningful right after a new backup exists, and `Prune` returning what it
+	// deleted is what keeps retention from being indistinguishable from backups
+	// quietly disappearing. A failed prune must not look like a failed backup:
+	// the data is safe.
+	var pruned []backup.Entry
+	if cfg.Keep > 0 {
+		pruned, err = mgr.Prune(ctx, app.Name, app.Env, cfg.Keep)
+		if err != nil {
+			s.log.Error("retention failed after a successful backup", "app", app.Key(), "err", err)
+		}
 	}
 
 	s.log.Info("backup stored", "app", app.Key(), "key", res.Key,
 		"raw", res.RawBytes, "stored", res.StoredBytes, "tables", res.Tables, "pruned", len(pruned))
 
+	return backupOutcome{
+		Result: res,
+		Pruned: pruned,
+		// What is NOT covered has to be stated, every time. The worst failure
+		// of a backup system is someone believing they are covered.
+		NotBackedUp: notBackedUp(s.store, app),
+	}, nil
+}
+
+/*
+lockBackup serialises snapshots of ONE instance, whoever asked for them.
+
+The scheduler and the manual paths share this, so a backup triggered from a
+console at 03:00:01 cannot run `VACUUM INTO` against the same database the
+nightly run is already reading.
+
+Per instance rather than machine-wide: two different databases can be
+snapshotted at once without hurting each other, and a machine-wide lock here
+would be the mutex this whole function exists to stay out of.
+*/
+func (s *server) lockBackup(key string) func() {
+	s.backupMu.Lock()
+	if s.backupLocks == nil {
+		s.backupLocks = map[string]*sync.Mutex{}
+	}
+	lock, ok := s.backupLocks[key]
+	if !ok {
+		lock = &sync.Mutex{}
+		s.backupLocks[key] = lock
+	}
+	s.backupMu.Unlock()
+
+	lock.Lock()
+	return lock.Unlock
+}
+
+func (s *server) handleBackup(w http.ResponseWriter, r *http.Request) {
+	app, ok := s.store.Get(r.PathValue("name") + "/" + r.PathValue("env"))
+	if !ok {
+		writeError(w, http.StatusNotFound, "unknown app")
+		return
+	}
+	out, err := s.backupInstance(r.Context(), app)
+	if err != nil {
+		var refused backupRefused
+		if errors.As(err, &refused) {
+			writeError(w, http.StatusPreconditionFailed, refused.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
-		"key":         res.Key,
-		"rawBytes":    res.RawBytes,
-		"storedBytes": res.StoredBytes,
-		"tables":      res.Tables,
+		"key":         out.Result.Key,
+		"rawBytes":    out.Result.RawBytes,
+		"storedBytes": out.Result.StoredBytes,
+		"tables":      out.Result.Tables,
 		"integrity":   "ok",
-		"pruned":      keys(pruned),
-		// What is NOT covered has to be stated, every time. The worst failure of
-		// a backup system is someone believing they are covered.
-		"notBackedUp": notBackedUp(s.store, app),
+		"pruned":      keys(out.Pruned),
+		"notBackedUp": out.NotBackedUp,
 	})
 }
 
@@ -531,53 +629,40 @@ func (s *server) backupLoop(ctx context.Context, interval time.Duration) {
 // would compete with the apps it is meant to protect. Being sequential also
 // makes overlapping runs impossible without a lock.
 func (s *server) runDueBackups(ctx context.Context, interval time.Duration) {
-	mgr, cfg, err := s.backupManager()
-	if err != nil || mgr == nil {
-		// Not configured. `bay backup` says so on demand; repeating it every
-		// minute in the log would bury everything else.
+	// Asked once per tick only to decide whether there is anything to do at
+	// all; `backupInstance` resolves its own manager per run, so a
+	// `bay config s3:backups` between two ticks takes effect on the next one.
+	//
+	// Not configured is silence, not a log line: `bay backup` says so on
+	// demand, and repeating it every minute would bury everything else.
+	if mgr, _, err := s.backupManager(); err != nil || mgr == nil {
 		return
 	}
 	now := time.Now()
 	for _, app := range s.store.Apps() {
+		// The same gate `backupInstance` carries, applied early so an app with
+		// no database Bay owns costs nothing per tick rather than a refusal
+		// per tick.
 		if !app.Backups {
 			continue
 		}
 		if !schedule.Due(app.LastBackupAt, now, interval) {
 			continue
 		}
-		s.backupOne(ctx, mgr, cfg, app)
+		s.backupOne(ctx, app)
 	}
 }
 
-// backupOne runs one scheduled backup and records the outcome either way.
-func (s *server) backupOne(ctx context.Context, mgr *backup.Manager, cfg *state.S3Config, app state.App) {
-	key := app.Key()
-	runtime, dbPath, err := s.appPaths(app)
-	if err != nil {
-		s.recordBackupFailure(key, "resolve paths", err)
-		return
-	}
-	res, err := mgr.Backup(ctx, app.Name, app.Env, runtime, dbPath)
-	if err != nil {
-		s.recordBackupFailure(key, "backup", err)
-		return
-	}
-	if err := s.store.RecordBackupSuccess(key, res.Key, time.Now()); err != nil {
-		s.log.Error("backup succeeded but recording it failed", "app", key, "err", err)
-	}
-	s.log.Info("scheduled backup", "app", key, "key", res.Key,
-		"raw", res.RawBytes, "stored", res.StoredBytes)
-
-	// Retention runs here and not on a schedule of its own: pruning is only
-	// meaningful right after a new backup exists, and `Prune` returning what it
-	// deleted is what keeps retention from being indistinguishable from backups
-	// quietly disappearing.
-	if keep := cfg.Keep; keep > 0 {
-		removed, err := mgr.Prune(ctx, app.Name, app.Env, keep)
-		if err != nil {
-			s.log.Error("prune failed", "app", key, "err", err)
-		} else if len(removed) > 0 {
-			s.log.Info("pruned old backups", "app", key, "removed", len(removed), "keep", keep)
+// backupOne runs one scheduled backup through the shared path.
+//
+// The outcome is already recorded and logged there; a refusal reaching here is
+// a state `runDueBackups` filtered for and is worth one debug line, not a
+// stored failure.
+func (s *server) backupOne(ctx context.Context, app state.App) {
+	if _, err := s.backupInstance(ctx, app); err != nil {
+		var refused backupRefused
+		if errors.As(err, &refused) {
+			s.log.Debug("scheduled backup skipped", "app", app.Key(), "reason", refused.Error())
 		}
 	}
 }

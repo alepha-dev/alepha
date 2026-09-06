@@ -54,6 +54,9 @@ const (
 	// actionStart puts a stopped instance back, and is the way back from
 	// `stop`: `restart` deliberately refuses an app nobody is running.
 	actionStart actionKind = "start"
+	// actionBackup takes the same snapshot `bay backup` takes: the database
+	// Bay provisioned, and nothing else.
+	actionBackup actionKind = "backup"
 )
 
 /*
@@ -123,12 +126,12 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	}
 
 	switch actionKind(cmd.Kind) {
-	case actionRestart, actionDeploy, actionStop, actionStart:
+	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s and %s, nothing else",
-			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart)
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s and %s, nothing else",
+			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -144,7 +147,17 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	}
 
 	log.Info("lore command started")
-	status, step, reason := a.runExclusive(ctx, cmd, send)
+	var status, step, reason string
+	if actionKind(cmd.Kind) == actionBackup {
+		// Outside the machine-wide mutex, deliberately. A snapshot, a verify
+		// and an upload is minutes on a real database, and holding that lock
+		// for it would queue an unrelated app's restart behind a backup.
+		// `backupInstance` takes a per-instance lock the scheduler shares,
+		// which is the overlap that actually matters.
+		status, step, reason = a.backup(ctx, cmd)
+	} else {
+		status, step, reason = a.runExclusive(ctx, cmd, send)
+	}
 	if status == "done" {
 		log.Info("lore command done")
 	} else {
@@ -274,6 +287,34 @@ func (a *actions) start(cmd connector.Command) (status, step, reason string) {
 		return "failed", "", err.Error()
 	}
 	return "done", "", ""
+}
+
+/*
+backup takes the same snapshot `bay backup` takes, through the same function.
+
+⚠️ The success reason says DATABASE, in words, and lists what is not covered.
+Bay's README is emphatic about why: a backup covers the database and nothing
+else, `storage/` and `.env` are never archived, and the worst failure of a
+backup system is somebody believing it covers more than it does. A console
+that said "backed up" and left it there would be manufacturing that belief.
+
+A refusal (a static site, an app on a BYO database, no bucket configured) is a
+`failed` ack with the reason, and records NO backup failure on the instance:
+that field is for attempts, and a permanent wrong warning is how people learn
+to ignore warnings.
+*/
+func (a *actions) backup(ctx context.Context, cmd connector.Command) (status, step, reason string) {
+	key := cmd.App + "/" + cmd.Environment
+	app, ok := a.s.store.Get(key)
+	if !ok {
+		return "failed", "", "unknown instance " + key + " on this bay"
+	}
+	out, err := a.s.backupInstance(ctx, app)
+	if err != nil {
+		return "failed", "", err.Error()
+	}
+	return "done", "", fmt.Sprintf("database snapshot stored as %s (%d bytes); NOT covered: %s",
+		out.Result.Key, out.Result.StoredBytes, strings.Join(out.NotBackedUp, "; "))
 }
 
 /*

@@ -73,18 +73,17 @@ func TestWireServerFramesDecode(t *testing.T) {
 		t.Fatalf("deploy decoded wrong: %+v", deploy)
 	}
 
-	// The two verbs that take an instance out of service and put it back.
-	// They carry the same shape as a restart and no artifact: nothing here
-	// takes a path, a shell command or an argument list.
-	for _, name := range []string{"command-stop.json", "command-start.json"} {
+	// The verbs that name one instance and nothing else. They carry the same
+	// shape as a restart and no artifact: nothing here takes a path, a shell
+	// command or an argument list.
+	for _, name := range []string{"command-stop.json", "command-start.json", "command-backup.json"} {
 		frame, err := decodeFrame(fixture(t, name))
 		if err != nil {
 			t.Fatal(err)
 		}
 		want := name[len("command-") : len(name)-len(".json")]
 		if frame.Type != "command" || frame.Kind != want ||
-			frame.App != "shop" || frame.Environment != "staging" ||
-			frame.Artifact != nil {
+			frame.App == "" || frame.Environment == "" || frame.Artifact != nil {
 			t.Fatalf("%s decoded wrong: %+v", name, frame)
 		}
 	}

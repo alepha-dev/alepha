@@ -364,6 +364,13 @@ type server struct {
 	// router is told when an app is being restarted, so requests wait for the
 	// new process instead of failing. Nil in the CLI paths that never serve.
 	router *proxy.Proxy
+	// backupLocks serialises snapshots of ONE instance across the scheduler,
+	// `bay backup` and the console's verb, so two `VACUUM INTO` runs never
+	// read the same database at once. Per instance: two different databases
+	// are fine at once, and a machine-wide lock here would be the action mutex
+	// a backup deliberately stays out of. `backupMu` guards the map only.
+	backupMu    sync.Mutex
+	backupLocks map[string]*sync.Mutex
 	// keepReleases is how many releases survive a prune. Zero in the CLI paths
 	// that never deploy, where `deploy.Prune` treats it as "delete nothing".
 	keepReleases int

@@ -68,6 +68,18 @@ func newBackupFixture(t *testing.T) *deployFixture {
 	}
 	snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
 
+	// The app declares a database Bay provisioned, which is what makes it
+	// backup-able: `backupInstance` refuses an app on a BYO `DATABASE_URL`,
+	// because there is nothing there Bay could snapshot. Set on the row rather
+	// than in the manifest so the shared `deployableArtifact` keeps meaning
+	// "an app with no resources" for every other test that reads it.
+	if app, ok := f.server.store.Get("demo/production"); ok {
+		app.Backups = true
+		if err := f.server.store.Upsert(app); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	// The database the app would have written. Its contents are irrelevant — the
 	// stand-in copies bytes rather than reading SQL.
 	dataDir := filepath.Join(f.root, "apps", "demo", "production", "data")
