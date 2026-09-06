@@ -57,6 +57,7 @@ import { AreaService } from "./services/AreaService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
+import { CredentialSealService } from "./services/CredentialSealService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
@@ -214,6 +215,11 @@ export const LoreApi = $module({
     // different table, see its doc: the two credentials are one grep apart
     // and mean different things.
     EstateTokenService,
+    // A cloudflare token is pasted rather than minted, so it is sealed and
+    // replayed rather than hashed and forgotten (#1631). Registered before
+    // it has a writer: the sealer exists first, so no plaintext credential
+    // is ever written even once.
+    CredentialSealService,
     EstateService,
     // The queue behind the connection, and the seam the websocket endpoint
     // fills in. This default transport reaches nothing, which is the correct
