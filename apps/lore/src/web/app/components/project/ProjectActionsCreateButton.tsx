@@ -49,6 +49,10 @@ import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import {
+  capabilityOption,
+  hasCapability,
+} from "../../services/projectCapabilities.ts";
 import { useInviteMember } from "../shared/useInviteMember.ts";
 import AppCreateDialog from "./apps/AppCreateDialog.tsx";
 import EpicCreateSheet from "./epics/EpicCreateSheet.tsx";
@@ -80,19 +84,21 @@ const ProjectActionsCreateButton = () => {
   }
 
   const canCreateQuest = client.createQuest.can();
-  const features = project.features;
-  const folioEnabled = features.folios;
-  const feedbackEnabled = features.feedback;
-  const epicsEnabled = features.epics;
-  // Still `milestones` after the rename: it is a REQUIRED key inside a JSON
-  // column, and renaming one of those is the 2026-08-05 incident that failed
-  // every project read.
-  const releasesEnabled = features.milestones;
+  // Each item names the capability that owns it, and the option inside it
+  // where there is one. `releases` is the key `features.milestones` should
+  // always have had: it could not be renamed inside a JSON column whose
+  // required keys take production down when one goes missing, and moving the
+  // storage is what let the name move with it.
+  const folioEnabled = hasCapability(project, "knowledge");
+  const feedbackEnabled = hasCapability(project, "support");
+  const epicsEnabled = capabilityOption(project, "work", "epics");
+  const releasesEnabled = capabilityOption(project, "work", "releases");
   const isOwner = project.createdBy === auth.user?.id;
-  // ⚠️ Gated on ownership as well as on the module. Creating an instance is
-  // owner-only server-side, so a member shown this item would open a dialog
+  // ⚠️ Gated on ownership as well as on the capability. Creating an instance
+  // is owner-only server-side, so a member shown this item would open a dialog
   // that can only answer 403 - the one create in this menu with that property.
-  const appsEnabled = Boolean(features.sigils) && isOwner;
+  // The ownership half stays until Ranks replaces it with `can()`.
+  const appsEnabled = hasCapability(project, "apps") && isOwner;
   const hasCreateAction =
     epicsEnabled ||
     releasesEnabled ||

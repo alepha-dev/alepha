@@ -53,6 +53,10 @@ import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
 import { FEEDBACK_PAGE_SIZE } from "./components/project/feedback/feedbackPageSize.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
+import {
+  capabilityOption,
+  hasCapability,
+} from "./services/projectCapabilities.ts";
 
 /**
  * The leaderboards that have a detail page, which is exactly the set
@@ -534,7 +538,7 @@ export class AppRouter {
         // resource carries `description`, which is 213 KB of the 222 KB this
         // project's own epic list weighs, and no reader here wants a word of it.
         //
-        // Gated on the same `features.epics` switch that decides whether the
+        // Gated on the same `work.epics` option that decides whether the
         // Epics entry renders at all, so a project with epics off pays nothing.
         //
         // The badge is the counterweight to the quest count above: that one
@@ -544,7 +548,7 @@ export class AppRouter {
         //
         // `undefined` on failure and NOT `[]`, like `currentInstancesAtom`: the
         // badge must read "could not count" rather than "none planned".
-        project.features?.epics
+        capabilityOption(project, "work", "epics")
           ? this.epicApi
               .getEpicRefs({ params: { projectId: project.id } })
               .catch(() => undefined)
@@ -559,7 +563,7 @@ export class AppRouter {
         // `undefined` on failure, NOT `[]`: the sidebar entry, Spotlight and
         // the Blights derivation below all need to tell "no apps" apart from
         // "could not read the apps": see `currentInstancesAtom`.
-        project.features?.sigils
+        hasCapability(project, "apps")
           ? this.appApi
               .listApps({ params: { projectId: project.id } })
               .then((r) => r.items)
@@ -578,7 +582,7 @@ export class AppRouter {
         // still has an inbox full of open crashes. Deriving the count from the
         // apps would zero it in the same instant the sidebar entry vanished,
         // and `ProjectView` reads this count to keep that entry reachable.
-        project.features?.sigils
+        hasCapability(project, "apps")
           ? this.blightApi
               .countOpenBlights({ params: { projectId: project.id } })
               .then((r) => r.count)
@@ -655,12 +659,12 @@ export class AppRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      // Gated on the Apps master switch, not on whether any app currently
-      // carries the Blights capability. Deriving it from the sigil list would
-      // turn a transient `listSigils` failure into a 404 on a deep link, and an
+      // Gated on the Apps capability, not on whether any app currently
+      // carries the Blights kind. Deriving it from the instance list would
+      // turn a transient `listApps` failure into a 404 on a deep link, and an
       // inbox with nothing in it costs nothing. The sidebar entry is the one
       // that derives.
-      if (!project.features?.sigils) {
+      if (!hasCapability(project, "apps")) {
         throw new NotFoundError("Apps are not enabled for this project");
       }
       // No fetch here on purpose. The page hands `listBlights` to an
@@ -696,8 +700,8 @@ export class AppRouter {
     lazy: () => import("./components/project/apps/ProjectApps.tsx"),
     loader: async () => {
       const project = this.alepha.store.get(currentProjectAtom);
-      if (!project?.features?.sigils) {
-        throw new NotFoundError("Sigils not enabled for this project");
+      if (!hasCapability(project, "apps")) {
+        throw new NotFoundError("Apps are not enabled for this project");
       }
     },
     errorHandler: (error) => {
@@ -756,10 +760,13 @@ export class AppRouter {
       if (!project) {
         throw new NotFoundError("Project not found");
       }
-      // The module toggle is the whole gate — the nav section is hidden on the
-      // same flag, so reaching this by URL with it off is a 404, not a 403.
-      if (!project.features?.sigils) {
-        throw new NotFoundError("Sigils not enabled for this project");
+      // The capability is the whole gate — the nav entry is hidden on the same
+      // answer, so reaching this by URL with it off is a page that does not
+      // exist, hence a 404 and not a 403. The API side answers 400 instead,
+      // because a write into a disabled capability is a request the project
+      // understands and declines.
+      if (!hasCapability(project, "apps")) {
+        throw new NotFoundError("Apps are not enabled for this project");
       }
 
       // Two calls, and the list is not a lookup helper: `getApp` is the
@@ -832,8 +839,8 @@ export class AppRouter {
     // return type would be `never` and the children union would refuse it.
     loader: async ({ params }): Promise<void> => {
       const project = this.alepha.store.get(currentProjectAtom);
-      if (!project?.features?.sigils) {
-        throw new NotFoundError("Sigils not enabled for this project");
+      if (!project || !hasCapability(project, "apps")) {
+        throw new NotFoundError("Apps are not enabled for this project");
       }
 
       const { items } = await this.appApi.listApps({
