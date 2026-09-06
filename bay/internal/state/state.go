@@ -70,7 +70,7 @@ type App struct {
 	// to stop.
 	//
 	// Absent in every state file written before the stop verb, which decodes
-	// to false — the answer that keeps an existing host starting its apps
+	// to false - the answer that keeps an existing host starting its apps
 	// after an upgrade.
 	Stopped bool `json:"stopped,omitempty"`
 

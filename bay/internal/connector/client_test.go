@@ -150,7 +150,7 @@ func (h *recordingHandler) Command(_ context.Context, cmd Command, send func(Ack
 	_ = send(NewAck(cmd.ID, "done", "", ""))
 }
 
-// Inventory answers what the test armed, and nothing when it armed nothing —
+// Inventory answers what the test armed, and nothing when it armed nothing -
 // the honest answer for a Bay with no apps to report.
 func (h *recordingHandler) Inventory(context.Context) (Inventory, bool) {
 	h.mu.Lock()
