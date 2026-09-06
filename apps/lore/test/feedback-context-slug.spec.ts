@@ -89,7 +89,12 @@ describe("feedbackContext by slug", () => {
     feedbackOn: boolean,
   ) => {
     const created = await ctx.projectController.createProject.fetch(
-      { body: { title, features: { feedback: feedbackOn } } },
+      {
+        body: {
+          title,
+          capabilities: feedbackOn ? [{ key: "support" as const }] : [],
+        },
+      },
       { user },
     );
     return created.data;

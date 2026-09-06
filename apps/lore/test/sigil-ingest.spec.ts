@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import { blights } from "../src/api/entities/blights.ts";
 import { LoreAnalytics } from "../src/api/entities/loreAnalytics.ts";
+import { projectCapabilities } from "../src/api/entities/projectCapabilities.ts";
 import { projects } from "../src/api/entities/projects.ts";
 import { sigilErrorGroups } from "../src/api/entities/sigilErrorGroups.ts";
 import { sigils } from "../src/api/entities/sigils.ts";
@@ -22,6 +23,7 @@ import { SigilTokenService } from "../src/api/services/SigilTokenService.ts";
 
 class Probe {
   projects = $repository(projects);
+  capabilities = $repository(projectCapabilities);
   sigils = $repository(sigils);
   uniques = $repository(sigilUniquesDaily);
   errorGroups = $repository(sigilErrorGroups);
@@ -117,23 +119,21 @@ const readVitals = async (analytics: LoreAnalytics, sigilId: string) => {
  * Every capability switched on, which is what most tests here want as a
  * baseline so their subject is the one thing they vary.
  *
- * The sigil toggles are absent from `defaultProjectFeatures` on purpose —
- * adding a key there changes the `projects` column DEFAULT, which on D1 means
- * a table rebuild that cascade-wipes production. So a project created without
- * an explicit `features` accepts nothing, and a test that forgot this would
- * pass while asserting on empty tables.
+ * A capability row exists only for an enabled capability, so a project
+ * created without one accepts nothing - and a test that forgot this would
+ * pass while asserting on empty tables. Only the two the ingest gate reads
+ * are listed: `apps` with `track` on (what `features.sigils` used to be) and
+ * `support`, which the `feedback` kind additionally needs.
  */
-const allOn = {
-  kanban: true,
-  folios: true,
-  feedback: true,
-  // The Releases module. Persisted key kept pre-rename - see projects.ts.
-  milestones: true,
-  sigils: true,
-  blights: true,
-  beacon: true,
-  vitals: true,
-};
+const allOn: CapabilityFixture[] = [
+  { key: "apps", options: { track: true } },
+  { key: "support", options: {} },
+];
+
+interface CapabilityFixture {
+  key: "work" | "knowledge" | "apps" | "support";
+  options: Record<string, boolean>;
+}
 
 /**
  * Boots a real HTTP server rather than calling handlers directly.
@@ -143,7 +143,9 @@ const allOn = {
  * route mistakenly declared as `$action` would answer every direct-call test
  * and 404 every real client.
  */
-const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
+const setup = async (
+  over: { kinds?: string[]; capabilities?: CapabilityFixture[] } = {},
+) => {
   const alepha = Alepha.create({
     env: {
       LOG_LEVEL: "error",
@@ -183,8 +185,15 @@ const setup = async (over: { kinds?: string[]; features?: unknown } = {}) => {
     // slug-less fixture would test a shape that cannot occur.
     slug: "test",
     createdBy: owner.id,
-    features: over.features ?? allOn,
   } as any);
+
+  for (const capability of over.capabilities ?? allOn) {
+    await probe.capabilities.create({
+      projectId: project.id,
+      key: capability.key,
+      options: capability.options,
+    });
+  }
 
   const minted = await tokens.mint(project.id);
   const sigil = await probe.sigils.create({
@@ -540,9 +549,7 @@ describe("sigil ingest", () => {
     only thing being proven is that it no longer has any effect.
   */
   it("writes views regardless of the retired Beacon project flag", async () => {
-    const { analytics, probe, sigil, post } = await setup({
-      features: { ...allOn, beacon: false },
-    });
+    const { analytics, probe, sigil, post } = await setup();
 
     const res = await post({
       views: [{ path: "/home" }],
@@ -561,9 +568,7 @@ describe("sigil ingest", () => {
   });
 
   it("writes vitals regardless of the retired Vitals project flag", async () => {
-    const { analytics, sigil, post } = await setup({
-      features: { ...allOn, vitals: false },
-    });
+    const { analytics, sigil, post } = await setup();
 
     const res = await post({
       vitals: [{ path: "/home", metric: "lcp", value: 900 }],
@@ -575,9 +580,7 @@ describe("sigil ingest", () => {
   });
 
   it("writes errors regardless of the retired Blights project flag", async () => {
-    const { probe, project, sigil, post } = await setup({
-      features: { ...allOn, blights: false },
-    });
+    const { probe, project, sigil, post } = await setup();
 
     const res = await post({ errors: [anError()] });
     expect(res.status).toBe(204);
@@ -597,7 +600,7 @@ describe("sigil ingest", () => {
 
   it("writes nothing at all when the sigils master switch is off", async () => {
     const { analytics, probe, project, sigil, post } = await setup({
-      features: { ...allOn, sigils: false },
+      capabilities: [{ key: "support", options: {} }],
     });
 
     const res = await post({
@@ -1156,16 +1159,10 @@ describe("sigil ingest", () => {
   });
 
   it("gates blights, beacon and vitals on the sigil's kinds alone", async () => {
-    // The project carries none of the retired flags — under the old rule that
-    // meant every capability was off regardless of what the sigil carried.
+    // Apps tracking on and nothing else said about telemetry: under the rule
+    // that preceded this, three retired project flags each had to be on too.
     const { service, sigil } = await setup({
-      features: {
-        kanban: true,
-        folios: true,
-        feedback: true,
-        milestones: true,
-        sigils: true,
-      },
+      capabilities: [{ key: "apps", options: { track: true } }],
     });
 
     const gates = await service.gatesFor({
@@ -1178,25 +1175,28 @@ describe("sigil ingest", () => {
     expect(gates.vitals).toBe(true);
   });
 
-  it("still requires the project's feedback flag", async () => {
+  it("still requires the project to collect feedback", async () => {
     const { service, sigil } = await setup({
-      features: { ...allOn, feedback: false },
+      capabilities: [{ key: "apps", options: { track: true } }],
     });
 
     const gates = await service.gatesFor({ ...sigil, kinds: ["feedback"] });
 
-    // `features.feedback` also gates the first-party /request form, which
-    // works with no app enrolled at all — so it stays a project-level
-    // decision.
+    // Support also gates the first-party /request form, which works with no
+    // app enrolled at all - so it stays a project-level decision, and this is
+    // the one place a capability reads another to NARROW what it does.
     expect(gates.feedback).toBe(false);
   });
 
-  it("still requires the sigils master switch", async () => {
+  it("still requires Apps tracking", async () => {
     const { probe, project, service, sigil } = await setup();
 
-    await probe.projects.updateById(project.id, {
-      features: { ...allOn, sigils: false },
+    // Take Apps away and leave Support: the row is deleted, because absence
+    // is how a capability is off.
+    const apps = await probe.capabilities.findOne({
+      where: { projectId: { eq: project.id }, key: { eq: "apps" } },
     });
+    await probe.capabilities.deleteById(apps!.id);
 
     const gates = await service.gatesFor({
       ...sigil,
@@ -1206,8 +1206,8 @@ describe("sigil ingest", () => {
     expect(gates.errors).toBe(false);
     expect(gates.views).toBe(false);
     expect(gates.vitals).toBe(false);
-    // Feedback too: `features.feedback` is still on here, so this asserts the
-    // master switch and not the module flag standing in for it.
+    // Feedback too: Support is still on here, so this asserts the Apps
+    // switch and not the other capability standing in for it.
     expect(gates.feedback).toBe(false);
   });
 });

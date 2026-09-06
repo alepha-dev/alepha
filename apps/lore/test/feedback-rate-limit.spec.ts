@@ -72,7 +72,12 @@ const createProject = async (
   user: { id: string; roles: string[] },
 ): Promise<number> => {
   const created = await ctx.projectController.createProject.fetch(
-    { body: { title: "Rate Limit Test" } },
+    {
+      body: {
+        title: "Rate Limit Test",
+        capabilities: [{ key: "support" as const }],
+      },
+    },
     { user },
   );
   return created.data.id;

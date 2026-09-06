@@ -15,6 +15,7 @@ import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
 import { BlightRuleService } from "./BlightRuleService.ts";
 import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
+import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
  * What one sigil is allowed to write, right now.
@@ -69,6 +70,11 @@ export class SigilIngestService {
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly rules = $inject(BlightRuleService);
+  /**
+   * The capability read behind {@link gatesFor}. Cached and memoised there,
+   * so an ingest batch pays for it once.
+   */
+  protected readonly security = $inject(ProjectSecurityService);
 
   /**
    * Uniques only. `LoreAnalyticsStore` used to hold views and vitals too,
@@ -235,20 +241,29 @@ export class SigilIngestService {
    * no project behind it is the wrong default.
    */
   async gatesFor(sigil: Sigil): Promise<SigilGates> {
-    const project = await this.projects.findOne({
-      where: { id: { eq: sigil.projectId } },
-    });
+    const capabilities = await this.security.capabilitiesOf(sigil.projectId);
 
-    const features = project?.features;
-    const master = features?.sigils === true;
+    // `apps.track` is what `features.sigils` was: the switch above the
+    // telemetry surfaces. An option of a capability that is off reads false,
+    // so a project without Apps at all reports nothing, which is also the
+    // right answer for a sigil whose project is gone.
+    const master = this.security.capabilityOption(
+      capabilities,
+      "apps",
+      "track",
+    );
 
     return {
       views: master && this.carries(sigil, "beacon"),
       errors: master && this.carries(sigil, "blights"),
       vitals: master && this.carries(sigil, "vitals"),
+      // The one place a capability reads another's state, and it NARROWS:
+      // Support must never silently enable tracking. Feedback arrives through
+      // the first-party form as well as through a sigil, so it cannot live on
+      // the app's own `kinds` alone.
       feedback:
         master &&
-        features?.feedback === true &&
+        this.security.hasCapability(capabilities, "support") &&
         this.carries(sigil, "feedback"),
     };
   }

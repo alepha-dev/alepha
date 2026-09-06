@@ -26,6 +26,7 @@ import { FolioController } from "./controllers/FolioController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
+import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
@@ -57,6 +58,7 @@ import { AreaService } from "./services/AreaService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BlightRuleService } from "./services/BlightRuleService.ts";
+import { CapabilityRegistry } from "./services/CapabilityRegistry.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
@@ -134,6 +136,7 @@ export const LoreApi = $module({
     // boot and the admin filter offers them before any row exists.
     LoreAudits,
     ProjectSecurityService,
+    CapabilityRegistry,
     ReleaseAttachmentService,
     ReleaseContentService,
     RoadmapService,
@@ -230,6 +233,7 @@ export const LoreApi = $module({
     QuestCommentController,
     FeedbackCommentController,
     ProjectController,
+    ProjectCapabilityController,
     ReleaseController,
     RoadmapController,
     EpicController,

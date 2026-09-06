@@ -11,7 +11,6 @@ import {
   createTestProject,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
-import { defaultProjectFeatures } from "../entities/projects.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import { LoreApi } from "../index.ts";
 import { SigilIngestService } from "./SigilIngestService.ts";
@@ -83,8 +82,10 @@ const setup = async (): Promise<TestContext> => {
 
   await alepha.start();
 
+  // `apps.track` is what `features.sigils` was: the switch above the
+  // telemetry surfaces that `gatesFor` reads.
   const project = await createTestProject(alepha, {
-    features: { ...defaultProjectFeatures, sigils: true },
+    capabilities: [{ key: "apps", options: { track: true } }],
   });
 
   const sigil = await repos.sigils.create({

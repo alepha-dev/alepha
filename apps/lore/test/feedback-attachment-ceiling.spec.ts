@@ -119,7 +119,12 @@ describe("feedback attachments past the D1 parameter ceiling", () => {
     const owner = await createTestUser(ctx);
     const projectId = (
       await ctx.projectController.createProject.fetch(
-        { body: { title: "Ceiling" } },
+        {
+          body: {
+            title: "Ceiling",
+            capabilities: [{ key: "support" as const }],
+          },
+        },
         { user: owner },
       )
     ).data.id;
@@ -190,7 +195,12 @@ describe("feedback attachments past the D1 parameter ceiling", () => {
     const owner = await createTestUser(ctx);
     const projectId = (
       await ctx.projectController.createProject.fetch(
-        { body: { title: "Resolve" } },
+        {
+          body: {
+            title: "Resolve",
+            capabilities: [{ key: "support" as const }],
+          },
+        },
         { user: owner },
       )
     ).data.id;

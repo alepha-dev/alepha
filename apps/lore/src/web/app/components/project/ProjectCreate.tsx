@@ -106,7 +106,33 @@ const ProjectCreate = () => {
       setStep(4);
       const startedAt = dateTime.nowMillis();
       const project = await client.createProject({
-        body: { ...body, features: featuresRef.current },
+        // ⚠️ A bridge, not the shape this wizard will keep. The step below
+        // still asks the three old module questions; the capability step that
+        // replaces it is its own quest. Translating here rather than leaving
+        // `features` on the body means there is exactly one write path for a
+        // capability from the day the table exists, which is what stops the
+        // two from disagreeing for the length of the epic.
+        //
+        // Work goes on unconditionally because quests never had a flag, so
+        // this reproduces today's wizard exactly.
+        body: {
+          ...body,
+          capabilities: [
+            {
+              key: "work" as const,
+              options: {
+                board: featuresRef.current.kanban,
+                releases: featuresRef.current.milestones,
+              },
+            },
+            ...(featuresRef.current.folios
+              ? [{ key: "knowledge" as const }]
+              : []),
+            ...(featuresRef.current.feedback
+              ? [{ key: "support" as const }]
+              : []),
+          ],
+        },
       });
       const elapsed = dateTime.nowMillis() - startedAt;
       if (elapsed < MIN_BUILD_DURATION_MS) {

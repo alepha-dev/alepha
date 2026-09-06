@@ -71,7 +71,12 @@ export class KanbanController {
       });
 
       return {
-        project: this.projectMapper.toResource(project),
+        project: this.projectMapper.toResource(
+          project,
+          // Memoized per request, so a board opened inside the same
+          // `_batch` as the project read pays for this once.
+          await this.security.capabilityRowsOf(params.projectId),
+        ),
         quests: this.orderForBoard(allQuests).map((quest) =>
           this.questMapper.mapQuestToResource(quest),
         ),

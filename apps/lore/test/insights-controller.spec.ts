@@ -238,7 +238,12 @@ const createProject = async (
   // onto each sigil's own `kinds`, and the insights endpoints carry no feature
   // check of their own — they are member-gated like any other project read.
   const created = await ctx.projectController.createProject.fetch(
-    { body: { title: `Insights ${projectSeq}`, features: { sigils: true } } },
+    {
+      body: {
+        title: `Insights ${projectSeq}`,
+        capabilities: [{ key: "apps", options: { track: true } }],
+      },
+    },
     { user },
   );
   return created.data.id;

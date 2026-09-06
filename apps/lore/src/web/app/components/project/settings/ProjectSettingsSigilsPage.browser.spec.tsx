@@ -7,18 +7,15 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
-import {
-  defaultProjectFeatures,
-  type ProjectFeatures,
-} from "@/api/entities/projects.ts";
+import { defaultProjectFeatures } from "@/api/entities/projects.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import ProjectSettingsSigilsPage from "./ProjectSettingsSigilsPage.tsx";
 
-interface UpdateCall {
-  params: { id: number };
-  body: { features: Partial<ProjectFeatures> };
+interface SetCapabilityCall {
+  params: { projectId: number; key: string };
+  body: { enabled: boolean; options?: Record<string, boolean> };
 }
 
 const aProject = {
@@ -29,27 +26,38 @@ const aProject = {
   slug: "lore",
   createdBy: "00000000-0000-4000-8000-000000000001",
   areas: [],
-  features: { ...defaultProjectFeatures, sigils: false },
+  features: defaultProjectFeatures,
+  // Apps off: the page's switch is what turns it on, and a row exists only
+  // for an enabled capability.
+  capabilities: [],
   kanbanColumns: ["In Progress"],
   unlockedFeatures: [],
   unlockHistory: [],
 };
 
 /**
- * Stands in for the HTTP-backed `useClient<ProjectController>()` that
- * `useProjectFeatureToggle` writes through (`CLAUDE.md`: never `vi.mock`).
+ * Stands in for the HTTP-backed client that `useProjectFeatureToggle` writes
+ * through (`CLAUDE.md`: never `vi.mock`).
  */
 class FakeLinkProvider extends LinkProvider {
-  calls: UpdateCall[] = [];
+  calls: SetCapabilityCall[] = [];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return {
-      updateProjectById: async (config: UpdateCall) => {
+      setCapability: async (config: SetCapabilityCall) => {
         this.calls.push(config);
         return {
           ...aProject,
-          features: { ...aProject.features, ...config.body.features },
+          capabilities: config.body.enabled
+            ? [
+                {
+                  key: config.params.key,
+                  enabledAt: "2026-09-06T10:00:00.000Z",
+                  options: config.body.options ?? {},
+                },
+              ]
+            : [],
         };
       },
     };
@@ -59,11 +67,11 @@ class FakeLinkProvider extends LinkProvider {
 /**
  * The page after #1770 gutted it: a switch and the ignore rules.
  *
- * The case that matters is the KEY. The label says "Apps" and the column says
- * `sigils`, and those two must stay apart: the flag is `.optional()`, so
- * renaming it would not fail to decode the way `projects.features` did on
- * 2026-08-05 - it would silently read `undefined` for every project that had
- * the module on, turning it off while the old value sat in the JSON column.
+ * The case that matters is still the KEY, and it survived the move: the label
+ * says "Apps" and the persisted key is `apps`. What changed is that the key
+ * can now be the honest one, because it lives in a row of its own rather than
+ * inside `projects.features` - where `sigils` had to keep its name forever,
+ * for the same reason `milestones` does.
  */
 describe("the Apps settings page", () => {
   const mount = async () => {
@@ -90,18 +98,30 @@ describe("the Apps settings page", () => {
     return { alepha, fake: alepha.inject(FakeLinkProvider), view };
   };
 
-  it("writes `sigils`, whatever the label says", async ({ expect }) => {
+  it("turns the Apps capability on, whatever the label says", async ({
+    expect,
+  }) => {
     const { alepha, fake, view } = await mount();
 
     fireEvent.click(await view.findByRole("switch"));
 
+    // `track` rides along: the old `sigils` flag gated the telemetry
+    // surfaces, so the capability alone would be a quieter project than the
+    // one this switch used to produce.
     await waitFor(() =>
       expect(fake.calls).toEqual([
-        { params: { id: 1 }, body: { features: { sigils: true } } },
+        {
+          params: { projectId: 1, key: "apps" },
+          body: { enabled: true, options: { track: true } },
+        },
       ]),
     );
     await waitFor(() =>
-      expect(alepha.store.get(currentProjectAtom)?.features?.sigils).toBe(true),
+      expect(
+        alepha.store
+          .get(currentProjectAtom)
+          ?.capabilities.some((it) => it.key === "apps"),
+      ).toBe(true),
     );
   });
 

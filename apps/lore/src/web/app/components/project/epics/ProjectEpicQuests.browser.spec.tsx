@@ -159,6 +159,10 @@ describe("ProjectEpicQuests - columns", () => {
       createdBy: "00000000-0000-4000-8000-000000000001",
       areas: [],
       features: defaultProjectFeatures,
+      // Empty until the surfaces read capabilities: this spec is
+      // about something else, and a fixture that claims capabilities it
+      // does not exercise is a lie the next reader has to check.
+      capabilities: [],
       kanbanColumns: ["In Progress"],
       unlockedFeatures: [],
       unlockHistory: [],

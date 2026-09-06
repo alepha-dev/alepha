@@ -7,18 +7,15 @@ import { AlephaReactI18n } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
-import {
-  defaultProjectFeatures,
-  type ProjectFeatures,
-} from "@/api/entities/projects.ts";
+import { defaultProjectFeatures } from "@/api/entities/projects.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import ProjectSettingsQualityPage from "./ProjectSettingsQualityPage.tsx";
 
-interface UpdateCall {
-  params: { id: number };
-  body: { features: Partial<ProjectFeatures> };
+interface SetCapabilityCall {
+  params: { projectId: number; key: string };
+  body: { enabled: boolean; options?: Record<string, boolean> };
 }
 
 /**
@@ -35,29 +32,41 @@ const aProject = {
   createdBy: "00000000-0000-4000-8000-000000000001",
   areas: [],
   features: defaultProjectFeatures,
+  // Empty until the surfaces read capabilities: this spec is
+  // about something else, and a fixture that claims capabilities it
+  // does not exercise is a lie the next reader has to check.
+  capabilities: [],
   kanbanColumns: ["In Progress"],
   unlockedFeatures: [],
   unlockHistory: [],
 };
 
 /**
- * Stands in for the HTTP-backed `useClient<ProjectController>()` that
- * `useProjectFeatureToggle` writes through. Same substitution seam as
- * `useInviteMember.browser.spec.tsx` (`CLAUDE.md`: never `vi.mock`).
+ * Stands in for the HTTP-backed client that `useProjectFeatureToggle` writes
+ * through. Same substitution seam as `useInviteMember.browser.spec.tsx`
+ * (`CLAUDE.md`: never `vi.mock`).
  */
 class FakeLinkProvider extends LinkProvider {
-  calls: UpdateCall[] = [];
+  calls: SetCapabilityCall[] = [];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return {
-      updateProjectById: async (config: UpdateCall) => {
+      setCapability: async (config: SetCapabilityCall) => {
         this.calls.push(config);
-        // What the real action answers: the row, with the patch merged over
-        // the features it already had.
+        // What the real action answers: the whole project resource, so one
+        // round-trip refreshes both project atoms.
         return {
           ...aProject,
-          features: { ...aProject.features, ...config.body.features },
+          capabilities: config.body.enabled
+            ? [
+                {
+                  key: config.params.key,
+                  enabledAt: "2026-09-06T10:00:00.000Z",
+                  options: config.body.options ?? {},
+                },
+              ]
+            : [],
         };
       },
     };
@@ -109,26 +118,31 @@ describe("the Quality settings page", () => {
     expect(toggle.getAttribute("aria-checked")).toBe("false");
   });
 
-  it("turning it on sends the one flag and nothing else", async ({
-    expect,
-  }) => {
+  it("turning it on writes the Apps capability", async ({ expect }) => {
     const { alepha, fake, view } = await mount();
 
     fireEvent.click(await view.findByRole("switch"));
 
-    // A partial patch: the server merges it over the flags already stored, so
-    // sending the whole object back would race a change made elsewhere.
+    // Quality is Apps baseline now, so the switch on this page writes the
+    // capability rather than a flag of its own. The page itself is on its way
+    // out with the four capability pages; what is pinned here is that the one
+    // control on it still reaches the one write path.
     await waitFor(() =>
       expect(fake.calls).toEqual([
-        { params: { id: 1 }, body: { features: { quality: true } } },
+        {
+          params: { projectId: 1, key: "apps" },
+          body: { enabled: true, options: {} },
+        },
       ]),
     );
-    // The atom is what `reportsTabs` reads, so this is the moment the Reports
-    // tab appears, with no reload in between.
+    // The atom is what the Reports tabs read, so this is the moment the tab
+    // appears, with no reload in between.
     await waitFor(() =>
-      expect(alepha.store.get(currentProjectAtom)?.features?.quality).toBe(
-        true,
-      ),
+      expect(
+        alepha.store
+          .get(currentProjectAtom)
+          ?.capabilities.some((it) => it.key === "apps"),
+      ).toBe(true),
     );
   });
 
