@@ -3,6 +3,7 @@ import type { UserAccountToken } from "alepha/security";
 import { ForbiddenError } from "alepha/server";
 
 import { type Member, members } from "../entities/members.ts";
+import { projectCapabilities } from "../entities/projectCapabilities.ts";
 import { type Project, projects } from "../entities/projects.ts";
 import type { RoadmapVisibility } from "../schemas/roadmapVisibilitySchema.ts";
 
@@ -36,6 +37,15 @@ import type { RoadmapVisibility } from "../schemas/roadmapVisibilitySchema.ts";
 export class ProjectSecurityService {
   projects = $repository(projects);
   members = $repository(members);
+  /**
+   * The project's enabled capabilities, one row per enabled key.
+   *
+   * Declared here rather than beside a caller because this is where the
+   * cached read lands: capabilities are configuration, exactly what
+   * `features.*` was, so they take the project row's treatment above rather
+   * than membership's.
+   */
+  capabilities = $repository(projectCapabilities);
 
   /**
    * How long `assertMember`'s project read may be served from the ORM's
