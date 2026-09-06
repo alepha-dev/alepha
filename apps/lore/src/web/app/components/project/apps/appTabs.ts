@@ -105,5 +105,22 @@ const collects = (instance: AppInstanceResource, kind: string): boolean =>
 /**
  * The tabs this instance has, in order.
  */
-export const appTabsFor = (instance: AppInstanceResource): AppTab[] =>
-  APP_TABS.filter((tab) => !tab.unlockedBy || tab.unlockedBy(instance));
+/**
+ * The tabs this instance has, given the project's Apps options.
+ *
+ * ⚠️ **Two gates, one above the other.** `apps.track` is the project's
+ * switch - it decides whether this project watches its apps at all - and the
+ * instance's own `kinds` decide which of the four telemetry surfaces THIS copy
+ * unlocked. The project switch sits above, so turning tracking off takes the
+ * telemetry tabs from every instance at once without touching a single sigil,
+ * and turning it back on returns exactly the tabs each instance had.
+ *
+ * Overview, Artifacts and Settings are the baseline and answer to neither.
+ */
+export const appTabsFor = (
+  instance: AppInstanceResource,
+  tracking = true,
+): AppTab[] =>
+  APP_TABS.filter(
+    (tab) => !tab.unlockedBy || (tracking && tab.unlockedBy(instance)),
+  );
