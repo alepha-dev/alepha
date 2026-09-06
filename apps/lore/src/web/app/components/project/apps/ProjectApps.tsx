@@ -1,12 +1,12 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
-import { Badge } from "@alepha/ui/components/ui/badge";
+import { Button } from "@alepha/ui/components/ui/button";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Plus, Search, SignalHigh } from "lucide-react";
+import { Plus, Search, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
@@ -18,53 +18,63 @@ import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAto
 import type { I18n } from "../../../services/I18n.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import AppCreateDialog from "./AppCreateDialog.tsx";
+import { appLiveness } from "./appLiveness.ts";
+import AppStatusDot from "./AppStatusDot.tsx";
 import { appUrl, appUrlLabel } from "./appUrl.ts";
 
-/**
- * How long an app may say nothing before it counts as silent.
- *
- * The same day `AppDashboardIdentity` uses, and for the same reason: an app
- * with real but thin traffic can go hours between batches, and a badge that
- * lights up overnight teaches its owner to ignore it.
- */
-const SILENT_AFTER_MS = 24 * 60 * 60 * 1000;
-
 const filtersSchema = z.object({
-  search: z.string().optional(),
   /**
-   * A SCALAR, deliberately, while Releases, Blights, Feedback and Activity
-   * all moved to arrays with feedback #2092.
+   * ⚠️ Matches the Name and the Env columns BOTH, which is what makes a
+   * tenant-ish substring like `b14` find anything at all: the app is called
+   * `club` and only the env half carries the tenant.
    *
-   * Two mutually exclusive and exhaustive values: an app is reporting or it
-   * is silent. Selecting both is identical to selecting neither, so a
-   * multi-select would add a state that means nothing and a count label that
-   * can only ever read "2 selected" for "no filter". Single plus `clearable`
-   * is the right shape here, and this note is what stops the next sweep
-   * "finishing the job".
+   * Local state rather than URL-backed. The breadcrumb link that would have
+   * wanted `?search=` was decided against in #1768, so nothing reads it from
+   * the URL and putting it there would be a parameter with one writer and no
+   * reader.
    */
-  reporting: z.enum(["reporting", "silent"]).optional(),
+  search: z.string().optional(),
 });
 
 /**
- * Every deployed copy of every app in one table.
+ * Every deployed copy of every app, in one flat table.
  *
- * Deliberately basic: this is the field being prepared, not the finished
- * surface. What lives under an app is going to move once deployments land.
+ * ## Flat, and grouping was tried and rejected
  *
- * **Not in the sidebar.** The sidebar already carries an Apps disclosure group
- * with one child per app, and a list entry beside it would be a second door to
- * the same information. The way in is the breadcrumb: `projectApps` is in
- * `SECTION_HREF_ROUTES` now, so the "Apps" segment that used to render as dead
- * text on every app page is a link, with no new chrome anywhere.
+ * ⚠️ Instances were specified to sit under a collapsible app header until
+ * 2026-09-04, with a single-instance app rendering as a plain row so the level
+ * stayed invisible. Reviewed against the mockup and dropped. One row per
+ * instance, every row the same shape.
  *
- * **Static-data mode, so there is no second request.** `currentInstancesAtom` is
- * already filled by the project route's own loader, and `AlephaTable` filters,
- * sorts and pages an array it is handed in memory. ⚠️ `refresh()` does not
- * re-fire anything in this mode; a page that enrols or deletes has to hand the
- * table a new array.
+ * The app name repeats down the Name column, and the repeats are deliberately
+ * NOT blank-filled: a blank cell breaks sorting on every other column, and
+ * sorting is most of what a flat list is for.
+ *
+ * ## Three columns, and what left with them
+ *
+ * `Reports` (the `kinds` badges), `Last seen`, `Token` and `Enrolled` are cut:
+ * the first is noise on a list and the rest belong on the instance page.
+ * Liveness survives as a status dot before the name, which costs no column
+ * width.
+ *
+ * ⚠️ **No Version column in v3.** The spec's fourth column is "the deployed
+ * tag" and nothing in Lore knows it: there is no `deployments` table until epic
+ * #1, the reporting envelope carries no app version, and an estate command's
+ * payload holds a sha256 and no tag. It lands with #1203. **Do not fill the
+ * slot with the newest artifact tag** - that is per app rather than per
+ * instance, says what was built rather than what runs, and would be wrong on
+ * the first promotion.
+ *
+ * ## Static-data mode, so there is no second request
+ *
+ * `currentInstancesAtom` is already filled by the project route's own loader,
+ * and `AlephaTable` filters, sorts and pages an array it is handed in memory.
+ * ⚠️ `refresh()` does not re-fire anything in this mode; a page that creates or
+ * deletes has to hand the table a new array, which is what `AppCreateDialog`
+ * and the Settings tab's delete both do.
  */
 const ProjectApps = () => {
-  const { tr, l } = useI18n<I18n, "en">();
+  const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const dateTime = useInject(DateTimeProvider);
 
@@ -81,6 +91,7 @@ const ProjectApps = () => {
   // rather than shown and refused. A member reads the list and does not add to
   // it.
   const isOwner = member?.owner ?? false;
+  const now = dateTime.nowMillis();
 
   const openInstance = (instance: AppInstanceResource) =>
     void router.push("app", {
@@ -91,13 +102,33 @@ const ProjectApps = () => {
       },
     });
 
-  const isSilent = (instance: AppInstanceResource) => {
-    const lastSeenAt = instance.sigil?.lastSeenAt;
+  const hrefOf = (instance: AppInstanceResource) =>
+    router.path("app", {
+      params: {
+        projectSlug: project.slug,
+        app: instance.app,
+        env: instance.env,
+      },
+    });
+
+  /**
+   * ⚠️ `undefined` is "the read failed", `[]` is "this project has no apps",
+   * and they must not collapse into one falsy check: an empty state on a
+   * transient failure claims a project has no apps. This page owns the
+   * failed-read state now that the sidebar's "Couldn't load apps" entry is
+   * gone (#1771).
+   */
+  if (instances === undefined) {
     return (
-      !lastSeenAt ||
-      dateTime.nowMillis() - new Date(lastSeenAt).getTime() > SILENT_AFTER_MS
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+        <TriangleAlert className="text-muted-foreground size-5" />
+        <span className="text-sm font-medium">{tr("apps.unavailable")}</span>
+        <span className="text-muted-foreground text-xs">
+          {tr("apps.unavailable.description")}
+        </span>
+      </div>
     );
-  };
+  }
 
   return (
     <div
@@ -111,12 +142,23 @@ const ProjectApps = () => {
     >
       <AlephaTable<AppInstanceResource>
         className="min-h-0 flex-1"
-        // `undefined` is "the read failed", `[]` is "none enrolled". Only the
-        // second is an empty state; the first is handled by the sidebar's own
-        // "Couldn't load apps" entry, and an empty table here would claim a
-        // project has no apps on the strength of a transient failure.
-        data={instances ?? []}
-        emptyMessage={tr("sigils.empty")}
+        data={instances}
+        // Not "no apps enrolled": enrolment is no longer how an app comes into
+        // existence, and the empty state's job here is to offer the create.
+        empty={
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <span className="text-sm font-medium">{tr("apps.empty")}</span>
+            <span className="text-muted-foreground max-w-sm text-xs">
+              {tr("apps.empty.description")}
+            </span>
+            {isOwner && (
+              <Button onClick={() => setCreating(true)}>
+                <Plus className="size-4" />
+                {tr("apps.create.title")}
+              </Button>
+            )}
+          </div>
+        }
         // The same dialog the header's create menu opens, mounted here as the
         // page's primary action: this list is where somebody who came looking
         // for their apps already is.
@@ -132,64 +174,36 @@ const ProjectApps = () => {
               ]
             : []
         }
+        // App then env, which is how the pair reads. The env half is the
+        // table's own secondary order: sorting a stable list by one column
+        // leaves the previous order underneath it, and the data arrives from
+        // `listApps` already ordered by the pair.
+        defaultSort={{ field: "app", direction: "asc" }}
         filters={{
           schema: filtersSchema,
           render: (form) => (
-            <>
-              <FilterSlot>
-                <Control
-                  input={form.input.search}
-                  label=""
-                  icon={Search}
-                  placeholder={tr("apps.filter.search")}
-                  inputProps={{ "aria-label": tr("apps.filter.search") }}
-                />
-              </FilterSlot>
-              <FilterSlot>
-                <Control
-                  input={form.input.reporting}
-                  label=""
-                  clearable
-                  icon={SignalHigh}
-                  clearLabel={tr("apps.filter.allApps")}
-                  triggerClassName="w-full"
-                  items={[
-                    {
-                      label: String(tr("apps.filter.reporting")),
-                      value: "reporting",
-                    },
-                    {
-                      label: String(tr("apps.filter.silent")),
-                      value: "silent",
-                    },
-                  ]}
-                  inputProps={{ "aria-label": tr("apps.filter.reporting") }}
-                />
-              </FilterSlot>
-            </>
+            <FilterSlot>
+              <Control
+                input={form.input.search}
+                label=""
+                icon={Search}
+                placeholder={tr("apps.filter.search")}
+                inputProps={{ "aria-label": tr("apps.filter.search") }}
+              />
+            </FilterSlot>
           ),
         }}
         // The built-in field matching pairs a filter with the same-named
-        // property, and neither of these is one: `search` spans the name and
-        // the address, and `reporting` is a question about a timestamp.
+        // property, and this one is not: `search` spans three values.
         filter={(instance, values) => {
           const search = String(values.search ?? "").toLowerCase();
-          if (search) {
-            const url = appUrl(instance) ?? "";
-            if (
-              !instance.app.toLowerCase().includes(search) &&
-              !instance.env.toLowerCase().includes(search) &&
-              !url.toLowerCase().includes(search)
-            ) {
-              return false;
-            }
-          }
-          if (values.reporting === "silent" && !isSilent(instance))
-            return false;
-          if (values.reporting === "reporting" && isSilent(instance)) {
-            return false;
-          }
-          return true;
+          if (!search) return true;
+          const url = appUrl(instance) ?? "";
+          return (
+            instance.app.toLowerCase().includes(search) ||
+            instance.env.toLowerCase().includes(search) ||
+            url.toLowerCase().includes(search)
+          );
         }}
         onRowClick={openInstance}
         columns={{
@@ -198,29 +212,27 @@ const ProjectApps = () => {
             sortable: true,
             className: "w-full max-w-0 min-w-40",
             cell: (instance) => (
-              <Link
-                href={router.path("app", {
-                  params: {
-                    projectSlug: project.slug,
-                    app: instance.app,
-                    env: instance.env,
-                  },
-                })}
-                className="block truncate font-medium"
-              >
-                {instance.app}
-              </Link>
+              <span className="flex min-w-0 items-center gap-2">
+                <AppStatusDot state={appLiveness(instance, now)} />
+                <Link
+                  href={hrefOf(instance)}
+                  className="block truncate font-medium"
+                >
+                  {instance.app}
+                </Link>
+              </span>
             ),
           },
           env: {
             label: tr("apps.table.env"),
             sortable: true,
             cell: (instance) => (
-              <span className="truncate text-xs">{instance.env}</span>
+              <span className="truncate text-sm">{instance.env}</span>
             ),
           },
           url: {
             label: tr("apps.table.address"),
+            sortable: true,
             cell: (instance) => {
               // An instance with no sigil never posts to the ingest, so it has
               // no detected host at all, and neither does a Feedback-only app.
@@ -236,75 +248,6 @@ const ProjectApps = () => {
                 </span>
               );
             },
-          },
-          kinds: {
-            label: tr("apps.table.reports"),
-            cell: (instance) =>
-              (instance.sigil?.kinds.length ?? 0) === 0 ? (
-                <span className="text-muted-foreground text-xs">-</span>
-              ) : (
-                // ⚠️ `flex-nowrap`, not the `flex-wrap` this had. An app
-                // carrying all four kinds wrapped its badges into a column and
-                // made its row four times the height of its neighbours
-                // (feedback #2081, at 1920x929). A table row is a line; a cell
-                // that stacks is one that has not been given its width.
-                //
-                // The column takes the width instead, which the table has:
-                // `<td>` sizes to content, and the page had 1000px of empty
-                // space to the right of the last column at the width this was
-                // reported from.
-                <span className="flex flex-nowrap items-center gap-1">
-                  {(instance.sigil?.kinds ?? []).map((kind) => (
-                    <Badge
-                      key={kind}
-                      variant="outline"
-                      className="text-xs whitespace-nowrap"
-                    >
-                      {kind}
-                    </Badge>
-                  ))}
-                </span>
-              ),
-          },
-          lastSeenAt: {
-            label: tr("apps.table.lastSeen"),
-            sortable: true,
-            cell: (instance) => (
-              <span className="flex flex-wrap items-center gap-2 text-xs whitespace-nowrap">
-                {instance.sigil?.lastSeenAt ? (
-                  String(l(instance.sigil.lastSeenAt, { date: "ll" }))
-                ) : (
-                  <span className="text-muted-foreground">
-                    {tr("sigils.neverSeen")}
-                  </span>
-                )}
-                {isSilent(instance) && instance.sigil?.lastSeenAt && (
-                  <Badge variant="outline" className="text-amber-600">
-                    {tr("app.dashboard.silent")}
-                  </Badge>
-                )}
-              </span>
-            ),
-          },
-          sigilId: {
-            label: tr("apps.table.token"),
-            cell: (instance) =>
-              instance.sigil ? (
-                <code className="font-mono text-xs">
-                  {instance.sigil.tokenPrefix}…
-                </code>
-              ) : (
-                <span className="text-muted-foreground text-xs">-</span>
-              ),
-          },
-          createdAt: {
-            label: tr("app.dashboard.created"),
-            sortable: true,
-            cell: (instance) => (
-              <span className="text-muted-foreground text-xs whitespace-nowrap">
-                {String(l(instance.createdAt, { date: "ll" }))}
-              </span>
-            ),
           },
         }}
       />

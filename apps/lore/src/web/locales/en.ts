@@ -1072,9 +1072,15 @@ export default {
   "project.menu.apps.unavailable": "Couldn't load apps",
 
   "apps.filter.search": "Search",
-  "apps.filter.allApps": "All apps",
-  "apps.filter.reporting": "Reporting",
-  "apps.filter.silent": "Silent",
+  "apps.status.reporting": "Reporting",
+  "apps.status.silent": "Silent for over a day",
+  "apps.status.none": "No sigil, nothing reports",
+  "apps.empty": "No app yet",
+  "apps.empty.description":
+    "An app is one deployed copy: which app, and which copy of it. Create one to track it here.",
+  "apps.unavailable": "Couldn\u2019t load apps",
+  "apps.unavailable.description":
+    "The list could not be read. This is not the same as having none - reload to try again.",
   "apps.create.title": "New app",
   "apps.create.description":
     "One row per deployed copy: the app, and which copy of it. Nothing is minted here.",
@@ -1092,9 +1098,6 @@ export default {
   "apps.table.name": "App",
   "apps.table.env": "Env",
   "apps.table.address": "Address",
-  "apps.table.reports": "Reports",
-  "apps.table.lastSeen": "Last report",
-  "apps.table.token": "Token",
   "app.tab.dashboard": "Dashboard",
   "app.tab.analytics": "Analytics",
   "app.tab.vitals": "Vitals",
@@ -1349,7 +1352,6 @@ export default {
   "blights.status.resolved": "Resolved",
   "blights.status.quest": "Forwarded to a quest",
 
-  "sigils.empty": "No app enrolled yet. Until one is, nothing can report here.",
   "sigils.token.title":
     "Copy this token now: it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, which is the only variable an app needs. Add SIGIL_SINK pointing at this instance if it is not the app's default sink.",
   "sigils.token.copy": "Copy token",
