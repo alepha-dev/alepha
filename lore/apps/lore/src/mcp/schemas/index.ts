@@ -5,6 +5,7 @@ export * from "./objectiveSchema.ts";
 export * from "./prioritySchema.ts";
 export * from "./projectParamsSchema.ts";
 export * from "./questSizeSchema.ts";
+export * from "./appInstanceSchemas.ts";
 export * from "./artifactSchemas.ts";
 export * from "./blightSchemas.ts";
 export * from "./epicSchemas.ts";
