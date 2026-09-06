@@ -15,12 +15,15 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
  * understands and declines. Two different questions, two codes, and the split
  * was in the tree before this epic without ever being written down.
  *
- * ⚠️ The second case is the one worth keeping. `projectEpics`, the board,
- * releases and the roadmap have NO loader guard, deliberately: `projectKanban`
- * set the rule that a saved link keeps resolving and the sidebar decides what
- * is offered. A future session reading the four Apps guards here will be
- * tempted to make the set uniform, and this asserts the asymmetry is a
- * decision rather than an omission.
+ * ⚠️ **A CAPABILITY guards its routes; an OPTION does not.** That is the whole
+ * rule, and the asymmetry it produces is a decision rather than an omission,
+ * which is why the last case pins it. Each capability's landing route refuses
+ * (`/quests`, `/folios`, `/apps` and its tabs, `/feedback`), while
+ * `projectEpics`, the board, releases and the roadmap have no loader guard at
+ * all: those hang off options inside Work, `projectKanban` set the rule that a
+ * saved link keeps resolving, and the sidebar is what stops offering them. A
+ * future session will be tempted to make the set uniform in one direction or
+ * the other; both cases below say which.
  */
 describe("route guards on a capability", () => {
   /**
@@ -80,13 +83,45 @@ describe("route guards on a capability", () => {
     await expect(loader?.({} as never)).resolves.toBeUndefined();
   });
 
+  it("404s each capability's own landing route", async ({ expect }) => {
+    const alepha = await bootRouter();
+    // Apps only. Every other capability's landing route is a page this
+    // project does not have.
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ capabilities: ["apps"] }) as never,
+    );
+
+    for (const name of ["projectQuests", "projectFolios", "projectFeedback"]) {
+      const loader = loaderOf(alepha, name);
+      await expect(loader?.({} as never), name).rejects.toThrow(/not enabled/i);
+    }
+  });
+
+  it("lets /quests through once Work is on", async ({ expect }) => {
+    const alepha = await bootRouter();
+    alepha.store.set(
+      currentProjectAtom,
+      projectFixture({ capabilities: ["work"] }) as never,
+    );
+
+    // The pair again: `projectQuests`'s loader fetches nothing, so a guard
+    // that refused everything would look identical from the case above.
+    await expect(
+      loaderOf(alepha, "projectQuests")?.({} as never),
+    ).resolves.toBeUndefined();
+  });
+
   it("leaves the epic, board and release routes unguarded", async ({
     expect,
   }) => {
     const alepha = await bootRouter();
 
-    // No loader at all on these three. A link somebody saved keeps resolving
-    // whatever the options say; the sidebar is what stops offering them.
+    // No loader at all on these three, though `board`, `epics` and
+    // `releases` are all switches somebody can turn off. They are OPTIONS
+    // inside Work, and an option does not make a page stop existing: a link
+    // somebody saved keeps resolving, and the sidebar is what stops offering
+    // it. `/quests` above is the capability, and it does refuse.
     for (const name of ["projectEpics", "projectKanban", "projectReleases"]) {
       expect(loaderOf(alepha, name), name).toBeUndefined();
     }

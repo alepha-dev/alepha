@@ -1122,13 +1122,22 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Quests`,
     }),
     lazy: () => import("./components/project/ProjectQuestsPage.tsx"),
-    // No loader. This used to redirect to `/kanban` when the project's
-    // `defaultSurface` said so; the setting is gone (feedback #2066). A
-    // bare `/:projectSlug` no longer reaches this page at all — it lands
-    // on `projectActivity` — but the prohibition is unchanged and belongs
-    // to whichever page holds the root: the board is reached from its
-    // sidebar entry, and nothing may send a bare project URL anywhere,
-    // because a redirect there is the shape #156 was about.
+    // ⚠️ The loader GATES and fetches nothing. It used to redirect to
+    // `/kanban` when the project's `defaultSurface` said so; the setting is
+    // gone (feedback #2066), and the prohibition is unchanged: a bare
+    // `/:projectSlug` lands on `projectActivity` and nothing may send a
+    // project URL anywhere, because a redirect there is the shape #156 was
+    // about. What it does now is the capability check every capability's
+    // landing route carries - see `projectFolios` for the rule.
+    loader: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      if (!hasCapability(project, "work")) {
+        throw new NotFoundError("Work is not enabled for this project");
+      }
+    },
   });
 
   /**
@@ -1328,6 +1337,9 @@ export class AppRouter {
       const project = this.alepha.store.get(currentProjectAtom);
       if (!project) {
         throw new NotFoundError("Project not found");
+      }
+      if (!hasCapability(project, "support")) {
+        throw new NotFoundError("Support is not enabled for this project");
       }
       // The first page only. `Show more` fetches the rest from inside the
       // page, so the loader is one screenful regardless of inbox size.
@@ -1783,6 +1795,9 @@ export class AppRouter {
       const projectId = project?.id;
       if (projectId === undefined) {
         throw new NotFoundError("Project not found");
+      }
+      if (!hasCapability(project, "knowledge")) {
+        throw new NotFoundError("Knowledge is not enabled for this project");
       }
       // The tree's own two lists, which `seedFolioTree` owns — the folio
       // list AND the directory list, the latter load-bearing: the tree's
