@@ -1,3 +1,4 @@
+import { TreeViewResizer } from "@alepha/ui/components/tree-view/tree-view-resizer";
 import { useStore } from "alepha/react";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { type ReactElement, useEffect, useMemo, useState } from "react";
@@ -19,9 +20,13 @@ import {
 } from "./menubar/folioMenubarModel.ts";
 import { useFolioShortcuts } from "./menubar/useFolioShortcuts.ts";
 import FolioTree, { type FolioTreeActions } from "./tree/FolioTree.tsx";
-import FolioTreeResizer from "./tree/FolioTreeResizer.tsx";
 import type { FolioActionHandlers } from "./useFolioActions.ts";
-import { useFolioPanes } from "./useFolioPanes.ts";
+import {
+  TREE_DEFAULT_WIDTH,
+  TREE_MAX_WIDTH,
+  TREE_MIN_WIDTH,
+  useFolioPanes,
+} from "./useFolioPanes.ts";
 
 /**
  * No document, so nothing can be new, locked, protected or pinned — the
@@ -244,9 +249,12 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
             />
             {/* Inside the wrapper so the handle travels with the pane and
                 disappears along with it. */}
-            <FolioTreeResizer
+            <TreeViewResizer
               width={panes.treeWidth}
               onWidth={panes.setTreeWidth}
+              minWidth={TREE_MIN_WIDTH}
+              maxWidth={TREE_MAX_WIDTH}
+              defaultWidth={TREE_DEFAULT_WIDTH}
             />
           </div>
         )}

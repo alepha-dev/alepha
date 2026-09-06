@@ -1,3 +1,11 @@
+import {
+  type TreeDropPosition,
+  resolveDrop,
+} from "@alepha/ui/components/tree-view/tree-model.ts";
+import {
+  type TreeStateCommands,
+  useTreeState,
+} from "@alepha/ui/components/tree-view/use-tree-state.ts";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import {
   useAction,
@@ -8,7 +16,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { DirectoryController } from "@/api/controllers/DirectoryController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
@@ -21,13 +29,11 @@ import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import {
   buildFolioTree,
-  type FolioDropPosition,
   type FolioTreeNode,
   type FolioTreeRow,
   findFolioNode,
   flattenFolioTree,
-  resolveFolioDrop,
-} from "./folioTreeModel.ts";
+} from "./folioTree.ts";
 
 export interface UseFolioTreeModelInput {
   projectId: number;
@@ -55,30 +61,29 @@ export interface UseFolioTreeModelInput {
 }
 
 /**
- * Everything the tree can DO, separated from everything it currently IS.
+ * Lore's own verbs: what this tree can do that a tree in general cannot.
  *
- * The split exists so `FolioTreeRow` can be `memo`ised. Every command here
- * closes over `folios` / `directories` / `tree`, so their implementations
- * change identity on every render; the object a row receives must not, or
- * the memo can never hold. See `commands` in the hook for how both are true
- * at once.
+ * The split from `TreeStateCommands` is where the epic #E40 line falls.
+ * Everything here closes over `folios` / `directories` / `tree`, so their
+ * implementations change identity on every render; the object handed
+ * downwards must not, or `TreeViewRow`'s memo can never hold. See `commands`
+ * in the hook for how both are true at once.
  */
-export interface FolioTreeCommands {
-  toggle: (id: string) => void;
+export interface FolioTreeVerbs {
   select: (node: FolioTreeNode) => void;
-  beginRename: (id: string) => void;
-  commitRename: (id: string, name: string) => Promise<void>;
-  cancelRename: () => void;
-  onDragStart: (id: string) => void;
-  onDragOver: (id: string, position: FolioDropPosition) => void;
-  onDrop: (id: string) => Promise<void>;
-  onDragEnd: () => void;
   createFolio: (parentId?: string) => Promise<void>;
   createDirectory: (parentId?: string) => Promise<void>;
   remove: (node: FolioTreeNode) => Promise<void>;
   duplicate: (node: FolioTreeNode) => Promise<void>;
   togglePin: (node: FolioTreeNode) => Promise<void>;
 }
+
+/**
+ * `useTreeState`'s generic commands (toggle, rename, the drag gesture) plus
+ * Lore's own verbs, as one object, because `FolioTreeContextMenu` reaches for
+ * both halves from the same place.
+ */
+export interface FolioTreeCommands extends TreeStateCommands, FolioTreeVerbs {}
 
 export interface FolioTreeState {
   rows: FolioTreeRow[];
@@ -94,7 +99,7 @@ export interface FolioTreeState {
   selectedId?: string;
   renamingId?: string;
   dragId?: string;
-  drop?: { id: string; position: FolioDropPosition };
+  drop?: { id: string; position: TreeDropPosition };
   /**
    * Stable for the life of the hook. A row may hold onto it across any
    * number of renders without going stale.
@@ -152,12 +157,12 @@ export interface FolioTreeState {
  * `buildFolioTree` breaks a `parentId` cycle by promoting one member to the
  * tree's root, so that directory *displays* at root while the database
  * still records its cyclic parent (`FolioTreeNode.declaredParentId` carries
- * the true stored value on exactly those nodes). `resolveFolioDrop`
+ * the true stored value on exactly those nodes). `resolveDrop`
  * accounts for this: dragging such a node to root resolves to
  * `{ parentId: undefined }` — a real, necessary write that clears the
  * corruption — even though the node is ALREADY rendered at root and
  * nothing visibly moves. `onDrop` below always issues the move whenever
- * `resolveFolioDrop` returns a target, and NEVER infers "nothing to do"
+ * `resolveDrop` returns a target, and NEVER infers "nothing to do"
  * from whether the drop's `targetId` sits at the same visual position as
  * `dragId` — the return value is the only signal trusted. Both an ordinary
  * move and this repair are treated identically (no toast either way): an
@@ -205,13 +210,30 @@ export const useFolioTreeModel = (
       collapsed: [...next],
     });
   };
-  // Seeded from `pendingFolioTreeRenameAtom` — see that atom's doc for why
-  // `createFolio`'s own `setRenamingId` call (below) is not enough on its
-  // own: the navigation it triggers can remount this whole hook before that
-  // state ever paints.
-  const [renamingId, setRenamingId] = useState<string | undefined>(() =>
-    alepha.store.get(pendingFolioTreeRenameAtom),
-  );
+  /**
+   * Collapse, rename and the drag gesture come from `@alepha/ui`'s
+   * `useTreeState`. Everything below this line is what makes the tree a
+   * FOLIO tree: the two controllers, the eight actions, the confirmations,
+   * the routing, the per-project seed and the reveal effect.
+   *
+   * ⚠️ `collapsed` is handed in as a controlled pair backed by an atom, and
+   * that is the whole reason the state survives `FoliosLayout`'s remount.
+   * See the block above, and `useTreeState`'s own doc.
+   *
+   * `initialRenamingId` is seeded from `pendingFolioTreeRenameAtom` for the
+   * reason that atom exists: `createFolio`'s own `beginRename` is not enough
+   * on its own, because the navigation it triggers can remount this whole
+   * hook before that state ever paints.
+   */
+  const state = useTreeState({
+    collapsed: [collapsed, writeCollapsed],
+    initialRenamingId: alepha.store.get(pendingFolioTreeRenameAtom),
+    onRename: (id, name) => renameActionRef.current(id, name),
+    onMove: (dragId, targetId, position) =>
+      moveRef.current(dragId, targetId, position),
+  });
+  const { renamingId, dragId, drop } = state;
+
   useEffect(() => {
     if (alepha.store.get(pendingFolioTreeRenameAtom) !== undefined) {
       alepha.store.set(pendingFolioTreeRenameAtom, undefined);
@@ -219,10 +241,21 @@ export const useFolioTreeModel = (
     // Runs once per mount, deliberately — clears the hand-off exactly once
     // so it never leaks into a later, unrelated mount.
   }, []);
-  const [dragId, setDragId] = useState<string | undefined>();
-  const [drop, setDrop] = useState<
-    { id: string; position: FolioDropPosition } | undefined
-  >();
+
+  /**
+   * `useTreeState` is called before the actions it needs exist, so the two
+   * callbacks it takes read through refs assigned further down. Not a
+   * layering trick: the actions close over `folios` / `directories` /
+   * `tree`, all of which are derived from state this hook owns, and hoisting
+   * them above the hook would mean hoisting the whole file.
+   */
+  const renameActionRef = useRef<(id: string, name: string) => Promise<void>>(
+    undefined as never,
+  );
+  const moveRef = useRef<
+    (dragId: string, targetId: string, position: TreeDropPosition) => void
+  >(undefined as never);
+
   const seeded = folios.length > 0 || directories.length > 0;
 
   const { loading: fetching } = useQuery(
@@ -416,35 +449,16 @@ export const useFolioTreeModel = (
     writeCollapsed(next);
   }, [expandSignature, seededForProject]);
 
-  const toggle = (id: string): void => {
-    const next = new Set(collapsed);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    writeCollapsed(next);
-  };
-
-  /**
-   * Expand exactly the given directory (not its ancestors) — used after
-   * creating a folio/directory inside it. The parent's own row can only
-   * have been right-clicked (the create action's origin) while visible,
-   * which means its ancestors are already expanded; only the parent itself
-   * might be collapsed.
-   */
-  const expandOne = (id?: string): void => {
-    if (!id || !collapsed.has(id)) return;
-    const next = new Set(collapsed);
-    next.delete(id);
-    writeCollapsed(next);
-  };
+  const { toggle, expandOne } = state.commands;
 
   const select = (node: FolioTreeNode): void => {
-    if (node.kind === "directory") {
+    if (node.data.kind === "directory") {
       toggle(node.id);
       return;
     }
     void router.push(
       router.path("projectFoliosFolio", {
-        params: { projectSlug: input.projectSlug, shortId: node.shortId },
+        params: { projectSlug: input.projectSlug, shortId: node.data.shortId },
       }),
     );
   };
@@ -456,7 +470,7 @@ export const useFolioTreeModel = (
         if (!node) return;
         const trimmed = name.trim();
         if (!trimmed || trimmed === node.name) return;
-        if (node.kind === "directory") {
+        if (node.data.kind === "directory") {
           const updated = await directoryApi.renameDirectory({
             params: { id },
             body: { name: trimmed },
@@ -490,10 +504,8 @@ export const useFolioTreeModel = (
     ],
   );
 
-  const commitRename = async (id: string, name: string): Promise<void> => {
-    await renameAction.run(id, name);
-    setRenamingId(undefined);
-  };
+  // `useTreeState` clears `renamingId` once this resolves.
+  renameActionRef.current = (id, name) => renameAction.run(id, name);
 
   const moveFolioAction = useAction<[string, string | undefined], void>(
     {
@@ -541,41 +553,26 @@ export const useFolioTreeModel = (
     [directories, setDirectories, directoryApi, input.projectId],
   );
 
-  const onDragStart = (id: string): void => setDragId(id);
-
-  const onDragOver = (id: string, position: FolioDropPosition): void => {
-    setDrop({ id, position });
-  };
-
-  const onDragEnd = (): void => {
-    setDragId(undefined);
-    setDrop(undefined);
-  };
-
-  const onDrop = async (targetId: string): Promise<void> => {
-    const currentDragId = dragId;
-    // Trust `targetId` (the row whose own `onDrop` fired) paired with
-    // `drop` ONLY when it agrees on which row that is — guards against a
-    // stale `drop` from a row the pointer passed over earlier if the
-    // browser's dragover/drop ordering ever disagrees.
-    const position = drop && drop.id === targetId ? drop.position : undefined;
-    setDragId(undefined);
-    setDrop(undefined);
-    if (!currentDragId || !position) return;
-
-    const target = resolveFolioDrop(tree, currentDragId, targetId, position);
+  /**
+   * What a drop MEANS here. `useTreeState` owns the gesture and the guard
+   * that the marker and the dropped-on row agree; resolving the move is
+   * ours, because only this hook knows a directory from a folio and which
+   * of the two endpoints writes the change.
+   */
+  moveRef.current = (currentDragId, targetId, position) => {
+    const target = resolveDrop(tree, currentDragId, targetId, position);
     // `undefined` covers BOTH an illegal drop (into your own subtree) AND
-    // a true no-op (already at that parent) — see `resolveFolioDrop`'s own
+    // a true no-op (already at that parent) — see `resolveDrop`'s own
     // doc. Either way, nothing to write.
     if (!target) return;
 
     const dragged = findFolioNode(tree, currentDragId);
     if (!dragged) return;
 
-    if (dragged.kind === "directory") {
-      await moveDirectoryAction.run(currentDragId, target.parentId);
+    if (dragged.data.kind === "directory") {
+      void moveDirectoryAction.run(currentDragId, target.parentId);
     } else {
-      await moveFolioAction.run(currentDragId, target.parentId);
+      void moveFolioAction.run(currentDragId, target.parentId);
     }
   };
 
@@ -591,7 +588,7 @@ export const useFolioTreeModel = (
         });
         setFolios([created, ...folios]);
         expandOne(parentId);
-        setRenamingId(created.id);
+        state.commands.beginRename(created.id);
         // Belt-and-suspenders with the `setRenamingId` above: see
         // `pendingFolioTreeRenameAtom`'s doc for why the local state alone
         // is not reliable across the navigation on the next line.
@@ -635,7 +632,7 @@ export const useFolioTreeModel = (
         });
         setDirectories([...directories, created]);
         expandOne(parentId);
-        setRenamingId(created.id);
+        state.commands.beginRename(created.id);
       },
       invalidates: [["folioTree", input.projectId]],
     },
@@ -712,7 +709,7 @@ export const useFolioTreeModel = (
   );
 
   const remove = async (node: FolioTreeNode): Promise<void> => {
-    if (node.kind === "directory") {
+    if (node.data.kind === "directory") {
       const confirmed = await dialog.confirm({
         title: tr("folios.editor.tree.confirm-delete-directory-title"),
         description: tr("folios.editor.tree.confirm-delete-directory-body"),
@@ -727,7 +724,7 @@ export const useFolioTreeModel = (
       const removedDirIds = new Set<string>();
       const removedFolioIds = new Set<string>();
       const collect = (n: FolioTreeNode): void => {
-        if (n.kind === "directory") removedDirIds.add(n.id);
+        if (n.data.kind === "directory") removedDirIds.add(n.id);
         else removedFolioIds.add(n.id);
         for (const child of n.children ?? []) collect(child);
       };
@@ -747,7 +744,7 @@ export const useFolioTreeModel = (
   const duplicateAction = useAction<[FolioTreeNode], void>(
     {
       handler: async (node: FolioTreeNode) => {
-        if (node.kind === "directory") return;
+        if (node.data.kind === "directory") return;
         // The source's `content` is copied AS-IS, whether plaintext or a
         // protected envelope — a passphrase-encrypted envelope is opaque
         // JSON the server never interprets, so duplicating it byte-for-byte
@@ -795,10 +792,10 @@ export const useFolioTreeModel = (
   const pinAction = useAction<[FolioTreeNode], void>(
     {
       handler: async (node: FolioTreeNode) => {
-        if (node.kind === "directory") return;
+        if (node.data.kind === "directory") return;
         const updated = await folioApi.update({
           params: { id: node.id },
-          body: { pinned: !node.pinned },
+          body: { pinned: !node.data.pinned },
         });
         setFolios(
           folios.map((f) => (f.id === node.id ? { ...f, ...updated } : f)),
@@ -819,17 +816,9 @@ export const useFolioTreeModel = (
    * `dragId`. Assigned during render, the same way `FolioTree` already
    * keeps its published actions current.
    */
-  const implRef = useRef<FolioTreeCommands>(undefined as never);
+  const implRef = useRef<FolioTreeVerbs>(undefined as never);
   implRef.current = {
-    toggle,
     select,
-    beginRename: (id: string) => setRenamingId(id),
-    commitRename,
-    cancelRename: () => setRenamingId(undefined),
-    onDragStart,
-    onDragOver,
-    onDrop,
-    onDragEnd,
     createFolio,
     createDirectory,
     remove,
@@ -840,7 +829,7 @@ export const useFolioTreeModel = (
   /**
    * The same commands behind a facade whose identity NEVER changes.
    *
-   * This is what makes `memo(FolioTreeRow)` worth anything. Before it, one
+   * This is what makes `TreeViewRow`'s memo worth anything. Before it, one
    * toggle re-rendered every visible row: `rows` is memoised, but each row
    * received the whole state object, and that object was rebuilt on every
    * render along with all fourteen of its callbacks.
@@ -853,22 +842,17 @@ export const useFolioTreeModel = (
    */
   const commands = useMemo<FolioTreeCommands>(
     () => ({
-      toggle: (id) => implRef.current.toggle(id),
+      // The generic half, already stable for the life of `useTreeState`.
+      ...state.commands,
+      // Lore's own verbs, through this hook's facade for the same reason.
       select: (node) => implRef.current.select(node),
-      beginRename: (id) => implRef.current.beginRename(id),
-      commitRename: (id, name) => implRef.current.commitRename(id, name),
-      cancelRename: () => implRef.current.cancelRename(),
-      onDragStart: (id) => implRef.current.onDragStart(id),
-      onDragOver: (id, position) => implRef.current.onDragOver(id, position),
-      onDrop: (id) => implRef.current.onDrop(id),
-      onDragEnd: () => implRef.current.onDragEnd(),
       createFolio: (parentId) => implRef.current.createFolio(parentId),
       createDirectory: (parentId) => implRef.current.createDirectory(parentId),
       remove: (node) => implRef.current.remove(node),
       duplicate: (node) => implRef.current.duplicate(node),
       togglePin: (node) => implRef.current.togglePin(node),
     }),
-    [],
+    [state.commands],
   );
 
   return {

@@ -105,6 +105,17 @@ export class EstateCommandService {
     input: { kind: EstateCommandKind; payload: EstateCommandPayload },
     requestedBy?: string,
   ): Promise<EstateCommand> {
+    if (estate.type !== "bay") {
+      // The queue exists because a bay machine dials in and asks for work.
+      // A cloudflare estate has no connector to come for it, so without this
+      // the command would sit `pending` until the sweep failed it a day
+      // later as "the machine never came for it", which is a true sentence
+      // about the wrong thing. Epic #1 deploys to a cloudflare estate over
+      // HTTP, not through this queue.
+      throw new ForbiddenError(
+        `Estate "${estate.slug}" is a Cloudflare account, which is deployed to directly rather than through the command queue`,
+      );
+    }
     if (input.kind === "deploy" && !estate.deployAllowed) {
       throw new ForbiddenError(
         `Estate "${estate.slug}" does not accept deploys; its owner has to allow them first`,

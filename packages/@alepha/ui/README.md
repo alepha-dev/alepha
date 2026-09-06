@@ -55,6 +55,12 @@ out by hand.
 **`alepha-table`** - data table wired for server-side pagination, sorting and
 filtering.
 
+**`tree-view`** - a controlled tree. `tree-model.ts` is the pure half (build,
+flatten, cycle-safe parents, drop resolution), `TreeView` draws the rows with
+their indent guides and ARIA tree roles, and drag and drop, inline rename and a
+context-menu slot are opt-ins. `useTreeState` holds the gesture state, and
+`TreeViewResizer` is the pane handle.
+
 **Application shells** - `app-shell` and `nav-shell` for page scaffolding,
 `app-actions` for toolbars, plus ready-made `auth`, `account`, `settings`, and
 `admin` screens.
@@ -71,8 +77,9 @@ under `components/`; `use-mobile` lives under `hooks/`.
 > toast twice - so a standalone mount (or `app-shell` with `embedded`) has to
 > wrap them itself.
 
-**`lib/*`** - `utils` exports `cn()`, the `clsx` + `tailwind-merge` helper every
-component uses. Also `resize-image` and `i18n-fr`.
+**`lib/*`** - `utils` re-exports `cn()` from shadcn's `cn` package, the
+zero-dependency class merger every component uses. Also `resize-image` and
+`i18n-fr`.
 
 ## Example
 

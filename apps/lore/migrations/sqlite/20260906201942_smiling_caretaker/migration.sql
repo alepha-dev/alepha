@@ -1,1 +1,0 @@
-ALTER TABLE `estate_commands` ADD `result_file_id` text;

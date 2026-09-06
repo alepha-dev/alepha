@@ -336,6 +336,39 @@ test.describe("blocks", () => {
     await expect(page.getByText("confirmed")).toBeVisible();
   });
 
+  test("the Tree page draws all three specimens with real rows", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/tree");
+
+    // A 200 with an empty box is what a broken build looks like, so this
+    // asserts the content: the three headings, and a row from each specimen.
+    await expect(
+      page.getByRole("heading", { name: "Read only", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Drag and drop", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Full editor", exact: true }),
+    ).toBeVisible();
+
+    // Three trees, one per specimen, each with the fixture's rows in it.
+    await expect(page.getByRole("tree", { name: "Files" })).toHaveCount(3);
+    // ⚠️ `LICENSE` rather than `README.md`, and not arbitrarily: the third
+    // specimen draws a trailing badge, so that row's text is "README.md3" and
+    // an anchored match finds two rows out of three. LICENSE carries no count.
+    await expect(
+      page.locator('[data-slot="tree-view-row"]', { hasText: /^LICENSE$/ }),
+    ).toHaveCount(3);
+
+    // The line the drag specimen reports its resolved parent on, which
+    // `tree.spec.ts` reads its outcomes off.
+    await expect(page.getByTestId("resolved-parent")).toContainText(
+      "nothing moved yet",
+    );
+  });
+
   test("AutoForm reveals its conditional field", async ({ page }) => {
     await page.goto("/blocks/auto-form/basic");
 

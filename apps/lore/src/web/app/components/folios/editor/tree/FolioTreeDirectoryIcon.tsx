@@ -58,7 +58,7 @@ const FolioTreeDirectoryIcon = (
       {Badge && (
         <span
           aria-hidden
-          className="bg-background group-data-[selected]/folio-row:bg-muted absolute -right-0.5 -bottom-0.5 flex size-2.5 items-center justify-center rounded-full group-hover/folio-row:bg-[color-mix(in_oklch,var(--muted)_60%,var(--background))]"
+          className="bg-background group-data-[selected]/tree-row:bg-muted absolute -right-0.5 -bottom-0.5 flex size-2.5 items-center justify-center rounded-full group-hover/tree-row:bg-[color-mix(in_oklch,var(--muted)_60%,var(--background))]"
         >
           <Badge
             // ⚠️ `strokeWidth` is not decoration here. Lucide draws a 2px

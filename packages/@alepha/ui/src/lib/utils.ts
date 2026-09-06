@@ -1,18 +1,20 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+/**
+ * `cn` is shadcn's own engine for Tailwind class merging: the same API and
+ * output as `clsx` + `tailwind-merge`, with zero dependencies. This module is
+ * the one import path for it, hand-maintained blocks and stock primitives
+ * alike; `scripts/sync.ts` rewrites the registry's direct `"cn"` import back
+ * through here.
+ */
+export { cn } from "cn";
 
 /**
  * A byte count as a person reads it: `5.2 GB`, `640 KB`, `0 B`.
  *
- * One implementation, because there were three: two private copies in this
+ * One implementation, because there were four: two private copies in this
  * package (`control-upload`, `admin-files`) that disagreed about whether TB
- * exists, and a third in Lore that stopped at MB. A file listing and a host's
- * disk are the same question, and the answer should not depend on which screen
- * asked it.
+ * exists, and two in Lore, one of which stopped at MB. A file listing and a
+ * host's disk are the same question, and the answer should not depend on
+ * which screen asked it.
  *
  * Binary units with decimal names, which is what every operating system shows
  * and therefore what an operator compares against. `undefined` is empty rather

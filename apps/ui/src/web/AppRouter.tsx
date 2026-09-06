@@ -28,6 +28,7 @@ export class AppRouter {
       this.autoFormObject,
       this.autoFormArray,
       this.blocksTable,
+      this.blocksTree,
       this.blocksDialog,
       this.blocksToast,
       this.blocksButtons,
@@ -185,6 +186,13 @@ export class AppRouter {
     static: true,
     head: { title: "Table - Alepha UI" },
     lazy: () => import("./pages/blocks/Table.tsx"),
+  });
+
+  blocksTree = $page({
+    path: "/blocks/tree",
+    static: true,
+    head: { title: "Tree - Alepha UI" },
+    lazy: () => import("./pages/blocks/Tree.tsx"),
   });
 
   blocksDialog = $page({

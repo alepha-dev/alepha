@@ -148,7 +148,7 @@ describe("AutoForm settings-card layout", () => {
       />,
     );
 
-    // tailwind-merge, not both classes landing on the element: at `sm` the
+    // `cn` merging, not both classes landing on the element: at `sm` the
     // caller's width has to be the only one that applies.
     // `getByRole`, not `getByLabelText`: `username` is required here, and the
     // marker `FormField` renders for that puts a literal "*" in the label's

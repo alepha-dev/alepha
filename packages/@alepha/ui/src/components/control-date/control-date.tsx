@@ -254,16 +254,52 @@ const DatePopover = (props: DatePopoverProps) => {
           render={
             <Button
               id={props.id}
+              // A FIELD trigger, not a button, and the distinction is load
+              // bearing: `styles.css` gives the `--input-hover` border to a
+              // list of `data-slot`s, and this one was not on it, so the date
+              // control was the only field in the kit that did not darken its
+              // border under the pointer. Overriding Base UI's own
+              // `data-slot="button"` is safe - nothing selects on it.
+              data-slot="date-trigger"
               variant="outline"
               disabled={props.disabled}
               className={cn(
                 "flex-1 justify-start text-left font-normal",
-                !date && "text-muted-foreground",
+                // Undo the outline variant's hover fill AND its open-state
+                // fill. A select trigger shades for neither: the border is the
+                // affordance in both cases, and a field that greys out while
+                // its own popover is open reads as disabled at the moment it
+                // is most active. Neither `select-trigger` nor
+                // `combobox-trigger` carries an `aria-expanded:bg-*` rule at
+                // all, which is the behaviour being matched.
+                //
+                // ⚠️ Each modifier has to match the variant's own EXACTLY -
+                // `not-disabled:hover:` and `aria-expanded:` - or
+                // tailwind-merge keeps both rules and the winner is down to
+                // source order.
+                "not-disabled:hover:bg-background aria-expanded:bg-background",
+                // Same reasoning for the placeholder: a select leaves it muted
+                // under the pointer. With a value the text is already
+                // `foreground`, so this only matters while empty.
+                !date &&
+                  "text-muted-foreground not-disabled:hover:text-muted-foreground aria-expanded:text-muted-foreground",
               )}
             />
           }
         >
-          <CalendarIcon className="mr-2 size-4" />
+          {/*
+            Muted whatever the field holds, matching `InputGroupAddon`, which
+            paints every other leading icon in the kit `text-muted-foreground`
+            on the container.
+
+            Without the class this icon simply inherits the trigger's `color`,
+            which the control swaps between muted and foreground to grey the
+            PLACEHOLDER - so the icon brightened when a date was picked. That
+            looked deliberate and was not: an icon says what kind of field this
+            is, which does not change when you fill it, and the text beside it
+            already carries filled-versus-empty.
+          */}
+          <CalendarIcon className="text-muted-foreground mr-2 size-4" />
           {formatted || "Pick a date"}
           {/* Same trailing caret a select trigger carries, for the same
               reason: this opens a popover, and without it the control reads

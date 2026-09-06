@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "589997df-838c-4ae9-9053-4a1de6dfb685",
-  "prevIds": ["5a7f919f-1c45-4aa1-9683-5cbbe9b92933"],
+  "id": "6770e1db-76f2-45b4-9023-4fab1e4b4340",
+  "prevIds": ["0d8c9c92-07d2-4b3c-90fc-a31d9964cbd2"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -90,10 +90,6 @@
     },
     {
       "name": "estate_commands",
-      "entityType": "tables"
-    },
-    {
-      "name": "estate_inventories",
       "entityType": "tables"
     },
     {
@@ -2195,116 +2191,6 @@
       "table": "estate_commands"
     },
     {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "result_file_id",
-      "entityType": "columns",
-      "table": "estate_commands"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "(unixepoch('subsec') * 1000)",
-      "generated": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "(unixepoch('subsec') * 1000)",
-      "generated": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "estate_id",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "at",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "reported_at",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "bay_version",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "host",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "apps",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "app_count",
-      "entityType": "columns",
-      "table": "estate_inventories"
-    },
-    {
       "type": "integer",
       "notNull": false,
       "autoincrement": true,
@@ -2441,6 +2327,66 @@
       "default": null,
       "generated": null,
       "name": "secret_prefix",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential_key_version",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential_checked_at",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential_error",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential_expires_at",
       "entityType": "columns",
       "table": "estates"
     },
@@ -6686,17 +6632,6 @@
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
-      "name": "fk_estate_inventories_estate_id_estates_id_fk",
-      "entityType": "fks",
-      "table": "estate_inventories"
-    },
-    {
-      "columns": ["estate_id"],
-      "tableTo": "estates",
-      "columnsTo": ["id"],
-      "onUpdate": "NO ACTION",
-      "onDelete": "CASCADE",
-      "nameExplicit": false,
       "name": "fk_estate_projects_estate_id_estates_id_fk",
       "entityType": "fks",
       "table": "estate_projects"
@@ -7237,13 +7172,6 @@
       "nameExplicit": false,
       "name": "estate_commands_pk",
       "table": "estate_commands",
-      "entityType": "pks"
-    },
-    {
-      "columns": ["id"],
-      "nameExplicit": false,
-      "name": "estate_inventories_pk",
-      "table": "estate_inventories",
       "entityType": "pks"
     },
     {
@@ -8327,20 +8255,6 @@
       "name": "estate_commands_estate_id_created_at_idx",
       "entityType": "indexes",
       "table": "estate_commands"
-    },
-    {
-      "columns": [
-        {
-          "value": "estate_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "estate_inventories_estate_id_idx",
-      "entityType": "indexes",
-      "table": "estate_inventories"
     },
     {
       "columns": [

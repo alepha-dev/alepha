@@ -22,7 +22,7 @@ import type { ReactElement } from "react";
 import type { AppRouter } from "../../../../AppRouter.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import { formatReference } from "../../../shared/element/typedReference.ts";
-import type { FolioTreeNode } from "./folioTreeModel.ts";
+import type { FolioTreeNode } from "./folioTree.ts";
 import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeContextMenuProps {
@@ -33,7 +33,7 @@ export interface FolioTreeContextMenuProps {
 
 /**
  * The right-click menu content for one tree row, contents varying by
- * `node.kind`. Deliberately does NOT offer "Remove protection" for a
+ * `node.data.kind`. Deliberately does NOT offer "Remove protection" for a
  * protected folio — see the file doc below.
  *
  * `Rename` and `Duplicate` are safe for a protected-and-still-locked folio
@@ -66,13 +66,16 @@ const FolioTreeContextMenu = (
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const node = props.node;
-  const isDirectory = node.kind === "directory";
+  const isDirectory = node.data.kind === "directory";
 
   const hrefFor = (): string =>
     isDirectory
-      ? `${router.path("projectFolios", { params: { projectSlug: props.projectSlug } })}?dir=${node.shortId}`
+      ? `${router.path("projectFolios", { params: { projectSlug: props.projectSlug } })}?dir=${node.data.shortId}`
       : router.path("projectFoliosFolio", {
-          params: { projectSlug: props.projectSlug, shortId: node.shortId },
+          params: {
+            projectSlug: props.projectSlug,
+            shortId: node.data.shortId,
+          },
         });
 
   const handleOpen = (): void => {
@@ -88,7 +91,7 @@ const FolioTreeContextMenu = (
   // this item, so the node's shortId is a folio's.
   const handleCopyWikiLink = (): void => {
     void navigator.clipboard.writeText(
-      `[[${formatReference("folio", node.shortId)}]]`,
+      `[[${formatReference("folio", node.data.shortId)}]]`,
     );
   };
 
@@ -144,12 +147,12 @@ const FolioTreeContextMenu = (
             {tr("folios.editor.tree.copy-wiki-link")}
           </ContextMenuItem>
           <ContextMenuItem onClick={() => props.commands.togglePin(node)}>
-            {node.pinned ? (
+            {node.data.pinned ? (
               <PinOff className="size-4" />
             ) : (
               <Pin className="size-4" />
             )}
-            {node.pinned
+            {node.data.pinned
               ? tr("folios.editor.action.unpin")
               : tr("folios.editor.action.pin")}
           </ContextMenuItem>

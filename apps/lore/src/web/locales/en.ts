@@ -1548,6 +1548,34 @@ export default {
   "estates.add.invalid": "Lowercase letters, digits and hyphens, like ovh-1.",
   "estates.add.trust":
     "Everyone who can deploy in $1 will be able to run code on the machine behind $2, with everything that machine holds. Nothing here undeploys, and you can withdraw the loan at any time.",
+  "estates.type.bay": "A machine",
+  "estates.type.bay.description":
+    "A VPS running the bay connector. Lore mints a secret, shows it once, and the machine dials in with it.",
+  "estates.type.cloudflare": "A Cloudflare account",
+  "estates.type.cloudflare.description":
+    "An account Lore deploys Workers to over the API. You paste a token you minted at Cloudflare; Lore checks it before the estate exists.",
+  "estates.cloudflare.accountId": "Cloudflare account id",
+  "estates.cloudflare.accountId.placeholder":
+    "0123456789abcdef0123456789abcdef",
+  "estates.cloudflare.accountId.hint":
+    "32 characters, shown on the right of your Cloudflare dashboard's overview page.",
+  "estates.cloudflare.token": "Cloudflare API token",
+  "estates.cloudflare.token.placeholder": "cfut_… or cfat_…",
+  "estates.cloudflare.guide": "Which token, and which permissions",
+  "estates.cloudflare.checking": "Checking with Cloudflare…",
+  "estates.cloudflare.accountLabel": "account $1",
+  "estates.credential.valid": "credential valid",
+  "estates.credential.invalid": "credential invalid",
+  "estates.credential.checked": "checked $1",
+  "estates.credential.neverChecked": "never checked",
+  "estates.credential.expires": "expires $1",
+  "estates.credential.replace": "Replace token",
+  "estates.credential.replaced": "Token replaced",
+  "estates.credential.check": "Check again",
+  "estates.credential.checkedNow": "Cloudflare accepted this token",
+  "estates.add.trust.cloudflare":
+    "Everyone who can deploy in $1 will be able to run code in the Cloudflare account behind $2, with that account's storage and secrets bound to it. Nothing here undeploys, and you can withdraw the loan at any time.",
+  "account.estates.tokenPrefix": "token $1…",
   "estates.add.submit": "Lend it to this project",
   "estates.add.submitNew": "Create and lend",
   "estates.detach.action": "Detach",
@@ -1574,8 +1602,6 @@ export default {
   "account.estates.empty":
     "You own no estate yet. Create one, then run `bay connector set` on the machine with the secret it shows.",
   "account.estates.create": "Create an estate",
-  "account.estates.create.description":
-    "A bay estate: a machine running `bay serve`. It starts stats-only, with deploys off, until you allow them.",
   "account.estates.create.submit": "Create",
   "account.estates.new": "New estate",
   "account.estates.secretPrefix": "secret $1…",
@@ -2007,7 +2033,6 @@ export default {
     "$1 quests you authored will also be deleted, including any in other people's projects.",
 
   // --- folios ---------------------------------------------------------------
-  "folio.tree.resize": "Resize folio tree",
   "folios.wikilink.loading": "Loading…",
   "folios.wikilink.unavailable": "Preview unavailable",
 
