@@ -89,6 +89,12 @@ const ProjectActionsCreateButton = () => {
   // always have had: it could not be renamed inside a JSON column whose
   // required keys take production down when one goes missing, and moving the
   // storage is what let the name move with it.
+  //
+  // ⚠️ New Quest was the one item gated on the PERMISSION alone. It reads as
+  // an oversight rather than a decision because every other item here already
+  // named its capability, and it left a Knowledge-only project offering the
+  // one create that answers 400 - the first thing a reader would try.
+  const questEnabled = hasCapability(project, "work");
   const folioEnabled = hasCapability(project, "knowledge");
   const feedbackEnabled = hasCapability(project, "support");
   const epicsEnabled = capabilityOption(project, "work", "epics");
@@ -99,12 +105,22 @@ const ProjectActionsCreateButton = () => {
   // that can only answer 403 - the one create in this menu with that property.
   // The ownership half stays until Ranks replaces it with `can()`.
   const appsEnabled = hasCapability(project, "apps") && isOwner;
+  // Everything BELOW the separator. Quest is deliberately not in it: it is
+  // what the separator separates from.
   const hasCreateAction =
     epicsEnabled ||
     releasesEnabled ||
     appsEnabled ||
     folioEnabled ||
     feedbackEnabled;
+
+  // ⚠️ No button at all rather than an empty dropdown. A project with every
+  // capability off is a legal state (the epic's decision 8, and its modularity
+  // test), and before this the "+" opened onto one permanently disabled row.
+  // The owner keeps it for Invite, which belongs to no capability.
+  if (!questEnabled && !hasCreateAction && !isOwner) {
+    return null;
+  }
 
   const handleInvite = async () => {
     if (!(await inviteMember.invite(project.id, inviteEmail))) return;
@@ -145,14 +161,16 @@ const ProjectActionsCreateButton = () => {
           <TooltipContent>{menuLabel}</TooltipContent>
         </Tooltip>
         <DropdownMenuContent align="end" className="min-w-44">
-          <DropdownMenuItem
-            disabled={!canCreateQuest}
-            onClick={() => setShowDialog(true)}
-          >
-            <ScrollText className="size-4" />
-            {mainLabel}
-          </DropdownMenuItem>
-          {hasCreateAction && <DropdownMenuSeparator />}
+          {questEnabled && (
+            <DropdownMenuItem
+              disabled={!canCreateQuest}
+              onClick={() => setShowDialog(true)}
+            >
+              <ScrollText className="size-4" />
+              {mainLabel}
+            </DropdownMenuItem>
+          )}
+          {questEnabled && hasCreateAction && <DropdownMenuSeparator />}
           {epicsEnabled && (
             <DropdownMenuItem onClick={() => setShowEpic(true)}>
               <Layers className="size-4" />
