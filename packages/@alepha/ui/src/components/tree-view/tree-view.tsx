@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { type ReactElement, type ReactNode, useMemo, useRef } from "react";
 
 import type { TreeDropPosition, TreeNode, TreeRow } from "./tree-model.ts";
+import { type TreeViewFacade, TreeViewRow } from "./tree-view-row.tsx";
 
 /**
  * A controlled tree: rows in, gestures out.
@@ -173,3 +174,73 @@ export interface TreeViewProps<T = undefined> {
   label?: string;
   className?: string;
 }
+
+/**
+ * The controlled tree.
+ *
+ * Everything is a prop: `rows` (from `flattenTree`), the collapsed set, the
+ * selection, and the render slots. The component owns the row markup, the
+ * indent geometry, the ARIA structure and the memo, and nothing else.
+ *
+ * ```tsx
+ * <TreeView
+ *   rows={flattenTree(nodes, collapsed)}
+ *   collapsed={collapsed}
+ *   selectedId={openId}
+ *   onSelect={(node) => open(node.id)}
+ *   onToggle={toggle}
+ *   label="Files"
+ * />
+ * ```
+ */
+export const TreeView = <T,>(props: TreeViewProps<T>): ReactElement => {
+  /**
+   * The current props, read through a ref so the facade below can be held
+   * forever and still call this render's implementation.
+   *
+   * Assigned during render on purpose: an effect would leave one render's
+   * worth of rows calling last render's callbacks, which is exactly the
+   * stale-closure bug the facade exists to avoid.
+   */
+  const implRef = useRef<TreeViewProps<T>>(props);
+  implRef.current = props;
+
+  /**
+   * The same slots behind an object whose identity NEVER changes.
+   *
+   * This is what makes `memo(TreeViewRow)` worth anything, and it is built
+   * HERE rather than asked of the consumer: a showcase or an app passing
+   * inline arrows would otherwise defeat the memo on its first day, and the
+   * failure is invisible (nothing goes red, the tree just re-renders every
+   * row on every toggle).
+   */
+  const facade = useMemo<TreeViewFacade<T>>(
+    () => ({
+      select: (node) => implRef.current.onSelect(node),
+      toggle: (id) => implRef.current.onToggle(id),
+      renderIcon: (node, state) => implRef.current.renderIcon?.(node, state),
+      renderLabel: (node, state) =>
+        implRef.current.renderLabel?.(node, state) ?? node.name,
+      renderTrailing: (node, state) =>
+        implRef.current.renderTrailing?.(node, state),
+    }),
+    [],
+  );
+
+  return (
+    <div role="tree" aria-label={props.label} className={props.className}>
+      {props.rows.map((row) => (
+        <TreeViewRow
+          key={row.node.id}
+          node={row.node}
+          depth={row.depth}
+          facade={facade}
+          isCollapsed={props.collapsed.has(row.node.id)}
+          isSelected={props.selectedId === row.node.id}
+          isRenaming={props.renamingId === row.node.id}
+          isDragging={props.dragId === row.node.id}
+        />
+      ))}
+    </div>
+  );
+};
