@@ -188,10 +188,10 @@ alepha platform status -e production
 
 ## 6b. Connect it to Lore (optional)
 
-A Bay can dial a Lore instance and hold a websocket open, so restarts and deploys queued in Lore
-arrive the instant they are queued and the machine's CPU and memory show on Lore's estate list.
-Nothing listens for it: the machine dials OUT, there is no inbound port, and the secret it dials
-with authenticates the machine and grants nothing on this host.
+A Bay can dial a Lore instance and hold a websocket open, so a command queued in Lore arrives the
+instant it is queued, and what the machine is running shows on a page. Nothing listens for it: the
+machine dials OUT, there is no inbound port, and the secret it dials with authenticates the machine
+and grants nothing on this host.
 
 On Lore, create an **estate** under `/account/estates`. The secret is shown once. Then, on the
 host, as root or as a member of the control group:
@@ -206,10 +206,39 @@ bay connector show --root /opt/bay/data
 and whether the connection is up; it never prints the secret. `clear` forgets both and the machine
 dials nobody again.
 
-What Lore may make the machine do is a closed vocabulary: `restart` an instance it already runs,
-and `deploy` an artifact it names by digest, which the machine pulls and verifies before anything
-touches disk. Deploys stay refused until the estate's owner allows them on the estate, and the
-machine honours that switch on its own side too.
+### What the machine will do, and nothing else
+
+What Lore may make the machine do is a **closed vocabulary of six verbs**, each naming one instance
+this Bay already runs:
+
+| verb      | what it does                                                                                        |
+| --------- | --------------------------------------------------------------------------------------------------- |
+| `restart` | hold requests, stop, start. Refused for an app somebody stopped on purpose: use `start`             |
+| `deploy`  | an artifact named by DIGEST, which the machine pulls and verifies before anything touches disk      |
+| `stop`    | out of service and disabled, so it stays down through a reboot and a Bay upgrade                    |
+| `start`   | back into service, clearing that intent. A no-op on an app already running, never a restart         |
+| `backup`  | the same snapshot the schedule takes, now. Refused for an app with no database Bay owns             |
+| `logs`    | a tail, uploaded back to Lore. A READ, so it answers during a deploy rather than queueing behind it |
+
+Deploys stay refused until the estate's owner allows them on the estate, and the machine honours
+that switch on its own side too.
+
+⚠️ **This list is a security boundary, not a menu.** The secret is on the host in cleartext, so
+whoever holds it can ask for anything in this table and nothing outside it. Every verb names an
+instance and takes no path, no shell command and no argument list; `logs` carries a line count, a
+window and a pattern, all bounded and validated. Adding a verb widens what a leaked secret is
+worth, so it is a decision about that, not a feature.
+
+### After enrolment: the console
+
+Once the machine has said hello, `/bay/<estate>` in Lore is what an operator reads: the host's
+memory, disk and load, every instance with its state, release, memory, restarts and backup
+freshness, and the commands anyone has queued with what came back. Its Apps table also answers the
+one question this host cannot answer alone - an instance Lore expects here that the machine did not
+report is a failed deploy or a removed unit, and nothing else notices.
+
+The console is a second door, never the only one. Every verb above has a CLI equivalent, `bay logs`
+still answers on the machine, and a host that never enrols is fully operable over SSH.
 
 Rotating the secret on Lore refuses the machine on its next dial; run `set` again with the new
 one. Deleting the estate does the same for good. `http://` is accepted for a loopback sink only,
@@ -287,6 +316,32 @@ replaced is gone.
 
 Anything whose value actually changes restarts the app — an environment variable the running process
 never sees has not been set. An identical push writes nothing and restarts nothing.
+
+## Taking an app out of service
+
+```bash
+bay stop  myapp/production    # down, and stays down
+bay start myapp/production    # back
+```
+
+⚠️ **`bay stop` is durable, and that is the whole point of it.** The intent is written to
+`state.json` AND the systemd unit is disabled (`systemctl disable --now`), so the app survives
+neither a host reboot nor a Bay upgrade in a running state. Either half alone is a bug that only
+appears hours later: the record without the disable lets systemd start the unit at the next boot
+from an `[Install]` symlink nobody removed, and the disable without the record lets Bay's own boot
+loop start it again on the next upgrade.
+
+The way back is `bay start`, or a deploy. A deploy is an instruction to run this release, so it
+clears the intent unconditionally: every other runtime-owned field is carried forward across a
+deploy and this one is deliberately not.
+
+`restart` on a stopped app is **refused**, naming `start`. Whoever stopped it owns that decision,
+and a restart is not the command that reverses it. `start` on an app that is already running is a
+no-op success rather than a restart in disguise, because `Systemd.Start` runs `systemctl restart`
+and would bounce production for a click that asked for nothing.
+
+Both verbs are also in the connector's vocabulary (section 6b), so a stop asked for from Lore's
+console is the same stop, with the same durability.
 
 ## Diagnosing a failed deploy
 
