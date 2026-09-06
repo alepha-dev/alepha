@@ -188,7 +188,7 @@ const resolveIconPlaceholders = (content: string): string => {
 const KEEP_LOCAL = new Map([
   [
     "ui/button.tsx",
-    "the `loading` prop (spinner overlay, aria-busy, disabled-while-busy, which every submit in the kit relies on) and the `--bevel-raised` top line on the filled variants",
+    "the `loading` prop (spinner overlay, aria-busy, disabled-while-busy, which every submit in the kit relies on)",
   ],
   [
     "ui/badge.tsx",

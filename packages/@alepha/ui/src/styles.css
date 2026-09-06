@@ -108,24 +108,6 @@
    * does to a tinted theme.
    */
   --bevel: oklch(1 0 0);
-  /*
-   * The bevel for a surface with NO border to pair with: a filled button,
-   * which is `border-transparent`.
-   *
-   * `--bevel` cannot serve there. Its polarity is chosen against the border it
-   * sits under, which is why it flips to a shadow in dark mode - and with no
-   * border above it, the flip leaves a dark line lying on a light button,
-   * reading as a smudge rather than a fold. Its own note says as much: one
-   * line alone is just a divider.
-   *
-   * So this one is always the HIGHLIGHT, in both modes, because a raised
-   * object catches the light on its top edge whatever colour it is. In light
-   * that is the same white `--bevel` uses. In dark it drops to a low alpha:
-   * enough to lift a dark `--secondary`, and harmlessly invisible on a
-   * near-white `--primary`, which needs no help reading as raised against a
-   * near-black page.
-   */
-  --bevel-raised: oklch(1 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -162,7 +144,6 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --bevel: oklch(0 0 0 / 30%);
-  --bevel-raised: oklch(1 0 0 / 12%);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
