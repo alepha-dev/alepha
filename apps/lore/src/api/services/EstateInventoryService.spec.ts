@@ -238,7 +238,7 @@ describe("EstateInventoryService.reconcile", () => {
 
     const result = await ctx.service.reconcile(estate);
     const reported = result.inventory?.apps ?? [];
-    expect(reported.map((row) => [row.app, row.state])).toEqual([
+    expect(reported.map((row) => [row.app, row.tracking])).toEqual([
       ["lore", "matched"],
       ["stray", "untracked"],
     ]);
@@ -258,7 +258,7 @@ describe("EstateInventoryService.reconcile", () => {
       app: "shop",
       env: "staging",
       instanceId: missing.id,
-      state: "missing",
+      tracking: "missing",
     });
   });
 
@@ -301,7 +301,7 @@ describe("EstateInventoryService.reconcile", () => {
     await ctx.service.record(estate, frame(["lore"]));
 
     const result = await ctx.service.reconcile(estate);
-    expect(result.inventory?.apps[0]?.state).toBe("untracked");
+    expect(result.inventory?.apps[0]?.tracking).toBe("untracked");
     expect(result.expected.map((row) => `${row.app}/${row.env}`)).toEqual([
       "lore/staging",
     ]);

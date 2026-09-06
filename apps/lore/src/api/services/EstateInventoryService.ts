@@ -119,12 +119,12 @@ export class EstateInventoryService {
         if (!match) {
           // Running on the machine, tracked nowhere in Lore. Shown rather
           // than hidden: it is a real thing serving real traffic.
-          return { ...app, state: "untracked" as const };
+          return { ...app, tracking: "untracked" as const };
         }
         const project = named.get(match.projectId);
         return {
           ...app,
-          state: "matched" as const,
+          tracking: "matched" as const,
           instanceId: match.id,
           ...(project ? { project } : {}),
         };
@@ -142,7 +142,7 @@ export class EstateInventoryService {
           app: row.app,
           env: row.env,
           instanceId: row.id,
-          state: "missing" as const,
+          tracking: "missing" as const,
           ...(project ? { project } : {}),
         };
       });
