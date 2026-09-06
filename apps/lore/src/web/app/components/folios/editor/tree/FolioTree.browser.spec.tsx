@@ -19,7 +19,6 @@ import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 import { I18n } from "../../../../services/I18n.ts";
 import FolioTree, { type FolioTreeProps } from "./FolioTree.tsx";
-import FolioTreeRowDefault from "./FolioTreeRow.tsx";
 
 const DIR_A = "11111111-1111-4111-8111-111111111111";
 const DIR_B = "22222222-2222-4222-8222-222222222222";
@@ -54,13 +53,23 @@ class Routes {
 }
 
 /**
- * The folio tree pane (feedback #2089).
+ * The folio tree pane, and only what is LORE's about it.
  *
- * The report's three complaints were latency, monochrome and no press
- * feedback. Colour lives in `main.css` and is guarded by
- * `test/folio-tree-theme-tokens.spec.ts`; what is asserted here is the
- * interaction that was actually slow, and the structure that lets the rows
- * be memoised.
+ * ⚠️ The rows, the indent geometry, the disclosure, the memo, the drag zones
+ * and the rename input moved to `@alepha/ui`'s `TreeView` (epic #E40), and
+ * their cases moved with them: click-to-open and click-to-close, the
+ * `e.detail` double-click guard, the chevron and the row as separate
+ * targets, the memoised row, the named transition list, the press transform
+ * dropped while dragging, and the whole indent-guide spec (which was its own
+ * file here). They are `packages/@alepha/ui/src/components/tree-view/
+ * __tests__/`, and duplicating them here would mean two files going red for
+ * one bug and neither of them owning it.
+ *
+ * What is left is what only Lore can break: the collapse atom surviving the
+ * remount `FoliosLayout` causes, the per-project seed, the reveal effect
+ * (feedback #2114), and Lore's own context menu reaching the shared rename.
+ * Colour lives in `main.css` and is still guarded by
+ * `test/folio-tree-theme-tokens.spec.ts`.
  */
 describe("FolioTree", () => {
   let alepha: Alepha | undefined;
@@ -186,87 +195,10 @@ describe("FolioTree", () => {
 
   const rowFor = (name: string): HTMLElement => {
     const label = screen.getByText(name);
-    const row = label.closest('[data-slot="folio-tree-row"]');
+    const row = label.closest('[data-slot="tree-view-row"]');
     expect(row).not.toBeNull();
     return row as HTMLElement;
   };
-
-  /**
-   * The heart of the report. Expanding fetched nothing even before this: the
-   * tree is built from two atoms already in the store, and the 250ms was a
-   * timer waiting to see whether a second click was coming.
-   */
-  it("opens a directory on the first click, with no timer to wait out", async () => {
-    await mount();
-
-    expect(screen.queryByText("Inside A")).toBeNull();
-
-    await click(rowFor("Framework"));
-
-    // No `waitFor` and no fake timers on purpose: the child has to be there
-    // in the same tick the click was handled. Before this change the assert
-    // below failed and only a 250ms wait made it pass.
-    expect(screen.getByText("Inside A")).not.toBeNull();
-  });
-
-  it("collapses again on the next click", async () => {
-    await mount();
-
-    await click(rowFor("Framework"));
-    expect(screen.getByText("Inside A")).not.toBeNull();
-
-    await click(rowFor("Framework"));
-    expect(screen.queryByText("Inside A")).toBeNull();
-  });
-
-  /**
-   * ⚠️ This case used to assert the OPPOSITE, and the reversal is deliberate
-   * rather than drift.
-   *
-   * Double click WAS the rename gesture, and the 250ms defer, then the
-   * optimistic-toggle revert that replaced it, existed only to keep the
-   * first click of that burst from expanding a directory on the way to a
-   * rename. Feedback #2101 removed the gesture ("remove double-click for
-   * rename. It's not nice. we will keep right-click to rename action for
-   * that"), which takes the revert with it, and the frame of flicker the
-   * revert cost.
-   *
-   * So the double click is now simply a click that happened twice, and the
-   * two halves of this are what that has to mean: no rename, and the same
-   * directory state the single click below it produces. The second half is
-   * why `handleClick` keeps its `e.detail` guard - without it the burst's
-   * two clicks toggle twice and land collapsed.
-   *
-   * Driven as a real burst rather than a bare `doubleClick`: the browser
-   * fires click, click, then dblclick, and it is the SECOND click that the
-   * guard exists for, so firing only the dblclick would test nothing.
-   *
-   * ⚠️ Each click gets its OWN `await act`, and that is load-bearing rather
-   * than tidiness. The collapse set lives in an atom that notifies in a
-   * microtask, so two clicks inside one `act` both read the pre-burst value
-   * and the second toggle recomputes the first one's answer - the test
-   * passes with the guard deleted, which is the one thing it exists to
-   * catch. Separate flushes are what a real burst does anyway: the browser
-   * re-renders between them.
-   */
-  it("does not open a rename on a double click, and leaves the directory open", async () => {
-    const view = await mount();
-
-    const row = rowFor("Framework");
-    await act(async () => {
-      fireEvent.click(row, { detail: 1 });
-    });
-    await act(async () => {
-      fireEvent.click(row, { detail: 2 });
-    });
-    await act(async () => {
-      fireEvent.doubleClick(row);
-    });
-
-    expect(view.container.querySelector("input")).toBeNull();
-    // Exactly where one click leaves it.
-    expect(screen.getByText("Inside A")).not.toBeNull();
-  });
 
   /**
    * The gesture that replaced it, asserted here rather than only in the
@@ -294,81 +226,6 @@ describe("FolioTree", () => {
     expect(document.activeElement).toBe(input);
     expect(input.selectionStart).toBe(0);
     expect(input.selectionEnd).toBe(input.value.length);
-  });
-
-  it("marks the chevron and the row as separate targets, so the chevron still toggles", async () => {
-    await mount();
-
-    const row = rowFor("Framework");
-    const chevron = row.querySelector("button");
-    expect(chevron).not.toBeNull();
-
-    await click(chevron!);
-    expect(screen.getByText("Inside A")).not.toBeNull();
-  });
-
-  /**
-   * The memo itself. The report's "too many ms" had a second half: every
-   * visible row re-rendered on every toggle, drag handlers and context menu
-   * included, because each row received the whole tree-state object.
-   *
-   * Asserted structurally rather than by counting renders: React exposes no
-   * per-component render count to a test, and a count derived from a
-   * test-only wrapper would be measuring the wrapper.
-   */
-  it("exports a memoised row", () => {
-    expect((FolioTreeRowDefault as { $$typeof?: symbol }).$$typeof).toBe(
-      Symbol.for("react.memo"),
-    );
-  });
-
-  /**
-   * The press feedback, and the trap that comes with it. The row is an
-   * HTML5 drag SOURCE that animates `opacity` while dragging and paints the
-   * ring and line drop markers; `transition: all` would put all three on a
-   * timer, so the drop indicator would lag the pointer it is meant to
-   * track. The transition list is therefore named, and this is what holds
-   * it that way.
-   */
-  it("transitions only colour and transform, never all or opacity", async () => {
-    await mount();
-
-    const row = rowFor("Framework");
-    expect(row.className).toContain("transition-[background-color,transform]");
-    expect(row.className).not.toContain("transition-all");
-    expect(row.className).toContain("active:translate-y-px");
-  });
-
-  it("drops the press transform while the row is being dragged", async () => {
-    await mount();
-
-    const row = rowFor("Framework");
-    fireEvent.dragStart(row, {
-      dataTransfer: { setData: () => {}, types: [], effectAllowed: "" },
-    });
-
-    // A transform on a drag source moves the browser's own drag image with
-    // it, so the press is suppressed for exactly as long as the drag lasts.
-    await waitFor(() =>
-      expect(rowFor("Framework").className).toContain("opacity-45"),
-    );
-    expect(rowFor("Framework").className).not.toContain(
-      "active:translate-y-px",
-    );
-  });
-
-  it("draws indent guides on nested rows only", async () => {
-    await mount();
-
-    // A root-level row has nothing to guide back to.
-    expect(rowFor("Framework").style.backgroundImage).toBe("");
-
-    await click(rowFor("Framework"));
-
-    const nested = rowFor("Inside A");
-    expect(nested.style.backgroundImage).toContain("repeating-linear-gradient");
-    // The guide is painted from the theme's border token, never a literal.
-    expect(nested.style.backgroundImage).toContain("var(--border)");
   });
 
   /**

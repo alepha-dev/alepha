@@ -23,6 +23,12 @@ export const lentEstateResourceSchema = z.object({
   online: z.boolean(),
   deployAllowed: z.boolean(),
   acceptedRuntimes: z.array(z.string()),
+  /**
+   * Cloudflare only, and the one thing a member deciding whether to deploy
+   * needs more than `online`: `online` is false for a row that never
+   * connects, and "invalid" is the fact that matters (#1630).
+   */
+  credentialStatus: z.enum(["valid", "invalid"]).optional(),
   lastSeenAt: z.string().optional(),
   cpuPercent: z.number().optional(),
   memoryPercent: z.number().optional(),
@@ -33,12 +39,15 @@ export const lentEstateResourceSchema = z.object({
 export type LentEstateResource = Infer<typeof lentEstateResourceSchema>;
 
 /**
- * A lent estate plus the one cleartext copy of its secret, for the
- * create-from-inside-a-project flow. Same rule as `mintedEstateSchema`:
- * nothing can produce the secret again.
+ * A lent estate plus the one cleartext copy of a secret Lore minted, if it
+ * minted one, for the create-from-inside-a-project flow.
+ *
+ * Same rule as `mintedEstateSchema`, including the optionality: nothing can
+ * produce the secret again, and a cloudflare create produces none at all, so
+ * the field is **absent** rather than empty.
  */
 export const mintedLentEstateSchema = lentEstateResourceSchema.extend({
-  secret: z.string(),
+  secret: z.string().optional(),
 });
 
 export type MintedLentEstate = Infer<typeof mintedLentEstateSchema>;

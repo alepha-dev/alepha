@@ -164,6 +164,27 @@ real host, and from `logs/app.log` (rotated at 32 MiB) under the child runner.
 output. An app writing plain text to stdout produces none, and hiding them
 would suppress exactly the `console.log` you just added.
 
+### The same two answers, on a page
+
+A Bay connected to Lore pushes what `bay status --json` computes, on its
+report interval and after every command that changes something, and Lore
+renders it at `/bay/:estateId`. `computeStatus` is one function with two
+callers for that reason: a second copy of the backup-staleness rule would
+drift invisibly, since each copy looks right on its own.
+
+**No time series was added.** The console reads the LATEST frame, stored as
+one row per estate and replaced on every push, which is the same "no table to
+prune" position as above rather than an exception to it. The CPU and memory
+chart is the one series, it is off by default, and what it stores is a mean
+that discloses its own sampling.
+
+Nothing here makes the CLI a second-class reader: the host is still fully
+operable over SSH with no Lore at all, and `bay logs` still answers on the
+machine. What the console adds is the reconciliation, which is the one
+question a host cannot answer alone: the machine reports `(app, env)` and
+knows nothing about projects, so "an instance Lore expects here that is not
+running" only exists where both sides are visible.
+
 ### Application metrics are deliberately absent
 
 A `bay top` reading the Prometheus `/metrics` of `alepha/server/metrics` existed
@@ -181,5 +202,15 @@ Two observations that will decide the retry:
    Node app about to fall over, and invisible from outside), the heap/RSS
    distinction, and business metrics.
 
-When it returns it will not be by re-parsing Prometheus text; it will be an
-`@alepha/telemetry` built on OpenTelemetry.
+⚠️ **The console does not change either observation, and it is not the retry.**
+It renders what the cgroup and the proxy already give - memory, restarts, last
+request, backup freshness - which is the first observation acted on, not the
+second answered. Event-loop lag is still invisible from outside a process; a
+heap figure is still something only the runtime holds; a business metric is
+still the app's to define. What moved is the premise the removal rested on:
+there is a consumer now, so a number worth computing has somewhere to be
+read.
+
+When the rest returns it will not be by re-parsing Prometheus text; it will be
+an `@alepha/telemetry` built on OpenTelemetry, and it will report from inside
+the app rather than being guessed at from outside it.

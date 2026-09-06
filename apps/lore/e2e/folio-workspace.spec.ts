@@ -287,7 +287,7 @@ test.describe("Folio workspace", () => {
     await page.reload();
     const treeRow = (name: string) =>
       page
-        .locator('[data-slot="folio-tree-row"]', {
+        .locator('[data-slot="tree-view-row"]', {
           hasText: new RegExp(`^${name}$`),
         })
         .first();
@@ -382,7 +382,7 @@ test.describe("Folio workspace", () => {
   test("09a — opening a folio costs one API request", async () => {
     const row = (name: string) =>
       page
-        .locator('[data-slot="folio-tree-row"]', {
+        .locator('[data-slot="tree-view-row"]', {
           hasText: new RegExp(`^${name}$`),
         })
         .first();
@@ -925,7 +925,7 @@ test.describe("Folio workspace", () => {
     const tree = page.locator('[data-slot="folio-tree"]');
     const row = (name: string) =>
       page
-        .locator('[data-slot="folio-tree-row"]', {
+        .locator('[data-slot="tree-view-row"]', {
           hasText: new RegExp(`^${name}$`),
         })
         .first();
@@ -1042,7 +1042,7 @@ test.describe("Folio workspace", () => {
 
     const row = (name: string) =>
       page
-        .locator('[data-slot="folio-tree-row"]', {
+        .locator('[data-slot="tree-view-row"]', {
           hasText: new RegExp(`^${name}$`),
         })
         .first();
@@ -1147,7 +1147,7 @@ test.describe("Folio workspace", () => {
 
     // And it is NOT a row in the tree — the whole point of the move.
     await expect(
-      page.locator('[data-slot="folio-tree-row"]', {
+      page.locator('[data-slot="tree-view-row"]', {
         hasText: new RegExp(`^${fileName}$`),
       }),
     ).toHaveCount(0);

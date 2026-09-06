@@ -562,6 +562,19 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
       appType: "custom",
       logLevel: "silent",
       plugins: [this.createTsconfigPathsPlugin()],
+      // No client dependency optimizer. This server only ever serves
+      // `ssrLoadModule`, yet Vite still created one for the client
+      // environment: with no entries it scanned nothing, and on crawl end it
+      // committed an EMPTY pre-bundle into the app's `node_modules/.vite/deps`,
+      // the same directory a running `alepha dev` on that app serves its
+      // pre-bundled dependencies from. The commit renames the live directory
+      // away and deletes it, so every dependency the browser had not loaded
+      // yet answered `504 Outdated Optimize Dep` until the dev server was
+      // restarted. Every `alepha build`, `gen env` or `db …` did it, which is
+      // how `yarn v` in one terminal broke `yarn dev` in another. `noDiscovery`
+      // with an empty `include` is Vite's switch for "no optimizer at all":
+      // the environment is created without one and never touches the cache.
+      optimizeDeps: { noDiscovery: true, include: [] },
     } satisfies InlineConfig);
 
     await this.viteDevServer.ssrLoadModule(opts.entry.server);

@@ -1,10 +1,13 @@
+import { TreeView } from "@alepha/ui/components/tree-view/tree-view";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
-import { FilePlus, FolderPlus } from "lucide-react";
+import { FilePlus, FileText, FolderPlus, Lock, Pin } from "lucide-react";
 import { type ReactElement, useEffect } from "react";
 
 import type { I18n } from "../../../../services/I18n.ts";
-import FolioTreeRow from "./FolioTreeRow.tsx";
+import { asFolioNode, type FolioTreeData } from "./folioTree.ts";
+import FolioTreeContextMenu from "./FolioTreeContextMenu.tsx";
+import FolioTreeDirectoryIcon from "./FolioTreeDirectoryIcon.tsx";
 import { useFolioTreeModel } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeProps {
@@ -48,9 +51,14 @@ export interface FolioTreeActions {
 
 /**
  * The folio tree pane: directories + folios, native HTML5 drag & drop, a
- * right-click menu (`FolioTreeContextMenu`, via `FolioTreeRow`) and inline
- * rename. Resizable width (see `width`), a 40px header row (title + New
- * folio / New directory), scrolling body.
+ * right-click menu (`FolioTreeContextMenu`) and inline rename. Resizable
+ * width (see `width`), a 40px header row (title + New folio / New
+ * directory), scrolling body.
+ *
+ * The rows, the indent geometry, the drag zones, the rename input and the
+ * memo all live in `@alepha/ui`'s `TreeView` now. What is Lore's is
+ * everything this file passes it: the directory emblems, the pin badge, the
+ * context menu's verbs, and the model behind them.
  *
  * It no longer carries a search of its own. Searching only folios, only
  * inside this pane, was the narrower half of a job the ⌘K palette now does
@@ -75,8 +83,8 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
   // depend on it honestly. It used to need a ref: the model returned fresh
   // function identities every render, so depending on them meant effect
   // re-runs, parent setState, a re-render here, new identities, and a live
-  // "Maximum update depth exceeded" loop. The stable facade that makes
-  // `FolioTreeRow`'s memo hold removed the need for the workaround too.
+  // "Maximum update depth exceeded" loop. The stable facade that makes the
+  // shared row's memo hold removed the need for the workaround too.
   const { onActions } = props;
   const { commands } = tree;
   useEffect(() => {
@@ -122,27 +130,57 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             {tr("folios.editor.tree.empty")}
           </p>
         )}
-        {/* The per-row state is derived HERE and passed as primitives.
-            Handing each row the whole state object is what made every
-            visible row re-render on every toggle: `rows` is memoised, the
-            object around it is not. */}
-        {tree.rows.map((row) => (
-          <FolioTreeRow
-            key={row.node.id}
-            node={row.node}
-            depth={row.depth}
-            commands={commands}
-            projectSlug={props.projectSlug}
-            isCollapsed={tree.collapsed.has(row.node.id)}
-            isSelected={tree.selectedId === row.node.id}
-            isRenaming={tree.renamingId === row.node.id}
-            isDragging={tree.dragId === row.node.id}
-            isDragActive={tree.dragId !== undefined}
-            dropHere={
-              tree.drop?.id === row.node.id ? tree.drop.position : undefined
+        <TreeView<FolioTreeData>
+          label={String(tr("folios.editor.tree.title"))}
+          rows={tree.rows}
+          collapsed={tree.collapsed}
+          selectedId={tree.selectedId}
+          onSelect={(node) => commands.select(asFolioNode(node))}
+          onToggle={commands.toggle}
+          renderIcon={(node, state) => {
+            const folio = asFolioNode(node);
+            if (folio.data.kind === "directory") {
+              return (
+                <FolioTreeDirectoryIcon
+                  name={folio.name}
+                  isCollapsed={state.collapsed}
+                />
+              );
             }
-          />
-        ))}
+            // ⚠️ Theme tokens, not hardcoded hexes. Lore has six themes and
+            // a literal pair is wrong in five of them; `--chart-*` was
+            // considered and rejected, since it is defined in `@alepha/ui`'s
+            // base `:root` / `.dark` only, so it is light/dark aware but NOT
+            // theme aware. These are defined once per theme in `main.css` -
+            // the directory half lives in `FolioTreeDirectoryIcon`.
+            const Icon = folio.data.kind === "protected" ? Lock : FileText;
+            return (
+              <Icon className="size-3.5 shrink-0 text-[var(--folio-tree-folio)]" />
+            );
+          }}
+          renderTrailing={(node) =>
+            asFolioNode(node).data.pinned ? (
+              <Pin className="text-primary size-3 shrink-0" />
+            ) : null
+          }
+          renderMenu={(node) => (
+            <FolioTreeContextMenu
+              node={asFolioNode(node)}
+              commands={commands}
+              projectSlug={props.projectSlug}
+            />
+          )}
+          draggable
+          dragId={tree.dragId}
+          drop={tree.drop}
+          onDragStart={commands.onDragStart}
+          onDragOver={commands.onDragOver}
+          onDrop={commands.onDrop}
+          onDragEnd={commands.onDragEnd}
+          renamingId={tree.renamingId}
+          onCommitRename={commands.commitRename}
+          onCancelRename={commands.cancelRename}
+        />
       </div>
     </div>
   );

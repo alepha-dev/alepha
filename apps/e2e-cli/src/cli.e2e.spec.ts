@@ -598,6 +598,20 @@ describe("Alepha CLI E2E", () => {
     });
 
     it("builds, and the build actually boots", async () => {
+      // Whatever `alepha dev` left in Vite's dependency cache (nothing, if it
+      // was killed before its first commit). The build must leave it exactly
+      // as found: the Vite server it loads the app through used to commit an
+      // EMPTY pre-bundle over it, and a dev server running on the same app
+      // then answered `504 Outdated Optimize Dep` for every dependency the
+      // browser had not loaded yet, until restarted.
+      const depsMetadata = join(
+        PROJECT_DIR,
+        "node_modules/.vite/deps/_metadata.json",
+      );
+      const readDepsCache = async () =>
+        existsSync(depsMetadata) ? await readFile(depsMetadata, "utf-8") : null;
+      const depsCacheBefore = await readDepsCache();
+
       const result = await run(`"${CLI}" build`, PROJECT_DIR);
 
       if (result.exitCode !== 0) {
@@ -607,6 +621,7 @@ describe("Alepha CLI E2E", () => {
 
       expect(result.exitCode).toBe(0);
       expect(existsSync(join(PROJECT_DIR, "dist/index.js"))).toBe(true);
+      expect(await readDepsCache()).toBe(depsCacheBefore);
 
       // A build that compiles but cannot serve a request is not a build. Needs
       // APP_SECRET: the app refuses to start in production without one, which

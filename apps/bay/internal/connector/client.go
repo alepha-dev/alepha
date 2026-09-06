@@ -44,6 +44,20 @@ type Command struct {
 	App         string    `json:"app"`
 	Environment string    `json:"environment"`
 	Artifact    *Artifact `json:"artifact,omitempty"`
+	Logs        *LogsAsk  `json:"logs,omitempty"`
+}
+
+// LogsAsk is how much of a journal a `logs` command wants.
+//
+// Three bounded numbers and one bounded pattern, and nothing that is a path,
+// a shell fragment or an argument list. Lore's schema enforces the bounds;
+// the executor clamps `Lines` again against this machine's own ceiling,
+// because a sink is not something to trust with a limit that protects the
+// host.
+type LogsAsk struct {
+	Lines        int    `json:"lines"`
+	SinceSeconds int    `json:"sinceSeconds,omitempty"`
+	Grep         string `json:"grep,omitempty"`
 }
 
 // Artifact names the bytes a deploy fetches, by digest. The bytes themselves
@@ -117,6 +131,7 @@ type serverFrame struct {
 	App         string    `json:"app,omitempty"`
 	Environment string    `json:"environment,omitempty"`
 	Artifact    *Artifact `json:"artifact,omitempty"`
+	Logs        *LogsAsk  `json:"logs,omitempty"`
 }
 
 // Handler receives what the connection delivers. The executor (#1621) is the
@@ -132,6 +147,13 @@ type Handler interface {
 	// the outcome and Lore's reconciliation redelivers the id, so a lost ack
 	// is re-sent from what was stored rather than re-run.
 	Command(ctx context.Context, cmd Command, send func(Ack) error)
+	// Inventory is what the machine reports about its apps, assembled on
+	// demand. False means there is nothing to say, and nothing is pushed:
+	// a frame of zeros would read as a host that lost every app.
+	//
+	// The host block is not filled here. It comes from the gauge, which this
+	// client owns, and the executor knows about apps.
+	Inventory(ctx context.Context) (Inventory, bool)
 }
 
 // Conn is what the client needs from a websocket, satisfied by
@@ -196,8 +218,18 @@ type Client struct {
 	Reload <-chan struct{}
 	// Gauge reads the host for the stats frames; nil pushes nothing.
 	Gauge Gauge
+	// Version is what `bay version` prints, carried on the inventory frame so
+	// the console can say which Bay reported. It enters here rather than
+	// being read: `version` is a package main variable stamped at link time
+	// and internal/connector cannot import main.
+	Version string
 	// MinStatsInterval floors whatever interval Lore names.
 	MinStatsInterval time.Duration
+	// MinInventoryInterval is the floor between two inventory pushes,
+	// whatever asked for them. Assembling one is a `systemctl show` per
+	// instance, and a burst of finished commands must cost this machine a
+	// bounded amount of work.
+	MinInventoryInterval time.Duration
 
 	Dial         Dialer
 	PingInterval time.Duration
@@ -214,6 +246,28 @@ type Client struct {
 	// statsKick asks the stats loop for a push now.
 	statsSeconds atomic.Int64
 	statsKick    chan struct{}
+	// inventoryKick is deliberately a SECOND channel rather than a reason
+	// carried on the first. A stats push also writes a series sample when the
+	// estate collects one, so a refresh button wired to statsKick would add a
+	// sample to the day's average every time somebody clicked it.
+	inventoryKick chan struct{}
+	channelsOnce  sync.Once
+
+	inventoryMu   sync.Mutex
+	lastInventory time.Time
+}
+
+// ensureChannels creates the kick channels exactly once, so a kick that
+// arrives before Run has somewhere to go rather than racing with defaults.
+func (c *Client) ensureChannels() {
+	c.channelsOnce.Do(func() {
+		if c.statsKick == nil {
+			c.statsKick = make(chan struct{}, 1)
+		}
+		if c.inventoryKick == nil {
+			c.inventoryKick = make(chan struct{}, 1)
+		}
+	})
 }
 
 func (c *Client) defaults() {
@@ -247,9 +301,10 @@ func (c *Client) defaults() {
 	if c.MinStatsInterval == 0 {
 		c.MinStatsInterval = DefaultMinStatsInterval
 	}
-	if c.statsKick == nil {
-		c.statsKick = make(chan struct{}, 1)
+	if c.MinInventoryInterval == 0 {
+		c.MinInventoryInterval = DefaultMinInventoryInterval
 	}
+	c.ensureChannels()
 }
 
 func gorillaDial(ctx context.Context, url string, header http.Header) (Conn, error) {
@@ -427,12 +482,15 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			c.statsSeconds.Store(int64(frame.StatsIntervalSeconds))
 		}
 		c.kickStats()
+		// Both, on a welcome: a freshly enrolled machine shows its figure and
+		// its app list within seconds rather than an interval later.
+		c.KickInventory()
 		if c.Handler != nil {
 			c.Handler.Welcome(w)
 		}
 	case "command":
 		cmd := Command{ID: frame.ID, Kind: frame.Kind, App: frame.App,
-			Environment: frame.Environment, Artifact: frame.Artifact}
+			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one
@@ -441,6 +499,18 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			return
 		}
 		go c.Handler.Command(ctx, cmd, c.sendAck)
+	case "query":
+		// "Tell me what you are running, now." Deliberately NOT a command:
+		// it carries no id, gets no ack, never touches Outcomes, and above
+		// all never goes through the executor's mutex, so a refresh arriving
+		// during a long deploy answers immediately instead of queueing
+		// behind it.
+		//
+		// The kick is the whole handling. The loop that already pushes on
+		// the tick pushes now, the buffered channel coalesces a burst into
+		// one, and the 5 s floor bounds what a Lore bug emitting a query per
+		// second can cost this machine.
+		c.KickInventory()
 	default:
 		c.Log.Debug("ignoring an unknown frame from lore", "type", frame.Type)
 	}

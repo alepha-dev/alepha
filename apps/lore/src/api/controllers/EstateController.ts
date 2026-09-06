@@ -1,26 +1,41 @@
 import { $inject, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
+import { $rateLimit } from "alepha/server/rate-limit";
 
-import { ESTATE_TYPES, estates } from "../entities/estates.ts";
+import { estates } from "../entities/estates.ts";
+import { cloudflareTokenSchema } from "../schemas/cloudflareCredentialSchema.ts";
+import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
+import {
+  type EstateInventoryResource,
+  estateInventoryResourceSchema,
+} from "../schemas/estateInventoryResourceSchema.ts";
 import {
   type EstateResource,
   estateResourceSchema,
   type MintedEstate,
   mintedEstateSchema,
 } from "../schemas/estateResourceSchema.ts";
-import { estateSlugSchema } from "../schemas/estateSlugSchema.ts";
 import {
   type OwnedEstateResource,
   ownedEstateResourceSchema,
 } from "../schemas/ownedEstateResourceSchema.ts";
+import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
+import { EstateInventoryService } from "../services/EstateInventoryService.ts";
 import { EstateService } from "../services/EstateService.ts";
+import { EstateStatsService } from "../services/EstateStatsService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
-export type { EstateResource, MintedEstate, OwnedEstateResource };
+export type {
+  EstateInventoryResource,
+  EstateResource,
+  MintedEstate,
+  OwnedEstateResource,
+};
 
 /**
  * Owner-facing CRUD for estates: the deploy destinations a user owns, across
@@ -32,16 +47,20 @@ export type { EstateResource, MintedEstate, OwnedEstateResource };
  * backstop is the admin's (#1838). Both read the same masked resource, and
  * neither can read a secret, the owner included.
  *
- * `bay` is the only type this controller can create or rotate. The
- * `cloudflare` variant arrives with epic #22 and is refused by name until
- * then, so the discriminator is live without the row ever holding a
- * credential this code does not know how to seal.
+ * Both types are created here, and the difference is what a credential is.
+ * A `bay` secret is one Lore mints and hands back once, so it is rotated; a
+ * `cloudflare` token is one its owner pastes, so it is checked, sealed and
+ * replaced. Neither is ever readable again, the owner included.
  */
 export class EstateController {
   protected readonly estates = $repository(estates);
   protected readonly service = $inject(EstateService);
   protected readonly tokens = $inject(EstateTokenService);
+  protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly transport = $inject(EstateCommandTransport);
+  protected readonly inventories = $inject(EstateInventoryService);
+  protected readonly stats = $inject(EstateStatsService);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly audits = $inject(LoreAudits);
 
   /**
@@ -66,33 +85,31 @@ export class EstateController {
   });
 
   /**
-   * Enrol a machine, and hand back its secret once.
+   * Enrol a deploy destination.
    *
-   * The minting itself is `EstateService.createBay`, shared with the
-   * create-from-inside-a-project flow (#1837), so the two cannot disagree
-   * about normalisation, uniqueness or the audit row.
+   * Two shapes behind one route (`createEstateBodySchema`): a `bay` estate,
+   * whose secret Lore mints and hands back exactly once, or a `cloudflare`
+   * estate, whose token the owner pastes and Lore checks before writing
+   * anything. Both go through `EstateService`, shared with the
+   * create-from-inside-a-project flow (#1837), so the two entry points
+   * cannot disagree about normalisation, uniqueness or the audit row.
+   *
+   * ⚠️ `secret` is present only when Lore minted one, so it is **absent** on
+   * a cloudflare create rather than empty. That is what #1865's "the reveal
+   * dialog does not open" rests on: an absent field, not a falsy string.
    */
   createEstate = $action({
     use: [$secure({ permissions: ["estate:create"] })],
     method: "POST",
     path: "/estates",
     schema: {
-      body: z.object({
-        slug: estateSlugSchema,
-        label: z.string().max(100).optional(),
-        /**
-         * Omitted means `bay`, the only type this epic implements.
-         */
-        type: z.enum(ESTATE_TYPES).meta({ mode: "text" }).optional(),
-      }),
+      body: createEstateBodySchema,
       response: mintedEstateSchema,
     },
     handler: async ({ body, user }) => {
-      const type = body.type ?? "bay";
-      if (type !== "bay") {
-        throw new BadRequestError(
-          "Cloudflare estates are not available yet; only bay estates can be created",
-        );
+      if (body.type === "cloudflare") {
+        const { estate } = await this.service.createCloudflare(user, body);
+        return this.service.toResource(estate);
       }
 
       const { estate, secret } = await this.service.createBay(user, body);
@@ -100,18 +117,163 @@ export class EstateController {
     },
   });
 
+  /**
+   * One estate the caller owns, with the projects it is lent to and what the
+   * machine last reported.
+   *
+   * The owned shape rather than the bare resource: this route is owner-gated
+   * like every sibling, and the console's Settings tab needs the loans it
+   * detaches from. Resolved through the same `withLoans` the list uses, so
+   * there is one place that knows how a loan is shaped.
+   */
   getEstate = $action({
     use: [$secure({ permissions: ["estate:read"] })],
     method: "GET",
     path: "/estates/:estateId",
     schema: {
       params: z.object({ estateId: z.uuid() }),
-      response: estateResourceSchema,
+      response: ownedEstateResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      const [owned] = await this.service.withLoans([estate]);
+      return owned!;
+    },
+  });
+
+  /**
+   * What is running on the machine, reconciled against what Lore tracks.
+   *
+   * ⚠️ A machine that has never connected answers `{ inventory: null }` and
+   * NOT a 404. "Nothing reported yet" is a state the console renders, and the
+   * `expected` list is still worth showing beside it: those are the instances
+   * Lore believes belong here. Only the estate itself 404s, through
+   * `loadOwned`, like every sibling in this controller.
+   *
+   * Owner only, deliberately. Sharing a read-only view with members of a
+   * project this estate is lent to is wanted later and is a filter on
+   * `reconcile`, not a change here.
+   */
+  getEstateInventory = $action({
+    use: [$secure({ permissions: ["estate:read"] })],
+    method: "GET",
+    path: "/estates/:estateId/inventory",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: estateInventoryResourceSchema,
     },
     handler: async ({ params, user }) =>
-      this.service.toResource(
+      this.inventories.reconcile(
         await this.service.loadOwned(params.estateId, user),
       ),
+  });
+
+  /**
+   * The CPU and memory series, one point per day.
+   *
+   * `EstateStatsService.series` was written for #Q1627 and had no caller in
+   * the tree until this route: it divides the dataset's sums by the sample
+   * count and carries the `estimated` / `sampleInterval` disclosure, and both
+   * halves of that stay there rather than being redone here. On Analytics
+   * Engine a window is SAMPLED, and a chart that hides its own sampling is one
+   * that gets trusted more than it deserves.
+   *
+   * ⚠️ `since` is declared in `schema.query` and has to be: a `$page` loader's
+   * `query` holds only what the schema declares, so an undeclared param reads
+   * `undefined` and the page takes whichever branch that implies, silently.
+   *
+   * ⚠️ The series is off by default (`collectSeries`), so an empty answer is
+   * the common case rather than an error. The page says which of the two it
+   * is; this route answers what the dataset holds either way.
+   */
+  getEstateStats = $action({
+    use: [$secure({ permissions: ["estate:read"] })],
+    method: "GET",
+    path: "/estates/:estateId/stats",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      query: z.object({ since: z.string().max(40).optional() }),
+      response: z.object({
+        collecting: z.boolean(),
+        estimated: z.boolean(),
+        sampleInterval: z.number().optional(),
+        points: z.array(
+          z.object({
+            day: z.string().max(40),
+            cpuPercent: z.number(),
+            memoryPercent: z.number(),
+            samples: z.integer().min(0),
+          }),
+        ),
+      }),
+    },
+    handler: async ({ params, query, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      // Thirty days by default: the dataset rolls up by day, so a shorter
+      // window is a handful of points and a longer one outlives the hot
+      // retention.
+      const since =
+        query.since ??
+        new Date(this.dateTime.nowMillis() - 30 * 24 * 3600_000).toISOString();
+      const series = await this.stats.series(estate.id, since);
+      // The switch travels with the answer so the page can tell "collecting,
+      // nothing yet" from "not collecting at all" without a second read.
+      return { collecting: estate.collectSeries, ...series };
+    },
+  });
+
+  /**
+   * Ask the machine for a fresh inventory, instead of waiting up to half an
+   * hour for its next tick.
+   *
+   * ⚠️ **The answer is asynchronous, and nothing here may pretend otherwise.**
+   * The Worker cannot read a Durable Object socket's reply: it emits into the
+   * room and the machine's answer arrives later, on the machine's own
+   * connection, through the ordinary `inventory` path. So this returns
+   * "asked", and the page re-reads {@link getEstateInventory} a moment later.
+   * A promise that resolved with the inventory would be a lie about the
+   * transport.
+   *
+   * ⚠️ **Not a command, deliberately.** A row buys idempotency, a queue, an
+   * ack, redelivery and a sweep, and none of that is worth having here: the
+   * failure mode of a lost refresh is that somebody clicks again.
+   *
+   * Refused rather than silently dropped while the machine is offline. A
+   * transient frame pushed into nothing would report success for something
+   * that will never happen.
+   *
+   * The limit is per estate rather than per caller: the cost being bounded is
+   * the machine's, and one owner with two tabs is the same machine. Bay's own
+   * 5 s coalescing is the hard floor; this is the polite one.
+   */
+  refreshEstate = $action({
+    use: [
+      $secure({ permissions: ["estate:update"] }),
+      $rateLimit({
+        max: 6,
+        windowMs: 60_000,
+        key: (input: { params: { estateId: string } }) =>
+          `estate-refresh:${input.params.estateId}`,
+      }),
+    ],
+    method: "POST",
+    path: "/estates/:estateId/refresh",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: z.object({ asked: z.boolean() }),
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      if (!this.service.isOnline(estate)) {
+        throw new BadRequestError(
+          `Estate "${estate.slug}" is not connected right now, so there is nothing to ask`,
+        );
+      }
+      // `false` here is the race between the liveness stamps and the socket
+      // actually being there. Reported rather than thrown: nothing was lost,
+      // and the next tick answers anyway.
+      return { asked: await this.transport.push(estate, { type: "query" }) };
+    },
   });
 
   /**
@@ -167,9 +329,13 @@ export class EstateController {
       // (deploys, the gauge interval) is pushed as `config` the moment it
       // changes. Best effort: an offline machine learns it from its next
       // `welcome`, and the label is nothing the machine reads.
+      // A cloudflare estate has no machine and no socket, so there is
+      // nothing to tell: offering the transport a row it can never reach
+      // would queue a push against an estate that has no connector.
       if (
-        body.deployAllowed !== undefined ||
-        body.statsIntervalSeconds !== undefined
+        updated.type === "bay" &&
+        (body.deployAllowed !== undefined ||
+          body.statsIntervalSeconds !== undefined)
       ) {
         await this.transport.push(
           updated,
@@ -200,7 +366,7 @@ export class EstateController {
       const estate = await this.service.loadOwned(params.estateId, user);
       if (estate.type !== "bay") {
         throw new BadRequestError(
-          "Only a bay estate holds a secret Lore minted; a cloudflare credential is replaced, not rotated",
+          "Only a bay estate holds a secret Lore minted; replace a cloudflare token with POST /estates/:estateId/credential",
         );
       }
 
@@ -223,6 +389,78 @@ export class EstateController {
 
       const rotated = await this.service.loadOwned(params.estateId, user);
       return { ...this.service.toResource(rotated), secret: minted.secret };
+    },
+  });
+
+  /**
+   * Replace the token on a cloudflare estate.
+   *
+   * Write-only: there is no GET that returns the token and no PATCH that
+   * carries it, so replacing is never a read-modify-write through the
+   * client. Checked before it is written and **all or nothing** on a
+   * failure, so the token the owner already had keeps working when the new
+   * one does not (#1630).
+   *
+   * Audited as `rotate`, the verb `LoreAudits.estate` already declares, with
+   * the same `warning` severity as the bay rotation: "when was this
+   * credential last changed" is one question, whichever kind it was. The UI
+   * says "Replace token"; the Activity filter does not grow a verb.
+   */
+  replaceEstateCredential = $action({
+    use: [$secure({ permissions: ["estate:update"] })],
+    method: "POST",
+    path: "/estates/:estateId/credential",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      body: z.object({ token: cloudflareTokenSchema }),
+      response: estateResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      const replaced = await this.service.replaceCredential(
+        user,
+        estate,
+        body.token,
+      );
+      return this.service.toResource(replaced);
+    },
+  });
+
+  /**
+   * Ask Cloudflare again, now, and record what it said.
+   *
+   * The owner's own button, for the case the nightly sweep would otherwise
+   * answer up to a day later: they have just widened a token at Cloudflare
+   * and want the estate to agree. An inconclusive answer leaves the row
+   * untouched and says so, exactly as the sweep does.
+   */
+  checkEstateCredential = $action({
+    use: [$secure({ permissions: ["estate:update"] })],
+    method: "POST",
+    path: "/estates/:estateId/credential/check",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: estateResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      if (estate.type !== "cloudflare") {
+        throw new BadRequestError(
+          "Only a cloudflare estate has a token to check",
+        );
+      }
+
+      const check = await this.cloudflare.recheck(estate);
+      if (check.outcome === "inconclusive") {
+        // No verdict, so no row change and no pretending otherwise: the
+        // drawer shows this sentence and the estate keeps the status it
+        // had.
+        throw new BadRequestError(check.message);
+      }
+
+      return this.service.toResource(
+        await this.service.loadOwned(params.estateId, user),
+      );
     },
   });
 

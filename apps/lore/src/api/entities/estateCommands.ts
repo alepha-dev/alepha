@@ -14,8 +14,24 @@ import { estates } from "./estates.ts";
  * #1152): the capability ceiling is this set, not the channel. `deploy` is
  * already code execution as the app user, so the set bounds the blast radius
  * without making it small, and it is not a list to extend casually.
+ *
+ * ⚠️ `stop` is the first verb here that can make a live site go dark from a
+ * click in a browser: everything before it either replaced a running app with
+ * another running app or asked a question. It is durable on the machine (the
+ * intent is persisted and the unit disabled), so the way back is `start` or a
+ * deploy, and the UI confirms destructively before sending it.
+ *
+ * The machine's own `actionKind` in `apps/bay/cmd/bay/actions.go` is the other
+ * half of this enum, and neither may grow without the other.
  */
-export const ESTATE_COMMAND_KINDS = ["restart", "deploy"] as const;
+export const ESTATE_COMMAND_KINDS = [
+  "restart",
+  "deploy",
+  "stop",
+  "start",
+  "backup",
+  "logs",
+] as const;
 
 export type EstateCommandKind = (typeof ESTATE_COMMAND_KINDS)[number];
 
@@ -102,6 +118,21 @@ export const estateCommands = $entity({
      * Why it failed, from the machine's ack or from the sweep.
      */
     reason: z.string().max(2000).optional(),
+    /**
+     * The blob a `logs` command's answer was uploaded as.
+     *
+     * ⚠️ A LOGICAL reference, exactly like `artifacts.fileId`, and for the
+     * reason that entity gives: a physical `db.ref` onto `files` is a table
+     * rebuild on SQLite, which on D1 is the cascade wipe documented in
+     * `apps/lore/CLAUDE.md`. Nothing here cascades, and the file is swept by
+     * the framework's own `FileJobs` when its 24 h expiry passes - which is
+     * why `EstateCommandJobs` needs to know nothing about it and an estate
+     * deletion needs no blob hook.
+     *
+     * A row still pointing at a swept file is the normal end state, and the
+     * owner's read answers "expired" for it rather than 500ing.
+     */
+    resultFileId: z.uuid().optional(),
   }),
   indexes: [
     // The reconciliation on connect and the sweep both ask "which commands

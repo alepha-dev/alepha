@@ -43,6 +43,24 @@ const (
 	// actionDeploy fetches an artifact by digest and hands it to the deploy
 	// path every other deploy goes through (#1622).
 	actionDeploy actionKind = "deploy"
+	// actionStop takes one instance out of service, durably: the intent is
+	// persisted and the unit is disabled, so a reboot and a Bay upgrade both
+	// leave it down. The way back is `start` or a deploy.
+	//
+	// ⚠️ The first verb here that can make a live site go dark from a click in
+	// a browser. Everything else in this vocabulary either replaces a running
+	// app with another running app, or asks a question.
+	actionStop actionKind = "stop"
+	// actionStart puts a stopped instance back, and is the way back from
+	// `stop`: `restart` deliberately refuses an app nobody is running.
+	actionStart actionKind = "start"
+	// actionBackup takes the same snapshot `bay backup` takes: the database
+	// Bay provisioned, and nothing else.
+	actionBackup actionKind = "backup"
+	// actionLogs answers a bounded tail of one instance's journal. The only
+	// verb whose result is a payload rather than an ack, uploaded over the
+	// pull seam.
+	actionLogs actionKind = "logs"
 )
 
 /*
@@ -64,6 +82,11 @@ type actions struct {
 
 	welcomeMu sync.Mutex
 	welcome   connector.Welcome
+
+	// kick asks the connection to push a fresh inventory. Wired by
+	// connectorLoop to the client that owns the socket, and nil everywhere
+	// else - a CLI path with no connection has nothing to tell.
+	kick func()
 }
 
 func newActions(s *server) *actions {
@@ -107,12 +130,12 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	}
 
 	switch actionKind(cmd.Kind) {
-	case actionRestart, actionDeploy:
+	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s and %s, nothing else",
-			cmd.Kind, actionRestart, actionDeploy)
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s and %s, nothing else",
+			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -127,15 +150,22 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 		log.Debug("could not ack running", "err", err)
 	}
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
 	log.Info("lore command started")
 	var status, step, reason string
 	switch actionKind(cmd.Kind) {
-	case actionRestart:
-		status, step, reason = a.restart(cmd)
-	case actionDeploy:
-		status, step, reason = a.deploy(ctx, cmd, send)
+	case actionBackup:
+		// Outside the machine-wide mutex, deliberately. A snapshot, a verify
+		// and an upload is minutes on a real database, and holding that lock
+		// for it would queue an unrelated app's restart behind a backup.
+		// `backupInstance` takes a per-instance lock the scheduler shares,
+		// which is the overlap that actually matters.
+		status, step, reason = a.backup(ctx, cmd)
+	case actionLogs:
+		// Outside it too, and for a plainer reason: this is a READ. A tail
+		// asked for during a long deploy has to answer now, not after it.
+		status, step, reason = a.logs(ctx, cmd)
+	default:
+		status, step, reason = a.runExclusive(ctx, cmd, send)
 	}
 	if status == "done" {
 		log.Info("lore command done")
@@ -145,9 +175,47 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	a.finish(cmd.ID, status, step, reason, send)
 }
 
-// finish records the terminal outcome, then acks it. Recorded first: an ack
-// that cannot be sent is re-sent from the store on the next delivery, and
-// an outcome that was not stored would be run again instead.
+/*
+runExclusive runs one action with the machine-wide mutex held, and releases it
+before anything is acked or pushed.
+
+A function of its own so the unlock is a `defer` rather than a line somebody
+has to remember after every return: an action that panics must still release
+the machine. It also puts the ack and the inventory push OUTSIDE the mutex,
+which matters because that mutex serialises every action on this host - pushing
+an inventory while holding it would turn each push into a lock on the deploy
+path.
+*/
+func (a *actions) runExclusive(ctx context.Context, cmd connector.Command, send func(connector.Ack) error) (status, step, reason string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	switch actionKind(cmd.Kind) {
+	case actionRestart:
+		return a.restart(cmd)
+	case actionDeploy:
+		return a.deploy(ctx, cmd, send)
+	case actionStop:
+		return a.stop(cmd)
+	case actionStart:
+		return a.start(cmd)
+	}
+	// Unreachable: Command refuses an unknown kind before it ever takes the
+	// lock. Said out loud rather than left as three empty strings, which would
+	// ack `done` for an action nobody ran.
+	return "failed", "", "this bay does not know how to run " + cmd.Kind
+}
+
+/*
+finish records the terminal outcome, acks it, and asks for a fresh inventory.
+
+Recorded first: an ack that cannot be sent is re-sent from the store on the
+next delivery, and an outcome that was not stored would be run again instead.
+
+The kick is last and is not part of the outcome. Every action that reaches here
+may have changed what the console shows - a restart moves the uptime, a deploy
+moves the release, a backup moves lastBackupAt - and the alternative is a page
+that shows the old state for up to half an hour after the click that changed it.
+*/
 func (a *actions) finish(id, status, step, reason string, send func(connector.Ack) error) {
 	out, err := a.outcomes.Finish(id, status, step, reason, time.Now())
 	if err != nil {
@@ -156,6 +224,9 @@ func (a *actions) finish(id, status, step, reason string, send func(connector.Ac
 	if err := send(connector.NewAck(id, out.Status, out.Step, out.Reason)); err != nil {
 		a.s.log.Info("lore command outcome stored, ack deferred to the next delivery",
 			"command", id, "err", err)
+	}
+	if a.kick != nil {
+		a.kick()
 	}
 }
 
@@ -179,7 +250,7 @@ func (a *actions) restart(cmd connector.Command) (status, step, reason string) {
 		return "failed", "", key + " is a static site: it has no process to restart"
 	}
 	if !a.s.runner.Running(key) {
-		return "failed", "", key + " is not running; it was stopped on this host, and a restart does not reverse that"
+		return "failed", "", key + " is not running; it was stopped on this host, and a restart does not reverse that - start it instead"
 	}
 
 	// Requests wait rather than 502, the same way they do through a deploy.
@@ -192,6 +263,67 @@ func (a *actions) restart(cmd connector.Command) (status, step, reason string) {
 		return "failed", "start", "the app did not come back up: " + err.Error()
 	}
 	return "done", "", ""
+}
+
+/*
+stop takes the instance out of service, durably.
+
+Through `stopInstance`, the same helper `bay stop` and the control route go
+through, so the CLI, the socket and Lore cannot end up meaning three different
+things by one word.
+
+Stopping an already-stopped instance SUCCEEDS. `systemctl disable --now` exits
+0 on an inactive unit and the child runner returns nil when nothing is running,
+so the effect is idempotent for free - and a console that reported a failure
+for reaching the state it asked for would be wrong about what it did.
+*/
+func (a *actions) stop(cmd connector.Command) (status, step, reason string) {
+	if err := a.s.stopInstance(cmd.App + "/" + cmd.Environment); err != nil {
+		return "failed", "", err.Error()
+	}
+	return "done", "", ""
+}
+
+/*
+start puts a stopped instance back.
+
+⚠️ An instance that is already running is answered `done` without being
+touched. `Systemd.Start` runs `systemctl restart`, so starting a healthy app
+would bounce production in disguise; `startInstance` carries that rule.
+*/
+func (a *actions) start(cmd connector.Command) (status, step, reason string) {
+	if err := a.s.startInstance(cmd.App + "/" + cmd.Environment); err != nil {
+		return "failed", "", err.Error()
+	}
+	return "done", "", ""
+}
+
+/*
+backup takes the same snapshot `bay backup` takes, through the same function.
+
+⚠️ The success reason says DATABASE, in words, and lists what is not covered.
+Bay's README is emphatic about why: a backup covers the database and nothing
+else, `storage/` and `.env` are never archived, and the worst failure of a
+backup system is somebody believing it covers more than it does. A console
+that said "backed up" and left it there would be manufacturing that belief.
+
+A refusal (a static site, an app on a BYO database, no bucket configured) is a
+`failed` ack with the reason, and records NO backup failure on the instance:
+that field is for attempts, and a permanent wrong warning is how people learn
+to ignore warnings.
+*/
+func (a *actions) backup(ctx context.Context, cmd connector.Command) (status, step, reason string) {
+	key := cmd.App + "/" + cmd.Environment
+	app, ok := a.s.store.Get(key)
+	if !ok {
+		return "failed", "", "unknown instance " + key + " on this bay"
+	}
+	out, err := a.s.backupInstance(ctx, app)
+	if err != nil {
+		return "failed", "", err.Error()
+	}
+	return "done", "", fmt.Sprintf("database snapshot stored as %s (%d bytes); NOT covered: %s",
+		out.Result.Key, out.Result.StoredBytes, strings.Join(out.NotBackedUp, "; "))
 }
 
 /*
