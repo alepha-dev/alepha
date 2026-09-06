@@ -213,10 +213,27 @@ const ProjectApps = () => {
         }}
         onRowClick={openInstance}
         columns={{
+          // ⚠️ No width class here, and that is a decision rather than an
+          // omission. It carried `w-full max-w-0 min-w-40`, the idiom the
+          // other Lore tables still use: `w-full` makes one column absorb
+          // every spare pixel and `max-w-0` makes `truncate` inside it follow
+          // the width instead of the content. The cost is what the owner saw
+          // on 2026-09-06 - Env and Address shrink-wrapped against the right
+          // edge of a wide screen, with the whole table reading as one column
+          // and two labels.
+          //
+          // Dropped because this table's values are SHORT: an app name, an
+          // env, a host. Nothing here needs the width, so the columns are left
+          // to the browser's auto layout, which spreads the spare space across
+          // all three.
+          //
+          // `truncate` stays on the cells below and is now inert: a table cell
+          // with no `max-w-0` sizes to its content, so a very long app name
+          // widens the column rather than ellipsing. Kept as the guard it will
+          // be again if this column is ever given a width back.
           app: {
             label: tr("apps.table.name"),
             sortable: true,
-            className: "w-full max-w-0 min-w-40",
             cell: (instance) => (
               <span className="flex min-w-0 items-center gap-2">
                 <AppStatusDot state={appLiveness(instance, now)} />
