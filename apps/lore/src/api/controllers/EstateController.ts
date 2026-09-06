@@ -116,18 +116,28 @@ export class EstateController {
     },
   });
 
+  /**
+   * One estate the caller owns, with the projects it is lent to and what the
+   * machine last reported.
+   *
+   * The owned shape rather than the bare resource: this route is owner-gated
+   * like every sibling, and the console's Settings tab needs the loans it
+   * detaches from. Resolved through the same `withLoans` the list uses, so
+   * there is one place that knows how a loan is shaped.
+   */
   getEstate = $action({
     use: [$secure({ permissions: ["estate:read"] })],
     method: "GET",
     path: "/estates/:estateId",
     schema: {
       params: z.object({ estateId: z.uuid() }),
-      response: estateResourceSchema,
+      response: ownedEstateResourceSchema,
     },
-    handler: async ({ params, user }) =>
-      this.service.toResource(
-        await this.service.loadOwned(params.estateId, user),
-      ),
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      const [owned] = await this.service.withLoans([estate]);
+      return owned!;
+    },
   });
 
   /**

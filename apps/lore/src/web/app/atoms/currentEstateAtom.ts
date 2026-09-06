@@ -1,6 +1,6 @@
 import { $atom } from "alepha";
 
-import { estateResourceSchema } from "@/api/schemas/estateResourceSchema.ts";
+import { ownedEstateResourceSchema } from "@/api/schemas/ownedEstateResourceSchema.ts";
 
 /**
  * The estate whose console is open, set by the `/bay/:estateId` loader and
@@ -10,8 +10,11 @@ import { estateResourceSchema } from "@/api/schemas/estateResourceSchema.ts";
  * the nav while every tab under it needs the same row: the layout is one
  * layer above the routed content, exactly as `currentInstanceAtom` sits above
  * an app's tabs.
+ *
+ * The OWNED shape, because the Settings tab detaches the loans it carries and
+ * the route is owner-gated anyway.
  */
 export const currentEstateAtom = $atom({
   name: "lor.bay.estate",
-  schema: estateResourceSchema.optional(),
+  schema: ownedEstateResourceSchema.optional(),
 });

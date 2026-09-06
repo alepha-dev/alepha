@@ -1526,8 +1526,10 @@ export default {
   "bay.commands.col.reason": "Outcome",
   "bay.commands.byNobody": "—",
   "bay.commands.result": "Open the stored result",
-  "bay.settings.title": "Settings",
-  "bay.soon": "Nothing here yet.",
+  "account.estates.inventory": "$1 app(s), reported $2",
+  "account.estates.inventory.none": "nothing reported",
+  "bay.settings.rotate.warning":
+    "Rotating revokes the current secret immediately. The machine is refused on its next dial and stays offline until you run `bay connector set` on it again with the new one.",
   "bay.open": "Open console",
   "estates.online": "online",
   "estates.offline": "offline",

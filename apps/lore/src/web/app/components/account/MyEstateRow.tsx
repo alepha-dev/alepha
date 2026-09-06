@@ -60,6 +60,18 @@ const MyEstateRow = (props: MyEstateRowProps) => {
                 args: [String(l(estate.lastSeenAt, { date: "lll" }))],
               })
             : tr("estates.neverSeen")}
+          {" · "}
+          {/* From the denormalised count on the inventory row, which is why
+              this costs no JSON parsing and wakes no machine. Absent is
+              "nothing reported", never "0 apps". */}
+          {estate.inventory
+            ? tr("account.estates.inventory", {
+                args: [
+                  String(estate.inventory.appCount),
+                  String(l(estate.inventory.reportedAt, { date: "fromNow" })),
+                ],
+              })
+            : tr("account.estates.inventory.none")}
         </span>
       </span>
       <Badge variant={estate.online ? "default" : "outline"}>
