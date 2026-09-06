@@ -43,7 +43,9 @@ const schema = z.object({
       title: "Api Token",
       $control: (({ form }) => {
         const role = (form.currentValues as { role?: string }).role;
-        if (role !== "admin") return false;
+        // `hidden`, not `false`: the half-row stays reserved while Role is
+        // anything else, so nothing around it moves when the field arrives.
+        if (role !== "admin") return { hidden: true, width: 50 };
         return { icon: "key", password: true, width: 50 };
       }) satisfies SchemaControlFn,
     })
@@ -52,10 +54,20 @@ const schema = z.object({
     .enum(["eu-west", "us-east", "ap-south"])
     .meta({ title: "Region", $control: { width: 50 } }),
   replicas: z.number().meta({ title: "Replicas", $control: { width: 50 } }),
-  autoScale: z.boolean().default(false).meta({ title: "Autoscale" }),
+  // Both declare a width for the same reason every field above does: the
+  // default heuristic is 33%, so a pair of them makes a 4+4 row with a third
+  // of it empty, beside 6+6 rows either side.
+  autoScale: z
+    .boolean()
+    .default(false)
+    .meta({ title: "Autoscale", $control: { width: 50 } }),
   maintenanceAt: z
     .string()
-    .meta({ format: "date-time", title: "Maintenance window" })
+    .meta({
+      format: "date-time",
+      title: "Maintenance window",
+      $control: { width: 50 },
+    })
     .optional(),
   notes: z
     .string()

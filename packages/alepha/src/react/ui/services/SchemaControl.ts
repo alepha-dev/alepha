@@ -23,7 +23,8 @@ import type { FormModel } from "alepha/react/form";
  *
  * The function may return:
  * - a partial `SchemaControl` to merge with explicit `<Control>` props
- * - `false` to hide the control entirely
+ * - `{ hidden: true, width }` to hide the control but KEEP its space
+ * - `false` to remove the field entirely, space and all
  * - `undefined` to leave the field as-is
  */
 export interface SchemaControl {
@@ -99,8 +100,20 @@ export interface SchemaControl {
 
   // ── Behavior ─────────────────────────────────────────────────────
   /**
-   * Render `null` (hide) when truthy. Equivalent to a function `$control`
-   * returning `false`, but available as a static value.
+   * Render `null` (hide) when truthy.
+   *
+   * ⚠️ NOT the same as a function `$control` returning `false`, though it was
+   * once. The difference is what the LAYOUT does with the space:
+   *
+   * - `hidden: true` keeps the field's cell, at the `width` alongside it. The
+   *   form holds its shape while the field comes and goes, and nothing beside
+   *   it moves.
+   * - `false` removes the field entirely. The grid repacks around the gap.
+   *
+   * Neither is the right default. A field that appears in response to another
+   * one usually wants `hidden`, so the form does not jump under the reader's
+   * cursor; a field that is absent for a whole class of user usually wants
+   * `false`, so no one is shown a hole they can never fill.
    */
   hidden?: boolean;
   disabled?: boolean;
@@ -168,7 +181,10 @@ export type SchemaControlItemsFn = (
 /**
  * Function form of `$control`. Receives the live form model + the current
  * field value, and returns a partial config (merged with explicit props),
- * `false` to hide, or `undefined` to leave as-is.
+ * `false` to remove the field, or `undefined` to leave as-is.
+ *
+ * To hide the field but KEEP its space, return `{ hidden: true, width }`
+ * rather than `false` - see {@link SchemaControl.hidden}.
  */
 export type SchemaControlFn = (context: {
   form: FormModel<any>;
@@ -179,7 +195,18 @@ export type SchemaControlOption = SchemaControl | SchemaControlFn;
 
 /**
  * Resolve a raw `$control` value (object or function) into a concrete
- * partial config. Returns `null` when the field should be hidden.
+ * partial config.
+ *
+ * Three answers, and a caller has to tell them apart:
+ *
+ * - `null` - the field is GONE. Render nothing, and give back its space.
+ * - an object with `hidden` - render no control, but the config is still
+ *   there, `width` included, so a layout can hold the field's place.
+ * - any other object - render the control with it.
+ *
+ * ⚠️ `hidden` used to collapse to `null` as well, which made the two
+ * indistinguishable and threw away the width along with them. A layout could
+ * then only guess at how much room a hidden field had wanted.
  */
 export const resolveSchemaControl = (
   raw: unknown,
@@ -190,13 +217,10 @@ export const resolveSchemaControl = (
     const result = (raw as SchemaControlFn)(context);
     if (result === false) return null;
     if (!result) return {};
-    if (result.hidden) return null;
     return result;
   }
   if (typeof raw === "object") {
-    const obj = raw as SchemaControl;
-    if (obj.hidden) return null;
-    return obj;
+    return raw as SchemaControl;
   }
   return {};
 };

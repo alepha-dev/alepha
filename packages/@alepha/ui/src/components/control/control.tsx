@@ -327,7 +327,9 @@ export const Control = (props: ControlProps) => {
     form: props.input.form,
     value,
   });
-  if (resolved === null) return null;
+  // `null` is gone, `hidden` is present-but-invisible. A control renders
+  // nothing for either; only the LAYOUT tells them apart.
+  if (resolved === null || resolved.hidden) return null;
 
   const merged = {
     ...props,
@@ -761,17 +763,38 @@ export const Control = (props: ControlProps) => {
   );
 };
 
-const useDynamicControlRefresh = (input: BaseInputField | undefined) => {
+/**
+ * The raw `$control` a field declares, object form or function form.
+ *
+ * It rides on zod's `.meta()` registry rather than being a plain schema
+ * property, and the field may be wrapped (optional / nullable / default), so
+ * the wrapper has to be peeled before the meta is readable.
+ *
+ * Exported because the LAYOUT needs it too: `AutoForm` sizes a grid cell from
+ * the width `$control` asks for, and a function-form `$control` has no `.width`
+ * to read off the function itself. Pair it with {@link resolveSchemaControl}.
+ */
+export const readSchemaControl = (
+  input: BaseInputField | undefined,
+): unknown => {
+  const base = input?.schema ? z.schema.unwrap(input.schema) : undefined;
+  return (base as { meta?: () => { $control?: unknown } } | undefined)?.meta?.()
+    ?.$control;
+};
+
+/**
+ * Re-render when a function-form `$control` may have changed its mind, which
+ * is on any change to a field OTHER than this one. An object-form `$control`
+ * is static and needs no subscription.
+ *
+ * Exported alongside {@link readSchemaControl}, and for the same reason: a
+ * consumer that resolves `$control` itself has to re-resolve on the same
+ * events, or it renders a stale answer.
+ */
+export const useDynamicControlRefresh = (input: BaseInputField | undefined) => {
   const alepha = useAlepha();
   const [, bump] = useState(0);
-  // Function-form `$control` rides on zod's `.meta()` registry (not a plain
-  // schema property), and the field may be wrapped (optional/nullable), so peel
-  // to the inner schema before reading its meta to detect the dynamic case.
-  const base = input?.schema ? z.schema.unwrap(input.schema) : undefined;
-  const rawControl = (
-    base as { meta?: () => { $control?: unknown } } | undefined
-  )?.meta?.()?.$control;
-  const isDynamic = typeof rawControl === "function";
+  const isDynamic = typeof readSchemaControl(input) === "function";
   useEffect(() => {
     if (!isDynamic || !input?.form) return;
     const formId = input.form.id;

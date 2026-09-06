@@ -17,12 +17,23 @@ export interface NavLeaf {
   href: string;
   label: string;
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
+  /**
+   * One line saying what the page shows, for the command palette's second
+   * row. Taken from the page's own subtitle, so the palette and the page
+   * agree about what the reader is about to open.
+   */
+  description?: string;
 }
 
 export interface NavEntry {
   label: string;
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
   href?: string;
+  /**
+   * See {@link NavLeaf.description}. Ignored on an entry with `children`,
+   * which is a toggle rather than a destination.
+   */
+  description?: string;
   children?: NavLeaf[];
 }
 
@@ -50,7 +61,15 @@ export interface NavGroup {
 export const NAV: NavGroup[] = [
   {
     label: "",
-    items: [{ href: "/", label: "Home", icon: HomeIcon }],
+    items: [
+      {
+        href: "/",
+        label: "Home",
+        icon: HomeIcon,
+        description:
+          "Every component in @alepha/ui, rendered with its variants.",
+      },
+    ],
   },
   {
     label: "Blocks",
@@ -59,43 +78,116 @@ export const NAV: NavGroup[] = [
         label: "Layout",
         icon: PanelsTopLeft,
         children: [
-          { href: "/blocks/shell", label: "App shell" },
-          { href: "/blocks/sidebar", label: "Sidebar" },
-          { href: "/blocks/detail", label: "Detail" },
-          { href: "/blocks/plate", label: "Plate" },
-          { href: "/blocks/settings", label: "Settings" },
+          {
+            href: "/blocks/shell",
+            label: "App shell",
+            description:
+              "The frame an application mounts once, in three variants.",
+          },
+          {
+            href: "/blocks/sidebar",
+            label: "Sidebar",
+            description: "The navigation rail, as its own specimen.",
+          },
+          {
+            href: "/blocks/detail",
+            label: "Detail",
+            description: "Identity column, tab toolbar, tab body.",
+          },
+          {
+            href: "/blocks/plate",
+            label: "Plate",
+            description:
+              "A full-width plate over a tab strip, and a body under both.",
+          },
+          {
+            href: "/blocks/settings",
+            label: "Settings",
+            description: "Sticky rail, cards of rows, and a danger zone.",
+          },
         ],
       },
       {
         label: "Control",
         icon: SlidersHorizontal,
         children: [
-          { href: "/blocks/control/text", label: "Text" },
-          { href: "/blocks/control/number", label: "Number" },
-          { href: "/blocks/control/date", label: "Date" },
-          { href: "/blocks/control/select", label: "Select" },
+          {
+            href: "/blocks/control/text",
+            label: "Text",
+            description: "Every shape z.string() takes.",
+          },
+          {
+            href: "/blocks/control/number",
+            label: "Number",
+            description: "Integers, decimals, bounds and the switch.",
+          },
+          {
+            href: "/blocks/control/date",
+            label: "Date",
+            description: "Calendar, clock, and both together.",
+          },
+          {
+            href: "/blocks/control/select",
+            label: "Select",
+            description: "Every shape one control takes.",
+          },
         ],
       },
       {
         label: "AutoForm",
         icon: FormInput,
         children: [
-          { href: "/blocks/auto-form/basic", label: "Basic" },
-          { href: "/blocks/auto-form/object", label: "Object" },
-          { href: "/blocks/auto-form/array", label: "Array" },
+          {
+            href: "/blocks/auto-form/basic",
+            label: "Basic",
+            description: "A whole form rendered from a flat schema.",
+          },
+          {
+            href: "/blocks/auto-form/object",
+            label: "Object",
+            description: "Nested groups, and optional versus required.",
+          },
+          {
+            href: "/blocks/auto-form/array",
+            label: "Array",
+            description: "Tag lists, multi-selects and repeated groups.",
+          },
         ],
       },
-      { href: "/blocks/table", label: "Table", icon: Table2 },
-      { href: "/blocks/tree", label: "Tree", icon: ListTree },
+      {
+        href: "/blocks/table",
+        label: "Table",
+        icon: Table2,
+        description: "Server-paged, filtered and sortable.",
+      },
+      {
+        href: "/blocks/tree",
+        label: "Tree",
+        icon: ListTree,
+        description: "One tree, three capability tiers.",
+      },
       {
         label: "Messages",
         icon: MessageSquareWarning,
         children: [
-          { href: "/blocks/dialog", label: "Dialog" },
-          { href: "/blocks/toast", label: "Toast" },
+          {
+            href: "/blocks/dialog",
+            label: "Dialog",
+            description: "Blocking questions, as promises.",
+          },
+          {
+            href: "/blocks/toast",
+            label: "Toast",
+            description: "Transient feedback, stacked and auto-dismissed.",
+          },
         ],
       },
-      { href: "/blocks/buttons", label: "Buttons", icon: MousePointerClick },
+      {
+        href: "/blocks/buttons",
+        label: "Buttons",
+        icon: MousePointerClick,
+        description: "Every variant, at the size you pick.",
+      },
     ],
   },
   {
@@ -105,39 +197,123 @@ export const NAV: NavGroup[] = [
         label: "Auth",
         icon: ShieldCheck,
         children: [
-          { href: "/pages/auth/login", label: "Sign in" },
-          { href: "/pages/auth/register", label: "Register" },
-          { href: "/pages/auth/reset", label: "Reset password" },
-          { href: "/pages/auth/verify", label: "Verify email" },
-          { href: "/pages/auth/mfa", label: "Second factor" },
+          {
+            href: "/pages/auth/login",
+            label: "Sign in",
+            description: "AuthLogin, centred or split.",
+          },
+          {
+            href: "/pages/auth/register",
+            label: "Register",
+            description: "AuthRegister, driven by the realm's required fields.",
+          },
+          {
+            href: "/pages/auth/reset",
+            label: "Reset password",
+            description: "AuthResetPassword, at its first step.",
+          },
+          {
+            href: "/pages/auth/verify",
+            label: "Verify email",
+            description: "AuthVerifyEmail, in each of its three outcomes.",
+          },
+          {
+            href: "/pages/auth/mfa",
+            label: "Second factor",
+            description: "AuthMfaStep, for a code sent or generated.",
+          },
         ],
       },
       {
         label: "Account",
         icon: UserCog,
         children: [
-          { href: "/pages/account/profile", label: "Profile" },
-          { href: "/pages/account/security", label: "Security" },
-          { href: "/pages/account/sessions", label: "Sessions" },
-          { href: "/pages/account/keys", label: "API keys" },
-          { href: "/pages/account/connections", label: "Connections" },
+          {
+            href: "/pages/account/profile",
+            label: "Profile",
+            description: "Name, email and the roles a realm granted.",
+          },
+          {
+            href: "/pages/account/security",
+            label: "Security",
+            description: "Password, second factor, linked providers, deletion.",
+          },
+          {
+            href: "/pages/account/sessions",
+            label: "Sessions",
+            description: "Every device this account is signed in on.",
+          },
+          {
+            href: "/pages/account/keys",
+            label: "API keys",
+            description: "Personal tokens, live and revoked.",
+          },
+          {
+            href: "/pages/account/connections",
+            label: "Connections",
+            description: "Authorised applications and their scopes.",
+          },
         ],
       },
       {
         label: "Admin",
         icon: LayoutDashboard,
         children: [
-          { href: "/pages/admin/dashboard", label: "Dashboard" },
-          { href: "/pages/admin/users", label: "Users" },
-          { href: "/pages/admin/sessions", label: "Sessions" },
-          { href: "/pages/admin/keys", label: "API keys" },
-          { href: "/pages/admin/jobs", label: "Jobs" },
-          { href: "/pages/admin/files", label: "Files" },
-          { href: "/pages/admin/notifications", label: "Notifications" },
-          { href: "/pages/admin/parameters", label: "Parameters" },
-          { href: "/pages/admin/analytics", label: "Analytics" },
-          { href: "/pages/admin/payments", label: "Payments" },
-          { href: "/pages/admin/audits", label: "Audit log" },
+          {
+            href: "/pages/admin/dashboard",
+            label: "Dashboard",
+            description: "The admin landing page.",
+          },
+          {
+            href: "/pages/admin/users",
+            label: "Users",
+            description: "The user directory.",
+          },
+          {
+            href: "/pages/admin/sessions",
+            label: "Sessions",
+            description: "Where people are signed in.",
+          },
+          {
+            href: "/pages/admin/keys",
+            label: "API keys",
+            description: "Programmatic access tokens.",
+          },
+          {
+            href: "/pages/admin/jobs",
+            label: "Jobs",
+            description: "Registered jobs and their runs.",
+          },
+          {
+            href: "/pages/admin/files",
+            label: "Files",
+            description: "Stored files across buckets.",
+          },
+          {
+            href: "/pages/admin/notifications",
+            label: "Notifications",
+            description: "The delivery log.",
+          },
+          {
+            href: "/pages/admin/parameters",
+            label: "Parameters",
+            description: "Runtime configuration, versioned.",
+          },
+          {
+            href: "/pages/admin/analytics",
+            label: "Analytics",
+            description: "An explorer over declared datasets.",
+          },
+          {
+            href: "/pages/admin/payments",
+            label: "Payments",
+            description: "Payment intents.",
+          },
+          {
+            href: "/pages/admin/audits",
+            label: "Audit log",
+            description: "The audit trail.",
+          },
         ],
       },
     ],
@@ -158,6 +334,7 @@ export interface NavDestination {
    */
   parent?: string;
   icon?: ComponentType<SVGProps<SVGSVGElement>>;
+  description?: string;
 }
 
 /**
@@ -178,6 +355,7 @@ export const NAV_DESTINATIONS: NavDestination[] = NAV.flatMap((group) =>
           group: group.label,
           parent: entry.label,
           icon: entry.icon,
+          description: child.description,
         }))
       : [
           {
@@ -185,6 +363,7 @@ export const NAV_DESTINATIONS: NavDestination[] = NAV.flatMap((group) =>
             label: entry.label,
             group: group.label,
             icon: entry.icon,
+            description: entry.description,
           },
         ],
   ),

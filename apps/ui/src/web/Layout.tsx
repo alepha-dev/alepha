@@ -53,10 +53,6 @@ export const Layout = () => {
           <AppShell
             fill
             variant="floating"
-            // Opted in. The shell's default is the caret every other app
-            // using it already had; this site shows the other one because it
-            // is the site that exists to show them.
-            navToggleIcon="plusMinus"
             topbarActions={
               <>
                 <NavPaletteButton />
