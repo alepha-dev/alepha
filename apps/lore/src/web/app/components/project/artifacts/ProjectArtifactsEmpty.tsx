@@ -40,8 +40,26 @@ const ProjectArtifactsEmpty = (props: ProjectArtifactsEmptyProps) => {
       {/*
         Verbatim and selectable. A screenshot of a CLI invocation is not
         something anyone can paste into a workflow file.
+
+        ⚠️ It WRAPS rather than scrolling (feedback #P2145). A `pre` does not
+        wrap by default, so a command longer than the column got a
+        horizontal scrollbar and was cut mid-word - on the one panel whose
+        whole job is telling a reader what to type, at 1920px with the page
+        mostly empty. `break-words` is what handles the long token in the
+        middle of it, a project slug, which `pre-wrap` alone would push past
+        the edge on its own.
+
+        The width is not the fix and was not the cause: nothing here is
+        capped by `@alepha/ui`, and widening a shared empty state to suit
+        one panel would move the same clipping onto a phone.
+
+        ⚠️ `text-left` because the shared empty state is `text-center`, and
+        a command centred over three wrapped lines is harder to read than
+        the scrolling one was. Set here rather than there: that class is
+        `AlephaTable`'s own empty and no-match states, and every table in
+        the app inherits it.
       */}
-      <pre className="bg-muted text-muted-foreground w-full overflow-x-auto rounded-md p-3 text-xs">
+      <pre className="bg-muted text-muted-foreground w-full rounded-md p-3 text-left text-xs break-words whitespace-pre-wrap">
         <code>
           {`alepha build\nlore artifacts push --project ${props.projectSlug} --app <app>`}
         </code>
