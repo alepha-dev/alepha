@@ -581,7 +581,17 @@ export default {
   // ── Capabilities ────────────────────────────────────────────────────────
   // The four product surfaces a project composes, and the switches inside
   // each. Labels move; the persisted keys never do.
+  // ⚠️ `.short` is the NAV's name for a capability, one word, and it exists
+  // beside `.label` rather than replacing it (feedback #P2123). The
+  // sentence is right where it is used - the creation wizard, where the
+  // reader is choosing what a project does and the phrase IS the
+  // explanation, and the settings section headings - and it is right a
+  // second time in `CapabilityRegistry.name`, which feeds the refusal
+  // messages: "Turn on Plan and track work" reads better than "Turn on
+  // Work". A rail beside a permission matrix is the one place that wants
+  // the word alone.
   "project.capability.work.label": "Plan and track work",
+  "project.capability.work.short": "Work",
   "project.capability.work.description": "Quests, epics, releases, a board.",
   "project.capability.work.option.board.label": "Board",
   "project.capability.work.option.board.description":
@@ -605,6 +615,7 @@ export default {
   "project.capability.work.option.agentPrompts.description":
     "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for Claude Code or Codex; nothing is sent anywhere.",
   "project.capability.knowledge.label": "Write and keep knowledge",
+  "project.capability.knowledge.short": "Knowledge",
   "project.capability.knowledge.description":
     "Wiki linked folios, files, revisions.",
   "project.capability.knowledge.option.agentSummary.label":
@@ -612,6 +623,7 @@ export default {
   "project.capability.knowledge.option.agentSummary.description":
     "Show the summary field on a folio. It is written and read over MCP either way.",
   "project.capability.apps.label": "Deploy and watch apps",
+  "project.capability.apps.short": "Deploy",
   "project.capability.apps.description":
     "Instances, analytics, errors, vitals.",
   "project.capability.apps.option.track.label": "Track apps",
@@ -621,6 +633,7 @@ export default {
   "project.capability.apps.option.deploy.description":
     "Push a build to a machine you own.",
   "project.capability.support.label": "Collect feedback",
+  "project.capability.support.short": "Support",
   "project.capability.support.description":
     "A public request form and a triage inbox.",
   "project.settings.areas.title": "Areas",

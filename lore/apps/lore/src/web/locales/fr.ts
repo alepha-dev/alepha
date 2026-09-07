@@ -584,7 +584,10 @@ export default {
   "project.settings.data.import.details": "Voir les détails",
   "project.settings.data.import.error.title": "L'import a échoué",
   // ── Capacités ───────────────────────────────────────────────────────────
+  // Voir la note dans en.ts : `.short` est le nom court du rail, `.label`
+  // reste la phrase de l'assistant de création et des titres de section.
   "project.capability.work.label": "Planifier et suivre le travail",
+  "project.capability.work.short": "Travail",
   "project.capability.work.description":
     "Quêtes, épopées, versions, un tableau.",
   "project.capability.work.option.board.label": "Tableau",
@@ -609,6 +612,7 @@ export default {
   "project.capability.work.option.agentPrompts.description":
     "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour Claude Code ou Codex ; rien n’est envoyé nulle part.",
   "project.capability.knowledge.label": "Écrire et conserver le savoir",
+  "project.capability.knowledge.short": "Savoir",
   "project.capability.knowledge.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
   "project.capability.knowledge.option.agentSummary.label":
@@ -616,6 +620,7 @@ export default {
   "project.capability.knowledge.option.agentSummary.description":
     "Afficher le champ résumé sur un folio. Il est écrit et lu via MCP dans tous les cas.",
   "project.capability.apps.label": "Déployer et surveiller des applications",
+  "project.capability.apps.short": "Déploiement",
   "project.capability.apps.description":
     "Instances, analytique, erreurs, Web Vitals.",
   "project.capability.apps.option.track.label": "Surveiller les applications",
@@ -625,6 +630,7 @@ export default {
   "project.capability.apps.option.deploy.description":
     "Envoyer un build sur une machine qui vous appartient.",
   "project.capability.support.label": "Recueillir les retours",
+  "project.capability.support.short": "Support",
   "project.capability.support.description":
     "Un formulaire public et une boîte de tri.",
   "project.settings.areas.title": "Domaines",
