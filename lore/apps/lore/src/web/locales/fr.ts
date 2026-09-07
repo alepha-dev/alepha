@@ -757,8 +757,6 @@ export default {
   "project.settings.roadmap.description":
     "Une page en lecture seule listant vos versions ouvertes et les épopées qu’elles contiennent. Ni quêtes, ni noms, ni backlog.",
   "project.settings.roadmap.visibility.label": "Qui peut la voir",
-  "project.settings.capability.delay":
-    "Un changement ici peut mettre jusqu'à une minute à atteindre une session déjà ouverte ailleurs.",
   "project.settings.roadmap.delay":
     "Un changement peut mettre jusqu’à une minute à atteindre les visiteurs.",
   "project.settings.roadmap.level.off": "Désactivée",
