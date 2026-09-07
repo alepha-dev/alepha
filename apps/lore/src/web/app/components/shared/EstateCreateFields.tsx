@@ -6,6 +6,7 @@ import {
   ESTATE_SLUG_MAX_LENGTH,
   ESTATE_SLUG_PATTERN,
 } from "@/api/schemas/estateSlugSchema.ts";
+import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import {
@@ -141,7 +142,10 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
               {/* The guide is the onboarding, not a footnote: which template
                   to start from, and the two permissions it lacks. */}
               <a
-                href="/lore/docs/guides-cloudflare-token"
+                // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative
+                // it resolved against Lore's own origin and 404'd
+                // (feedback #P2142).
+                href={loreDocsUrl("guides-cloudflare-token")}
                 target="_blank"
                 rel="noreferrer"
                 className="underline underline-offset-4"
