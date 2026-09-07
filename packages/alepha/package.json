@@ -102,6 +102,13 @@
       "import": "./src/api/payments/index.ts",
       "default": "./src/api/payments/index.ts"
     },
+    "./api/ranks": {
+      "types": "./src/api/ranks/index.ts",
+      "react-native": "./src/api/ranks/index.browser.ts",
+      "browser": "./src/api/ranks/index.browser.ts",
+      "import": "./src/api/ranks/index.ts",
+      "default": "./src/api/ranks/index.ts"
+    },
     "./api/users": {
       "types": "./src/api/users/index.ts",
       "react-native": "./src/api/users/index.browser.ts",
@@ -541,6 +548,13 @@
         "types": "./dist/api/payments/index.d.ts",
         "import": "./dist/api/payments/index.js",
         "default": "./dist/api/payments/index.js"
+      },
+      "./api/ranks": {
+        "types": "./dist/api/ranks/index.d.ts",
+        "react-native": "./dist/api/ranks/index.browser.js",
+        "browser": "./dist/api/ranks/index.browser.js",
+        "import": "./dist/api/ranks/index.js",
+        "default": "./dist/api/ranks/index.js"
       },
       "./api/users": {
         "types": "./dist/api/users/index.d.ts",

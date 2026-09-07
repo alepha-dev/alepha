@@ -71,6 +71,20 @@ import { $secure, type SecureOptions } from "./$secure.ts";
 export function $owns(options: OwnsOptions): Middleware {
   const { alepha } = $context();
   const memo = alepha.inject(ResourceGateMemoProvider);
+
+  // ⚠️ Constructed here, at declaration time, which fixes an ordering rule a
+  // module that SUBSTITUTES this provider has to respect: it must be
+  // registered before the classes whose gates use it. `alepha/api/ranks` is
+  // the one that does, and getting the order wrong throws
+  // `TooLateSubstitutionError` at boot, naming both classes.
+  //
+  // Loud is the right failure. Resolving it per request instead would throw
+  // `ContainerLockedError` on a container that never constructed it, and
+  // deferring the substitution with `optional: true` would SKIP it silently -
+  // which means every `requires` in the application allows, and nothing says
+  // so. That is why `ResourceGrantsProvider` is deliberately absent from
+  // `AlephaSecurity.services`: constructing it at module registration would
+  // make every substitution too late by definition.
   const grants = alepha.inject(ResourceGrantsProvider);
 
   if (options.owner === undefined && !options.via) {
