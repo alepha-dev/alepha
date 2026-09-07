@@ -11,6 +11,11 @@
  * The default allows everything, so an app that has no preferences does not
  * have to say so.
  *
+ * `NotificationInboxRecipientProvider` is the module's other seam of this
+ * shape, and an app that implements one usually wants the other: this one
+ * answers whether a contact accepts a message, that one answers who the
+ * contact is.
+ *
  * ## An implementation is expected to consider both axes
  *
  * "No email at all" and "no email in this category" are different answers,

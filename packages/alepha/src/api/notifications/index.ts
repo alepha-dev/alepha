@@ -9,6 +9,7 @@ import { NotificationUnsubscribeController } from "./controllers/NotificationUns
 import { NotificationWebhookController } from "./controllers/NotificationWebhookController.ts";
 import { NotificationJobs } from "./jobs/NotificationJobs.ts";
 import { $notification } from "./primitives/$notification.ts";
+import { NotificationInboxRecipientProvider } from "./providers/NotificationInboxRecipientProvider.ts";
 import { NotificationPreferenceProvider } from "./providers/NotificationPreferenceProvider.ts";
 import type { NotificationDeliveryEvent } from "./schemas/notificationDeliveryEventSchema.ts";
 import { NotificationAttachmentService } from "./services/NotificationAttachmentService.ts";
@@ -32,6 +33,7 @@ export * from "./entities/notificationDeliveryEntity.ts";
 export * from "./entities/notificationSuppressionEntity.ts";
 export * from "./jobs/NotificationJobs.ts";
 export * from "./primitives/$notification.ts";
+export * from "./providers/NotificationInboxRecipientProvider.ts";
 export * from "./providers/NotificationPreferenceProvider.ts";
 export * from "./schemas/notificationAttachmentSchema.ts";
 export * from "./schemas/notificationContactPreferencesSchema.ts";
@@ -111,6 +113,7 @@ export const AlephaApiNotifications = $module({
     NotificationIngestService,
     NotificationUnsubscribeService,
     NotificationPreferenceProvider,
+    NotificationInboxRecipientProvider,
     NotificationJobs,
     AdminNotificationController,
     NotificationUnsubscribeController,
