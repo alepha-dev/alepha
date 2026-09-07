@@ -518,6 +518,35 @@ test.describe("Apps", () => {
       );
     });
 
+    await test.step("choosing a default environment leaves the sidebar alone", async () => {
+      /*
+       * Feedback #P2141: "changing `dev env` remove all items from sidebar.
+       * Reloading page fix it."
+       *
+       * ⚠️ The assertion is the SIDEBAR and not the saved value, because the
+       * saved value was never wrong. `updateProjectById` answers a project
+       * resource with no `permissions` on it - that field is on the extended
+       * response the layout loader uses - and writing it straight into
+       * `currentProjectAtom` left `canInProject` reading an absent set, which
+       * it answers false for. Every permission-gated entry then vanished.
+       */
+      await page.goto(`/${projectSlug}/settings/apps`);
+      await page.waitForLoadState("networkidle");
+
+      const sidebarQuests = page.locator(`a[href="/${projectSlug}/quests"]`);
+      await expect(sidebarQuests).toBeVisible({ timeout: 15_000 });
+
+      await page.getByLabel("Default environment").click();
+      await page.getByRole("option", { name: secondEnv }).click();
+
+      // The save landed, and the nav is still there. No reload: a reload is
+      // what USED to be the fix.
+      await expect(page.getByText("Default environment saved")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(sidebarQuests).toBeVisible();
+    });
+
     let token = "";
     await test.step("creating a sigil unlocks four tabs, on that copy only", async () => {
       await page.goto(`/${projectSlug}/apps/${appName}/${envName}/settings`);
