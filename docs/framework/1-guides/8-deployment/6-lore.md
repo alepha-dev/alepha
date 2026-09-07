@@ -112,6 +112,45 @@ the web UI and for the MCP tools, so no surface anywhere accepts one.
 Minting a deploy target as a side effect of a typo is how a fleet grows a copy
 nobody meant to make.
 
+## From another server
+
+An app whose environments have a lifecycle of their own - one copy per tenant,
+per branch, per customer - drives Lore programmatically rather than through a
+pipeline. `@alepha/lore/client` is that seam.
+
+```ts
+import { AlephaLoreClient, LoreDeployService } from "@alepha/lore/client";
+
+const alepha = Alepha.create().with(AlephaLoreClient);
+const lore = alepha.inject(LoreDeployService);
+
+// A club owner signs up with the slug "wassup":
+const { url } = await lore.deploy({
+  app: "club",
+  env: "wassup",
+  tag: "latest",
+  create: true,
+});
+```
+
+Configured by the same three variables as CI - `LORE_URL`, `LORE_API_KEY`,
+`LORE_PROJECT` - so one deployment configures both halves. The key's user needs
+`app:manage` to create a copy and `deploy:manage` to ship to one.
+
+⚠️ **`create: true` is opt-in, and off by default.** A missing copy is normally
+a refusal, for the reason above: minting a deploy target as a side effect of a
+typo in `env` is how a fleet grows a copy nobody meant to make. Pass it where
+making one IS the act being performed.
+
+A copy created this way **inherits the estate** of the app's `production` copy
+(or the first by name), so the call carries no infrastructure at all. Pass
+`estate` with a slug to override, and it is resolved against the estates lent
+to this project rather than trusted.
+
+⚠️ **It does not build.** `lore apps build` and `lore artifacts push` belong in
+CI, on the machine holding the source; this ships bytes that already exist and
+refuses when the tag names none.
+
 ## From an agent
 
 Three MCP tools sit on the same endpoints: `deploy_start`, `deploy_status` and
