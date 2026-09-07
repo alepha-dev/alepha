@@ -1021,8 +1021,6 @@ export default {
   "quest.view.unhold.confirm":
     "La quête revient à son état d'avant l'attente, toujours assignée à la même personne. La raison reste dans la discussion.",
   "quest.view.unhold.confirmButton": "Lever l'attente",
-  "quest.view.held.hint":
-    "Cette quête ne peut être ni acceptée ni terminée tant que l'attente n'est pas levée. La raison figure dans la discussion ci-dessous.",
   "quest.view.edit": "Modifier",
   "quest.view.back": "Retour",
   "quest.view.reminder.title": "Rappel",
