@@ -12,6 +12,7 @@ import { useState } from "react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { RoadmapVisibility } from "@/api/schemas/roadmapVisibilitySchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
@@ -72,7 +73,7 @@ const ProjectSettingsRoadmapSection = () => {
         // clears the column instead of writing a second way to say closed.
         body: { roadmapVisibility: next === "off" ? null : next },
       });
-      alepha.store.set(currentProjectAtom, updated);
+      setCurrentProject(alepha, updated);
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     } finally {

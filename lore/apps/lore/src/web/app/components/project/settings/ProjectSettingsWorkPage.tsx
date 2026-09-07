@@ -25,6 +25,7 @@ import { useId, useState } from "react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "@/web/app/atoms/userProjectsAtom.ts";
+import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import {
   capabilityOption,
@@ -90,7 +91,7 @@ const ProjectSettingsWorkPage = () => {
 
   const syncProject = (next: string[]) => {
     const updated = { ...project, kanbanColumns: next };
-    alepha.store.set(currentProjectAtom, updated);
+    setCurrentProject(alepha, updated);
     const overview = alepha.store.get(userProjectsAtom);
     if (overview) {
       alepha.store.set(userProjectsAtom, {
@@ -191,7 +192,7 @@ const ProjectSettingsWorkPage = () => {
         params: { id: project.id },
         body: { kanbanColumnConfig: next },
       });
-      alepha.store.set(currentProjectAtom, updated);
+      setCurrentProject(alepha, updated);
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     } finally {
