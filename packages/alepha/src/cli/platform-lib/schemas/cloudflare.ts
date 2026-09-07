@@ -50,6 +50,22 @@ export const d1QueryResultSchema = z.object({
 
 export type CloudflareD1QueryResult = Infer<typeof d1QueryResultSchema>;
 
+/**
+ * One step of D1's file-import flow: `init`, `ingest` or `poll`.
+ *
+ * Loosely typed on purpose. The three actions answer overlapping shapes -
+ * `init` may carry an upload URL or not, `poll` carries a status and a
+ * bookmark - and pinning a union here would refuse a response D1 is entitled
+ * to widen. What the caller reads is checked where it reads it.
+ */
+export interface CloudflareD1Import {
+  upload_url?: string;
+  filename?: string;
+  status?: string;
+  at_bookmark?: string;
+  errors?: string[];
+}
+
 // ---------------------------------------------------------------------------
 // KV
 // ---------------------------------------------------------------------------

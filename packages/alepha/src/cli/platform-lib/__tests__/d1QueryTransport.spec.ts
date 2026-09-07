@@ -7,15 +7,22 @@ import { CloudflareApi } from "../services/CloudflareApi.ts";
  * The transport half of #1514: what actually goes over the wire when a
  * migration is applied.
  *
- * ⚠️ **`wrangler d1 execute --remote` semantics, never `d1 migrations apply`
- * semantics.** The second wraps each migration in a transaction, SQLite ignores
- * `PRAGMA foreign_keys` inside one, and drizzle's generated table rebuilds
- * depend on that pragma to keep `DROP TABLE` from cascading. It cost 2434 rows
- * across five tables in one production deploy.
+ * ⚠️ **There are TWO endpoints and they are not interchangeable.** Measured
+ * 2026-09-07 against a real D1, one drizzle table rebuild, one five-row
+ * CASCADE child:
  *
- * `d1MigrationsApply.spec.ts` covers discovery, ordering and bookkeeping. This
- * file covers the request: the endpoint, and the fact that a whole
- * multi-statement file goes up as ONE `sql` string rather than being split.
+ * | endpoint | child rows after |
+ * | --- | --- |
+ * | `POST .../query` | **0 of 5** |
+ * | the `.../import` flow | **5 of 5** |
+ *
+ * So `/query` voids `PRAGMA foreign_keys=OFF` exactly as
+ * `wrangler d1 migrations apply` does - the thing that destroyed 2434 rows
+ * across five tables. `d1Query` is for the bookkeeping (what `--command`
+ * uses); `d1Import` is for a migration file (what `--file` uses).
+ *
+ * `d1MigrationsApply.spec.ts` covers discovery, ordering and which of the two
+ * each statement takes. This file covers the requests themselves.
  */
 describe("the D1 query transport", () => {
   const capture = (result: unknown = []) => {
@@ -63,13 +70,126 @@ describe("the D1 query transport", () => {
     expect(calls[0].method).toBe("POST");
   });
 
-  it("sends a whole multi-statement migration as one sql string", async ({
+  it("uploads a migration file and polls the import to completion", async ({
     expect,
   }) => {
-    // A real drizzle table rebuild: the pragma and the `DROP TABLE` it exists
-    // to protect, separated by a statement breakpoint. Splitting this into one
-    // request per statement would end the pragma's scope before the drop, which
-    // is `migrations apply`'s bug reached by another route.
+    // wrangler's own `--file` flow, step for step: init with the md5, upload
+    // if D1 does not already hold it, ingest, poll. The `etag` the upload
+    // answers has to match, or the bytes about to be ingested are not the
+    // bytes we meant to run.
+    const { api, calls, restore } = capture({});
+    let uploadedEtag: string | undefined;
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
+      const target = String(url);
+      if (target.startsWith("https://upload.example/")) {
+        uploadedEtag = target.split("/").pop();
+        return new Response(null, {
+          status: 200,
+          headers: { etag: `"${uploadedEtag}"` },
+        });
+      }
+      const body = typeof init.body === "string" ? JSON.parse(init.body) : {};
+      calls.push({ url: target, method: init.method, body });
+      const result =
+        body.action === "init"
+          ? { upload_url: `https://upload.example/${body.etag}`, filename: "f" }
+          : body.action === "ingest"
+            ? { status: "importing", at_bookmark: "b1" }
+            : { status: "complete" };
+      return new Response(
+        JSON.stringify({ success: true, result, errors: [] }),
+      );
+    }) as typeof globalThis.fetch;
+
+    try {
+      await api.d1Import("db-uuid-1", "PRAGMA foreign_keys=OFF;");
+    } finally {
+      globalThis.fetch = original;
+      restore();
+    }
+
+    expect(calls.map((it) => it.body.action)).toEqual([
+      "init",
+      "ingest",
+      "poll",
+    ]);
+    expect(calls[0].url).toBe(
+      "https://api.cloudflare.com/client/v4/accounts/acct-1/d1/database/db-uuid-1/import",
+    );
+    expect(uploadedEtag).toBe(calls[0].body.etag);
+  });
+
+  it("refuses when the uploaded bytes are not the bytes it meant to run", async ({
+    expect,
+  }) => {
+    const { api, restore } = capture({});
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init: RequestInit = {}) => {
+      if (String(url).startsWith("https://upload.example/")) {
+        return new Response(null, {
+          status: 200,
+          headers: { etag: '"not-the-same"' },
+        });
+      }
+      const body = typeof init.body === "string" ? JSON.parse(init.body) : {};
+      return new Response(
+        JSON.stringify({
+          success: true,
+          result:
+            body.action === "init"
+              ? { upload_url: "https://upload.example/x", filename: "f" }
+              : { status: "complete" },
+          errors: [],
+        }),
+      );
+    }) as typeof globalThis.fetch;
+
+    try {
+      await expect(api.d1Import("db-uuid-1", "SELECT 1;")).rejects.toThrowError(
+        /did not upload intact/,
+      );
+    } finally {
+      globalThis.fetch = original;
+      restore();
+    }
+  });
+
+  it("treats an init that answers complete as nothing left to do", async ({
+    expect,
+  }) => {
+    // ⚠️ Measured: D1 keys an import by md5, so a file it has already ingested
+    // comes back `complete` from `init` with no `filename` - and an `ingest`
+    // after that answers "Invalid property: filename => Required", which reads
+    // as a malformed request rather than as "there was nothing to do".
+    const { api, restore } = capture({});
+    const seen: string[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (_url: string, init: RequestInit = {}) => {
+      const body = typeof init.body === "string" ? JSON.parse(init.body) : {};
+      seen.push(String(body.action));
+      return new Response(
+        JSON.stringify({
+          success: true,
+          result: { status: "complete" },
+          errors: [],
+        }),
+      );
+    }) as typeof globalThis.fetch;
+
+    try {
+      await api.d1Import("db-uuid-1", "SELECT 1;");
+    } finally {
+      globalThis.fetch = original;
+      restore();
+    }
+
+    expect(seen).toEqual(["init"]);
+  });
+
+  it("sends a whole multi-statement bookkeeping query as one sql string", async ({
+    expect,
+  }) => {
     const migration = [
       "PRAGMA foreign_keys=OFF;",
       "--> statement-breakpoint",

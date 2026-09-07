@@ -27,10 +27,14 @@ export interface D1Migration {
  * that shelled out. And reading the applied set back as JSON beats scraping
  * `--json` output with a regular expression, which is what the shell path did.
  *
- * ⚠️ **This is `execute --file` semantics and must stay that way.** See
- * {@link CloudflareApi.d1Query} for what `wrangler d1 migrations apply` does to
- * a table rebuild and what it cost. One request per migration file, SQL
- * verbatim, nothing wrapped around it.
+ * ⚠️ **The two transports are not interchangeable, and picking the wrong one
+ * loses data silently.** A migration FILE goes through
+ * {@link CloudflareApi.d1Import}, which is what `wrangler d1 execute --remote
+ * --file` uses; the bookkeeping statements go through
+ * {@link CloudflareApi.d1Query}, which is what `--command` uses. Measured
+ * 2026-09-07 against a real D1 with a five-row CASCADE child: the query
+ * endpoint kept 0 of 5, the import flow kept 5 of 5. `PRAGMA
+ * foreign_keys=OFF` is void under the first and honoured under the second.
  */
 export class D1MigrationsService {
   protected readonly log = $logger();
@@ -168,7 +172,7 @@ export class D1MigrationsService {
       // here would separate a rebuild's `PRAGMA foreign_keys=OFF` from the
       // `DROP TABLE` it exists to protect.
       const sql = await this.fs.readTextFile(migration.sqlPath);
-      await this.api.d1Query(databaseId, sql);
+      await this.api.d1Import(databaseId, sql);
       await this.api.d1Query(
         databaseId,
         `INSERT INTO d1_migrations (name) VALUES ('${this.escape(migration.name)}');`,

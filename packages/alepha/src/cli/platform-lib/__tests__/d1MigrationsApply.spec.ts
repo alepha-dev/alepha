@@ -26,14 +26,21 @@ import { D1MigrationsService } from "../services/D1MigrationsService.ts";
  * being caught, so this suite asserts the shape of what is sent directly
  * rather than trusting a comment.
  *
- * ⚠️ **The transport is the D1 query API now (#1514), not `wrangler d1
- * execute`.** The invariant is the same and the assertion moved with it: there
- * is no longer a command to check for, so what is checked is that each
- * migration file's SQL is posted **verbatim, in one request, with nothing
- * wrapped around it**. `BEGIN`/`COMMIT` appearing here, or a file split into
- * one request per statement, is the same bug wearing different clothes: either
- * takes a rebuild's `PRAGMA foreign_keys=OFF` out of force before its own
- * `DROP TABLE` runs.
+ * ⚠️ **The transport is D1's HTTP API now (#1514), and WHICH endpoint is the
+ * whole safety property.** Measured 2026-09-07 against a real D1, same
+ * rebuild, same five-row CASCADE child:
+ *
+ * | endpoint | child rows after |
+ * | --- | --- |
+ * | `POST .../query` | **0 of 5** |
+ * | the `.../import` flow | **5 of 5** |
+ *
+ * `/query` voids `PRAGMA foreign_keys=OFF` exactly as `migrations apply` does.
+ * So the assertion is no longer "no transaction was added" - nothing visible in
+ * the request said which of the two was safe - it is **a migration file goes
+ * through `d1Import` and never through `d1Query`**, with the bookkeeping
+ * statements the other way round, which is what wrangler's own `--file` and
+ * `--command` do.
  */
 const ROOT = "dist/migrations";
 
@@ -108,12 +115,27 @@ class FakeFs {
  * a wrapper somebody added around a migration.
  */
 class FakeCloudflareApi {
+  /**
+   * Everything sent through the QUERY endpoint - the bookkeeping.
+   */
   public readonly sql: string[] = [];
+
+  /**
+   * Everything sent through the IMPORT flow - the migration files.
+   *
+   * Two lists rather than one with a tag, because the whole property under
+   * test is which of the two a given statement went through.
+   */
+  public readonly imported: string[] = [];
 
   constructor(protected readonly appliedNames: string[] = []) {}
 
   async resolveD1Id(name: string) {
     return `uuid-of-${name}`;
+  }
+
+  async d1Import(_databaseId: string, sql: string) {
+    this.imported.push(sql);
   }
 
   async d1Query(_databaseId: string, sql: string) {
@@ -149,35 +171,53 @@ describe("d1MigrationsApply", () => {
 
     const call = () => service.apply("mydb", ".", ROOT);
 
-    return { sql: api.sql, call };
+    return { sql: api.imported, bookkeeping: api.sql, call };
   };
 
-  it("wraps no migration in a transaction of its own", async ({ expect }) => {
-    // The `wrangler d1 migrations apply` invariant, restated for the API
-    // transport: what made that command destructive was the transaction it
-    // opened, so the thing to refuse is a transaction and not a command name.
-    const { sql, call } = capture(["0001_init.sql", "0002_rebuild.sql"]);
-    await call();
-
-    expect(sql.some((it) => /\bBEGIN\b/i.test(it))).toBe(false);
-    expect(sql.some((it) => /\bCOMMIT\b/i.test(it))).toBe(false);
-  });
-
-  it("posts each pending migration file as one request, verbatim", async ({
+  it("sends a migration file through the import flow, never the query one", async ({
     expect,
   }) => {
-    const { sql, call } = capture(["0001_init.sql", "0002_rebuild.sql"]);
+    // ⚠️ The measured property, and the only one that separates a working
+    // deploy from the 2434-row incident. Nothing in the request itself says
+    // which endpoint is safe; the endpoint IS the answer.
+    const { sql, bookkeeping, call } = capture([
+      "0001_init.sql",
+      "0002_rebuild.sql",
+    ]);
     await call();
 
-    const applied = appliedFiles(sql);
-    expect(applied).toEqual([
+    expect(appliedFiles(sql)).toEqual([
       "dist/migrations/0001_init.sql",
       "dist/migrations/0002_rebuild.sql",
     ]);
+    expect(appliedFiles(bookkeeping)).toEqual([]);
+  });
 
-    // ⚠️ One request for the whole file. Splitting on `--> statement-breakpoint`
-    // would put the pragma and the `DROP TABLE` it protects in separate
-    // executions, which is the same data loss by another route.
+  it("keeps the bookkeeping on the query endpoint", async ({ expect }) => {
+    // Which is what wrangler's own `--command` uses. They are single
+    // statements with no pragma to void, and routing them through an import
+    // would upload a file per row written.
+    const { bookkeeping, call } = capture(["0001_init.sql"]);
+    await call();
+
+    expect(
+      bookkeeping.some((it) =>
+        it.includes("CREATE TABLE IF NOT EXISTS d1_migrations"),
+      ),
+    ).toBe(true);
+    expect(
+      bookkeeping.some((it) => it.includes("SELECT name FROM d1_migrations")),
+    ).toBe(true);
+  });
+
+  it("sends each pending file whole, verbatim", async ({ expect }) => {
+    const { sql, call } = capture(["0001_init.sql", "0002_rebuild.sql"]);
+    await call();
+
+    // ⚠️ One import for the whole file. Splitting on
+    // `--> statement-breakpoint` would put the pragma and the `DROP TABLE` it
+    // protects in separate executions, which is the same data loss by another
+    // route.
     const rebuild = sql.find((it) => it.includes("0002_rebuild.sql")) as string;
     expect(rebuild).toContain("PRAGMA foreign_keys=OFF;");
     expect(rebuild).toContain("DROP TABLE `parent`;");
@@ -186,14 +226,16 @@ describe("d1MigrationsApply", () => {
   it("records each applied migration in wrangler's own table", async ({
     expect,
   }) => {
-    const { sql, call } = capture(["0001_init.sql"]);
+    const { bookkeeping, call } = capture(["0001_init.sql"]);
     await call();
 
     expect(
-      sql.some((it) => it.includes("CREATE TABLE IF NOT EXISTS d1_migrations")),
+      bookkeeping.some((it) =>
+        it.includes("CREATE TABLE IF NOT EXISTS d1_migrations"),
+      ),
     ).toBe(true);
     expect(
-      sql.some(
+      bookkeeping.some(
         (it) =>
           it.includes("INSERT INTO d1_migrations") &&
           it.includes("0001_init.sql"),
@@ -242,7 +284,7 @@ describe("d1MigrationsApply", () => {
     it("applies a v1 migration, recording the folder name (not 'migration.sql')", async ({
       expect,
     }) => {
-      const { sql, call } = capture([
+      const { sql, bookkeeping, call } = capture([
         "20260729013337_baseline/migration.sql",
         "20260729013337_baseline/snapshot.json",
       ]);
@@ -253,7 +295,7 @@ describe("d1MigrationsApply", () => {
       ]);
 
       expect(
-        sql.some(
+        bookkeeping.some(
           (it) =>
             it.includes("INSERT INTO d1_migrations") &&
             it.includes("VALUES ('20260729013337_baseline')"),
@@ -262,7 +304,9 @@ describe("d1MigrationsApply", () => {
       // The bookkeeping name must be the folder, never the literal
       // filename — `baseline` must record the exact same string for the two
       // methods to ever agree on "already applied".
-      expect(sql.some((it) => it.includes("'migration.sql'"))).toBe(false);
+      expect(bookkeeping.some((it) => it.includes("'migration.sql'"))).toBe(
+        false,
+      );
     });
 
     it("applies pre-v1 and v1 migrations together, in chronological order", async ({
