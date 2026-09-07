@@ -170,6 +170,52 @@ if (this.products.getProduct.can()) {
 }
 ```
 
+### What `can()` actually asks
+
+`can("getProduct")` is "is this action in the registry the server sent me". The
+server prunes an action whose `$secure` permissions the caller's roles do not
+carry, so the answer is **application scope**: the same for every project, team
+or workspace the viewer can open.
+
+For an application where a member's powers vary per resource, that is only half
+the question, and the missing half is the one that decides whether a button
+renders. `ScopeGrantsProvider` is where the other half goes:
+
+```typescript
+import { ScopeGrantsProvider } from "alepha/server/links";
+
+class ProjectScopeGrants extends ScopeGrantsProvider {
+  protected readonly alepha = $inject(Alepha);
+
+  public override current(): readonly string[] | undefined {
+    return this.alepha.store.get(currentProjectAtom)?.permissions;
+  }
+}
+
+alepha.with({ provide: ScopeGrantsProvider, use: ProjectScopeGrants });
+```
+
+`can(action)` is then: in the registry (unchanged) **and**, when a scope
+answers, every permission that action requires is in the scope's set. Each
+action's permissions travel in the registry itself (`permissions` on the action
+entry, filled from its `$secure` options, `$owns({ requires })` included), so no
+screen ever repeats a permission string. They are static per action rather than
+per user, so they cost nothing per request and leak nothing: the caller can
+already see the action.
+
+The call is **synchronous** because it runs during render on both sides of
+hydration. The scope's permission set is therefore something the page's loader
+has already put on an atom - this reads it, it does not fetch.
+
+⚠️ `undefined` and `[]` are different answers. `undefined` means "not inside a
+scope", so nothing is narrowed; `[]` means "inside one, holding nothing", which
+hides every action that names a permission. Returning `[]` for a page outside
+any scope blanks the whole UI.
+
+⚠️ `can("group:name")` - a string with a colon - is a different question
+entirely: it asks about the caller's application permissions, not about an
+action, and a scope never touches it.
+
 ## $remote: Remote Service Access
 
 `$remote` defines a connection to an external service. Use it when services run as separate deployments.

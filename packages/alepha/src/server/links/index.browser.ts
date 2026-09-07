@@ -5,6 +5,7 @@ import { linkOptionsAtom } from "./atoms/linkOptionsAtom.ts";
 import { $client } from "./primitives/$client.ts";
 import { $remote } from "./primitives/$remote.ts";
 import { LinkProvider } from "./providers/LinkProvider.ts";
+import { ScopeGrantsProvider } from "./providers/ScopeGrantsProvider.ts";
 import { BatchCollector } from "./services/BatchCollector.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -14,6 +15,7 @@ export * from "./atoms/linkOptionsAtom.ts";
 export * from "./primitives/$client.ts";
 export * from "./primitives/$remote.ts";
 export * from "./providers/LinkProvider.ts";
+export * from "./providers/ScopeGrantsProvider.ts";
 export * from "./schemas/apiLinksResponseSchema.ts";
 export * from "./services/BatchCollector.ts";
 
@@ -23,7 +25,7 @@ export const AlephaServerLinksClient = $module({
   name: "alepha.server.links.client",
   atoms: [apiLinksAtom, linkOptionsAtom],
   primitives: [$client],
-  services: [LinkProvider, BatchCollector],
+  services: [LinkProvider, BatchCollector, ScopeGrantsProvider],
 });
 
 /**
