@@ -43,6 +43,20 @@ const MyProjects = () => {
   const projects = [...(overview?.projects ?? [])].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1,
   );
+  /*
+   * The quota, counted from the same rows the page already shows
+   * (feedback #P2146). Both halves come from `getHomeOverview`, which since
+   * #Q2013 derives them through `ProjectSecurityService.ownedProjectIds` -
+   * the one helper the CREATE path also counts through, so the number here
+   * and the refusal there cannot disagree. Before that fix they did: the
+   * create path counted membership rows with no join, so a reader saw 8 and
+   * was refused at 15.
+   *
+   * ⚠️ Counted from `owner`, not from `projects.length`: this page lists
+   * every project you belong to, and the quota is only on the ones you own.
+   */
+  const owned = projects.filter((project) => project.owner).length;
+  const maxProjects = overview?.maxProjects;
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,6 +64,26 @@ const MyProjects = () => {
         title={String(tr("account.projects.title"))}
         description={String(tr("account.projects.description"))}
       />
+
+      {/* ⚠️ Shown whenever there is a limit, not only near it. A counter
+          that appears at the ceiling is a counter nobody has seen when they
+          were deciding whether to start something - which is the moment it
+          is for. The other moment is the refusal, and that message already
+          exists on Home and in the switcher.
+
+          `maxProjects` is always sent, so the guard is for a page rendered
+          before the overview lands rather than for a plan without a
+          limit. */}
+      {maxProjects !== undefined && (
+        <p
+          className="text-muted-foreground text-sm"
+          data-testid="project-quota"
+        >
+          {tr("account.projects.quota", {
+            args: [String(owned), String(maxProjects)],
+          })}
+        </p>
+      )}
 
       {projects.length === 0 ? (
         <p className="text-muted-foreground text-sm">
