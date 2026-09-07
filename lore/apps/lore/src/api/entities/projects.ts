@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
+import { APP_NAME_MAX_LENGTH } from "../schemas/appNameSchema.ts";
 import { kanbanColumnConfigSchema } from "../schemas/kanbanColumnSchema.ts";
 import { paletteColorSchema } from "../schemas/paletteColorSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
@@ -299,6 +300,32 @@ export const projects = $entity({
      * table rebuild that cascade-wipes children on D1.
      */
     tagColors: z.record(z.text(), paletteColorSchema).optional(),
+    /**
+     * Which environment a command means when it names none.
+     *
+     * Read by `lore apps build|deploy` through the project resource, and by
+     * `defaultAppInstance` ahead of its fixed rule, so the CLI, the
+     * `/apps/:app` redirect and the `sigil_create` shim cannot disagree about
+     * which env a bare app name resolves to.
+     *
+     * ⚠️ **Absent is the normal state and means "no answer", not
+     * `production`.** A project may run `b14-production` and `eu-staging` and
+     * have no `production` at all, which is exactly why a client-side constant
+     * was wrong once environments became rows. The fallback when this is unset
+     * lives in `defaultAppInstance`; the CLI refuses without `--env` rather
+     * than guessing when an app has several envs.
+     *
+     * Free text with the same shape as `app_instances.env` rather than an
+     * enum, because `env` is a free opaque slug there. **Not** validated
+     * against the project's existing instances: an operator may set the env
+     * they are about to create, and a value naming nothing simply falls
+     * through to the fixed rule.
+     *
+     * NB: `z.optional` with NO `db.default(...)`, like `retentionDays`,
+     * `defaultSurface` and `tagColors` above — a column DEFAULT triggers
+     * the `projects` table rebuild that cascade-wipes children on D1.
+     */
+    defaultEnv: z.text({ max: APP_NAME_MAX_LENGTH }).optional(),
     /**
      * @deprecated — the gold Shop / feature paywall was removed. Every
      * feature it used to sell (Reports, Quest Reminder, Quest Gating)

@@ -28,6 +28,8 @@ describe("LoreClientService", () => {
         LORE_API_KEY: "",
         LORE_URL: "",
         LORE_PROJECT: "",
+        LORE_APP: "",
+        LORE_ENV: "",
         HOME: "/nonexistent",
         ...env,
       },
@@ -134,6 +136,53 @@ describe("LoreClientService", () => {
     it("names both ways of supplying it when neither is set", () => {
       expect(() => create().resolveProject()).toThrowError(/--project/);
       expect(() => create().resolveProject()).toThrowError(/LORE_PROJECT/);
+    });
+  });
+
+  /**
+   * The two axes the `lore apps` commands added (#1811).
+   *
+   * ⚠️ Both answer `undefined` rather than throwing, unlike the project. Each
+   * has a third rung this class cannot reach - the directory's `package.json`
+   * for the app, and a REMOTE read of the project's own default for the env -
+   * so the throw belongs to `LoreProjectResolver`, which walks the whole chain.
+   */
+  describe("which app and which environment", () => {
+    it("takes LORE_APP and LORE_ENV", () => {
+      const service = create({ LORE_APP: "docs", LORE_ENV: "staging" });
+
+      expect(service.appFromEnv()).toBe("docs");
+      expect(service.envFromEnv()).toBe("staging");
+    });
+
+    it("lets the flags win for one invocation", () => {
+      const service = create({ LORE_APP: "docs", LORE_ENV: "staging" });
+
+      expect(service.appFromEnv("shop")).toBe("shop");
+      expect(service.envFromEnv("b14-production")).toBe("b14-production");
+    });
+
+    /**
+     * ⚠️ `||`, not `??`, the rule `resolveProject` already carries. A schema
+     * default only fills an ABSENT variable, and `LORE_APP=` in a CI
+     * environment is present and empty. With `??` an empty string would win
+     * over the package name and the artifact would be filed under nothing.
+     */
+    it("reads an empty variable as unset rather than as a name", () => {
+      const service = create({ LORE_APP: "", LORE_ENV: "" });
+
+      expect(service.appFromEnv()).toBeUndefined();
+      expect(service.envFromEnv()).toBeUndefined();
+    });
+
+    it("reads an empty FLAG as unset too, so a blank CI input falls through", () => {
+      const service = create({ LORE_APP: "docs", LORE_ENV: "staging" });
+
+      // `--app=` on the command line, or a workflow input that expanded to
+      // nothing. Falling through to the variable is the useful reading; the
+      // alternative is an app named "".
+      expect(service.appFromEnv("")).toBe("docs");
+      expect(service.envFromEnv("")).toBe("staging");
     });
   });
 });

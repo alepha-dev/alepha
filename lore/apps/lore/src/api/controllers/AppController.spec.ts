@@ -200,6 +200,27 @@ describe("AppController", () => {
     expect(defaultAppInstance(items, "docs")?.env).toBe("b14-preview");
     // A bare name that names nothing is a 404 in the loader.
     expect(defaultAppInstance(items, "nothing")).toBeUndefined();
+
+    // #1811's `projects.defaultEnv` sits above both rules. The CLI reads the
+    // same column for `lore apps deploy`, so a project that sets one cannot
+    // have the redirect and the deploy disagree about where a bare name goes.
+    expect(defaultAppInstance(items, "club", "a-staging")?.env).toBe(
+      "a-staging",
+    );
+    expect(defaultAppInstance(items, "docs", "staging")?.env).toBe("staging");
+
+    // ⚠️ A default naming no row falls THROUGH rather than resolving to
+    // nothing. The column is deliberately not validated against the instances
+    // - an operator may name the env they are about to create - so a stale
+    // setting costs the redirect its preference and never its answer.
+    expect(defaultAppInstance(items, "club", "gone")?.env).toBe("production");
+    expect(defaultAppInstance(items, "docs", "gone")?.env).toBe("b14-preview");
+
+    // And an unset default is the pre-#1811 behaviour exactly, which is what
+    // keeps every project that predates the column where it was.
+    expect(defaultAppInstance(items, "club", undefined)?.env).toBe(
+      "production",
+    );
   });
 
   it("carries the sigil summary, and never the credential", async ({

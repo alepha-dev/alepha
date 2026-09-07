@@ -1210,6 +1210,19 @@ export default {
   "app.settings.estate.manage": "Gérer les domaines",
   "app.settings.estate.clear": "Aucun domaine",
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
+  "project.settings.apps.defaultEnv.title": "Environnement par défaut",
+  "project.settings.apps.defaultEnv.description":
+    "L'environnement visé par une commande qui n'en nomme aucun. `lore apps deploy` sans --env se résout ici, tout comme un lien /apps/<nom> sans environnement.",
+  "project.settings.apps.defaultEnv.label": "Environnement par défaut",
+  "project.settings.apps.defaultEnv.rowDescription":
+    "Seuls les environnements que ce projet possède déjà sont proposés.",
+  "project.settings.apps.defaultEnv.none":
+    "Ce projet n'a encore aucune copie déployée, donc aucun environnement par défaut possible.",
+  "project.settings.apps.defaultEnv.clear": "Aucun",
+  "project.settings.apps.defaultEnv.fallback":
+    "Sans valeur par défaut, production est utilisé s'il existe, sinon le premier environnement par ordre alphabétique.",
+  "project.settings.apps.defaultEnv.saved":
+    "Environnement par défaut enregistré",
   "app.settings.danger": "Zone dangereuse",
   "app.settings.delete.title": "Supprimer cette app",
   "app.settings.delete.description":
