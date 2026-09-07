@@ -131,6 +131,8 @@ export class LoreAudits {
       "reopen",
       "shelve",
       "unshelve",
+      "hold",
+      "unhold",
       "comment",
       "attachment",
       "commit",

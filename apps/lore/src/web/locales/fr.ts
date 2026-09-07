@@ -415,6 +415,8 @@ export default {
   "quest.event.reminderSent": "a reçu un rappel",
   "quest.event.shelved": "a mis la quête de côté",
   "quest.event.unshelved": "a remis la quête en jeu",
+  "quest.event.held": "a mis la quête en attente",
+  "quest.event.unheld": "a levé la mise en attente",
   "quest.event.updated": "a mis à jour la quête",
   "quest.event.change.priority": "a changé la priorité de $1 à $2",
   "quest.event.change.priorityTo": "a défini la priorité sur $1",
@@ -438,6 +440,7 @@ export default {
   "quest.status.accepted": "En cours",
   "quest.status.completed": "Terminée",
   "quest.status.shelved": "Mise de côté",
+  "quest.status.held": "En attente",
   "quest.rail.estimate": "Estimation",
   "quest.rail.assign.unassigned": "Non assignée",
   "quest.rail.size": "Taille",
@@ -481,6 +484,8 @@ export default {
   "quest.view.actions.unassign": "Se désassigner",
   "quest.view.actions.shelve": "Mettre de côté",
   "quest.view.actions.unshelve": "Remettre en jeu",
+  "quest.view.actions.hold": "Mettre en attente",
+  "quest.view.actions.unhold": "Lever l'attente",
   "quest.view.complete.title": "Terminer cette quête",
   "quest.view.complete.description":
     "Laissez un bref résumé de ce qui a été fait : changements, décisions prises, ce qu'un lecteur futur (humain ou IA) doit savoir.",
@@ -1005,6 +1010,19 @@ export default {
   "quest.view.shelve.confirmWithDependents":
     "Mettre cette quête de côté ? Elle quitte le backlog, mais $1 en dépend et restera bloquée tant que vous ne l'aurez pas remise en jeu puis terminée.",
   "quest.view.shelve.confirmButton": "Mettre de côté",
+  "quest.view.hold.title": "Mettre la quête en attente",
+  "quest.view.hold.description":
+    "Indiquez ce qui bloque. Le message est publié dans la discussion, vous pouvez donc @mentionner la personne qui peut débloquer.",
+  "quest.view.hold.placeholder":
+    "En attente de... (markdown accepté, @mention pour notifier)",
+  "quest.view.hold.submit": "Mettre en attente",
+  "quest.view.hold.reasonRequired": "Une mise en attente exige une raison.",
+  "quest.view.unhold.title": "Lever l'attente",
+  "quest.view.unhold.confirm":
+    "La quête revient à son état d'avant l'attente, toujours assignée à la même personne. La raison reste dans la discussion.",
+  "quest.view.unhold.confirmButton": "Lever l'attente",
+  "quest.view.held.hint":
+    "Cette quête ne peut être ni acceptée ni terminée tant que l'attente n'est pas levée. La raison figure dans la discussion ci-dessous.",
   "quest.view.edit": "Modifier",
   "quest.view.back": "Retour",
   "quest.view.reminder.title": "Rappel",

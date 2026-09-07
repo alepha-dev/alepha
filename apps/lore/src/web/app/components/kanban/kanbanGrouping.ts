@@ -40,7 +40,20 @@ export class KanbanGrouping {
       // the window between the mutation and the next load.
       if (status === "shelved") continue;
 
-      const candidates = columns.filter((col) => col.kind === status);
+      // ⚠️ A held quest keeps the lane it was in, because a hold suspends
+      // work rather than moving it. `held` is a derived status with no
+      // column of its own, so without this it matches no descriptor and
+      // falls into the `candidates.length === 0` branch below - which does
+      // not park the card anywhere, it drops it off the board entirely,
+      // silently, while `getBoard` is still returning it.
+      //
+      // The two-way test mirrors `QuestResourceMapper.questStatus`, where
+      // `heldAt` sits directly above `acceptedAt`: lift the hold and this
+      // is exactly the status that comes back.
+      const lane =
+        status === "held" ? (quest.acceptedAt ? "accepted" : "new") : status;
+
+      const candidates = columns.filter((col) => col.kind === lane);
       if (candidates.length === 0) continue;
 
       // The named column when it still exists and still carries this

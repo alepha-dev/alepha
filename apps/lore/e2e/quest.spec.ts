@@ -2331,3 +2331,100 @@ test.describe("quest table columns", () => {
     });
   });
 });
+
+test.describe("Quest hold", () => {
+  test("hold with a reason, then lift it", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `hold${t}@example.com`;
+    const password = "HoldTest123!";
+    const projectTitle = `HD${t}`.slice(0, 20);
+    const questTitle = `Held${t}`;
+
+    await registerAndVerify(page, email, password);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { shortId } = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: questTitle,
+        description: "Seeded quest for the hold e2e",
+        area: "Main",
+        priority: "medium",
+        objectives: [],
+        attachments: [],
+      },
+    );
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(questTitle).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await test.step("a hold needs a reason before it will submit", async () => {
+      await page.getByRole("button", { name: /put on hold/i }).click();
+
+      const submit = page
+        .getByRole("button", { name: /^put on hold$/i })
+        .last();
+      await expect(submit).toBeVisible({ timeout: 10_000 });
+      // Submitting empty is refused inline by the prompt's own validator, so
+      // the dialog is still open afterwards rather than having held the quest
+      // with no reason.
+      await submit.click();
+      await expect(page.locator("#alepha-dialog-prompt-input")).toBeVisible();
+
+      await page
+        .locator("#alepha-dialog-prompt-input")
+        .fill("Waiting on the vendor API key");
+      await submit.click();
+    });
+
+    await test.step("the quest reads as Held and cannot be accepted", async () => {
+      // The status badge replaces New, rather than sitting beside it.
+      await expect(page.getByText(/on hold/i).first()).toBeVisible({
+        timeout: 10_000,
+      });
+      // The lifecycle slot offers the way out instead of a button the server
+      // would refuse.
+      await expect(page.getByRole("button", { name: /accept/i })).toHaveCount(
+        0,
+      );
+      await expect(
+        page.getByRole("button", { name: /lift hold/i }).first(),
+      ).toBeVisible();
+    });
+
+    await test.step("the reason is in the discussion", async () => {
+      await expect(
+        page.getByText("Waiting on the vendor API key").first(),
+      ).toBeVisible({ timeout: 10_000 });
+    });
+
+    await test.step("lifting the hold gives the quest back", async () => {
+      await page
+        .getByRole("button", { name: /lift hold/i })
+        .first()
+        .click();
+      await page
+        .getByRole("button", { name: /^lift hold$/i })
+        .last()
+        .click();
+
+      await expect(
+        page.getByRole("button", { name: /accept/i }).first(),
+      ).toBeVisible({ timeout: 10_000 });
+      // The reason survives the unhold: it was a comment, not a field.
+      await expect(
+        page.getByText("Waiting on the vendor API key").first(),
+      ).toBeVisible();
+    });
+  });
+});

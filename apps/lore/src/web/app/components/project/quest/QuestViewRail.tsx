@@ -19,6 +19,8 @@ import {
   Hourglass,
   Layers,
   MapPin,
+  PauseCircle,
+  PlayCircle,
   Ruler,
   User,
   UserMinus,
@@ -48,9 +50,13 @@ export interface QuestViewRailProps {
   onUpdate: (quest: QuestResource) => void;
   onShelve: () => void;
   onUnshelve: () => void;
+  onHold: () => void;
+  onUnhold: () => void;
   onUnassign: () => void;
   shelveDisabled?: boolean;
   unshelveDisabled?: boolean;
+  holdDisabled?: boolean;
+  unholdDisabled?: boolean;
   unassignDisabled?: boolean;
 }
 
@@ -109,6 +115,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
   const statusLabel = {
     new: tr("quest.status.new"),
     accepted: tr("quest.status.accepted"),
+    held: tr("quest.status.held"),
     completed: tr("quest.status.completed"),
     shelved: tr("quest.status.shelved"),
   }[quest.metadata.status];
@@ -271,6 +278,35 @@ const QuestViewRail = (props: QuestViewRailProps) => {
         <div className="flex flex-col gap-1.5 border-t pt-4">
           <QuestViewDuplicateButton quest={quest} />
 
+          {quest.heldAt ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="[&_svg]:text-muted-foreground justify-start gap-3"
+              disabled={props.unholdDisabled}
+              onClick={props.onUnhold}
+            >
+              <PlayCircle className="size-4" />
+              {tr("quest.view.actions.unhold")}
+            </Button>
+          ) : (
+            // Not offered on a shelved quest: `holdQuest` accepts `new` and
+            // `accepted` only, and a quest already set aside as out of scope
+            // is not waiting for anything.
+            !quest.shelvedAt && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="[&_svg]:text-muted-foreground justify-start gap-3"
+                disabled={props.holdDisabled}
+                onClick={props.onHold}
+              >
+                <PauseCircle className="size-4" />
+                {tr("quest.view.actions.hold")}
+              </Button>
+            )
+          )}
+
           {quest.shelvedAt ? (
             <Button
               type="button"
@@ -283,16 +319,21 @@ const QuestViewRail = (props: QuestViewRailProps) => {
               {tr("quest.view.actions.unshelve")}
             </Button>
           ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              className="[&_svg]:text-muted-foreground justify-start gap-3"
-              disabled={props.shelveDisabled}
-              onClick={props.onShelve}
-            >
-              <Archive className="size-4" />
-              {tr("quest.view.actions.shelve")}
-            </Button>
+            // Shelving is refused while held - it would have to clear the
+            // hold, and clearing one is an explicit act, not a side effect
+            // of another verb. Hiding the row says so before the 400 does.
+            !quest.heldAt && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="[&_svg]:text-muted-foreground justify-start gap-3"
+                disabled={props.shelveDisabled}
+                onClick={props.onShelve}
+              >
+                <Archive className="size-4" />
+                {tr("quest.view.actions.shelve")}
+              </Button>
+            )
           )}
 
           {quest.acceptedAt && (
