@@ -274,15 +274,15 @@ const DatePopover = (props: DatePopoverProps) => {
                 // all, which is the behaviour being matched.
                 //
                 // ⚠️ Each modifier has to match the variant's own EXACTLY -
-                // `not-disabled:hover:` and `aria-expanded:` - or
-                // tailwind-merge keeps both rules and the winner is down to
-                // source order.
-                "not-disabled:hover:bg-background aria-expanded:bg-background",
+                // `hover:` and `aria-expanded:` - or tailwind-merge keeps both
+                // rules and the winner is down to specificity, which the
+                // longer modifier chain wins.
+                "hover:bg-background aria-expanded:bg-background",
                 // Same reasoning for the placeholder: a select leaves it muted
                 // under the pointer. With a value the text is already
                 // `foreground`, so this only matters while empty.
                 !date &&
-                  "text-muted-foreground not-disabled:hover:text-muted-foreground aria-expanded:text-muted-foreground",
+                  "text-muted-foreground hover:text-muted-foreground aria-expanded:text-muted-foreground",
               )}
             />
           }

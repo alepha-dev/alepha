@@ -178,6 +178,11 @@ const Table = () => {
             v.filters || v.emptyState === "No match"
               ? {
                   schema: filtersSchema,
+                  // Linkable, which is what puts the toolbar's filter MENU
+                  // (Share + Reset) in place of the bare reset icon button.
+                  // The showcase is the only place both shapes can be
+                  // compared, so it demonstrates the one that has more in it.
+                  fromQuery: true,
                   seedValues:
                     v.emptyState === "No match"
                       ? { search: "nobody" }

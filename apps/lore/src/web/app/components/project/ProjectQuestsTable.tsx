@@ -99,15 +99,6 @@ const boardFiltersSchema = z.object({
   release: z.array(z.string()).optional(),
 });
 
-/**
- * The `?status=` values this page understands.
- *
- * Anything else in the URL is dropped rather than rejected: a stale bookmark
- * or a hand-edited link must land on the unfiltered list, not on an error
- * page or an empty table with no visible cause.
- */
-const SEEDABLE_STATUSES = ["new", "accepted", "completed", "shelved"] as const;
-
 const ProjectQuestsTable = () => {
   const [project] = useStore(currentProjectAtom);
   const [currentAreas] = useStore(currentAreasAtom);
@@ -137,18 +128,16 @@ const ProjectQuestsTable = () => {
   const [knownTags, setKnownTags] = useState<string[]>([]);
 
   /**
-   * The status the reader arrived with, if any.
+   * The slice of the URL the table seeds from, as a remount key.
    *
-   * Read straight off the route and handed to AlephaTable as `seedValues`,
-   * which outranks the persisted filter — a drill-through link that lost to
-   * a filter set last week would be a link that does nothing.
-   *
-   * ⚠️ Read-only. Nothing here writes the filter back to the URL; see the
-   * `projectQuests` route for the #156 incident that rule comes from.
+   * Derived from the filter schema rather than a hand-written list, so a
+   * filter added there is linkable and re-seedable without a second edit
+   * here. Reading `router.query` is all this does: the filters are never
+   * written back (#156).
    */
-  const seededStatus = SEEDABLE_STATUSES.find(
-    (status) => status === router.query.status,
-  );
+  const seedKey = Object.keys(z.schema.shape(boardFiltersSchema))
+    .map((key) => `${key}=${router.query[key] ?? ""}`)
+    .join("&");
 
   useEffect(() => {
     if (!project?.id) return;
@@ -348,7 +337,7 @@ const ProjectQuestsTable = () => {
         // The seed is part of the identity: `initialValues` are captured once
         // per mount, and arriving from a different drill-through link on a
         // route the app is already showing would otherwise change nothing.
-        key={`${project.id}:${seededStatus ?? ""}`}
+        key={`${project.id}:${seedKey}`}
         className="min-h-0 flex-1"
         emptyMessage={tr("common.noResults")}
         // AlephaTable owns the filter form + toolbar, and persists filter
@@ -371,7 +360,23 @@ const ProjectQuestsTable = () => {
         ]}
         filters={{
           schema: boardFiltersSchema,
-          seedValues: seededStatus ? { status: [seededStatus] } : undefined,
+          /**
+           * Every filter on this table is linkable: `?status=new,accepted`,
+           * `?tag=need-answer`, `?search=auth`. The five keys are the ones
+           * `boardFiltersSchema` declares, and AlephaTable reads them once on
+           * arrival — a value the schema refuses is dropped, so a stale
+           * bookmark lands on the unfiltered list rather than an error page.
+           *
+           * This used to be a hand-rolled `seedValues` for `?status=` alone.
+           * Its precedence is unchanged: a link outranks the filter the
+           * reader stored last time, or a drill-through would do nothing.
+           *
+           * ⚠️ Read-only, and it stays that way. Nothing writes a filter back
+           * to the URL; the toolbar's Share item is the only write side. See
+           * the `projectQuests` route for the #156 incident that rule comes
+           * from.
+           */
+          fromQuery: true,
           render: (form) => (
             <>
               <FilterSlot>

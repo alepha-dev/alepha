@@ -46,6 +46,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
 import { type Page, type ZObject, z } from "alepha";
 import { ClientOnly, useAlepha } from "alepha/react";
@@ -85,7 +86,13 @@ import {
 import { useIsMobile } from "../../hooks/use-mobile.ts";
 import { AlephaTableBulkMenu } from "./alepha-table-bulk-menu.tsx";
 import { AlephaTableFilterDialog } from "./alepha-table-filter-dialog.tsx";
+import { AlephaTableFilterMenu } from "./alepha-table-filter-menu.tsx";
 import { paginateLocal } from "./paginate-local.ts";
+import {
+  cleanFilterValues,
+  queryToFilters,
+  shareFiltersUrl,
+} from "./query-filters.ts";
 import { useTableSelection } from "./use-table-selection.ts";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
@@ -316,6 +323,32 @@ export interface AlephaTableFilters {
    * the right moment for it: that is the reader choosing.
    */
   seedValues?: Record<string, any>;
+  /**
+   * Fill the filters from the URL query on arrival.
+   *
+   * `true` reads every param whose name matches a key of `schema`; an array
+   * narrows that to the keys it names. Params the schema does not declare are
+   * ignored, so the page keeps owning its own (`?tab=`, a locale, a tracking
+   * param). Multi-value filters are comma-joined: `?status=new,triaged`.
+   *
+   * Read once, at mount, and landed in the same slot as {@link seedValues} —
+   * above the reader's stored filters, below an explicit `seedValues` the
+   * caller passes for a case of its own.
+   *
+   * ⚠️ **One-directional, and it has to stay that way.** The URL seeds the
+   * filters; the filters NEVER write back. Lore's `?view=kanban` was removed
+   * for exactly this (#156): an effect that restored a missing param keyed on
+   * the router state, which is a global store, so the render on the way *out*
+   * of the page saw the next route's query and bounced the reader straight
+   * back. A page cannot tell "nobody has chosen yet" from "we are leaving"
+   * while the state lives in the URL. The toolbar's Share item is the write
+   * side, and it writes to the clipboard on a click, never to the address bar
+   * on a keystroke.
+   *
+   * Off by default. A page's query params are not its table's filters until
+   * the page says so.
+   */
+  fromQuery?: boolean | readonly string[];
   render: (form: FormModel<ZObject>) => ReactNode;
 }
 
@@ -779,6 +812,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   const pageSizes = props.pageSizes ?? PAGE_SIZES;
   const alepha = useAlepha();
   const { tr } = useI18n();
+  const toast = useToast();
   /**
    * The whole of the phone layout, and deliberately one switch rather than a
    * scattering of `max-md:` classes: the filter controls have to be rendered
@@ -804,13 +838,42 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     );
   }, [props.persistenceKey, props.filters]);
 
+  /**
+   * Filter values the URL carries, when the caller opted in with `fromQuery`.
+   *
+   * Read from the store rather than through `useRouterState`, on purpose:
+   * this is a one-shot read at mount, so the subscription would only buy a
+   * re-render of the whole table on navigations it must not react to anyway.
+   * A missing store (a table mounted with no router at all) reads as no
+   * query, not as a crash.
+   */
+  const queryFilterValues = useMemo(() => {
+    const fromQuery = props.filters?.fromQuery;
+    if (!fromQuery || !props.filters) return undefined;
+    const query = (
+      alepha.store.get("alepha.react.router.state") as
+        | { query?: Record<string, any> }
+        | undefined
+    )?.query;
+    if (!query) return undefined;
+    return queryToFilters(
+      alepha,
+      props.filters.schema,
+      query,
+      Array.isArray(fromQuery) ? fromQuery : undefined,
+    );
+  }, []);
+
   const mergedFilterInitialValues = useMemo<Record<string, any>>(
     () => ({
       ...props.filters?.initialValues,
       ...persistedFilterValues,
-      // Last, so it beats the stored choice — see `seedValues`. A drill-through
-      // link that lost to a filter the reader set last week would be a link
-      // that does nothing.
+      // Above the stored choice — see `seedValues`. A drill-through link that
+      // lost to a filter the reader set last week would be a link that does
+      // nothing.
+      ...queryFilterValues,
+      // Last: an explicit `seedValues` is the caller deciding for a case of
+      // its own, and outranks what the URL happened to carry.
       ...props.filters?.seedValues,
     }),
     [],
@@ -1034,6 +1097,40 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     }
   }, [form, props.filters]);
 
+  /**
+   * Copy a link that opens this table with these filters.
+   *
+   * The write half of `fromQuery`, and the only one: nothing puts the
+   * filters in the address bar as the reader types, so a link out of a
+   * filtered table has to be asked for. Built on the page's own URL, so the
+   * params the page owns travel with it.
+   */
+  /**
+   * Whether a link out of this table would do anything on arrival.
+   *
+   * A table that does not read the query back would copy a URL whose params
+   * are inert, which is worse than no Share at all: it looks like it worked.
+   */
+  const canShare = Boolean(props.filters?.fromQuery);
+
+  const shareFilters = useCallback(async () => {
+    if (!props.filters || !form) return;
+    const url = shareFiltersUrl(
+      window.location.href,
+      Object.keys(z.schema.shape(props.filters.schema)),
+      cleanFilterValues(form.currentValues ?? {}),
+    );
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(
+        tr("alephaTable.shareFiltersCopied", { default: "Link copied" }),
+      );
+    } catch {
+      // A denied clipboard permission, or an insecure origin. Nothing here
+      // is worth an error toast the reader cannot act on.
+    }
+  }, [form, props.filters, toast, tr]);
+
   // -- Form event subscriptions ---------------------------------------------
 
   // Refetch on explicit submit (manual Apply, programmatic submit, etc.).
@@ -1070,14 +1167,11 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   useEffect(() => {
     if (!props.persistenceKey || !form || !props.filters) return;
     const persist = () => {
-      const clean: Record<string, any> = {};
-      const values = form.currentValues ?? {};
-      for (const [k, v] of Object.entries(values)) {
-        if (v === undefined || v === null || v === "") continue;
-        if (Array.isArray(v) && v.length === 0) continue;
-        clean[k] = v;
-      }
-      writePersisted(props.persistenceKey!, "filters", clean);
+      writePersisted(
+        props.persistenceKey!,
+        "filters",
+        cleanFilterValues(form.currentValues ?? {}),
+      );
     };
     const unsubs = [
       alepha.events.on("form:change", (event) => {
@@ -1385,14 +1479,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
    */
   const activeFilterCount = useMemo(() => {
     if (!props.filters || !form) return 0;
-    const values = form.currentValues ?? {};
-    let count = 0;
-    for (const v of Object.values(values)) {
-      if (v === undefined || v === null || v === "") continue;
-      if (Array.isArray(v) && v.length === 0) continue;
-      count++;
-    }
-    return count;
+    return Object.keys(cleanFilterValues(form.currentValues ?? {})).length;
   }, [props.filters, form, refreshKey]);
   const hasActiveFilters = activeFilterCount > 0;
 
@@ -1569,6 +1656,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                     form={form}
                     activeCount={activeFilterCount}
                     onReset={resetFilters}
+                    onShare={canShare ? shareFilters : undefined}
                   >
                     {props.filters.render(form)}
                   </AlephaTableFilterDialog>
@@ -1583,11 +1671,24 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
                   />
                 )}
                 {/*
-                  Desktop only. On a phone Reset lives in the dialog beside the
-                  controls it clears, and a second copy out here would spend a
-                  slot of the very row this change exists to shorten.
+                  Desktop only. On a phone the same two actions live in the
+                  filter dialog, beside the controls they act on, and a second
+                  copy out here would spend a slot of the very row that dialog
+                  exists to shorten.
                 */}
-                {showActionsMenu && props.filters && !isMobile && (
+                {showActionsMenu && props.filters && !isMobile && canShare && (
+                  <AlephaTableFilterMenu
+                    activeCount={activeFilterCount}
+                    onShare={shareFilters}
+                    onReset={resetFilters}
+                  />
+                )}
+                {/*
+                  Not linkable: no Share, so no menu either. A menu of one
+                  item would cost a click to reach the button that is already
+                  here.
+                */}
+                {showActionsMenu && props.filters && !isMobile && !canShare && (
                   <Tooltip>
                     <TooltipTrigger
                       render={
