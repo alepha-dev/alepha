@@ -51,7 +51,11 @@ export class ProjectLimits {
       maxCommandsPerEstate: z.integer().min(1).max(100_000).optional(),
     }),
     default: {
-      maxProjectsPerUser: 10,
+      // Raised from 10 on 2026-09-07 (feedback #P2133). The schema has
+      // always allowed up to 10,000; 10 was a number nobody had revisited,
+      // and the reporter met it with 8 live projects because the count was
+      // also charging them for 7 deleted ones.
+      maxProjectsPerUser: 100,
       maxMembersPerProject: 100,
       maxQuestsPerProject: 5_000,
       maxReleasesPerProject: 200,

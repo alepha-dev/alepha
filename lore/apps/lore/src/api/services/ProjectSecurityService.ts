@@ -65,6 +65,58 @@ export class ProjectSecurityService {
    */
   capabilities = $repository(projectCapabilities);
   protected readonly registry = $inject(CapabilityRegistry);
+
+  /**
+   * Which projects this user OWNS and that still exist.
+   *
+   * ⚠️ **The one definition of "how many projects do you own", and it has to
+   * be one.** It was written twice and the two disagreed in production: the
+   * create path counted owner membership rows with no join, the Home
+   * overview derived its `canCreate` from the project list, which filters
+   * soft-deleted rows. A user with 8 live projects and 7 deleted ones was
+   * told they could create (8 < 10) and refused at submit (15 >= 10) - the
+   * "it only fails at the end" report (feedback #P2133).
+   *
+   * A SET rather than a count, so the Home page can answer the per-row Owner
+   * badge from the same read instead of running a second one that could
+   * disagree with the number beside it.
+   *
+   * ⚠️ Owner ROWS, never `projects.createdBy`. The creator column stopped
+   * being an authorization input in epic #E39, and after an ownership
+   * transfer a quota counting it charges the giver forever and the receiver
+   * nothing.
+   *
+   * ⚠️ Two reads rather than a join, and the second is what does the work:
+   * `findMany` applies the soft-delete scope itself, so a project that was
+   * deleted simply does not come back. Production holds owner rows on
+   * soft-deleted projects - `ProjectDeletionService` deletes the project and
+   * the membership rows in two statements and D1 has no transaction to bind
+   * them - so filtering on the PROJECT is the only thing that can be relied
+   * on. Membership rows the delete missed are harmless once this is the
+   * count.
+   */
+  async ownedProjectIds(userId: string): Promise<Set<number>> {
+    const owned = await this.members.findMany({
+      where: {
+        userId: { eq: userId },
+        rank: { eq: "owner" },
+      },
+    });
+
+    const ids = owned.map((row) => row.projectId);
+    if (ids.length === 0) {
+      // ⚠️ `inArray: []` THROWS rather than matching nothing, and a brand-new
+      // account is exactly the caller that reaches this.
+      return new Set();
+    }
+
+    const alive = await this.projects.findMany({
+      where: { id: { inArray: ids } },
+      columns: ["id"],
+    });
+
+    return new Set(alive.map((row) => row.id));
+  }
   protected readonly memo = $inject(ResourceGateMemoProvider);
 
   /**
