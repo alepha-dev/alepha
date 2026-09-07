@@ -1,3 +1,4 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
@@ -17,16 +18,11 @@ import {
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
 import { cn } from "@alepha/ui/lib/utils";
+import { z } from "alepha";
 import type { InvitationEntity } from "alepha/api/invitations";
 import { useAuth } from "alepha/react/auth";
+import { useForm, useFormValues } from "alepha/react/form";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Mail, MoreHorizontal, Plus, Users } from "lucide-react";
@@ -47,6 +43,13 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import ProjectMemberRankPicker from "./ProjectMemberRankPicker.tsx";
 import ProjectTransferOwnershipDialog from "./ProjectTransferOwnershipDialog.tsx";
+
+/**
+ * The invite dialog's rank field. Required, so `Control` does not make it
+ * deselectable: an invitation always lands the person on a rank, and `member`
+ * is the floor.
+ */
+const inviteRankFieldSchema = z.object({ rank: z.text() });
 
 export interface ProjectSettingsMembersSectionProps {
   project: Project;
@@ -69,8 +72,17 @@ const ProjectSettingsMembersSection = (
   /**
    * The rank the invitee lands on. `member` by default, which is what every
    * invitation sent before epic #E39 resolves to.
+   *
+   * A one-field form rather than `useState`, so the picker is a `Control`
+   * like every other one in the app (feedback #P2121). Nothing saves on
+   * change: the value is read when the Invite button is pressed.
    */
-  const [inviteRank, setInviteRank] = useState("member");
+  const inviteForm = useForm({
+    schema: inviteRankFieldSchema,
+    initialValues: { rank: "member" },
+    handler: () => {},
+  });
+  const inviteRank = String(useFormValues(inviteForm).rank ?? "member");
   const [transferTo, setTransferTo] = useState<
     { userId: string; name: string } | undefined
   >();
@@ -103,7 +115,7 @@ const ProjectSettingsMembersSection = (
       return;
     }
     setEmail("");
-    setInviteRank("member");
+    inviteForm.input.rank.set("member");
     setOpen(false);
     // Re-run the loader for the new pending row; a hard reload threw the
     // whole app state away for one list.
@@ -163,31 +175,22 @@ const ProjectSettingsMembersSection = (
                 unanswered for days, and the subset rule has to hold against
                 the person who offered the rank. */}
             {projectRanks.ranks.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <Label>{tr("project.settings.members.invite.rank")}</Label>
-                <Select
-                  value={inviteRank}
-                  onValueChange={(value) => setInviteRank(String(value))}
-                >
-                  <SelectTrigger
-                    data-testid="invite-rank"
-                    aria-label={String(
-                      tr("project.settings.members.invite.rank"),
-                    )}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projectRanks.ranks
-                      .filter((it) => it.key !== "owner")
-                      .map((rank) => (
-                        <SelectItem key={rank.key} value={rank.key}>
-                          {rank.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Control
+                select
+                input={inviteForm.input.rank}
+                label={String(tr("project.settings.members.invite.rank"))}
+                items={projectRanks.ranks
+                  // `owner` is not an assignment target, so it is not an
+                  // invitation target either.
+                  .filter((it) => it.key !== "owner")
+                  .map((rank) => ({ value: rank.key, label: rank.name }))}
+                inputProps={{
+                  "data-testid": "invite-rank",
+                  "aria-label": String(
+                    tr("project.settings.members.invite.rank"),
+                  ),
+                }}
+              />
             )}
           </div>
           <DialogFooter>

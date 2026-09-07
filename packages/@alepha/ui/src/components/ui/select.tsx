@@ -5,6 +5,13 @@ import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import * as React from "react";
 
+/**
+ * @deprecated Reach for `Control` (or `ControlSelect`) instead. This is the
+ * raw Base UI primitive: it renders the raw VALUE on its trigger, carries no
+ * label, no description, no error slot and no form binding, and every surface
+ * that used it grew the same three workarounds by hand. It is kept only until
+ * the last call site is gone (feedback #P2121).
+ */
 const Select = SelectPrimitive.Root;
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {

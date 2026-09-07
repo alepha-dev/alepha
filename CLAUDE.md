@@ -369,6 +369,7 @@ Conventions enforced by review, not by lint. They are not obvious from the code,
 - **Props interfaces are named `MyComponentProps`** — always a named exported interface, never inline.
 - **No React Context** — use `$atom` + `useStore`, never `createContext` / `useContext`.
 - **`@alepha/ui/components/admin/*` is a separate sub-module** — importing from `@alepha/ui` inside admin code is correct, not a layering violation.
+- **Always a `Control*`, never a raw `ui/` primitive** — reach for `<Control select …>` / `<ControlSelect>` rather than `<Select>`, and the same for every other field. The raw primitive renders the raw VALUE on its trigger (an opaque id, not the label), and carries no label, no description, no error slot and no form binding, so every surface that used one grew the same three workarounds by hand. `<Select>` is `@deprecated` and going. **It is not a drop-in swap**: `Control` binds to a form field, so a picker with local state becomes a one-field `useForm` — `initialValues` for what the server says, `onChange` for a control that saves on change, and `useFormValues` where a `useState` was read.
 
 ### Router and i18n
 
