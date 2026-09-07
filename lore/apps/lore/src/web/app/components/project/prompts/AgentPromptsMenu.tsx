@@ -38,6 +38,22 @@ export interface AgentPromptsMenuItem {
 
 export interface AgentPromptsMenuProps {
   items: AgentPromptsMenuItem[];
+
+  /**
+   * Render the trigger as the robot glyph alone.
+   *
+   * For a footer whose row is ordered by importance, where this is the
+   * least urgent control and also the widest (feedback #P2150). The label
+   * moves into `aria-label` AND `title` - an `aria-label` alone leaves a
+   * pointer user with an unlabelled glyph, which is the rule #Q2017
+   * records.
+   *
+   * ⚠️ **No caret in this form**, unlike the labelled one. The caret
+   * (#Q2070) exists to say a word is a menu; on a 32px square it is a
+   * second glyph competing with the one that names the thing, and the
+   * button reads as a menu from its own shape.
+   */
+  iconOnly?: boolean;
 }
 
 /**
@@ -69,15 +85,28 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" size="lg" />}>
+      <DropdownMenuTrigger
+        render={
+          props.iconOnly ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={String(tr("agentPrompts.menu"))}
+              title={String(tr("agentPrompts.menu"))}
+            />
+          ) : (
+            <Button variant="outline" size="lg" />
+          )
+        }
+      >
         <Bot className="size-4" />
-        {tr("agentPrompts.menu")}
+        {!props.iconOnly && tr("agentPrompts.menu")}
         {/* ⚠️ Same size and opacity as `AlephaTableBulkMenu`'s, so the two
             read as one kind of control; `Down` rather than `Up` because
             this menu opens downward. It is decoration and carries no
             accessible name of its own - the trigger is already named by
-            its label. */}
-        <ChevronDown className="size-3.5 opacity-70" />
+            its label, and in the icon form there is no label to qualify. */}
+        {!props.iconOnly && <ChevronDown className="size-3.5 opacity-70" />}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {props.items.map((item) => {
