@@ -1,6 +1,6 @@
-import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
+import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
+import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
 import { Button } from "@alepha/ui/components/ui/button";
-import { Card } from "@alepha/ui/components/ui/card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -107,52 +107,61 @@ const MyEstates = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <SettingsHeading
+      {/* ⚠️ Rendered whatever the count, which is what lets the create row
+          live INSIDE it (feedback #P2140). The card used to close after the
+          last estate and drop a lone button below it, and with no estates at
+          all there was no card - so the one control on the page sat on its
+          own against the background. `account-keys.tsx` is the shape being
+          matched, down to the section rather than a hand-rolled `Card`. */}
+      <SettingsSection
         title={String(tr("account.estates.title"))}
         description={String(tr("account.estates.description"))}
-      />
+      >
+        {(items ?? []).map((estate) => (
+          <MyEstateRow
+            key={estate.id}
+            estate={estate}
+            // ⚠️ Two behaviours in one list, stated here rather than left to
+            // be discovered: a `bay` row opens its console, which is where
+            // its switches, apps and actions live now; a `cloudflare` row
+            // keeps the drawer until #E22 gives it a page of its own.
+            onOpen={() =>
+              estate.type === "bay"
+                ? void router.push("bay", {
+                    params: { estateId: estate.id },
+                  })
+                : setOpenId(estate.id)
+            }
+          />
+        ))}
 
-      {items !== undefined && items.length === 0 && (
-        <p className="text-muted-foreground text-sm">
-          {tr("account.estates.empty")}
-        </p>
-      )}
-
-      {(items ?? []).length > 0 && (
-        <Card className="gap-0 divide-y overflow-hidden py-0">
-          {(items ?? []).map((estate) => (
-            <MyEstateRow
-              key={estate.id}
-              estate={estate}
-              // ⚠️ Two behaviours in one list, stated here rather than left to
-              // be discovered: a `bay` row opens its console, which is where
-              // its switches, apps and actions live now; a `cloudflare` row
-              // keeps the drawer until #E22 gives it a page of its own.
-              onOpen={() =>
-                estate.type === "bay"
-                  ? void router.push("bay", {
-                      params: { estateId: estate.id },
-                    })
-                  : setOpenId(estate.id)
-              }
-            />
-          ))}
-        </Card>
-      )}
-
-      <div>
-        <Button
-          variant="secondary"
-          onClick={() => setCreateOpen(true)}
-          data-testid="estate-create-open"
+        {/* The last row, and the empty state: with no estates it is the only
+            row, exactly as "Create a key" is on API keys. That replaced a
+            paragraph telling a reader with no secret in hand to run
+            `bay connector set` - the command belongs where it can be
+            followed, and the secret dialog already carries it in full, with
+            its arguments. */}
+        <SettingsRow
+          // The dialog's title, reused deliberately: the row and the dialog
+          // it opens name the same act, and a second copy of the phrase is a
+          // second thing to translate and to keep in step.
+          label={tr("account.estates.create")}
+          description={tr("account.estates.create.description")}
         >
-          <Plus className="size-4" />
-          {/* "New estate" here, "Create" on the dialog's submit: the page
-              button opens a form, it does not perform the action. Same split
-              `account-keys.tsx` makes between "New key" and "Create". */}
-          {tr("account.estates.new")}
-        </Button>
-      </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+            data-testid="estate-create-open"
+          >
+            <Plus className="size-4" />
+            {/* "New estate" here, "Create" on the dialog's submit: the page
+                button opens a form, it does not perform the action. Same split
+                `account-keys.tsx` makes between "New key" and "Create". */}
+            {tr("account.estates.new")}
+          </Button>
+        </SettingsRow>
+      </SettingsSection>
 
       <MyEstateCreateDialog
         open={createOpen}

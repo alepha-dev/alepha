@@ -1722,9 +1722,9 @@ export default {
   "account.estates.title": "Estates",
   "account.estates.description":
     "The machines and accounts you own and lend to projects as deploy destinations. Each one dials in with a secret shown once, at creation and at rotation.",
-  "account.estates.empty":
-    "You own no estate yet. Create one, then run `bay connector set` on the machine with the secret it shows.",
   "account.estates.create": "Create an estate",
+  "account.estates.create.description":
+    "Its secret is shown once, at creation. It cannot be recovered afterwards, only rotated.",
   "account.estates.create.submit": "Create",
   "account.estates.new": "New estate",
   "account.estates.secretPrefix": "secret $1…",

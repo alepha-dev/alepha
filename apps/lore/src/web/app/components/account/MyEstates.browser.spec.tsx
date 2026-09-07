@@ -122,10 +122,19 @@ describe("MyEstates", () => {
     };
   };
 
-  it("says so when the account owns no estate", async ({ expect }) => {
-    const { findByText } = await show({ listMyEstates: { items: [] } });
+  it("shows the create row and nothing else when the account owns none", async ({
+    expect,
+  }) => {
+    // ⚠️ Feedback #P2140: the create row IS the empty state now, the way
+    // "Create a key" is on API keys. It replaced a paragraph telling a
+    // reader who holds no secret to run `bay connector set` - a command the
+    // secret dialog already carries in full, at the moment it can be run.
+    const { findByText, queryAllByTestId } = await show({
+      listMyEstates: { items: [] },
+    });
 
-    expect(await findByText(/You own no estate yet/)).toBeTruthy();
+    expect(await findByText(/Create an estate/)).toBeTruthy();
+    expect(queryAllByTestId("my-estate-row")).toHaveLength(0);
   });
 
   it("lists an estate as a row, with the secret truncated", async ({
@@ -177,7 +186,7 @@ describe("MyEstates", () => {
       createEstate: { ...estate(), secret: SECRET },
     });
 
-    await findByText(/You own no estate yet/);
+    await findByText(/Create an estate/);
 
     fireEvent.click(getByTestId("estate-create-open"));
     fireEvent.change(getByTestId("estate-create-slug"), {
@@ -243,7 +252,7 @@ describe("MyEstates", () => {
       },
     );
 
-    await findByText(/You own no estate yet/);
+    await findByText(/Create an estate/);
     fireEvent.click(getByTestId("estate-create-open"));
     fireEvent.click(getByTestId("estate-type-cloudflare"));
     fireEvent.change(getByTestId("estate-create-slug"), {
