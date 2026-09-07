@@ -27,7 +27,7 @@ export const useInviteMember = (): InviteMember => {
   const { tr } = useI18n<I18n, "en">();
   const [loading, setLoading] = useState(false);
 
-  const invite = async (projectId: number, email: string) => {
+  const invite = async (projectId: number, email: string, rank?: string) => {
     const trimmed = email.trim();
     if (!trimmed) {
       toaster.error(
@@ -42,6 +42,10 @@ export const useInviteMember = (): InviteMember => {
           email: trimmed,
           resourceType: "project",
           resourceId: String(projectId),
+          // ⚠️ `roles` is the module's field and this is its one reader: it
+          // names the RANK the invitee lands on. Omitted when the caller does
+          // not care, which `grant` reads as `member`.
+          ...(rank ? { roles: [rank] } : {}),
         },
       });
       toaster.success(
@@ -70,7 +74,15 @@ export interface InviteMember {
    * refused or the email was blank. Either way the user has already been
    * told - the caller only has to decide what to do with its own form.
    */
-  invite: (projectId: number, email: string) => Promise<boolean>;
+  invite: (
+    projectId: number,
+    email: string,
+    /**
+     * The rank they land on. Omitted means `member`, which is what every
+     * invitation sent before epic #E39 resolves to.
+     */
+    rank?: string,
+  ) => Promise<boolean>;
   loading: boolean;
   /**
    * Whether this reader's rank may invite at all. Returned beside the verb
