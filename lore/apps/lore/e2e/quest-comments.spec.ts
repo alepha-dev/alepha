@@ -4,6 +4,7 @@ import { expect, test } from "./_fixtures.ts";
 import {
   apiPost,
   createProjectViaWizard,
+  fillMarkdownEditor,
   newUserContext,
   registerAndVerify,
 } from "./_helpers.ts";
@@ -280,9 +281,18 @@ test.describe("Quest comments", () => {
     await page.waitForLoadState("networkidle");
 
     await test.step("type and send", async () => {
-      const box = page.getByRole("textbox", { name: /leave a comment/i });
-      await expect(box).toBeVisible({ timeout: 10_000 });
-      await box.fill(`Blocked by #Q${other.shortId}, see there.`);
+      // ⚠️ Through `fillMarkdownEditor`, not `fill` on a textbox. The composer
+      // is a `LoreEditor` since #Q2014, so the target is CodeMirror's
+      // contenteditable - `fill` on it does nothing and `toHaveValue` reads
+      // undefined, both silently.
+      //
+      // `nth = 0`, and that is worth stating: the quest DESCRIPTION is read
+      // only here, rendered through `LoreViewer`, so it mounts no editor at
+      // all - the composer is the page's only one.
+      await fillMarkdownEditor(
+        page,
+        `Blocked by #Q${other.shortId}, see there.`,
+      );
       await page.getByRole("button", { name: /^comment$/i }).click();
 
       // The feed takes the posted comment without a reload. Assert on the
@@ -291,8 +301,17 @@ test.describe("Quest comments", () => {
       await expect(page.getByText(/see there/)).toBeVisible({
         timeout: 10_000,
       });
-      // The box empties, so a second comment does not start from the first.
-      await expect(box).toHaveValue("");
+      // The composer empties, so a second comment does not start from the
+      // first.
+      //
+      // ⚠️ Asserted through the PLACEHOLDER, not through empty text.
+      // CodeMirror renders its placeholder as a child of `.cm-content`, so
+      // `toHaveText("")` reads the placeholder string back and fails on an
+      // editor that is in fact empty. `.cm-placeholder` exists only while it
+      // is.
+      await expect(page.locator(".lore-md-edit .cm-placeholder")).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     await test.step("the bare #Q<n> became a real link to that quest", async () => {

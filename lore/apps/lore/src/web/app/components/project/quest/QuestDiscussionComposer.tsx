@@ -1,10 +1,9 @@
 import { Button } from "@alepha/ui/components/ui/button";
-import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { useClient, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Send } from "lucide-react";
-import { type KeyboardEvent, useState } from "react";
+import { useState } from "react";
 
 import type { QuestCommentController } from "@/api/controllers/QuestCommentController.ts";
 import type { QuestCommentResource } from "@/api/schemas/questCommentResourceSchema.ts";
@@ -12,6 +11,7 @@ import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import LoreEditor from "../../shared/element/LoreEditor.tsx";
 import { UserAvatar } from "../../shared/UserAvatar.tsx";
 
 export interface QuestDiscussionComposerProps {
@@ -22,17 +22,32 @@ export interface QuestDiscussionComposerProps {
 /**
  * The composer at the foot of the Discussion.
  *
- * A plain textarea, not the markdown editor: a comment is a paragraph, and
- * mounting CodeMirror at the bottom of every quest page to write one would
- * cost more than it is worth. `Markdown supported` says what the body does
- * with it; the feed renders it through the same viewer the description uses,
- * so `[[#F12]]`, `#Q1204` and `@member` all resolve.
+ * A `LoreEditor` like every other markdown surface in Lore. It was a plain
+ * `Textarea` with "Markdown supported" written under it as an apology, on the
+ * argument that mounting CodeMirror to write a paragraph costs more than it
+ * is worth. It was the one surface that opted out, and everything it was
+ * missing is what a comment actually wants: the format toolbar, the floating
+ * selection toolbar, `[[#` completion over folios, quests, epics and
+ * releases, and image paste straight into the quest's own attachments.
  *
- * **⌘↵ posts** as well as the button. Deciding it here rather than leaving it
- * open: the textarea is the only focusable thing in the section, so a reader
- * who has just typed has nowhere else to be, and every comment box they have
- * used elsewhere behaves this way. Plain ↵ stays a newline — a comment is
- * often more than one line.
+ * Everything follows from `element` - `useElementImageUpload` already has a
+ * quest arm and `useElementLinks` already supplies the suggestions - so this
+ * component holds no editor configuration of its own.
+ *
+ * ⚠️ **Two costs, both accepted by the owner on 2026-09-07.**
+ *
+ * The CodeMirror chunk now loads on every quest page, where the read-only
+ * description never mounted it. `QuestView` calls `preloadMarkdownEditor()`
+ * so the import is warm rather than paid at the first click.
+ *
+ * **⌘↵ no longer posts.** It was an `onKeyDown` on the textarea; CodeMirror
+ * owns its keymap and restoring it means an extension. The handler is deleted
+ * rather than left dead.
+ *
+ * ⚠️ The READ side is untouched. `QuestDiscussionComment` renders through
+ * `LoreViewer` with `expandCommentReferences` in front of it, which is what
+ * resolves a bare `#Q1204` and a matched `@name`. That rewrite runs on the
+ * way OUT and never on the stored body.
  *
  * Autosaving an unsent draft is deliberately out of scope.
  */
@@ -62,13 +77,6 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
     }
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-      event.preventDefault();
-      void post();
-    }
-  };
-
   return (
     // Same gutter as the rows above, so the composer reads as the next entry
     // in the feed rather than a form bolted under it.
@@ -79,19 +87,26 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
         alt=""
       />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <Textarea
+        <LoreEditor
+          element={{
+            kind: "quest",
+            projectId: props.quest.projectId,
+            projectSlug: project.slug,
+            id: props.quest.id,
+          }}
+          // `field`, so the fixed format toolbar is on and the height is a
+          // box on a form rather than a document.
+          variant="field"
           value={body}
-          onChange={(event) => setBody(event.target.value)}
-          onKeyDown={onKeyDown}
-          disabled={posting}
-          rows={3}
+          onChange={setBody}
+          // ⚠️ A real freeze, not a `disabled` the editor would ignore: it
+          // reaches CodeMirror's own `readOnly` through the wrapper. The
+          // button below disables at the same moment, so the two agree.
+          readOnly={posting}
+          minHeight={120}
           placeholder={String(tr("quest.discussion.composer.placeholder"))}
-          aria-label={String(tr("quest.discussion.composer.placeholder"))}
         />
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-muted-foreground text-xs">
-            {tr("quest.discussion.composer.markdown")}
-          </span>
+        <div className="flex items-center justify-end gap-2">
           <Button
             type="button"
             size="sm"

@@ -14,6 +14,15 @@ export interface MarkdownEditorInnerProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /**
+   * Freeze the text while a save is in flight.
+   *
+   * ⚠️ It reaches CodeMirror's own `readOnly`, which is why it exists as a
+   * pass-through rather than a `disabled` prop the wrapper swallows: a
+   * control that draws itself disabled and still accepts keystrokes is worse
+   * than one that never claimed to.
+   */
+  readOnly?: boolean;
   minHeight?: number;
   /**
    * Show the numbered gutter in EDIT mode. View mode renders through
@@ -130,6 +139,7 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
           value={props.value}
           onChange={props.onChange}
           placeholder={props.placeholder}
+          readOnly={props.readOnly}
           minHeight={props.minHeight}
           lineNumbers={props.lineNumbers}
           imageUploadHandler={props.imageUploadHandler}

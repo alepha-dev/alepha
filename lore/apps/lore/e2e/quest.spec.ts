@@ -750,7 +750,15 @@ test.describe("Quest", () => {
       // The dialog presents the shared markdown editor. Quest surfaces
       // open in Edit mode, so CodeMirror is already mounted — but its
       // surface is a contenteditable, so the text is typed, not filled.
-      const editor = page.locator(".lore-md-edit .cm-content").first();
+      //
+      // ⚠️ Scoped to the DIALOG, not `.first()` on the page. The Discussion's
+      // composer became a `LoreEditor` too (#Q2014), and it comes first in
+      // the DOM - so `.first()` resolved to the box behind the overlay and
+      // the click was intercepted by the dialog it was supposed to be inside.
+      const editor = page
+        .getByRole("dialog")
+        .locator(".lore-md-edit .cm-content")
+        .first();
       await expect(editor).toBeVisible({ timeout: 10_000 });
       await editor.click();
       await editor.pressSequentially(summaryText);

@@ -30,6 +30,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
 import { formatReference } from "../../shared/element/typedReference.ts";
+import { preloadMarkdownEditor } from "../../shared/markdown-editor/MarkdownEditor.tsx";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
 import { questAgentGate } from "../prompts/questAgentGate.ts";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
@@ -113,6 +114,14 @@ const QuestView = (props: QuestViewProps) => {
     setSeededQuest(props.quest);
     setQuest(props.quest);
   }
+
+  // The Discussion's composer is a `LoreEditor` now (#Q2014), so the
+  // CodeMirror chunk is needed on this page where the read-only description
+  // never asked for it. Warmed on mount rather than paid at the first click
+  // in the composer, the same way `FolioWorkspace` warms it.
+  useEffect(() => {
+    preloadMarkdownEditor();
+  }, []);
 
   // Pull predecessor + dependents whenever the quest identity flips
   // (route change or duplicate spawn). Cheap — at most a few rows.
