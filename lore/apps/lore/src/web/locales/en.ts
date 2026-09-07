@@ -1107,6 +1107,31 @@ export default {
   "app.tab.errors": "Errors",
   "app.tab.explore": "Explore",
   "app.tab.artifacts": "Artifacts",
+  "app.tab.environment": "Environment",
+  "app.environment": "Environment variables",
+  "app.environment.description":
+    "What this copy runs with. Values are encrypted and never shown again, here or anywhere else - replace one rather than read it. DATABASE_URL, R2_BUCKET_NAME and the CLOUDFLARE_* names are set by the deploy itself.",
+  "app.environment.loading": "Loading...",
+  "app.environment.error": "Could not read this copy's environment.",
+  "app.environment.empty":
+    "Nothing set yet. This copy deploys fine with no variables.",
+  "app.environment.masked": "Starts with $1",
+  "app.environment.masked.short": "Set",
+  "app.environment.remove": "Remove",
+  "app.environment.remove.title": "Remove this variable?",
+  "app.environment.remove.description":
+    "$1 will be gone from the next deploy. The value cannot be recovered.",
+  "app.environment.remove.confirm": "Remove",
+  "app.environment.removed": "Variable removed",
+  "app.environment.add": "Set a variable",
+  "app.environment.add.description":
+    "Setting a name that already exists replaces its value, which is the only way to change one.",
+  "app.environment.key": "Name",
+  "app.environment.value": "Value",
+  "app.environment.save": "Save",
+  "app.environment.saved": "Variable saved",
+  "app.environment.ownerOnly":
+    "Only the project owner can change what this copy runs with.",
   "app.tab.settings": "Settings",
   "app.dashboard.token": "Token",
   "app.dashboard.token.none": "No sigil yet",

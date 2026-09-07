@@ -5,12 +5,14 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $route, NotFoundError, UnauthorizedError } from "alepha/server";
 
+import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import {
   type EstateCommand,
   estateCommands,
 } from "../entities/estateCommands.ts";
 import { estateCommandResultSchema } from "../schemas/estateCommandResultSchema.ts";
+import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 
@@ -75,7 +77,9 @@ export class EstatePullController {
   protected readonly files = $inject(FileService);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly commands = $repository(estateCommands);
+  protected readonly instances = $repository(appInstances);
   protected readonly artifacts = $repository(artifacts);
+  protected readonly secrets = $inject(AppSecretService);
 
   resultBucket = $storage({
     name: EstatePullController.RESULT_BUCKET,
@@ -131,18 +135,25 @@ export class EstatePullController {
   });
 
   /**
-   * `GET /estates/commands/:id/secrets`: the env secret set for the
-   * command's `(project, environment)`, as `{ [key]: value }`.
+   * `GET /estates/commands/:id/secrets`: what the Bay instance this command
+   * targets should run with, as `{ [key]: value }`.
    *
-   * ⚠️ Empty on purpose, and not a bug. There is no secret store yet: that
-   * is epic #1's #1813, which fills this handler in. The route ships now so
-   * the wire contract exists and the connector's side (#1622) is real and
-   * testable against it; a deploy today runs with an empty environment.
+   * ⚠️ **The instance is resolved from the ESTATE and the payload, never from
+   * anything the machine sends.** The bearer proves which estate is asking,
+   * `payload.app` / `payload.environment` say which of its instances, and the
+   * `app_instances` row is matched on all three. An estate lent to two
+   * projects that each named `club/production` on it is therefore ambiguous,
+   * and ambiguity is refused rather than resolved by taking the first row: the
+   * wrong answer here hands one project's production secrets to another's
+   * machine.
    *
-   * ⚠️ The response is never logged, never cached and never audited by
-   * body. `cache-control: no-store` is set here rather than left to a
-   * default, and the one log line names the command id and nothing else.
-   * Keep it that way when #1813 lands.
+   * ⚠️ Empty is still a legitimate answer - a copy with no variables set - and
+   * it is what an estate had before this landed. It is not a signal of failure.
+   *
+   * ⚠️ The response is never logged, never cached and never audited by body.
+   * `cache-control: no-store` is set here rather than left to a default, and
+   * the one log line names the command id and how MANY variables went, never
+   * which or what.
    */
   pullSecrets = $route({
     method: "GET",
@@ -155,8 +166,47 @@ export class EstatePullController {
     handler: async ({ params, headers, reply }) => {
       const command = await this.resolve(params.id, headers.authorization);
       reply.setHeader("cache-control", "no-store");
-      this.log.debug("Secret set pulled", { commandId: command.id });
-      return {};
+
+      const matches = await this.instances.findMany({
+        where: {
+          estateId: { eq: command.estateId },
+          app: { eq: command.payload.app },
+          env: { eq: command.payload.environment },
+        },
+      });
+      if (matches.length === 0) {
+        // ⚠️ Empty, not a refusal. Not every command comes from a deployed
+        // copy Lore knows about - `restart`, `logs` and `stop` name a Bay
+        // instance by the two strings the operator typed - and a machine
+        // executing one of those must not be told "no such command" for asking
+        // a question with a legitimate empty answer.
+        this.log.debug("Secret set pulled", {
+          commandId: command.id,
+          count: 0,
+        });
+        return {};
+      }
+      if (matches.length > 1) {
+        // Two projects lending one estate can each name `club/production` on
+        // it. That is ambiguity, and the wrong answer here hands one project's
+        // production secrets to another's machine, so it is refused rather
+        // than resolved by taking the first row.
+        this.log.warn(
+          "Secret set refused: the command names more than one copy",
+          {
+            commandId: command.id,
+            matches: matches.length,
+          },
+        );
+        throw this.refused();
+      }
+
+      const set = await this.secrets.open(matches[0].id);
+      this.log.debug("Secret set pulled", {
+        commandId: command.id,
+        count: Object.keys(set).length,
+      });
+      return set;
     },
   });
 

@@ -8,6 +8,7 @@ export type AppTabRoute =
   | "appErrors"
   | "appExplore"
   | "appArtifacts"
+  | "appEnvironment"
   | "appSettings";
 
 export type AppTabLabelKey =
@@ -17,6 +18,7 @@ export type AppTabLabelKey =
   | "app.tab.errors"
   | "app.tab.explore"
   | "app.tab.artifacts"
+  | "app.tab.environment"
   | "app.tab.settings";
 
 /**
@@ -72,11 +74,13 @@ export interface GatedAppTab {
  * The tab set of an instance page, in the order it is drawn.
  *
  * ⚠️ **Data, not a hand-written sequence**, and that is the point of the file.
- * #1813 adds Environment and epic #1 adds Deploy, each with an `unlockedBy` of
- * its own; neither should have to rewrite the bar to arrive. **Ship the seam,
- * not the screen**: no placeholder tab renders for either, because Environment
- * is a security surface (encrypted at rest, values never returned) and a tab
- * standing there invites somebody to fill it in without the crypto.
+ * Environment arrived as one entry with an `unlockedBy` of its own, and epic
+ * #1's Deploy tab arrives the same way; neither rewrites the bar to do it.
+ *
+ * ⚠️ **The seam and the screen ship together.** Environment is a security
+ * surface, so no placeholder tab ever stood here: a tab in place invites
+ * somebody to fill it in before the crypto exists, and #1813 landed the entry,
+ * the sealed column and the page in one commit.
  *
  * ⚠️ **Settings is always last**, in every combination, so tabs appear and
  * disappear BETWEEN Overview and Settings rather than at the edge of the bar.
@@ -127,6 +131,20 @@ export const APP_TABS: AppTab[] = [
   // instance page the list reads as "what can I deploy here", and a badge
   // explaining the difference would be a control that changes nothing.
   { route: "appArtifacts", labelKey: "app.tab.artifacts" },
+  // ⚠️ `deploy`, never `track`. A project that deploys through Lore with
+  // telemetry off must not lose the screen holding its production credentials
+  // for a reason nothing on the page explains, which is the trap `AppTab`'s
+  // union was made to close.
+  //
+  // Unlocked by having an estate: the variables reach the app through a deploy,
+  // and a copy with nowhere to deploy has nothing to configure yet. Choosing an
+  // estate on the Settings tab is what makes this tab appear.
+  {
+    route: "appEnvironment",
+    labelKey: "app.tab.environment",
+    unlockedBy: (instance) => !!instance.estateId,
+    option: "deploy",
+  },
   { route: "appSettings", labelKey: "app.tab.settings" },
 ];
 

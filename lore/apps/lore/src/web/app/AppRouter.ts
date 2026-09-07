@@ -856,6 +856,7 @@ export class AppRouter {
       this.appErrors,
       this.appExplore,
       this.appArtifacts,
+      this.appEnvironment,
       this.appSettings,
     ],
     schema: {
@@ -1125,6 +1126,28 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Artifacts`,
     }),
     lazy: () => import("./components/project/apps/AppArtifacts.tsx"),
+  });
+
+  /**
+   * What this copy runs with: its environment variables.
+   *
+   * ⚠️ **No loader, and no value ever fetched here.** The page asks the
+   * endpoint for the key names and their masks; nothing in Lore hands a stored
+   * value back to a browser, the project owner included. Sealed at rest under
+   * `lore:app-secrets:v1`, opened only by the deploy.
+   *
+   * ⚠️ Unguarded in the router, like `appArtifacts` and unlike the beacon
+   * tabs. The tab self-hides on `apps.deploy` plus the copy having an estate,
+   * and the endpoints refuse server-side; a route guard here would only turn a
+   * link somebody already holds into a 404 while changing no permission.
+   */
+  appEnvironment = $page({
+    name: "appEnvironment",
+    path: "/environment",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Environment`,
+    }),
+    lazy: () => import("./components/project/apps/AppEnvironment.tsx"),
   });
 
   appSettings = $page({
