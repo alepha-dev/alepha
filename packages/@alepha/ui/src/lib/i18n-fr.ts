@@ -74,6 +74,8 @@ export const uiFr: Record<string, string> = {
   "alephaTable.openRowActions": "Ouvrir les actions de la ligne",
   "alephaTable.refresh": "Actualiser",
   "alephaTable.resetFilters": "Réinitialiser les filtres",
+  "alephaTable.shareFilters": "Partager les filtres",
+  "alephaTable.shareFiltersCopied": "Lien copié",
   "alephaTable.selectAll": "Sélectionner toutes les lignes",
   "alephaTable.selectRow": "Sélectionner la ligne",
   "alephaTable.selected": "$1 sélectionné(s)",

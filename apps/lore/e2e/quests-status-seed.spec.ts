@@ -19,12 +19,23 @@ import {
  *
  * So the assertions here are: the seed applies, an unknown value is ignored
  * rather than fatal, and — the point — leaving the page actually leaves it.
+ *
+ * The last two steps cover the other direction, added when the table's
+ * filters became generically linkable: a link carries more than `?status=`,
+ * and the toolbar's Share item is what writes one. Share is the ONLY write
+ * side there is, which is what keeps the steps above true.
  */
-test.describe("Quests — ?status= seeds the filter", () => {
+test.describe("Quests — the URL seeds the filters", () => {
   test("seeds on arrival, ignores nonsense, and never traps the reader", async ({
     page,
+    context,
   }) => {
     test.setTimeout(120_000);
+
+    // Read back through `navigator.clipboard.readText` in the Share step:
+    // asserting the toast alone would pass on a handler that copied the
+    // wrong URL.
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
     const t = Date.now();
     const email = `qstatus${t}@example.com`;
@@ -125,6 +136,38 @@ test.describe("Quests — ?status= seeds the filter", () => {
       await expect(table.getByText(acceptedTitle)).toHaveCount(1, {
         timeout: 15_000,
       });
+    });
+
+    await test.step("a link carries more than one filter", async () => {
+      // `?status=` was hand-mapped for its own sake once. Every key of the
+      // table's filter schema is read now, which is what makes a link like
+      // `?status=new&tag=need-answer` mean something.
+      await page.goto(`/${slug}/quests?status=new&search=${newTitle}`);
+      await page.waitForLoadState("networkidle");
+      await expect(table.getByText(newTitle)).toHaveCount(1, {
+        timeout: 15_000,
+      });
+      await expect(table.getByText(acceptedTitle)).toHaveCount(0);
+    });
+
+    await test.step("Share copies a link back to the same view", async () => {
+      await page.getByRole("button", { name: "Filters" }).click();
+      await page.getByRole("menuitem", { name: "Share filters" }).click();
+
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      const shared = new URL(copied);
+      expect(shared.pathname).toBe(`/${slug}/quests`);
+      expect(shared.searchParams.get("status")).toBe("new");
+      expect(shared.searchParams.get("search")).toBe(newTitle);
+
+      // The round trip is the claim worth testing: a link nobody can open
+      // back into the same list is a copy button, not a share.
+      await page.goto(copied);
+      await page.waitForLoadState("networkidle");
+      await expect(table.getByText(newTitle)).toHaveCount(1, {
+        timeout: 15_000,
+      });
+      await expect(table.getByText(acceptedTitle)).toHaveCount(0);
     });
   });
 });

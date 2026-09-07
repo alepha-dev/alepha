@@ -1088,9 +1088,16 @@ export class AppRouter {
     path: "/quests",
     schema: {
       /**
-       * `?status=` seeds the quests table's status filter on arrival — the
+       * The quests table's filters, seeded from the URL on arrival — the
        * drill-through target for a dashboard card, and for any link that
-       * wants to open one slice of the backlog.
+       * wants to open one slice of the backlog. `?status=new&tag=need-answer`
+       * opens the list already narrowed, and the toolbar's Share item is what
+       * produces such a link.
+       *
+       * Multi-value filters are comma-joined (`?status=new,accepted`), the
+       * same spelling `getQuests` takes on the wire, because
+       * `parseQueryString` returns one value per key and a repeated param
+       * keeps only the last.
        *
        * ⚠️ **One-directional, and it has to stay that way.** The URL seeds
        * the filter on entry; the filter NEVER writes back. `?view=kanban`
@@ -1102,13 +1109,18 @@ export class AppRouter {
        * from "we are leaving" while the state lives in the URL — so nothing
        * here may reintroduce a write-back.
        *
-       * ⚠️ Typed as free text, not the status enum. A schema that rejects
-       * an unknown value turns a stale bookmark into an error page;
-       * `ProjectQuestsTable` maps it through the known set and ignores
-       * anything else, so a bad value degrades to the unfiltered list.
+       * ⚠️ Typed as free text, not the status enum, and not as arrays. A
+       * schema that rejects an unknown value turns a stale bookmark into an
+       * error page; AlephaTable decodes each param against the table's own
+       * filter schema and drops what it refuses, so a bad value degrades to
+       * the unfiltered list.
        */
       query: z.object({
         status: z.text().optional(),
+        search: z.text().optional(),
+        area: z.text().optional(),
+        tag: z.text().optional(),
+        release: z.text().optional(),
       }),
     },
     head: (_props, previous) => ({

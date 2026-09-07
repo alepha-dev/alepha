@@ -12,7 +12,7 @@ import {
 } from "@alepha/ui/components/ui/dialog";
 import type { FormModel } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { Funnel } from "lucide-react";
+import { Funnel, Share2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -31,10 +31,20 @@ export interface AlephaTableFilterDialogProps {
   children: ReactNode;
   /**
    * How many filters currently narrow the list. Renders as a badge on the
-   * trigger, and gates the Reset button.
+   * trigger, and gates both footer actions: neither sharing nor clearing
+   * means anything with nothing set.
    */
   activeCount: number;
   onReset: () => void;
+  /**
+   * Copy a link that reopens the list with these filters. Same action as the
+   * desktop toolbar's menu item: a phone is where a reader is most likely to
+   * want to send the view to someone rather than keep it.
+   *
+   * Absent when the table does not read its filters back from the query, in
+   * which case the link would be inert and the button is not rendered at all.
+   */
+  onShare?: () => void;
 }
 
 /**
@@ -123,6 +133,17 @@ export const AlephaTableFilterDialog = (
           {props.children}
         </form>
         <DialogFooter>
+          {props.onShare && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={props.activeCount === 0}
+              onClick={props.onShare}
+            >
+              <Share2 className="size-4" />
+              {tr("alephaTable.shareFilters", { default: "Share filters" })}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
