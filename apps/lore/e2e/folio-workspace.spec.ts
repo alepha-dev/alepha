@@ -1061,6 +1061,48 @@ test.describe("Folio workspace", () => {
     await expect(row(insideTitle)).toBeVisible({ timeout: 15_000 });
     // ...and selected, so it is obvious which folder the link meant.
     await expect(row(dirTitle)).toHaveAttribute("data-selected", "true");
+
+    /*
+     * The two breadcrumbs, which are deliberately different shapes
+     * (feedback #P2137).
+     *
+     * ⚠️ On the LISTING the bar reads "Project > Folios" and stops, even
+     * with a directory open. It always did: `projectFolios`'s loader writes
+     * an empty path deliberately, and the deleted `FolioBrowser` was the
+     * last thing that filled one. The tree pane is what says where you are
+     * here.
+     */
+    const crumbs = page.getByRole("navigation", { name: /breadcrumb/i });
+    await expect(crumbs).toContainText("Folios");
+    await expect(crumbs).not.toContainText(dirTitle);
+
+    /*
+     * On the DETAIL page it is `#F<n>` and nothing else - the same inert
+     * reference leaf an epic and a quest get. The chain plus a long title
+     * was a bar made of one title, which is what was reported.
+     */
+    await row(insideTitle).click();
+    await page.waitForURL(new RegExp(`/${projectSlug}/folios/\\d+`), {
+      timeout: 20_000,
+    });
+    const shortId = new URL(page.url()).pathname.split("/").pop();
+    await expect(crumbs).toContainText(`#F${shortId}`, { timeout: 15_000 });
+    // Neither the title nor the directory it sits in.
+    await expect(crumbs).not.toContainText(insideTitle);
+    await expect(crumbs).not.toContainText(dirTitle);
+
+    // ⚠️ And at the narrowest width that still SHOWS the bar, which is what
+    // objective 4 is about: the failure this replaced was a long title
+    // pushing the crumbs off it. The app hides the breadcrumb entirely on a
+    // phone, so 900px is where the assertion has something to look at.
+    await page.setViewportSize({ width: 900, height: 800 });
+    await expect(crumbs).toContainText(`#F${shortId}`);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth + 1,
+      ),
+    ).toBe(false);
+    await page.setViewportSize({ width: 1280, height: 800 });
   });
 
   test("10 — the tree's New folio button starts a folio", async () => {

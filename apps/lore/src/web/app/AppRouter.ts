@@ -41,7 +41,6 @@ import { currentEpicsAtom } from "./atoms/currentEpicsAtom.ts";
 import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
-import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -2159,12 +2158,8 @@ export class AppRouter {
       // from the folio's `metadata.path`, so nothing downstream reads
       // them any more.
       await this.seedFolioTree(projectId);
-      // `/folios` itself is just "Folios" in the header — a folio page
-      // appends its own directory chain and title when it loads.
-      this.alepha.store.set(currentFolioPathAtom, []);
     },
     onLeave: () => {
-      this.alepha.store.set(currentFolioPathAtom, []);
       this.alepha.store.set(currentFolioAttachmentsAtom, []);
     },
   });
@@ -2278,14 +2273,11 @@ export class AppRouter {
         currentFolioAttachmentsAtom,
         folio.metadata?.attachments ?? [],
       );
-      // Populate the folio breadcrumb so the AppShell header reads
-      // "Lore › Folios › <dirs…> › <folio title>". Cleared on leave
-      // by the parent `projectFolios` route.
-      const path = folio.metadata?.path ?? [];
-      this.alepha.store.set(currentFolioPathAtom, [
-        ...path,
-        { name: folio.title },
-      ]);
+      // ⚠️ No breadcrumb write. The header used to read "Lore › Folios ›
+      // <dirs…> › <folio title>", built from `folio.metadata.path` through
+      // `currentFolioPathAtom`; it reads "Lore › Folios › #F12" now
+      // (feedback #P2137), which `ProjectView` takes from the route params.
+      // The atom had no other consumer and is gone.
       return { folio };
     },
   });
