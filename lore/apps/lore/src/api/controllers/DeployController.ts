@@ -1,11 +1,12 @@
 import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
-import { $action, NotFoundError } from "alepha/server";
+import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { DeployJobs } from "../jobs/DeployJobs.ts";
 import { releaseTagSchema } from "../schemas/releaseTagSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { DeployService } from "../services/DeployService.ts";
+import { RollbackService } from "../services/RollbackService.ts";
 
 /**
  * Starting a deploy, and following one.
@@ -27,6 +28,7 @@ import { DeployService } from "../services/DeployService.ts";
 export class DeployController {
   protected readonly deploys = $inject(DeployService);
   protected readonly jobs = $inject(DeployJobs);
+  protected readonly rollbacks = $inject(RollbackService);
 
   /**
    * Declared above the actions: a `use: [...]` entry reading another field is
@@ -120,6 +122,61 @@ export class DeployController {
         params.instanceId,
       );
       return { items } as any;
+    },
+  });
+
+  /**
+   * What rolling back to this run would take, and what it would risk.
+   *
+   * A read, so it does not take the `deploy` capability - the Deploy tab shows
+   * this before anybody asks for anything.
+   */
+  planDeploymentRollback = $action({
+    use: [$secure(), this.ownsProject()],
+    method: "GET",
+    path: "/projects/:projectId/deployments/:deploymentId/rollback",
+    description: "What a rollback to this run would do.",
+    schema: {
+      params: z.object({ projectId: z.integer(), deploymentId: z.uuid() }),
+      response: z.record(z.text(), z.any()),
+    },
+    handler: async ({ params }) =>
+      (await this.rollbacks.plan(params.projectId, params.deploymentId)) as any,
+  });
+
+  /**
+   * Roll back to a version Cloudflare still holds.
+   *
+   * ⚠️ Takes the full deploy gate: pointing production at older code is a
+   * deploy, whatever it costs to do.
+   */
+  /**
+   * ⚠️ Named `rollbackDeployment`, not `rollback`. `$action` names are ONE
+   * global namespace per container, so a second `rollback` anywhere is a boot
+   * failure that reads as every test in the app breaking at once.
+   */
+  rollbackDeployment = $action({
+    use: [$secure(), this.deployGate()],
+    method: "POST",
+    path: "/projects/:projectId/deployments/:deploymentId/rollback",
+    description: "Point this copy back at a version it ran before.",
+    schema: {
+      params: z.object({ projectId: z.integer(), deploymentId: z.uuid() }),
+      body: z.object({
+        /**
+         * ⚠️ Required when migrations landed after the chosen version. The
+         * database is not rolled back with the code, and the fast path invites
+         * clicking precisely because it is cheap.
+         */
+        acknowledgeMigrations: z.boolean().optional(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params, body }) => {
+      await this.rollbacks.rollback(params.projectId, params.deploymentId, {
+        acknowledgeMigrations: body.acknowledgeMigrations,
+      });
+      return { ok: true };
     },
   });
 
