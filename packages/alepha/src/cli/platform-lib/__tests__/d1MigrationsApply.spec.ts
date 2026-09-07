@@ -3,7 +3,8 @@ import { join as nodeJoin } from "node:path";
 import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 
-import { WranglerApi } from "../services/WranglerApi.ts";
+import type { CloudflareD1QueryResult } from "../services/CloudflareApi.ts";
+import { D1MigrationsService } from "../services/D1MigrationsService.ts";
 
 /**
  * D1 migrations must NOT go through `wrangler d1 migrations apply`.
@@ -22,8 +23,17 @@ import { WranglerApi } from "../services/WranglerApi.ts";
  *   wrangler d1 execute --file    ->  5 of 5 survive
  *
  * It destroyed 2434 rows across five tables in a production deploy before
- * being caught, so this test asserts the command choice directly rather
- * than trusting a comment.
+ * being caught, so this suite asserts the shape of what is sent directly
+ * rather than trusting a comment.
+ *
+ * ⚠️ **The transport is the D1 query API now (#1514), not `wrangler d1
+ * execute`.** The invariant is the same and the assertion moved with it: there
+ * is no longer a command to check for, so what is checked is that each
+ * migration file's SQL is posted **verbatim, in one request, with nothing
+ * wrapped around it**. `BEGIN`/`COMMIT` appearing here, or a file split into
+ * one request per statement, is the same bug wearing different clothes: either
+ * takes a rebuild's `PRAGMA foreign_keys=OFF` out of force before its own
+ * `DROP TABLE` runs.
  */
 const ROOT = "dist/migrations";
 
@@ -71,85 +81,122 @@ class FakeFs {
       : [...names].filter((name) => !name.startsWith("."));
     return visible;
   }
+
+  /**
+   * A migration's contents, shaped like a real drizzle table rebuild: the
+   * pragma, a statement breakpoint and the `DROP TABLE` the pragma exists to
+   * protect. The `-- FILE` marker is what lets an assertion say WHICH file was
+   * posted, the way `--file=` used to name it on the command line.
+   */
+  async readTextFile(path: string) {
+    return [
+      `-- FILE ${path}`,
+      "PRAGMA foreign_keys=OFF;",
+      "--> statement-breakpoint",
+      "CREATE TABLE `__new_parent` (`id` integer PRIMARY KEY);",
+      "--> statement-breakpoint",
+      "DROP TABLE `parent`;",
+    ].join("\n");
+  }
 }
+
+/**
+ * Every `sql` posted to the D1 query API, in order.
+ *
+ * The old fixture captured shell command lines; this captures request bodies,
+ * which is both closer to what actually reaches Cloudflare and enough to see
+ * a wrapper somebody added around a migration.
+ */
+class FakeCloudflareApi {
+  public readonly sql: string[] = [];
+
+  constructor(protected readonly appliedNames: string[] = []) {}
+
+  async resolveD1Id(name: string) {
+    return `uuid-of-${name}`;
+  }
+
+  async d1Query(_databaseId: string, sql: string) {
+    this.sql.push(sql);
+    if (sql.includes("SELECT name FROM d1_migrations")) {
+      return [
+        { results: this.appliedNames.map((name) => ({ name })) },
+      ] as CloudflareD1QueryResult[];
+    }
+    return [] as CloudflareD1QueryResult[];
+  }
+}
+
+/**
+ * The migration files that were applied, named by path.
+ */
+const appliedFiles = (sql: string[]): string[] =>
+  sql
+    .map((it) => /^-- FILE (.+)$/m.exec(it)?.[1])
+    .filter((it): it is string => Boolean(it));
 
 describe("d1MigrationsApply", () => {
   const capture = (relativePaths: string[], appliedNames: string[] = []) => {
-    const commands: string[] = [];
-
-    class FakeShell {
-      async run(command: string) {
-        commands.push(command);
-        // The applied-migrations lookup expects JSON; everything else can
-        // return empty.
-        if (command.includes("SELECT name FROM d1_migrations")) {
-          return JSON.stringify([
-            { results: appliedNames.map((name) => ({ name })) },
-          ]);
-        }
-        return "";
-      }
-    }
-
     const paths = new Set(relativePaths.map((p) => `${ROOT}/${p}`));
     const alepha = Alepha.create();
-    const api = alepha.inject(WranglerApi);
+    const service = alepha.inject(D1MigrationsService);
+    const api = new FakeCloudflareApi(appliedNames);
     // Swap the collaborators the method actually uses.
-    Object.assign(api as unknown as Record<string, unknown>, {
-      shell: new FakeShell(),
+    Object.assign(service as unknown as Record<string, unknown>, {
+      api,
       fs: new FakeFs(paths),
     });
 
-    const call = () =>
-      (
-        api as unknown as {
-          d1MigrationsApply: (
-            db: string,
-            root?: string,
-            dir?: string,
-          ) => Promise<void>;
-        }
-      ).d1MigrationsApply("mydb", ".", ROOT);
+    const call = () => service.apply("mydb", ".", ROOT);
 
-    return { commands, call };
+    return { sql: api.sql, call };
   };
 
-  it("never invokes `d1 migrations apply`", async ({ expect }) => {
-    const { commands, call } = capture(["0001_init.sql", "0002_rebuild.sql"]);
+  it("wraps no migration in a transaction of its own", async ({ expect }) => {
+    // The `wrangler d1 migrations apply` invariant, restated for the API
+    // transport: what made that command destructive was the transaction it
+    // opened, so the thing to refuse is a transaction and not a command name.
+    const { sql, call } = capture(["0001_init.sql", "0002_rebuild.sql"]);
     await call();
-    expect(commands.some((c) => c.includes("d1 migrations apply"))).toBe(false);
+
+    expect(sql.some((it) => /\bBEGIN\b/i.test(it))).toBe(false);
+    expect(sql.some((it) => /\bCOMMIT\b/i.test(it))).toBe(false);
   });
 
-  it("applies each pending migration with `execute --file`", async ({
+  it("posts each pending migration file as one request, verbatim", async ({
     expect,
   }) => {
-    const { commands, call } = capture(["0001_init.sql", "0002_rebuild.sql"]);
+    const { sql, call } = capture(["0001_init.sql", "0002_rebuild.sql"]);
     await call();
 
-    const applied = commands.filter((c) => c.includes("--file="));
-    expect(applied).toHaveLength(2);
-    expect(applied[0]).toContain("dist/migrations/0001_init.sql");
-    expect(applied[1]).toContain("dist/migrations/0002_rebuild.sql");
-    // Order matters: a rebuild that runs before its table exists fails.
-    expect(applied[0].indexOf("0001")).toBeGreaterThan(-1);
+    const applied = appliedFiles(sql);
+    expect(applied).toEqual([
+      "dist/migrations/0001_init.sql",
+      "dist/migrations/0002_rebuild.sql",
+    ]);
+
+    // ⚠️ One request for the whole file. Splitting on `--> statement-breakpoint`
+    // would put the pragma and the `DROP TABLE` it protects in separate
+    // executions, which is the same data loss by another route.
+    const rebuild = sql.find((it) => it.includes("0002_rebuild.sql")) as string;
+    expect(rebuild).toContain("PRAGMA foreign_keys=OFF;");
+    expect(rebuild).toContain("DROP TABLE `parent`;");
   });
 
   it("records each applied migration in wrangler's own table", async ({
     expect,
   }) => {
-    const { commands, call } = capture(["0001_init.sql"]);
+    const { sql, call } = capture(["0001_init.sql"]);
     await call();
 
     expect(
-      commands.some((c) =>
-        c.includes("CREATE TABLE IF NOT EXISTS d1_migrations"),
-      ),
+      sql.some((it) => it.includes("CREATE TABLE IF NOT EXISTS d1_migrations")),
     ).toBe(true);
     expect(
-      commands.some(
-        (c) =>
-          c.includes("INSERT INTO d1_migrations") &&
-          c.includes("0001_init.sql"),
+      sql.some(
+        (it) =>
+          it.includes("INSERT INTO d1_migrations") &&
+          it.includes("0001_init.sql"),
       ),
     ).toBe(true);
   });
@@ -157,12 +204,10 @@ describe("d1MigrationsApply", () => {
   it("applies migrations in sorted order regardless of directory order", async ({
     expect,
   }) => {
-    const { commands, call } = capture(["0002_second.sql", "0001_first.sql"]);
+    const { sql, call } = capture(["0002_second.sql", "0001_first.sql"]);
     await call();
 
-    const applied = commands
-      .filter((c) => c.includes("--file="))
-      .map((c) => c.split("--file=")[1]);
+    const applied = appliedFiles(sql);
     expect(applied).toHaveLength(2);
     expect(applied[0]).toContain("0001_first.sql");
     expect(applied[1]).toContain("0002_second.sql");
@@ -197,43 +242,39 @@ describe("d1MigrationsApply", () => {
     it("applies a v1 migration, recording the folder name (not 'migration.sql')", async ({
       expect,
     }) => {
-      const { commands, call } = capture([
+      const { sql, call } = capture([
         "20260729013337_baseline/migration.sql",
         "20260729013337_baseline/snapshot.json",
       ]);
       await call();
 
-      const applied = commands.filter((c) => c.includes("--file="));
-      expect(applied).toHaveLength(1);
-      expect(applied[0]).toContain(
+      expect(appliedFiles(sql)).toEqual([
         "dist/migrations/20260729013337_baseline/migration.sql",
-      );
+      ]);
 
       expect(
-        commands.some(
-          (c) =>
-            c.includes("INSERT INTO d1_migrations") &&
-            c.includes("VALUES ('20260729013337_baseline')"),
+        sql.some(
+          (it) =>
+            it.includes("INSERT INTO d1_migrations") &&
+            it.includes("VALUES ('20260729013337_baseline')"),
         ),
       ).toBe(true);
       // The bookkeeping name must be the folder, never the literal
-      // filename — `d1MigrationsBaseline` must record the exact same
-      // string for the two methods to ever agree on "already applied".
-      expect(commands.some((c) => c.includes("'migration.sql'"))).toBe(false);
+      // filename — `baseline` must record the exact same string for the two
+      // methods to ever agree on "already applied".
+      expect(sql.some((it) => it.includes("'migration.sql'"))).toBe(false);
     });
 
     it("applies pre-v1 and v1 migrations together, in chronological order", async ({
       expect,
     }) => {
-      const { commands, call } = capture([
+      const { sql, call } = capture([
         "0000_old.sql",
         "20260729013337_baseline/migration.sql",
       ]);
       await call();
 
-      const applied = commands
-        .filter((c) => c.includes("--file="))
-        .map((c) => c.split("--file=")[1]);
+      const applied = appliedFiles(sql);
       expect(applied).toHaveLength(2);
       expect(applied[0]).toContain("0000_old.sql");
       expect(applied[1]).toContain("20260729013337_baseline/migration.sql");
@@ -242,16 +283,16 @@ describe("d1MigrationsApply", () => {
     it("does not re-run a v1 migration already recorded under its folder name", async ({
       expect,
     }) => {
-      const { commands, call } = capture(
+      const { sql, call } = capture(
         ["20260729013337_baseline/migration.sql"],
         ["20260729013337_baseline"],
       );
       await call();
 
-      expect(commands.some((c) => c.includes("--file="))).toBe(false);
-      expect(
-        commands.some((c) => c.includes("INSERT INTO d1_migrations")),
-      ).toBe(false);
+      expect(appliedFiles(sql)).toEqual([]);
+      expect(sql.some((it) => it.includes("INSERT INTO d1_migrations"))).toBe(
+        false,
+      );
     });
 
     it("ignores a bare 'meta/' directory (pre-v1 journal/snapshots, no SQL)", async ({
@@ -259,10 +300,10 @@ describe("d1MigrationsApply", () => {
     }) => {
       // `meta/_journal.json` existing but nothing else in the directory —
       // legitimately nothing to apply, not an error.
-      const { commands, call } = capture(["meta/_journal.json"]);
+      const { sql, call } = capture(["meta/_journal.json"]);
       await call();
 
-      expect(commands.some((c) => c.includes("--file="))).toBe(false);
+      expect(appliedFiles(sql)).toEqual([]);
     });
 
     it("refuses to silently apply nothing when the directory holds unrecognisable entries", async ({
@@ -311,24 +352,24 @@ describe("d1MigrationsApply", () => {
     it("ignores a directory holding only .archive/ (legitimately nothing pending)", async ({
       expect,
     }) => {
-      const { commands, call } = capture([".archive/0000_old.sql"]);
+      const { sql, call } = capture([".archive/0000_old.sql"]);
       await call();
 
-      expect(commands.some((c) => c.includes("--file="))).toBe(false);
+      expect(appliedFiles(sql)).toEqual([]);
     });
 
     it("ignores .archive/ when real migrations are present", async ({
       expect,
     }) => {
-      const { commands, call } = capture([
+      const { sql, call } = capture([
         ".archive/0000_old.sql",
         "20260729013337_baseline/migration.sql",
       ]);
       await call();
 
-      const applied = commands.filter((c) => c.includes("--file="));
-      expect(applied).toHaveLength(1);
-      expect(applied[0]).toContain("20260729013337_baseline/migration.sql");
+      expect(appliedFiles(sql)).toEqual([
+        "dist/migrations/20260729013337_baseline/migration.sql",
+      ]);
     });
 
     /**
@@ -362,57 +403,35 @@ describe("d1MigrationsApply", () => {
  */
 describe("d1MigrationsBaseline", () => {
   const capture = (relativePaths: string[], appliedNames: string[]) => {
-    const commands: string[] = [];
-
-    class FakeShell {
-      async run(command: string) {
-        commands.push(command);
-        if (command.includes("SELECT name FROM d1_migrations")) {
-          return JSON.stringify([
-            { results: appliedNames.map((name) => ({ name })) },
-          ]);
-        }
-        return "";
-      }
-    }
-
     const paths = new Set(relativePaths.map((p) => `${ROOT}/${p}`));
     const alepha = Alepha.create();
-    const api = alepha.inject(WranglerApi);
-    Object.assign(api as unknown as Record<string, unknown>, {
-      shell: new FakeShell(),
+    const service = alepha.inject(D1MigrationsService);
+    const api = new FakeCloudflareApi(appliedNames);
+    Object.assign(service as unknown as Record<string, unknown>, {
+      api,
       fs: new FakeFs(paths),
     });
 
     const call = (opts?: { reset?: boolean }) =>
-      (
-        api as unknown as {
-          d1MigrationsBaseline: (
-            db: string,
-            root?: string,
-            dir?: string,
-            opts?: { reset?: boolean },
-          ) => Promise<{ replaced: number }>;
-        }
-      ).d1MigrationsBaseline("mydb", ".", ROOT, opts);
+      service.baseline("mydb", ".", ROOT, opts);
 
-    return { commands, call };
+    return { sql: api.sql, call };
   };
 
   it("inserts the baseline row and executes no migration file", async ({
     expect,
   }) => {
-    const { commands, call } = capture(["0000_baseline.sql"], []);
+    const { sql, call } = capture(["0000_baseline.sql"], []);
     await call();
 
     expect(
-      commands.some((c) =>
-        c.includes(
+      sql.some((it) =>
+        it.includes(
           "INSERT INTO d1_migrations (name) VALUES ('0000_baseline.sql')",
         ),
       ),
     ).toBe(true);
-    expect(commands.some((c) => c.includes("--file="))).toBe(false);
+    expect(appliedFiles(sql)).toEqual([]);
   });
 
   it("refuses to replace an existing history without reset", async ({
@@ -424,7 +443,7 @@ describe("d1MigrationsBaseline", () => {
   });
 
   it("replaces an existing history when reset is given", async ({ expect }) => {
-    const { commands, call } = capture(
+    const { sql, call } = capture(
       ["0000_baseline.sql"],
       ["0001_old.sql", "0002_old.sql"],
     );
@@ -432,10 +451,10 @@ describe("d1MigrationsBaseline", () => {
     const result = await call({ reset: true });
 
     expect(result.replaced).toBe(2);
-    expect(commands.some((c) => c.includes("DELETE FROM d1_migrations"))).toBe(
+    expect(sql.some((it) => it.includes("DELETE FROM d1_migrations"))).toBe(
       true,
     );
-    expect(commands.some((c) => c.includes("--file="))).toBe(false);
+    expect(appliedFiles(sql)).toEqual([]);
   });
 
   it("refuses when more than one local migration exists", async ({
@@ -454,7 +473,7 @@ describe("d1MigrationsBaseline", () => {
     it("baselines a v1 migration, recording the folder name", async ({
       expect,
     }) => {
-      const { commands, call } = capture(
+      const { sql, call } = capture(
         [
           "20260729013337_baseline/migration.sql",
           "20260729013337_baseline/snapshot.json",
@@ -464,16 +483,16 @@ describe("d1MigrationsBaseline", () => {
       await call();
 
       expect(
-        commands.some((c) =>
-          c.includes(
+        sql.some((it) =>
+          it.includes(
             "INSERT INTO d1_migrations (name) VALUES ('20260729013337_baseline')",
           ),
         ),
       ).toBe(true);
-      expect(commands.some((c) => c.includes("--file="))).toBe(false);
+      expect(appliedFiles(sql)).toEqual([]);
     });
 
-    it("agrees with d1MigrationsApply on the recorded name for the same layout", async ({
+    it("agrees with apply on the recorded name for the same layout", async ({
       expect,
     }) => {
       // Baseline it first, and read back the exact string it recorded.
@@ -482,47 +501,28 @@ describe("d1MigrationsBaseline", () => {
         [],
       );
       await baselineRun.call();
-      const insertCommand = baselineRun.commands.find((c) =>
-        c.includes("INSERT INTO d1_migrations"),
+      const insert = baselineRun.sql.find((it) =>
+        it.includes("INSERT INTO d1_migrations"),
       ) as string;
-      const recordedName = insertCommand.match(/VALUES \('([^']+)'\)/)?.[1] as
-        | string
-        | undefined;
+      const recordedName = /VALUES \('([^']+)'\)/.exec(insert)?.[1];
 
-      // Then confirm a fresh `d1MigrationsApply` run, seeded with that
-      // exact recorded name as "already applied", treats it as nothing
-      // pending. If the two methods ever disagreed on the name, this would
-      // re-run the baseline SQL against a live, already-baselined database.
-      const applyCommands: string[] = [];
-      class FakeShell {
-        async run(command: string) {
-          applyCommands.push(command);
-          if (command.includes("SELECT name FROM d1_migrations")) {
-            return JSON.stringify([{ results: [{ name: recordedName }] }]);
-          }
-          return "";
-        }
-      }
+      // Then confirm a fresh `apply` run, seeded with that exact recorded
+      // name as "already applied", treats it as nothing pending. If the two
+      // methods ever disagreed on the name, this would re-run the baseline
+      // SQL against a live, already-baselined database.
       const alepha = Alepha.create();
-      const api = alepha.inject(WranglerApi);
-      Object.assign(api as unknown as Record<string, unknown>, {
-        shell: new FakeShell(),
+      const service = alepha.inject(D1MigrationsService);
+      const api = new FakeCloudflareApi([recordedName as string]);
+      Object.assign(service as unknown as Record<string, unknown>, {
+        api,
         fs: new FakeFs(
           new Set([`${ROOT}/20260729013337_baseline/migration.sql`]),
         ),
       });
-      await (
-        api as unknown as {
-          d1MigrationsApply: (
-            db: string,
-            root?: string,
-            dir?: string,
-          ) => Promise<void>;
-        }
-      ).d1MigrationsApply("mydb", ".", ROOT);
+      await service.apply("mydb", ".", ROOT);
 
       expect(recordedName).toBe("20260729013337_baseline");
-      expect(applyCommands.some((c) => c.includes("--file="))).toBe(false);
+      expect(appliedFiles(api.sql)).toEqual([]);
     });
 
     it("refuses to baseline a directory with no recognisable migrations", async ({

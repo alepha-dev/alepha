@@ -23,6 +23,33 @@ export const cloudflareD1Schema = z.object({
 
 export type CloudflareD1 = Infer<typeof cloudflareD1Schema>;
 
+/**
+ * The body of `POST /accounts/{id}/d1/database/{id}/query`.
+ *
+ * One string, and no `params`: a migration file is DDL, so there is nothing to
+ * bind, and a placeholder array would invite somebody to split the file into
+ * one statement per request - which is what takes a table rebuild's
+ * `PRAGMA foreign_keys=OFF` out of force before its own `DROP TABLE` runs.
+ */
+export const d1QueryBodySchema = z.object({
+  sql: z.string(),
+});
+
+/**
+ * One statement's answer. D1 returns an array of these, one per statement in
+ * the submitted SQL.
+ *
+ * `results` is left as a loose array because a migration file's statements are
+ * DDL and answer nothing; only the two bookkeeping SELECTs read it, and they
+ * narrow their own rows.
+ */
+export const d1QueryResultSchema = z.object({
+  success: z.boolean().optional(),
+  results: z.array(z.record(z.text(), z.any())).optional(),
+});
+
+export type CloudflareD1QueryResult = Infer<typeof d1QueryResultSchema>;
+
 // ---------------------------------------------------------------------------
 // KV
 // ---------------------------------------------------------------------------

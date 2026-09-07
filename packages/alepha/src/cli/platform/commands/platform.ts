@@ -8,6 +8,7 @@ import {
 } from "alepha/cli";
 import {
   CloudflareAdapter,
+  D1MigrationsService,
   type DetectedResources,
   NamingService,
   type PlatformContext,
@@ -16,7 +17,6 @@ import {
   type PlatformPlanOutput,
   type PlatformStatusOutput,
   type ResolvedPlatformConfig,
-  WranglerApi,
 } from "alepha/cli/platform-lib";
 import { $command, EnvUtils, type RunnerMethod } from "alepha/command";
 import { ConsoleColorProvider } from "alepha/logger";
@@ -32,7 +32,7 @@ export class PlatformCommand {
   protected readonly color = $inject(ConsoleColorProvider);
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly secretsCommand = $inject(SecretsCommand);
-  protected readonly wrangler = $inject(WranglerApi);
+  protected readonly d1Migrations = $inject(D1MigrationsService);
 
   /**
    * Common flags for env targeting.
@@ -757,12 +757,12 @@ export class PlatformCommand {
    * Cloudflare D1 database, without executing it.
    *
    * D1's deploy path doesn't go through drizzle's migrator at all — it
-   * keys off a filename-based `d1_migrations` bookkeeping table driven by
-   * wrangler (see `WranglerApi.d1MigrationsBaseline`), which needs the
-   * project/env resource naming that only this command tree can
-   * resolve. That's also why `--reset` lives here rather than on core
-   * `alepha db baseline mark`: it rewrites wrangler's bookkeeping rows
-   * only (never table data), and only the D1 path supports it today.
+   * keys off a filename-based `d1_migrations` bookkeeping table (see
+   * `D1MigrationsService.baseline`), which needs the project/env resource
+   * naming that only this command tree can resolve. That's also why
+   * `--reset` lives here rather than on core `alepha db baseline mark`: it
+   * rewrites those bookkeeping rows only (never table data), and only the D1
+   * path supports it today.
    */
   protected readonly baselineMark = $command({
     name: "mark",
@@ -831,12 +831,9 @@ export class PlatformCommand {
 
       await adapter.authenticate(ctx, run);
 
-      const result = await this.wrangler.d1MigrationsBaseline(
-        dbName,
-        root,
-        undefined,
-        { reset: flags.reset },
-      );
+      const result = await this.d1Migrations.baseline(dbName, root, undefined, {
+        reset: flags.reset,
+      });
 
       if (flags.json) {
         process.stdout.write(

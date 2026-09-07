@@ -4,6 +4,7 @@ import type {
   CloudflareAccount,
   CloudflareApiError,
   CloudflareD1,
+  CloudflareD1QueryResult,
   CloudflareDeployment,
   CloudflareHyperdrive,
   CloudflareKV,
@@ -34,12 +35,14 @@ import {
   createQueueBodySchema,
   createR2BodySchema,
   createR2TokenBodySchema,
+  d1QueryBodySchema,
   putSecretBodySchema,
 } from "../schemas/cloudflare.ts";
 import { WranglerApi } from "./WranglerApi.ts";
 
 export type {
   CloudflareD1,
+  CloudflareD1QueryResult,
   CloudflareDeployment,
   CloudflareHyperdrive,
   CloudflareKV,
@@ -188,6 +191,62 @@ export class CloudflareApi {
     await this.fetch(`/accounts/${accountId}/d1/database/${databaseId}`, {
       method: "DELETE",
     });
+  }
+
+  /**
+   * The uuid of a database named in `alepha.config.ts`.
+   *
+   * Everything on this class addresses D1 by uuid while the platform config,
+   * the migration path and the operator all speak in names, so exactly one
+   * place does the lookup.
+   */
+  public async resolveD1Id(name: string): Promise<string> {
+    const databases = await this.listD1();
+    const match = databases.find((it) => it.name === name);
+    if (!match) {
+      const known = databases.map((it) => it.name).sort();
+      throw new AlephaError(
+        `No D1 database named '${name}' in this account.` +
+          (known.length > 0 ? ` Found: ${known.join(", ")}.` : ""),
+      );
+    }
+    return match.uuid;
+  }
+
+  /**
+   * Run SQL against a D1 database over the query API.
+   *
+   * ⚠️ **This is `wrangler d1 execute --remote` and NOT
+   * `wrangler d1 migrations apply`**, and the difference has already cost
+   * production data once. `migrations apply` wraps each migration in a
+   * transaction; SQLite ignores `PRAGMA foreign_keys` inside a transaction;
+   * drizzle opens every generated table rebuild with `PRAGMA
+   * foreign_keys=OFF` precisely so its `DROP TABLE` does not cascade. Under a
+   * transaction that pragma is void and the implicit `DELETE FROM` behind
+   * `DROP TABLE` takes every child row with it, then reports success. It
+   * destroyed 2434 rows across five tables in one deploy.
+   *
+   * So the SQL goes up **verbatim, in one request, with nothing wrapped
+   * around it**. Do not add `BEGIN`/`COMMIT`, and do not split the file into
+   * one request per statement: a rebuild's pragma and its `DROP TABLE` have to
+   * be in the same execution for the pragma to still be in force.
+   *
+   * `D1MigrationsService` is the only caller that matters; it is separate from
+   * this class because discovery, ordering and bookkeeping are not transport.
+   */
+  public async d1Query(
+    databaseId: string,
+    sql: string,
+  ): Promise<CloudflareD1QueryResult[]> {
+    const accountId = await this.resolveAccountId();
+    return await this.fetch<CloudflareD1QueryResult[]>(
+      `/accounts/${accountId}/d1/database/${databaseId}/query`,
+      {
+        method: "POST",
+        body: { sql },
+        bodySchema: d1QueryBodySchema,
+      },
+    );
   }
 
   // -------------------------------------------------------------------------

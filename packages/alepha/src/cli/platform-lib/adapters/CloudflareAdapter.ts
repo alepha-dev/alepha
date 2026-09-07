@@ -29,6 +29,7 @@ import {
   selectSecrets,
 } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
+import { D1MigrationsService } from "../services/D1MigrationsService.ts";
 import { NamingService } from "../services/NamingService.ts";
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
@@ -56,6 +57,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly api = $inject(CloudflareApi);
   protected readonly wrangler = $inject(WranglerApi);
+  protected readonly d1Migrations = $inject(D1MigrationsService);
   protected readonly runner = $inject(Runner);
   protected readonly buildTask = $inject(BuildCloudflareTask);
   protected readonly placeholders = $inject(StoragePlaceholderService);
@@ -994,11 +996,11 @@ export class CloudflareAdapter extends PlatformAdapter {
           }
         }
 
-        // Copy migrations to dist for wrangler, apply, then clean up
+        // Copy migrations to dist, apply, then clean up
         const distMigrations = this.fs.join(ctx.root, "dist", "migrations");
         await this.fs.cp(migrationsDir, distMigrations);
 
-        await this.wrangler.d1MigrationsApply(
+        await this.d1Migrations.apply(
           dbName,
           ctx.root,
           // Where the copy above put them.
