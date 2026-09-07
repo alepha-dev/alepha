@@ -95,6 +95,12 @@ export default defineConfig({
       // catalog.
       scan: ["src", "../../packages/@alepha/ui/src"],
       dynamicPrefixes: [
+        // tr(`account.notifications.category.${category}`) and its
+        // `.description`. A category is a string a `$notification` template
+        // registers, so the set is the DECLARATIONS: a plugin can add one
+        // this app has no key for, and the page falls back to the raw
+        // category name rather than rendering a blank row.
+        "account.notifications.category.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
         // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail

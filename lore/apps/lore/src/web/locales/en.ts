@@ -1670,6 +1670,32 @@ export default {
   "feedback.delete": "Delete",
   "inbox.title": "Notifications",
   "inbox.empty": "Nothing new.",
+  "account.notifications.title": "Notifications",
+  "account.notifications.description": "What you want to hear about, and how.",
+  "account.notifications.channels": "Channels",
+  "account.notifications.channels.description": "Where messages reach you.",
+  "account.notifications.email": "Email",
+  "account.notifications.email.description":
+    "Turn this off and nothing is mailed to you. Sign-in codes and password resets are not affected.",
+  "account.notifications.inbox": "In-app",
+  "account.notifications.inbox.description":
+    "Always on. Messages wait for you in the bell, and a message you cannot see is one that was never sent.",
+  "account.notifications.categories": "Kinds of message",
+  "account.notifications.categories.description":
+    "These apply to both channels.",
+  "account.notifications.saveFailed": "Could not save your preferences.",
+  "account.notifications.category.mentions": "Mentions",
+  "account.notifications.category.mentions.description":
+    "Somebody writes your name in a quest or feedback comment.",
+  "account.notifications.category.releases": "Releases",
+  "account.notifications.category.releases.description":
+    "A project you belong to publishes a release.",
+  "account.notifications.category.tasks": "Quest reminders",
+  "account.notifications.category.tasks.description":
+    "Nudges about a quest you accepted and have not finished.",
+  "account.notifications.category.estates": "Deploy credentials",
+  "account.notifications.category.estates.description":
+    "A deploy credential you own has stopped working.",
   "inbox.empty.description": "Messages addressed to you show up here.",
   "inbox.noMatch": "No match",
   "inbox.noMatch.description": "Try adjusting or clearing the search.",
