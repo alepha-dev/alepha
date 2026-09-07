@@ -57,6 +57,147 @@ describe("OAuthClientService.register", () => {
   });
 });
 
+/**
+ * ⚠️ Dedupe is what makes the Connected apps list a list of APPS.
+ *
+ * claude.ai never reuses its registration - every connect runs DCR - so
+ * production held 39 rows named "Claude" of which 7 ever got a session, and
+ * one account's page showed four live-looking entries because four sessions
+ * carried four different `client_id`s.
+ *
+ * The refusals matter more than the reuse, so there is one case per guard:
+ * each is a way a relaxed rule breaks something that currently works.
+ */
+describe("OAuthClientService.register dedupe", () => {
+  /**
+   * Nothing on the service revokes a client - revocation is a column other
+   * code writes - so the revoked case needs the repository. A test subclass
+   * rather than a mock, per the repo's own rule.
+   */
+  class TestOAuthClientService extends OAuthClientService {
+    public async revokeForTest(clientId: string): Promise<void> {
+      const row = await this.repo.findOne({
+        where: { clientId: { eq: clientId } },
+      });
+      await this.repo.updateById(row!.id, {
+        revokedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  const service = async () => {
+    const alepha = Alepha.create().with(AlephaOrmPostgres);
+    const it = alepha.inject(TestOAuthClientService);
+    await alepha.start();
+    return it;
+  };
+
+  const claude = {
+    realm: "users",
+    clientName: "Claude",
+    redirectUris: ["https://claude.ai/api/mcp/auth_callback"],
+    scopes: ["mcp"],
+  };
+
+  it("hands back the same client for an identical registration", async ({
+    expect,
+  }) => {
+    const oauth = await service();
+
+    const first = await oauth.register(claude);
+    const second = await oauth.register(claude);
+
+    expect(second.clientId).toBe(first.clientId);
+    // The row itself, not a copy: `client_id_issued_at` on the 201 reports
+    // the ORIGINAL registration date, which is correct and what RFC 7591
+    // leaves unsaid.
+    expect(second.createdAt).toEqual(first.createdAt);
+  });
+
+  it("compares redirect_uris as a set, not as an ordered list", async ({
+    expect,
+  }) => {
+    const oauth = await service();
+    const uris = ["https://claude.ai/a", "https://claude.ai/b"];
+
+    const first = await oauth.register({ ...claude, redirectUris: uris });
+    const second = await oauth.register({
+      ...claude,
+      redirectUris: uris.toReversed(),
+    });
+
+    expect(second.clientId).toBe(first.clientId);
+  });
+
+  it("REFUSES to dedupe a confidential client", async ({ expect }) => {
+    // The caller would receive a `client_id` whose secret it does not hold,
+    // and every token request would 401.
+    const oauth = await service();
+
+    const first = await oauth.register({
+      ...claude,
+      type: "confidential",
+      secret: "s3cret",
+    });
+    const second = await oauth.register({
+      ...claude,
+      type: "confidential",
+      secret: "s3cret",
+    });
+
+    expect(second.clientId).not.toBe(first.clientId);
+  });
+
+  it("REFUSES to resurrect a revoked client", async ({ expect }) => {
+    // Revocation is a deliberate act, and handing the same id back defeats
+    // it.
+    const oauth = await service();
+
+    const first = await oauth.register(claude);
+    await oauth.revokeForTest(first.clientId);
+    const second = await oauth.register(claude);
+
+    expect(second.clientId).not.toBe(first.clientId);
+  });
+
+  it("REFUSES to cross realms", async ({ expect }) => {
+    // A client is a row in one realm, which is the invariant every other
+    // read in this service keeps.
+    const oauth = await service();
+
+    const first = await oauth.register(claude);
+    const second = await oauth.register({ ...claude, realm: "admins" });
+
+    expect(second.clientId).not.toBe(first.clientId);
+  });
+
+  it("REFUSES when the redirect_uris differ at all", async ({ expect }) => {
+    const oauth = await service();
+
+    const first = await oauth.register(claude);
+    const second = await oauth.register({
+      ...claude,
+      redirectUris: [...claude.redirectUris, "https://claude.ai/other"],
+    });
+
+    expect(second.clientId).not.toBe(first.clientId);
+  });
+
+  it("REFUSES when the caller named the client id itself", async ({
+    expect,
+  }) => {
+    // Platform's OIDC seeder registers a specific id on purpose, and the id
+    // is the contract there.
+    const oauth = await service();
+
+    const first = await oauth.register({ ...claude, clientId: "fixed_one" });
+    const second = await oauth.register({ ...claude, clientId: "fixed_two" });
+
+    expect(first.clientId).toBe("fixed_one");
+    expect(second.clientId).toBe("fixed_two");
+  });
+});
+
 describe("OAuthClientService wildcard redirect_uri", () => {
   const setup = async () => {
     const alepha = Alepha.create().with(AlephaOrmPostgres);

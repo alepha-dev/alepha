@@ -4,7 +4,10 @@ import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 
 import { RealmProvider } from "../providers/RealmProvider.ts";
-import { myConnectionSchema } from "../schemas/myConnectionSchema.ts";
+import {
+  type MyConnection,
+  myConnectionSchema,
+} from "../schemas/myConnectionSchema.ts";
 
 /**
  * Self-service "connected apps" — every OAuth client holding a live session
@@ -83,23 +86,66 @@ export class MyConnectionController {
       ];
       const nameByClientId = await this.resolveNames(clientIds);
 
-      return rows.map((session) => {
+      /*
+        ⚠️ One entry per CLIENT, not per session. Production listed four
+        live-looking "Claude" rows on one account, of which one was live:
+        claude.ai registers a fresh client on every connect, nothing tells
+        Lore when somebody disconnects on the client side, and each
+        abandoned session then ran its full 180-day term.
+
+        Grouped in the READ. Nothing is deleted to collapse the list, and
+        that is deliberate: since DCR dedupe, Claude web, desktop and mobile
+        share one `client_id`, so pruning older sessions on authorize would
+        sign the other devices out.
+
+        `rows` arrives newest-first, so the first row seen for a client is
+        its most recent - which is the one whose `ip` and `userAgent` are
+        worth showing.
+      */
+      const byClient = new Map<string, MyConnection>();
+      for (const session of rows) {
         const clientId = session.clientId as string;
-        return {
-          id: session.id,
-          clientId,
-          // A session outlives a deleted client registration, and an entry
-          // with a blank name would look like a rendering bug rather than a
-          // connection you can still revoke.
-          clientName: nameByClientId.get(clientId) ?? clientId,
-          createdAt: session.createdAt,
-          lastUsedAt: session.lastUsedAt,
-          expiresAt: session.expiresAt,
-          ip: session.ip,
-          userAgent: session.userAgent as never,
-          current: session.id === user.sessionId,
-        };
-      });
+        const seen = byClient.get(clientId);
+        if (!seen) {
+          byClient.set(clientId, {
+            id: clientId,
+            clientId,
+            // A session outlives a deleted client registration, and an entry
+            // with a blank name would look like a rendering bug rather than
+            // a connection you can still revoke.
+            clientName: nameByClientId.get(clientId) ?? clientId,
+            createdAt: session.createdAt,
+            lastUsedAt: session.lastUsedAt,
+            expiresAt: session.expiresAt,
+            sessionCount: 1,
+            ip: session.ip,
+            userAgent: session.userAgent as never,
+            current: session.id === user.sessionId,
+          });
+          continue;
+        }
+        seen.sessionCount += 1;
+        // The OLDEST, because "connected 8 days ago" is a fact about the
+        // app rather than about its newest reconnect.
+        if (session.createdAt < seen.createdAt) {
+          seen.createdAt = session.createdAt;
+        }
+        if (
+          session.lastUsedAt &&
+          (!seen.lastUsedAt || session.lastUsedAt > seen.lastUsedAt)
+        ) {
+          seen.lastUsedAt = session.lastUsedAt;
+        }
+        // The latest, which is when access actually ends if nobody revokes.
+        if (session.expiresAt > seen.expiresAt) {
+          seen.expiresAt = session.expiresAt;
+        }
+        // ⚠️ `||=`, never `=`: the caller's own session may be any of them,
+        // and a later row must not clear a flag an earlier one set.
+        seen.current ||= session.id === user.sessionId;
+      }
+
+      return [...byClient.values()];
     },
   });
 
@@ -109,35 +155,49 @@ export class MyConnectionController {
     use: [$secure()],
     description: "Cut off one OAuth client's access to the caller's account",
     schema: {
-      params: z.object({ id: z.uuid() }),
-      response: z.object({ ok: z.boolean() }),
+      /*
+        ⚠️ A CLIENT id, not a session uuid, and not `z.uuid()`:
+        `sessions.clientId` holds the registered OAuth client id
+        (`mcp_<hex>`), which a uuid schema refuses outright.
+
+        Addressing the client is what makes the confirm dialog's promise
+        true. It says the app "loses access immediately and has to be
+        authorized again to come back"; deleting one of its four sessions
+        did not do that.
+      */
+      params: z.object({ id: z.text({ maxLength: 64 }) }),
+      response: z.object({ ok: z.boolean(), revoked: z.integer() }),
     },
     handler: async ({ params, user }) => {
       const repo = this.sessions(user.realm);
 
       /*
         Three conditions, all load-bearing. `userId` keeps this owner-scoped,
-        so another account's session id reads as missing rather than
+        so another account's client id reads as missing rather than
         forbidden — a distinct answer would confirm the id exists.
 
         `clientId: isNotNull` keeps this endpoint to connections only: without
         it, "revoke a connected app" would happily delete the browser session
         the caller is sitting in, which belongs to the sessions page and its
-        own confirmation, not to this one.
+        own confirmation, not to this one. It is redundant beside the
+        equality below and stays anyway: it is the condition that states the
+        rule, and the next edit here is as likely to loosen the id as to
+        remove this line.
       */
-      const session = await repo.findOne({
+      const sessions = await repo.findMany({
         where: {
-          id: { eq: params.id },
+          clientId: { eq: params.id },
           userId: { eq: user.id },
-          clientId: { isNotNull: true },
         },
       });
-      if (!session) {
+      if (sessions.length === 0) {
         throw new NotFoundError("Connection not found");
       }
 
-      await repo.deleteById(session.id);
-      return { ok: true };
+      for (const session of sessions) {
+        await repo.deleteById(session.id);
+      }
+      return { ok: true, revoked: sessions.length };
     },
   });
 

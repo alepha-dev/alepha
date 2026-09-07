@@ -122,8 +122,34 @@ describe("alepha/api/users - MyConnectionController", () => {
 
     const connections = await list(ctx, mine.id);
 
-    expect(connections.find((c) => c.current)?.id).toBe(mine.id);
+    // ⚠️ The entry's `id` is the CLIENT id: one row per app, not per
+    // session. The caller's own session id is what `current` is computed
+    // from, not what identifies the entry.
+    expect(connections.find((c) => c.current)?.id).toBe("cli-tool");
     expect(connections.filter((c) => c.current)).toHaveLength(1);
+  });
+
+  it("should list one entry for an app with several sessions", async ({
+    expect,
+  }) => {
+    /*
+      The failure this exists for: on production one account listed four
+      live-looking "Claude" rows of which one was live, because claude.ai
+      registers a fresh client on every connect and nothing tells Lore when
+      somebody disconnects on the client side.
+    */
+    const ctx = await setup();
+    const first = await ctx.addSession("cli-tool");
+    await ctx.addSession("cli-tool");
+    await ctx.addSession("cli-tool");
+
+    const connections = await list(ctx, first.id);
+
+    expect(connections).toHaveLength(1);
+    expect(connections[0].sessionCount).toBe(3);
+    // `current` is true when ANY of them is the caller's, so the entry the
+    // caller is sitting in is not reported as somebody else's.
+    expect(connections[0].current).toBe(true);
   });
 
   it("should never return the refresh token", async ({ expect }) => {
@@ -135,14 +161,21 @@ describe("alepha/api/users - MyConnectionController", () => {
     expect(connections[0]).not.toHaveProperty("refreshToken");
   });
 
-  it("should revoke one connection", async ({ expect }) => {
+  it("should revoke one connection, every session of it", async ({
+    expect,
+  }) => {
     const ctx = await setup();
     const mine = await ctx.addSession("cli-tool");
-    const other = await ctx.addSession("other-tool");
+    await ctx.addSession("other-tool");
+    // A second session of the app being revoked: cutting one of two is what
+    // made the confirm dialog's "it loses access immediately" untrue.
+    await ctx.addSession("other-tool");
 
-    await revoke(ctx, mine.id, other.id);
+    // ⚠️ Addressed by CLIENT id now, not by a session uuid.
+    const result = await revoke(ctx, mine.id, "other-tool");
+    expect(result).toEqual({ ok: true, revoked: 2 });
 
-    expect((await list(ctx, mine.id)).map((c) => c.id)).toEqual([mine.id]);
+    expect((await list(ctx, mine.id)).map((c) => c.id)).toEqual(["cli-tool"]);
   });
 
   it("should refuse to revoke a plain browser session through this endpoint", async ({
