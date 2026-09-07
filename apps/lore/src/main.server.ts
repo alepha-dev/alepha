@@ -2,7 +2,10 @@ import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/components/admin/admin-router-options";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
-import { NotificationInboxRecipientProvider } from "alepha/api/notifications";
+import {
+  NotificationInboxRecipientProvider,
+  NotificationPreferenceProvider,
+} from "alepha/api/notifications";
 import { oauthOptions } from "alepha/api/oauth";
 import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
@@ -13,6 +16,7 @@ import { LoreWebAdmin } from "@/web/admin/index.ts";
 import { LoreApi } from "./api/index.ts";
 import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
 import { LoreInboxRecipientProvider } from "./api/providers/LoreInboxRecipientProvider.ts";
+import { LoreNotificationPreferences } from "./api/providers/LoreNotificationPreferences.ts";
 import { LoreSigilSinkProvider } from "./api/providers/LoreSigilSinkProvider.ts";
 import { EstateCommandTransport } from "./api/services/EstateCommandTransport.ts";
 import { WebSocketEstateCommandTransport } from "./api/services/WebSocketEstateCommandTransport.ts";
@@ -138,6 +142,14 @@ alepha.with({
 alepha.with({
   provide: NotificationInboxRecipientProvider,
   use: LoreInboxRecipientProvider,
+});
+
+// Whether somebody still wants to be told. A read seam with no table in the
+// framework, on purpose: a preference is an app's own product decision, and
+// this is Lore's answer. Same ordering constraint as the line above.
+alepha.with({
+  provide: NotificationPreferenceProvider,
+  use: LoreNotificationPreferences,
 });
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
