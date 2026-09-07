@@ -94,6 +94,7 @@ import { OpenQuestScope } from "./services/OpenQuestScope.ts";
 import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
 import { TrelloParser } from "./services/parsers/TrelloParser.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
+import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { QualityService } from "./services/QualityService.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
@@ -102,6 +103,7 @@ import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.
 import { QuestService } from "./services/QuestService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
+import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
@@ -190,9 +192,14 @@ export const LoreApi = $module({
     // notification classes share.
     LoreInboxNotifications,
     NotificationHtmlEscaper,
+    // Who is in a project, as one read, for everything that writes to
+    // people. One question, not two.
+    ProjectRoster,
     // Turns `@name` in a comment into a message. Injected by the quest and
     // feedback comment controllers.
     MentionNotifier,
+    // The release fan-out. Publish only; reopen notifies nobody.
+    ReleaseNotifier,
     // Substituted for the framework's `NotificationInboxRecipientProvider`
     // in `main.server.ts`. Listed here only so DI scanning sees the class,
     // the same arrangement `LoreFileAccessProvider` has.
