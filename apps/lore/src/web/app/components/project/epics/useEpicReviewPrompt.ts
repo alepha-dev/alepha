@@ -5,7 +5,8 @@ import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { epicReviewPromptAtom } from "@/web/app/atoms/epicReviewPromptAtom.ts";
-import { buildEpicReviewPrompt } from "@/web/app/prompts/epicReviewPrompt.ts";
+import { epicReviewPromptDefault } from "@/web/app/prompts/epicReviewPrompt.ts";
+import { renderPromptTemplate } from "@/web/app/prompts/renderPromptTemplate.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 
@@ -44,10 +45,19 @@ export const useEpicReviewPrompt = (): ((epic: EpicResource) => void) => {
     const url =
       typeof window === "undefined" ? path : `${window.location.origin}${path}`;
 
-    const prompt = buildEpicReviewPrompt({
-      projectSlug: project?.slug ?? "",
-      epicNumber: epic.number,
-      epicTitle: epic.title,
+    // ⚠️ A bridge, not the shape this ends up in. #Q1962 replaces this
+    // whole hook with `useAgentPrompt()`, which reads the project's own
+    // template instead of the built-in default and copies inside the click.
+    // Until then it renders the default so the existing dialog keeps
+    // working, and the project's TITLE goes to `{{project}}` because that
+    // is what `project_name` matches.
+    const prompt = renderPromptTemplate(epicReviewPromptDefault, {
+      project: project?.title ?? "",
+      slug: project?.slug ?? "",
+      number: epic.number,
+      id: epic.id,
+      reference: formatReference("epic", epic.number),
+      title: epic.title,
       url,
     });
 
