@@ -926,3 +926,122 @@ describe("rolling back", () => {
     ).rejects.toThrowError(/nothing to roll back to/);
   });
 });
+
+/**
+ * The Apps list's Version column.
+ *
+ * ⚠️ **The column is `deployments`-backed or it does not ship.** #1773 drew it
+ * and #1774 shipped three columns instead, because nothing in Lore knew what an
+ * instance was RUNNING: no `deployments` table, no app version on the reporting
+ * envelope, and a sha256 with no tag on an estate command's payload. The
+ * temptation the deferral note names by hand is filling it with the newest
+ * artifact pushed for the app - which is per app rather than per copy, says
+ * what was BUILT rather than what runs, and is wrong on the first promotion.
+ */
+describe("what a deployed copy reports as its version", () => {
+  let alepha: Alepha;
+
+  beforeEach(async () => {
+    alepha = await setup();
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  const aCopy = async () => {
+    const user = await aUser(alepha);
+    const project = await aProject(alepha, user);
+    await enableApps(alepha, project.id, user);
+    const instance = await anInstance(alepha, project.id, user);
+    return { user, project, instance };
+  };
+
+  const listed = async (
+    project: { id: number },
+    user: { id: string },
+    instance: { app: string; env: string },
+  ) => {
+    const res = await alepha
+      .inject(AppController)
+      .listApps.fetch({ params: { projectId: project.id } }, { user });
+    return res.data.items.find(
+      (it: { app: string; env: string }) =>
+        it.app === instance.app && it.env === instance.env,
+    );
+  };
+
+  it("says nothing at all for a copy that has never deployed", async ({
+    expect,
+  }) => {
+    // Blank, not a dash: there is no version, rather than an unknown one.
+    const { user, project, instance } = await aCopy();
+
+    expect((await listed(project, user, instance))?.version).toBeUndefined();
+  });
+
+  it("is the newest SUCCEEDED run, not the newest run", async ({ expect }) => {
+    const { user, project, instance } = await aCopy();
+    const rows = alepha.inject(TestRows);
+
+    await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: instance.app,
+      tag: "0.28.0",
+      sha256: "a".repeat(64),
+      status: "succeeded",
+    } as never);
+    // A later attempt that did not land. What runs is still `0.28.0`, and
+    // reading the newest row of any status would claim otherwise.
+    await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: instance.app,
+      tag: "0.29.0",
+      sha256: "b".repeat(64),
+      status: "failed",
+    } as never);
+
+    expect((await listed(project, user, instance))?.version).toBe("0.28.0");
+  });
+
+  it("is per copy, so a sibling on another tag reads its own", async ({
+    expect,
+  }) => {
+    // ⚠️ The case the newest-artifact shortcut gets wrong, and the mockup's
+    // own: `b14-staging` on `latest` beside siblings on `0.29.0`. Only a
+    // per-instance row can express it.
+    const { user, project, instance } = await aCopy();
+    const sibling = (
+      await alepha.inject(AppController).createApp.fetch(
+        {
+          params: { projectId: project.id },
+          body: { app: "my-app", env: "b14-staging" },
+        },
+        { user },
+      )
+    ).data;
+    const rows = alepha.inject(TestRows);
+
+    await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: instance.app,
+      tag: "0.29.0",
+      sha256: "a".repeat(64),
+      status: "succeeded",
+    } as never);
+    await rows.deployments.create({
+      projectId: project.id,
+      instanceId: sibling.id,
+      app: sibling.app,
+      tag: "latest",
+      sha256: "b".repeat(64),
+      status: "succeeded",
+    } as never);
+
+    expect((await listed(project, user, instance))?.version).toBe("0.29.0");
+    expect((await listed(project, user, sibling))?.version).toBe("latest");
+  });
+});

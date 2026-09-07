@@ -8,6 +8,7 @@ export type AppTabRoute =
   | "appErrors"
   | "appExplore"
   | "appArtifacts"
+  | "appDeploy"
   | "appEnvironment"
   | "appSettings";
 
@@ -18,6 +19,7 @@ export type AppTabLabelKey =
   | "app.tab.errors"
   | "app.tab.explore"
   | "app.tab.artifacts"
+  | "app.tab.deploy"
   | "app.tab.environment"
   | "app.tab.settings";
 
@@ -74,13 +76,13 @@ export interface GatedAppTab {
  * The tab set of an instance page, in the order it is drawn.
  *
  * ⚠️ **Data, not a hand-written sequence**, and that is the point of the file.
- * Environment arrived as one entry with an `unlockedBy` of its own, and epic
- * #1's Deploy tab arrives the same way; neither rewrites the bar to do it.
+ * Deploy and Environment each arrived as one entry with an `unlockedBy` and an
+ * `option` of their own; neither rewrote the bar to do it.
  *
- * ⚠️ **The seam and the screen ship together.** Environment is a security
- * surface, so no placeholder tab ever stood here: a tab in place invites
- * somebody to fill it in before the crypto exists, and #1813 landed the entry,
- * the sealed column and the page in one commit.
+ * ⚠️ **The seam and the screen ship together.** No placeholder tab ever stood
+ * here for either: Environment is a security surface, and a tab in place
+ * invites somebody to fill it in before the crypto exists, so #1813 landed the
+ * entry, the sealed column and the page in one commit.
  *
  * ⚠️ **Settings is always last**, in every combination, so tabs appear and
  * disappear BETWEEN Overview and Settings rather than at the edge of the bar.
@@ -131,14 +133,21 @@ export const APP_TABS: AppTab[] = [
   // instance page the list reads as "what can I deploy here", and a badge
   // explaining the difference would be a control that changes nothing.
   { route: "appArtifacts", labelKey: "app.tab.artifacts" },
-  // ⚠️ `deploy`, never `track`. A project that deploys through Lore with
-  // telemetry off must not lose the screen holding its production credentials
-  // for a reason nothing on the page explains, which is the trap `AppTab`'s
-  // union was made to close.
+  // ⚠️ `deploy`, never `track`, for both of the two below. A project that
+  // deploys through Lore with telemetry off would otherwise lose them with
+  // nothing on screen saying why - the trap `AppTab`'s union was made to close.
   //
-  // Unlocked by having an estate: the variables reach the app through a deploy,
-  // and a copy with nowhere to deploy has nothing to configure yet. Choosing an
-  // estate on the Settings tab is what makes this tab appear.
+  // Both unlock on the copy having an estate, and for the same reason: an
+  // estate is where a deploy goes and where its variables end up, so a copy
+  // with nowhere to deploy has neither a history nor anything to configure.
+  // Choosing one on the Settings tab is what makes the pair appear.
+  {
+    route: "appDeploy",
+    labelKey: "app.tab.deploy",
+    unlockedBy: (instance) => !!instance.estateId,
+    option: "deploy",
+  },
+  // Beside Deploy, and after it: this configures what a deploy ships.
   {
     route: "appEnvironment",
     labelKey: "app.tab.environment",
