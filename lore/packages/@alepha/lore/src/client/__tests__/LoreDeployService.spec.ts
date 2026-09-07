@@ -8,11 +8,10 @@ import { LoreDeployService } from "../services/LoreDeployService.ts";
 /**
  * Deploying a copy from another server.
  *
- * ⚠️ **Two properties carry this file.** A copy that does not exist is a
- * refusal unless the caller explicitly asked to make one, because minting a
- * deploy target as a side effect of a typo in `env` is how a fleet grows a copy
- * nobody meant to make. And a newly created copy inherits its estate rather
- * than taking an id from the caller, because a client that can name an
+ * ⚠️ **Two properties carry this file.** A copy that does not exist is created,
+ * but ONLY on a 404 - so an outage cannot turn into a burst of copies nobody
+ * asked for. And a newly created copy takes an estate SLUG resolved against the
+ * lending, never an id from the caller, because a client that can name an
  * arbitrary estate can deploy into somebody else's cloud account.
  */
 
@@ -114,25 +113,7 @@ const shipped = (over: Record<string, unknown> = {}) => ({
 });
 
 describe("deploying from another server", () => {
-  describe("the copy has to exist", () => {
-    it("refuses a copy that does not, and starts nothing", async () => {
-      // ⚠️ The default, and the epic's rule: a missing copy is a refusal.
-      const { api, service } = setup();
-
-      await expect(
-        service.deploy({ app: "club", env: "wassup" }),
-      ).rejects.toThrow(/is not a deployed copy of this project/);
-      expect(api.calls.filter((it) => it.method === "POST")).toEqual([]);
-    });
-
-    it("names `create: true` in the refusal, since that is the way through", async () => {
-      const { service } = setup();
-
-      await expect(
-        service.deploy({ app: "club", env: "wassup" }),
-      ).rejects.toThrow(/create: true/);
-    });
-
+  describe("ensuring the copy", () => {
     it("deploys an existing copy without creating anything", async () => {
       const { api, service } = setup(shipped());
 
@@ -147,16 +128,18 @@ describe("deploying from another server", () => {
     });
   });
 
-  describe("creating one on purpose", () => {
-    it("inherits the estate of the app's production copy", async () => {
-      // The call a tenant signup makes: no infrastructure in it at all.
-      // ⚠️ No route for `GET .../apps/club/wassup`, so the copy is genuinely
-      // absent until this creates it - which is the state under test.
+  describe("creating one when it is missing", () => {
+    it("takes the estate this project was lent FIRST", async () => {
+      // ⚠️ `listProjectEstates` is newest-lending-first, so the oldest is
+      // last. Taking `items[0]` would mean lending a second estate silently
+      // re-points every new tenant while the running fleet stays put - a split
+      // nothing on any screen would explain. `newer` is in this list precisely
+      // so the test cannot pass by taking the head.
       const { api, service } = setup({
-        "GET /api/projects/1/apps": () => ({
+        "GET /api/projects/1/estates": () => ({
           items: [
-            anInstance({ id: "i-old", env: "aaa-first", estateId: "est-2" }),
-            anInstance({ id: "i-prod", env: "production", estateId: "est-9" }),
+            { id: "est-new", slug: "newer" },
+            { id: "est-old", slug: "the-first-one" },
           ],
         }),
         "POST /api/projects/1/apps": () => anInstance({ estateId: undefined }),
@@ -175,18 +158,11 @@ describe("deploying from another server", () => {
         }),
       });
 
-      const result = await service.deploy({
-        app: "club",
-        env: "wassup",
-        create: true,
-      });
+      const result = await service.deploy({ app: "club", env: "wassup" });
 
       expect(result.url).toBe("https://wassup.club.example");
-      // ⚠️ `production`, not the first by name - the same rule
-      // `defaultAppInstance` applies server-side. `aaa-first` sorts first and
-      // is in the list precisely so this cannot pass by taking [0].
       const patch = api.calls.find((it) => it.method === "PATCH");
-      expect(patch?.body).toEqual({ estateId: "est-9" });
+      expect(patch?.body).toEqual({ estateId: "est-old" });
       // And the create itself carries no estate: two calls, because
       // `createApp` takes none.
       const created = api.calls.find(
@@ -195,13 +171,70 @@ describe("deploying from another server", () => {
       expect(created?.body).toEqual({ app: "club", env: "wassup" });
     });
 
-    it("carries the address onto the new copy, which is what makes the answer a URL", async () => {
+    it("takes the named estate when one is named", async () => {
+      const { api, service } = setup({
+        "GET /api/projects/1/estates": () => ({
+          items: [
+            { id: "est-new", slug: "newer" },
+            { id: "est-old", slug: "the-first-one" },
+          ],
+        }),
+        "POST /api/projects/1/apps": () => anInstance({ estateId: undefined }),
+        "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
+        "POST /api/projects/1/apps/inst-1/deployments": () => ({
+          id: "dep-1",
+          status: "queued",
+        }),
+        "GET /api/projects/1/deployments/dep-1": () => ({
+          id: "dep-1",
+          app: "club",
+          tag: "latest",
+          status: "succeeded",
+          log: [],
+        }),
+      });
+
+      await service.deploy({ app: "club", env: "wassup", estate: "newer" });
+
+      const patch = api.calls.find((it) => it.method === "PATCH");
+      expect(patch?.body).toEqual({ estateId: "est-new" });
+    });
+
+    it("reads an empty estate as 'the first one', not as a name", async () => {
+      // `estate: ""` is what an unset config value looks like, and it must
+      // mean the default rather than send the client looking for a slug of "".
+      const { api, service } = setup({
+        "GET /api/projects/1/estates": () => ({
+          items: [{ id: "est-old", slug: "only" }],
+        }),
+        "POST /api/projects/1/apps": () => anInstance({ estateId: undefined }),
+        "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
+        "POST /api/projects/1/apps/inst-1/deployments": () => ({
+          id: "dep-1",
+          status: "queued",
+        }),
+        "GET /api/projects/1/deployments/dep-1": () => ({
+          id: "dep-1",
+          app: "club",
+          tag: "latest",
+          status: "succeeded",
+          log: [],
+        }),
+      });
+
+      await service.deploy({ app: "club", env: "wassup", estate: "  " });
+
+      const patch = api.calls.find((it) => it.method === "PATCH");
+      expect(patch?.body).toEqual({ estateId: "est-old" });
+    });
+
+    it("carries the address onto the new copy, which is what returns a URL", async () => {
       // ⚠️ `DeployRunner` reads the domain off `app_instances.url`, and the
       // adapter answers a URL only when it put one into effect. A copy created
       // with no address deploys fine and answers nothing to link to.
       const { api, service } = setup({
-        "GET /api/projects/1/apps": () => ({
-          items: [anInstance({ id: "i-prod", env: "production" })],
+        "GET /api/projects/1/estates": () => ({
+          items: [{ id: "est-1", slug: "only" }],
         }),
         "POST /api/projects/1/apps": () => anInstance(),
         "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
@@ -222,7 +255,6 @@ describe("deploying from another server", () => {
       await service.deploy({
         app: "club",
         env: "wassup",
-        create: true,
         url: "https://wassup.club.example",
       });
 
@@ -248,20 +280,24 @@ describe("deploying from another server", () => {
         service.deploy({
           app: "club",
           env: "wassup",
-          create: true,
           estate: "somebody-elses",
         }),
       ).rejects.toThrow(/No estate called 'somebody-elses' is lent/);
     });
 
-    it("says so when no copy of the app names an estate to inherit", async () => {
-      const { service } = setup({
-        "GET /api/projects/1/apps": () => ({ items: [] }),
+    it("errors when the project has been lent no estate at all", async () => {
+      // ⚠️ Refused BEFORE the copy is created. Creating it first would leave a
+      // copy behind that deploys nowhere, for somebody to find later.
+      const { api, service } = setup({
+        "GET /api/projects/1/estates": () => ({ items: [] }),
       });
 
       await expect(
-        service.deploy({ app: "club", env: "wassup", create: true }),
-      ).rejects.toThrow(/nowhere to inherit from/);
+        service.deploy({ app: "club", env: "wassup" }),
+      ).rejects.toThrow(/No estate is lent to this project/);
+      expect(
+        api.calls.filter((it) => it.path === "/api/projects/1/apps"),
+      ).toEqual([]);
     });
   });
 
@@ -360,7 +396,7 @@ describe("deploying from another server", () => {
       };
 
       await expect(
-        service.deploy({ app: "club", env: "wassup", create: true }),
+        service.deploy({ app: "club", env: "wassup" }),
       ).rejects.toThrow(/Forbidden/);
       expect(api.calls.filter((it) => it.method === "POST")).toEqual([]);
     });

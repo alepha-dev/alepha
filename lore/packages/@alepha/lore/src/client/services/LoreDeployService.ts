@@ -60,38 +60,28 @@ export interface LoreDeployInput {
    */
   project?: string;
   /**
-   * Create the copy when it does not exist yet.
+   * Where the copy answers, e.g. `https://wassup.club.example`.
    *
-   * ⚠️ **Off by default, and that is the epic's rule rather than caution.** A
-   * missing copy is normally a refusal: minting a deploy target as a side
-   * effect of a typo in `env` is how a fleet grows a copy nobody meant to
-   * make. Pass `true` where creating one IS the act being performed - a
-   * tenant signing up, a preview environment for a branch - because then the
-   * caller, not a typo, is what asked for it.
-   */
-  create?: boolean;
-  /**
-   * Where the new copy answers, e.g. `https://wassup.club.example`.
-   *
-   * Only read when {@link create} makes one, and it is what makes a per-tenant
-   * address work: `DeployRunner` takes the host from `app_instances.url` and
-   * hands it to the adapter as the environment's domain, and the adapter
-   * answers a URL only when it put one into effect. **Omit it and a successful
-   * deploy answers no URL**, because there is no domain for it to name.
+   * Only read when this call CREATES the copy, and it is what makes a
+   * per-tenant address work: `DeployRunner` takes the host from
+   * `app_instances.url` and hands it to the adapter as the environment's
+   * domain, and the adapter answers a URL only when it put one into effect.
+   * **Omit it and a successful deploy answers no URL**, because there is no
+   * domain for it to name.
    */
   url?: string;
   /**
-   * Which estate a newly created copy deploys to, by slug.
+   * Which estate a newly created copy deploys to, **by slug**.
    *
-   * Only read when {@link create} makes one. Omitted, the new copy inherits
-   * the estate of the app's default copy - `production` if it exists, else the
-   * first by name - which is what makes "another tenant of this app" a call
-   * with no infrastructure in it.
+   * Only read when this call creates the copy; an existing one keeps the
+   * estate it already has. Empty or omitted takes the estate this project was
+   * lent FIRST - see {@link LoreDeployService.estateFor} for why the oldest
+   * rather than the newest. A project with none lent is an error.
    *
-   * ⚠️ It is a SLUG resolved against the estates lent to this project, never
-   * an id taken on trust. An estate is owned by a user and lent, and a client
-   * that could name an arbitrary one could point a deploy at somebody else's
-   * cloud account.
+   * ⚠️ A slug, never an id, and resolved against the estates lent to THIS
+   * project. An estate is owned by a user and lent out, so a client that could
+   * name an arbitrary one could point a deploy at somebody else's cloud
+   * account.
    */
   estate?: string;
 }
@@ -113,7 +103,6 @@ export interface LoreDeployInput {
  *   app: "club",
  *   env: "wassup",
  *   tag: "latest",
- *   create: true,
  *   url: "https://wassup.club.example",
  * });
  * ```
@@ -124,13 +113,24 @@ export interface LoreDeployInput {
  * into effect. A copy created with no address deploys perfectly well and
  * answers nothing to link to.
  *
+ * ## It ENSURES the copy
+ *
+ * A copy that does not exist is created, because that is what the caller is
+ * doing: a program provisioning a tenant is not a person mistyping `--env`.
+ * `lore apps deploy` refuses instead, and the difference is deliberate - a
+ * typo on a command line becomes a copy nobody meant, while a slug an
+ * application already validated becomes the copy it just promised somebody.
+ *
+ * ⚠️ **Only a 404 creates.** A revoked key, a 403 or an unreachable Lore
+ * rethrows, so an outage cannot turn into a burst of copies nobody asked for.
+ *
  * ## ⚠️ Five round trips, and none of them names an estate on the wire
  *
  * Resolve the project, resolve or create the copy, start the run, poll it,
  * read the URL. The destination is read by Lore from the `app_instances` row
- * every time; the only estate this client ever sends is the one
- * {@link LoreDeployInput.estate} names when CREATING a copy, and that goes
- * through Lore's own lending check rather than being trusted.
+ * every time; the only estate this client ever sends is the SLUG
+ * {@link LoreDeployInput.estate} names when creating a copy, resolved against
+ * the lending rather than trusted.
  *
  * ## ⚠️ What the caller has to have arranged first
  *
@@ -178,9 +178,7 @@ export class LoreDeployService {
     url?: string;
   }> {
     const projectId = await this.api.projectId(input.project);
-    const instance = input.create
-      ? await this.ensureInstance(projectId, input)
-      : await this.requireInstance(projectId, input);
+    const instance = await this.ensureInstance(projectId, input);
 
     const started = await this.start(projectId, instance.id, input.tag);
     const deployment = await this.follow(
@@ -219,28 +217,12 @@ export class LoreDeployService {
     } catch (error) {
       // ⚠️ Only a 404 is "not there". A revoked key, an unreachable Lore and a
       // 403 are different problems, and reporting them as an absent copy would
-      // make `create: true` mint one to paper over an outage.
+      // make an outage look like a copy to create.
       if (LoreApiClient.statusOf(error) === 404) {
         return undefined;
       }
       throw error;
     }
-  }
-
-  /**
-   * The copy, or a refusal naming where to make one.
-   */
-  public async requireInstance(
-    projectId: number,
-    input: LoreDeployInput,
-  ): Promise<LoreAppInstance> {
-    const found = await this.findInstance(projectId, input.app, input.env);
-    if (found) {
-      return found;
-    }
-    throw new AlephaError(
-      `${input.app}/${input.env} is not a deployed copy of this project, so there is nowhere to deploy it. Pass \`create: true\` if making one is what you meant, or create it on the project's Apps page.`,
-    );
   }
 
   /**
@@ -342,47 +324,57 @@ export class LoreDeployService {
   /**
    * Which estate a newly created copy points at.
    *
-   * Named by slug, or inherited from the app's default copy. ⚠️ The slug is
-   * resolved against the estates LENT to this project, so a name this project
-   * does not hold is a refusal rather than a deploy into a stranger's account -
-   * and Lore checks the lending again on the write.
+   * The slug when one is named, and otherwise the estate this project was lent
+   * **first**. A project with none lent is an error rather than a copy with
+   * nowhere to deploy: that copy would be created, would fail its deploy, and
+   * would be left behind for somebody to find.
+   *
+   * ## ⚠️ The OLDEST lending, not `items[0]`
+   *
+   * `listProjectEstates` orders by the lending's `createdAt` **descending**, so
+   * the first row is the most recently lent. Taking it would mean that lending
+   * a second estate silently re-points every new tenant, while the fleet
+   * already running stays where it is - a split nothing on any screen would
+   * explain. The oldest lending is the one an existing fleet is on, and it does
+   * not move when another is added.
+   *
+   * With exactly one estate lent, which is the ordinary case, every reading of
+   * "the first" agrees. The choice only shows up at the moment it would hurt.
    */
   protected async estateFor(
     projectId: number,
     input: LoreDeployInput,
   ): Promise<string> {
-    if (input.estate) {
-      const lent = await this.api.request<{
-        items?: Array<{ id: string; slug: string }>;
-      }>("GET", `/api/projects/${projectId}/estates`);
-      const found = lent?.items?.find((it) => it.slug === input.estate);
-      if (!found) {
-        throw new AlephaError(
-          `No estate called '${input.estate}' is lent to this project, so ${input.app}/${input.env} cannot be pointed at it.`,
-        );
-      }
-      return found.id;
-    }
+    const lent = await this.api.request<{
+      items?: Array<{ id: string; slug: string }>;
+    }>("GET", `/api/projects/${projectId}/estates`);
+    const items = lent?.items ?? [];
 
-    const siblings = await this.api.request<{ items?: LoreAppInstance[] }>(
-      "GET",
-      `/api/projects/${projectId}/apps`,
-    );
-    const ofApp = (siblings?.items ?? []).filter(
-      (it) => it.app === input.app && it.estateId,
-    );
-    // The same rule `defaultAppInstance` uses server-side: `production` if it
-    // exists, else the first env by name. Restated rather than imported for
-    // the reason every type here is - it lives in the private workspace.
-    const chosen =
-      ofApp.find((it) => it.env === "production") ??
-      [...ofApp].sort((a, b) => a.env.localeCompare(b.env))[0];
-
-    if (!chosen?.estateId) {
+    if (items.length === 0) {
       throw new AlephaError(
-        `No copy of ${input.app} names an estate, so a new one has nowhere to inherit from. Pass \`estate\` with the slug of an estate lent to this project, or choose one on an existing copy's Settings tab.`,
+        `No estate is lent to this project, so ${input.app}/${input.env} would have nowhere to deploy. Lend one on the project's Estates page first.`,
       );
     }
-    return chosen.estateId;
+
+    const named = input.estate?.trim();
+    if (!named) {
+      // Oldest last, because the list is newest first.
+      const oldest = items[items.length - 1];
+      if (items.length > 1) {
+        this.log.info(
+          `Creating ${input.app}/${input.env} on '${oldest.slug}', the first estate lent to this project`,
+          { lent: items.map((it) => it.slug) },
+        );
+      }
+      return oldest.id;
+    }
+
+    const found = items.find((it) => it.slug === named);
+    if (!found) {
+      throw new AlephaError(
+        `No estate called '${named}' is lent to this project. Lent here: ${items.map((it) => it.slug).join(", ")}.`,
+      );
+    }
+    return found.id;
   }
 }
