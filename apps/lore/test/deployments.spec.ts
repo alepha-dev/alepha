@@ -8,11 +8,16 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { AppController } from "../src/api/controllers/AppController.ts";
+import { DeployController } from "../src/api/controllers/DeployController.ts";
 import { ProjectCapabilityController } from "../src/api/controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { appInstances } from "../src/api/entities/appInstances.ts";
 import { deployments } from "../src/api/entities/deployments.ts";
+import { estateProjects } from "../src/api/entities/estateProjects.ts";
+import { estates } from "../src/api/entities/estates.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { DeployJobs } from "../src/api/jobs/DeployJobs.ts";
+import { DeployGate } from "../src/api/services/DeployGate.ts";
 import { DeployRegistry } from "../src/api/services/DeployRegistry.ts";
 import { DeployService } from "../src/api/services/DeployService.ts";
 
@@ -30,7 +35,61 @@ const userDataSchema = z.object({ username: z.string(), email: z.email() });
 
 class TestRows {
   public readonly deployments = $repository(deployments);
+  public readonly estates = $repository(estates);
+  public readonly grants = $repository(estateProjects);
+  public readonly instances = $repository(appInstances);
 }
+
+/**
+ * The four steps every case here needs: a user, a project, the Apps capability
+ * and one deployed copy.
+ */
+const aUser = async (alepha: Alepha) => {
+  const fake = alepha.inject(FakeProvider).generate(userDataSchema);
+  const created = await alepha
+    .inject(AdminUserController)
+    .createUser.fetch(
+      { body: { ...fake, roles: ["user"] } },
+      { user: adminUser },
+    );
+  return { id: created.data.id, roles: created.data.roles };
+};
+
+const aProject = async (alepha: Alepha, user: { id: string }) =>
+  (
+    await alepha
+      .inject(ProjectController)
+      .createProject.fetch(
+        { body: { title: `Deploy ${crypto.randomUUID().slice(0, 8)}` } },
+        { user },
+      )
+  ).data;
+
+const enableApps = async (
+  alepha: Alepha,
+  projectId: number,
+  user: { id: string },
+) =>
+  await alepha
+    .inject(ProjectCapabilityController)
+    .setCapability.fetch(
+      { params: { projectId, key: "apps" }, body: { enabled: true } },
+      { user },
+    );
+
+const anInstance = async (
+  alepha: Alepha,
+  projectId: number,
+  user: { id: string },
+) =>
+  (
+    await alepha
+      .inject(AppController)
+      .createApp.fetch(
+        { params: { projectId }, body: { app: "my-app", env: "b14-preview" } },
+        { user },
+      )
+  ).data;
 
 const setup = async () => {
   const alepha = Alepha.create({
@@ -230,7 +289,7 @@ describe("a deployment", () => {
 
       const after = await rows.findById(row.id);
       expect(after?.status).toBe("failed");
-      expect(after?.error).toMatch(/no longer names an estate/);
+      expect(after?.error).toMatch(/has no estate/);
       expect(after?.finishedAt).toBeDefined();
     });
 
@@ -339,5 +398,263 @@ describe("a deployment", () => {
 
       expect(await rows.findMany({})).toEqual([]);
     });
+  });
+});
+
+/**
+ * The gate, and the hole it exists to keep shut.
+ *
+ * ⚠️ **Nothing on the wire names an estate.** An estate is owned by a USER and
+ * lent to several projects, so a request that carried an estate id would let a
+ * project owner type somebody else's and have their deploy land in that
+ * person's Cloudflare account, on that person's token, with the server
+ * complying because it only checked the estate exists. Folio #96 named that
+ * hole; it came back when estates became user-owned, and this is what keeps it
+ * shut.
+ */
+/**
+ * The bounds a deploy runs inside.
+ */
+describe("the deploy limits", () => {
+  let alepha: Alepha;
+
+  beforeEach(async () => {
+    alepha = await setup();
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  it("refuses a deploy past the cap rather than interleaving it", async ({
+    expect,
+  }) => {
+    // ⚠️ Refused, not queued silently and not run anyway. A deploy holds an
+    // unpacked artifact and its modules in memory against a 128 MB ceiling
+    // shared with everything else, so a third concurrent run is an OOM that
+    // takes the other two with it. The job's retry is what turns the refusal
+    // into a queue.
+    const service = alepha.inject(DeployService);
+    let release: (() => void) | undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    Object.assign(service as unknown as Record<string, unknown>, {
+      limits: { concurrency: async () => 1, timeoutMs: async () => 60_000 },
+      gate: {
+        assert: async () => ({ slug: "e", accountId: "a", credential: "c" }),
+      },
+      instances: { findById: async () => ({ id: "i", app: "a", env: "e" }) },
+      artifacts: { findOne: async () => ({ id: "x", sha256: "y" }) },
+      seal: { open: () => "token" },
+      runner: {
+        run: async () => {
+          await held;
+          return { urls: [] };
+        },
+      },
+    });
+
+    const first = service.run({ id: "d-1" } as never);
+    // Let the first take the slot before the second asks for it.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    await expect(service.run({ id: "d-2" } as never)).rejects.toThrowError(
+      /already running 1 deploys/,
+    );
+
+    release?.();
+    await first;
+
+    // ...and the slot is given back, so a later run is not refused forever.
+    await expect(service.run({ id: "d-3" } as never)).resolves.toBeUndefined();
+  });
+
+  it("marks a run that overran, so the row cannot stay running forever", async ({
+    expect,
+  }) => {
+    // ⚠️ The deploy is NOT cancelled - nothing in a fetch chain offers a
+    // cancellation point to reach, and abandoning a half-uploaded Worker
+    // mid-flight is worse than letting it finish. What the timeout guarantees
+    // is that the ROW reaches a terminal state.
+    const rows = alepha.inject(TestRows);
+    const owner = await aUser(alepha);
+    const project = await aProject(alepha, owner);
+    await enableApps(alepha, project.id, owner);
+    const instance = await anInstance(alepha, project.id, owner);
+    const row = await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: "my-app",
+      tag: "latest",
+      sha256: "d".repeat(64),
+      status: "queued",
+    });
+
+    const service = alepha.inject(DeployService);
+    Object.assign(service as unknown as Record<string, unknown>, {
+      limits: { concurrency: async () => 4, timeoutMs: async () => 20 },
+      gate: {
+        assert: async () => ({ slug: "e", accountId: "a", credential: "c" }),
+      },
+      artifacts: { findOne: async () => ({ id: "x", sha256: "y" }) },
+      seal: { open: () => "token" },
+      runner: {
+        run: () => new Promise(() => {}),
+      },
+    });
+
+    await expect(service.run(row)).rejects.toThrowError(/was abandoned/);
+
+    const after = await rows.deployments.findById(row.id);
+    expect(after?.status).toBe("failed");
+    expect(after?.finishedAt).toBeDefined();
+  });
+});
+
+describe("the deploy gate", () => {
+  let alepha: Alepha;
+
+  beforeEach(async () => {
+    alepha = await setup();
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  it("takes no estate from the client, by any route", async ({ expect }) => {
+    // Structural rather than a check: the request schemas carry a project, an
+    // instance and a tag, and no estate at all. A field added here later is
+    // the bug, however carefully it is validated.
+    const controller = alepha.inject(DeployController);
+    const body = (
+      controller.startDeploy as never as {
+        options: { schema: { body: { shape: Record<string, unknown> } } };
+      }
+    ).options.schema.body;
+
+    expect(Object.keys(body.shape)).toEqual(["tag"]);
+  });
+
+  it("refuses a copy whose lending was revoked after it was pointed there", async ({
+    expect,
+  }) => {
+    // ⚠️ `estate_projects` is a delete, not a cascade onto `app_instances`, so
+    // the column can name an estate this project no longer holds. Proving it at
+    // write time is not enough.
+    const rows = alepha.inject(TestRows);
+    const owner = await aUser(alepha);
+    const project = await aProject(alepha, owner);
+    await enableApps(alepha, project.id, owner);
+    const instance = await anInstance(alepha, project.id, owner);
+    const estate = await rows.estates.create({
+      ownerUserId: owner.id,
+      slug: "someones-account",
+      type: "cloudflare",
+      deployAllowed: true,
+    } as never);
+    const grant = await rows.grants.create({
+      estateId: estate.id,
+      projectId: project.id,
+    } as never);
+    await rows.instances.updateById(instance.id, { estateId: estate.id });
+
+    // With the lending in place it passes.
+    const gate = alepha.inject(DeployGate);
+    const withLending = await rows.instances.findById(instance.id);
+    await expect(gate.assert(withLending as never)).resolves.toBeDefined();
+
+    await rows.grants.deleteById(grant.id);
+
+    await expect(gate.assert(withLending as never)).rejects.toThrowError(
+      /no longer lent to this project/,
+    );
+  });
+
+  it("refuses an estate whose owner turned deploys off", async ({ expect }) => {
+    // The message names WHOSE estate it is: the person deploying is often not
+    // the person who can flip this, and a Bay machine is stats-only until its
+    // owner says otherwise.
+    const rows = alepha.inject(TestRows);
+    const owner = await aUser(alepha);
+    const project = await aProject(alepha, owner);
+    await enableApps(alepha, project.id, owner);
+    const instance = await anInstance(alepha, project.id, owner);
+    const estate = await rows.estates.create({
+      ownerUserId: owner.id,
+      slug: "stats-only",
+      type: "bay",
+      deployAllowed: false,
+    } as never);
+    await rows.grants.create({
+      estateId: estate.id,
+      projectId: project.id,
+    } as never);
+    await rows.instances.updateById(instance.id, { estateId: estate.id });
+
+    await expect(
+      alepha
+        .inject(DeployGate)
+        .assert((await rows.instances.findById(instance.id)) as never),
+    ).rejects.toThrowError(/'stats-only' does not accept deploys/);
+  });
+
+  it("does not refuse a Bay estate for having no Cloudflare credential", async ({
+    expect,
+  }) => {
+    // ⚠️ `credentialStatus` is `undefined` for a `bay` estate rather than
+    // `"valid"`, so a `!== "valid"` test would refuse every Bay deploy.
+    const rows = alepha.inject(TestRows);
+    const owner = await aUser(alepha);
+    const project = await aProject(alepha, owner);
+    await enableApps(alepha, project.id, owner);
+    const instance = await anInstance(alepha, project.id, owner);
+    const estate = await rows.estates.create({
+      ownerUserId: owner.id,
+      slug: "a-machine",
+      type: "bay",
+      deployAllowed: true,
+    } as never);
+    await rows.grants.create({
+      estateId: estate.id,
+      projectId: project.id,
+    } as never);
+    await rows.instances.updateById(instance.id, { estateId: estate.id });
+
+    await expect(
+      alepha
+        .inject(DeployGate)
+        .assert((await rows.instances.findById(instance.id)) as never),
+    ).resolves.toMatchObject({ slug: "a-machine" });
+  });
+
+  it("refuses a Cloudflare estate whose credential stopped working", async ({
+    expect,
+  }) => {
+    const rows = alepha.inject(TestRows);
+    const owner = await aUser(alepha);
+    const project = await aProject(alepha, owner);
+    await enableApps(alepha, project.id, owner);
+    const instance = await anInstance(alepha, project.id, owner);
+    const estate = await rows.estates.create({
+      ownerUserId: owner.id,
+      slug: "expired",
+      type: "cloudflare",
+      deployAllowed: true,
+      credentialError: "Token is not valid",
+    } as never);
+    await rows.grants.create({
+      estateId: estate.id,
+      projectId: project.id,
+    } as never);
+    await rows.instances.updateById(instance.id, { estateId: estate.id });
+
+    await expect(
+      alepha
+        .inject(DeployGate)
+        .assert((await rows.instances.findById(instance.id)) as never),
+    ).rejects.toThrowError(/usable Cloudflare credential/);
   });
 });

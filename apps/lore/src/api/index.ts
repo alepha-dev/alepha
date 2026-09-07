@@ -70,6 +70,8 @@ import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
+import { DeployGate } from "./services/DeployGate.ts";
+import { DeployLimits } from "./services/DeployLimits.ts";
 import { DeployRegistry } from "./services/DeployRegistry.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
@@ -200,6 +202,8 @@ export const LoreApi = $module({
     // Deploying a stored artifact to an estate (epic #1). `DeployRegistry` is
     // the seam #1201 replaces with the `deployments` table; the runner is what
     // writes through it.
+    DeployGate,
+    DeployLimits,
     DeployRegistry,
     DeployRunner,
     DeployService,

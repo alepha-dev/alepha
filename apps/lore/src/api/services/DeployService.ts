@@ -9,9 +9,10 @@ import { type Deployment, deployments } from "../entities/deployments.ts";
 import { estates } from "../entities/estates.ts";
 import { ArtifactService } from "./ArtifactService.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
+import { DeployGate } from "./DeployGate.ts";
+import { DeployLimits } from "./DeployLimits.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
 import { DeployRunner } from "./DeployRunner.ts";
-import { EstateCloudflareService } from "./EstateCloudflareService.ts";
 
 /**
  * Starting a deploy, and running one.
@@ -27,7 +28,8 @@ export class DeployService {
   protected readonly artifacts = $repository(artifacts);
   protected readonly estates = $repository(estates);
   protected readonly seal = $inject(CredentialSealService);
-  protected readonly cloudflare = $inject(EstateCloudflareService);
+  protected readonly gate = $inject(DeployGate);
+  protected readonly limits = $inject(DeployLimits);
   protected readonly runner = $inject(DeployRunner);
   protected readonly registry = $inject(DeployRegistry);
 
@@ -54,11 +56,10 @@ export class DeployService {
     if (!instance) {
       throw new NotFoundError("No such deployed copy in this project.");
     }
-    if (!instance.estateId) {
-      throw new BadRequestError(
-        `${instance.app}/${instance.env} has no estate, so there is nowhere to deploy it. Choose one on its Settings tab.`,
-      );
-    }
+    // ⚠️ The same gate the run applies, here too. A queued row for a deploy
+    // that can never run is a row somebody has to explain, and the caller is
+    // holding a request that can carry the reason.
+    await this.gate.assert(instance);
 
     const artifact = await this.artifacts.findOne({
       where: {
@@ -90,6 +91,19 @@ export class DeployService {
   }
 
   /**
+   * How many deploys this isolate is running right now.
+   *
+   * ⚠️ **In-memory, and per isolate, which is the honest scope.** The bound it
+   * enforces is a 128 MB memory ceiling, and memory is per isolate: a counter
+   * in D1 would be globally correct about a number that has no global meaning,
+   * and would cost a write on both sides of every run to enforce it.
+   *
+   * A deploy that outlives its isolate is not double-counted either, because
+   * the counter goes with it.
+   */
+  protected running = 0;
+
+  /**
    * Run one queued deployment to a terminal state.
    *
    * ⚠️ **Every exit is terminal.** A row left `running` is a deploy the UI
@@ -97,36 +111,36 @@ export class DeployService {
    * optional: it is the only thing that guarantees the row moves.
    */
   public async run(row: Deployment): Promise<void> {
+    const cap = await this.limits.concurrency();
+    if (this.running >= cap) {
+      // ⚠️ Refused, not silently interleaved. A deploy holds an unpacked
+      // artifact and its modules in memory against a ceiling shared with
+      // everything else Lore is doing, so letting a third one in is an OOM
+      // that takes the other two with it.
+      //
+      // The job's own retry is what makes this a queue rather than a loss: the
+      // execution fails, is rescheduled with backoff, and lands when a slot is
+      // free. The row stays `queued`, which is what the UI shows.
+      throw new BadRequestError(
+        `This Lore instance is already running ${cap} deploys. This one will start when a slot frees up.`,
+      );
+    }
+
+    this.running++;
     try {
       const instance = await this.instances.findById(row.instanceId);
-      if (!instance?.estateId) {
+      if (!instance) {
         throw new BadRequestError(
-          "This deployed copy no longer names an estate, so there is nowhere to deploy it.",
+          "The deployed copy this run was for is gone.",
         );
       }
 
-      const estate = await this.estates.findById(instance.estateId);
-      if (!estate) {
-        throw new BadRequestError(
-          "The estate this copy deploys to is gone. Lend one again on the project's Estates page.",
-        );
-      }
+      // ⚠️ **The gate, and every refusal in it, before any side effect.** One
+      // owner: #1205's `DeployGate`. The estate comes back FROM it rather than
+      // being resolved a second way, so nothing here can pass the gate and then
+      // deploy somewhere else.
+      const estate = await this.gate.assert(instance);
 
-      // ⚠️ Before any side effect. `credentialStatus` is DERIVED rather than a
-      // column - expiry is applied at read time - so this is local and cheap
-      // but not a field read, and a daily job is what keeps the inputs fresh.
-      //
-      // ⚠️ **#1205 owns this gate and takes this check over.** It is inline
-      // here because a run with no credential check is a run that starts
-      // provisioning against an estate whose token stopped working, and that
-      // must not wait for another quest. When #1205's gate lands, this block
-      // moves into it and the run calls it - one gate, one owner. Do not leave
-      // two implementations behind.
-      if (this.cloudflare.credentialStatus(estate) !== "valid") {
-        throw new BadRequestError(
-          `The estate '${estate.slug}' does not have a usable Cloudflare credential. Check it on the account's Estates page before deploying.`,
-        );
-      }
       if (!estate.accountId) {
         throw new BadRequestError(
           `The estate '${estate.slug}' names no Cloudflare account.`,
@@ -150,19 +164,26 @@ export class DeployService {
         );
       }
 
-      const result = await this.runner.run({
-        artifact,
-        env: instance.env,
-        domain: instance.url ? new URL(instance.url).host : undefined,
-        deploymentId: row.id,
-        credential: {
-          apiToken: this.seal.open(
-            estate.credential,
-            CredentialSealService.ESTATE_PURPOSE,
-          ),
-          accountId: estate.accountId,
-        },
-      });
+      // ⚠️ A wedged deploy that holds a `$job` execution open forever is worse
+      // than a failed one: the row stays `running`, the UI follows it, and the
+      // operator cannot retry. The race is what makes the timeout terminal -
+      // the run itself has no cancellation point to check.
+      const result = await this.withTimeout(
+        row,
+        this.runner.run({
+          artifact,
+          env: instance.env,
+          domain: instance.url ? new URL(instance.url).host : undefined,
+          deploymentId: row.id,
+          credential: {
+            apiToken: this.seal.open(
+              estate.credential,
+              CredentialSealService.ESTATE_PURPOSE,
+            ),
+            accountId: estate.accountId,
+          },
+        }),
+      );
 
       void result;
     } catch (error) {
@@ -174,6 +195,8 @@ export class DeployService {
       throw error instanceof AlephaError
         ? error
         : new AlephaError(`Deploy failed: ${message}`);
+    } finally {
+      this.running--;
     }
   }
 
@@ -193,6 +216,41 @@ export class DeployService {
       orderBy: [{ column: "createdAt", direction: "desc" }],
       limit,
     });
+  }
+
+  /**
+   * The run, or a refusal once it has taken too long.
+   *
+   * ⚠️ The deploy is NOT cancelled - nothing in a fetch chain offers a
+   * cancellation point this could reach, and abandoning a half-uploaded Worker
+   * mid-flight would be worse than letting it finish. What the timeout
+   * guarantees is that the ROW reaches a terminal state, which is what stops
+   * the UI following a deploy forever.
+   */
+  protected async withTimeout<T>(
+    row: Deployment,
+    work: Promise<T>,
+  ): Promise<T> {
+    const ms = await this.limits.timeoutMs();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        work,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new AlephaError(
+                  `This deploy took longer than ${Math.round(ms / 1000)}s and was abandoned. It may still be running at Cloudflare; check the Worker before retrying.`,
+                ),
+              ),
+            ms,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   /**
