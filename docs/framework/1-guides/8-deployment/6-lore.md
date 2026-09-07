@@ -129,7 +129,6 @@ const { url } = await lore.deploy({
   app: "club",
   env: "wassup",
   tag: "latest",
-  create: true,
   url: "https://wassup.club.example",
 });
 ```
@@ -138,15 +137,22 @@ Configured by the same three variables as CI - `LORE_URL`, `LORE_API_KEY`,
 `LORE_PROJECT` - so one deployment configures both halves. The key's user needs
 `app:manage` to create a copy and `deploy:manage` to ship to one.
 
-⚠️ **`create: true` is opt-in, and off by default.** A missing copy is normally
-a refusal, for the reason above: minting a deploy target as a side effect of a
-typo in `env` is how a fleet grows a copy nobody meant to make. Pass it where
-making one IS the act being performed.
+**It ensures the copy.** One that does not exist is created, because that is
+what the caller is doing: a program provisioning a tenant is not a person
+mistyping `--env`. `lore apps deploy` refuses instead, and the difference is
+deliberate. ⚠️ Only a **404** creates: a revoked key or an unreachable Lore
+rethrows, so an outage cannot become a burst of copies nobody asked for.
 
-A copy created this way **inherits the estate** of the app's `production` copy
-(or the first by name), so the call carries no infrastructure at all. Pass
-`estate` with a slug to override, and it is resolved against the estates lent
-to this project rather than trusted.
+A copy created this way takes the estate the project was **lent first**, so the
+call carries no infrastructure at all. Pass `estate` with a slug to choose
+another; it is resolved against the estates lent to this project rather than
+trusted, and the refusal lists the ones that are. A project with **no** estate
+lent is an error, raised before the copy is created rather than after.
+
+⚠️ The oldest lending, not the newest. Lending a second estate would otherwise
+silently re-point every new tenant while the fleet already running stayed where
+it was, and nothing on any screen would explain the split. With one estate lent,
+which is the ordinary case, the distinction does not arise.
 
 ⚠️ **The `url` is what makes the answer a URL.** The deploy takes the domain
 from the copy's own address and the adapter answers a URL only when it put one
