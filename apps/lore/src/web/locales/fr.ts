@@ -2163,6 +2163,23 @@ export default {
   "permission.group.feedback": "Retours",
   "permission.feedback.read": "Lire la boîte des retours",
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",
+  "project.settings.members.rank.label": "Rang",
+  "project.settings.members.rank.assigned": "Rang mis \u00e0 jour",
+  "project.settings.members.invite.rank": "Rang \u00e0 l'arriv\u00e9e",
+  "project.settings.members.transfer.action":
+    "Transf\u00e9rer la propri\u00e9t\u00e9",
+  "project.settings.members.transfer.title":
+    "Transf\u00e9rer ce projet \u00e0 $1",
+  "project.settings.members.transfer.description":
+    "Il y a exactement un propri\u00e9taire. Choisissez le rang que vous gardez, puis confirmez.",
+  "project.settings.members.transfer.keep": "Votre rang ensuite",
+  "project.settings.members.transfer.confirmTitle":
+    "Donner ce projet \u00e0 $1 ?",
+  "project.settings.members.transfer.confirmDescription":
+    "$1 devient propri\u00e9taire et vous devenez $2. Vous ne pourrez pas revenir en arri\u00e8re : seul le nouveau propri\u00e9taire peut vous le rendre.",
+  "project.settings.members.transfer.confirm": "Transf\u00e9rer",
+  "project.settings.members.transfer.done":
+    "$1 est maintenant propri\u00e9taire de ce projet",
   "project.settings.nav.ranks": "Rangs",
   "project.settings.ranks.title": "Ce que chaque rang peut faire",
   "project.settings.ranks.description":

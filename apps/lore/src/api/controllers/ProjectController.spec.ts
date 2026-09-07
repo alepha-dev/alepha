@@ -34,15 +34,34 @@ class FailingMembersProjectController extends ProjectController {
    */
   protected readonly realMembers = $repository(membersEntity);
 
-  override members = {
-    create: async (...args: unknown[]) => {
-      this.failures += 1;
-      if (this.failures === 1) {
-        throw new AlephaError("members.create refused");
-      }
-      return (this.realMembers.create as (...a: unknown[]) => unknown)(...args);
+  /**
+   * Only `create` refuses. Everything else falls through to the real
+   * repository - the handler also COUNTS owner rows now, for the project
+   * quota, and a fake that answered only `create` turned the compensating
+   * delete into a `TypeError` before the write it is about ever ran.
+   */
+  override members = new Proxy(
+    {},
+    {
+      get: (_target, prop: string) => {
+        if (prop === "create") {
+          return async (...args: unknown[]) => {
+            this.failures += 1;
+            if (this.failures === 1) {
+              throw new AlephaError("members.create refused");
+            }
+            return (this.realMembers.create as (...a: unknown[]) => unknown)(
+              ...args,
+            );
+          };
+        }
+        const real = (this.realMembers as unknown as Record<string, unknown>)[
+          prop
+        ];
+        return typeof real === "function" ? real.bind(this.realMembers) : real;
+      },
     },
-  } as unknown as ProjectController["members"];
+  ) as unknown as ProjectController["members"];
 }
 
 interface TestContext {

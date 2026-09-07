@@ -17,8 +17,16 @@ import {
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@alepha/ui/components/ui/select";
 import { cn } from "@alepha/ui/lib/utils";
 import type { InvitationEntity } from "alepha/api/invitations";
+import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Mail, MoreHorizontal, Plus, Users } from "lucide-react";
@@ -30,11 +38,15 @@ import type { User } from "@/api/entities/users.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { MemberIdentity } from "@/web/app/components/shared/MemberIdentity.tsx";
 import { useInviteMember } from "@/web/app/components/shared/useInviteMember.ts";
+import { useProjectRanks } from "@/web/app/components/shared/useProjectRanks.ts";
 import { useRank } from "@/web/app/components/shared/useRank.ts";
 import { useRemoveMember } from "@/web/app/components/shared/useRemoveMember.ts";
 import { useRevokeInvitation } from "@/web/app/components/shared/useRevokeInvitation.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
+import ProjectMemberRankPicker from "./ProjectMemberRankPicker.tsx";
+import ProjectTransferOwnershipDialog from "./ProjectTransferOwnershipDialog.tsx";
 
 export interface ProjectSettingsMembersSectionProps {
   project: Project;
@@ -54,10 +66,29 @@ const ProjectSettingsMembersSection = (
 
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
+  /**
+   * The rank the invitee lands on. `member` by default, which is what every
+   * invitation sent before epic #E39 resolves to.
+   */
+  const [inviteRank, setInviteRank] = useState("member");
+  const [transferTo, setTransferTo] = useState<
+    { userId: string; name: string } | undefined
+  >();
+  const auth = useAuth();
+  const projectRanks = useProjectRanks();
 
   const members = props.members;
   const pendingInvitations = props.pendingInvitations ?? [];
   const isOwner = can("member:manage");
+  /**
+   * Whether the CALLER is the owner, which is a different question from
+   * `member:manage` and the only one transfer answers to: an Admin rank can
+   * invite, remove and rank members without being able to give the project
+   * away.
+   */
+  const amOwner = props.members.some(
+    (it) => it.userId === auth.user?.id && it.rank === "owner",
+  );
 
   /**
    * What the confirmation dialog calls the person: the same label the card
@@ -68,8 +99,11 @@ const ProjectSettingsMembersSection = (
     displayName(member.user);
 
   const handleInvite = async () => {
-    if (!(await inviteMember.invite(props.project.id, email))) return;
+    if (!(await inviteMember.invite(props.project.id, email, inviteRank))) {
+      return;
+    }
     setEmail("");
+    setInviteRank("member");
     setOpen(false);
     // Re-run the loader for the new pending row; a hard reload threw the
     // whole app state away for one list.
@@ -124,6 +158,37 @@ const ProjectSettingsMembersSection = (
                 />
               </div>
             </div>
+            {/* The rank they land on. Validated when the invitation is
+                WRITTEN, not when it is accepted: an invitation can sit
+                unanswered for days, and the subset rule has to hold against
+                the person who offered the rank. */}
+            {projectRanks.ranks.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <Label>{tr("project.settings.members.invite.rank")}</Label>
+                <Select
+                  value={inviteRank}
+                  onValueChange={(value) => setInviteRank(String(value))}
+                >
+                  <SelectTrigger
+                    data-testid="invite-rank"
+                    aria-label={String(
+                      tr("project.settings.members.invite.rank"),
+                    )}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projectRanks.ranks
+                      .filter((it) => it.key !== "owner")
+                      .map((rank) => (
+                        <SelectItem key={rank.key} value={rank.key}>
+                          {rank.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
@@ -166,7 +231,14 @@ const ProjectSettingsMembersSection = (
             <Card key={member.id} className={cn(settingsCardEdge, "py-3")}>
               <CardContent className="flex items-center gap-4 px-3">
                 <div className="flex flex-1 items-center gap-3">
-                  <MemberIdentity member={member} variant="card" />
+                  <MemberIdentity
+                    member={member}
+                    variant="card"
+                    rankName={
+                      projectRanks.ranks.find((it) => it.key === member.rank)
+                        ?.name
+                    }
+                  />
                   <span className="text-muted-foreground text-xs">
                     {member.user.email}
                   </span>
@@ -175,6 +247,18 @@ const ProjectSettingsMembersSection = (
                 <span className="text-muted-foreground text-xs">
                   <Localize value={member.createdAt} date="fromNow" />
                 </span>
+
+                <ProjectMemberRankPicker
+                  projectId={props.project.id}
+                  userId={member.userId}
+                  rank={member.rank}
+                  ranks={projectRanks.ranks}
+                  self={member.userId === auth.user?.id}
+                  canAssign={isOwner}
+                  onAssigned={() =>
+                    router.push(router.pathname, { force: true })
+                  }
+                />
 
                 {/* Needs `member:manage`, and never on the OWNER's row: a
                     project with no owner has nobody who can delete it, rename
@@ -203,6 +287,23 @@ const ProjectSettingsMembersSection = (
                       <MoreHorizontal className="size-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {/* Only the owner may hand the project on, and only to
+                          somebody else. Not a permission and never will be:
+                          a rank that could be GRANTED the right to take
+                          ownership away would make ownership grantable. */}
+                      {amOwner && (
+                        <DropdownMenuItem
+                          data-testid="transfer-ownership"
+                          onClick={() =>
+                            setTransferTo({
+                              userId: member.userId,
+                              name: nameOf(member),
+                            })
+                          }
+                        >
+                          {tr("project.settings.members.transfer.action")}
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         variant="destructive"
                         data-testid="remove-member"
@@ -297,6 +398,20 @@ const ProjectSettingsMembersSection = (
           )}
         </div>
       </div>
+
+      <ProjectTransferOwnershipDialog
+        projectId={props.project.id}
+        target={transferTo}
+        ranks={projectRanks.ranks}
+        onOpenChange={(next) => !next && setTransferTo(undefined)}
+        onTransferred={async () => {
+          setTransferTo(undefined);
+          // The whole page changes: the caller stops being the owner, so the
+          // rank pickers, the transfer entry and the remove entries all read
+          // differently. Re-running the loader is what refills them.
+          await router.push(router.pathname, { force: true });
+        }}
+      />
     </>
   );
 };

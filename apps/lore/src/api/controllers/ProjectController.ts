@@ -4,7 +4,13 @@ import { $storage, files } from "alepha/api/files";
 import { RankService } from "alepha/api/ranks";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
-import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
+import {
+  $repository,
+  $transactional,
+  db,
+  pageQuerySchema,
+  sql,
+} from "alepha/orm";
 import {
   $secure,
   OwnedResourceProvider,
@@ -303,8 +309,19 @@ export class ProjectController {
     },
     handler: async ({ body, user }) => {
       const maxProjectsPerUser = await this.limits.maxProjectsPerUser();
-      const count = await this.projects.count({
-        createdBy: { eq: user.id },
+      // ⚠️ Owner ROWS, not `projects.createdBy`. `createdBy` never changes, so
+      // once ownership can be transferred a quota counting it charges the
+      // giver forever and the receiver nothing - a limit two clicks route
+      // around, and a user who hands a project to a colleague is still told
+      // they have reached the maximum.
+      //
+      // Exactly equivalent to the old count on day one, soft deletes
+      // included: `ProjectDeletionService` HARD-deletes the membership rows,
+      // so a soft-deleted project has none and cannot be counted here either.
+      // The two only diverge where they should, at a transfer.
+      const count = await this.members.count({
+        userId: { eq: user.id },
+        rank: { eq: ProjectRankResource.OWNER_KEY },
       });
 
       if (count >= maxProjectsPerUser) {
@@ -491,16 +508,13 @@ export class ProjectController {
     handler: async ({ user }) => {
       const maxProjectsPerUser = await this.limits.maxProjectsPerUser();
 
-      const [me, ownedCount] = await Promise.all([
-        this.usersWith.findById(user.id, {
-          include: {
-            projects: {
-              orderBy: { column: "updatedAt", direction: "desc" },
-            },
+      const me = await this.usersWith.findById(user.id, {
+        include: {
+          projects: {
+            orderBy: { column: "updatedAt", direction: "desc" },
           },
-        }),
-        this.projects.count({ createdBy: { eq: user.id } }),
-      ]);
+        },
+      });
 
       const result = me?.projects ?? [];
 
@@ -540,6 +554,13 @@ export class ProjectController {
                 })
                 .then((rows) => new Set(rows.map((it) => it.projectId))),
         ]);
+
+      // ⚠️ The badge read IS the quota read, and one query answers both. The
+      // `projects` relation is every project the caller belongs to, so the
+      // owner rows inside it are all the owner rows there are - and counting
+      // `projects.createdBy` separately would have disagreed with the badge
+      // beside it the moment a project was transferred.
+      const ownedCount = ownedIds.size;
 
       return {
         projects: result.map((it) => ({
@@ -1218,14 +1239,6 @@ export class ProjectController {
         where: { id: { eq: params.id } },
       });
 
-      // Owner cannot leave their own project — they must delete it or
-      // transfer ownership (transfer not implemented yet).
-      if (project.createdBy === user.id) {
-        throw new ForbiddenError(
-          "The owner cannot leave their own project. Delete it instead.",
-        );
-      }
-
       const member = await this.members.findOne({
         where: {
           userId: { eq: user.id },
@@ -1236,6 +1249,16 @@ export class ProjectController {
       if (!member) {
         // Idempotent: leaving a project you're not a member of is a no-op.
         return { ok: true };
+      }
+
+      // ⚠️ The RANK, not `projects.createdBy`. The two agreed until ownership
+      // could be transferred; after a transfer the creator is an ordinary
+      // member who may leave, and the new owner is the one who may not. The
+      // message names the transfer because it exists now.
+      if (member.rank === ProjectRankResource.OWNER_KEY) {
+        throw new ForbiddenError(
+          "The owner cannot leave their own project. Transfer ownership first, or delete the project.",
+        );
       }
 
       // Release any in-flight quests the user accepted but did not complete,
@@ -1260,6 +1283,138 @@ export class ProjectController {
         resourceType: "project",
         resourceId: String(params.id),
         description: project.title,
+      });
+
+      return { ok: true };
+    },
+  });
+
+  /**
+   * Hand the project to somebody else, and stop being its owner.
+   *
+   * ## One statement, and that is the whole design
+   *
+   * D1 has no transactions (see #Q1926), so a demote-then-promote pair can
+   * leave the project with **no** owner if the second write fails, and a
+   * promote-then-demote pair can leave it with **two**. Neither state is
+   * expressible anywhere else in this application: `getProjectMembers` sorts
+   * on one owner, the quota counts them, and `leaveProject` refuses the one.
+   *
+   * So the swap is a single `UPDATE ... CASE ... RETURNING`. `$transactional()`
+   * is still declared for the drivers that honour it - it costs nothing and it
+   * is correct on Postgres - but the correctness on D1 comes from there being
+   * one statement.
+   *
+   * ⚠️ `RETURNING` is not decoration. `Repository.query` throws `DbError` on a
+   * result that is not an array of rows, which is what an `UPDATE` without it
+   * answers. One column, with its own schema: see the note on the statement.
+   *
+   * ⚠️ `sql.identifier(t.rank.name)` on the left of the `SET`, not `${t.rank}`.
+   * Interpolating the column object renders it QUALIFIED (`"members"."rank"`),
+   * which SQLite rejects there - `near ".": syntax error`. Everywhere else in
+   * the statement the qualified form is what you want.
+   *
+   * ## What it is not
+   *
+   * Not a rank assignment. `assignRank` refuses `owner` as a target on
+   * purpose: a rank you can be GIVEN is not ownership, and this act demotes
+   * the person performing it, which no assignment does. The promoter's new
+   * rank is theirs to choose and defaults to `member`.
+   */
+  transferOwnership = $action({
+    // `member:manage` gets the gate to load the rows; being the owner is
+    // checked below, off the membership row the gate read. Transfer is
+    // deliberately not a permission - a rank that could be granted the right
+    // to take ownership away would make ownership grantable.
+    use: [$transactional(), this.ownsProject("member:manage")],
+    method: "POST",
+    path: "/projects/:id/transfer",
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        userId: z.uuid(),
+        /**
+         * What the outgoing owner becomes. Chosen in the confirmation, and
+         * `member` when the caller says nothing: every project has that rank,
+         * whatever else it has.
+         */
+        rank: z.text({ maxLength: 64 }).optional(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const project = this.owned.get<Project>();
+
+      if (body.userId === user.id) {
+        throw new BadRequestError("You already own this project.");
+      }
+
+      const [mine, theirs] = await Promise.all([
+        this.members.findOne({
+          where: {
+            projectId: { eq: params.id },
+            userId: { eq: user.id },
+          },
+        }),
+        this.members.findOne({
+          where: {
+            projectId: { eq: params.id },
+            userId: { eq: body.userId },
+          },
+        }),
+      ]);
+
+      if (mine?.rank !== ProjectRankResource.OWNER_KEY) {
+        throw new ForbiddenError(
+          "Only the project owner can transfer ownership.",
+        );
+      }
+
+      if (!theirs) {
+        throw new BadRequestError(
+          "That person is not a member of this project.",
+        );
+      }
+
+      const promoterRank = body.rank ?? ProjectRankResource.DEFAULT_KEY;
+
+      if (promoterRank === ProjectRankResource.OWNER_KEY) {
+        throw new BadRequestError(
+          "A project has exactly one owner. Pick the rank you keep.",
+        );
+      }
+
+      const ranks = await this.ranks.ranksOf("project", String(params.id));
+      if (!ranks.some((it) => it.key === promoterRank)) {
+        throw new BadRequestError(`No rank "${promoterRank}" in this project.`);
+      }
+
+      await this.members.query(
+        (t) => sql`
+          UPDATE ${t}
+          SET ${sql.identifier(t.rank.name)} = CASE
+            WHEN ${t.userId} = ${body.userId} THEN ${ProjectRankResource.OWNER_KEY}
+            ELSE ${promoterRank}
+          END
+          WHERE ${t.projectId} = ${params.id}
+            AND ${t.userId} IN (${body.userId}, ${user.id})
+          RETURNING ${t.userId}
+        `,
+        // ⚠️ One column, and a schema for it. `RETURNING *` decodes every
+        // returned row through the ENTITY schema, and SQLite hands `createdAt`
+        // back as a number - so the statement succeeds and the decode throws,
+        // which reads as a failed transfer that already happened.
+        z.object({ userId: z.uuid() }),
+      );
+
+      await this.audits.member.logSuccess("transfer", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(params.id),
+        severity: "warning",
+        resourceType: "project",
+        resourceId: String(params.id),
+        description: project.title,
+        metadata: { toUserId: body.userId, keptRank: promoterRank },
       });
 
       return { ok: true };
@@ -1300,15 +1455,6 @@ export class ProjectController {
     handler: async ({ params, user }) => {
       const project = this.owned.get<Project>();
 
-      // The owner's own row is not removable, for the reason they cannot
-      // leave either: a project with no owner has nobody who can delete it,
-      // rename it, or let anybody back in.
-      if (project.createdBy === params.userId) {
-        throw new ForbiddenError(
-          "The owner cannot be removed from their own project.",
-        );
-      }
-
       const member = await this.members.findOne({
         where: {
           userId: { eq: params.userId },
@@ -1320,6 +1466,16 @@ export class ProjectController {
         // Idempotent, like `leaveProject`: removing somebody who is already
         // gone is the state the caller asked for.
         return { ok: true };
+      }
+
+      // The owner's own row is not removable, for the reason they cannot
+      // leave either: a project with no owner has nobody who can delete it,
+      // rename it, or let anybody back in. Read off the rank since a transfer
+      // can move it away from the creator.
+      if (member.rank === ProjectRankResource.OWNER_KEY) {
+        throw new ForbiddenError(
+          "The owner cannot be removed from their own project.",
+        );
       }
 
       await this.quests.updateMany(

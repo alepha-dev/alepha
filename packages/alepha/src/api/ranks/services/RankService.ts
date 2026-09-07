@@ -406,6 +406,50 @@ export class RankService {
   ): Promise<void> {
     const resource = this.resources.get(type);
 
+    // ⚠️ Never your own row, and this is the module's rule rather than the
+    // application's because every consumer has it. The subset rule below stops
+    // you handing somebody MORE than you hold; it cannot stop you handing
+    // yourself less, and a scope whose only manager has just demoted
+    // themselves out of `manage` is locked with no way back - the same
+    // self-lockout `save` refuses, through the other door. Changing your own
+    // rank is somebody else's act.
+    if (userId === writer.id) {
+      throw new BadRequestError(
+        "You cannot change your own rank. Ask somebody who can.",
+      );
+    }
+
+    await this.assertAssignable(type, scopeId, key, writer);
+
+    if (!resource.options.assign) {
+      throw new AlephaError(
+        `The rank resource "${type}" declares no \`assign\`, so this module cannot write the assignment.`,
+      );
+    }
+
+    await resource.options.assign(scopeId, userId, key);
+  }
+
+  /**
+   * May this writer hand somebody this rank?
+   *
+   * Split out of {@link assign} because an assignment has a second door: an
+   * INVITATION that names the rank its invitee lands on is the same act
+   * separated by however long the invitation is left unanswered, and it has
+   * to pass the same rules at the moment it is written - checking only at
+   * accept would be checking against whoever happens to be around then.
+   *
+   * Deliberately not the whole of `assign`: it says nothing about WHO is
+   * being assigned, because an invitation has no user id yet.
+   */
+  public async assertAssignable(
+    type: string,
+    scopeId: string,
+    key: string,
+    writer: UserAccountToken,
+  ): Promise<Rank> {
+    const resource = this.resources.get(type);
+
     await resource.options.assertCanAssign?.(scopeId, writer);
 
     const rank = (await this.ranksOf(type, scopeId)).find(
@@ -431,13 +475,7 @@ export class RankService {
       writer,
     );
 
-    if (!resource.options.assign) {
-      throw new AlephaError(
-        `The rank resource "${type}" declares no \`assign\`, so this module cannot write the assignment.`,
-      );
-    }
-
-    await resource.options.assign(scopeId, userId, key);
+    return rank;
   }
 
   // -------------------------------------------------------------------------

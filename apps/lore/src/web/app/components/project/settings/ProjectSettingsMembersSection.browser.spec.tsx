@@ -40,12 +40,22 @@ class Links extends LinkProvider {
   removed: Array<{ id: number; userId: string }> = [];
 
   override client(): any {
-    const action: any = async (input: any) => {
-      this.removed.push(input.params);
-      return { ok: true };
-    };
-    action.can = () => true;
-    return new Proxy({} as Record<string, unknown>, { get: () => action });
+    // ⚠️ Keyed on the action NAME, not one function for every property. The
+    // section reads more than one action now - the rank picker asks
+    // `getRanks` on mount - and a fake that recorded every call as a removal
+    // failed the "nothing was removed" case for a call about ranks.
+    return new Proxy({} as Record<string, unknown>, {
+      get: (_target, name: string) => {
+        const action: any = async (input: any) => {
+          if (name === "removeMember") {
+            this.removed.push(input.params);
+          }
+          return name === "getRanks" ? { items: [] } : { ok: true };
+        };
+        action.can = () => true;
+        return action;
+      },
+    });
   }
 }
 

@@ -1661,13 +1661,30 @@ export class AppRouter {
       // sidebar SECTION on a page about something else, and it
       // distinguishes "empty" from "unreadable". Here the invitations ARE
       // the page.
+      //
+      // ⚠️ The invitations read is SKIPPED for a reader who cannot manage
+      // members, not caught. It is gated on `member:manage`, and since epic
+      // #E39 that is a rank rather than "is a member", so a plain member
+      // opening this page got a 403 ERROR PAGE where the members list should
+      // be - the list itself is `member:read`, which every rank holds.
+      //
+      // `canInProject` rather than `useRank`: this is a loader, and a loader
+      // cannot call a hook. Same reason `hasCapability` is a module-level
+      // function.
+      const manages = canInProject(
+        this.alepha.store.get(currentProjectAtom),
+        "member:manage",
+      );
+
       const [members, pendingInvitations] = await Promise.all([
         this.projectApi.getProjectMembers({
           params: { id: project.id },
         }),
-        this.invitationApi.listProjectInvitations({
-          params: { projectId: project.id },
-        }),
+        manages
+          ? this.invitationApi.listProjectInvitations({
+              params: { projectId: project.id },
+            })
+          : Promise.resolve([]),
       ]);
       return { members, pendingInvitations };
     },

@@ -29,6 +29,16 @@ export interface MemberIdentityProps {
    * - `card` — larger picture + name. Members list rows.
    */
   variant?: Variant;
+  /**
+   * What the rank is CALLED, when the caller happens to know.
+   *
+   * `members.rank` stores an opaque key - a rank somebody created is
+   * `r1x9k2` - so a badge rendering the column reads as an id on every rank
+   * but the two built-ins. The caller supplies the name because the name
+   * lives in the rank list, which this component has no business fetching.
+   * Falls back to the key, which is what every surface that has no list gets.
+   */
+  rankName?: string;
 }
 
 /**
@@ -66,7 +76,9 @@ export const MemberIdentity = (props: MemberIdentityProps) => {
       {variant !== "compact" && member.rank && (
         <Badge variant="secondary" className="gap-1 py-0">
           {member.rank === "owner" && <Crown className="size-3" />}
-          {member.rank === "owner" ? tr("members.owner") : member.rank}
+          {member.rank === "owner"
+            ? tr("members.owner")
+            : (props.rankName ?? member.rank)}
         </Badge>
       )}
     </span>

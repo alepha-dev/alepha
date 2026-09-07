@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { ProjectRankController } from "../src/api/controllers/ProjectRankController.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { ProjectInvitationResource } from "../src/api/providers/ProjectInvitationResource.ts";
 import { LorePermissions } from "../src/api/security/LorePermissions.ts";
 import { ProjectRankPresets } from "../src/api/security/ProjectRankPresets.ts";
 import {
@@ -302,6 +303,224 @@ describe("Lore's rank resource", () => {
     expect(contributor.permissions).not.toContain("quest:create");
     // The floor survives every narrowing.
     expect(contributor.permissions).toContain("project:read");
+  });
+
+  it("swaps the two ranks in one statement, and leaves exactly one owner", async ({
+    expect,
+  }) => {
+    const giver = await ctx.repos.users.create({});
+    const taker = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: giver.id, roles: ["user"] };
+
+    const created = await ctx.projects.createProject(
+      { body: { title: "Handover" } },
+      { user },
+    );
+    await ctx.repos.members.create({
+      projectId: created.id,
+      userId: taker.id,
+      owner: false,
+      rank: "member",
+    });
+
+    await ctx.projects.transferOwnership(
+      { params: { id: created.id }, body: { userId: taker.id, rank: "admin" } },
+      { user },
+    );
+
+    const rows = await ctx.repos.members.findMany({
+      where: { projectId: { eq: created.id } },
+    });
+
+    // ⚠️ The property that matters, and the reason this is one UPDATE: D1 has
+    // no transactions, so a demote-then-promote pair can leave zero owners
+    // and a promote-then-demote pair can leave two. Neither is expressible
+    // anywhere else in this application.
+    expect(
+      rows.filter((it) => it.rank === "owner").map((it) => it.userId),
+    ).toEqual([taker.id]);
+    expect(rows.find((it) => it.userId === giver.id)?.rank).toBe("admin");
+  });
+
+  it("refuses a transfer from anybody but the owner", async ({ expect }) => {
+    const owner = await ctx.repos.users.create({});
+    const other = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: owner.id, roles: ["user"] };
+
+    const created = await ctx.projects.createProject(
+      { body: { title: "Not yours" } },
+      { user },
+    );
+    await ctx.repos.members.create({
+      projectId: created.id,
+      userId: other.id,
+      owner: false,
+      // `admin` holds `member:manage`, so it passes the gate and is refused
+      // by the owner check inside - which is the point: transfer is not a
+      // permission, and a rank that could be granted it would make ownership
+      // grantable.
+      rank: "admin",
+    });
+
+    await expect(
+      ctx.projects.transferOwnership(
+        { params: { id: created.id }, body: { userId: owner.id } },
+        { user: { id: other.id, roles: ["user"] } },
+      ),
+    ).rejects.toThrowError("Only the project owner");
+  });
+
+  it("counts the project quota on owner rows, so a transfer moves the slot", async ({
+    expect,
+  }) => {
+    const giver = await ctx.repos.users.create({});
+    const taker = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: giver.id, roles: ["user"] };
+
+    const created = await ctx.projects.createProject(
+      { body: { title: "Slot" } },
+      { user },
+    );
+    await ctx.repos.members.create({
+      projectId: created.id,
+      userId: taker.id,
+      owner: false,
+      rank: "member",
+    });
+
+    const owned = async (id: string) =>
+      await ctx.repos.members.count({
+        userId: { eq: id },
+        rank: { eq: "owner" },
+      });
+
+    expect(await owned(giver.id)).toBe(1);
+    expect(await owned(taker.id)).toBe(0);
+
+    await ctx.projects.transferOwnership(
+      { params: { id: created.id }, body: { userId: taker.id } },
+      { user },
+    );
+
+    // ⚠️ The quota counted `projects.createdBy` until this quest, and
+    // `createdBy` never changes: the giver would have kept paying for the
+    // slot forever and the taker would have paid nothing.
+    expect(await owned(giver.id)).toBe(0);
+    expect(await owned(taker.id)).toBe(1);
+  });
+
+  it("lets the former owner leave once they are not the owner", async ({
+    expect,
+  }) => {
+    const giver = await ctx.repos.users.create({});
+    const taker = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: giver.id, roles: ["user"] };
+
+    const created = await ctx.projects.createProject(
+      { body: { title: "Leaving" } },
+      { user },
+    );
+    await ctx.repos.members.create({
+      projectId: created.id,
+      userId: taker.id,
+      owner: false,
+      rank: "member",
+    });
+
+    // Refused while they hold it, and the message names the transfer because
+    // it exists now.
+    await expect(
+      ctx.projects.leaveProject({ params: { id: created.id } }, { user }),
+    ).rejects.toThrowError("Transfer ownership first");
+
+    await ctx.projects.transferOwnership(
+      { params: { id: created.id }, body: { userId: taker.id } },
+      { user },
+    );
+
+    // ⚠️ The creator, leaving their own project. `projects.createdBy` still
+    // names them and is not an authorization input any more.
+    await ctx.projects.leaveProject({ params: { id: created.id } }, { user });
+
+    const rows = await ctx.repos.members.findMany({
+      where: { projectId: { eq: created.id } },
+    });
+    expect(rows.map((it) => it.userId)).toEqual([taker.id]);
+  });
+
+  it("refuses an assignment to the caller's own row", async ({ expect }) => {
+    const owner = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: owner.id, roles: ["user"] };
+    const created = await ctx.projects.createProject(
+      { body: { title: "Self" } },
+      { user },
+    );
+
+    // ⚠️ The module's rule, not Lore's, because every consumer has it. The
+    // subset rule stops you handing somebody MORE than you hold; it cannot
+    // stop you handing yourself LESS, and a scope whose only manager has
+    // demoted themselves out of `rank:manage` is locked with no way back.
+    await expect(
+      ctx.ranks.assign("project", String(created.id), owner.id, "viewer", user),
+    ).rejects.toThrowError("cannot change your own rank");
+  });
+
+  it("lands an invitee on the rank the invitation named", async ({
+    expect,
+  }) => {
+    const owner = await ctx.repos.users.create({});
+    const guest = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: owner.id, roles: ["user"] };
+    const created = await ctx.projects.createProject(
+      { body: { title: "Invited" } },
+      { user },
+    );
+
+    const resource = ctx.alepha.inject(ProjectInvitationResource);
+
+    await resource.project.options.grant?.(guest.id, {
+      resourceType: "project",
+      resourceId: String(created.id),
+      roles: ["viewer"],
+    } as never);
+
+    const row = await ctx.repos.members.findOne({
+      where: {
+        projectId: { eq: created.id },
+        userId: { eq: guest.id },
+      },
+    });
+    expect(row?.rank).toBe("viewer");
+  });
+
+  it("falls back to member when the named rank is gone", async ({ expect }) => {
+    const owner = await ctx.repos.users.create({});
+    const guest = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: owner.id, roles: ["user"] };
+    const created = await ctx.projects.createProject(
+      { body: { title: "Stale" } },
+      { user },
+    );
+
+    const resource = ctx.alepha.inject(ProjectInvitationResource);
+
+    // A real state rather than a defensive branch: the matrix refuses to
+    // delete a HELD rank, and an unanswered invitation holds nothing. Same
+    // path as every invitation sent before this quest, which names no rank at
+    // all.
+    await resource.project.options.grant?.(guest.id, {
+      resourceType: "project",
+      resourceId: String(created.id),
+      roles: ["deleted-since"],
+    } as never);
+
+    const row = await ctx.repos.members.findOne({
+      where: {
+        projectId: { eq: created.id },
+        userId: { eq: guest.id },
+      },
+    });
+    expect(row?.rank).toBe("member");
   });
 
   it("names a seeded rank in the creator's language", ({ expect }) => {

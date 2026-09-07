@@ -2133,6 +2133,19 @@ export default {
   "permission.group.feedback": "Feedback",
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",
+  "project.settings.members.rank.label": "Rank",
+  "project.settings.members.rank.assigned": "Rank updated",
+  "project.settings.members.invite.rank": "Rank they land on",
+  "project.settings.members.transfer.action": "Transfer ownership",
+  "project.settings.members.transfer.title": "Transfer this project to $1",
+  "project.settings.members.transfer.description":
+    "There is exactly one owner. Pick the rank you keep, then confirm.",
+  "project.settings.members.transfer.keep": "Your rank afterwards",
+  "project.settings.members.transfer.confirmTitle": "Give this project to $1?",
+  "project.settings.members.transfer.confirmDescription":
+    "$1 becomes the owner and you become $2. This cannot be undone by you: only the new owner can give it back.",
+  "project.settings.members.transfer.confirm": "Transfer it",
+  "project.settings.members.transfer.done": "$1 owns this project now",
   "project.settings.nav.ranks": "Ranks",
   "project.settings.ranks.title": "What each rank may do",
   "project.settings.ranks.description":

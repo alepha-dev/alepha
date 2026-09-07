@@ -5,6 +5,7 @@ import {
   InvitationService,
   InvitationTokenService,
 } from "alepha/api/invitations";
+import { RankService } from "alepha/api/ranks";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -14,6 +15,7 @@ import { projects } from "../entities/projects.ts";
 import { invitationInboxItemSchema } from "../schemas/invitationInboxItemSchema.ts";
 import { invitationTokenPreviewSchema } from "../schemas/invitationTokenPreviewSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { ProjectRankResource } from "../security/ProjectRankResource.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
 export class InvitationController {
@@ -23,6 +25,7 @@ export class InvitationController {
   protected readonly audits = $inject(LoreAudits);
   protected readonly invitationTokens = $inject(InvitationTokenService);
   protected readonly users = $repository(users);
+  protected readonly ranks = $inject(RankService);
   protected readonly projects = $repository(projects);
 
   /**
@@ -38,7 +41,33 @@ export class InvitationController {
       body: createInvitationSchema,
       response: invitationResourceSchema,
     },
-    handler: ({ body, user }) => this.invitationService.create(body, user),
+    handler: async ({ body, user }) => {
+      // ⚠️ `roles` is how an invitation names the RANK its invitee lands on.
+      // The field, the column and `grant` have carried a string list end to
+      // end since the module shipped and nobody read it; this is the reader.
+      //
+      // Validated HERE rather than at accept, and the difference matters: an
+      // invitation can sit unanswered for days, and checking the subset rule
+      // at accept would check it against whoever happens to be around then
+      // rather than against the person who offered the rank.
+      const key = body.roles?.[0];
+
+      if (key) {
+        if (key === ProjectRankResource.OWNER_KEY) {
+          throw new BadRequestError(
+            "Ownership is transferred, not invited. Invite them, then transfer.",
+          );
+        }
+        await this.ranks.assertAssignable(
+          "project",
+          body.resourceId,
+          key,
+          user,
+        );
+      }
+
+      return await this.invitationService.create(body, user);
+    },
   });
 
   /**
