@@ -16,6 +16,13 @@ import { UserAvatar } from "../../shared/UserAvatar.tsx";
 
 export interface QuestDiscussionComposerProps {
   quest: QuestResource;
+  /**
+   * The handles the `@` picker offers, already through `displayName`.
+   *
+   * Passed in rather than fetched here: the Discussion holds this list to
+   * name each comment's author, so the composer costs no request of its own.
+   */
+  members: string[];
   onPosted: (comment: QuestCommentResource) => void;
 }
 
@@ -103,6 +110,11 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
           // reaches CodeMirror's own `readOnly` through the wrapper. The
           // button below disables at the same moment, so the two agree.
           readOnly={posting}
+          // ⚠️ The one surface that gets `@`, and the scoping IS the feature:
+          // `expandCommentReferences` and `MentionNotifier` only run over
+          // comments, so a picker on a description or a folio body would
+          // offer a handle that links nowhere and pings nobody.
+          mentionSuggestions={props.members}
           minHeight={120}
           placeholder={String(tr("quest.discussion.composer.placeholder"))}
         />

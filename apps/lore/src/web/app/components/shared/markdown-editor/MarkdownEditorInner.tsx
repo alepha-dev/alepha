@@ -6,6 +6,7 @@ import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSu
 import CodeMirrorEditor from "./CodeMirrorEditor.tsx";
 import MarkdownFormatToolbar from "./MarkdownFormatToolbar.tsx";
 import MarkdownSelectionToolbar from "./MarkdownSelectionToolbar.tsx";
+import { createMentionCompletion } from "./mentionCompletion.ts";
 import { createWikiLinkCompletion } from "./wikiLinkCompletion.ts";
 
 export type MarkdownEditorMode = "view" | "edit";
@@ -56,6 +57,17 @@ export interface MarkdownEditorInnerProps {
    */
   wikiLinkSuggestions?: WikiLinkSuggestion[];
   /**
+   * Handles the `@` picker offers, as display names.
+   *
+   * ⚠️ **Present only where a mention MEANS something**: the comment
+   * surfaces, where `expandCommentReferences` turns a handle into a link and
+   * `MentionNotifier` pings its owner. Absent everywhere else, so a folio
+   * body or a description never offers a completion that would resolve
+   * nowhere from either end.
+   */
+  mentionSuggestions?: string[];
+
+  /**
    * What VIEW mode renders instead of `value`. Edit mode always shows
    * `value` — the raw, stored markdown.
    *
@@ -104,9 +116,20 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
   // the list behind it changes while the editor stays mounted.
   const suggestionsRef = useRef(props.wikiLinkSuggestions);
   suggestionsRef.current = props.wikiLinkSuggestions;
+  // Same ref treatment, same reason: the member list arrives after mount and
+  // a captured array would freeze empty.
+  const mentionsRef = useRef(props.mentionSuggestions);
+  mentionsRef.current = props.mentionSuggestions;
 
+  // ⚠️ Built ONCE and never re-derived from the props: both sources read
+  // through a ref, so a new array each render costs nothing, where a memo
+  // keyed on the arrays would rebuild the editor's extensions on every
+  // keystroke of the parent.
   const completionSources = useMemo(
-    () => [createWikiLinkCompletion(() => suggestionsRef.current ?? [])],
+    () => [
+      createWikiLinkCompletion(() => suggestionsRef.current ?? []),
+      createMentionCompletion(() => mentionsRef.current ?? []),
+    ],
     [],
   );
 
@@ -145,8 +168,14 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
           imageUploadHandler={props.imageUploadHandler}
           // Presence, not identity: an editor with no suggestions must not
           // mount autocompletion at all, or a popup appears over prose.
+          // ⚠️ Presence of EITHER list mounts autocompletion, and neither
+          // source fires without its own: a surface with members and no
+          // wiki-link suggestions still gets `@`, and one with neither
+          // mounts nothing at all rather than a popup over prose.
           completionSources={
-            props.wikiLinkSuggestions ? completionSources : undefined
+            props.wikiLinkSuggestions || props.mentionSuggestions
+              ? completionSources
+              : undefined
           }
           onViewReady={(next) => {
             // Two consumers: the floating toolbar below needs it to

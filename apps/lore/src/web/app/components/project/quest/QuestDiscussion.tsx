@@ -8,6 +8,7 @@ import type { QuestCommentResource } from "@/api/schemas/questCommentResourceSch
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { displayName } from "../../../services/displayName.ts";
 import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
 import { useProjectUsers } from "../../shared/useProjectUsers.ts";
 import QuestDiscussionComment from "./QuestDiscussionComment.tsx";
@@ -104,6 +105,12 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
       {!props.quest.completedAt && (
         <QuestDiscussionComposer
           quest={props.quest}
+          // The `@` picker's roster, from the list this component already
+          // holds to render each comment's author - so it costs no request.
+          // Through `displayName` because that is what `resolveMention`
+          // compares against: a roster built any other way disagrees with
+          // the renderer and the notifier about what `@nfo` is.
+          members={users.map((user) => displayName(user))}
           onPosted={(comment) => setComments((prev) => [...prev, comment])}
         />
       )}
