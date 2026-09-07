@@ -19,7 +19,6 @@ import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
 import { cn } from "@alepha/ui/lib/utils";
 import type { InvitationEntity } from "alepha/api/invitations";
-import { useAuth } from "alepha/react/auth";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Mail, MoreHorizontal, Plus, Users } from "lucide-react";
@@ -31,6 +30,7 @@ import type { User } from "@/api/entities/users.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { MemberIdentity } from "@/web/app/components/shared/MemberIdentity.tsx";
 import { useInviteMember } from "@/web/app/components/shared/useInviteMember.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 import { useRemoveMember } from "@/web/app/components/shared/useRemoveMember.ts";
 import { useRevokeInvitation } from "@/web/app/components/shared/useRevokeInvitation.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
@@ -45,11 +45,11 @@ export interface ProjectSettingsMembersSectionProps {
 const ProjectSettingsMembersSection = (
   props: ProjectSettingsMembersSectionProps,
 ) => {
+  const { can } = useRank();
   const router = useRouter<AppRouter>();
   const inviteMember = useInviteMember();
   const revokeInvitation = useRevokeInvitation();
   const removeMember = useRemoveMember();
-  const auth = useAuth();
   const { tr } = useI18n<I18n, "en">();
 
   const [open, setOpen] = useState(false);
@@ -57,7 +57,7 @@ const ProjectSettingsMembersSection = (
 
   const members = props.members;
   const pendingInvitations = props.pendingInvitations ?? [];
-  const isOwner = props.project.createdBy === auth.user?.id;
+  const isOwner = can("member:manage");
 
   /**
    * What the confirmation dialog calls the person: the same label the card
@@ -146,7 +146,7 @@ const ProjectSettingsMembersSection = (
               {members.length + pendingInvitations.length}
             </Badge>
           </div>
-          {props.project.createdBy === auth.user?.id && (
+          {can("member:manage") && (
             <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
               <Plus className="size-3.5" />
               {tr("project.settings.members.invite.action")}
@@ -169,11 +169,14 @@ const ProjectSettingsMembersSection = (
                   <Localize value={member.createdAt} date="fromNow" />
                 </span>
 
-                {/* Owner-only, and never on the owner's own row: a project
-                    with no owner has nobody who can delete it, rename it or
-                    let anybody back in. The endpoint refuses both cases
-                    anyway - this only stops the UI promising a 403. */}
-                {isOwner && member.userId !== props.project.createdBy && (
+                {/* Needs `member:manage`, and never on the OWNER's row: a
+                    project with no owner has nobody who can delete it, rename
+                    it or let anybody back in. Off `member.rank`, not
+                    `project.createdBy` - the creator column stopped being an
+                    authorization input in epic #E39, and after an ownership
+                    transfer the two disagree. The endpoint refuses both cases
+                    anyway; this only stops the UI promising a 403. */}
+                {isOwner && member.rank !== "owner" && (
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={

@@ -51,6 +51,7 @@ import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { ProjectPermissions } from "../security/ProjectPermissions.ts";
 import { ProjectRankPresets } from "../security/ProjectRankPresets.ts";
 import { ProjectRankResource } from "../security/ProjectRankResource.ts";
 import { AreaService } from "../services/AreaService.ts";
@@ -131,6 +132,7 @@ export class ProjectController {
   auditService = $inject(AuditService);
   areaService = $inject(AreaService);
   rankPresets = $inject(ProjectRankPresets);
+  projectPermissions = $inject(ProjectPermissions);
   ranks = $inject(RankService);
   openQuests = $inject(OpenQuestScope);
 
@@ -506,24 +508,45 @@ export class ProjectController {
       // the Home page's "N areas" stat is re-sourced from the `areas` table
       // here instead, one batched query rather than one per card.
       const projectIds = result.map((it) => it.id);
-      const [areaCounts, openQuestCounts, capabilityRows] = await Promise.all([
-        this.areaService.countByProjectIds(projectIds),
-        // The dashboard rail's per-project number. Counted through the same
-        // scope as the sidebar badge and the Active Quests tile: all three are
-        // visible together, and a disagreement between them is one of them
-        // lying rather than a rounding difference.
-        this.openQuests.countByProject(projectIds),
-        // Third batched read on the same id list. The Home cards, the create
-        // menu and the sidebar all read the capability set, and one query per
-        // card is N round trips on D1 for a list already in memory.
-        this.projectSecurity.capabilityRowsForProjects(projectIds),
-      ]);
+      const [areaCounts, openQuestCounts, capabilityRows, ownedIds] =
+        await Promise.all([
+          this.areaService.countByProjectIds(projectIds),
+          // The dashboard rail's per-project number. Counted through the same
+          // scope as the sidebar badge and the Active Quests tile: all three are
+          // visible together, and a disagreement between them is one of them
+          // lying rather than a rounding difference.
+          this.openQuests.countByProject(projectIds),
+          // Third batched read on the same id list. The Home cards, the create
+          // menu and the sidebar all read the capability set, and one query per
+          // card is N round trips on D1 for a list already in memory.
+          this.projectSecurity.capabilityRowsForProjects(projectIds),
+          // Fourth batched read on the same id list, and the one that answers
+          // the Owner badge. Off `members.rank`, not `projects.createdBy`: the
+          // creator column stopped being an authorization input in epic #E39,
+          // and after an ownership transfer the two disagree.
+          //
+          // ⚠️ Short-circuited on an empty list: `inArray: []` THROWS rather
+          // than matching nothing, and a brand-new account with no projects is
+          // exactly the request that hits it.
+          projectIds.length === 0
+            ? Promise.resolve(new Set<number>())
+            : this.members
+                .findMany({
+                  where: {
+                    projectId: { inArray: projectIds },
+                    userId: { eq: user.id },
+                    rank: { eq: "owner" },
+                  },
+                })
+                .then((rows) => new Set(rows.map((it) => it.projectId))),
+        ]);
 
       return {
         projects: result.map((it) => ({
           ...this.projectMapper.toResource(it, capabilityRows.get(it.id) ?? []),
           areaCount: areaCounts.get(it.id) ?? 0,
           openQuestCount: openQuestCounts.get(it.id) ?? 0,
+          owner: ownedIds.has(it.id),
         })),
         totalCount: result.length,
         ownedCount,
@@ -914,6 +937,25 @@ export class ProjectController {
          * Total number of members in this project (including the viewer).
          */
         memberCount: z.integer(),
+        /**
+         * What the caller may do in THIS project: application permission AND
+         * rank AND capability, resolved server-side into one flat list.
+         *
+         * ⚠️ On the EXTENDED response, never on `projectResourceSchema`. That
+         * schema is also the shape of `getMyProjects`, `getHomeOverview` and
+         * the Kanban payload, and an effective set there would be computed per
+         * project in a list.
+         *
+         * ⚠️ Declared here or it is silently dropped: the response schema is
+         * what serializes, and the client would read `undefined` and hide
+         * every control.
+         */
+        permissions: z.array(z.text()),
+        /**
+         * Which rank produced them, for the surfaces that NAME it rather than
+         * gate on it. Absent for a privileged identity, which holds no rank.
+         */
+        rank: z.object({ key: z.text(), name: z.text() }).optional(),
       }),
     },
     handler: async ({ params, user }) => {
@@ -950,6 +992,9 @@ export class ProjectController {
         ),
         member,
         memberCount,
+        // Off the membership row the gate already read, and the definitions
+        // and capability rows the request has already paid for.
+        ...(await this.projectPermissions.of(params.id, user, member)),
       };
     },
   });
@@ -985,6 +1030,25 @@ export class ProjectController {
          * Total number of members in this project (including the viewer).
          */
         memberCount: z.integer(),
+        /**
+         * What the caller may do in THIS project: application permission AND
+         * rank AND capability, resolved server-side into one flat list.
+         *
+         * ⚠️ On the EXTENDED response, never on `projectResourceSchema`. That
+         * schema is also the shape of `getMyProjects`, `getHomeOverview` and
+         * the Kanban payload, and an effective set there would be computed per
+         * project in a list.
+         *
+         * ⚠️ Declared here or it is silently dropped: the response schema is
+         * what serializes, and the client would read `undefined` and hide
+         * every control.
+         */
+        permissions: z.array(z.text()),
+        /**
+         * Which rank produced them, for the surfaces that NAME it rather than
+         * gate on it. Absent for a privileged identity, which holds no rank.
+         */
+        rank: z.object({ key: z.text(), name: z.text() }).optional(),
       }),
     },
     handler: async ({ params, user }) => {
@@ -1046,6 +1110,7 @@ export class ProjectController {
         ),
         member,
         memberCount,
+        ...(await this.projectPermissions.of(project.id, user, member)),
       };
     },
   });

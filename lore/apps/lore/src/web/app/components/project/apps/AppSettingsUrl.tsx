@@ -12,11 +12,11 @@ import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
 import type { AppController } from "@/api/controllers/AppController.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 /**
@@ -40,11 +40,11 @@ import type { I18n } from "../../../services/I18n.ts";
  */
 const AppSettingsUrl = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const toaster = useToast();
   const appApi = useClient<AppController>();
 
   const [project] = useStore(currentProjectAtom);
-  const [member] = useStore(currentProjectMemberAtom);
   const [instance, setInstance] = useStore(currentInstanceAtom);
   const [instances, setInstances] = useStore(currentInstancesAtom);
 
@@ -60,7 +60,7 @@ const AppSettingsUrl = () => {
     return null;
   }
 
-  const isOwner = member?.owner ?? false;
+  const isOwner = can("app:manage");
   const detected = instance.sigil?.lastSeenHost;
   const changed = draft.trim() !== (instance.url ?? "");
 

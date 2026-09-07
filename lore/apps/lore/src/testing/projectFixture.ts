@@ -54,6 +54,21 @@ export interface ProjectFixtureOptions {
    * Per-capability option overrides, merged over "every option on".
    */
   options?: Partial<Record<CapabilityKey, Record<string, boolean>>>;
+  /**
+   * The viewer's EFFECTIVE permission set in this project, as
+   * `getProjectBySlug` computes it. Defaults to `["*"]` - the owner's answer -
+   * for the same reason the capabilities default to all four: a fixture that
+   * withheld a permission would make an unrelated spec fail for a reason that
+   * has nothing to do with permissions.
+   *
+   * A spec whose SUBJECT is a rank says so:
+   *
+   * ```ts
+   * projectFixture({ permissions: ["project:read", "quest:read"] })  // a Viewer
+   * ```
+   */
+  permissions?: string[];
+  rank?: { key: string; name: string };
 }
 
 export class ProjectFixtureBuilder {
@@ -102,6 +117,8 @@ export class ProjectFixtureBuilder {
         milestones: true,
       },
       capabilities: this.capabilities(over),
+      permissions: over.permissions ?? ["*"],
+      rank: over.rank ?? { key: "owner", name: "Owner" },
       kanbanColumns: ["In Progress"],
       unlockedFeatures: [],
       unlockHistory: [],
