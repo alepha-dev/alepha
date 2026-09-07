@@ -1106,6 +1106,9 @@ export default {
   "project.menu.apps": "Applications",
 
   "apps.filter.search": "Rechercher",
+  "apps.filter.app": "Application",
+  "apps.filter.env": "Environnement",
+  "apps.filter.status": "État",
   "apps.status.reporting": "Remonte des données",
   "apps.status.silent": "Silencieuse depuis plus d\u2019un jour",
   "apps.status.none": "Pas de sigil, rien ne remonte",

@@ -1097,6 +1097,9 @@ export default {
   "project.menu.apps": "Apps",
 
   "apps.filter.search": "Search",
+  "apps.filter.app": "App",
+  "apps.filter.env": "Environment",
+  "apps.filter.status": "Status",
   "apps.status.reporting": "Reporting",
   "apps.status.silent": "Silent for over a day",
   "apps.status.none": "No sigil, nothing reports",

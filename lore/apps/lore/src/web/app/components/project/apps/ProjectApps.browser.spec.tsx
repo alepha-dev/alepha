@@ -1,4 +1,10 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -6,7 +12,7 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
-import { describe, it } from "vitest";
+import { afterEach, beforeAll, describe, it } from "vitest";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
@@ -82,6 +88,23 @@ class FakeLinkProvider extends LinkProvider {
 }
 
 describe("the Apps list", () => {
+  // Base UI measures its popup before it opens one, and jsdom ships no
+  // ResizeObserver. Without this the three select filters never render an
+  // option list.
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as never;
+  });
+
+  // ⚠️ `AlephaTable` persists its filters, so a case would otherwise inherit
+  // the previous one's selection and narrow a table it never touched.
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   const mount = async (
     instances: AppInstanceResource[] | undefined,
     { owner = true }: { owner?: boolean } = {},
@@ -201,6 +224,132 @@ describe("the Apps list", () => {
 
     await waitFor(() => expect(rowText(view)).toHaveLength(1));
     expect(rowText(view)[0]).toContain("b14-production");
+  });
+
+  /**
+   * From feedback #P2120: one search box is fine for four rows and useless
+   * for forty. The two questions a reader asks of this table - which envs
+   * does `api` have, which apps are in `production` - are not substring
+   * searches.
+   */
+  describe("the app, env and status filters", () => {
+    const A_FLEET = () => [
+      anInstance("api", "production", withSigil(agoHours(1))),
+      anInstance("api", "staging", withSigil(agoHours(24 * 8))),
+      anInstance("club", "production"),
+    ];
+
+    const pick = async (filter: string, option: string | RegExp) => {
+      const trigger = screen.getByRole("combobox", { name: filter });
+      fireEvent.keyDown(trigger, { key: "ArrowDown" });
+      fireEvent.click(await screen.findByRole("option", { name: option }));
+      return trigger;
+    };
+
+    it("narrows to one app, keeping every env of it", async ({ expect }) => {
+      const { view } = await mount(A_FLEET());
+      await waitFor(() => expect(rowText(view)).toHaveLength(3));
+
+      await pick("App", "api");
+
+      await waitFor(() => expect(rowText(view)).toHaveLength(2));
+      expect(rowText(view).every((text) => text.includes("api"))).toBe(true);
+    });
+
+    it("narrows to one env, keeping every app in it", async ({ expect }) => {
+      const { view } = await mount(A_FLEET());
+      await waitFor(() => expect(rowText(view)).toHaveLength(3));
+
+      await pick("Environment", "production");
+
+      await waitFor(() => expect(rowText(view)).toHaveLength(2));
+      expect(rowText(view).some((text) => text.includes("club"))).toBe(true);
+      expect(rowText(view).some((text) => text.includes("staging"))).toBe(
+        false,
+      );
+    });
+
+    it("narrows on a status nothing carries as a property", async ({
+      expect,
+    }) => {
+      // `status` is derived by `appLiveness`, so it can only ever be answered
+      // by the filter callback.
+      const { view } = await mount(A_FLEET());
+      await waitFor(() => expect(rowText(view)).toHaveLength(3));
+
+      await pick("Status", "Silent for over a day");
+
+      await waitFor(() => expect(rowText(view)).toHaveLength(1));
+      expect(rowText(view)[0]).toContain("staging");
+    });
+
+    it("matches an app exactly, never as a substring", async ({ expect }) => {
+      // The built-in field matching would keep `clubhouse` for a pick of
+      // `club`. A single select means equality, which is why `app` is
+      // answered in the callback rather than left to the property pass.
+      const { view } = await mount([
+        anInstance("club", "production"),
+        anInstance("clubhouse", "production"),
+      ]);
+      await waitFor(() => expect(rowText(view)).toHaveLength(2));
+
+      await pick("App", "club");
+
+      await waitFor(() => expect(rowText(view)).toHaveLength(1));
+      expect(rowText(view)[0]).toContain("club");
+      expect(rowText(view)[0]).not.toContain("clubhouse");
+    });
+
+    it("ANDs the filters, and clearing one widens without clearing the rest", async ({
+      expect,
+    }) => {
+      const { view } = await mount(A_FLEET());
+      await waitFor(() => expect(rowText(view)).toHaveLength(3));
+
+      await pick("App", "api");
+      await pick("Environment", "production");
+      await waitFor(() => expect(rowText(view)).toHaveLength(1));
+
+      // ⚠️ No "All apps" item (#Q1816): the list holds the real values and
+      // nothing else, the empty trigger says "App", and the way back is the
+      // `x` the trigger grows once something is chosen.
+      const app = screen.getByRole("combobox", { name: "App" });
+      fireEvent.keyDown(app, { key: "ArrowDown" });
+      const list = await screen.findByRole("listbox");
+      expect(
+        within(list)
+          .getAllByRole("option")
+          .map((option) => option.textContent),
+      ).toEqual(["api", "club"]);
+      fireEvent.keyDown(list, { key: "Escape" });
+
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Clear selection" })[0]!,
+      );
+
+      // Env survives: two apps are in production.
+      await waitFor(() => expect(rowText(view)).toHaveLength(2));
+    });
+
+    it("hides a select whose only option matches every row", async ({
+      expect,
+    }) => {
+      // One app across two envs: the App filter would offer a single value
+      // that changes nothing. Status is always offered - its three values
+      // exist whatever the data does.
+      await mount([
+        anInstance("api", "production"),
+        anInstance("api", "staging"),
+      ]);
+
+      await waitFor(() =>
+        expect(screen.queryByRole("combobox", { name: "App" })).toBeNull(),
+      );
+      expect(
+        screen.queryByRole("combobox", { name: "Environment" }),
+      ).not.toBeNull();
+      expect(screen.queryByRole("combobox", { name: "Status" })).not.toBeNull();
+    });
   });
 
   it("tells a failed read apart from an empty project", async ({ expect }) => {
