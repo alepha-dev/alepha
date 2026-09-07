@@ -229,7 +229,7 @@ export interface NotificationDeliveryRecord {
     | "failed"
     | "rejected"
     | "skipped";
-  skipReason?: "suppressed" | "declined" | null;
+  skipReason?: "suppressed" | "declined" | "unavailable" | null;
   subject?: string | null;
   body?: string | null;
   error?: string | null;

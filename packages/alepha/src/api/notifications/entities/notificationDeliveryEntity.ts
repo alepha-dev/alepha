@@ -75,9 +75,18 @@ export const notificationDeliveryEntity = $entity({
     ]),
 
     /**
-     * Why the gate refused, when `status` is `skipped`.
+     * Why the message did not go out, when `status` is `skipped`.
+     *
+     * `suppressed` and `declined` are the gate's two answers, decided before
+     * the channel is asked anything. `unavailable` is the channel's own: it
+     * was handed a contact it cannot deliver to, and said so rather than
+     * throwing, so the job ends `ok` instead of retrying a contact that will
+     * never resolve.
      */
-    skipReason: z.enum(["suppressed", "declined"]).nullable().optional(),
+    skipReason: z
+      .enum(["suppressed", "declined", "unavailable"])
+      .nullable()
+      .optional(),
 
     /**
      * The rendered subject, on every non-`sensitive` receipt. Cheap, and it
