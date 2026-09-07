@@ -13,6 +13,9 @@ const memberOf = (owner: boolean): MemberWithUser =>
     projectId: 1,
     userId: "00000000-0000-4000-8000-000000000001",
     owner,
+    // ⚠️ The badge reads the RANK now, so a custom rank shows its own name.
+    // `owner` is the frozen boolean, whose database default is `true`.
+    rank: owner ? "owner" : "member",
     createdAt: "2026-08-26T10:00:00.000Z",
     user: {
       id: "00000000-0000-4000-8000-000000000001",

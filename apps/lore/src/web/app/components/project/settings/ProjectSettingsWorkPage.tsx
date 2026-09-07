@@ -105,6 +105,10 @@ const ProjectSettingsWorkPage = () => {
                 ...updated,
                 areaCount: c.areaCount,
                 openQuestCount: c.openQuestCount,
+                // Same reasoning: `owner` is computed by `getHomeOverview`
+                // from a batched `members` read, so dropping it here would
+                // flip the Owner badge off until the next bootstrap.
+                owner: c.owner,
               }
             : c,
         ),

@@ -26,6 +26,7 @@ import {
   capabilityOption,
   hasCapability,
 } from "../../services/projectCapabilities.ts";
+import { canInProject } from "../../services/projectRank.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderRepositoryButton from "../shared/header/HeaderRepositoryButton.tsx";
@@ -147,7 +148,17 @@ const ProjectView = () => {
           )
         : [],
     ),
-  ];
+    // ⚠️ The rank is the second filter, applied to the SAME computation the
+    // palette reads through `projectNavAtom`. A second map would be a second
+    // answer, and the two would eventually disagree about which destinations
+    // exist - which is exactly what this one map was built to prevent.
+    //
+    // An entry leading to a 403 is worse than no entry: it advertises a place
+    // the reader cannot go. Never enforcement, though - the page's own loader
+    // refuses too.
+  ].filter(
+    (entry) => !entry.permission || canInProject(project, entry.permission),
+  );
 
   // Sorted by the entry's own `order`, not by which capability it came from:
   // Record reads Folios, Releases, Reports - Knowledge, then Work, then Core -

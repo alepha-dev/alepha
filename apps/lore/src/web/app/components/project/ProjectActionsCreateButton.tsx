@@ -27,7 +27,6 @@ import {
   TooltipTrigger,
 } from "@alepha/ui/components/ui/tooltip";
 import { useClient, useStore } from "alepha/react";
-import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import {
@@ -44,6 +43,7 @@ import {
 import { useState } from "react";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -66,10 +66,10 @@ const ProjectActionsCreateButton = () => {
   const [showApp, setShowApp] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const { can } = useRank();
   const inviteMember = useInviteMember();
   const { tr } = useI18n<I18n, "en">();
   const client = useClient<QuestController>();
-  const auth = useAuth();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
   const [reloadKey, setReloadKey] = useStore(kanbanReloadAtom);
@@ -99,7 +99,7 @@ const ProjectActionsCreateButton = () => {
   const feedbackEnabled = hasCapability(project, "support");
   const epicsEnabled = capabilityOption(project, "work", "epics");
   const releasesEnabled = capabilityOption(project, "work", "releases");
-  const isOwner = project.createdBy === auth.user?.id;
+  const isOwner = can("app:manage");
   // ⚠️ Gated on ownership as well as on the capability. Creating an instance
   // is owner-only server-side, so a member shown this item would open a dialog
   // that can only answer 403 - the one create in this menu with that property.

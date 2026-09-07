@@ -115,7 +115,20 @@ describe("the instance Settings tab", () => {
     alepha.inject(Routes);
     await alepha.start();
 
-    alepha.store.set(currentProjectAtom, aProject as never);
+    // ⚠️ "A plain member" is a PERMISSION SET now, not a boolean on the
+    // membership row: every write control in the project UI asks
+    // `useRank().can(...)`, which reads the effective set the server computed.
+    alepha.store.set(
+      currentProjectAtom,
+      (owner
+        ? aProject
+        : projectFixture({
+            title: "Alepha",
+            slug: "alepha",
+            permissions: ["project:read", "app:read"],
+            rank: { key: "member", name: "Member" },
+          })) as never,
+    );
     alepha.store.set(currentProjectMemberAtom, {
       id: 1,
       createdAt: "2026-08-26T10:00:00.000Z",

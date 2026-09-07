@@ -3,7 +3,6 @@ import { Badge } from "@alepha/ui/components/ui/badge";
 import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
-import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { ChevronRight } from "lucide-react";
@@ -23,18 +22,23 @@ import { ProjectIcon } from "../shared/ProjectIcon.tsx";
  * and capping the atom to make this page necessary would break `Spotlight`'s
  * client-side project search. See `recentProjectsCap.ts`.
  *
- * Ownership is derived, not fetched: `projectResourceSchema` extends the
- * entity, so every row already carries `createdBy`, and the owner is whoever
- * created it (`AppSecurityProvider.assertOwner` uses the same comparison).
- * There is no role or membership level to read — owning the project is the
- * whole distinction.
+ * Ownership is a flag on the row, computed server-side from `members.rank`
+ * in one batched read beside the area and quest counts. It used to compare
+ * `project.createdBy` to the viewer, which stopped being an authorization
+ * input in epic #E39 - and after an ownership transfer the two disagree.
+ *
+ * ⚠️ A boolean rather than the rank's name, on purpose: rank names are
+ * per-project user data, so two projects can both have an "Admin" that means
+ * different things, and a chip on twenty rows would be noise. Ownership is the
+ * one fact that compares across projects, and it is the fact this page already
+ * needs for the quota line beside it. A member's rank is one click away, on
+ * the project, where the matrix explains it.
  */
 const MyProjects = () => {
   const { tr } = useI18n<I18n, "en">();
   const [overview] = useStore(userProjectsAtom);
   const router = useRouter<AppRouter>();
   const dt = useInject(DateTimeProvider);
-  const auth = useAuth();
 
   const projects = [...(overview?.projects ?? [])].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1,
@@ -55,13 +59,7 @@ const MyProjects = () => {
         <Card className="p-0">
           <CardContent className="flex flex-col divide-y p-0">
             {projects.map((project) => {
-              // `auth.user` is undefined for the one frame before auth
-              // resolves. Treating that as "not owner" would flash a Member
-              // badge on a project the reader owns, so the badge waits for a
-              // real answer rather than guessing a default.
-              const owner = auth.user
-                ? project.createdBy === auth.user.id
-                : undefined;
+              const owner = project.owner;
               return (
                 <Link
                   key={project.id}

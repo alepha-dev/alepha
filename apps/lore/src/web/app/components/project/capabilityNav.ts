@@ -74,6 +74,20 @@ export interface CapabilityNavEntry {
    * itself on DATA. Only Blights has one.
    */
   available?: (context: CapabilityNavContext) => boolean;
+
+  /**
+   * The permission that OPENS this destination.
+   *
+   * Filtered here rather than at the page, because a nav entry leading to a
+   * 403 is worse than no entry: it advertises a place the reader cannot go.
+   * The page's own loader refuses too - this is not enforcement, and a hidden
+   * entry never was.
+   *
+   * Absent means the capability alone decides, which is right for Activity:
+   * every rank holds `project:read`, so gating it would be a check that can
+   * never fail.
+   */
+  permission?: string;
 }
 
 /**
@@ -101,6 +115,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
   work: [
     {
       route: "projectQuests",
+      permission: "quest:read",
       labelKey: "project.menu.quests",
       icon: Grid3x2,
       group: "work",
@@ -120,6 +135,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
       // 2026-08 rename took it, which is why `ProjectQuestsViewSwitcher` had
       // to be invented - the board was unreachable from the UI at all.
       route: "projectKanban",
+      permission: "quest:read",
       labelKey: "project.menu.kanban",
       icon: Columns3,
       group: "work",
@@ -129,6 +145,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
     {
       // A lens on quests, so it sits right after them: scope, then the items.
       route: "projectEpics",
+      permission: "epic:read",
       labelKey: "project.menu.epics",
       icon: Layers,
       group: "work",
@@ -143,6 +160,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
     {
       // Between Folios and Reports.
       route: "projectReleases",
+      permission: "release:read",
       labelKey: "project.menu.releases",
       icon: Flag,
       group: "record",
@@ -155,6 +173,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
   knowledge: [
     {
       route: "projectFolios",
+      permission: "folio:read",
       labelKey: "project.menu.folios",
       icon: BookOpen,
       group: "record",
@@ -169,6 +188,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
       // freely, that is a list growing without bound in the one piece of
       // chrome that must not.
       route: "projectApps",
+      permission: "app:read",
       labelKey: "project.menu.apps",
       icon: AppWindow,
       group: "ops",
@@ -185,6 +205,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
       // needs the door to it. It moved under Apps on 2026-09-06 at the
       // owner's request - an artifact is a build OF AN APP.
       route: "projectArtifacts",
+      permission: "artifact:read",
       labelKey: "project.menu.artifacts",
       icon: Package,
       group: "ops",
@@ -201,6 +222,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
       // crashes. A project that never collected one still shows no entry,
       // which is the property this predicate exists for.
       route: "projectBlights",
+      permission: "blight:read",
       labelKey: "project.menu.blights",
       icon: Bug,
       group: "work",
@@ -215,6 +237,7 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
       // Arrived rather than chosen. Feedback leads because a human wrote it;
       // a blight is filed by a machine.
       route: "projectFeedback",
+      permission: "feedback:read",
       labelKey: "project.menu.feedback",
       icon: Inbox,
       group: "work",
@@ -242,6 +265,7 @@ export const CORE_NAV: CapabilityNavEntry[] = [
   },
   {
     route: "projectReports",
+    permission: "stats:read",
     labelKey: "project.menu.reports",
     icon: BarChart3,
     group: "record",

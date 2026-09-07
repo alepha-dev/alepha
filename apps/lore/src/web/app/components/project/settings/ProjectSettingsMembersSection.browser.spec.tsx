@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import { projectFixture } from "@/testing/projectFixture.ts";
 
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import ProjectSettingsMembersSection from "./ProjectSettingsMembersSection.tsx";
 
@@ -48,13 +49,30 @@ class Links extends LinkProvider {
   }
 }
 
-const project = projectFixture({ title: "Alepha", slug: "alepha" }) as never;
+/**
+ * ⚠️ The section reads the viewer's rank off `currentProjectAtom` now, not off
+ * a prop: what it offers is `member:manage`, which a custom Admin rank may
+ * hold. The prop is still the project's identity.
+ */
+const projectFor = (viewer: string) =>
+  projectFixture({
+    title: "Alepha",
+    slug: "alepha",
+    permissions: viewer === OWNER ? ["*"] : ["project:read", "member:read"],
+    rank:
+      viewer === OWNER
+        ? { key: "owner", name: "Owner" }
+        : { key: "member", name: "Member" },
+  }) as never;
 
 const member = (id: string, username: string) => ({
   id: `m-${id}`,
   userId: id,
   projectId: 1,
   owner: id === OWNER,
+  // The remove menu hides on the OWNER's row, off the rank rather than off
+  // `project.createdBy`: after an ownership transfer the two disagree.
+  rank: id === OWNER ? "owner" : "member",
   createdAt: "2026-08-26T10:00:00.000Z",
   updatedAt: "2026-08-26T10:00:00.000Z",
   user: { id, username, email: `${username}@example.com` },
@@ -74,12 +92,13 @@ describe("ProjectSettingsMembersSection", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentUserAtom, { id: viewer, roles: ["user"] });
+    alepha.store.set(currentProjectAtom, projectFor(viewer));
 
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <ProjectSettingsMembersSection
-            project={project}
+            project={projectFor(viewer)}
             members={[member(OWNER, "owner"), member(MEMBER, "kim")] as never}
             pendingInvitations={[]}
           />

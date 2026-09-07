@@ -10,11 +10,11 @@ import { Plus, Search, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import AppCreateDialog from "./AppCreateDialog.tsx";
@@ -81,12 +81,12 @@ const filtersSchema = z.object({
  */
 const ProjectApps = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const router = useRouter<AppRouter>();
   const dateTime = useInject(DateTimeProvider);
 
   const [project] = useStore(currentProjectAtom);
   const [instances] = useStore(currentInstancesAtom);
-  const [member] = useStore(currentProjectMemberAtom);
   const [creating, setCreating] = useState(false);
 
   if (!project) {
@@ -96,7 +96,7 @@ const ProjectApps = () => {
   // Creating an instance is owner-only server-side, so the action is hidden
   // rather than shown and refused. A member reads the list and does not add to
   // it.
-  const isOwner = member?.owner ?? false;
+  const isOwner = can("app:manage");
   const now = dateTime.nowMillis();
 
   const openInstance = (instance: AppInstanceResource) =>

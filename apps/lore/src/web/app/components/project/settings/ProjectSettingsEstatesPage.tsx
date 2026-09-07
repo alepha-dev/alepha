@@ -20,7 +20,7 @@ import type {
   ProjectEstateController,
 } from "@/api/controllers/ProjectEstateController.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "@/web/app/atoms/currentProjectMemberAtom.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import TokenReveal from "../../shared/TokenReveal.tsx";
@@ -44,13 +44,13 @@ import ProjectSettingsEstatesAddDialog from "./ProjectSettingsEstatesAddDialog.t
  */
 const ProjectSettingsEstatesPage = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const toaster = useToast();
   const dialog = useDialog();
   const auth = useAuth();
   const api = useClient<ProjectEstateController>();
   const [project] = useStore(currentProjectAtom);
-  const [member] = useStore(currentProjectMemberAtom);
-  const isOwner = member?.owner ?? false;
+  const isOwner = can("estate:lend");
 
   const [items, setItems] = useState<LentEstateResource[] | undefined>();
   const [adding, setAdding] = useState(false);

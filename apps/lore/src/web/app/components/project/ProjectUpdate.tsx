@@ -173,6 +173,10 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
                   ...project,
                   areaCount: p.areaCount,
                   openQuestCount: p.openQuestCount,
+                  // Same reasoning: `owner` is computed by `getHomeOverview`
+                  // from a batched `members` read, so an update response has
+                  // no idea and dropping it would flip the Owner badge off.
+                  owner: p.owner,
                 }
               : p,
           ),

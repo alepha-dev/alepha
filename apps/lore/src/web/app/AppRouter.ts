@@ -59,6 +59,7 @@ import {
   capabilityOption,
   hasCapability,
 } from "./services/projectCapabilities.ts";
+import { canInProject } from "./services/projectRank.ts";
 
 /**
  * The leaderboards that have a detail page, which is exactly the set
@@ -1266,6 +1267,17 @@ export class AppRouter {
       if (!hasCapability(project, "work")) {
         throw new NotFoundError("Work is not enabled for this project");
       }
+      // ⚠️ A permission NAME, and a module-level function rather than
+      // `useRank()`: a `$page` loader runs outside React and cannot call a
+      // hook, and the loader and the component must not disagree about which
+      // pages exist. Same arrangement as `hasCapability` beside it.
+      //
+      // 404 rather than 403, matching the capability guard above it: a page
+      // the reader may not open is a page that does not exist for them, and a
+      // 403 would confirm what is behind it.
+      if (!canInProject(project, "quest:read")) {
+        throw new NotFoundError("Your rank does not open quests here");
+      }
     },
   });
 
@@ -1469,6 +1481,19 @@ export class AppRouter {
       }
       if (!hasCapability(project, "support")) {
         throw new NotFoundError("Support is not enabled for this project");
+      }
+      // ⚠️ A permission NAME, and a module-level function rather than
+      // `useRank()`: a `$page` loader runs outside React and cannot call a
+      // hook, and the loader and the component must not disagree about which
+      // pages exist. Same arrangement as `hasCapability` beside it.
+      //
+      // 404 rather than 403, matching the capability guard above it: a page
+      // the reader may not open is a page that does not exist for them, and a
+      // 403 would confirm what is behind it.
+      if (!canInProject(project, "feedback:read")) {
+        throw new NotFoundError(
+          "Your rank does not open the feedback inbox here",
+        );
       }
       // The first page only. `Show more` fetches the rest from inside the
       // page, so the loader is one screenful regardless of inbox size.
@@ -1927,6 +1952,17 @@ export class AppRouter {
       }
       if (!hasCapability(project, "knowledge")) {
         throw new NotFoundError("Knowledge is not enabled for this project");
+      }
+      // ⚠️ A permission NAME, and a module-level function rather than
+      // `useRank()`: a `$page` loader runs outside React and cannot call a
+      // hook, and the loader and the component must not disagree about which
+      // pages exist. Same arrangement as `hasCapability` beside it.
+      //
+      // 404 rather than 403, matching the capability guard above it: a page
+      // the reader may not open is a page that does not exist for them, and a
+      // 403 would confirm what is behind it.
+      if (!canInProject(project, "folio:read")) {
+        throw new NotFoundError("Your rank does not open folios here");
       }
       // The tree's own two lists, which `seedFolioTree` owns — the folio
       // list AND the directory list, the latter load-bearing: the tree's

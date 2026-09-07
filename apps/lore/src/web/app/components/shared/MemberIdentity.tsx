@@ -58,10 +58,15 @@ export const MemberIdentity = (props: MemberIdentityProps) => {
       {variant !== "compact" && (
         <span className="text-sm font-medium">{name}</span>
       )}
-      {variant !== "compact" && member.owner && (
+      {/* The one legitimate rank read left in the UI: this NAMES a person's
+          rank rather than gating an action, so a custom rank shows its own
+          name. Read off the member row this component already receives -
+          `member.owner` was the frozen boolean, whose database default is
+          `true`. The crown stays for the owner alone. */}
+      {variant !== "compact" && member.rank && (
         <Badge variant="secondary" className="gap-1 py-0">
-          <Crown className="size-3" />
-          {tr("members.owner")}
+          {member.rank === "owner" && <Crown className="size-3" />}
+          {member.rank === "owner" ? tr("members.owner") : member.rank}
         </Badge>
       )}
     </span>

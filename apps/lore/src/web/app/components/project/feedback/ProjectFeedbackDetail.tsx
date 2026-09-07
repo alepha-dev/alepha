@@ -27,6 +27,7 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { attachmentPreview } from "../../shared/attachmentPreview.ts";
+import { useRank } from "../../shared/useRank.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
 import FeedbackThread from "./FeedbackThread.tsx";
 
@@ -41,6 +42,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
   const [currentUser] = useStore(currentUserAtom);
+  const { can } = useRank();
   const feedbackApi = useClient<FeedbackController>();
   const router = useRouter<AppRouter>();
   const toaster = useToast();
@@ -330,7 +332,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <FeedbackThread
             feedbackId={feedback.id}
             currentUserId={currentUser?.id}
-            isOwner={project.createdBy === currentUser?.id}
+            isOwner={can("feedback:triage")}
           />
         </section>
       </div>
