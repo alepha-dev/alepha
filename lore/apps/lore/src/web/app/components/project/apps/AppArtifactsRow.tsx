@@ -1,6 +1,7 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
 import { Cloud, GitCommitHorizontal, Server } from "lucide-react";
+import type { ReactNode } from "react";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
@@ -8,6 +9,15 @@ import type { I18n } from "../../../services/I18n.ts";
 
 export interface AppArtifactsRowProps {
   group: ArtifactGroup;
+  /**
+   * What the Deploy tab puts at the end of the row.
+   *
+   * ⚠️ A slot rather than a second table. Two artifact lists on one instance
+   * page, disagreeing about column widths and about which digest is short
+   * enough, is what reusing this row exists to avoid - so the Deploy tab
+   * renders THIS row and hands it a button.
+   */
+  action?: (group: ArtifactGroup) => ReactNode;
 }
 
 /**
@@ -91,6 +101,10 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
           {group.commitSha.slice(0, 7)}
         </span>
       )}
+
+      {props.action ? (
+        <span className="ml-auto shrink-0">{props.action(group)}</span>
+      ) : null}
     </div>
   );
 };

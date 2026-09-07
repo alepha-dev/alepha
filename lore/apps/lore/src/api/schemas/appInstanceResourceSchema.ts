@@ -1,6 +1,7 @@
 import type { Infer } from "alepha";
 
 import { appInstances } from "../entities/appInstances.ts";
+import { deployments } from "../entities/deployments.ts";
 import { estates } from "../entities/estates.ts";
 import { sigilResourceSchema } from "./sigilResourceSchema.ts";
 
@@ -56,6 +57,24 @@ export const appInstanceResourceSchema = appInstances.schema
     estate: estates.schema
       .pick({ id: true, slug: true, type: true, label: true })
       .optional(),
+    /**
+     * What this copy is RUNNING: the tag of its newest successful deployment.
+     *
+     * ⚠️ **Per instance and never the newest artifact pushed for the app.**
+     * That would be per app rather than per copy, would say what was BUILT
+     * rather than what runs, and would be wrong on the first promotion - which
+     * is exactly why #1773 shipped the Apps list with three columns and left
+     * the slot empty until `deployments` existed.
+     *
+     * Absent for a copy that has never had a successful deploy, which is a
+     * blank cell rather than a dash: there is no version, not an unknown one.
+     *
+     * ⚠️ `latest` is a POINTER, not a version. Its bytes may change, so two
+     * copies both reading `latest` may be running different builds. Nothing
+     * may sort it as a semver, and a filter over this column must not imply
+     * that everything on `latest` is one build.
+     */
+    version: deployments.schema.shape.tag.optional(),
   });
 
 export type AppInstanceResource = Infer<typeof appInstanceResourceSchema>;

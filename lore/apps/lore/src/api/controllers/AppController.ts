@@ -4,6 +4,7 @@ import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
+import { deployments } from "../entities/deployments.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import {
@@ -42,6 +43,7 @@ export class AppController {
   protected instances = $repository(appInstances);
   protected sigils = $repository(sigils);
   protected estates = $repository(estates);
+  protected deployments = $repository(deployments);
   protected security = $inject(ProjectSecurityService);
   protected service = $inject(AppService);
   protected audits = $inject(LoreAudits);
@@ -339,23 +341,43 @@ export class AppController {
       ...new Set(rows.flatMap((row) => (row.estateId ? [row.estateId] : []))),
     ];
 
-    const [sigilRows, estateRows] = await Promise.all([
+    const [sigilRows, estateRows, deployedRows] = await Promise.all([
       sigilIds.length
         ? this.sigils.findMany({ where: { id: { inArray: sigilIds } } })
         : Promise.resolve([]),
       estateIds.length
         ? this.estates.findMany({ where: { id: { inArray: estateIds } } })
         : Promise.resolve([]),
+      // ⚠️ Batched like the other two, not one query per row. The Apps list
+      // renders every copy in the project from `currentInstancesAtom`, so a
+      // per-row read here is a query per row of that table.
+      this.deployments.findMany({
+        where: {
+          instanceId: { inArray: rows.map((row) => row.id) },
+          status: { eq: "succeeded" },
+        },
+        orderBy: [{ column: "createdAt", direction: "desc" }],
+      }),
     ]);
 
     const bySigil = new Map(sigilRows.map((row) => [row.id, row]));
     const byEstate = new Map(estateRows.map((row) => [row.id, row]));
+    // Newest first, so the first entry per instance wins and later ones are
+    // dropped. `set` would keep the OLDEST run, which is the whole answer
+    // backwards.
+    const byInstance = new Map<string, string>();
+    for (const row of deployedRows) {
+      if (!byInstance.has(row.instanceId)) {
+        byInstance.set(row.instanceId, row.tag);
+      }
+    }
 
     return rows.map((row) =>
       this.project(
         row,
         row.sigilId ? bySigil.get(row.sigilId) : undefined,
         row.estateId ? byEstate.get(row.estateId) : undefined,
+        byInstance.get(row.id),
       ),
     );
   }
@@ -378,6 +400,7 @@ export class AppController {
     instance: AppInstance,
     sigil?: Sigil,
     estate?: Estate,
+    version?: string,
   ): AppInstanceResource {
     return {
       id: instance.id,
@@ -413,6 +436,10 @@ export class AppController {
             },
           }
         : {}),
+      // Omitted rather than nulled for a copy that has never deployed: the
+      // column is blank because there is no version, not because one is
+      // unknown.
+      ...(version ? { version } : {}),
     };
   }
 }

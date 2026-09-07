@@ -6,8 +6,10 @@ import {
 } from "@alepha/ui/components/ui/card";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import type { ReactNode } from "react";
 
 import type { ArtifactController } from "@/api/controllers/ArtifactController.ts";
+import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -20,6 +22,16 @@ export interface AppArtifactsListProps {
    * the instance: a build belongs to an app, not to a deployed copy of one.
    */
   app: string;
+  /**
+   * A title overriding "Artifacts", for a caller reusing this list under a
+   * different question. The Deploy tab asks "what can I ship here".
+   */
+  title?: string;
+  /**
+   * Per-row action, passed through to {@link AppArtifactsRow}. The Deploy tab's
+   * button, and the reason this list is reused rather than copied.
+   */
+  action?: (group: ArtifactGroup) => ReactNode;
 }
 
 /**
@@ -71,7 +83,9 @@ const AppArtifactsList = (props: AppArtifactsListProps) => {
   return (
     <Card data-testid="app-artifacts">
       <CardHeader>
-        <CardTitle className="text-base">{tr("app.artifacts")}</CardTitle>
+        <CardTitle className="text-base">
+          {props.title ?? tr("app.artifacts")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 text-sm">
         {/*
@@ -96,7 +110,11 @@ const AppArtifactsList = (props: AppArtifactsListProps) => {
         ) : (
           <div className="flex flex-col divide-y">
             {groups.map((group) => (
-              <AppArtifactsRow key={group.tag} group={group} />
+              <AppArtifactsRow
+                key={group.tag}
+                group={group}
+                action={props.action}
+              />
             ))}
           </div>
         )}

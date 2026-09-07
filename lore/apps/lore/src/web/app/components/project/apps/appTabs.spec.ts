@@ -86,17 +86,23 @@ describe("the instance's tab set", () => {
     ]);
   });
 
-  it("adds Environment for an estate, and only for an estate", ({ expect }) => {
-    // The variables reach the app through a deploy, so a copy with nowhere to
-    // deploy has nothing to configure yet. Choosing an estate on the Settings
-    // tab is what makes the tab appear.
-    //
-    // ⚠️ Epic #1's Deploy tab is still absent, and its absence is deliberate
-    // rather than pending here: no placeholder tab ever ships for a surface
-    // that does not exist.
+  it("adds Deploy and Environment for an estate, and only for an estate", ({
+    expect,
+  }) => {
+    // Both unlock on the same predicate and for the same reason: an estate is
+    // where a deploy goes and where its variables end up, so a copy with
+    // nowhere to deploy has neither a history nor anything to configure.
+    // Choosing one on the Settings tab is what makes the pair appear.
     expect(
       routes(anInstance(undefined, { estateId: crypto.randomUUID() })),
-    ).toEqual(["app", "appArtifacts", "appEnvironment", "appSettings"]);
+    ).toEqual([
+      "app",
+      "appArtifacts",
+      "appDeploy",
+      "appEnvironment",
+      "appSettings",
+    ]);
+    expect(routes(anInstance())).not.toContain("appDeploy");
     expect(routes(anInstance())).not.toContain("appEnvironment");
   });
 
@@ -160,25 +166,32 @@ describe("the instance's tab set", () => {
     }
   });
 
-  it("gates Environment on deploy, never on track", ({ expect }) => {
-    // ⚠️ The one that matters. This is the screen holding a project's
-    // production credentials: it vanishing because somebody turned telemetry
-    // off is a support ticket nobody diagnoses, and it is exactly what the
-    // implicit `apps.track` on every gated tab used to do.
-    const tab = APP_TABS.find((it) => it.route === "appEnvironment");
-    expect(tab?.option).toBe("deploy");
+  it("gates Deploy and Environment on deploy, never on track", ({ expect }) => {
+    // ⚠️ The pair that matters. One is the screen holding a project's
+    // production credentials and the other is how anything ships at all;
+    // either vanishing because somebody turned TELEMETRY off is a support
+    // ticket nobody diagnoses, and it is exactly what the implicit
+    // `apps.track` on every gated tab used to do.
+    for (const route of ["appDeploy", "appEnvironment"]) {
+      expect(APP_TABS.find((it) => it.route === route)?.option).toBe("deploy");
+    }
 
     const withEstate = anInstance(undefined, { estateId: crypto.randomUUID() });
-    expect(
-      appTabsFor(withEstate, { track: false, deploy: true }).map(
-        (it) => it.route,
-      ),
-    ).toContain("appEnvironment");
-    expect(
-      appTabsFor(withEstate, { track: true, deploy: false }).map(
-        (it) => it.route,
-      ),
-    ).not.toContain("appEnvironment");
+    const routesOf = (options: { track: boolean; deploy: boolean }) =>
+      appTabsFor(withEstate, options).map((it) => it.route);
+
+    expect(routesOf({ track: false, deploy: true })).toEqual([
+      "app",
+      "appArtifacts",
+      "appDeploy",
+      "appEnvironment",
+      "appSettings",
+    ]);
+    expect(routesOf({ track: true, deploy: false })).toEqual([
+      "app",
+      "appArtifacts",
+      "appSettings",
+    ]);
   });
 
   it("carries no count on Errors and no Changelog slot", ({ expect }) => {

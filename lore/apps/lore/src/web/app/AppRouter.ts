@@ -856,6 +856,7 @@ export class AppRouter {
       this.appErrors,
       this.appExplore,
       this.appArtifacts,
+      this.appDeploy,
       this.appEnvironment,
       this.appSettings,
     ],
@@ -1126,6 +1127,23 @@ export class AppRouter {
       title: `${previous?.title ?? ""} › Artifacts`,
     }),
     lazy: () => import("./components/project/apps/AppArtifacts.tsx"),
+  });
+
+  /**
+   * What has been deployed here, and what to deploy next.
+   *
+   * ⚠️ Unguarded in the router, like `appArtifacts`. The tab self-hides on
+   * `apps.deploy` plus the copy having an estate, and every write behind it is
+   * refused server-side by #1205's gate; a route guard would only turn a link
+   * somebody already holds into a 404 while changing no permission.
+   */
+  appDeploy = $page({
+    name: "appDeploy",
+    path: "/deploy",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Deploy`,
+    }),
+    lazy: () => import("./components/project/apps/AppDeploy.tsx"),
   });
 
   /**

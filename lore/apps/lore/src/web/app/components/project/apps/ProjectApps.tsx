@@ -6,7 +6,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Plus, Search, TriangleAlert } from "lucide-react";
+import { Plus, Search, Tag, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
@@ -34,6 +34,16 @@ const filtersSchema = z.object({
    * reader.
    */
   search: z.string().optional(),
+  /**
+   * The deployed tag, as a select over the values actually present.
+   *
+   * ⚠️ `latest` is in that list like any other value, and the label must not
+   * imply that everything on it is one build: `artifacts.tag` allows `latest`
+   * and its bytes may change, so two copies both reading `latest` may be
+   * running different code. Local state like `search`, over the in-memory
+   * array.
+   */
+  version: z.string().optional(),
 });
 
 /**
@@ -63,13 +73,20 @@ const filtersSchema = z.object({
  * Liveness survives as a status dot before the name, which costs no column
  * width.
  *
- * ⚠️ **No Version column in v3.** The spec's fourth column is "the deployed
- * tag" and nothing in Lore knows it: there is no `deployments` table until epic
- * #1, the reporting envelope carries no app version, and an estate command's
- * payload holds a sha256 and no tag. It lands with #1203. **Do not fill the
- * slot with the newest artifact tag** - that is per app rather than per
- * instance, says what was built rather than what runs, and would be wrong on
- * the first promotion.
+ * ## The Version column, and where it comes from
+ *
+ * `instance.version` is the tag of that copy's newest SUCCEEDED deployment,
+ * filled by `AppController.toResources` from the `deployments` table in the
+ * same batched read as the sigil and the estate. v3 shipped three columns
+ * because nothing knew the answer; epic #1's table is what made it knowable.
+ *
+ * ⚠️ **Never the newest artifact tag.** That is per app rather than per copy,
+ * says what was BUILT rather than what runs, and is wrong on the first
+ * promotion - which is the whole reason the slot stayed empty rather than being
+ * filled with something plausible.
+ *
+ * ⚠️ A copy that has never deployed shows nothing, not a dash: there is no
+ * version, rather than an unknown one.
  *
  * ## Static-data mode, so there is no second request
  *
@@ -98,6 +115,15 @@ const ProjectApps = () => {
   // it.
   const isOwner = member?.owner ?? false;
   const now = dateTime.nowMillis();
+
+  // The distinct values present, sorted as text. ⚠️ Not as a semver: `latest`
+  // is in this list and has no place in a version order, and the column it
+  // filters does not sort that way either.
+  const versions = [
+    ...new Set(
+      (instances ?? []).flatMap((it) => (it.version ? [it.version] : [])),
+    ),
+  ].sort();
 
   const openInstance = (instance: AppInstanceResource) =>
     void router.push("app", {
@@ -196,12 +222,34 @@ const ProjectApps = () => {
                 placeholder={tr("apps.filter.search")}
                 inputProps={{ "aria-label": tr("apps.filter.search") }}
               />
+              {/*
+                Over the values present, not over every tag ever pushed: this
+                narrows a list of copies, so a tag nothing runs would be an
+                option that empties the table.
+              */}
+              {versions.length > 0 ? (
+                <Control
+                  input={form.input.version}
+                  label=""
+                  clearable
+                  icon={Tag}
+                  clearLabel={tr("apps.filter.allVersions")}
+                  items={versions.map((version) => ({
+                    label: version,
+                    value: version,
+                  }))}
+                />
+              ) : null}
             </FilterSlot>
           ),
         }}
         // The built-in field matching pairs a filter with the same-named
         // property, and this one is not: `search` spans three values.
         filter={(instance, values) => {
+          const version = String(values.version ?? "");
+          if (version && instance.version !== version) {
+            return false;
+          }
           const search = String(values.search ?? "").toLowerCase();
           if (!search) return true;
           const url = appUrl(instance) ?? "";
@@ -252,6 +300,29 @@ const ProjectApps = () => {
             cell: (instance) => (
               <span className="truncate text-sm">{instance.env}</span>
             ),
+          },
+          version: {
+            label: tr("apps.table.version"),
+            sortable: true,
+            cell: (instance) =>
+              instance.version ? (
+                <span
+                  className={
+                    // ⚠️ `latest` is a pointer, not a version. Muted so it does
+                    // not read as a release, and never sorted as a semver -
+                    // the column sorts as text, which is what it is.
+                    instance.version === "latest"
+                      ? "text-muted-foreground truncate font-mono text-xs"
+                      : "truncate font-mono text-xs"
+                  }
+                >
+                  {instance.version}
+                </span>
+              ) : (
+                // Nothing, not a dash: this copy has no version, rather than
+                // one nobody could read.
+                <span />
+              ),
           },
           url: {
             label: tr("apps.table.address"),
