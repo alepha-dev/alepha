@@ -1,4 +1,4 @@
-import { $env, $inject, AlephaError, z } from "alepha";
+import { $env, $inject, z } from "alepha";
 import { WorkspacePacker } from "alepha/cli";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
@@ -122,7 +122,7 @@ export class ArtifactCommand {
     }),
     handler: async ({ flags, root, run }) => {
       const project = this.client.resolveProject(flags.project);
-      const app = flags.app ?? (await this.appNameFrom(root));
+      const app = await this.projects.resolveApp(flags.app, root);
       const tag = flags.tag ?? ArtifactCommand.DEFAULT_TAG;
 
       const [projectId, git] = await Promise.all([
@@ -206,31 +206,11 @@ export class ArtifactCommand {
     await this.fs.appendFile(target, `sha256=${sha256}\n`);
   }
 
-  /**
-   * The name this artifact is filed under, when `--app` names none.
-   *
-   * `package.json`'s `name`, slugified the way `alepha pack` slugifies it, so
-   * a scoped package (`@acme/app`) lands as `acme-app` in both the filename
-   * and the registry rather than as a path that exists in neither.
-   */
-  protected async appNameFrom(root: string): Promise<string> {
-    const path = this.fs.join(root, "package.json");
-    let name: string | undefined;
-    try {
-      const pkg = await this.fs.readJsonFile<{ name?: string }>(path);
-      name = pkg.name;
-    } catch {
-      throw new AlephaError(
-        `Could not read ${path}. Run \`lore artifacts push\` from a workspace directory, or pass --app <name>.`,
-      );
-    }
-    if (!name) {
-      throw new AlephaError(
-        'Missing "name" in package.json, so there is nothing to file this artifact under. Pass --app <name>.',
-      );
-    }
-    // The packer's own copy, not a restatement of it: the two used to be
-    // separate methods held together by a comment saying they must not drift.
-    return this.packer.slugify(name);
-  }
+  /*
+    The app name used to be derived here, from `package.json` slugified through
+    the packer. It moved to `LoreProjectResolver.resolveApp` with #1811, which
+    added `LORE_APP` to the chain: `lore apps deploy` needs the same answer, and
+    a second derivation of one name is what let `pack` write one file while
+    `BayAdapter` looked for another.
+  */
 }

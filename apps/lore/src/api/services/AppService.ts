@@ -110,15 +110,21 @@ export class AppService {
    * also reads: that one runs in the browser and cannot inject this service, so
    * the rule lives in a module both can import rather than being stated twice.
    * This method is the server-side door onto it, and nothing more.
+   *
+   * ⚠️ `defaultEnv` is a parameter rather than a read, because the two callers
+   * already hold the project row and a lookup here would be a second query for
+   * a value they have. Omit it and the fixed rule applies, which is what a
+   * caller that genuinely has no project row wants.
    */
   async defaultInstance(
     projectId: number,
     app: string,
+    defaultEnv?: string,
   ): Promise<AppInstance | undefined> {
     const rows = await this.instances.findMany({
       where: { projectId: { eq: projectId }, app: { eq: app } },
     });
-    return defaultAppInstance(rows, app);
+    return defaultAppInstance(rows, app, defaultEnv);
   }
 
   /**

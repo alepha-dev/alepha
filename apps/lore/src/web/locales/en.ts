@@ -1199,6 +1199,18 @@ export default {
   "app.settings.estate.manage": "Manage estates",
   "app.settings.estate.clear": "No estate",
   "app.settings.estate.saved": "Deploy target saved",
+  "project.settings.apps.defaultEnv.title": "Default environment",
+  "project.settings.apps.defaultEnv.description":
+    "Which environment a command means when it names none. `lore apps deploy` with no --env resolves to this, and so does a bare /apps/<name> link.",
+  "project.settings.apps.defaultEnv.label": "Default environment",
+  "project.settings.apps.defaultEnv.rowDescription":
+    "Only environments this project already has are offered.",
+  "project.settings.apps.defaultEnv.none":
+    "This project has no deployed copy yet, so there is no environment to default to.",
+  "project.settings.apps.defaultEnv.clear": "No default",
+  "project.settings.apps.defaultEnv.fallback":
+    "With no default, production is used when it exists, otherwise the first environment by name.",
+  "project.settings.apps.defaultEnv.saved": "Default environment saved",
   "app.settings.danger": "Danger zone",
   "app.settings.delete.title": "Delete this app",
   "app.settings.delete.description":

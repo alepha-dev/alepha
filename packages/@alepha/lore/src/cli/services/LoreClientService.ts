@@ -40,6 +40,18 @@ export class LoreClientService {
         description:
           "Default Lore project slug, overridden by --project. A workflow sets it once instead of every step passing a flag.",
       }),
+      LORE_APP: z.text({
+        default: "",
+        secret: false,
+        description:
+          "Default app name for the `lore apps` commands, overridden by --app. Falls back to the slugified `name` in package.json.",
+      }),
+      LORE_ENV: z.text({
+        default: "",
+        secret: false,
+        description:
+          "Default environment for the `lore apps` commands, overridden by --env. Falls back to the project's own default environment, read from Lore.",
+      }),
     }),
   );
 
@@ -143,4 +155,48 @@ export class LoreClientService {
     }
     return project;
   }
+
+  /**
+   * The app named by a flag or the environment, or nothing.
+   *
+   * ⚠️ Returns `undefined` rather than throwing, unlike {@link resolveProject},
+   * because this axis has a third step the environment cannot reach: the
+   * directory's own `package.json` name. `LoreProjectResolver.resolveApp` is
+   * what walks the whole chain and produces the error, since it is the one that
+   * can read a file.
+   *
+   * `||` not `??`, for the reason {@link hostname} carries.
+   */
+  public appFromEnv(flag?: string): string | undefined {
+    return flag || String(this.env.LORE_APP || "") || undefined;
+  }
+
+  /**
+   * The environment named by a flag or the environment, or nothing.
+   *
+   * ⚠️ Also `undefined` rather than a throw, and here the third step is a
+   * REMOTE read: the project's own default environment. `production` as a
+   * client-side constant was wrong the moment environments became rows - a
+   * project may run `b14-production` and have no `production` at all - so the
+   * fallback cannot live in this file.
+   *
+   * `||` not `??`, same rule.
+   */
+  public envFromEnv(flag?: string): string | undefined {
+    return flag || String(this.env.LORE_ENV || "") || undefined;
+  }
 }
+
+/*
+  ⚠️ `.lorerc.json` is future work, and will NOT be an epic #27 regression.
+
+  Worth writing down here, beside the variables it would supplement, so a later
+  session does not read it as one. Epic #27 removed a `lore()` plugin
+  registration from `alepha.config.ts`, which dragged the app's entire
+  container, build options and config into the CLI's process. A small standalone
+  `.lorerc.json` (`{ url, project, app }`) read by the `lore` binary alone is a
+  different and far cheaper thing: no container, no Vite, no app code.
+
+  Environment variables first is the correct order. File the config file
+  separately once this shape has been used in anger.
+*/

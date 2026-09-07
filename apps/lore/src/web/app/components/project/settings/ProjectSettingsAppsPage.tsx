@@ -11,9 +11,11 @@ import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
 import ProjectBlightRulesDialog from "../blights/ProjectBlightRulesDialog.tsx";
 import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
+import ProjectSettingsDefaultEnv from "./ProjectSettingsDefaultEnv.tsx";
 
 /**
- * Two blocks: the module switch, and the ignore rules.
+ * Three blocks: the module switch, the default environment, and the ignore
+ * rules.
  *
  * ## What left, and why nothing replaced it
  *
@@ -55,6 +57,8 @@ const ProjectSettingsAppsPage = () => {
   return (
     <div className="flex flex-col gap-6">
       <ProjectSettingsCapabilitySection capability="apps" />
+
+      {enabled && <ProjectSettingsDefaultEnv />}
 
       {enabled && (
         <div className="flex flex-col gap-2">
