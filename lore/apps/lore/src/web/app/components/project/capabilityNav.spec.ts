@@ -68,7 +68,7 @@ describe("the sidebar, derived from capabilities", () => {
     expect(routes).toContain("projectFeedback");
   });
 
-  it("gives a Knowledge-only project one entry beside the core three", ({
+  it("gives a Knowledge-only project one entry beside the core two", ({
     expect,
   }) => {
     const routes = offered(projectFixture({ capabilities: ["knowledge"] }));
@@ -78,12 +78,11 @@ describe("the sidebar, derived from capabilities", () => {
     expect(routes.sort((a, b) => a.localeCompare(b))).toEqual([
       "projectActivity",
       "projectFolios",
-      "projectInbox",
       "projectReports",
     ]);
   });
 
-  it("leaves the three core entries standing with every capability off", ({
+  it("leaves the two core entries standing with every capability off", ({
     expect,
   }) => {
     const routes = offered(projectFixture({ capabilities: [] }));
@@ -91,16 +90,23 @@ describe("the sidebar, derived from capabilities", () => {
     // Activity says something whatever else is turned off, and Reports is
     // Core because its TABS declare capabilities - an Apps-only project
     // reaches Quality through it.
+    expect(routes).toEqual(["projectActivity", "projectReports"]);
+  });
+
+  it("offers no Notifications entry, at any capability set", ({ expect }) => {
+    // ⚠️ Absent from the RAIL, not from the app (feedback #P2127): the header
+    // bell is the only door, and two badged controls for one page, one of
+    // them three centimetres from the other, is what the report was about.
     //
-    // ⚠️ Notifications is Core for a related but distinct reason: the events
-    // that fill it span `work` (quest mentions, releases) and `support`
-    // (feedback mentions), so hanging it off either would leave a project
-    // generating messages with no door to them.
-    expect(routes).toEqual([
-      "projectActivity",
-      "projectInbox",
-      "projectReports",
-    ]);
+    // The page itself is still Core - the events that fill it span `work`
+    // (quest mentions, releases) and `support` (feedback mentions), so it
+    // could never have hung off either - which is why this holds whatever is
+    // enabled rather than only for a bare project.
+    for (const capabilities of [[], ["work"], ["knowledge"], ["support"]]) {
+      expect(
+        offered(projectFixture({ capabilities: capabilities as never })),
+      ).not.toContain("projectInbox");
+    }
   });
 
   it("drops an entry whose option is off, and keeps its siblings", ({

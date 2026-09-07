@@ -46,14 +46,16 @@ const ProjectSettingsCapabilitySection = (
 
   return (
     <SettingsSection>
-      {/* Said once, on the section, rather than on each of seven switches.
-          Every read here goes through a 30 s window, so a change made in one
-          browser reaches another when that window expires - the same delay the
-          roadmap card already discloses, and for the same reason: the cache is
-          a per-process Map, which on Workers means per isolate. */}
-      <p className="text-muted-foreground px-1 text-xs">
-        {tr("project.settings.capability.delay")}
-      </p>
+      {/* ⚠️ No propagation-delay banner (feedback #P2125). It capped all four
+          capability pages with the same sentence, above the heading, which
+          made it read as chrome rather than as help - and the delay it warned
+          about is the owner's OWN 30 s read window, which they see resolve by
+          reloading.
+
+          The neighbouring warnings are not the same and stay: the roadmap
+          card's is about what the PUBLIC sees, which the owner cannot check
+          for themselves, and the ranks page's draws a contrast with removal
+          taking effect at once. */}
       <SettingsRow
         label={tr(descriptor.labelKey as never)}
         description={tr(descriptor.descriptionKey as never)}

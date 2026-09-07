@@ -12,7 +12,6 @@ import { CheckCheck, FolderOpen, Globe, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { AppRouter } from "../../../AppRouter.ts";
-import { currentInboxCountAtom } from "../../../atoms/currentInboxCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
@@ -73,7 +72,6 @@ const ProjectInbox = () => {
   const dateTime = useInject(DateTimeProvider);
 
   const [project] = useStore(currentProjectAtom);
-  const [, setProjectCount] = useStore(currentInboxCountAtom);
   const [, setUnreadEverywhere] = useStore(inboxUnreadAtom);
 
   const [rows, setRows] = useState<InboxRow[]>([]);
@@ -102,11 +100,15 @@ const ProjectInbox = () => {
             : (page.items as InboxRow[]),
         );
         setCursor(page.nextCursor);
-        // The counts on screen come from the same read, so the rail and the
-        // page cannot disagree while somebody is looking at both.
-        if (scope) {
-          setProjectCount({ count: page.unreadCount });
-        } else {
+        // ⚠️ Only the all-projects read may speak for the bell, whose count
+        // is cross-project. A filtered page's `unreadCount` is this
+        // project's, so writing it into `inboxUnreadAtom` would understate
+        // every other project's unread at once. The scoped branch used to
+        // feed the rail's own badge, which went with the rail entry
+        // (feedback #P2127), so it now updates nothing - the bell keeps the
+        // number the loader gave it until the next navigation, which is
+        // exactly what it did before on this page.
+        if (!scope) {
           setUnreadEverywhere({ count: page.unreadCount });
         }
       } catch {
@@ -159,9 +161,9 @@ const ProjectInbox = () => {
     try {
       await api.markAllInboxRead({ query: scope ? { scope } : {} });
     } finally {
-      if (scope) {
-        setProjectCount({ count: 0 });
-      } else {
+      // Same rule as the read above: zero is the whole inbox's answer only
+      // when the whole inbox is what was marked.
+      if (!scope) {
         setUnreadEverywhere({ count: 0 });
       }
     }
@@ -222,7 +224,12 @@ const ProjectInbox = () => {
                 label=""
                 icon={Search}
                 placeholder={tr("inbox.filter.search")}
-                inputProps={{ "aria-label": tr("inbox.filter.search") }}
+                // ⚠️ A different key from the placeholder. Every filter bar
+                // says plain "Search" (#Q1750), which is thin for a screen
+                // reader on a page carrying several controls - so the
+                // accessible name keeps the fuller phrase the placeholder
+                // used to show.
+                inputProps={{ "aria-label": tr("inbox.filter.searchLabel") }}
               />
             </FilterSlot>
           ),
@@ -239,6 +246,19 @@ const ProjectInbox = () => {
           title: {
             label: tr("inbox.table.message"),
             sortable: true,
+            // The same pair the Quests and Releases tables use, and it needs
+            // both halves: the table is auto-layout, so `max-width: 0` is
+            // what stops this column claiming its content width and
+            // `width: 100%` is what makes it absorb whatever the others
+            // leave. Without the pair the column grows to fit the longest
+            // message and the ellipsis never fires.
+            //
+            // `min-w-48` is the floor. Once the other columns' intrinsic
+            // widths fill the container there is nothing for `width: 100%`
+            // to claim and `max-width: 0` collapses this to literally zero;
+            // min-width wins over max-width, so it stops there and the
+            // table's own `overflow-x-auto` takes over.
+            className: "w-full max-w-0 min-w-48",
             cell: (row) => (
               <span className="flex min-w-0 items-center gap-2">
                 {!row.readAt && (

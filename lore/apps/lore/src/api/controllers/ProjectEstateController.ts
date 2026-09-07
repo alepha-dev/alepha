@@ -83,7 +83,7 @@ export class ProjectEstateController {
       response: z.object({ items: z.array(lentEstateResourceSchema) }),
     },
     handler: async ({ params, user }) => {
-      return { items: await this.lentTo(params.projectId) };
+      return { items: await this.lentTo(params.projectId, user.id) };
     },
   });
 
@@ -236,10 +236,13 @@ export class ProjectEstateController {
     const owner = await this.users.findOne({
       where: { id: { eq: estate.ownerUserId } },
     });
-    return this.toLent(estate, String(grant.createdAt), owner);
+    return this.toLent(estate, String(grant.createdAt), owner, user.id);
   }
 
-  protected async lentTo(projectId: number): Promise<LentEstateResource[]> {
+  protected async lentTo(
+    projectId: number,
+    viewerId: string,
+  ): Promise<LentEstateResource[]> {
     const grants = await this.grants.findMany({
       where: { projectId: { eq: projectId } },
       orderBy: [{ column: "createdAt", direction: "desc" }],
@@ -265,6 +268,7 @@ export class ProjectEstateController {
           estate,
           String(grant.createdAt),
           owners.find((owner) => owner.id === estate.ownerUserId),
+          viewerId,
         ),
       ];
     });
@@ -278,6 +282,7 @@ export class ProjectEstateController {
     estate: Estate,
     lentAt: string,
     owner: UserRow | undefined,
+    viewerId: string,
   ): LentEstateResource {
     return {
       id: estate.id,
@@ -292,6 +297,10 @@ export class ProjectEstateController {
       cpuPercent: estate.cpuPercent ?? undefined,
       memoryPercent: estate.memoryPercent ?? undefined,
       owner: { id: estate.ownerUserId, name: displayName(owner, "Unknown") },
+      // The one place this comparison happens. See the field's own note: the
+      // Bay console 404s for anybody else, so this decides whether a link
+      // resolves.
+      ownedByViewer: estate.ownerUserId === viewerId,
       lentAt,
     };
   }

@@ -88,6 +88,17 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectFoliosFolio",
   "projectFeedback",
   "projectBlights",
+  // The same shape as its two neighbours above, and it was missing
+  // (feedback #P2129): capped, the message table sat in a 1024px column with
+  // the project background down both sides while Message truncated inside
+  // it. Nothing in `ProjectInbox` constrained the width - this set is where
+  // that decision lives.
+  "projectInbox",
+  // The same shape as its two neighbours above, and it was missing
+  // (feedback #P2129): capped, the message table sat in a ~900px column with
+  // the project background down both sides while Message truncated inside
+  // it. Nothing in `ProjectInbox` constrained the width - this set is where
+  // that decision lives.
   "projectQuestGraph",
   ...ROUTES_APP,
 ]);
@@ -145,6 +156,13 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // leaf with no detail route under it, so its crumb is the open page and
   // stays inert, the same reading as `projectQuests` on the list itself.
   projectActivity: "project.menu.activity",
+  // ⚠️ A leaf too, and out of `SECTION_HREF_ROUTES` for the same reason:
+  // `/inbox` is the whole section, so an href would link the page to itself.
+  //
+  // It matters more than the others since the rail entry was removed
+  // (#Q2006): this crumb is now the only thing on screen naming where the
+  // reader is. The key is `capabilityNav`'s own, so the two cannot drift.
+  projectInbox: "project.menu.inbox",
   projectQuests: "project.menu.quests",
   projectQuest: "project.menu.quests",
   projectKanban: "project.menu.kanban",

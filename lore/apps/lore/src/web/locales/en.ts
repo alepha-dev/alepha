@@ -759,8 +759,6 @@ export default {
   "project.settings.roadmap.description":
     "A read-only page listing your open releases and the epics inside them. No quests, no names, no backlog.",
   "project.settings.roadmap.visibility.label": "Who can see it",
-  "project.settings.capability.delay":
-    "A change here can take up to a minute to reach a session already open elsewhere.",
   "project.settings.roadmap.delay":
     "Changes can take up to a minute to reach visitors.",
   "project.settings.roadmap.level.off": "Off",
@@ -1805,7 +1803,11 @@ export default {
   "inbox.empty.description": "Messages addressed to you show up here.",
   "inbox.noMatch": "No match",
   "inbox.noMatch.description": "Try adjusting or clearing the search.",
-  "inbox.filter.search": "Search messages",
+  // ⚠️ Plain "Search" like every other filter bar (#Q1750), with the fuller
+  // phrase kept on the input's accessible name: "Search" alone is thin for a
+  // screen reader on a page carrying several controls.
+  "inbox.filter.search": "Search",
+  "inbox.filter.searchLabel": "Search messages",
   "inbox.table.message": "Message",
   "inbox.table.project": "Project",
   "inbox.table.when": "When",

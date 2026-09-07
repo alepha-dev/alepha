@@ -10,7 +10,6 @@ import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { cn } from "@alepha/ui/lib/utils";
 import { useClient, useStore } from "alepha/react";
-import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -47,7 +46,6 @@ const ProjectSettingsEstatesPage = () => {
   const { can } = useRank();
   const toaster = useToast();
   const dialog = useDialog();
-  const auth = useAuth();
   const api = useClient<ProjectEstateController>();
   const [project] = useStore(currentProjectAtom);
   const isOwner = can("estate:lend");
@@ -166,7 +164,12 @@ const ProjectSettingsEstatesPage = () => {
             <ProjectSettingsEstateRow
               key={estate.id}
               estate={estate}
-              canDetach={isOwner || estate.owner.id === auth.user?.id}
+              // ⚠️ `ownedByViewer`, not a comparison of `estate.owner.id`
+              // against the session. The server answers that question now,
+              // once, and the row's console link reads the same flag - so the
+              // two cannot come to disagree about who owns a machine. It is
+              // also what retired `useAuth` from this page.
+              canDetach={isOwner || estate.ownedByViewer}
               onDetach={detach}
             />
           ))}
