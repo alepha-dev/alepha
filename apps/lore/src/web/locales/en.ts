@@ -759,8 +759,6 @@ export default {
   "project.settings.roadmap.description":
     "A read-only page listing your open releases and the epics inside them. No quests, no names, no backlog.",
   "project.settings.roadmap.visibility.label": "Who can see it",
-  "project.settings.capability.delay":
-    "A change here can take up to a minute to reach a session already open elsewhere.",
   "project.settings.roadmap.delay":
     "Changes can take up to a minute to reach visitors.",
   "project.settings.roadmap.level.off": "Off",
