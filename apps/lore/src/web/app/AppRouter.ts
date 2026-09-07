@@ -537,6 +537,7 @@ export class AppRouter {
       this.projectFolios,
       this.projectFeedback,
       this.projectBlights,
+      this.projectInbox,
       this.projectApps,
       this.projectApp,
       this.projectAppRedirect,
@@ -799,6 +800,43 @@ export class AppRouter {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
+  });
+
+  /**
+   * Every message addressed to the viewer, from every project.
+   *
+   * ⚠️ **One route, not two.** A `/account/inbox` would be a second page for
+   * the same list differing only in a default filter. The filter is a query
+   * param instead, so both entry points reach the same page with the default
+   * each of them wants: the sidebar lands on this project, and the header
+   * bell's "See all" says `?scope=all`, because that dropdown is
+   * cross-project and a footer showing fewer rows than the menu it came from
+   * reads as messages going missing.
+   *
+   * No capability gate. The events that fill it span `work` and `support`,
+   * so gating on either would leave a project generating messages with no
+   * door to them - the same argument that puts the sidebar entry in
+   * `CORE_NAV`.
+   *
+   * No loader: the page hands the controller to its own list, the way
+   * `projectBlights` does, and the parent loader already seeded both counts.
+   */
+  projectInbox = $page({
+    name: "projectInbox",
+    path: "/inbox",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Notifications`,
+    }),
+    // ⚠️ Declared, so the loader's `query` is not empty. A param the schema
+    // does not name reads `undefined` in a loader while `useRouter().query`
+    // three lines away in the component still has it, which is the trap the
+    // invitation link cost an hour to.
+    schema: {
+      query: z.object({
+        scope: z.string().optional(),
+      }),
+    },
+    lazy: () => import("./components/project/inbox/ProjectInbox.tsx"),
   });
 
   projectBlights = $page({

@@ -15,6 +15,7 @@ import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
 import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
+import { currentInboxCountAtom } from "../../atoms/currentInboxCountAtom.ts";
 import { currentInstanceAtom } from "../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -65,6 +66,7 @@ const ProjectView = () => {
   const [questCount] = useStore(currentQuestCountAtom);
   const [feedbackCount] = useStore(currentFeedbackCountAtom);
   const [blightCount] = useStore(currentBlightCountAtom);
+  const [inboxCount] = useStore(currentInboxCountAtom);
   const [folioPath] = useStore(currentFolioPathAtom);
   const [instances] = useStore(currentInstancesAtom);
   const [instance] = useStore(currentInstanceAtom);
@@ -124,6 +126,7 @@ const ProjectView = () => {
     epicCount: epicCount?.count,
     feedbackCount: feedbackCount?.count,
     blightCount: blightCount?.count,
+    inboxCount: inboxCount?.count,
     collectsBlights,
   };
 
