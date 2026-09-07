@@ -4,6 +4,7 @@ import {
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
 import { AlephaApiInvitations } from "alepha/api/invitations";
+import { AlephaApiRanks } from "alepha/api/ranks";
 import { AlephaServerRateLimit } from "alepha/server/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
 
@@ -56,6 +57,8 @@ import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { ProjectInvitationResource } from "./providers/ProjectInvitationResource.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
+import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
+import { ProjectRankResource } from "./security/ProjectRankResource.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AppService } from "./services/AppService.ts";
 import { AreaService } from "./services/AreaService.ts";
@@ -127,6 +130,11 @@ export const LoreApi = $module({
     AlephaApiAnalyticsRollup,
     AlephaApiAnalyticsAdmin,
     AlephaApiInvitations,
+    // The rank module. Registering it IS what substitutes the grants
+    // provider `$owns({ requires })` asks, so it has to come before the
+    // controllers whose gates use one - which is what `imports:` guarantees.
+    // What a project's rank MEANS stays here, in `ProjectRankResource`.
+    AlephaApiRanks,
     LoreDashboardCatalog,
     // The estates websocket (epic #20). The first websocket in Lore: on
     // Cloudflare the build derives the Durable Object binding and its
@@ -179,6 +187,11 @@ export const LoreApi = $module({
     // Nothing injects it, so like `AppSecurityProvider` it has to be listed
     // or the resolver is never registered and every invitation 404s.
     ProjectInvitationResource,
+    // Declares the `$rankResource` for `type: "project"`, for the same
+    // reason: unlisted, the ranks module knows about no scope at all and
+    // every `requires` allows.
+    ProjectRankResource,
+    ProjectRankPresets,
     QuestJobs,
     BlightJobs,
     SigilJobs,

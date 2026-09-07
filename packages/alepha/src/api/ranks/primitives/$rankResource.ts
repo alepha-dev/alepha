@@ -141,8 +141,13 @@ export interface RankResourcePrimitiveOptions {
    * may be that the whole feature is switched off for this scope - and the
    * owner then finds no such row in the matrix. Return `undefined` to accept
    * the module's own wording.
+   *
+   * ⚠️ Async, and it has to be: the conjunct that failed is usually a fact
+   * about the scope that the application has to read (a capability switched
+   * off, a subscription lapsed), and every caller of this is already in an
+   * async frame.
    */
-  refuse?: (refusal: RankRefusal) => string | undefined;
+  refuse?: (refusal: RankRefusal) => Async<string | undefined>;
 }
 
 /**

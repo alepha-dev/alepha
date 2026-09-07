@@ -1,6 +1,7 @@
 import { $inject, Alepha, z } from "alepha";
 import { AuditService } from "alepha/api/audits";
 import { $storage, files } from "alepha/api/files";
+import { RankService } from "alepha/api/ranks";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
@@ -50,6 +51,8 @@ import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { ProjectRankPresets } from "../security/ProjectRankPresets.ts";
+import { ProjectRankResource } from "../security/ProjectRankResource.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
@@ -120,7 +123,55 @@ export class ProjectController {
   audits = $inject(LoreAudits);
   auditService = $inject(AuditService);
   areaService = $inject(AreaService);
+  rankPresets = $inject(ProjectRankPresets);
+  ranks = $inject(RankService);
   openQuests = $inject(OpenQuestScope);
+
+  /**
+   * Seed the three preset ranks, as ordinary custom ranks.
+   *
+   * Goes through {@link RankService.save} rather than writing rows: that is
+   * the write path with the invariants on it, so a preset that ever grew an
+   * owner-only permission or lost the floor would be refused here rather than
+   * stored and enforced.
+   *
+   * ⚠️ Non-fatal by contract. A project whose seeding failed works on its
+   * built-ins, which is exactly the state every project created before this
+   * epic is in, and its owner can create a rank from a template afterwards.
+   *
+   * ⚠️ Existing projects are NOT migrated. They keep zero definition rows and
+   * behave precisely as before; seeding them would invent three ranks nobody
+   * asked for in twenty-five projects at once.
+   */
+  protected async seedPresetRanks(
+    projectId: number,
+    capabilities: Array<{ key: CapabilityKey }>,
+    user: UserAccountToken,
+  ): Promise<void> {
+    try {
+      const language = this.alepha.store.get("alepha.http.request")?.language;
+
+      for (const preset of this.rankPresets.presetsFor(
+        capabilities.map((it) => it.key),
+      )) {
+        await this.ranks.save(
+          "project",
+          String(projectId),
+          {
+            key: preset.key,
+            name: this.rankPresets.nameFor(preset, language),
+            permissions: preset.permissions,
+          },
+          user,
+        );
+      }
+    } catch (error) {
+      this.log.warn(
+        "createProject: preset ranks were not seeded; the project works on its built-ins",
+        { projectId, error },
+      );
+    }
+  }
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -295,6 +346,10 @@ export class ProjectController {
           projectId: project.id,
           userId: user.id,
           owner: true,
+          // The creator is the project's one owner, and this is the column
+          // that says so from now on. `owner` above is the frozen boolean,
+          // still written only because its two readers have not gone yet.
+          rank: ProjectRankResource.OWNER_KEY,
         });
       } catch (error) {
         // `deleteProject` and not a bare `deleteById`: it also frees the slug,
@@ -332,6 +387,18 @@ export class ProjectController {
           }),
         );
       }
+
+      // The ordering slot the loop above names: AFTER the capability rows,
+      // because a preset is a pure function of the ENABLED capability set and
+      // seeding any earlier computes all three against a project that has none.
+      //
+      // Non-fatal, deliberately. A project whose seeding failed works on its
+      // built-ins (`owner` and `member`), which is the same state every project
+      // created before ranks existed is in, and the owner can create a rank
+      // from a template afterwards. Destroying a usable project over it would
+      // be the wrong trade, and the compensating delete above is reserved for
+      // the one write that is not recoverable.
+      await this.seedPresetRanks(project.id, capabilities, user);
 
       await this.audits.project.logSuccess("create", {
         ...this.audits.actor(user),

@@ -238,7 +238,7 @@ export class RankService {
       return;
     }
     throw new ForbiddenError(
-      this.refusal(this.resources.get(type), {
+      await this.refusal(this.resources.get(type), {
         scopeId,
         missing: [permission],
         user,
@@ -255,7 +255,7 @@ export class RankService {
    * feature is switched off for this scope and the matrix therefore has no
    * row to grant.
    */
-  public refusal(
+  public async refusal(
     resource: RankResourcePrimitive,
     refusal: {
       scopeId: string;
@@ -263,8 +263,8 @@ export class RankService {
       missing: string[];
       user: UserAccountToken;
     },
-  ): string {
-    const written = resource.options.refuse?.(refusal);
+  ): Promise<string> {
+    const written = await resource.options.refuse?.(refusal);
     if (written) {
       return written;
     }
@@ -401,10 +401,21 @@ export class RankService {
       throw new NotFoundError(`No rank "${key}" in this scope`);
     }
 
-    // The subset rule, applied to assignment as well as to grants: handing
-    // somebody a rank you could not have written is the same escalation by a
-    // different door.
-    await this.assertGrantable(resource, scopeId, rank.permissions, writer);
+    // ⚠️ The SUBSET rule only, not the whole write-path check.
+    //
+    // Handing somebody a rank you could not have written is the same
+    // escalation by a different door, so the subset rule applies. The rest of
+    // `assertGrantable` does not: a built-in that grants `*` is a rank that
+    // already exists, and refusing to assign it as "you cannot grant `*`"
+    // answers a question nobody asked - the application's own closure has a
+    // truer refusal for that case, and it never gets to speak if this throws
+    // first.
+    await this.assertWithinWriterSet(
+      resource,
+      scopeId,
+      rank.permissions,
+      writer,
+    );
 
     if (!resource.options.assign) {
       throw new AlephaError(
@@ -478,9 +489,24 @@ export class RankService {
       }
     }
 
-    // 5. No self-escalation. The writer may only hand out what they already
-    // hold in this scope, re-checked on every write rather than trusted from
-    // whatever the editor rendered.
+    // 5. No self-escalation.
+    await this.assertWithinWriterSet(resource, scopeId, permissions, writer);
+  }
+
+  /**
+   * The subset rule: a writer may only hand out what they already hold in this
+   * scope.
+   *
+   * Re-checked on every write rather than trusted from whatever the editor
+   * rendered, and separate from the rest of {@link assertGrantable} because
+   * assignment needs this rule and none of the others.
+   */
+  protected async assertWithinWriterSet(
+    resource: RankResourcePrimitive,
+    scopeId: string,
+    permissions: string[],
+    writer: UserAccountToken,
+  ): Promise<void> {
     if (writer.ownership === false) {
       return;
     }

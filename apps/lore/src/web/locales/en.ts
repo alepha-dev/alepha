@@ -2133,4 +2133,7 @@ export default {
   "permission.group.feedback": "Feedback",
   "permission.feedback.read": "Read the feedback inbox",
   "permission.feedback.triage": "Accept, reject and remove feedback",
+  "rank.preset.admin": "Admin",
+  "rank.preset.contributor": "Contributor",
+  "rank.preset.viewer": "Viewer",
 };

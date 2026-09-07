@@ -2163,4 +2163,7 @@ export default {
   "permission.group.feedback": "Retours",
   "permission.feedback.read": "Lire la boîte des retours",
   "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",
+  "rank.preset.admin": "Administrateur",
+  "rank.preset.contributor": "Contributeur",
+  "rank.preset.viewer": "Lecteur",
 };

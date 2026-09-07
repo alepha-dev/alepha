@@ -66,7 +66,7 @@ export class RankGrantsProvider extends ResourceGrantsProvider {
 
     return {
       allowed: false,
-      message: this.ranks.refusal(found.resource, {
+      message: await this.ranks.refusal(found.resource, {
         scopeId: found.scopeId,
         rank:
           resolved.key && resolved.name
