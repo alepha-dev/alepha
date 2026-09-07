@@ -27,6 +27,7 @@ import { FolioController } from "./controllers/FolioController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
+import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
 import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
@@ -57,6 +58,7 @@ import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
+import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
 import { ProjectInvitationResource } from "./providers/ProjectInvitationResource.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AppService } from "./services/AppService.ts";
@@ -204,6 +206,10 @@ export const LoreApi = $module({
     // in `main.server.ts`. Listed here only so DI scanning sees the class,
     // the same arrangement `LoreFileAccessProvider` has.
     LoreInboxRecipientProvider,
+    // Substituted for the framework's `NotificationPreferenceProvider` in
+    // `main.server.ts`, same arrangement.
+    LoreNotificationPreferences,
+    NotificationPreferenceController,
     FeedbackRateLimiter,
     QuestCsvParser,
     QuestCsvFormatter,
