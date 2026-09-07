@@ -68,6 +68,8 @@ import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
+import { DeployRegistry } from "./services/DeployRegistry.ts";
+import { DeployRunner } from "./services/DeployRunner.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
@@ -192,6 +194,11 @@ export const LoreApi = $module({
     QualityService,
     ArtifactTarReader,
     ArtifactService,
+    // Deploying a stored artifact to an estate (epic #1). `DeployRegistry` is
+    // the seam #1201 replaces with the `deployments` table; the runner is what
+    // writes through it.
+    DeployRegistry,
+    DeployRunner,
     ProjectLimits,
     AreaService,
     // The one write path for `app_instances`, and the only writer of

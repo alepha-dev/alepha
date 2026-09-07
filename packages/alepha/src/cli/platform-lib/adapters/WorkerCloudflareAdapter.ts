@@ -1,5 +1,9 @@
 import { $inject, Alepha, AlephaError } from "alepha";
-import { BuildCloudflareTask, type BuildManifest } from "alepha/cli";
+import {
+  BuildCloudflareTask,
+  type BuildManifest,
+  buildManifestSchema,
+} from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
@@ -204,14 +208,37 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    */
   async build(ctx: PlatformContext, run: RunnerMethod): Promise<void> {
     const manifestPath = this.fs.join(ctx.root, "dist", "manifest.json");
-    let manifest: BuildManifest;
+    let raw: unknown;
     try {
-      manifest = JSON.parse(await this.fs.readTextFile(manifestPath));
+      raw = JSON.parse(await this.fs.readTextFile(manifestPath));
     } catch (error) {
       throw new AlephaError(
         `Cannot read ${manifestPath}: ${(error as Error).message}. A deploy needs the manifest the artifact was packed with.`,
       );
     }
+
+    // ⚠️ **Parsed, not cast.** Everything below builds a Worker out of this
+    // object with no live Alepha to check it against, so a manifest that is
+    // truncated or from a different tool emits a Worker with no bindings and
+    // still reports success. Parsing also applies the schema's defaults, which
+    // is what stops an absent `crons` from being a crash rather than an empty
+    // list.
+    //
+    // Refused rather than fallen back on: unlike a local deploy there is no
+    // introspection to fall through to, because the app cannot be booted here.
+    const validated = buildManifestSchema.safeParse(raw);
+    if (!validated.success) {
+      throw new AlephaError(
+        `${manifestPath} is not a valid build manifest: ${validated.error.issues
+          .map(
+            (issue) => `${issue.path.join(".") || "(root)"} ${issue.message}`,
+          )
+          .join(
+            "; ",
+          )}. Rebuild the artifact with \`alepha build -t cloudflare\`.`,
+      );
+    }
+    const manifest = validated.data as BuildManifest;
 
     await this.buildTask.run({
       // Never dereferenced in prebuilt mode: the task reads resources, crons

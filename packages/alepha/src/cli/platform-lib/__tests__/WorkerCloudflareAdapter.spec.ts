@@ -134,9 +134,30 @@ describe("the worker-side Cloudflare adapter", () => {
         ensureR2: async () => {},
       }),
     });
+    // Complete, because the adapter PARSES rather than casts: a manifest that
+    // is truncated or from a different tool has to be refused by name rather
+    // than emit a Worker with no bindings and report success.
     await fs.writeFile(
       "/deploy/dist/manifest.json",
-      JSON.stringify({ version: 1, runtime: "workerd", project: "my-app" }),
+      JSON.stringify({
+        version: 1,
+        runtime: "workerd",
+        project: "my-app",
+        defaultEnv: "production",
+        environments: { production: { adapter: "cloudflare" } },
+        crons: [],
+        websocketPaths: [],
+        env: [],
+        resources: {
+          hasDatabase: true,
+          hasBucket: true,
+          hasAnalytics: false,
+          hasKV: false,
+          hasQueue: false,
+          hasCron: false,
+          hasWebSocket: false,
+        },
+      }),
     );
 
     const ctx = context(naming, { hasDatabase: true, hasBucket: true });
