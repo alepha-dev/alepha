@@ -1,7 +1,14 @@
 import { TreeView } from "@alepha/ui/components/tree-view/tree-view";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useI18n } from "alepha/react/i18n";
-import { FilePlus, FileText, FolderPlus, Lock, Pin } from "lucide-react";
+import {
+  FilePlus,
+  FileText,
+  FolderPlus,
+  Lock,
+  PanelLeftClose,
+  Pin,
+} from "lucide-react";
 import { type ReactElement, useEffect } from "react";
 
 import type { I18n } from "../../../../services/I18n.ts";
@@ -13,6 +20,12 @@ import { useFolioTreeModel } from "./useFolioTreeModel.ts";
 export interface FolioTreeProps {
   projectId: number;
   projectSlug: string;
+  /**
+   * Puts the pane away from its own header, the way the inspector's own
+   * header closes it (feedback #P2136). `useFolioPanes.toggleTree`, passed
+   * down rather than reached for, because the state lives above both panes.
+   */
+  onCollapse: () => void;
   /**
    * The folio open in the document pane, if any — drives the highlighted
    * row and which ancestor directories auto-expand. `undefined` on the
@@ -143,6 +156,20 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             </Button>
           </>
         )}
+        {/* Last in the row, so the two creates stay together and the pane
+            control sits at its edge - the same order the inspector's header
+            uses on the other side of the document. Outside `canWrite`: a
+            Viewer reads the tree and is just as entitled to put it away. */}
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          onClick={props.onCollapse}
+          aria-label={String(tr("folios.editor.tree.collapse"))}
+          title={String(tr("folios.editor.tree.collapse"))}
+        >
+          <PanelLeftClose className="size-3.5" />
+        </Button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-1">

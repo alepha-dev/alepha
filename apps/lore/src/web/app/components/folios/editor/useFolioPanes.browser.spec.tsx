@@ -156,4 +156,65 @@ describe("useFolioPanes", () => {
     expect(result.current.treeOpen).toBe(true);
     expect(result.current.inspectorOpen).toBe(true);
   });
+
+  /**
+   * Feedback #P2136: "focus mode will be just a toggle of collapse of both
+   * panel sides". It looks like that now and is still not that underneath -
+   * which is the point, and what the two cases above would have lost if the
+   * second collapse had simply recorded a preference.
+   */
+  it("collapsing the second pane by hand IS focus mode", async ({ expect }) => {
+    setViewportWidth(WIDE);
+    const { result } = renderHook(() => useFolioPanes());
+
+    act(() => result.current.toggleInspector());
+    expect(result.current.inspectorOpen).toBe(false);
+    expect(result.current.treeOpen).toBe(true);
+
+    act(() => result.current.toggleTree());
+    expect(result.current.treeOpen).toBe(false);
+    expect(result.current.inspectorOpen).toBe(false);
+
+    // ⚠️ And ⌘. restores the layout the reader HAD - tree open, inspector
+    // closed - rather than reopening both. That is only true because the
+    // second collapse entered focus mode instead of recording a preference.
+    act(() => result.current.toggleFocus());
+    expect(result.current.treeOpen).toBe(true);
+    expect(result.current.inspectorOpen).toBe(false);
+  });
+
+  it("records nothing for the pane the second collapse hid", async ({
+    expect,
+  }) => {
+    setViewportWidth(WIDE);
+    const first = renderHook(() => useFolioPanes());
+
+    act(() => first.result.current.toggleInspector());
+    act(() => first.result.current.toggleTree());
+    first.unmount();
+
+    // A session that ends with both sides collapsed comes back with the
+    // tree open: only the inspector was ever a choice.
+    const second = renderHook(() => useFolioPanes());
+    expect(second.result.current.treeOpen).toBe(true);
+    expect(second.result.current.inspectorOpen).toBe(false);
+  });
+
+  it("does not read a default-closed pane as one the reader collapsed", async ({
+    expect,
+  }) => {
+    // ⚠️ On a laptop the inspector is a drawer and defaults closed. Closing
+    // the tree there is an ordinary collapse, not "both sides" - treating it
+    // as focus mode would make every such collapse forget itself.
+    setViewportWidth(LAPTOP);
+    const first = renderHook(() => useFolioPanes());
+    expect(first.result.current.inspectorOpen).toBe(false);
+
+    act(() => first.result.current.toggleTree());
+    expect(first.result.current.treeOpen).toBe(false);
+    first.unmount();
+
+    const second = renderHook(() => useFolioPanes());
+    expect(second.result.current.treeOpen).toBe(false);
+  });
 });

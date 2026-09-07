@@ -97,6 +97,11 @@ const useNarrowerThan = (breakpoint: number): boolean => {
  * it did, so leaving focus mode restores exactly the layout the user had
  * rather than a layout focus mode invented.
  *
+ * ⚠️ Collapsing the second pane by hand ENTERS focus mode rather than
+ * recording a second preference, so "both sides collapsed" and focus mode
+ * are the same picture without being the same state (feedback #P2136). See
+ * `collapsingBoth`.
+ *
  * Lives here rather than in `FolioWorkspace.tsx` because the panes it
  * governs mount at two different depths — the tree directly in the
  * workspace, the inspector inside the folio-keyed content below it — so
@@ -120,22 +125,53 @@ export const useFolioPanes = (): FolioPanesState => {
     ? false
     : (inspectorPreference ?? !inspectorDrawer);
 
+  /**
+   * Closing the SECOND pane the reader has closed by hand IS focus mode
+   * (feedback #P2136: "focus mode will be just a toggle of collapse of both
+   * panel sides").
+   *
+   * ⚠️ It enters focus mode rather than recording a second preference, and
+   * that difference is the whole reason this is a function and not two
+   * lines. Recording it would make focus mode ordinary, and leaving focus
+   * mode would then reopen what focus mode chose instead of what the reader
+   * had - the transient-override property this hook's own doc describes and
+   * two specs pin. Entering it keeps the visible result the report asked
+   * for AND keeps ⌘. restoring the original layout.
+   *
+   * ⚠️ Only when the other pane's preference is EXPLICITLY false. A pane
+   * that is merely closed by default - the inspector on a narrow viewport -
+   * is not a pane the reader collapsed, and treating it as one would turn
+   * an ordinary collapse into focus mode on every laptop under 1280px.
+   */
+  const collapsingBoth = (
+    closing: boolean,
+    otherPreference: boolean | undefined,
+  ): boolean => closing && !focus && otherPreference === false;
+
   const toggleTree = useCallback(() => {
     const next = !treeOpen;
+    if (collapsingBoth(!next, inspectorPreference)) {
+      setFocus(true);
+      return;
+    }
     setTreePreference(next);
     writePreference(TREE_KEY, next);
     // Asking for a pane while in focus mode is asking to leave focus mode:
     // otherwise the toggle would record a preference and visibly do
     // nothing.
     setFocus(false);
-  }, [treeOpen]);
+  }, [treeOpen, focus, inspectorPreference]);
 
   const toggleInspector = useCallback(() => {
     const next = !inspectorOpen;
+    if (collapsingBoth(!next, treePreference)) {
+      setFocus(true);
+      return;
+    }
     setInspectorPreference(next);
     writePreference(INSPECTOR_KEY, next);
     setFocus(false);
-  }, [inspectorOpen]);
+  }, [inspectorOpen, focus, treePreference]);
 
   const toggleFocus = useCallback(() => setFocus((v) => !v), []);
 
