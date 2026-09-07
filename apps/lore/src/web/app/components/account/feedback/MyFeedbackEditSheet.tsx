@@ -143,6 +143,11 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
             >
               {tr("myFeedback.edit.description")}
             </label>
+            {/* ⚠️ Stays a `Textarea` for the same reason the feedback thread
+                does (#Q2069): this body is outsider input rendered as plain
+                text to the project owner, so an editor offering markdown
+                would author syntax nobody renders. See
+                `FeedbackThreadBody`'s doc for the posture. */}
             <Textarea
               id="feedback-description"
               value={description}
