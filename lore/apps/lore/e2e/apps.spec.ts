@@ -1589,7 +1589,12 @@ test.describe("Apps", () => {
       // Point the copy at it.
       await page.goto(`/${projectSlug}/apps/${appName}/${envName}/settings`);
       await page.waitForLoadState("networkidle");
-      const select = page.locator("[data-slot=select-trigger]");
+      // ⚠️ By ROLE and accessible name, not by `[data-slot=select-trigger]`.
+      // The row moved from the raw `Select` onto `Control`, which renders a
+      // Base UI combobox trigger and carries no such slot - a locator naming
+      // an implementation detail of one primitive is what a migration to
+      // another one has to break.
+      const select = page.getByRole("combobox", { name: "Deploys to" });
       await expect(select).toBeVisible({ timeout: 15_000 });
       await select.click();
       await page.getByRole("option", { name: estateSlug }).click();

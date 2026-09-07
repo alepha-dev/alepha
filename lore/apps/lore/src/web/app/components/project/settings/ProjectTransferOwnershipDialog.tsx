@@ -1,3 +1,4 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   Dialog,
@@ -6,23 +7,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
-import { Label } from "@alepha/ui/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { z } from "alepha";
 import type { RankResource } from "alepha/api/ranks";
 import { useClient } from "alepha/react";
+import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useState } from "react";
 
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
+/**
+ * What the outgoing owner becomes. Required, so the field cannot be cleared
+ * back to nothing: the transfer needs a rank to put them in, and `member` is
+ * the only sensible starting point.
+ */
+const keepFieldSchema = z.object({ keep: z.text() });
 
 export interface ProjectTransferOwnershipDialogProps {
   projectId: number;
@@ -62,8 +64,17 @@ const ProjectTransferOwnershipDialog = (
   const dialog = useDialog();
   const toaster = useToast();
   const api = useClient<ProjectController>();
-  const [keep, setKeep] = useState("member");
   const [busy, setBusy] = useState(false);
+
+  // A one-field form rather than `useState`, so this is a `Control` like
+  // every other picker in the app (feedback #P2121). Nothing saves on change
+  // here: the value is read by `transfer` when the reader presses the button.
+  const form = useForm({
+    schema: keepFieldSchema,
+    initialValues: { keep: "member" },
+    handler: () => {},
+  });
+  const keep = String(useFormValues(form).keep ?? "member");
 
   const assignable = props.ranks.filter((it) => it.key !== "owner");
   const keptName = assignable.find((it) => it.key === keep)?.name ?? "member";
@@ -120,32 +131,29 @@ const ProjectTransferOwnershipDialog = (
           <p className="text-muted-foreground text-sm">
             {tr("project.settings.members.transfer.description")}
           </p>
-          <div className="flex flex-col gap-1.5">
-            <Label>{tr("project.settings.members.transfer.keep")}</Label>
-            <Select
-              value={keep}
-              disabled={busy}
-              onValueChange={(value) => setKeep(String(value))}
-            >
-              <SelectTrigger
-                data-testid="transfer-keep"
-                aria-label={String(
-                  tr("project.settings.members.transfer.keep"),
-                )}
-              >
-                {/* The resolved NAME. Base UI renders the raw value, and a
-                    rank's value is its opaque key. */}
-                <SelectValue>{keptName}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {assignable.map((rank) => (
-                  <SelectItem key={rank.key} value={rank.key}>
-                    {rank.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Control
+            select
+            input={form.input.keep}
+            label={String(tr("project.settings.members.transfer.keep"))}
+            disabled={busy}
+            // The resolved NAME comes for free: `Control` looks the label up
+            // in `items`, where the raw select rendered the value - a rank's
+            // opaque key - and needed `<SelectValue>{keptName}</SelectValue>`
+            // to say otherwise.
+            items={assignable.map((rank) => ({
+              value: rank.key,
+              label: rank.name,
+            }))}
+            inputProps={{
+              "data-testid": "transfer-keep",
+              "aria-label": String(
+                tr("project.settings.members.transfer.keep"),
+              ),
+            }}
+            // For a rank list that has not loaded: with no matching item the
+            // trigger would be blank.
+            placeholder={keptName}
+          />
         </div>
         <DialogFooter>
           <Button
