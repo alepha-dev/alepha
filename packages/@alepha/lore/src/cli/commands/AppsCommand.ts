@@ -218,12 +218,10 @@ export class AppsCommand {
       const targets = await this.resolveTargets(flags, root);
 
       for (const target of targets) {
-        const out = `${app}_${target || "default"}_${tag}`;
         await run({
-          name: `build ${target || "(config)"} → dist/${out}`,
+          name: `build ${target || "(config)"} → dist/`,
           handler: async () => {
             await this.buildOnce(root, target);
-            await this.collect(root, out);
           },
         });
       }
@@ -231,6 +229,16 @@ export class AppsCommand {
       this.log.info(`Built ${targets.length} target(s) for ${app} ${tag}`, {
         targets,
       });
+
+      // ⚠️ Every build starts by cleaning `dist/`, so after several targets
+      // only the last one is still on disk - and `lore artifacts push` packs
+      // `dist/`. Saying which one survived is the difference between pushing
+      // the target you meant and pushing the one that happened to be last.
+      if (targets.length > 1) {
+        this.log.info(
+          `dist/ holds \`${targets.at(-1) || "(config)"}\`. A push takes that one; build and push a target at a time to store the others.`,
+        );
+      }
     },
   });
 
@@ -264,6 +272,12 @@ export class AppsCommand {
             "Which deployed copy to place it on. Unlike `apps build`, this names the instance, not a target. Falls back to LORE_ENV then the project's default environment.",
         })
         .optional(),
+      sigil: z
+        .boolean()
+        .describe(
+          "Give this copy a sigil first, storing its key in the copy's own environment so the deploy reports to Lore. Does nothing when it already has one.",
+        )
+        .optional(),
     }),
     handler: async ({ flags, root, run }) => {
       const project = this.client.resolveProject(flags.project);
@@ -279,6 +293,19 @@ export class AppsCommand {
       // side effect of a typo in `--env` is how `clbu` gets deployed to.
       const instance = await this.loadInstance(projectId, app, env);
       const tag = flags.tag ?? AppsCommand.DEFAULT_TAG;
+
+      // ⚠️ Before the build, so a copy that cannot be given one fails in a
+      // second rather than after a full build and push. The server answers
+      // `minted: false` for a copy that already carries its key, so leaving
+      // `--sigil` in a CI command is safe on every run after the first.
+      if (flags.sigil) {
+        const { minted } = await this.ensureSigil(projectId, app, env);
+        this.log.info(
+          minted
+            ? `Minted a sigil for ${app}/${env}; its key is in that copy's environment.`
+            : `${app}/${env} already reports to Lore.`,
+        );
+      }
 
       // ⚠️ The switch. A named tag never builds - see the class doc.
       if (!flags.tag) {
@@ -471,15 +498,40 @@ export class AppsCommand {
   }
 
   /**
+   * Ask Lore to give this copy a sigil and store its key.
+   *
+   * ⚠️ The token is never in this process. Lore mints it and seals it into the
+   * copy's environment in one server-side step, because `sigils` keeps only a
+   * hash - so a client that received the token could not have given it back
+   * later anyway, and one that never sees it cannot leak it.
+   */
+  protected async ensureSigil(
+    projectId: number,
+    app: string,
+    env: string,
+  ): Promise<{ minted: boolean }> {
+    try {
+      return await this.apps.ensureAppSigil({
+        params: { projectId, app, env },
+      });
+    } catch (error) {
+      if (error instanceof HttpError) {
+        throw new AlephaError(error.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * The first two thirds of the zero-flag cascade, stopping on the first
    * failure because each step is the input of the next.
    *
-   * ⚠️ **It builds ONE target and does not {@link collect}.** `collect` exists
-   * so several targets do not overwrite each other's `dist/`; here there is
-   * exactly one, and `WorkspacePacker` tars the whole of `dist/` - so a
-   * collected copy would ride inside the artifact as `dist/<app>_<target>_<tag>`
-   * and double it. {@link buildOnce} is the same method `lore apps build` runs,
-   * so there is still no second build path.
+   * ⚠️ **It builds ONE target, straight into `dist/`.** `WorkspacePacker` tars
+   * the whole of `dist/`, so anything else left in there rides inside the
+   * artifact - which is what a `collect` step used to do here, copying `dist/`
+   * into `dist/<app>_<target>_<tag>` and doubling every push that followed.
+   * {@link buildOnce} is the same method `lore apps build` runs, so there is
+   * still no second build path.
    */
   protected async buildAndPush(input: {
     project: string;
@@ -603,27 +655,5 @@ export class AppsCommand {
     // the wrong identity.
     const runtime = target === "bare" ? " --runtime node" : "";
     await this.shell.run(`npx alepha build${flags}${runtime}`, { root });
-  }
-
-  /**
-   * Move `dist/` aside so the next target has somewhere to build.
-   *
-   * ⚠️ `<app>_<target>_<tag>` is a LOCAL OUTPUT DIRECTORY and never an artifact
-   * identity. Epic #18 rejected `my-app_1.2.3_cloudflare.tar.gz` explicitly: it
-   * makes two builds of one release look like two releases. The identity is
-   * `(projectId, app, tag, runtime)`, and `runtime` is read by the SERVER out
-   * of the artifact's own `dist/manifest.json` at push time, never from a
-   * filename.
-   */
-  protected async collect(root: string, out: string): Promise<void> {
-    const dist = this.fs.join(root, "dist");
-    const target = this.fs.join(root, "dist", out);
-    if (!(await this.fs.exists(dist))) {
-      throw new AlephaError(
-        `The build produced no dist/ under ${root}, so there is nothing to collect.`,
-      );
-    }
-    await this.fs.rm(target, { recursive: true, force: true });
-    await this.fs.cp(dist, target);
   }
 }
