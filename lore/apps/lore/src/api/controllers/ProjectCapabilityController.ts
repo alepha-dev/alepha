@@ -67,8 +67,23 @@ export class ProjectCapabilityController {
    * `currentProjectAtom` and `userProjectsAtom`, exactly as
    * `updateProjectById` does for the settings pages today.
    */
+  /**
+   * ⚠️ `capability:manage`, not `project:update`.
+   *
+   * Effective access is `application permission AND rank AND capability`, so
+   * turning a capability ON widens every rank's effective set at once - the
+   * actor's own included. Under `project:update`, which an Admin rank is
+   * expected to hold, an Admin could hand themselves every permission their
+   * rank already lists but the project had switched off. The subset rule does
+   * not catch it: that rule governs what may be GRANTED, and this is a switch.
+   *
+   * So it is its own string, owner-only in the same structural way as
+   * `project:delete`, and Lore's `$rankResource` lists it as never grantable.
+   * `project:update` now means the project's identity: title, description,
+   * slug, icon, repository URL, roadmap visibility.
+   */
   setCapability = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [$secure({ permissions: ["capability:manage"] }), this.ownsAsOwner()],
     method: "PUT",
     path: "/projects/:projectId/capabilities/:key",
     description: "Turn one of a project's capabilities on or off.",

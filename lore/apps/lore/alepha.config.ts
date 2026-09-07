@@ -136,6 +136,11 @@ export default defineConfig({
         "dashboard.group.",
         "dashboard.filterField.",
         "dashboard.filterValue.",
+        // The rank matrix is GENERATED from the `$permission` catalogue, so
+        // every column heading and every group heading is constructed:
+        // `tr(permission.label)` off the registry entry. Declaring a
+        // permission adds keys under this prefix and touches no component.
+        "permission.",
       ],
     }),
     // Retired app-local commands, kept as notes:

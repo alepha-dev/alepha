@@ -454,6 +454,31 @@ export class CapabilityRegistry {
   }
 
   /**
+   * Which capability owns a `$permission` group, or `undefined` for a Core
+   * one.
+   *
+   * The fifth of these lookups, and the last of the mappings to grow a
+   * reverse: `permissionGroups` shipped with #E36 and only ever read forwards.
+   * The rank matrix reads it backwards - given a group, should this section
+   * render at all - which is a different question and the one that decides
+   * whether a permission is offerable.
+   *
+   * `project`, `member`, `rank`, `capability`, `invitation` and `stats` answer
+   * `undefined` on purpose: they describe the container rather than a surface
+   * inside it, and a project with no capabilities at all still has members,
+   * still gets renamed and still has ranks to edit.
+   *
+   * ⚠️ A group claimed by nothing and named nowhere as Core would be
+   * **invisible in the matrix while still gating endpoints**.
+   * `capability-permission-groups.spec.ts` pins that it cannot happen.
+   */
+  ownerOfPermissionGroup(group: string): CapabilityKey | undefined {
+    return this.capabilities.find((capability) =>
+      capability.permissionGroups.includes(group),
+    )?.key;
+  }
+
+  /**
    * Whether a surface owned by `owner` is on, given the enabled set.
    *
    * `undefined` is Core and always true - that single line is what keeps the
