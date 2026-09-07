@@ -176,10 +176,17 @@ refuses when the tag names none.
 
 `sigil: true` mints the copy's sigil as it is created and seals `SIGIL_KEY` into
 that copy's environment, so a tenant provisioned this way reports to Lore with
-nothing pasted. Like `domain`, it is read only when the call CREATES the copy -
-and for a harder reason: a sigil is stored as a hash, so the token exists for
-the length of the mint and can never be recovered afterwards. `lore apps deploy
---sigil` is the same operation for a copy that already exists.
+nothing pasted.
+
+Usually you do not need it. A build that bundles the reporting module declares
+`SIGIL_KEY`, `alepha build` records that in the manifest, and a deploy reads it
+and mints one for a copy that has none. `--sigil` forces it for a build that
+does not declare it; `--no-sigil` opts out.
+
+⚠️ A sigil is stored as a hash, so the token exists for the length of the mint
+and can never be recovered. A copy that already has one and no stored key
+cannot be given one - the automatic path leaves it alone and deploys, while an
+explicit request says so.
 
 ## From an agent
 
