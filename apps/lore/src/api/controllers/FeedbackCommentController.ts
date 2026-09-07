@@ -12,6 +12,7 @@ import {
 
 // The helper the UI labels a user with, so a name reads identically in a
 // thread and on the rest of the page. Same precedent as `ProjectController`.
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { displayName } from "../../web/app/services/displayName.ts";
 import { feedback } from "../entities/feedback.ts";
 import { feedbackComments } from "../entities/feedbackComments.ts";
@@ -19,6 +20,7 @@ import { projects } from "../entities/projects.ts";
 import { feedbackCommentResourceSchema } from "../schemas/feedbackCommentResourceSchema.ts";
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
@@ -33,10 +35,20 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * conversation. Editing is the author's alone; deleting is the author's or
  * the project owner's, because deleting is moderation.
  *
- * **No notifications.** Same decision as quest comments, and the reason it
- * matters more here: a reporter is not sitting in the project. The thread is
- * there when they come back, and the UI copy says so rather than implying a
- * reply is on its way.
+ * ## ⚠️ An outsider never reaches anyone
+ *
+ * `@name` in a comment written by a **project member** puts a message in the
+ * mentioned member's inbox. A comment written by anybody else reaches
+ * nobody, whatever it contains.
+ *
+ * That gate is on the **author**, not on the matched handle: a non-member's
+ * `@owner` matches a real member and is still dropped. Gating on the handle
+ * instead looks identical until somebody tests it, and it would turn a
+ * public feedback form into an unsolicited-message channel.
+ *
+ * The thread still renders no markdown, deliberately - see `FeedbackThread`
+ * - so a mention there is React elements built from the shared matcher, not
+ * a markdown link.
  */
 export class FeedbackCommentController {
   comments = $repository(feedbackComments);
@@ -44,6 +56,7 @@ export class FeedbackCommentController {
   users = $repository(users);
   projects = $repository(projects);
   audits = $inject(LoreAudits);
+  mentions = $inject(MentionNotifier);
   security = $inject(ProjectSecurityService);
   dt = $inject(DateTimeProvider);
 
@@ -182,10 +195,52 @@ export class FeedbackCommentController {
         metadata: { commentId: created.id, source: body.source },
       });
 
+      // ⚠️ Its own `isMember` call, never inferred from which branch of
+      // `loadReadable` fired: that helper takes the reporter branch FIRST, so
+      // a member who filed feedback on their own project returns through it.
+      // Reading membership off that would silence the owner's own mentions on
+      // their own item, which is the case most likely to be typed and least
+      // likely to be tested.
+      //
+      // Here rather than at the HTTP layer, because
+      // `FeedbackTools.feedback_comment_add` calls this method directly, and
+      // the MCP path is the one where the author is usually a member.
+      if (await this.security.isMember(row.projectId, user)) {
+        await this.mentions.notify({
+          subject: await this.mentionSubject(row),
+          authorId: user.id,
+          body: body.body,
+        });
+      }
+
       const [resource] = await this.withAuthors([created]);
       return resource;
     },
   });
+
+  /**
+   * Where a mention on this feedback item points, and what it is called.
+   *
+   * ⚠️ The reference letter is **`P`**, not `F`: feedback kept `P` from its
+   * Petitions days and `F` is the folio. `formatReference` knows that, so the
+   * only way to get it wrong is to build the string by hand.
+   */
+  protected async mentionSubject(row: {
+    id: number;
+    shortId: number;
+    projectId: number;
+    title: string;
+  }) {
+    const project = await this.projects.findById(row.projectId);
+    const slug = project?.slug || `project-${row.projectId}`;
+    return {
+      projectId: row.projectId,
+      projectTitle: project?.title ?? "",
+      reference: formatReference("feedback", row.shortId),
+      title: row.title,
+      href: `/${slug}/feedback?item=${row.shortId}`,
+    };
+  }
 
   updateFeedbackComment = $action({
     use: [$secure()],

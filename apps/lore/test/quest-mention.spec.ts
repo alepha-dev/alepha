@@ -1,7 +1,9 @@
 import { Alepha, z } from "alepha";
+import { jobExecutionEntity } from "alepha/api/jobs";
 import {
   notificationInboxEntity,
   NotificationInboxRecipientProvider,
+  NotificationJobs,
 } from "alepha/api/notifications";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
@@ -32,6 +34,7 @@ import { LoreInboxRecipientProvider } from "../src/api/providers/LoreInboxRecipi
 class Probe {
   members = $repository(members);
   inbox = $repository(notificationInboxEntity);
+  executions = $repository(jobExecutionEntity);
 }
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -74,7 +77,31 @@ const setup = async () => {
     quests: alepha.inject(QuestController),
     comments: alepha.inject(QuestCommentController),
     fake: alepha.inject(FakeProvider),
+    sendJobName: alepha.inject(NotificationJobs).sendNotification.name,
   };
+};
+
+/**
+ * Wait for the notification outbox to settle.
+ *
+ * ⚠️ It sends nothing. The job layer's direct mode drains the outbox itself,
+ * asynchronously, so a helper that also sent would deliver every message
+ * twice - which is exactly what the first version of this did. All a test
+ * needs is to stop asserting before the drain has run.
+ */
+const settle = async (ctx: {
+  probe: { executions: { findMany: (q: any) => Promise<any[]> } };
+  sendJobName: string;
+}): Promise<void> => {
+  const terminal = new Set(["ok", "error", "cancelled"]);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const rows = await ctx.probe.executions.findMany({
+      where: { jobName: { eq: ctx.sendJobName } },
+    });
+    if (rows.every((row) => terminal.has(String(row.status)))) return;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error("The notification outbox never settled");
 };
 
 type Ctx = Awaited<ReturnType<typeof setup>>;
@@ -144,6 +171,7 @@ describe("a mention in a quest comment", () => {
 
     await comment(ctx, questId, author, "hey @nfo can you look at this");
 
+    await settle(ctx);
     const rows = await ctx.probe.inbox.findMany({});
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -168,6 +196,7 @@ describe("a mention in a quest comment", () => {
 
     await comment(ctx, questId, author, "note to self: @fabrice do the thing");
 
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
 
     await ctx.alepha.stop();
@@ -178,6 +207,7 @@ describe("a mention in a quest comment", () => {
     const { author, questId } = await seed(ctx);
 
     await comment(ctx, questId, author, "@nfo @nfo and once more @nfo");
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(1);
 
     await ctx.alepha.stop();
@@ -195,6 +225,7 @@ describe("a mention in a quest comment", () => {
 
     await comment(ctx, questId, author, "cc @outsider on this");
 
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
 
     await ctx.alepha.stop();
@@ -209,6 +240,7 @@ describe("a mention in a quest comment", () => {
     const { author, bystander, questId } = await seed(ctx);
 
     const created = await comment(ctx, questId, author, "hi @nfo");
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(1);
 
     // A typo fix that keeps the same mention pings nobody again.
@@ -219,6 +251,7 @@ describe("a mention in a quest comment", () => {
       },
       { user: author },
     );
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(1);
 
     // Adding a handle pings that one, and only that one.
@@ -229,6 +262,7 @@ describe("a mention in a quest comment", () => {
       },
       { user: author },
     );
+    await settle(ctx);
     const rows = await ctx.probe.inbox.findMany({});
     expect(rows).toHaveLength(2);
     expect(rows.filter((it) => it.userId === bystander.id)).toHaveLength(1);
@@ -247,6 +281,7 @@ describe("a mention in a quest comment", () => {
 
     await comment(ctx, questId, author, "the decorator is `@nfo` in that file");
 
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
 
     await ctx.alepha.stop();
@@ -258,6 +293,7 @@ describe("a mention in a quest comment", () => {
 
     await comment(ctx, questId, author, "write to me@nfo.example about it");
 
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
 
     await ctx.alepha.stop();
@@ -275,6 +311,7 @@ describe("a mention in a quest comment", () => {
     );
 
     expect(created.data.body).toBe("plain prose, no one named");
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
 
     await ctx.alepha.stop();
