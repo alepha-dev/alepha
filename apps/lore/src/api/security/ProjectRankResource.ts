@@ -205,7 +205,7 @@ export class ProjectRankResource {
      * Returning `undefined` accepts the module's own wording, which is the
      * right answer when the rank really is the reason.
      */
-    refuse: async ({ scopeId, missing }) => {
+    refuse: async ({ scopeId, missing, rank }) => {
       const off = await this.disabledCapabilitiesOf(scopeId, missing);
 
       // Only when EVERY missing permission is explained by a capability being
@@ -213,7 +213,11 @@ export class ProjectRankResource {
       // because of their rank is told about the rank, which is the answer they
       // can act on.
       if (off.length !== 1) {
-        return undefined;
+        // The rank really is the reason, so name it and name the fix. Lore's
+        // wording rather than the module's: "the project owner" is a thing
+        // this application has and `alepha/api/ranks` cannot know about.
+        const held = rank ? `Your rank (${rank.name})` : "Your rank";
+        return `${held} does not grant ${missing.join(", ")}. Ask the project owner.`;
       }
 
       const capability = this.capabilityRegistry.find(off[0]);

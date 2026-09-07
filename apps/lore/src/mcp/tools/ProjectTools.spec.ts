@@ -79,32 +79,45 @@ const setup = async () => {
   return { alepha, projectTools, project, call, OWNER, addNonOwnerMember };
 };
 
+/**
+ * ⚠️ These used to assert `isOwner`, and it was wrong twice over: derived
+ * from `projects.createdBy`, which stopped being an authorization input in
+ * epic #E39 and disagrees with the truth the moment a project is
+ * transferred - and a boolean told an agent nothing it could act on, since it
+ * could not know whether `release_create` would work without trying it and
+ * reading the 403.
+ */
 describe("Lore MCP - projects", () => {
   describe("project_list", () => {
-    it("reports isOwner true for the creator", async ({ expect }) => {
+    it("names the caller's rank on every row", async ({ expect }) => {
       const { projectTools, project, call } = await setup();
 
       const result = await call(projectTools.project_list, {});
+      const row = result.projects.find((p: any) => p.id === project.id);
 
-      expect(
-        result.projects.find((p: any) => p.id === project.id)?.isOwner,
-      ).toBe(true);
+      // The KEY and the NAME. A rank somebody created has an opaque key, so a
+      // row carrying one without the other is carrying the wrong one.
+      expect(row?.rank).toEqual({ key: "owner", name: "Owner" });
     });
 
-    it("reports isOwner false for a plain member", async ({ expect }) => {
+    it("names a plain member's rank, and does not carry a permission set", async ({
+      expect,
+    }) => {
       const { projectTools, project, call, addNonOwnerMember } = await setup();
       const memberId = await addNonOwnerMember();
 
       const result = await call(projectTools.project_list, {}, memberId);
+      const row = result.projects.find((p: any) => p.id === project.id);
 
-      expect(
-        result.projects.find((p: any) => p.id === project.id)?.isOwner,
-      ).toBe(false);
+      expect(row?.rank).toEqual({ key: "member", name: "Member" });
+      // Deliberately absent: a set per row is one definitions read per
+      // project, and "may I do this" is a question about ONE project.
+      expect(row?.permissions).toBeUndefined();
     });
   });
 
   describe("project_context", () => {
-    it("reports isOwner true for the creator and false for a plain member", async ({
+    it("carries the effective permission set, not a boolean", async ({
       expect,
     }) => {
       const { projectTools, project, call, addNonOwnerMember } = await setup();
@@ -119,8 +132,19 @@ describe("Lore MCP - projects", () => {
         memberId,
       );
 
-      expect(asOwner.isOwner).toBe(true);
-      expect(asMember.isOwner).toBe(false);
+      // ⚠️ ENUMERATED, not `["*"]`. The owner's rank stores a wildcard, and
+      // `ProjectPermissions.of` resolves it against what this project's
+      // capabilities actually cover - so the set an agent reads is the set it
+      // may attempt, rather than a wildcard it would have to interpret.
+      expect(asOwner.permissions).toContain("project:delete");
+      expect(asOwner.permissions).toContain("capability:manage");
+      expect(asOwner.rank).toEqual({ key: "owner", name: "Owner" });
+
+      // The whole point of the change: an agent reading this knows what it
+      // may attempt BEFORE attempting it.
+      expect(asMember.permissions).toContain("quest:create");
+      expect(asMember.permissions).not.toContain("project:delete");
+      expect(asMember.rank).toEqual({ key: "member", name: "Member" });
     });
   });
 });

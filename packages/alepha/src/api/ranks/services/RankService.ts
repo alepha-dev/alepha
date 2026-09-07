@@ -96,6 +96,74 @@ export class RankService {
   }
 
   /**
+   * {@link ranksOf} for a LIST of scopes, in one read.
+   *
+   * For the surfaces that show several scopes at once - a project list, an
+   * account page - where naming each row's rank one scope at a time is N
+   * reads for a list already in memory. The 30 second definitions cache
+   * makes the second such call free and the first one expensive; this makes
+   * the first one one query.
+   *
+   * ⚠️ An empty `scopeIds` short-circuits, because `inArray: []` throws
+   * rather than matching nothing - and a caller with no scopes at all is
+   * exactly the request that reaches it.
+   */
+  public async ranksOfMany(
+    type: string,
+    scopeIds: readonly string[],
+  ): Promise<Map<string, Rank[]>> {
+    const resource = this.resources.get(type);
+    const byScope = new Map<string, Rank[]>();
+
+    const declared = (): Rank[] =>
+      resource.options.builtins.map((builtin) => ({
+        key: builtin.key,
+        name: builtin.name,
+        permissions: builtin.permissions,
+        builtin: true,
+        editable: builtin.configurable === true,
+      }));
+
+    for (const scopeId of scopeIds) {
+      byScope.set(scopeId, declared());
+    }
+
+    if (scopeIds.length === 0) {
+      return byScope;
+    }
+
+    const rows = await this.definitions.findMany(
+      {
+        where: {
+          type: { eq: type },
+          scopeId: { inArray: [...scopeIds] },
+        },
+      },
+      { cache: { ttl: RankService.DEFINITIONS_CACHE_TTL_MS } },
+    );
+
+    for (const row of rows) {
+      const list = byScope.get(row.scopeId);
+      if (!list) continue;
+      const at = list.findIndex((it) => it.key === row.key);
+      const rank: Rank = {
+        key: row.key,
+        name: row.name,
+        permissions: row.permissions,
+        builtin: row.builtin || (at >= 0 && list[at].builtin),
+        editable: at >= 0 ? list[at].editable : !row.builtin,
+      };
+      if (at >= 0) {
+        list[at] = rank;
+      } else {
+        list.push(rank);
+      }
+    }
+
+    return byScope;
+  }
+
+  /**
    * The effective permission set of one rank key inside one scope.
    *
    * `undefined` when the key names no rank at all, which a caller must not
@@ -203,14 +271,72 @@ export class RankService {
       return this.grants(current.permissions, permission);
     }
 
+    const rank = await this.rankOf(type, scopeId, user);
+
+    // `undefined` two ways, and they answer the same: no `load` closure to
+    // read the assignment off (the module stays additive - whatever gate
+    // already ran is the whole answer, so `true`), or no assignment at all
+    // (`false`). The first is a resource that opted out; the second is
+    // somebody who is not in the scope.
+    if (rank === UNGOVERNED) {
+      return true;
+    }
+
+    return rank
+      ? this.grants(
+          this.withFloor(this.resources.get(type), rank.permissions),
+          permission,
+        )
+      : false;
+  }
+
+  /**
+   * {@link can}, as a refusal.
+   *
+   * ⚠️ Resolves the rank a second time so the message can NAME it. Free in
+   * practice - the membership row is in the request memo and the definitions
+   * in the ORM's cache - and the alternative is a refusal that says "your
+   * rank" to somebody who does not know which rank they hold.
+   */
+  public async assert(
+    type: string,
+    scopeId: string,
+    permission: string,
+    user: UserAccountToken,
+  ): Promise<void> {
+    if (await this.can(type, scopeId, permission, user)) {
+      return;
+    }
+    const rank = await this.rankOf(type, scopeId, user);
+    throw new ForbiddenError(
+      await this.refusal(this.resources.get(type), {
+        scopeId,
+        ...(rank && rank !== UNGOVERNED
+          ? { rank: { key: rank.key, name: rank.name } }
+          : {}),
+        missing: [permission],
+        user,
+      }),
+    );
+  }
+
+  /**
+   * The rank this user holds in this scope, on the imperative path.
+   *
+   * {@link UNGOVERNED} when the resource declares no `load`, which is not the
+   * same as holding no rank: it means this resource cannot answer the
+   * question at all, and the caller should not narrow anything.
+   */
+  protected async rankOf(
+    type: string,
+    scopeId: string,
+    user: UserAccountToken,
+  ): Promise<Rank | typeof UNGOVERNED | undefined> {
     const resource = this.resources.get(type);
     const load = resource.options.load;
 
     if (!load) {
-      // Nothing to read the assignment off, and inventing a table to read it
-      // from is the one thing this module must not do. Answering `true` keeps
-      // the module additive: whatever gate already ran is the whole answer.
-      return true;
+      return UNGOVERNED;
     }
 
     const membership = await this.memo.resolve(
@@ -224,32 +350,10 @@ export class RankService {
     });
 
     if (!key) {
-      return false;
+      return undefined;
     }
 
-    const permissions = await this.permissionsOf(type, scopeId, key);
-    return permissions ? this.grants(permissions, permission) : false;
-  }
-
-  /**
-   * {@link can}, as a refusal.
-   */
-  public async assert(
-    type: string,
-    scopeId: string,
-    permission: string,
-    user: UserAccountToken,
-  ): Promise<void> {
-    if (await this.can(type, scopeId, permission, user)) {
-      return;
-    }
-    throw new ForbiddenError(
-      await this.refusal(this.resources.get(type), {
-        scopeId,
-        missing: [permission],
-        user,
-      }),
-    );
+    return (await this.ranksOf(type, scopeId)).find((it) => it.key === key);
   }
 
   /**
@@ -277,7 +381,18 @@ export class RankService {
     const held = refusal.rank
       ? `Your rank (${refusal.rank.name})`
       : "Your rank";
-    return `${held} does not grant ${refusal.missing.join(", ")}.`;
+
+    // ⚠️ Names the FIX as well as the cause. A refusal that says only what is
+    // missing leaves the reader - very often an agent - with nowhere to go,
+    // and the answer here is never "try again": somebody else has to change
+    // the rank. `manage` is the permission that person holds, and the
+    // resource declares it, so this points at a real thing rather than at an
+    // administrator in the abstract.
+    const fix = resource.options.manage
+      ? ` Ask somebody who holds ${resource.options.manage}.`
+      : "";
+
+    return `${held} does not grant ${refusal.missing.join(", ")}.${fix}`;
   }
 
   // -------------------------------------------------------------------------
@@ -689,6 +804,15 @@ export class RankService {
 /**
  * A rank as it exists in a scope, whether it came from code or from a row.
  */
+/**
+ * "This resource cannot answer", as distinct from "you hold no rank".
+ *
+ * A symbol rather than a boolean flag beside the value: the two readings lead
+ * to opposite answers - allow everything, or allow nothing - and a caller that
+ * confused them would either open a scope up or lock it shut.
+ */
+const UNGOVERNED = Symbol("alepha.api.ranks.ungoverned");
+
 export interface Rank {
   key: string;
   name: string;
