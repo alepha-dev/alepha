@@ -88,6 +88,17 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectFoliosFolio",
   "projectFeedback",
   "projectBlights",
+  // The same shape as its two neighbours above, and it was missing
+  // (feedback #P2129): capped, the message table sat in a 1024px column with
+  // the project background down both sides while Message truncated inside
+  // it. Nothing in `ProjectInbox` constrained the width - this set is where
+  // that decision lives.
+  "projectInbox",
+  // The same shape as its two neighbours above, and it was missing
+  // (feedback #P2129): capped, the message table sat in a ~900px column with
+  // the project background down both sides while Message truncated inside
+  // it. Nothing in `ProjectInbox` constrained the width - this set is where
+  // that decision lives.
   "projectQuestGraph",
   ...ROUTES_APP,
 ]);

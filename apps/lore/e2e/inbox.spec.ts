@@ -225,6 +225,34 @@ test.describe("Inbox", () => {
     const crumbs = page.getByRole("navigation", { name: /breadcrumb/i });
     await expect(crumbs).toContainText(title, { timeout: 15_000 });
     await expect(crumbs).toContainText("Notifications");
+
+    /*
+     * ⚠️ The table fills the content area (feedback #P2129). `projectInbox`
+     * was missing from `ROUTES_FULL_WIDTH`, so the shell capped it at
+     * `max-w-5xl` and the messages sat in a ~1024px column with the project
+     * background down both sides, truncating while the space was there.
+     *
+     * ⚠️ At 1920, and the width matters: `max-w-5xl` IS 1024px, so at the
+     * 1280 viewport above a capped table and an uncapped one measure the
+     * same and the assertion passes either way. The report was at 1920 for
+     * this reason. Asserted as a share of the viewport rather than in pixels
+     * so the sidebar's own width is not baked in.
+     */
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const share = await page.evaluate(() => {
+      const table = document.querySelector('[data-testid="inbox-table"]');
+      return (table?.getBoundingClientRect().width ?? 0) / window.innerWidth;
+    });
+    expect(share).toBeGreaterThan(0.6);
+
+    // And it survives a narrow viewport, where the cap never applied and the
+    // risk is the opposite one: a floor that overflows the page.
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.getByTestId("inbox-table")).toBeVisible();
+    const overflows = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth + 1,
+    );
+    expect(overflows).toBe(false);
   });
 
   /**
