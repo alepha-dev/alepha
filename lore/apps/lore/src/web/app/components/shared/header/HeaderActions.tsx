@@ -1,8 +1,10 @@
 import { AppActions } from "@alepha/ui/components/app-actions/app-actions";
+import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import type { ReactNode } from "react";
 
 import type { I18n } from "../../../services/I18n.ts";
+import { UserAvatar } from "../UserAvatar.tsx";
 
 export interface HeaderActionsProps {
   /**
@@ -29,6 +31,18 @@ export interface HeaderActionsProps {
  * falls back to a plain `string`. `ButtonUser.AccountMenuItem` now owns that
  * navigation, so no caller can get it wrong again.
  *
+ * The account button's avatar is the other Lore-specific part (feedback
+ * #P2138). `@alepha/ui` cannot draw it: `user.picture` is a file id, and the
+ * route that serves it is this application's, so the package takes a node
+ * and this file supplies `UserAvatar`.
+ *
+ * ⚠️ Passed only when the viewer HAS a picture, rather than always. Without
+ * one `UserAvatar` draws its own glyph inside a filled circle, which is a
+ * different-looking control next to three bare ghost icons - so the header
+ * keeps the plain glyph it has today for that case and changes nothing for
+ * a viewer who never set a picture. A picture that 404s still lands on
+ * `UserAvatar`'s fallback, since only the id is known here.
+ *
  * Search now arrives through `before` rather than as a sibling. It used to be
  * excluded on the grounds that a field-sized element reads as a different kind
  * of thing beside small ambient controls — true of the 224px input-shaped
@@ -39,10 +53,19 @@ export interface HeaderActionsProps {
  */
 const HeaderActions = (props: HeaderActionsProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const auth = useAuth();
+  const picture = (auth.user as { picture?: string } | undefined)?.picture;
 
   return (
     <AppActions
       before={props.before}
+      avatar={
+        picture ? (
+          // `size-7` in a `size-9` icon button: the avatar fills the control
+          // the way a face should, where the glyph it replaces is `size-4`.
+          <UserAvatar fileId={picture} className="size-7" />
+        ) : undefined
+      }
       labels={{
         language: String(tr("header.actions.language")),
         signIn: String(tr("header.actions.login")),
