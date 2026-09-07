@@ -60,6 +60,11 @@ export interface ColumnDescriptor {
 }
 
 export interface KanbanColumnProps {
+  /**
+   * Whether the cards in this column may be picked up. `false` for a rank
+   * that may read the board and not move anything on it.
+   */
+  draggable?: boolean;
   descriptor: ColumnDescriptor;
   quests: QuestResource[];
   last?: boolean;
@@ -284,6 +289,7 @@ const KanbanColumn = (props: KanbanColumnProps) => {
             <KanbanCard
               key={quest.id}
               quest={quest}
+              draggable={props.draggable}
               onSelect={onSelect}
               areaDotClass={props.areaDotClass(quest.area)}
               tagColors={props.tagColors}

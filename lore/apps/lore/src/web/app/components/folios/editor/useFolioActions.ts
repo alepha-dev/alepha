@@ -1167,6 +1167,9 @@ export const useFolioActions = (
     isProtected,
     isPinned,
     editing: input.mode.editing,
+    // One question for every write in the menubar, the toolbar and the
+    // shortcuts, asked off the action rather than a permission string.
+    readOnly: !folioApi.update.can(),
   };
 
   return {

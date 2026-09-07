@@ -268,7 +268,7 @@ const ProjectSettingsEstatesAddDialog = (
           </Button>
           <Button
             onClick={() => void submit()}
-            disabled={busy || !target}
+            disabled={busy || !target || !projectEstateApi.attachEstate.can()}
             data-testid="estate-add-submit"
           >
             {busy && <Loader2 className="size-4 animate-spin" />}

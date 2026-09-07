@@ -1,7 +1,9 @@
 import { Button } from "@alepha/ui/components/ui/button";
+import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 
+import type { AreaController } from "@/api/controllers/AreaController.ts";
 import type { AreaDetail } from "@/api/schemas/areaResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -19,6 +21,7 @@ export interface ProjectSettingsAreaHeaderProps {
  */
 const ProjectSettingsAreaHeader = (props: ProjectSettingsAreaHeaderProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const canManage = useClient<AreaController>().renameArea.can();
   const router = useRouter<AppRouter>();
 
   return (
@@ -31,16 +34,23 @@ const ProjectSettingsAreaHeader = (props: ProjectSettingsAreaHeaderProps) => {
       </Link>
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold">{props.area.name}</h2>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={props.onRename}>
-            {tr("area.detail.rename")}
-          </Button>
-          {props.area.questCount === 0 && (
-            <Button variant="ghost" size="sm" onClick={props.onDelete}>
-              {tr("project.settings.areas.delete.action")}
+        {/* Rename, merge and delete are all `area:manage`. A rank without it
+            reads the area and its stats; hidden rather than disabled, because
+            the header has other content and an inert pair of buttons would
+            say nothing. Off the ACTION, so no permission string is repeated
+            here. */}
+        {canManage && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={props.onRename}>
+              {tr("area.detail.rename")}
             </Button>
-          )}
-        </div>
+            {props.area.questCount === 0 && (
+              <Button variant="ghost" size="sm" onClick={props.onDelete}>
+                {tr("project.settings.areas.delete.action")}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

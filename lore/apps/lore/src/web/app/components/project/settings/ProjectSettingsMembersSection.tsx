@@ -129,7 +129,10 @@ const ProjectSettingsMembersSection = (
             <Button variant="outline" onClick={() => setOpen(false)}>
               {tr("project.settings.members.invite.cancel")}
             </Button>
-            <Button onClick={handleInvite} disabled={inviteMember.loading}>
+            <Button
+              onClick={handleInvite}
+              disabled={inviteMember.loading || !inviteMember.can}
+            >
               {tr("project.settings.members.invite.submit")}
             </Button>
           </DialogFooter>
@@ -146,7 +149,11 @@ const ProjectSettingsMembersSection = (
               {members.length + pendingInvitations.length}
             </Badge>
           </div>
-          {can("member:manage") && (
+          {/* The hook's own answer, not `member:manage`: inviting is
+              `invitation:create` server-side, and the two are separable in
+              the matrix. Reading the action's requirement is what keeps a
+              permission string out of this file. */}
+          {inviteMember.can && (
             <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
               <Plus className="size-3.5" />
               {tr("project.settings.members.invite.action")}
@@ -242,7 +249,7 @@ const ProjectSettingsMembersSection = (
                     than the inline × it used to be: two card kinds sitting in
                     one list should not offer their one destructive action in
                     two different shapes. */}
-                {isOwner && (
+                {revokeInvitation.can && (
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={

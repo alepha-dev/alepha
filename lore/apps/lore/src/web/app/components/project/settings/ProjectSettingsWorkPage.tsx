@@ -255,7 +255,9 @@ const ProjectSettingsWorkPage = () => {
                   <ColumnRow
                     key={col}
                     name={col}
-                    disabled={pending !== null}
+                    disabled={
+                      pending !== null || !projectApi.updateProjectById.can()
+                    }
                     status={
                       project.kanbanColumnConfig?.[col]?.status ?? "accepted"
                     }
@@ -272,7 +274,11 @@ const ProjectSettingsWorkPage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={columns.length >= MAX_COLUMNS || pending !== null}
+                disabled={
+                  columns.length >= MAX_COLUMNS ||
+                  pending !== null ||
+                  !projectApi.addKanbanColumn.can()
+                }
                 onClick={handleAdd}
               >
                 <Plus className="size-3.5" />

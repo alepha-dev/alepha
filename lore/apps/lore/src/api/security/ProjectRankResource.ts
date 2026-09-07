@@ -1,6 +1,7 @@
 import { $inject } from "alepha";
 import { $rankResource, RankService } from "alepha/api/ranks";
 import { $repository } from "alepha/orm";
+import { ResourceGateMemoProvider } from "alepha/security";
 import { BadRequestError, ForbiddenError } from "alepha/server";
 
 import { members } from "../entities/members.ts";
@@ -50,6 +51,7 @@ export class ProjectRankResource {
   protected readonly capabilityRegistry = $inject(CapabilityRegistry);
   protected readonly ranks = $inject(RankService);
   protected readonly members = $repository(members);
+  protected readonly memo = $inject(ResourceGateMemoProvider);
 
   /**
    * The rank a NULL `members.rank` column reads as.
@@ -155,14 +157,31 @@ export class ProjectRankResource {
      * For the imperative check only: the call sites that hold ids and no rows
      * (a file route deciding per bucket, a closure handed to another module,
      * a resolver keyed on a slug). The middleware path never reaches this.
+     *
+     * ⚠️ Through the gate's own memo, under the key `$owns` would use. The
+     * MCP resolver checks `project:read` imperatively and the action's
+     * `$ownsProject` then gates the same request, so without the shared key
+     * every MCP tool call reads the membership row twice - and an MCP call is
+     * one operation per HTTP request, with no sibling to amortize it against.
+     * `test/mcp-tool-query-count.spec.ts` is what holds this.
      */
     load: async (scopeId, user) =>
-      await this.members.findOne({
-        where: {
-          projectId: { eq: Number(scopeId) },
-          userId: { eq: user.id },
-        },
-      }),
+      await this.memo.resolve(
+        ResourceGateMemoProvider.membershipKey({
+          table: this.members.tableName,
+          resourceColumn: "projectId",
+          resourceId: Number(scopeId),
+          userColumn: "userId",
+          userId: user.id,
+        }),
+        () =>
+          this.members.findOne({
+            where: {
+              projectId: { eq: Number(scopeId) },
+              userId: { eq: user.id },
+            },
+          }),
+      ),
 
     /**
      * ⚠️ Name the conjunct that actually failed.

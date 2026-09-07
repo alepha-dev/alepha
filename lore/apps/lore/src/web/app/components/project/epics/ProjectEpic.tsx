@@ -315,10 +315,16 @@ const ProjectEpic = (props: ProjectEpicProps) => {
               {tr("epic.action.review")}
             </Button>
           )}
-          <Button variant="outline" size="lg" onClick={() => setEditOpen(true)}>
-            <Pencil className="size-4" />
-            {tr("epic.edit")}
-          </Button>
+          {epicApi.updateEpic.can() && (
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="size-4" />
+              {tr("epic.edit")}
+            </Button>
+          )}
           <EpicStatusControl epic={epic} onChange={applyStatusChange} />
         </>
       }

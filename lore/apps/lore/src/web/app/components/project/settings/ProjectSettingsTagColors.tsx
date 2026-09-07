@@ -121,7 +121,9 @@ const ProjectSettingsTagColors = () => {
                   <button
                     key={choice ?? "none"}
                     type="button"
-                    disabled={pending === tag}
+                    disabled={
+                      pending === tag || !projectApi.updateProjectById.can()
+                    }
                     aria-label={choice ?? tr("common.none")}
                     aria-pressed={colors[tag] === choice}
                     data-color={choice ?? "none"}

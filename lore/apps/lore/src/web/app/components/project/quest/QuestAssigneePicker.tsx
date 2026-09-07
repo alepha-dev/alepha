@@ -86,7 +86,7 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
     // component and does not belong inside a rail row's quest.
     <DropdownMenu>
       <DropdownMenuTrigger
-        disabled={pending || users.length === 0}
+        disabled={pending || users.length === 0 || !questApi.assignQuest.can()}
         data-testid="quest-assignee-picker"
         className="hover:bg-muted -mx-1 inline-flex items-center gap-1.5 rounded px-1 py-0.5 disabled:opacity-60"
       >

@@ -9,12 +9,13 @@ import {
   SheetTitle,
 } from "@alepha/ui/components/ui/sheet";
 import { DateTimeProvider } from "alepha/datetime";
-import { useInject, useStore } from "alepha/react";
+import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
 
+import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
@@ -88,7 +89,14 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const [creating, setCreating] = useState(false);
   // The plan freeze (epic #31): once the epic has begun, the quest set is
   // what was committed. Create, Attach and Detach all go with it.
-  const planEditable = props.epic.status === "planned";
+  const epicApi = useClient<EpicController>();
+
+  // Two conjuncts, and both are real: an epic's quest set is frozen once it
+  // leaves `planned` (`EpicWorkflowService`), and a rank may not hold
+  // `epic:manage` at all. The table, its rows and the counts stay readable
+  // under either.
+  const planEditable =
+    props.epic.status === "planned" && epicApi.attachQuest.can();
 
   return (
     /*

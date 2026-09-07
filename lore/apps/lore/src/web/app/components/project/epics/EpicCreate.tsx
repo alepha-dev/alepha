@@ -88,6 +88,13 @@ const EpicCreate = (props: EpicCreateProps) => {
 
   const { loading: submitting } = useFormState(form, ["loading"]);
 
+  // Disabled rather than hidden: a form with no submit row is a form that
+  // looks broken, which is the exception objective 3 of #Q1958 names. The
+  // fields stay readable, which is worth something on the edit path.
+  const canSave = props.epic?.id
+    ? epicApi.updateEpic.can()
+    : epicApi.createEpic.can();
+
   const DescriptionEditor = useLoreEditorControl({
     kind: "epic",
     projectId: props.projectId,
@@ -114,7 +121,7 @@ const EpicCreate = (props: EpicCreateProps) => {
       </div>
 
       <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" disabled={submitting || !canSave}>
           {update ? <Save className="size-4" /> : <Plus className="size-4" />}
           {update ? tr("epic.create.update") : tr("epic.create.submit")}
         </Button>

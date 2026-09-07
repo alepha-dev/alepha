@@ -139,7 +139,7 @@ const AreaMergeDialog = (props: AreaMergeDialogProps) => {
           </Button>
           <Button
             onClick={() => void submit()}
-            disabled={submitting || !targetId}
+            disabled={submitting || !targetId || !areaApi.mergeAreas.can()}
           >
             {tr("project.settings.areas.merge.submit")}
           </Button>

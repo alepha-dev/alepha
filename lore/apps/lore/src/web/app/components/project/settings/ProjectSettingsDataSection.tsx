@@ -188,7 +188,7 @@ const ProjectSettingsDataSection = () => {
             />
             <Button
               onClick={openFilePicker}
-              disabled={preparing || importing}
+              disabled={preparing || importing || !api.importQuests.can()}
               variant="outline"
             >
               {preparing ? (
@@ -231,7 +231,12 @@ const ProjectSettingsDataSection = () => {
             </Button>
             <Button
               onClick={handleConfirmImport}
-              disabled={importing || !preview || preview.rowCount === 0}
+              disabled={
+                importing ||
+                !preview ||
+                preview.rowCount === 0 ||
+                !api.importQuests.can()
+              }
             >
               {importing && <Loader2 className="size-4 animate-spin" />}
               {tr("project.settings.data.import.preview.confirm")}

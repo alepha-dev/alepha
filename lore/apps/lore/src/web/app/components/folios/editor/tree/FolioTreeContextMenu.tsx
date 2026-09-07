@@ -3,6 +3,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from "@alepha/ui/components/ui/context-menu";
+import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -19,12 +20,13 @@ import {
 } from "lucide-react";
 import type { ReactElement } from "react";
 
+import type { FolioController } from "@/api/controllers/FolioController.ts";
+
 import type { AppRouter } from "../../../../AppRouter.ts";
 import type { I18n } from "../../../../services/I18n.ts";
 import { formatReference } from "../../../shared/element/typedReference.ts";
 import type { FolioTreeNode } from "./folioTree.ts";
 import type { FolioTreeCommands } from "./useFolioTreeModel.ts";
-
 export interface FolioTreeContextMenuProps {
   node: FolioTreeNode;
   commands: FolioTreeCommands;
@@ -95,6 +97,8 @@ const FolioTreeContextMenu = (
     );
   };
 
+  const canWrite = useClient<FolioController>().create.can();
+
   return (
     <ContextMenuContent>
       <ContextMenuItem onClick={handleOpen}>
@@ -105,8 +109,12 @@ const FolioTreeContextMenu = (
         <SquareArrowOutUpRight className="size-4" />
         {tr("folios.editor.tree.open-new-tab")}
       </ContextMenuItem>
-      <ContextMenuSeparator />
-      {isDirectory ? (
+      {/* ⚠️ Every item below this line writes. A rank without `folio:write`
+          gets the two read items and nothing else - a menu of affordances that
+          all fail is worse than a short menu. Off the ACTION, so no permission
+          string is written here. */}
+      {canWrite && <ContextMenuSeparator />}
+      {!canWrite ? null : isDirectory ? (
         <>
           <ContextMenuItem onClick={() => props.commands.createFolio(node.id)}>
             <FilePlus className="size-4" />

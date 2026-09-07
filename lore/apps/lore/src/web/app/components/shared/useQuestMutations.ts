@@ -84,6 +84,20 @@ export const useQuestMutations = (): QuestMutations => {
   const settle = settleBulk;
 
   return {
+    // ⚠️ One `can` per transition, off the ACTION rather than a permission
+    // string, so no surface repeats what `$ownsProject({ requires })` already
+    // says. Three surfaces run these transitions - the table, the detail view
+    // and the board - and each used to decide for itself what to offer; a
+    // Viewer is only read-only if all three agree.
+    can: {
+      accept: questApi.acceptQuest.can(),
+      unassign: questApi.abandonQuest.can(),
+      complete: questApi.completeQuest.can(),
+      shelve: questApi.shelveQuest.can(),
+      unshelve: questApi.unshelveQuest.can(),
+      remove: questApi.deleteQuest.can(),
+      update: questApi.updateQuestById.can(),
+    },
     accept: async (id) => {
       const quest = await questApi.acceptQuest({ params: { id } });
       addToAssigned(quest);
@@ -156,6 +170,25 @@ export const useQuestMutations = (): QuestMutations => {
 };
 
 export interface QuestMutations {
+  /**
+   * Whether the viewer's rank allows each transition, one flag per verb.
+   *
+   * Read off each action's own `can()`, which since epic #E39 answers for the
+   * project currently open rather than for the application - so a Viewer gets
+   * `false` everywhere and a Contributor gets `true` on the work.
+   *
+   * ⚠️ Not enforcement. The server's gate answers the real request; this only
+   * stops a surface offering an action it knows will be refused.
+   */
+  can: {
+    accept: boolean;
+    unassign: boolean;
+    complete: boolean;
+    shelve: boolean;
+    unshelve: boolean;
+    remove: boolean;
+    update: boolean;
+  };
   accept: (id: number) => Promise<QuestResource>;
   unassign: (id: number) => Promise<QuestResource>;
   complete: (id: number, body: CompleteQuestBody) => Promise<QuestResource>;

@@ -652,7 +652,9 @@ const QuestView = (props: QuestViewProps) => {
                   <QuestAttachments
                     questId={quest.id}
                     value={quest.attachments ?? []}
-                    disabled={!!quest.completedAt}
+                    disabled={
+                      !!quest.completedAt || !questApi.updateQuestById.can()
+                    }
                     onChange={async (attachments) => {
                       const updated = await questApi.updateQuestById({
                         params: { id: quest.id },

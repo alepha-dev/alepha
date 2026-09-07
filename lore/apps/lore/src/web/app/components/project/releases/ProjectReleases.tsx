@@ -110,6 +110,9 @@ const ProjectReleases = () => {
   const releaseApi = useClient<ReleaseController>();
 
   const [creating, setCreating] = useState(false);
+  // The list, its rows and the empty state all stay; only the two doors into
+  // `createRelease` close.
+  const canCreate = releaseApi.createRelease.can();
   // Bumped after a create, which happens outside the table and so has no
   // `ctx.refresh()` of its own to call.
   const [reload, setReload] = useState(0);
@@ -206,10 +209,12 @@ const ProjectReleases = () => {
             <p className="text-muted-foreground max-w-md text-[13px] text-pretty">
               {tr("release.empty.body")}
             </p>
-            <Button className="mt-1" onClick={() => setCreating(true)}>
-              <Plus className="size-4" />
-              {tr("release.start")}
-            </Button>
+            {canCreate && (
+              <Button className="mt-1" onClick={() => setCreating(true)}>
+                <Plus className="size-4" />
+                {tr("release.start")}
+              </Button>
+            )}
           </div>
         }
         refreshSignal={reload}
@@ -251,14 +256,18 @@ const ProjectReleases = () => {
             params: { releaseTag: release.tag },
           })
         }
-        actions={[
-          {
-            icon: Plus,
-            label: tr("release.start"),
-            primary: true,
-            onClick: () => setCreating(true),
-          },
-        ]}
+        actions={
+          canCreate
+            ? [
+                {
+                  icon: Plus,
+                  label: tr("release.start"),
+                  primary: true,
+                  onClick: () => setCreating(true),
+                },
+              ]
+            : []
+        }
         columns={{
           // First on the row, like the epic status chip and the Quests
           // table's status dot.

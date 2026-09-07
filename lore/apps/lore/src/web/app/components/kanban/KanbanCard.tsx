@@ -28,6 +28,11 @@ import { UserAvatar } from "../shared/UserAvatar.tsx";
 
 export interface KanbanCardProps {
   quest: QuestResource;
+  /**
+   * Whether this card may be picked up. `false` for a rank that may read the
+   * board and not move anything on it.
+   */
+  draggable?: boolean;
   onSelect: (quest: QuestResource) => void;
   /**
    * Dot class for the quest's area, resolved by the board once for the
@@ -102,6 +107,11 @@ const KanbanCard = (props: KanbanCardProps) => {
     useDraggable({
       id: `quest-${quest.id}`,
       data: { type: "quest", quest },
+      // ⚠️ A drag handle is a write control with no button to hide. A rank
+      // without `quest:update` still opens the card - the board is a READ
+      // surface too - and simply cannot pick one up. The board asks the
+      // action, so no permission string is written here.
+      disabled: props.draggable === false,
     });
   // A card is a drop target as well as a draggable: dropping onto one is
   // how a position WITHIN a column is expressed. The column droppable
