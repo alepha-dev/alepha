@@ -407,12 +407,24 @@ const ProjectQuestsTable = () => {
                     )
                   }
                   triggerClassName="w-full"
-                  items={(
-                    ["new", "accepted", "completed", "shelved"] as const
-                  ).map((status) => ({
-                    label: String(tr(`quest.status.${status}`)),
-                    value: status,
-                  }))}
+                  items={
+                    // ⚠️ Hand-written, so widening `questStatusSchema`
+                    // does NOT bring a value here and typecheck stays
+                    // green while the filter silently offers one fewer
+                    // option than the table can render.
+                    (
+                      [
+                        "new",
+                        "accepted",
+                        "held",
+                        "completed",
+                        "shelved",
+                      ] as const
+                    ).map((status) => ({
+                      label: String(tr(`quest.status.${status}`)),
+                      value: status,
+                    }))
+                  }
                   inputProps={{ "aria-label": tr("board.filter.status") }}
                 />
               </FilterSlot>

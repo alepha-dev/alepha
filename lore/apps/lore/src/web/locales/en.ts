@@ -414,6 +414,8 @@ export default {
   "quest.event.reminderSent": "received a reminder",
   "quest.event.shelved": "shelved the quest",
   "quest.event.unshelved": "put the quest back in play",
+  "quest.event.held": "put the quest on hold",
+  "quest.event.unheld": "lifted the hold",
   "quest.event.updated": "updated the quest",
   "quest.event.change.priority": "changed the priority from $1 to $2",
   "quest.event.change.priorityTo": "set the priority to $1",
@@ -437,6 +439,7 @@ export default {
   "quest.status.accepted": "In progress",
   "quest.status.completed": "Completed",
   "quest.status.shelved": "Shelved",
+  "quest.status.held": "On hold",
   "quest.rail.estimate": "Estimate",
   "quest.rail.assign.unassigned": "Unassigned",
   "quest.rail.size": "Size",
@@ -481,6 +484,8 @@ export default {
   "quest.view.actions.unassign": "Unassign",
   "quest.view.actions.shelve": "Shelve",
   "quest.view.actions.unshelve": "Unshelve",
+  "quest.view.actions.hold": "Put on hold",
+  "quest.view.actions.unhold": "Lift hold",
   "quest.view.complete.title": "Complete this quest",
   "quest.view.complete.description":
     "Leave a short summary of what was done: what changed, decisions made, what a future reader (human or AI) would need to know.",
@@ -1009,6 +1014,17 @@ export default {
   "quest.view.shelve.confirmWithDependents":
     "Set this quest aside as out of scope? It leaves the backlog, but $1 depends on it and will stay blocked until you unshelve and complete it.",
   "quest.view.shelve.confirmButton": "Shelve Quest",
+  "quest.view.hold.title": "Put this quest on hold",
+  "quest.view.hold.description":
+    "Say what it is waiting for. This is posted to the discussion, so you can @mention whoever can unblock it.",
+  "quest.view.hold.placeholder":
+    "Waiting on... (markdown supported, @mention to notify)",
+  "quest.view.hold.submit": "Put on hold",
+  "quest.view.hold.reasonRequired": "A hold needs a reason.",
+  "quest.view.unhold.title": "Lift this hold",
+  "quest.view.unhold.confirm":
+    "The quest goes back to what it was before the hold, still assigned to whoever had it. The reason stays in the discussion.",
+  "quest.view.unhold.confirmButton": "Lift Hold",
   "quest.view.edit": "Edit",
   "quest.view.back": "Back",
   "quest.view.reminder.title": "Reminder",

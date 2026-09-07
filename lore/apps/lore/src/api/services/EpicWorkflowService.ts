@@ -7,7 +7,7 @@ import { type Quest, quests } from "../entities/quests.ts";
 
 /**
  * The action a caller is about to take on a quest, as the word the refusal
- * uses. Five actions open or advance work and all five share one message
+ * uses. Six actions open or advance work and all six share one message
  * shape; the verb is the only thing that differs between them.
  */
 export type EpicWorkflowVerb =
@@ -15,7 +15,8 @@ export type EpicWorkflowVerb =
   | "assign"
   | "complete"
   | "reopen"
-  | "unshelve";
+  | "unshelve"
+  | "unhold";
 
 /**
  * What a caller is about to do to an epic's quest set. `add` and `remove`
@@ -78,21 +79,23 @@ export class EpicWorkflowService {
    * You can work on a quest only if its epic is `active`.
    *
    * Called first thing by every action that opens or advances work: accept,
-   * assign, complete, reopen and unshelve. Accept and complete are the
-   * obvious two; the other three each open work by another door
+   * assign, complete, reopen, unshelve and unhold. Accept and complete are
+   * the obvious two; the other four each open work by another door
    * (`assignQuest` skips `acceptQuest`, the kanban board reopens by drag,
-   * unshelving turns a resolved quest back into an open one), and gating
-   * the obvious two alone leaves three ways in.
+   * unshelving turns a resolved quest back into an open one, unholding turns
+   * a blocked one back into a workable one), and gating the obvious two
+   * alone leaves four ways in.
    *
-   * Shelve and unassign are deliberately NOT gated: they move a quest toward
-   * resolution, and shelving is the only exit for a `new` quest sitting in a
-   * `done` epic from before this rule existed.
+   * Shelve, hold and unassign are deliberately NOT gated: they move a quest
+   * toward resolution or away from work, and shelving is the only exit for a
+   * `new` quest sitting in a `done` epic from before this rule existed.
    *
-   * Unshelve is the one verb that is also allowed while `planned`. Shelving
-   * and unshelving during planning are edits to an open plan ("out of scope"
-   * and "back in scope"), and a plan that lets a quest be shelved but never
+   * Unshelve and unhold are the two verbs also allowed while `planned`.
+   * Shelving, holding and their reversals during planning are edits to an
+   * open plan ("out of scope" and "back in scope", "blocked" and
+   * "unblocked"), and a plan that lets a quest be set aside but never
    * brought back until the epic begins would be asymmetric for no reason.
-   * What unshelve may not do is re-open work inside a `done` epic.
+   * What neither may do is re-open work inside a `done` epic.
    *
    * Reported BEFORE the questline gate where both apply, because the epic
    * reason is fixed by a single click somewhere else.
@@ -105,7 +108,12 @@ export class EpicWorkflowService {
     if (!epic || epic.status === "active") return;
 
     if (epic.status === "planned") {
-      if (verb === "unshelve") return;
+      // `unhold` joins `unshelve` here on the same argument: holding and
+      // lifting a hold inside an open plan are edits to that plan, and a
+      // plan that lets a quest be blocked but never unblocked until the
+      // epic begins would be asymmetric for no reason. `hold` itself is
+      // never gated, like `shelve`.
+      if (verb === "unshelve" || verb === "unhold") return;
       throw new BadRequestError(
         `Cannot ${verb} quest ${formatReference("quest", quest.shortId)}: Epic ${formatReference("epic", epic.number)} is planned. Begin it first.`,
       );

@@ -21,6 +21,12 @@ export type QuestTone = "neutral" | "info" | "success" | "warning" | "danger";
 /**
  * `shelved` is deliberately neutral: it is the absence of a state, and
  * tinting it would give a parked quest more presence than an active one.
+ *
+ * `held` is `danger`, and it is the only status that shouts. A held quest is
+ * the one thing on a board that will not move on its own: shelved needs
+ * nobody, new and accepted are proceeding, and completed is done. Reading as
+ * loud as `high` priority is correct here, because the whole point of the
+ * status is that somebody has to go and unblock it.
  */
 export const QUEST_STATUS_TONE: Record<
   QuestResource["metadata"]["status"],
@@ -28,6 +34,7 @@ export const QUEST_STATUS_TONE: Record<
 > = {
   new: "info",
   accepted: "warning",
+  held: "danger",
   completed: "success",
   shelved: "neutral",
 };

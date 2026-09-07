@@ -95,6 +95,8 @@ export const useQuestMutations = (): QuestMutations => {
       complete: questApi.completeQuest.can(),
       shelve: questApi.shelveQuest.can(),
       unshelve: questApi.unshelveQuest.can(),
+      hold: questApi.holdQuest.can(),
+      unhold: questApi.unholdQuest.can(),
       remove: questApi.deleteQuest.can(),
       update: questApi.updateQuestById.can(),
     },
@@ -126,6 +128,16 @@ export const useQuestMutations = (): QuestMutations => {
       const quest = await questApi.unshelveQuest({ params: { id } });
       await refreshCount();
       return quest;
+    },
+    // Neither hold nor unhold touches `currentAssignedQuestsAtom` or the open
+    // count, and that is the point rather than an omission: a hold suspends
+    // work without unassigning it, and `OpenQuestScope` counts a quest that is
+    // neither completed nor shelved - which a held one still is not.
+    hold: async (id, reason) => {
+      return await questApi.holdQuest({ params: { id }, body: { reason } });
+    },
+    unhold: async (id) => {
+      return await questApi.unholdQuest({ params: { id } });
     },
     remove: async (id) => {
       await questApi.deleteQuest({ params: { id } });
@@ -186,6 +198,8 @@ export interface QuestMutations {
     complete: boolean;
     shelve: boolean;
     unshelve: boolean;
+    hold: boolean;
+    unhold: boolean;
     remove: boolean;
     update: boolean;
   };
@@ -194,6 +208,13 @@ export interface QuestMutations {
   complete: (id: number, body: CompleteQuestBody) => Promise<QuestResource>;
   shelve: (id: number) => Promise<QuestResource>;
   unshelve: (id: number) => Promise<QuestResource>;
+  /**
+   * Block a quest on something outside itself. `reason` is required by the
+   * server, and it is posted as a comment on the quest rather than stored on
+   * a field, so an `@handle` in it reaches that person's inbox.
+   */
+  hold: (id: number, reason: string) => Promise<QuestResource>;
+  unhold: (id: number) => Promise<QuestResource>;
   remove: (id: number) => Promise<void>;
   /**
    * The bulk forms of shelve, unshelve and delete: one call per id, all at

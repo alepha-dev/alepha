@@ -14,11 +14,21 @@ export const feedbackLinkedQuestSchema = quests.schema
   .pick({ id: true, shortId: true, title: true, priority: true, area: true })
   .extend({
     /**
-     * Three values, not four: the mapper derives this from `acceptedAt` /
-     * `completedAt` and never reads `shelvedAt`, so a shelved linked quest
-     * reads as whichever of the three it last was.
+     * Three values, not five: the mapper derives this from `acceptedAt` /
+     * `completedAt` and reads neither `shelvedAt` nor `heldAt`, so a
+     * shelved or held linked quest reads as whichever of the three it
+     * last was.
+     *
+     * `held` is excluded deliberately rather than by omission. This is the
+     * reporter-facing surface, and an outside reporter reading "Held" is
+     * being told that their request is blocked on something internal
+     * without being told what — which is worse than seeing the quest as
+     * still in progress, because it invites a question nobody here can
+     * answer for them.
      */
-    status: questStatusSchema.exclude(["shelved"]).meta({ mode: "text" }),
+    status: questStatusSchema
+      .exclude(["shelved", "held"])
+      .meta({ mode: "text" }),
     acceptedAt: z.datetime().optional(),
     completedAt: z.datetime().optional(),
   });
