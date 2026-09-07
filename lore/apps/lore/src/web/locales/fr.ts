@@ -1818,6 +1818,41 @@ export default {
   "agentPrompts.activate": "Activer",
   "agentPrompts.copied":
     "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
+  "agentPrompts.settings.title": "Invites pour agents",
+  "agentPrompts.settings.description":
+    "Le texte que chaque entrée Invites pour agents place dans le presse-papiers. Les invites sont rédigées en anglais à dessein : leurs mots sont les noms des outils qu’un agent appelle.",
+  "agentPrompts.settings.legend": "Variables",
+  "agentPrompts.settings.placeholder.project":
+    "Le titre du projet, celui qu’un appel MCP compare.",
+  "agentPrompts.settings.placeholder.slug":
+    "Le slug du projet dans l’URL. Pas interchangeable avec le titre.",
+  "agentPrompts.settings.placeholder.number":
+    "Le numéro qu’un lecteur reconnaît : 41 pour l’épopée #E41.",
+  "agentPrompts.settings.placeholder.id":
+    "L’identifiant global, celui par lequel une liste de quêtes filtre une épopée.",
+  "agentPrompts.settings.placeholder.reference":
+    "La référence typée : #E41, #Q1798, #P2087.",
+  "agentPrompts.settings.placeholder.title": "Le titre du sujet lui-même.",
+  "agentPrompts.settings.placeholder.url": "Un lien vers celui-ci.",
+  "agentPrompts.settings.save": "Enregistrer",
+  "agentPrompts.settings.saved": "Invite enregistrée.",
+  "agentPrompts.settings.reset": "Rétablir par défaut",
+  "agentPrompts.settings.reset.title": "Rétablir cette invite ?",
+  "agentPrompts.settings.reset.description":
+    "Votre version est abandonnée et cette invite suit de nouveau celle fournie, améliorations futures comprises.",
+  "agentPrompts.settings.wasReset": "Invite rétablie par défaut.",
+  "agentPrompts.settings.epicReview.title": "Épopée : relire",
+  "agentPrompts.settings.epicReview.description":
+    "Proposée sur une épopée encore planifiée. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
+  "agentPrompts.settings.epicActivate.title": "Épopée : activer",
+  "agentPrompts.settings.epicActivate.description":
+    "Proposée sur une épopée planifiée ou active. Confie l’épopée entière, quête par quête.",
+  "agentPrompts.settings.questWork.title": "Quête : s’en charger",
+  "agentPrompts.settings.questWork.description":
+    "Proposée sur une quête non terminée. Une quête, une branche, un commit.",
+  "agentPrompts.settings.feedbackWork.title": "Retour : s’en charger",
+  "agentPrompts.settings.feedbackWork.description":
+    "Proposée sur un retour en attente ou accepté. Crée la quête, fait le travail, répond au rapporteur.",
   "agentPrompts.copyError": "Impossible de copier l’invite.",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":

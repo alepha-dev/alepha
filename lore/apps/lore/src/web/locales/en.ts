@@ -1793,6 +1793,41 @@ export default {
   "agentPrompts.activate": "Activate",
   "agentPrompts.copied":
     "Prompt for $1 copied. Paste it into Claude Code or Codex.",
+  "agentPrompts.settings.title": "Agent prompts",
+  "agentPrompts.settings.description":
+    "The text each Agent Prompts entry puts on the clipboard. The prompts are written in English on purpose: their words are the tool names an agent calls.",
+  "agentPrompts.settings.legend": "Placeholders",
+  "agentPrompts.settings.placeholder.project":
+    "The project's title, which is what an MCP call matches on.",
+  "agentPrompts.settings.placeholder.slug":
+    "The project's URL slug, which is how the address names it. Not interchangeable with the title.",
+  "agentPrompts.settings.placeholder.number":
+    "The number a reader recognises: 41 for epic #E41.",
+  "agentPrompts.settings.placeholder.id":
+    "The global id, which is what a quest list filters an epic by.",
+  "agentPrompts.settings.placeholder.reference":
+    "The typed reference: #E41, #Q1798, #P2087.",
+  "agentPrompts.settings.placeholder.title": "The subject's own title.",
+  "agentPrompts.settings.placeholder.url": "A link to it.",
+  "agentPrompts.settings.save": "Save",
+  "agentPrompts.settings.saved": "Prompt saved.",
+  "agentPrompts.settings.reset": "Reset to default",
+  "agentPrompts.settings.reset.title": "Reset this prompt?",
+  "agentPrompts.settings.reset.description":
+    "Your version is discarded and this prompt follows the built-in one again, including its future improvements.",
+  "agentPrompts.settings.wasReset": "Prompt reset to its default.",
+  "agentPrompts.settings.epicReview.title": "Epic: Review",
+  "agentPrompts.settings.epicReview.description":
+    "Offered on an epic that is still planned. Asks an agent to sharpen the plan before anyone works it.",
+  "agentPrompts.settings.epicActivate.title": "Epic: Activate",
+  "agentPrompts.settings.epicActivate.description":
+    "Offered on a planned or active epic. Hands the whole epic over, quest by quest.",
+  "agentPrompts.settings.questWork.title": "Quest: Work on it",
+  "agentPrompts.settings.questWork.description":
+    "Offered on a quest that is not finished. One quest, one branch, one commit.",
+  "agentPrompts.settings.feedbackWork.title": "Feedback: Work on it",
+  "agentPrompts.settings.feedbackWork.description":
+    "Offered on a pending or accepted report. Creates the quest, does the work, answers the reporter.",
   "agentPrompts.copyError": "Could not copy the prompt.",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
