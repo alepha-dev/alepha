@@ -1813,7 +1813,9 @@ export default {
   "epic.progress.open": "$1 ouvertes",
   "epic.progress.shelved": "$1 en veille",
   "epic.action.delete": "Supprimer",
+  "agentPrompts.menu": "Invites pour agents",
   "agentPrompts.review": "Relire",
+  "agentPrompts.activate": "Activer",
   "agentPrompts.copied":
     "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
   "agentPrompts.copyError": "Impossible de copier l’invite.",
