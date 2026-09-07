@@ -1,7 +1,6 @@
 import {
   Activity,
   AppWindow,
-  Bell,
   BarChart3,
   BookOpen,
   Bug,
@@ -34,7 +33,6 @@ export interface CapabilityNavContext {
    * different atom. The two legitimately disagree, and the names are the
    * only thing keeping them apart.
    */
-  inboxCount?: number;
   /**
    * True when some deployed copy in this project currently carries the
    * `blights` kind.
@@ -272,28 +270,25 @@ export const CORE_NAV: CapabilityNavEntry[] = [
     group: "activity",
     order: 10,
   },
-  {
-    /**
-     * ⚠️ **Core, not a capability.** A mention comes from a quest comment
-     * (`work`) or a feedback comment (`support`), and a release publish
-     * comes from `work`. Hang this off `work` and a Support-only project
-     * generates messages with no door to them; hang it off `support` and
-     * the common case loses it. Reports is Core for the same shape of
-     * reason: its tabs declare capabilities the entry itself cannot.
-     *
-     * ⚠️ Labelled "Notifications" with a `Bell`, matching the header
-     * control, because the `Inbox` icon is already the Feedback entry's.
-     * Two badged entries about unread things, one called Inbox and the
-     * other wearing its icon, is a rail nobody can read. The URL stays
-     * `/inbox`: a segment is not a label.
-     */
-    route: "projectInbox",
-    labelKey: "project.menu.inbox",
-    icon: Bell,
-    group: "activity",
-    order: 20,
-    badge: (ctx) => ctx.inboxCount || undefined,
-  },
+  /*
+   * ⚠️ **No Notifications entry, and it is not an omission** (feedback
+   * #P2127). The header bell is the only door to `/inbox`: two controls for
+   * one page, both badged with the same count, one of them three centimetres
+   * from the other.
+   *
+   * What that entry's own note argued still holds for the page and the bell,
+   * so it is kept here rather than deleted with the row. The inbox is
+   * **Core, not a capability**: a mention comes from a quest comment
+   * (`work`) or a feedback comment (`support`), and a release publish from
+   * `work`. Hang it off `work` and a Support-only project generates messages
+   * with no door to them; hang it off `support` and the common case loses
+   * it.
+   *
+   * ⚠️ **The URL stays `/inbox`.** The entry was labelled "Notifications"
+   * only because the `Inbox` icon already belongs to the Feedback entry, and
+   * removing the row settles that clash - but a segment is not a label, and
+   * `projectInbox` and its path do not move.
+   */
   {
     route: "projectReports",
     permission: "stats:read",

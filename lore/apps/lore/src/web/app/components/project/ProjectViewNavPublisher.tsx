@@ -1,5 +1,6 @@
 import type { NavGroup } from "@alepha/ui/components/app-shell/app-shell";
 import { useStore } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { useEffect } from "react";
 
@@ -10,6 +11,7 @@ import {
   type ProjectNavEntry,
   projectNavAtom,
 } from "../../atoms/projectNavAtom.ts";
+import type { I18n } from "../../services/I18n.ts";
 
 export interface ProjectViewNavPublisherProps {
   /**
@@ -51,8 +53,21 @@ export interface ProjectViewNavPublisherProps {
  * ⚠️ A palette row is an INSTANCE, so both halves render: three copies of one
  * app would otherwise be three identical rows. `matchProjectNav` matches on the
  * label, so typing `b14` finds `club / b14-production`.
+ *
+ * ## ⚠️ Notifications is appended for the same reason
+ *
+ * It left the rail with feedback #P2127 - the header bell is the only door -
+ * and dropping the sidebar entry would have dropped the page out of ⌘K in the
+ * same commit, exactly as #1771 nearly did to every app. The bell is not a
+ * search result, so the palette would have been left with no way to reach a
+ * page that still exists.
+ *
+ * A third source rather than a hidden nav entry: an entry that is in the nav
+ * data and not in the nav is a flag every future reader has to learn, and the
+ * two consumers already disagree about instances on purpose.
  */
 const ProjectViewNavPublisher = (props: ProjectViewNavPublisherProps) => {
+  const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [, setProjectNav] = useStore(projectNavAtom);
   const [project] = useStore(currentProjectAtom);
@@ -98,7 +113,20 @@ const ProjectViewNavPublisher = (props: ProjectViewNavPublisherProps) => {
       }))
     : [];
 
-  const entries = [...navPages, ...navInstances];
+  // Core and always present, like the page itself: nothing gates `/inbox`.
+  const navInbox: ProjectNavEntry[] = project
+    ? [
+        {
+          label: String(tr("project.menu.inbox")),
+          href: router.path("projectInbox", {
+            params: { projectSlug: project.slug },
+          }),
+          kind: "page",
+        },
+      ]
+    : [];
+
+  const entries = [...navPages, ...navInbox, ...navInstances];
 
   // Keyed on the CONTENT, not the array: `entries` is rebuilt on every render,
   // so an effect depending on its identity would set the atom, re-render, and
