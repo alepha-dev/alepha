@@ -95,7 +95,16 @@ const anInstance = async (
 
 const setup = async () => {
   const alepha = Alepha.create({
-    env: { LOG_LEVEL: "error", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
+    env: {
+      LOG_LEVEL: "error",
+      SERVER_PORT: 0,
+      DATABASE_URL: ":memory:",
+      // ⚠️ Required, not decoration. A deploy now mints `APP_SECRET` for a
+      // copy that has none, and `CredentialSealService` refuses the published
+      // default in every environment - so a run here seals, and a spec
+      // without this fails inside the deploy rather than at its assertion.
+      APP_SECRET: "a-strong-and-unique-app-secret-for-tests",
+    },
   });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
@@ -540,6 +549,9 @@ describe("the deploy limits", () => {
       instances: { findById: async () => ({ id: "i", app: "a", env: "e" }) },
       artifacts: { findOne: async () => ({ id: "x", sha256: "y" }) },
       seal: { open: () => "token" },
+      // Stubbed like every other collaborator here: this test is about the
+      // cap, and the copy it invents has an id no query would accept.
+      secrets: { ensureGenerated: async () => {}, open: async () => ({}) },
       runner: {
         run: async () => {
           await held;
