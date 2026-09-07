@@ -15,7 +15,7 @@ export const projectParamsSchema = z.object({
   project_name: z
     .string()
     .describe(
-      "Project name (project title). Case-insensitive. Required if project is not provided. Ignored when project is also provided.",
+      "Project name: its title, or the slug the URL carries (`kanban-v2` for `Kanban v2`). Case-insensitive, title first. Required if project is not provided. Ignored when project is also provided.",
     )
     .optional(),
 });
