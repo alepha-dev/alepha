@@ -120,6 +120,7 @@ describe("FolioTree", () => {
             projectId={1}
             projectSlug="alepha"
             width={260}
+            onCollapse={() => {}}
             {...props}
           />
         </DialogProvider>
@@ -334,6 +335,7 @@ describe("FolioTree", () => {
               projectId={1}
               projectSlug="alepha"
               width={260}
+              onCollapse={() => {}}
               currentFolioId={AT_ROOT}
             />
           </DialogProvider>
@@ -350,6 +352,7 @@ describe("FolioTree", () => {
                 projectId={1}
                 projectSlug="alepha"
                 width={260}
+                onCollapse={() => {}}
                 currentFolioId={INSIDE_A}
               />
             </DialogProvider>

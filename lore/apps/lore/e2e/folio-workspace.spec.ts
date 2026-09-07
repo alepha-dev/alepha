@@ -1128,6 +1128,55 @@ test.describe("Folio workspace", () => {
       page.getByRole("button", { name: /^new directory$/i }).first(),
     ).toHaveAttribute("title", "New directory");
 
+    /*
+     * The pane collapses from its own header and comes back from the rail
+     * (feedback #P2136), the way the inspector already did on the other side
+     * of the document. Before this the tree was the asymmetric one: closable
+     * only from the menubar or ⌘\.
+     */
+    const tree = page.locator('[data-slot="folio-tree"]');
+    const columnWidth = (await tree.boundingBox())?.width;
+
+    await page
+      .getByRole("button", { name: /^collapse the tree$/i })
+      .first()
+      .click();
+    await expect(tree).toBeHidden();
+
+    const rail = page.getByRole("button", { name: /^show the tree$/i });
+    await expect(rail).toBeVisible();
+    await expect(rail).toHaveAttribute("title", "Show the tree");
+    await rail.click();
+    await expect(tree).toBeVisible({ timeout: 10_000 });
+
+    /*
+     * ⚠️ And below `TREE_DRAWER_BELOW`, where the pane floats OVER the
+     * document instead of taking a column beside it. Two things have to
+     * hold there. The drawer is the width the column was, so the new
+     * button never resizes the pane it is closing. And the rail does NOT
+     * appear: a viewport too narrow for three columns would otherwise
+     * carry a permanent strip for a pane nobody collapsed, which changes
+     * the default layout rather than offering a way back from an action.
+     */
+    await page.setViewportSize({ width: 900, height: 800 });
+    await expect(tree).toBeVisible();
+    expect((await tree.boundingBox())?.width).toBe(columnWidth);
+
+    await page
+      .getByRole("button", { name: /^collapse the tree$/i })
+      .first()
+      .click();
+    await expect(tree).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: /^show the tree$/i }),
+    ).toHaveCount(0);
+
+    // Back to the width the rest of this file works at, and the tree with
+    // it - the collapse above is a stored preference, not a viewport one.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.getByRole("button", { name: /^show the tree$/i }).click();
+    await expect(tree).toBeVisible({ timeout: 10_000 });
+
     await page
       .getByRole("button", { name: /^new folio$/i })
       .first()

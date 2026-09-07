@@ -21,6 +21,7 @@ import {
 } from "./menubar/folioMenubarModel.ts";
 import { useFolioShortcuts } from "./menubar/useFolioShortcuts.ts";
 import FolioTree, { type FolioTreeActions } from "./tree/FolioTree.tsx";
+import FolioTreeRail from "./tree/FolioTreeRail.tsx";
 import type { FolioActionHandlers } from "./useFolioActions.ts";
 import {
   TREE_DEFAULT_WIDTH,
@@ -246,6 +247,14 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
           target on the first paint after mount. */}
       <div ref={setChromeSlot} className="flex flex-none flex-col" />
       <div className="relative flex min-h-0 flex-1">
+        {/* ⚠️ Only where the tree would otherwise be a COLUMN. Below
+            `TREE_DRAWER_BELOW` the pane is an overlay that defaults closed,
+            so a rail there would put a permanent strip on every narrow
+            viewport for a pane nobody collapsed - the menubar stays the way
+            in on those, as it always has. */}
+        {!panes.treeOpen && !panes.treeDrawer && (
+          <FolioTreeRail onExpand={panes.toggleTree} />
+        )}
         {project && (
           <div className={treeClassName}>
             <FolioTree
@@ -254,6 +263,7 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
               currentFolioId={props.folio?.id}
               revealDirectoryShortId={revealDirectoryShortId}
               width={panes.treeWidth}
+              onCollapse={panes.toggleTree}
               onActions={setTreeActions}
             />
             {/* Inside the wrapper so the handle travels with the pane and
