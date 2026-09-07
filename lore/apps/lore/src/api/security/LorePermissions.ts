@@ -1,5 +1,7 @@
 import { $permission } from "alepha/security";
 
+import { LoreRankBounds } from "./LoreRankBounds.ts";
+
 /**
  * Lore's permission vocabulary, declared once.
  *
@@ -58,26 +60,16 @@ import { $permission } from "alepha/security";
  */
 export class LorePermissions {
   /**
-   * The floor: every rank holds it, and the editor renders it all-on and
-   * non-editable.
+   * The floor and the ceiling, re-exported from {@link LoreRankBounds}.
    *
-   * A list rather than a constant, so a second floor permission is data rather
-   * than code.
+   * ⚠️ They live in a file of their own because THIS file imports
+   * `$permission`, whose barrel has no browser condition - so the rank editor
+   * cannot import this class at all. Read the note there before moving them
+   * back.
    */
-  public static readonly FLOOR: string[] = ["project:read"];
+  public static readonly FLOOR = LoreRankBounds.FLOOR;
 
-  /**
-   * The ceiling: never grantable to any rank, whatever the writer holds.
-   *
-   * Both are owner-only **structurally** rather than by policy. Deleting the
-   * project ends it; turning a capability on widens every rank at once,
-   * including the actor's own, which the subset rule cannot catch because a
-   * switch is not a grant.
-   */
-  public static readonly OWNER_ONLY: string[] = [
-    "project:delete",
-    "capability:manage",
-  ];
+  public static readonly OWNER_ONLY = LoreRankBounds.OWNER_ONLY;
 
   /**
    * ⚠️ **The acceptance criterion of the whole epic**: what a plain member can
@@ -148,12 +140,7 @@ export class LorePermissions {
    * every project scope. Only the lending is per project, and that is
    * `estate:lend`.
    */
-  public static readonly OUT_OF_SCOPE: string[] = [
-    "project:create",
-    "estate:create",
-    "estate:update",
-    "estate:delete",
-  ];
+  public static readonly OUT_OF_SCOPE = LoreRankBounds.OUT_OF_SCOPE;
 
   // ---------------------------------------------------------------------------
   // Core: the project itself. No capability owns these, so they are always in

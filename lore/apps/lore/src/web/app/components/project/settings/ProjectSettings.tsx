@@ -13,6 +13,7 @@ import {
   type LucideIcon,
   MapPin,
   Server,
+  ShieldCheck,
   Stamp,
   Swords,
   Users,
@@ -24,10 +25,12 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
+import { canInProject } from "@/web/app/services/projectRank.ts";
 
 type RouteName =
   | "projectSettingsBanner"
   | "projectSettingsMembers"
+  | "projectSettingsRanks"
   | "projectSettingsAreas"
   | "projectSettingsWork"
   | "projectSettingsKnowledge"
@@ -38,6 +41,7 @@ type RouteName =
 type NavLabelKey =
   | "project.settings.nav.banner"
   | "project.settings.nav.members"
+  | "project.settings.nav.ranks"
   | "project.settings.nav.areas"
   | "project.settings.nav.estates"
   | "project.capability.work.label"
@@ -60,6 +64,16 @@ interface NavItem {
    * is a capability you cannot turn back on.
    */
   needs?: CapabilityKey;
+
+  /**
+   * Hidden when the reader's rank does not grant this.
+   *
+   * Only Ranks has one, and it is not a route guard: the page is reachable by
+   * a link somebody already holds, and the module refuses every write from a
+   * rank that may not edit. This is the affordance - offering a matrix a
+   * reader can look at and not save is worse than not offering it.
+   */
+  requires?: string;
 }
 
 interface NavGroup {
@@ -85,6 +99,12 @@ const NAV_GROUPS: NavGroup[] = [
         route: "projectSettingsMembers",
         labelKey: "project.settings.nav.members",
         icon: Users,
+      },
+      {
+        route: "projectSettingsRanks",
+        labelKey: "project.settings.nav.ranks",
+        icon: ShieldCheck,
+        requires: "rank:manage",
       },
       {
         // ⚠️ Its own entry, outside the four, and it stays that way. An
@@ -149,7 +169,9 @@ const ProjectSettings = () => {
         ? NAV_GROUPS.flatMap((group) =>
             group.items
               .filter(
-                (item) => !item.needs || hasCapability(project, item.needs),
+                (item) =>
+                  (!item.needs || hasCapability(project, item.needs)) &&
+                  (!item.requires || canInProject(project, item.requires)),
               )
               .map((item) => ({
                 name: item.route,

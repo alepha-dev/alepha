@@ -32,6 +32,7 @@ import { ProjectCapabilityController } from "./controllers/ProjectCapabilityCont
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
+import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
@@ -278,6 +279,7 @@ export const LoreApi = $module({
     FeedbackCommentController,
     ProjectController,
     ProjectCapabilityController,
+    ProjectRankController,
     ReleaseController,
     RoadmapController,
     EpicController,
