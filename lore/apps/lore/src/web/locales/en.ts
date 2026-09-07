@@ -601,6 +601,9 @@ export default {
   "project.capability.work.option.reminder.label": "Reminders",
   "project.capability.work.option.reminder.description":
     "Nudge whoever holds a quest that has gone quiet.",
+  "project.capability.work.option.agentPrompts.label": "Agent prompts",
+  "project.capability.work.option.agentPrompts.description":
+    "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for Claude Code or Codex; nothing is sent anywhere.",
   "project.capability.knowledge.label": "Write and keep knowledge",
   "project.capability.knowledge.description":
     "Wiki linked folios, files, revisions.",
@@ -1070,6 +1073,7 @@ export default {
   "common.previous": "Previous",
   "common.noResults": "No results",
 
+  "project.menu.inbox": "Notifications",
   "project.menu.feedback": "Feedback",
   "project.menu.blights": "Blights",
   "project.menu.apps": "Apps",
@@ -1667,12 +1671,53 @@ export default {
   "feedback.rejected": "Feedback rejected",
   "feedback.rejectError": "Failed to reject feedback",
   "feedback.delete": "Delete",
+  "inbox.title": "Notifications",
+  "inbox.empty": "Nothing new.",
+  "account.notifications.title": "Notifications",
+  "account.notifications.description": "What you want to hear about, and how.",
+  "account.notifications.channels": "Channels",
+  "account.notifications.channels.description": "Where messages reach you.",
+  "account.notifications.email": "Email",
+  "account.notifications.email.description":
+    "Turn this off and nothing is mailed to you. Sign-in codes and password resets are not affected.",
+  "account.notifications.inbox": "In-app",
+  "account.notifications.inbox.description":
+    "Always on. Messages wait for you in the bell, and a message you cannot see is one that was never sent.",
+  "account.notifications.categories": "Kinds of message",
+  "account.notifications.categories.description":
+    "These apply to both channels.",
+  "account.notifications.saveFailed": "Could not save your preferences.",
+  "account.notifications.category.mentions": "Mentions",
+  "account.notifications.category.mentions.description":
+    "Somebody writes your name in a quest or feedback comment.",
+  "account.notifications.category.releases": "Releases",
+  "account.notifications.category.releases.description":
+    "A project you belong to publishes a release.",
+  "account.notifications.category.tasks": "Quest reminders",
+  "account.notifications.category.tasks.description":
+    "Nudges about a quest you accepted and have not finished.",
+  "account.notifications.category.estates": "Deploy credentials",
+  "account.notifications.category.estates.description":
+    "A deploy credential you own has stopped working.",
+  "inbox.empty.description": "Messages addressed to you show up here.",
+  "inbox.noMatch": "No match",
+  "inbox.noMatch.description": "Try adjusting or clearing the search.",
+  "inbox.filter.search": "Search messages",
+  "inbox.table.message": "Message",
+  "inbox.table.project": "Project",
+  "inbox.table.when": "When",
+  "inbox.unread": "Unread",
+  "inbox.loadMore": "Load more",
+  "inbox.scope.all": "All projects",
+  "inbox.scope.project": "This project",
+  "inbox.markAllRead": "Mark all read",
+  "inbox.seeAll": "See all",
   "feedback.thread.title": "Discussion",
   "feedback.thread.empty": "Nothing has been said about this yet.",
   "feedback.thread.placeholder": "Ask a question or record a finding.",
   "feedback.thread.submit": "Comment",
   "feedback.thread.noNotification":
-    "Nobody is notified. The reply is here when they come back.",
+    "Project members are notified when you write their @name. Nobody else is: the reply is here when they come back.",
   "feedback.thread.edited": "edited",
   "feedback.thread.agent": "agent",
   "feedback.thread.unknownAuthor": "A former member",
@@ -1785,15 +1830,48 @@ export default {
   "epic.progress.open": "$1 open",
   "epic.progress.shelved": "$1 shelved",
   "epic.action.delete": "Delete",
-  "epic.action.review": "Review",
-  "epic.action.review.copied":
-    "Review prompt for $1 copied. Paste it into Claude Code or Codex.",
-  "epic.action.review.error": "Could not copy the review prompt.",
-  "epic.action.review.dialog.title": "Review this epic with an agent",
-  "epic.action.review.dialog.description":
-    "Tweak the prompt if you want, then copy it into Claude Code or Codex.",
-  "epic.action.review.dialog.label": "Review prompt",
-  "epic.action.review.dialog.copy": "Copy and close",
+  "agentPrompts.menu": "Agent Prompts",
+  "agentPrompts.review": "Review",
+  "agentPrompts.activate": "Activate",
+  "agentPrompts.workOnIt": "Work on it",
+  "agentPrompts.copied":
+    "Prompt for $1 copied. Paste it into Claude Code or Codex.",
+  "agentPrompts.settings.title": "Agent prompts",
+  "agentPrompts.settings.description":
+    "The text each Agent Prompts entry puts on the clipboard. The prompts are written in English on purpose: their words are the tool names an agent calls.",
+  "agentPrompts.settings.legend": "Placeholders",
+  "agentPrompts.settings.placeholder.project":
+    "The project's title, which is what an MCP call matches on.",
+  "agentPrompts.settings.placeholder.slug":
+    "The project's URL slug, which is how the address names it. Not interchangeable with the title.",
+  "agentPrompts.settings.placeholder.number":
+    "The number a reader recognises: 41 for epic #E41.",
+  "agentPrompts.settings.placeholder.id":
+    "The global id, which is what a quest list filters an epic by.",
+  "agentPrompts.settings.placeholder.reference":
+    "The typed reference: #E41, #Q1798, #P2087.",
+  "agentPrompts.settings.placeholder.title": "The subject's own title.",
+  "agentPrompts.settings.placeholder.url": "A link to it.",
+  "agentPrompts.settings.save": "Save",
+  "agentPrompts.settings.saved": "Prompt saved.",
+  "agentPrompts.settings.reset": "Reset to default",
+  "agentPrompts.settings.reset.title": "Reset this prompt?",
+  "agentPrompts.settings.reset.description":
+    "Your version is discarded and this prompt follows the built-in one again, including its future improvements.",
+  "agentPrompts.settings.wasReset": "Prompt reset to its default.",
+  "agentPrompts.settings.epicReview.title": "Epic: Review",
+  "agentPrompts.settings.epicReview.description":
+    "Offered on an epic that is still planned. Asks an agent to sharpen the plan before anyone works it.",
+  "agentPrompts.settings.epicActivate.title": "Epic: Activate",
+  "agentPrompts.settings.epicActivate.description":
+    "Offered on a planned or active epic. Hands the whole epic over, quest by quest.",
+  "agentPrompts.settings.questWork.title": "Quest: Work on it",
+  "agentPrompts.settings.questWork.description":
+    "Offered on a quest that is not finished. One quest, one branch, one commit.",
+  "agentPrompts.settings.feedbackWork.title": "Feedback: Work on it",
+  "agentPrompts.settings.feedbackWork.description":
+    "Offered on a pending or accepted report. Creates the quest, does the work, answers the reporter.",
+  "agentPrompts.copyError": "Could not copy the prompt.",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
     'Its quests and folios stay, detached from "$1". This cannot be undone.',

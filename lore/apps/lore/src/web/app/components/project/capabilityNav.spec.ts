@@ -68,21 +68,22 @@ describe("the sidebar, derived from capabilities", () => {
     expect(routes).toContain("projectFeedback");
   });
 
-  it("gives a Knowledge-only project one entry beside the core two", ({
+  it("gives a Knowledge-only project one entry beside the core three", ({
     expect,
   }) => {
     const routes = offered(projectFixture({ capabilities: ["knowledge"] }));
 
     // The shape that was impossible before this epic: quests had no flag at
     // all, so every project had them whether or not it wanted them.
-    expect(routes.sort()).toEqual([
+    expect(routes.sort((a, b) => a.localeCompare(b))).toEqual([
       "projectActivity",
       "projectFolios",
+      "projectInbox",
       "projectReports",
     ]);
   });
 
-  it("leaves Activity and Reports standing with every capability off", ({
+  it("leaves the three core entries standing with every capability off", ({
     expect,
   }) => {
     const routes = offered(projectFixture({ capabilities: [] }));
@@ -90,7 +91,16 @@ describe("the sidebar, derived from capabilities", () => {
     // Activity says something whatever else is turned off, and Reports is
     // Core because its TABS declare capabilities - an Apps-only project
     // reaches Quality through it.
-    expect(routes).toEqual(["projectActivity", "projectReports"]);
+    //
+    // ⚠️ Notifications is Core for a related but distinct reason: the events
+    // that fill it span `work` (quest mentions, releases) and `support`
+    // (feedback mentions), so hanging it off either would leave a project
+    // generating messages with no door to them.
+    expect(routes).toEqual([
+      "projectActivity",
+      "projectInbox",
+      "projectReports",
+    ]);
   });
 
   it("drops an entry whose option is off, and keeps its siblings", ({

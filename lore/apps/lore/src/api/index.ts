@@ -28,9 +28,11 @@ import { FolioController } from "./controllers/FolioController.ts";
 import { InsightsController } from "./controllers/InsightsController.ts";
 import { InvitationController } from "./controllers/InvitationController.ts";
 import { KanbanController } from "./controllers/KanbanController.ts";
+import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
 import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
+import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportsController } from "./controllers/ProjectReportsController.ts";
@@ -53,9 +55,13 @@ import { QuestJobs } from "./jobs/QuestJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { EstateNotifications } from "./notifications/EstateNotifications.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
+import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
+import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
+import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
+import { LoreNotificationPreferences } from "./providers/LoreNotificationPreferences.ts";
 import { ProjectInvitationResource } from "./providers/ProjectInvitationResource.ts";
 import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
@@ -89,12 +95,14 @@ import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
+import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
 import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
 import { TrelloParser } from "./services/parsers/TrelloParser.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
+import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { QualityService } from "./services/QualityService.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
@@ -103,6 +111,7 @@ import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.
 import { QuestService } from "./services/QuestService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
+import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
@@ -203,6 +212,26 @@ export const LoreApi = $module({
     QuestNotifications,
     EstateNotifications,
     InvitationNotifications,
+    // The inbox half: two templates, and the one HTML escaper the four
+    // notification classes share.
+    LoreInboxNotifications,
+    NotificationHtmlEscaper,
+    // Who is in a project, as one read, for everything that writes to
+    // people. One question, not two.
+    ProjectRoster,
+    // Turns `@name` in a comment into a message. Injected by the quest and
+    // feedback comment controllers.
+    MentionNotifier,
+    // The release fan-out. Publish only; reopen notifies nobody.
+    ReleaseNotifier,
+    // Substituted for the framework's `NotificationInboxRecipientProvider`
+    // in `main.server.ts`. Listed here only so DI scanning sees the class,
+    // the same arrangement `LoreFileAccessProvider` has.
+    LoreInboxRecipientProvider,
+    // Substituted for the framework's `NotificationPreferenceProvider` in
+    // `main.server.ts`, same arrangement.
+    LoreNotificationPreferences,
+    NotificationPreferenceController,
     FeedbackRateLimiter,
     QuestCsvParser,
     QuestCsvFormatter,
@@ -280,6 +309,7 @@ export const LoreApi = $module({
     ProjectController,
     ProjectCapabilityController,
     ProjectRankController,
+    ProjectPromptController,
     ReleaseController,
     RoadmapController,
     EpicController,
