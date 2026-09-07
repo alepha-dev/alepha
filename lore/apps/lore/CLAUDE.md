@@ -98,12 +98,12 @@ Since epic #36 (2026-09-06) a project is not a quest tracker with extras. It is
 a container that composes four **capabilities**, picked in the creation wizard
 and changed on their own Settings pages:
 
-| capability  | what it brings                                                                                                          |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `work`      | quests, areas, epics, releases, the board - options `board` / `epics` / `releases` / `estimate` / `chrono` / `reminder` |
-| `knowledge` | folios, their directories and attachments - option `agentSummary`                                                       |
-| `apps`      | deployed copies, sigils, blights, artifacts, quality - options `track` / `deploy` (Soon)                                |
-| `support`   | the feedback inbox and the first-party request form. No options                                                         |
+| capability  | what it brings                                                                                                                           |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `work`      | quests, areas, epics, releases, the board - options `board` / `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` |
+| `knowledge` | folios, their directories and attachments - option `agentSummary`                                                                        |
+| `apps`      | deployed copies, sigils, blights, artifacts, quality - options `track` / `deploy` (Soon)                                                 |
+| `support`   | the feedback inbox and the first-party request form. No options                                                                          |
 
 A **capability** is a product surface: it owns nav entries, routes, entities,
 MCP tools, a settings page, dashboard cards, search kinds, activity kinds and
@@ -141,6 +141,63 @@ wizard is asking a question and "none" is not an answer to it.
 neither the column, its DEFAULT nor any key inside it can ever change - see the
 block on `projectFeaturesSchema` and the two incidents it names.
 `test/project-features-frozen.spec.ts` fails if anything reads it again.
+
+## Agent prompts (epic #41)
+
+Every surface that names a piece of work offers the prompt that hands it to a
+coding agent. The owner writes those prompts once, in Settings.
+
+**The switch is the Work option `agentPrompts`, and it is OFF by default with
+no backfill.** So a project shows no Agent Prompts menu until someone opens
+Settings ▸ Work and turns it on, `lore.alepha.dev` included.
+
+| piece          | where                                                                                                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the four kinds | `src/api/schemas/agentPromptKindSchema.ts` - `epicReview`, `epicActivate`, `questWork`, `feedbackWork`                                                                                                        |
+| the table      | `project_prompts (projectId, kind, template)`, unique on the pair. **A row exists only for a CUSTOMISED kind; absence means the built-in default**, and Reset deletes the row rather than storing the default |
+| the write path | `ProjectPromptController` - member read, owner upsert, owner reset                                                                                                                                            |
+| the defaults   | `src/web/app/prompts/` - one file per kind, mapped by `agentPromptDefaults.ts`                                                                                                                                |
+| the renderer   | `src/web/app/prompts/renderPromptTemplate.ts` - seven placeholders, one pass                                                                                                                                  |
+| the atom       | `projectPromptsAtom`, filled by the `project` route loader, cleared in `onLeave`                                                                                                                              |
+| the hook       | `components/project/prompts/useAgentPrompt.ts`, plus `useAgentPromptSubject` and `questAgentGate` beside it                                                                                                   |
+| the menus      | a `RowActionGroup` on the three tables, `AgentPromptsMenu` on the three detail pages                                                                                                                          |
+
+**Four rules, and none of them is obvious from the code.**
+
+- ⚠️ **The copy happens INSIDE the click, with nothing awaited before it.**
+  Safari's transient activation does not survive an `await` before
+  `navigator.clipboard.writeText`. That is why the templates are read once per
+  project into an atom instead of fetched at click time, and it is why the
+  epic-review DIALOG existed before this epic. `useAgentPrompt.copy` must
+  never grow a fetch.
+- ⚠️ **The prompts are read by the `project` route loader, not by a
+  component**, gated on `capabilityOption(project, "work", "agentPrompts")`,
+  beside `currentEpicsAtom` and `currentAreasAtom`. It catches to `{}` and not
+  to `undefined`, unlike its neighbours: they distinguish "could not read"
+  from "none" because a badge must not say zero when it means unknown, and
+  here the built-in defaults are a complete answer either way.
+- ⚠️ **The Settings section refetches the rows unconditionally**, and that is
+  load-bearing rather than tidy. The loader writes `{}` when the option is off
+  AND when nothing is customised, so the atom cannot say whether it was ever
+  filled, and flipping the switch does not re-run the loader. Without the
+  refetch, an owner with stored templates who turns the option on and copies
+  from Epics gets the built-in defaults, silently, until the next full page
+  load. `e2e/agent-prompts.spec.ts` catches exactly this, which is why its
+  navigation from Settings to Epics is a sidebar CLICK and never a
+  `page.goto`.
+- ⚠️ **`{{project}}` is the project's TITLE and `{{slug}}` is its slug.**
+  `ProjectTools.resolveProjectId` matches `project_name` against
+  `projects.title` lowercased and never reads `projects.slug`, so a project
+  titled `Kanban v2` (slug `kanban-v2`) is not found by its slug. The prompt
+  that shipped before this epic resolved only because this project is titled
+  `Alepha`.
+
+Two smaller things worth not rediscovering. A subject is **seven named
+fields**, built by `useAgentPromptSubject` and never a resource: this text
+goes to a clipboard, and a feedback resource carries the reporter's identity,
+their `context` and their attachments. And `AgentPromptsMenu`'s `subject` is a
+**thunk**, called on click, because building one reaches for the router and an
+eager one runs on every render of every surface that might show the menu.
 
 ## Routes
 
