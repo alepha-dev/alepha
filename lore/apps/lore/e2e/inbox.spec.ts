@@ -72,9 +72,10 @@ test.describe("Inbox", () => {
       );
       const startedAt = Date.now();
 
-      await page.goto(`/${slug}/quests/${quest}`);
+      // The URL takes the shortId; the comment endpoint takes the key.
+      await page.goto(`/${slug}/quests/${quest.shortId}`);
       await page.waitForLoadState("domcontentloaded");
-      await postComment(page, quest, `hey @${handle} can you look at this`);
+      await postComment(page, quest.id, `hey @${handle} can you look at this`);
 
       // The member's side. A reload plus a polled assertion, because the
       // count rides the project loader's batch and the job that produces it
@@ -118,9 +119,11 @@ test.describe("Inbox", () => {
       await expect(row).toBeVisible();
       await row.click();
 
-      await member.page.waitForURL(new RegExp(`/${slug}/quests/${quest}$`), {
-        timeout: 20_000,
-      });
+      // The URL carries the shortId, which is not the key `postComment` used.
+      await member.page.waitForURL(
+        new RegExp(`/${slug}/quests/${quest.shortId}$`),
+        { timeout: 20_000 },
+      );
 
       // Read, so the badge is gone. Polled for the same reason as above: the
       // mark-read write and the next count are two round trips.
@@ -297,17 +300,32 @@ const post = async <T>(
   );
 };
 
+/**
+ * ⚠️ Returns BOTH ids, and the difference is not cosmetic.
+ *
+ * `shortId` is the per-project number the URL carries; `id` is the row's
+ * primary key, which is what `createQuestComment`'s `:id` param means -
+ * `$ownsProject({ repository: quests, param: "id" })` resolves a quest by its
+ * key and decides membership against THAT quest's project.
+ *
+ * Passing the shortId worked only while the two coincided, which is only true
+ * for the first quest in a database. The suite runs fully parallel over one
+ * server per worker, so a sibling test's quest shifts the keys and this
+ * commented on somebody else's project - answering 403 "Not a member of this
+ * project", which reads as a permissions regression rather than as a spec
+ * using the wrong number.
+ */
 const createQuest = async (
   page: import("@playwright/test").Page,
   slug: string,
   projectId: number,
   title: string,
-): Promise<number> => {
+): Promise<{ id: number; shortId: number }> => {
   // Land on a project page first: the action table rides the SSR payload,
   // which only the project pages carry.
   await page.goto(`/${slug}/quests`);
   await page.waitForLoadState("domcontentloaded");
-  const quest = await post<{ shortId: number }>(
+  return await post<{ id: number; shortId: number }>(
     page,
     "createQuest",
     {},
@@ -319,7 +337,6 @@ const createQuest = async (
       priority: "low",
     },
   );
-  return quest.shortId;
 };
 
 const postComment = async (
