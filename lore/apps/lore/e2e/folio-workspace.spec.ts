@@ -1110,6 +1110,24 @@ test.describe("Folio workspace", () => {
     await expect(page.locator('[data-slot="folio-tree"]')).toBeVisible({
       timeout: 15_000,
     });
+
+    /*
+     * ⚠️ Both header buttons name themselves to a POINTER as well as to a
+     * screen reader (feedback #P2135). They carried `aria-label` alone, so a
+     * pointer user got two unlabelled 14px glyphs - and file-plus against
+     * folder-plus is the pair worth telling apart, since one makes a
+     * directory.
+     *
+     * Asserted on the attribute, because a native `title` tooltip is drawn
+     * by the browser and is not in the DOM to hover for.
+     */
+    await expect(
+      page.getByRole("button", { name: /^new folio$/i }).first(),
+    ).toHaveAttribute("title", "New folio");
+    await expect(
+      page.getByRole("button", { name: /^new directory$/i }).first(),
+    ).toHaveAttribute("title", "New directory");
+
     await page
       .getByRole("button", { name: /^new folio$/i })
       .first()

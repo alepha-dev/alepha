@@ -108,6 +108,17 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             one `FolioTreeContextMenu` already asks for its own items. The
             tree itself stays: reading the project's folios is a Viewer's
             whole point. */}
+        {/* ⚠️ `title` AS WELL AS `aria-label`, from the same key so the two
+            cannot drift. An `aria-label` names the button for a screen
+            reader and for nobody else: a pointer user saw two unlabelled
+            14px glyphs, and file-plus against folder-plus is exactly the
+            pair worth telling apart before clicking, since one of them
+            makes a directory (feedback #P2135).
+
+            Same reasoning `MarkdownModeToggle` writes down for its own
+            icon-only variant. Not a `Tooltip`, because these sit in a 40px
+            header strip where the native one costs nothing and a portalled
+            popup would need a provider this pane does not have. */}
         {canWrite && (
           <>
             <Button
@@ -116,6 +127,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
               variant="ghost"
               onClick={() => commands.createFolio()}
               aria-label={String(tr("folios.editor.tree.new-folio"))}
+              title={String(tr("folios.editor.tree.new-folio"))}
             >
               <FilePlus className="size-3.5" />
             </Button>
@@ -125,6 +137,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
               variant="ghost"
               onClick={() => commands.createDirectory()}
               aria-label={String(tr("folios.editor.tree.new-directory"))}
+              title={String(tr("folios.editor.tree.new-directory"))}
             >
               <FolderPlus className="size-3.5" />
             </Button>
