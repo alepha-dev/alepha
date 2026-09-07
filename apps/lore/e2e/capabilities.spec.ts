@@ -99,8 +99,14 @@ test.describe("Project capabilities", () => {
     );
     const slug = new URL(page.url()).pathname.split("/").find(Boolean)!;
 
-    // Activity and Reports are Core, Folios is Knowledge's. Nothing else.
-    expect(await navHrefs(page, slug)).toEqual(["/", "/folios", "/reports"]);
+    // Activity, Notifications and Reports are Core, Folios is Knowledge's.
+    // Nothing else.
+    expect(await navHrefs(page, slug)).toEqual([
+      "/",
+      "/folios",
+      "/inbox",
+      "/reports",
+    ]);
 
     // A URL typed by hand is a page that does not exist, not a 403 and not a
     // redirect: the project genuinely has no such surface.
@@ -150,9 +156,10 @@ test.describe("Project capabilities", () => {
       "/",
       "/apps",
       "/artifacts",
+      "/inbox",
       "/reports",
     ]);
-    // Support is off, so the inbox is not a page this project has.
+    // Support is off, so the feedback inbox is not a page this project has.
     await expect404(page, `/${slug}/feedback`);
 
     // Enrol one deployed copy, then mint its sigil from the Settings tab the
@@ -338,9 +345,15 @@ test.describe("Project capabilities", () => {
     await page.goto(`/${slug}/`);
     await page.waitForLoadState("networkidle");
 
-    // Activity and Reports, and that is the whole project. A legal state by
-    // the epic's decision 8, and the test that the modularity is real.
-    expect(await navHrefs(page, slug)).toEqual(["/", "/reports"]);
+    // Activity, Notifications and Reports, and that is the whole project. A
+    // legal state by the epic's decision 8, and the test that the modularity
+    // is real.
+    //
+    // ⚠️ Notifications is Core rather than a capability's, deliberately: the
+    // events that fill it span Work (quest mentions, releases) and Support
+    // (feedback mentions), so hanging it off either would leave a project
+    // generating messages with no door to them.
+    expect(await navHrefs(page, slug)).toEqual(["/", "/inbox", "/reports"]);
 
     // The feed still renders what happened while the capabilities were on:
     // the rows are filtered by kind, never purged.
