@@ -129,6 +129,7 @@ describe("CapabilityRegistry", () => {
       estimate: false,
       chrono: false,
       reminder: false,
+      agentPrompts: false,
     });
     expect(ctx.registry.optionsOf("apps", { track: true })).toEqual({
       track: true,
@@ -166,6 +167,7 @@ describe("CapabilityRegistry", () => {
       estimate: false,
       chrono: false,
       reminder: false,
+      agentPrompts: false,
     });
     expect(ctx.registry.preselectedOptionsOf("apps")).toEqual({
       track: true,

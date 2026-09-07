@@ -29,6 +29,8 @@ import { currentEpicCountAtom } from "@/web/app/atoms/currentEpicCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import EpicStatusControl from "./EpicStatusControl.tsx";
 import ProjectEpicAside from "./ProjectEpicAside.tsx";
@@ -36,7 +38,6 @@ import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
 import ProjectEpicFlow from "./ProjectEpicFlow.tsx";
 import ProjectEpicFolios from "./ProjectEpicFolios.tsx";
 import ProjectEpicQuests from "./ProjectEpicQuests.tsx";
-import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 
 export interface ProjectEpicProps {
   epic: EpicResource;
@@ -67,7 +68,8 @@ type TabKey = "overview" | "quests" | "flow" | "folios";
  */
 const ProjectEpic = (props: ProjectEpicProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const copyReviewPrompt = useEpicReviewPrompt();
+  const agentPrompt = useAgentPrompt();
+  const promptSubject = useAgentPromptSubject();
   const toaster = useToast();
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
@@ -301,18 +303,20 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       onTabChange={(v) => setTab(v as TabKey)}
       actions={
         <>
-          {/* Same gate and same key as the Epics row menu's Review
-              (feedback #2087): the plan is reviewable while it is still
-              open, and one key means the two surfaces cannot come to call
-              the action different things. */}
-          {epic.status === "planned" && (
+          {/* Same two gates and same key as the Epics row menu's Review: the
+              plan is reviewable while it is still open, and the project has
+              to have turned agent prompts on. One key means the two
+              surfaces cannot come to call the action different things. */}
+          {epic.status === "planned" && agentPrompt.enabled && (
             <Button
               variant="outline"
               size="lg"
-              onClick={() => copyReviewPrompt(epic)}
+              onClick={() =>
+                agentPrompt.copy("epicReview", promptSubject.forEpic(epic))
+              }
             >
               <ClipboardCheck className="size-4" />
-              {tr("epic.action.review")}
+              {tr("agentPrompts.review")}
             </Button>
           )}
           <Button variant="outline" size="lg" onClick={() => setEditOpen(true)}>

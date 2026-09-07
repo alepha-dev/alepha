@@ -21,7 +21,6 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
-import EpicReviewPromptDialog from "./EpicReviewPromptDialog.tsx";
 import ProjectEpics from "./ProjectEpics.tsx";
 
 const epicOf = (
@@ -106,7 +105,11 @@ describe("ProjectEpics - the status filter", () => {
     localStorage.clear();
   });
 
-  const mount = async (releases: unknown[] = [], epics?: EpicResource[]) => {
+  const mount = async (
+    releases: unknown[] = [],
+    epics?: EpicResource[],
+    project: unknown = projectFixture(),
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -118,7 +121,7 @@ describe("ProjectEpics - the status filter", () => {
     alepha.inject(I18n);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, project as never);
     alepha.store.set(currentReleasesAtom, releases as never);
     // Injected AFTER `start` and before `render`, so a case can bring its own
     // fixture without a second provider class. The default set is what every
@@ -129,10 +132,6 @@ describe("ProjectEpics - the status filter", () => {
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <ProjectEpics />
-          {/* Mounted in `Layout` in the app, so this spec supplies its own.
-              Review writes an atom rather than the clipboard now, and the
-              dialog is what reads it. */}
-          <EpicReviewPromptDialog />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
@@ -414,11 +413,13 @@ describe("ProjectEpics - the status filter", () => {
     });
 
     /**
-     * ⚠️ Review no longer copies on click (feedback #2097). It opens the
-     * prompt for editing first, so this asserts the DIALOG'S initial value -
-     * the same guarantee, moved to where the text now appears.
+     * ⚠️ The dialog is gone, and with it the editing step (feedback #2097
+     * is answered in Settings instead: the tweak was the same every time,
+     * so it belongs in a template rather than in the clipboard). A click
+     * copies, so the guarantee moves back onto `writeText`'s argument.
      */
-    it("opens the prompt, prefilled with the epic, the URL and the calls that read it", async () => {
+    it("copies the prompt, carrying the epic, the URL and the calls that read it", async () => {
+      const written = stubClipboard();
       await mount();
 
       const items = await openRowMenu("#E1 - Planned epic");
@@ -426,62 +427,64 @@ describe("ProjectEpics - the status filter", () => {
       expect(review).toBeTruthy();
       fireEvent.click(review!);
 
-      const editor = (await screen.findByTestId(
-        "epic-review-prompt-text",
-      )) as HTMLTextAreaElement;
-      const prompt = editor.value;
+      await waitFor(() => expect(written).toHaveLength(1));
+      const prompt = written[0];
       expect(prompt).toContain("#E1");
       expect(prompt).toContain("Planned epic");
       expect(prompt).toContain("/epics/1");
       expect(prompt).toContain("epic_get");
       expect(prompt).toContain('detail: "full"');
-      // Nothing that is not the four fields the builder takes. Letting a
-      // human edit the text before copying does not weaken this: the
-      // guarantee is about what Lore ADDS, and what Lore added is this value.
+      // ⚠️ The load-bearing one, kept from the dialog era. `useAgentPrompt`
+      // takes seven named fields rather than the epic resource precisely so
+      // nothing can ride along into a clipboard.
       expect(prompt).not.toContain("sg_");
     });
 
-    it("copies what the reader edited, not what was built", async () => {
+    /**
+     * The project's TITLE reaches `project_name`, not its slug.
+     * `resolveProjectId` matches titles lowercased and never slugs, so a
+     * project whose two differ is where the old prompt silently stopped
+     * resolving.
+     */
+    it("names the project by its title, not by its slug", async () => {
       const written = stubClipboard();
-      await mount();
-
-      const items = await openRowMenu("#E1 - Planned epic");
-      fireEvent.click(
-        items.find((item) => item.textContent?.includes("Review"))!,
-      );
-
-      const editor = (await screen.findByTestId(
-        "epic-review-prompt-text",
-      )) as HTMLTextAreaElement;
-      // The one sentence of context that was the whole point of the report.
-      fireEvent.change(editor, {
-        target: { value: `${editor.value}\n\nFocus on the migration.` },
+      await mount(undefined, undefined, {
+        ...projectFixture(),
+        title: "Kanban v2",
+        slug: "kanban-v2",
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Copy and close" }));
-
-      await waitFor(() => expect(written).toHaveLength(1));
-      expect(written[0]).toContain("Focus on the migration.");
-      // Still the built prompt underneath, not a replacement.
-      expect(written[0]).toContain("epic_get");
-    });
-
-    it("copies nothing when the reader cancels", async () => {
-      const written = stubClipboard();
-      await mount();
-
       const items = await openRowMenu("#E1 - Planned epic");
       fireEvent.click(
         items.find((item) => item.textContent?.includes("Review"))!,
       );
-      await screen.findByTestId("epic-review-prompt-text");
 
-      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(written).toHaveLength(1));
+      expect(written[0]).toContain('project_name "Kanban v2"');
+      expect(written[0]).not.toContain('project_name "kanban-v2"');
+    });
 
-      await waitFor(() =>
-        expect(screen.queryByTestId("epic-review-prompt-text")).toBeNull(),
+    /**
+     * ⚠️ `projectFixture()` turns every declared option ON, so every case
+     * above gets `agentPrompts` for free and this is the only one that has
+     * to say anything. It is also the one that matters in production on the
+     * day this ships: the option is off by default and nobody has turned it
+     * on yet.
+     */
+    it("offers nothing when the project has agent prompts off", async () => {
+      await mount(
+        undefined,
+        undefined,
+        projectFixture({ options: { work: { agentPrompts: false } } }),
       );
-      expect(written).toHaveLength(0);
+
+      const items = (await openRowMenu("#E1 - Planned epic")).map(
+        (item) => item.textContent,
+      );
+      expect(items.join(" ")).not.toContain("Review");
+      // Begin is untouched: it is the epic's own lifecycle action and has
+      // nothing to do with this option.
+      expect(items.join(" ")).toContain("Begin");
     });
   });
 });

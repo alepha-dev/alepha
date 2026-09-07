@@ -38,6 +38,8 @@ import { settleBulk } from "../../shared/bulkOutcome.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import { useBulkReport } from "../../shared/useBulkReport.ts";
+import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import {
   epicBlockedBy,
@@ -46,7 +48,6 @@ import {
   STATUS_TONE,
 } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
-import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 
 /**
  * Filter form, owned by AlephaTable: free-text over title + description,
@@ -134,7 +135,8 @@ const ProjectEpics = () => {
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);
   const reportBulk = useBulkReport();
-  const copyReviewPrompt = useEpicReviewPrompt();
+  const agentPrompt = useAgentPrompt();
+  const promptSubject = useAgentPromptSubject();
   const alepha = useAlepha();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -536,25 +538,23 @@ const ProjectEpics = () => {
           // Gated on the row's own status, which is why this callback reads
           // its argument now. Beginning an epic that has already begun is
           // not a thing to offer.
-          ...(epic.status === "planned"
+          // Two gates, and they are different questions. The row's own
+          // status decides whether reviewing a plan makes sense: after
+          // Begin the quest set is what is being worked, not what is being
+          // written. The `agentPrompts` option decides whether this project
+          // hands work to agents at all, and it is off by default.
+          ...(epic.status === "planned" && agentPrompt.enabled
             ? [
                 {
                   icon: ClipboardCheck,
-                  // Beside Begin, under the same gate, and for the same
-                  // reason (feedback #2087): reviewing a plan is a thing you
-                  // do while the plan is still open. After Begin the quest
-                  // set is what is being worked, not what is being written.
-                  //
-                  // Shipped unflagged despite being called a beta feature in
-                  // the report. A `features.*` key would owe its own
-                  // settings page in the same commit - folio #1172, where
-                  // the Quality tab shipped gated on a flag no UI could set
-                  // and stayed invisible - and a flag buys nothing here: the
-                  // action is inert until someone clicks it, and what it
-                  // does is write text to the clipboard.
-                  label: tr("epic.action.review"),
-                  onClick: (row: EpicResource) => copyReviewPrompt(row),
+                  label: tr("agentPrompts.review"),
+                  onClick: (row: EpicResource) =>
+                    agentPrompt.copy("epicReview", promptSubject.forEpic(row)),
                 },
+              ]
+            : []),
+          ...(epic.status === "planned"
+            ? [
                 {
                   icon: Play,
                   // `dependsOn` is a gate since epic #31: Begin is refused

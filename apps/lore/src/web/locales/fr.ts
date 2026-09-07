@@ -605,6 +605,9 @@ export default {
   "project.capability.work.option.reminder.label": "Rappels",
   "project.capability.work.option.reminder.description":
     "Relancer qui détient une quête restée silencieuse.",
+  "project.capability.work.option.agentPrompts.label": "Invites pour agents",
+  "project.capability.work.option.agentPrompts.description":
+    "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour Claude Code ou Codex ; rien n’est envoyé nulle part.",
   "project.capability.knowledge.label": "Écrire et conserver le savoir",
   "project.capability.knowledge.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
@@ -1810,15 +1813,10 @@ export default {
   "epic.progress.open": "$1 ouvertes",
   "epic.progress.shelved": "$1 en veille",
   "epic.action.delete": "Supprimer",
-  "epic.action.review": "Relire",
-  "epic.action.review.copied":
-    "Invite de relecture pour $1 copiée. Collez-la dans Claude Code ou Codex.",
-  "epic.action.review.error": "Impossible de copier l’invite de relecture.",
-  "epic.action.review.dialog.title": "Faire relire cette épopée par un agent",
-  "epic.action.review.dialog.description":
-    "Ajustez l’invite si besoin, puis copiez-la dans Claude Code ou Codex.",
-  "epic.action.review.dialog.label": "Invite de relecture",
-  "epic.action.review.dialog.copy": "Copier et fermer",
+  "agentPrompts.review": "Relire",
+  "agentPrompts.copied":
+    "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
+  "agentPrompts.copyError": "Impossible de copier l’invite.",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":
     'Ses quêtes et folios sont conservés, détachés de "$1". Cette action est irréversible.',
