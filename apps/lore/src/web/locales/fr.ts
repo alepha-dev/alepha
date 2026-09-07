@@ -1692,6 +1692,35 @@ export default {
   "feedback.delete": "Supprimer",
   "inbox.title": "Notifications",
   "inbox.empty": "Rien de nouveau.",
+  "account.notifications.title": "Notifications",
+  "account.notifications.description":
+    "Ce dont vous voulez être informé, et comment.",
+  "account.notifications.channels": "Canaux",
+  "account.notifications.channels.description":
+    "Par où les messages vous parviennent.",
+  "account.notifications.email": "E-mail",
+  "account.notifications.email.description":
+    "Désactivez ceci et plus rien ne vous sera envoyé par e-mail. Les codes de connexion et les réinitialisations de mot de passe ne sont pas concernés.",
+  "account.notifications.inbox": "Dans l'application",
+  "account.notifications.inbox.description":
+    "Toujours actif. Les messages vous attendent dans la cloche, et un message invisible équivaut à un message jamais envoyé.",
+  "account.notifications.categories": "Types de message",
+  "account.notifications.categories.description":
+    "Ces réglages valent pour les deux canaux.",
+  "account.notifications.saveFailed":
+    "Impossible d'enregistrer vos préférences.",
+  "account.notifications.category.mentions": "Mentions",
+  "account.notifications.category.mentions.description":
+    "Quelqu'un écrit votre nom dans un commentaire de quête ou de retour.",
+  "account.notifications.category.releases": "Versions",
+  "account.notifications.category.releases.description":
+    "Un projet dont vous êtes membre publie une version.",
+  "account.notifications.category.tasks": "Rappels de quête",
+  "account.notifications.category.tasks.description":
+    "Rappels sur une quête que vous avez acceptée et pas terminée.",
+  "account.notifications.category.estates": "Identifiants de déploiement",
+  "account.notifications.category.estates.description":
+    "Un identifiant de déploiement que vous possédez a cessé de fonctionner.",
   "inbox.empty.description":
     "Les messages qui vous sont adressés apparaissent ici.",
   "inbox.noMatch": "Aucun résultat",

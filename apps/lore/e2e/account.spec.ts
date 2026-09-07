@@ -36,6 +36,7 @@ test.describe("Account area", () => {
       "Connected apps",
       "Invitations",
       "Feedback",
+      "Notifications",
       "Estates",
     ]) {
       await expect(
@@ -106,6 +107,48 @@ test.describe("Account area", () => {
     await page.reload();
     await page.waitForLoadState("networkidle");
     await expect(page.getByLabel("First name")).toHaveValue("Ada");
+  });
+
+  /**
+   * ⚠️ **An optimistic switch passes its assertion before the save is sent.**
+   * The control answers the click from local state, so `expect(...).toBe
+   * (false)` is true a millisecond later whether or not anything reached the
+   * server. Arming `waitForResponse` BEFORE the click is what makes this a
+   * test of the save rather than of React.
+   */
+  test("turns email off from the notifications page and keeps it off", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    const email = `nt-${Date.now()}@example.com`;
+    await registerAndVerify(page, email, "GoodPassw0rd");
+
+    await page.goto("/account/notifications");
+    await page.waitForLoadState("networkidle");
+
+    const emailSwitch = page.getByRole("switch", { name: "Email" });
+    await expect(emailSwitch).toHaveAttribute("aria-checked", "true");
+
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/api/"),
+    );
+    await emailSwitch.click();
+    await saved;
+
+    await page.reload();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("switch", { name: "Email" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+
+    // The in-app row is a statement, not a control: there is no switch to
+    // find, which is what stops it reading as a broken one.
+    await expect(page.getByText("In-app", { exact: true })).toBeVisible();
+    await expect(page.getByRole("switch", { name: "In-app" })).toHaveCount(0);
   });
 
   test("changes the password and reports the revoked sessions", async ({
