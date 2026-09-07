@@ -14,6 +14,7 @@ import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
+import { DeployController } from "./controllers/DeployController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
 import { EstateCommandController } from "./controllers/EstateCommandController.ts";
@@ -44,6 +45,7 @@ import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
+import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
@@ -70,6 +72,7 @@ import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DeployRegistry } from "./services/DeployRegistry.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
+import { DeployService } from "./services/DeployService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
@@ -199,6 +202,9 @@ export const LoreApi = $module({
     // writes through it.
     DeployRegistry,
     DeployRunner,
+    DeployService,
+    DeployJobs,
+    DeployController,
     ProjectLimits,
     AreaService,
     // The one write path for `app_instances`, and the only writer of

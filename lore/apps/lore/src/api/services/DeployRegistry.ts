@@ -1,6 +1,9 @@
 import { $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
+import { $repository } from "alepha/orm";
+
+import { type Deployment, deployments } from "../entities/deployments.ts";
 
 /**
  * One line of a deploy's log.
@@ -11,112 +14,145 @@ export interface DeployLogLine {
 }
 
 /**
- * Where a deploy's status and log go.
+ * Where a deploy's status and log go: straight onto the `deployments` row.
  *
- * ## ⚠️ A seam, and the table behind it is #1201's
+ * ## ⚠️ Nothing here throws
  *
- * The runner has to be able to say what it is doing before there is anywhere
- * to write it, or the two land in one commit and neither can be tested without
- * the other. So this is the interface the runner drives, with a buffer behind
- * it today; #1201 adds the `deployments` table and the D1-backed
- * implementation, and substitutes it the way every other provider in this
- * codebase is substituted.
+ * By the time most lines are written a Worker has been uploaded and a database
+ * migrated. A deploy that failed because its own LOG could not be written would
+ * report failure for work that succeeded, and the operator would retry a run
+ * that already landed. Every method swallows and logs instead, so a lost line
+ * costs a gap in the log and nothing else.
  *
- * ⚠️ **Nothing here throws.** A deploy that fails because its own log could
- * not be written is a worse outcome than a deploy with a gap in its log: the
- * side effects - a Worker uploaded, a database migrated - have already
- * happened by the time most lines are written, so a throw here would report
- * failure for work that succeeded. Every method swallows and logs instead.
+ * ## ⚠️ The log is bounded, and that is not tidiness
  *
- * ⚠️ `deploymentId` is optional throughout, and that is not laziness. A deploy
- * driven from a test, or from the CLI before #1201's row exists, has no row to
- * write against and must still run.
+ * A deploy that loops, or an adapter that logs per asset, writes a row that
+ * grows without limit into a database with a 10 GB ceiling and no sweep job for
+ * this table. {@link MAX_LOG_LINES} trims the oldest and leaves a line saying
+ * so, because a truncated log that does not say it is truncated reads as a
+ * complete one - and the missing lines are exactly the ones somebody is
+ * debugging.
+ *
+ * ## `deploymentId` is optional throughout
+ *
+ * A deploy driven from a test, or from the CLI against an instance with no row
+ * yet, has nothing to write against and must still run. The Worker's own log
+ * still gets every line.
  */
 export class DeployRegistry {
   protected readonly log = $logger();
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly rows = $repository(deployments);
 
   /**
-   * The log lines this process has buffered, by deployment id.
+   * How many lines one deploy's log keeps.
    *
-   * In-memory, so it is lost when the isolate is recycled. That is exactly why
-   * #1201 replaces it: a deploy the user is watching outlives the isolate that
-   * started it.
+   * A real deploy writes about a dozen: one per orchestrator step, plus the
+   * fetch, the unpack and the outcome. 200 leaves room for an adapter that
+   * says more without leaving room for one that never stops.
    */
-  protected readonly lines = new Map<string, DeployLogLine[]>();
-
-  /**
-   * The status each deployment last reported.
-   */
-  protected readonly status = new Map<string, string>();
+  public static readonly MAX_LOG_LINES = 200;
 
   public async started(deploymentId?: string): Promise<void> {
-    await this.record(deploymentId, "running");
+    await this.patch(deploymentId, {
+      status: "running",
+      startedAt: new Date(this.dateTime.nowMillis()).toISOString(),
+    });
   }
 
-  public async succeeded(deploymentId?: string, url?: string): Promise<void> {
-    await this.record(deploymentId, "succeeded");
-    if (url) {
-      await this.write(deploymentId, `Deployed to ${url}`);
+  public async succeeded(
+    deploymentId: string | undefined,
+    outcome: { url?: string; versionId?: string } = {},
+  ): Promise<void> {
+    if (outcome.url) {
+      await this.line(deploymentId, `Deployed to ${outcome.url}`);
     }
+    await this.patch(deploymentId, {
+      status: "succeeded",
+      url: outcome.url,
+      versionId: outcome.versionId,
+      finishedAt: new Date(this.dateTime.nowMillis()).toISOString(),
+    });
   }
 
-  public async failed(deploymentId?: string, reason?: string): Promise<void> {
-    await this.record(deploymentId, "failed");
+  public async failed(
+    deploymentId: string | undefined,
+    reason?: string,
+  ): Promise<void> {
     if (reason) {
-      await this.write(deploymentId, `Failed: ${reason}`);
+      await this.line(deploymentId, `Failed: ${reason}`);
     }
+    await this.patch(deploymentId, {
+      status: "failed",
+      error: reason?.slice(0, 2_000),
+      finishedAt: new Date(this.dateTime.nowMillis()).toISOString(),
+    });
+  }
+
+  public async cancelled(deploymentId?: string): Promise<void> {
+    await this.line(deploymentId, "Cancelled");
+    await this.patch(deploymentId, {
+      status: "cancelled",
+      finishedAt: new Date(this.dateTime.nowMillis()).toISOString(),
+    });
   }
 
   /**
-   * One line, timestamped through `DateTimeProvider` so a test can pin it.
+   * One line, appended.
+   *
+   * ⚠️ Read-modify-write, and it does not need a lock: a deploy is one job
+   * execution writing its own row, and two runs against one instance are two
+   * rows. A lost line under a race would be a gap in a log, which is the
+   * failure this method is already allowed to have.
    */
   public async line(
     deploymentId: string | undefined,
     text: string,
   ): Promise<void> {
-    await this.write(deploymentId, text);
-  }
-
-  public linesOf(deploymentId: string): DeployLogLine[] {
-    return this.lines.get(deploymentId) ?? [];
-  }
-
-  public statusOf(deploymentId: string): string | undefined {
-    return this.status.get(deploymentId);
-  }
-
-  protected async write(
-    deploymentId: string | undefined,
-    text: string,
-  ): Promise<void> {
-    // Logged whether or not there is a row: a deploy driven with no
-    // `deploymentId` still has to be followable in the Worker's own log.
     this.log.info(text, { deploymentId });
     if (!deploymentId) {
       return;
     }
     try {
-      const lines = this.lines.get(deploymentId) ?? [];
-      lines.push({
-        at: new Date(this.dateTime.nowMillis()).toISOString(),
-        text,
+      const row = await this.rows.findById(deploymentId);
+      if (!row) {
+        return;
+      }
+      await this.rows.updateById(deploymentId, {
+        log: this.appended(row.log ?? [], text),
       });
-      this.lines.set(deploymentId, lines);
     } catch (error) {
       this.log.warn("Could not record a deploy log line", { error });
     }
   }
 
-  protected async record(
+  /**
+   * The log with one line added, trimmed if that took it over the bound.
+   */
+  protected appended(existing: DeployLogLine[], text: string): DeployLogLine[] {
+    const at = new Date(this.dateTime.nowMillis()).toISOString();
+    const next = [...existing, { at, text: text.slice(0, 500) }];
+    if (next.length <= DeployRegistry.MAX_LOG_LINES) {
+      return next;
+    }
+    // The oldest go, and the reader is told. A log that silently lost its
+    // first half looks like a deploy that started in the middle.
+    const dropped = next.length - DeployRegistry.MAX_LOG_LINES;
+    return [
+      { at, text: `... ${dropped} earlier line(s) dropped` },
+      ...next.slice(dropped + 1),
+    ];
+  }
+
+  protected async patch(
     deploymentId: string | undefined,
-    status: string,
+    values: Partial<Deployment>,
   ): Promise<void> {
     if (!deploymentId) {
       return;
     }
     try {
-      this.status.set(deploymentId, status);
+      await this.rows.updateById(deploymentId, values as never);
     } catch (error) {
       this.log.warn("Could not record a deploy status", { error });
     }

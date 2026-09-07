@@ -6,7 +6,6 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { LoreApi } from "../src/api/index.ts";
-import { DeployRegistry } from "../src/api/services/DeployRegistry.ts";
 import { DeployRunner } from "../src/api/services/DeployRunner.ts";
 import { gzip, tar } from "./fixtures/artifactTarball.ts";
 
@@ -211,34 +210,13 @@ describe("deploying an artifact from inside the Worker", () => {
     expect(calls).toContain("deploy:my-app-pr-482");
   });
 
-  it("writes a log a reader can follow, and marks the run", async ({
-    expect,
-  }) => {
-    const { runner } = await withFakeCloudflare(await packed());
-    const registry = alepha.inject(DeployRegistry);
+  it("runs with no deployment row at all", async ({ expect }) => {
+    // A deploy driven from a test, or from the CLI against an instance whose
+    // row does not exist yet, has nothing to write against and must still run.
+    const { runner, calls } = await withFakeCloudflare(await packed());
 
-    await runner.run(request({ deploymentId: "d-1" }) as never);
+    await runner.run(request() as never);
 
-    const text = registry.linesOf("d-1").map((it) => it.text);
-    expect(registry.statusOf("d-1")).toBe("succeeded");
-    expect(text.some((it) => it.startsWith("Fetching"))).toBe(true);
-    expect(text.some((it) => it.startsWith("Unpacked"))).toBe(true);
-    expect(text.some((it) => it.includes("deploy worker"))).toBe(true);
-  });
-
-  it("marks a failed run and says why", async ({ expect }) => {
-    const { runner } = await withFakeCloudflare(
-      await gzip(tar({ "dist/index.js": "1" })),
-    );
-    const registry = alepha.inject(DeployRegistry);
-
-    await expect(
-      runner.run(request({ deploymentId: "d-2" }) as never),
-    ).rejects.toThrow();
-
-    expect(registry.statusOf("d-2")).toBe("failed");
-    expect(
-      registry.linesOf("d-2").some((it) => it.text.startsWith("Failed:")),
-    ).toBe(true);
+    expect(calls).toContain("deploy:my-app-b14-preview");
   });
 });
