@@ -195,6 +195,47 @@ describe("deploying from another server", () => {
       expect(created?.body).toEqual({ app: "club", env: "wassup" });
     });
 
+    it("carries the address onto the new copy, which is what makes the answer a URL", async () => {
+      // ⚠️ `DeployRunner` reads the domain off `app_instances.url`, and the
+      // adapter answers a URL only when it put one into effect. A copy created
+      // with no address deploys fine and answers nothing to link to.
+      const { api, service } = setup({
+        "GET /api/projects/1/apps": () => ({
+          items: [anInstance({ id: "i-prod", env: "production" })],
+        }),
+        "POST /api/projects/1/apps": () => anInstance(),
+        "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
+        "POST /api/projects/1/apps/inst-1/deployments": () => ({
+          id: "dep-1",
+          status: "queued",
+        }),
+        "GET /api/projects/1/deployments/dep-1": () => ({
+          id: "dep-1",
+          app: "club",
+          tag: "latest",
+          status: "succeeded",
+          url: "https://wassup.club.example",
+          log: [],
+        }),
+      });
+
+      await service.deploy({
+        app: "club",
+        env: "wassup",
+        create: true,
+        url: "https://wassup.club.example",
+      });
+
+      const created = api.calls.find(
+        (it) => it.path === "/api/projects/1/apps" && it.method === "POST",
+      );
+      expect(created?.body).toEqual({
+        app: "club",
+        env: "wassup",
+        url: "https://wassup.club.example",
+      });
+    });
+
     it("refuses an estate slug this project was not lent", async () => {
       // ⚠️ A slug resolved against the LENDING, never an id taken on trust.
       const { service } = setup({
