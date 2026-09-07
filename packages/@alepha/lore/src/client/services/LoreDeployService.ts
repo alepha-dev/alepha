@@ -71,6 +71,16 @@ export interface LoreDeployInput {
    */
   create?: boolean;
   /**
+   * Where the new copy answers, e.g. `https://wassup.club.example`.
+   *
+   * Only read when {@link create} makes one, and it is what makes a per-tenant
+   * address work: `DeployRunner` takes the host from `app_instances.url` and
+   * hands it to the adapter as the environment's domain, and the adapter
+   * answers a URL only when it put one into effect. **Omit it and a successful
+   * deploy answers no URL**, because there is no domain for it to name.
+   */
+  url?: string;
+  /**
    * Which estate a newly created copy deploys to, by slug.
    *
    * Only read when {@link create} makes one. Omitted, the new copy inherits
@@ -104,8 +114,15 @@ export interface LoreDeployInput {
  *   env: "wassup",
  *   tag: "latest",
  *   create: true,
+ *   url: "https://wassup.club.example",
  * });
  * ```
+ *
+ * ⚠️ **The `url` is what makes the answer a URL.** `DeployRunner` takes the
+ * host from `app_instances.url` and hands it to the adapter as the
+ * environment's domain, and the adapter answers a URL only when it put one
+ * into effect. A copy created with no address deploys perfectly well and
+ * answers nothing to link to.
  *
  * ## ⚠️ Five round trips, and none of them names an estate on the wire
  *
@@ -246,7 +263,11 @@ export class LoreDeployService {
     const created = await this.api.request<LoreAppInstance>(
       "POST",
       `/api/projects/${projectId}/apps`,
-      { app: input.app, env: input.env },
+      {
+        app: input.app,
+        env: input.env,
+        ...(input.url === undefined ? {} : { url: input.url }),
+      },
     );
 
     const linked = await this.api.request<LoreAppInstance>(

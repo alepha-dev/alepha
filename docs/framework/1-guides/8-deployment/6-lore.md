@@ -130,6 +130,7 @@ const { url } = await lore.deploy({
   env: "wassup",
   tag: "latest",
   create: true,
+  url: "https://wassup.club.example",
 });
 ```
 
@@ -146,6 +147,11 @@ A copy created this way **inherits the estate** of the app's `production` copy
 (or the first by name), so the call carries no infrastructure at all. Pass
 `estate` with a slug to override, and it is resolved against the estates lent
 to this project rather than trusted.
+
+⚠️ **The `url` is what makes the answer a URL.** The deploy takes the domain
+from the copy's own address and the adapter answers a URL only when it put one
+into effect, so a copy created with no address deploys perfectly well and
+answers nothing to link to.
 
 ⚠️ **It does not build.** `lore apps build` and `lore artifacts push` belong in
 CI, on the machine holding the source; this ships bytes that already exist and
