@@ -1072,6 +1072,7 @@ export default {
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",
   "account.projects.empty": "You are not part of any project yet.",
+  "account.projects.quota": "$1 of $2 projects owned",
   "account.projects.owner": "Owner",
   "account.projects.member": "Member",
   "account.projects.updated": "Updated $1",
