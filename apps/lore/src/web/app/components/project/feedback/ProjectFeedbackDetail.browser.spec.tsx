@@ -207,24 +207,46 @@ describe("ProjectFeedbackDetail - attachment previews", () => {
     );
   };
 
-  it("wraps an image attachment in a hover trigger, and leaves other kinds alone", async ({
+  /**
+   * ⚠️ The hover preview is GONE, replaced rather than joined (feedback
+   * #P2139). Its own spec said these attachments "are almost always
+   * screenshots", and a 320px popup that appears while the pointer is on its
+   * way to a click is the wrong affordance for the one thing the owner does
+   * with them: check it is the right screenshot. The trade is real and was
+   * taken deliberately - a hover cost nothing, and a click costs one.
+   */
+  it("opens an image in the lightbox on a plain click, and leaves other kinds alone", async ({
     expect,
   }) => {
     const view = await show(withAttachments);
 
-    const image = await view.findByText("screenshot.png");
-    const log = view.getByText("server.log");
+    fireEvent.click(await view.findByText("screenshot.png"));
+    const dialog = await view.findByRole("dialog");
+    expect(dialog.textContent).toContain("screenshot.png");
+    expect(
+      dialog.querySelector(
+        'img[src="/api/files/00000000-0000-4000-8000-00000000000a"]',
+      ),
+    ).not.toBeNull();
+  });
 
-    // The classifier decides, and only the image row becomes a trigger.
-    expect(image.closest('[data-slot="hover-card-trigger"]')).not.toBeNull();
-    expect(log.closest('[data-slot="hover-card-trigger"]')).toBeNull();
+  it("leaves a non-image attachment as a plain link", async ({ expect }) => {
+    // ⚠️ A FRESH render, not a second click in the case above: the lightbox
+    // is already open there, so a dialog count would read 1 whichever row
+    // had opened it and the assertion would pass on a broken classifier.
+    const view = await show(withAttachments);
+
+    fireEvent.click(await view.findByText("server.log"));
+
+    expect(view.baseElement.querySelectorAll('[role="dialog"]').length).toBe(0);
   });
 
   it("keeps every row a real link to the full file", async ({ expect }) => {
     const view = await show(withAttachments);
 
-    // The hover card must not swallow the click: opening the full image in
-    // a tab is how the owner actually reads it.
+    // ⚠️ Only the PLAIN click is taken. The anchor stays real so ⌘-click,
+    // middle-click and Open in new tab keep working, and so does the row
+    // with no JavaScript at all.
     for (const [name, id] of [
       ["screenshot.png", "00000000-0000-4000-8000-00000000000a"],
       ["server.log", "00000000-0000-4000-8000-00000000000b"],
@@ -235,18 +257,14 @@ describe("ProjectFeedbackDetail - attachment previews", () => {
     }
   });
 
-  it("fetches no image until the card opens", async ({ expect }) => {
+  it("fetches no image until the lightbox opens", async ({ expect }) => {
     const view = await show(withAttachments);
 
     await view.findByText("screenshot.png");
-    // The preview lives in a portalled popup that Base UI mounts on open, so
-    // an inbox row with five screenshots costs no requests to draw.
+    // The dialog is portalled and mounts on open, so an inbox row with five
+    // screenshots still costs no requests to draw - the one property worth
+    // keeping from the hover card it replaced.
     expect(view.baseElement.querySelectorAll("img").length).toBe(0);
-    expect(
-      view.baseElement.querySelector(
-        '[data-testid="feedback-attachment-preview"]',
-      ),
-    ).toBeNull();
   });
 });
 
