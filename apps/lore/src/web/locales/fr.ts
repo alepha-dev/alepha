@@ -36,6 +36,10 @@ export default {
     "Votre périple commence ici. Forgez des quêtes, ralliez votre équipée et consignez ses exploits à travers le royaume.",
   "home.create-project": "Lancer un nouveau projet",
   "home.create-project.max": "Limite atteinte ($1)",
+  "project.create.limit.title": "Vous avez atteint la limite de projets",
+  "project.create.limit.description":
+    "Ce compte possède le maximum de $1 projets. Supprimez-en un dont vous n\u2019avez plus besoin, ou transférez-le, et cette page vous laissera passer.",
+  "project.create.limit.back": "Revenir à mes projets",
   "home.start-first-project": "Lancer votre premier projet",
   "home.already-registered": "Déjà inscrit ? Se connecter",
   "home.sign-in": "Se connecter",

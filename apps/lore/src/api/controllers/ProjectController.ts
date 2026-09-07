@@ -314,22 +314,27 @@ export class ProjectController {
     },
     handler: async ({ body, user }) => {
       const maxProjectsPerUser = await this.limits.maxProjectsPerUser();
-      // ⚠️ Owner ROWS, not `projects.createdBy`. `createdBy` never changes, so
-      // once ownership can be transferred a quota counting it charges the
-      // giver forever and the receiver nothing - a limit two clicks route
-      // around, and a user who hands a project to a colleague is still told
-      // they have reached the maximum.
+      // ⚠️ Through `ownedProjectIds`, which is also what the Home overview
+      // reads. It used to count owner membership rows here with no join, and
+      // the comment that stood in this place claimed that was equivalent to
+      // counting live projects because `ProjectDeletionService` hard-deletes
+      // the membership rows.
       //
-      // Exactly equivalent to the old count on day one, soft deletes
-      // included: `ProjectDeletionService` HARD-deletes the membership rows,
-      // so a soft-deleted project has none and cannot be counted here either.
-      // The two only diverge where they should, at a transfer.
-      const count = await this.members.count({
-        userId: { eq: user.id },
-        rank: { eq: ProjectRankResource.OWNER_KEY },
-      });
+      // **That claim was false in production** (feedback #P2133). The delete
+      // is two statements and D1 has no transaction, so seven soft-deleted
+      // projects still carried an owner row - and their owner, with 8 live
+      // projects against a limit of 10, was told on the Home page that they
+      // could create and refused here at submit, because this count said 15.
+      // Migration `20260907064420_smart_spot` made it permanent: its UPDATE
+      // half stamps `rank = 'owner'` with no `deleted_at IS NULL`, where the
+      // INSERT half below it filters correctly.
+      //
+      // One helper, called by both, is the fix - not a second `WHERE` here.
+      // Two counts that must agree and are written twice is what produced
+      // this.
+      const owned = await this.projectSecurity.ownedProjectIds(user.id);
 
-      if (count >= maxProjectsPerUser) {
+      if (owned.size >= maxProjectsPerUser) {
         throw new ForbiddenError(
           `You have reached the maximum number of projects allowed (${maxProjectsPerUser}).`,
         );
@@ -548,22 +553,14 @@ export class ProjectController {
           // exactly the request that hits it.
           projectIds.length === 0
             ? Promise.resolve(new Set<number>())
-            : this.members
-                .findMany({
-                  where: {
-                    projectId: { inArray: projectIds },
-                    userId: { eq: user.id },
-                    rank: { eq: "owner" },
-                  },
-                })
-                .then((rows) => new Set(rows.map((it) => it.projectId))),
+            : this.projectSecurity.ownedProjectIds(user.id),
         ]);
 
-      // ⚠️ The badge read IS the quota read, and one query answers both. The
-      // `projects` relation is every project the caller belongs to, so the
-      // owner rows inside it are all the owner rows there are - and counting
-      // `projects.createdBy` separately would have disagreed with the badge
-      // beside it the moment a project was transferred.
+      // ⚠️ The badge read IS the quota read, and it is now literally the same
+      // call `createProject` makes - `ownedProjectIds`. Deriving the count
+      // here and counting membership rows there is what let the two disagree
+      // by seven in production (feedback #P2133): this side filtered
+      // soft-deleted projects and that side did not.
       const ownedCount = ownedIds.size;
 
       return {

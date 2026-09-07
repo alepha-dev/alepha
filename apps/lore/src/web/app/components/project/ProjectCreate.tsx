@@ -4,7 +4,7 @@ import { Card, CardContent } from "@alepha/ui/components/ui/card";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject } from "alepha/react";
+import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -68,6 +68,7 @@ interface CapabilityDraft {
 
 const ProjectCreate = () => {
   const client = useClient<ProjectController>();
+  const [overview] = useStore(userProjectsAtom);
   const toaster = useToast();
   const router = useRouter<AppRouter>();
   const alepha = useAlepha();
@@ -225,6 +226,40 @@ const ProjectCreate = () => {
         },
       },
     }));
+
+  /*
+   * ⚠️ Refused HERE, not at submit (feedback #P2133). The reporter filled
+   * three steps and was told "too many projects" by the response to the
+   * create call - which is the worst possible moment, and was also WRONG,
+   * because the server counted deleted projects while the page's own
+   * `canCreate` did not. The count is one helper now, so this check and the
+   * server's refusal cannot disagree.
+   *
+   * ⚠️ Fails OPEN on a missing overview. The Layout loader fills the atom for
+   * every signed-in page, but a transient failure there must cost the guard
+   * rather than the page: the server still refuses, at submit, which is
+   * exactly where this started - a worse experience, not a broken one.
+   */
+  if (overview && !overview.canCreate) {
+    return (
+      <div className="bg-background flex h-screen w-full flex-col items-center justify-center">
+        <PageHeader />
+        <div className="mx-auto flex w-full max-w-xl flex-col items-start gap-4 px-4">
+          <h1 className="text-lg font-semibold">
+            {tr("project.create.limit.title")}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {tr("project.create.limit.description", {
+              args: [String(overview.maxProjects)],
+            })}
+          </p>
+          <Button onClick={() => void router.push("home")}>
+            {tr("project.create.limit.back")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (activeStep === forgingStep) {
     return (

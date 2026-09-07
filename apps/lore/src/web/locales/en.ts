@@ -39,6 +39,10 @@ export default {
     "Your journey begins here. Forge quests, recruit your party and record their deeds across the realm.",
   "home.create-project": "New Project",
   "home.create-project.max": "Limit reached ($1)",
+  "project.create.limit.title": "You have reached the project limit",
+  "project.create.limit.description":
+    "This account owns the maximum of $1 projects. Delete one you no longer need, or hand it to somebody else, and this page will let you through.",
+  "project.create.limit.back": "Back to my projects",
   "home.start-first-project": "Start your first project",
   "home.already-registered": "Already registered? Sign in",
   "home.sign-in": "Sign in",
