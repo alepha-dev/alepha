@@ -1978,6 +1978,14 @@ export default {
   "agentPrompts.review": "Relire",
   "agentPrompts.activate": "Activer",
   "agentPrompts.workOnIt": "S’en charger",
+  "agentPrompts.review.description":
+    "Demande à un agent de lire l'épopée et ses quêtes, et de challenger le plan avant toute construction.",
+  "agentPrompts.activate.description":
+    "Demande à un agent de démarrer l'épopée et de mener ses quêtes à terme, une par une.",
+  "agentPrompts.questWork.description":
+    "Confie la quête, ses objectifs et tout ce qu'elle référence à un agent de code.",
+  "agentPrompts.feedbackWork.description":
+    "Confie le signalement à un agent de code, avec à la clé une quête qui y est liée.",
   "agentPrompts.copied":
     "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
   "agentPrompts.settings.title": "Invites pour agents",

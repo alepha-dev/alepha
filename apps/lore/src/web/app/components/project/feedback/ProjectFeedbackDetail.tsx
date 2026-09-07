@@ -359,7 +359,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                 ? [
                     {
                       kind: "feedbackWork" as const,
-                      label: String(tr("agentPrompts.workOnIt")),
                       subject: () => promptSubject.forFeedback(feedback),
                     },
                   ]
@@ -401,7 +400,6 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
                 ? [
                     {
                       kind: "feedbackWork" as const,
-                      label: String(tr("agentPrompts.workOnIt")),
                       subject: () => promptSubject.forFeedback(feedback),
                     },
                   ]

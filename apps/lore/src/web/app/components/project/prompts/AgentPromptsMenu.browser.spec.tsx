@@ -44,7 +44,7 @@ describe("AgentPromptsMenu", () => {
   });
 
   const mount = async (
-    items: Array<{ kind: "epicReview" | "epicActivate"; label: string }>,
+    items: Array<{ kind: "epicReview" | "epicActivate" }>,
     project: unknown = projectFixture(),
   ) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
@@ -77,10 +77,7 @@ describe("AgentPromptsMenu", () => {
   };
 
   it("renders the entries it was given behind one button", async () => {
-    await mount([
-      { kind: "epicReview", label: "Review" },
-      { kind: "epicActivate", label: "Activate" },
-    ]);
+    await mount([{ kind: "epicReview" }, { kind: "epicActivate" }]);
 
     const trigger = screen.getByRole("button", { name: /agent prompts/i });
     fireEvent.click(trigger);
@@ -92,6 +89,37 @@ describe("AgentPromptsMenu", () => {
     });
     expect(items.map((it) => it.textContent).join(" ")).toContain("Review");
     expect(items.map((it) => it.textContent).join(" ")).toContain("Activate");
+  });
+
+  it("names each entry and says what it does", async () => {
+    /*
+     * Feedback #P2149: the trigger read as a plain button and its one item
+     * was a bare label. Both halves are the point - a reader picking
+     * between four templates should not have to copy one to find out what
+     * it is for.
+     *
+     * ⚠️ The label and the description come from `AGENT_PROMPT_MENU_META`
+     * keyed on the kind, never from the caller, which is what stops a fifth
+     * prompt arriving with a label and a blank line under it.
+     */
+    await mount([{ kind: "epicReview" }]);
+
+    // The caret, so the button reads as something that opens. Decoration:
+    // it adds no accessible name, and the trigger is still found by its own.
+    const trigger = screen.getByRole("button", { name: /^agent prompts$/i });
+    expect(trigger.querySelectorAll("svg").length).toBe(2);
+
+    fireEvent.click(trigger);
+
+    const item = await waitFor(() => {
+      const found = document.querySelector('[role="menuitem"]');
+      if (!found) throw new Error("not open yet");
+      return found;
+    });
+    expect(item.textContent).toContain("Review");
+    expect(item.textContent).toContain("challenge the plan");
+    // Its own glyph, not the trigger's `Bot`: the row is an action.
+    expect(item.querySelector("svg")).not.toBeNull();
   });
 
   /**
@@ -107,7 +135,7 @@ describe("AgentPromptsMenu", () => {
 
   it("renders nothing when the project has agent prompts off", async () => {
     await mount(
-      [{ kind: "epicReview", label: "Review" }],
+      [{ kind: "epicReview" }],
       projectFixture({ options: { work: { agentPrompts: false } } }),
     );
     expect(screen.queryByRole("button", { name: /agent prompts/i })).toBe(null);
@@ -115,10 +143,7 @@ describe("AgentPromptsMenu", () => {
 
   it("copies the prompt for the kind that was clicked", async () => {
     const written = stubClipboard();
-    await mount([
-      { kind: "epicReview", label: "Review" },
-      { kind: "epicActivate", label: "Activate" },
-    ]);
+    await mount([{ kind: "epicReview" }, { kind: "epicActivate" }]);
 
     fireEvent.click(screen.getByRole("button", { name: /agent prompts/i }));
     const items = await waitFor(() => {

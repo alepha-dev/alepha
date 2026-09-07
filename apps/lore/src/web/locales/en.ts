@@ -1963,6 +1963,14 @@ export default {
   "agentPrompts.review": "Review",
   "agentPrompts.activate": "Activate",
   "agentPrompts.workOnIt": "Work on it",
+  "agentPrompts.review.description":
+    "Asks an agent to read the epic and its quests, and to challenge the plan before any of it is built.",
+  "agentPrompts.activate.description":
+    "Asks an agent to begin the epic and work its quests to completion, one at a time.",
+  "agentPrompts.questWork.description":
+    "Hands the quest, its objectives and everything it links to, to a coding agent.",
+  "agentPrompts.feedbackWork.description":
+    "Hands the report to a coding agent, ending in a quest linked back to it.",
   "agentPrompts.copied":
     "Prompt for $1 copied. Paste it into Claude Code or Codex.",
   "agentPrompts.settings.title": "Agent prompts",
