@@ -13,11 +13,14 @@ import { DeployController } from "../src/api/controllers/DeployController.ts";
 import { ProjectCapabilityController } from "../src/api/controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { appInstances } from "../src/api/entities/appInstances.ts";
+import { artifacts } from "../src/api/entities/artifacts.ts";
 import { deployments } from "../src/api/entities/deployments.ts";
 import { estateProjects } from "../src/api/entities/estateProjects.ts";
 import { estates } from "../src/api/entities/estates.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { DeployJobs } from "../src/api/jobs/DeployJobs.ts";
+import { AppSecretService } from "../src/api/services/AppSecretService.ts";
+import { AppService } from "../src/api/services/AppService.ts";
 import { DeployGate } from "../src/api/services/DeployGate.ts";
 import { DeployRegistry } from "../src/api/services/DeployRegistry.ts";
 import { DeployService } from "../src/api/services/DeployService.ts";
@@ -40,6 +43,7 @@ class TestRows {
   public readonly estates = $repository(estates);
   public readonly grants = $repository(estateProjects);
   public readonly instances = $repository(appInstances);
+  public readonly artifacts = $repository(artifacts);
 }
 
 /**
@@ -218,6 +222,188 @@ describe("a deployment", () => {
           tag: "latest",
         }),
       ).rejects.toThrowError(/No such deployed copy/);
+    });
+  });
+
+  describe("the sigil a build asks for", () => {
+    /**
+     * A project, a copy, a lent Cloudflare estate and one stored artifact
+     * whose manifest declares whatever the caller says.
+     */
+    const deployable = async (env: string[] | undefined) => {
+      const w = await world();
+      const rows = alepha.inject(TestRows);
+      const estate = await rows.estates.create({
+        ownerUserId: w.user.id,
+        type: "cloudflare",
+        slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
+        deployAllowed: true,
+        credentialStatus: "valid",
+        accountId: "acct",
+        credential: "sealed",
+      } as never);
+      await rows.grants.create({
+        estateId: estate.id,
+        projectId: w.project.id,
+      } as never);
+      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+      await rows.artifacts.create({
+        projectId: w.project.id,
+        app: "my-app",
+        tag: "1.2.3",
+        runtime: "workerd",
+        sha256: "a".repeat(64),
+        size: 10,
+        fileId: crypto.randomUUID(),
+        ...(env === undefined ? {} : { manifest: JSON.stringify({ env }) }),
+      } as never);
+      return w;
+    };
+
+    const sigilOf = async (instanceId: string) =>
+      (await alepha.inject(TestRows).instances.findById(instanceId))?.sigilId;
+
+    /**
+     * A copy whose sigil exists and whose key Lore cannot produce - the state
+     * of anyone who minted one the old way and pasted the token themselves.
+     *
+     * Built by minting properly and then dropping the stored variable, rather
+     * than by writing a `sigilId` that references nothing: the column is a
+     * foreign key, so the shortcut fails on the constraint instead of
+     * reproducing the case.
+     */
+    const sigilWithoutStoredKey = async () => {
+      const w = await deployable(["SIGIL_KEY"]);
+      const instance = await alepha
+        .inject(TestRows)
+        .instances.findById(w.instance.id);
+      await alepha
+        .inject(AppService)
+        .provisionSigil(instance as never, { createdBy: w.user.id });
+      await alepha
+        .inject(AppSecretService)
+        .remove(w.instance.id, AppService.SIGIL_KEY);
+      return w;
+    };
+
+    /**
+     * ⚠️ The build's own declaration is the trigger. An app bundling the
+     * reporting module declares `SIGIL_KEY` through `$env`, `alepha build`
+     * writes every declared key into the manifest, and the registry stored it
+     * at push - so asking an operator to answer the same question with a flag
+     * is how copies end up deployed with telemetry silently off.
+     */
+    it("mints one when the manifest declares SIGIL_KEY", async ({ expect }) => {
+      const w = await deployable(["APP_SECRET", "SIGIL_KEY"]);
+
+      await alepha.inject(DeployService).queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "1.2.3",
+        createdBy: w.user.id,
+      });
+
+      expect(await sigilOf(w.instance.id)).toBeTruthy();
+      const stored = await alepha.inject(AppSecretService).open(w.instance.id);
+      expect(stored.SIGIL_KEY).toMatch(/^sg_/);
+    });
+
+    it("mints nothing for a build that does not declare it", async ({
+      expect,
+    }) => {
+      const w = await deployable(["APP_SECRET", "DATABASE_URL"]);
+
+      await alepha.inject(DeployService).queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "1.2.3",
+      });
+
+      expect(await sigilOf(w.instance.id)).toBeFalsy();
+    });
+
+    /**
+     * ⚠️ Absent means UNKNOWN, not "declares nothing". Every artifact pushed
+     * before the column existed has none, and this path only ever ADDS
+     * behaviour - so a null must leave the copy exactly as it was.
+     */
+    it("mints nothing when the artifact predates the manifest column", async ({
+      expect,
+    }) => {
+      const w = await deployable(undefined);
+
+      await alepha.inject(DeployService).queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "1.2.3",
+      });
+
+      expect(await sigilOf(w.instance.id)).toBeFalsy();
+    });
+
+    it("mints nothing when asked not to", async ({ expect }) => {
+      const w = await deployable(["SIGIL_KEY"]);
+
+      await alepha.inject(DeployService).queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "1.2.3",
+        sigil: false,
+      });
+
+      expect(await sigilOf(w.instance.id)).toBeFalsy();
+    });
+
+    it("mints one on request even when the build is silent", async ({
+      expect,
+    }) => {
+      const w = await deployable(["APP_SECRET"]);
+
+      await alepha.inject(DeployService).queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "1.2.3",
+        sigil: true,
+      });
+
+      expect(await sigilOf(w.instance.id)).toBeTruthy();
+    });
+
+    /**
+     * ⚠️ The automatic path never throws. A copy whose sigil is managed by
+     * hand - one exists, its key was pasted somewhere Lore cannot read - must
+     * keep deploying; it simply runs as it already was.
+     */
+    it("still deploys when a copy already has a sigil it cannot key", async ({
+      expect,
+    }) => {
+      const w = await sigilWithoutStoredKey();
+
+      const row = await alepha.inject(DeployService).queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "1.2.3",
+      });
+
+      expect(row.status).toBeDefined();
+    });
+
+    /**
+     * ⚠️ An explicit `--sigil` is the operator overriding the build, so its
+     * failure has to reach them rather than be logged - and it fails BEFORE
+     * the row, while they are still holding the request.
+     */
+    it("refuses an explicit request it cannot satisfy", async ({ expect }) => {
+      const w = await sigilWithoutStoredKey();
+
+      await expect(
+        alepha.inject(DeployService).queue({
+          projectId: w.project.id,
+          instanceId: w.instance.id,
+          tag: "1.2.3",
+          sigil: true,
+        }),
+      ).rejects.toThrowError(/only a hash is kept/);
     });
   });
 
@@ -631,8 +817,13 @@ describe("the deploy gate", () => {
 
   it("takes no estate from the client, by any route", async ({ expect }) => {
     // Structural rather than a check: the request schemas carry a project, an
-    // instance and a tag, and no estate at all. A field added here later is
-    // the bug, however carefully it is validated.
+    // instance, a tag and whether this copy should have a sigil - and no
+    // estate at all. A field added here later is the bug, however carefully it
+    // is validated.
+    //
+    // ⚠️ `sigil` is on this list because a sigil is a credential Lore mints
+    // for THIS copy. An estate is somebody's cloud account, and a client that
+    // could name one could deploy into it.
     const controller = alepha.inject(DeployController);
     const body = (
       controller.startDeploy as never as {
@@ -640,7 +831,7 @@ describe("the deploy gate", () => {
       }
     ).options.schema.body;
 
-    expect(Object.keys(body.shape)).toEqual(["tag"]);
+    expect(Object.keys(body.shape).sort()).toEqual(["sigil", "tag"]);
   });
 
   it("refuses a copy whose lending was revoked after it was pointed there", async ({

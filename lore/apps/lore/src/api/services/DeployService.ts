@@ -3,11 +3,12 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
-import { appInstances } from "../entities/appInstances.ts";
-import { artifacts } from "../entities/artifacts.ts";
+import { type AppInstance, appInstances } from "../entities/appInstances.ts";
+import { type Artifact, artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
 import { estates } from "../entities/estates.ts";
 import { AppSecretService } from "./AppSecretService.ts";
+import { AppService } from "./AppService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 import { DeployGate } from "./DeployGate.ts";
@@ -31,6 +32,7 @@ export class DeployService {
   protected readonly estates = $repository(estates);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly secrets = $inject(AppSecretService);
+  protected readonly apps = $inject(AppService);
   protected readonly gate = $inject(DeployGate);
   protected readonly limits = $inject(DeployLimits);
   protected readonly estateService = $inject(EstateService);
@@ -50,6 +52,14 @@ export class DeployService {
     instanceId: string;
     tag: string;
     createdBy?: string;
+    /**
+     * Whether this copy should be given a sigil before it ships.
+     *
+     * Three states, and the middle one is the default: `true` mints one even
+     * for a build that does not ask, `false` mints none, and **absent means
+     * "do what the build declares"**.
+     */
+    sigil?: boolean;
   }): Promise<Deployment> {
     const instance = await this.instances.findOne({
       where: {
@@ -104,6 +114,11 @@ export class DeployService {
         `${instance.app} has no artifact tagged '${input.tag}'. Push one with \`lore artifacts push\`, or deploy a tag that exists.`,
       );
     }
+
+    // ⚠️ Before the row, so a copy that cannot be given the sigil it asked for
+    // is refused while the caller is still holding the request - rather than
+    // failing inside a job, after an artifact has been fetched and unpacked.
+    await this.maybeProvisionSigil(instance, artifact, input);
 
     return await this.rows.create({
       projectId: input.projectId,
@@ -274,6 +289,92 @@ export class DeployService {
    * guarantees is that the ROW reaches a terminal state, which is what stops
    * the UI following a deploy forever.
    */
+  /**
+   * Give this copy a sigil when the build it is about to run asks for one.
+   *
+   * ## The build's own declaration is the trigger
+   *
+   * An app that bundles the reporting module declares `SIGIL_KEY` through
+   * `$env`, and `alepha build` writes every declared key into the manifest -
+   * which the registry read out of the tarball at push and stored. So "does
+   * this build report to Lore" is a question the artifact already answers, and
+   * asking an operator to answer it again with a flag is how copies end up
+   * deployed with telemetry silently off.
+   *
+   * ⚠️ **An absent manifest means UNKNOWN, so it mints nothing.** Every
+   * artifact pushed before that column existed has none, and reading absence
+   * as "declares nothing" is right here only because this method exists to ADD
+   * behaviour: the worst a null does is leave a copy as it would have been.
+   *
+   * ## Three states, and the failure modes differ
+   *
+   * `false` mints nothing, for a copy that should stay quiet. `true` is the
+   * operator overriding the build, and it is allowed to FAIL the deploy: they
+   * asked for something Lore cannot always do, and the refusal has to reach
+   * them. Absent is the automatic path, which never throws - a copy whose
+   * sigil is managed by hand must not stop deploying because Lore could not
+   * store a key it was never asked to store.
+   */
+  protected async maybeProvisionSigil(
+    instance: AppInstance,
+    artifact: Artifact,
+    input: { sigil?: boolean; createdBy?: string },
+  ): Promise<void> {
+    if (input.sigil === false) {
+      return;
+    }
+
+    if (input.sigil === true) {
+      await this.apps.provisionSigil(
+        instance,
+        input.createdBy ? { createdBy: input.createdBy } : {},
+      );
+      return;
+    }
+
+    // Automatic from here down: nothing below may throw.
+    if (instance.sigilId || !this.declaresSigil(artifact)) {
+      return;
+    }
+
+    try {
+      await this.apps.provisionSigil(
+        instance,
+        input.createdBy ? { createdBy: input.createdBy } : {},
+      );
+    } catch (error) {
+      // A deploy that would otherwise have shipped must not be lost to this.
+      // The copy simply runs without reporting, which is the state it was
+      // already in.
+      this.log.warn(
+        `Could not mint a sigil for ${instance.app}/${instance.env}; deploying without one`,
+        { error: error instanceof Error ? error.message : String(error) },
+      );
+    }
+  }
+
+  /**
+   * Whether this build declares the variable the reporting module reads.
+   *
+   * ⚠️ Defensive on every step. The column holds whatever a past push stored
+   * under a `.loose()` schema, so it may be absent, may not parse, and may not
+   * have the shape this expects - and none of those is a reason to fail a
+   * deploy. Anything unreadable is "does not declare", which mints nothing.
+   */
+  protected declaresSigil(artifact: Artifact): boolean {
+    if (!artifact.manifest) {
+      return false;
+    }
+    try {
+      const parsed = JSON.parse(artifact.manifest) as { env?: unknown };
+      return (
+        Array.isArray(parsed.env) && parsed.env.includes(AppService.SIGIL_KEY)
+      );
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * The copy's variables, minting the one no operator should have to.
    *
