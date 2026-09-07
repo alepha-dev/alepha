@@ -174,6 +174,13 @@ re-pointing a live tenant is a config change, not a deploy.
 CI, on the machine holding the source; this ships bytes that already exist and
 refuses when the tag names none.
 
+`sigil: true` mints the copy's sigil as it is created and seals `SIGIL_KEY` into
+that copy's environment, so a tenant provisioned this way reports to Lore with
+nothing pasted. Like `domain`, it is read only when the call CREATES the copy -
+and for a harder reason: a sigil is stored as a hash, so the token exists for
+the length of the mint and can never be recovered afterwards. `lore apps deploy
+--sigil` is the same operation for a copy that already exists.
+
 ## From an agent
 
 Three MCP tools sit on the same endpoints: `deploy_start`, `deploy_status` and
