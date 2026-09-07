@@ -8,6 +8,7 @@ import {
 } from "alepha/cli";
 import {
   CloudflareAdapter,
+  CloudflareApi,
   D1MigrationsService,
   type DetectedResources,
   NamingService,
@@ -33,6 +34,10 @@ export class PlatformCommand {
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly secretsCommand = $inject(SecretsCommand);
   protected readonly d1Migrations = $inject(D1MigrationsService);
+  // The transport the migration service is driven with. It carries the
+  // Cloudflare credential, which is why the service takes it as an argument
+  // rather than injecting one of its own.
+  protected readonly cloudflare = $inject(CloudflareApi);
 
   /**
    * Common flags for env targeting.
@@ -831,9 +836,13 @@ export class PlatformCommand {
 
       await adapter.authenticate(ctx, run);
 
-      const result = await this.d1Migrations.baseline(dbName, root, undefined, {
-        reset: flags.reset,
-      });
+      const result = await this.d1Migrations.baseline(
+        this.cloudflare,
+        dbName,
+        root,
+        undefined,
+        { reset: flags.reset },
+      );
 
       if (flags.json) {
         process.stdout.write(

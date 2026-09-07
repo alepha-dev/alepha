@@ -176,4 +176,23 @@ describe("the workerd entries of the CLI", () => {
       [...visited].some((file) => file.endsWith("/PlatformOrchestrator.ts")),
     ).toBe(true);
   });
+
+  it("keeps the worker-side adapter and its two clients reachable", ({
+    expect,
+  }) => {
+    // An entry that dropped the adapter would pass every assertion above by
+    // reaching nothing at all - and `resolveAdapter("cloudflare")` would then
+    // refuse a deploy with "this container has no platform adapter", which
+    // reads as a config problem rather than as a missing export.
+    const { visited } = walk(entries["alepha/cli/platform-lib"]);
+    const reached = (file: string) =>
+      [...visited].some((it) => it.endsWith(`/${file}`));
+
+    expect(reached("WorkerCloudflareAdapter.ts")).toBe(true);
+    expect(reached("CloudflareProvisionClient.ts")).toBe(true);
+    expect(reached("CloudflareDeployClient.ts")).toBe(true);
+    expect(reached("D1MigrationsService.ts")).toBe(true);
+    // ...and the one it exists to avoid.
+    expect(reached("CloudflareApi.ts")).toBe(false);
+  });
 });

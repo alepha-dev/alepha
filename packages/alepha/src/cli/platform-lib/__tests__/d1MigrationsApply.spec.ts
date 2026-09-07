@@ -169,7 +169,7 @@ describe("d1MigrationsApply", () => {
       fs: new FakeFs(paths),
     });
 
-    const call = () => service.apply("mydb", ".", ROOT);
+    const call = () => service.apply(api, "mydb", ".", ROOT);
 
     return { sql: api.imported, bookkeeping: api.sql, call };
   };
@@ -457,7 +457,7 @@ describe("d1MigrationsBaseline", () => {
     });
 
     const call = (opts?: { reset?: boolean }) =>
-      service.baseline("mydb", ".", ROOT, opts);
+      service.baseline(api, "mydb", ".", ROOT, opts);
 
     return { sql: api.sql, call };
   };
@@ -563,7 +563,7 @@ describe("d1MigrationsBaseline", () => {
           new Set([`${ROOT}/20260729013337_baseline/migration.sql`]),
         ),
       });
-      await service.apply("mydb", ".", ROOT);
+      await service.apply(api, "mydb", ".", ROOT);
 
       expect(recordedName).toBe("20260729013337_baseline");
       expect(appliedFiles(api.sql)).toEqual([]);

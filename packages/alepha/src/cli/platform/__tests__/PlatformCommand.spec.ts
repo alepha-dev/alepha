@@ -112,9 +112,14 @@ describe("PlatformCommand", () => {
       const migrationsFs = new FakeFs(
         new Set(migrationPaths.map((p) => nodeJoin("/project", p))),
       );
+      // The filesystem is the service's own; the TRANSPORT is the command's,
+      // because it carries the credential (#288). So the fake goes on the
+      // command, not on the service.
       Object.assign(migrations as unknown as Record<string, unknown>, {
-        api,
         fs: migrationsFs,
+      });
+      Object.assign(cmd as unknown as Record<string, unknown>, {
+        cloudflare: api,
       });
 
       alepha.set(platformOptions, {

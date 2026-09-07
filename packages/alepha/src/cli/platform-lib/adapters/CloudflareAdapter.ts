@@ -1000,6 +1000,7 @@ export class CloudflareAdapter extends PlatformAdapter {
         await this.fs.cp(migrationsDir, distMigrations);
 
         await this.d1Migrations.apply(
+          this.api,
           dbName,
           ctx.root,
           // Where the copy above put them.

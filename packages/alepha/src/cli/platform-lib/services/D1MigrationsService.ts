@@ -2,7 +2,7 @@ import { $inject, AlephaError } from "alepha";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
-import { CloudflareApi } from "./CloudflareApi.ts";
+import type { CloudflareD1QueryResult } from "../schemas/cloudflare.ts";
 
 /**
  * A single discovered D1 migration: the bookkeeping name recorded in
@@ -27,6 +27,14 @@ export interface D1Migration {
  * that shelled out. And reading the applied set back as JSON beats scraping
  * `--json` output with a regular expression, which is what the shell path did.
  *
+ * ⚠️ **The transport is an ARGUMENT, not an injected field.** It carries a
+ * Cloudflare credential, and inside Lore's Worker that credential belongs to
+ * the estate being deployed to rather than to the process - the same reason
+ * `CloudflareDeployClient` takes its token and account id in its constructor.
+ * Injecting `CloudflareApi` here also made this service unreachable from a
+ * Worker at all, since that class pulls in `WranglerApi` and so
+ * `node:child_process`.
+ *
  * ⚠️ **The two transports are not interchangeable, and picking the wrong one
  * loses data silently.** A migration FILE goes through
  * {@link CloudflareApi.d1Import}, which is what `wrangler d1 execute --remote
@@ -39,7 +47,6 @@ export interface D1Migration {
 export class D1MigrationsService {
   protected readonly log = $logger();
   protected readonly fs = $inject(FileSystemProvider);
-  protected readonly api = $inject(CloudflareApi);
 
   /**
    * The name wrangler gives its own bookkeeping table, and the shape it
@@ -133,8 +140,11 @@ export class D1MigrationsService {
    * with `/"name":\s*"([^"]+)"/g`, which would have matched a `name` column of
    * any other table that happened to be in the same output.
    */
-  protected async appliedNames(databaseId: string): Promise<string[]> {
-    const answer = await this.api.d1Query(
+  protected async appliedNames(
+    api: D1MigrationTransport,
+    databaseId: string,
+  ): Promise<string[]> {
+    const answer = await api.d1Query(
       databaseId,
       "SELECT name FROM d1_migrations;",
     );
@@ -148,14 +158,15 @@ export class D1MigrationsService {
    * Apply pending D1 migrations.
    */
   public async apply(
+    api: D1MigrationTransport,
     dbName: string,
     root?: string,
     migrationsDir = "migrations/sqlite",
   ): Promise<void> {
-    const databaseId = await this.api.resolveD1Id(dbName);
-    await this.api.d1Query(databaseId, D1MigrationsService.BOOKKEEPING);
+    const databaseId = await api.resolveD1Id(dbName);
+    await api.d1Query(databaseId, D1MigrationsService.BOOKKEEPING);
 
-    const applied = new Set(await this.appliedNames(databaseId));
+    const applied = new Set(await this.appliedNames(api, databaseId));
 
     const dir = this.fs.join(root ?? ".", migrationsDir);
     const migrations = await this.discoverD1Migrations(dir);
@@ -172,8 +183,8 @@ export class D1MigrationsService {
       // here would separate a rebuild's `PRAGMA foreign_keys=OFF` from the
       // `DROP TABLE` it exists to protect.
       const sql = await this.fs.readTextFile(migration.sqlPath);
-      await this.api.d1Import(databaseId, sql);
-      await this.api.d1Query(
+      await api.d1Import(databaseId, sql);
+      await api.d1Query(
         databaseId,
         `INSERT INTO d1_migrations (name) VALUES ('${this.escape(migration.name)}');`,
       );
@@ -194,13 +205,14 @@ export class D1MigrationsService {
    * which migrations were previously applied, which is why it is opt-in.
    */
   public async baseline(
+    api: D1MigrationTransport,
     dbName: string,
     root?: string,
     migrationsDir = "migrations/sqlite",
     opts: { reset?: boolean } = {},
   ): Promise<{ replaced: number }> {
-    const databaseId = await this.api.resolveD1Id(dbName);
-    await this.api.d1Query(databaseId, D1MigrationsService.BOOKKEEPING);
+    const databaseId = await api.resolveD1Id(dbName);
+    await api.d1Query(databaseId, D1MigrationsService.BOOKKEEPING);
 
     const dir = this.fs.join(root ?? ".", migrationsDir);
     const migrations = await this.discoverD1Migrations(dir);
@@ -212,7 +224,7 @@ export class D1MigrationsService {
     }
     const baseline = (migrations[0] as D1Migration).name;
 
-    const applied = await this.appliedNames(databaseId);
+    const applied = await this.appliedNames(api, databaseId);
 
     if (applied.length > 0 && !opts.reset) {
       throw new AlephaError(
@@ -225,10 +237,10 @@ export class D1MigrationsService {
         `Replacing ${applied.length} recorded migration(s) on '${dbName}' with '${baseline}'`,
       );
       this.log.warn(`Previously recorded: ${applied.join(", ")}`);
-      await this.api.d1Query(databaseId, "DELETE FROM d1_migrations;");
+      await api.d1Query(databaseId, "DELETE FROM d1_migrations;");
     }
 
-    await this.api.d1Query(
+    await api.d1Query(
       databaseId,
       `INSERT INTO d1_migrations (name) VALUES ('${this.escape(baseline)}');`,
     );
@@ -244,4 +256,20 @@ export class D1MigrationsService {
   protected escape(value: string): string {
     return value.replace(/'/g, "''");
   }
+}
+
+/**
+ * What a migration run needs from a Cloudflare client, and nothing else.
+ *
+ * Named as an interface so this service can be driven by whichever client the
+ * runtime has: `CloudflareApi` on a laptop, `CloudflareProvisionClient` inside
+ * a Worker. Both satisfy it structurally.
+ *
+ * ⚠️ The two methods are not interchangeable - see the class doc. `d1Import` is
+ * for a migration file, `d1Query` for the bookkeeping.
+ */
+export interface D1MigrationTransport {
+  resolveD1Id(name: string): Promise<string>;
+  d1Query(databaseId: string, sql: string): Promise<CloudflareD1QueryResult[]>;
+  d1Import(databaseId: string, sql: string): Promise<void>;
 }
