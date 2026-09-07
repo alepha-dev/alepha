@@ -1012,8 +1012,6 @@ export default {
   "quest.view.unhold.confirm":
     "The quest goes back to what it was before the hold, still assigned to whoever had it. The reason stays in the discussion.",
   "quest.view.unhold.confirmButton": "Lift Hold",
-  "quest.view.held.hint":
-    "This quest cannot be accepted or completed until the hold is lifted. The reason is in the discussion below.",
   "quest.view.edit": "Edit",
   "quest.view.back": "Back",
   "quest.view.reminder.title": "Reminder",
