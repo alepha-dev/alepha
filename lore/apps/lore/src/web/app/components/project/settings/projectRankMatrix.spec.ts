@@ -4,7 +4,7 @@ import type { PermissionCatalogueGroup } from "./projectRankMatrix.ts";
 import { ProjectRankMatrix } from "./projectRankMatrix.ts";
 
 /**
- * The three filters and the two locks, which are the whole of what this page
+ * The four filters and the two locks, which are the whole of what this page
  * adds to `@alepha/ui`'s matrix.
  *
  * They live here rather than in a browser spec because none of them is about
@@ -31,6 +31,16 @@ const CATALOGUE: PermissionCatalogueGroup[] = [
     name: "app",
     label: "permission.group.app",
     permissions: [{ name: "app:manage", label: "permission.app.manage" }],
+  },
+  {
+    // The group whose ONLY permission is a ceiling one, which is the real
+    // shape of `capability` in the registry: dropping the row has to drop
+    // the header with it, or the page grows an empty section.
+    name: "capability",
+    label: "permission.group.capability",
+    permissions: [
+      { name: "capability:manage", label: "permission.capability.manage" },
+    ],
   },
   {
     // The framework's own, as the registry really answers them: no group
@@ -92,9 +102,29 @@ describe("ProjectRankMatrix", () => {
     expect(keys).toContain("project");
   });
 
-  it("pins the floor on and the ceiling off", () => {
+  it("never offers a permission no rank can ever hold", () => {
+    // The CEILING (feedback #P2124). `project:delete` and `capability:manage`
+    // are ungrantable structurally, so their row was a permanently grey,
+    // permanently unchecked box in every column - a choice that does not
+    // exist, drawn once per rank.
+    const rows = rowsFor({}).flatMap((it) => it.permissions);
+
+    expect(rows.map((it) => it.name)).not.toContain("project:delete");
+    expect(rows.map((it) => it.name)).not.toContain("capability:manage");
+  });
+
+  it("drops the group the ceiling empties, header and all", () => {
+    // `capability` holds nothing else, so removing its one row must remove
+    // the section rather than leave a heading over nothing.
+    expect(groupKeys({})).not.toContain("capability");
+    // The neighbouring group loses one row and survives.
+    expect(groupKeys({})).toContain("project");
+  });
+
+  it("pins the floor on", () => {
+    // Unclickable like the ceiling and kept on purpose: it says something
+    // true and useful, which is that every rank can open the project.
     expect(lockOf({}, "project:read")).toBe("on");
-    expect(lockOf({}, "project:delete")).toBe("off");
   });
 
   it("locks a permission the editor does not hold", () => {
@@ -112,9 +142,21 @@ describe("ProjectRankMatrix", () => {
     // actually stores - and the same wildcard reading `RankService.grants`
     // applies, so the editor and the write path agree.
     expect(lockOf({ held: ["*"] }, "app:manage")).toBeUndefined();
-    // Still the ceiling, though: `project:delete` is refused to everyone,
-    // including the owner doing the editing.
-    expect(lockOf({ held: ["*"] }, "project:delete")).toBe("off");
+  });
+
+  it("keeps the editor-does-not-hold lock, which is a different signal", () => {
+    // ⚠️ The reason the ceiling filter is a filter and this one is not.
+    // `lockOf` answers `"off"` here too, but hiding these rows would give the
+    // matrix a different SHAPE for every reader: an Admin comparing notes
+    // with the Owner would see fewer rows, with nothing saying why. That lock
+    // is informative; the ceiling's was not.
+    const admin = ["project:read", "project:update", "quest:create"];
+    const names = rowsFor({ held: admin })
+      .flatMap((it) => it.permissions)
+      .map((it) => it.name);
+
+    expect(names).toContain("app:manage");
+    expect(lockOf({ held: admin }, "app:manage")).toBe("off");
   });
 
   it("reads a group prefix wildcard the way the module does", () => {
