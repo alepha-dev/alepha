@@ -6,8 +6,9 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
+import { setupJsdomMocks } from "alepha/react/testing";
 import { LinkProvider } from "alepha/server/links";
-import { afterEach, describe, it } from "vitest";
+import { afterEach, beforeAll, describe, it } from "vitest";
 
 import { I18n } from "../../services/I18n.ts";
 import MyEstates from "./MyEstates.tsx";
@@ -86,6 +87,12 @@ const estate = (over: Record<string, unknown> = {}) => ({
  * would catch.
  */
 describe("MyEstates", () => {
+  beforeAll(() => {
+    // `Segmented` measures its own thumb, so the estate type control needs a
+    // ResizeObserver the moment these fields render (#Q2049).
+    setupJsdomMocks();
+  });
+
   let alepha: Alepha | undefined;
 
   afterEach(async () => {
@@ -245,16 +252,23 @@ describe("MyEstates", () => {
         deployAllowed: true,
       }),
     };
-    const { getByTestId, queryByTestId, findByText, findByTestId } = await show(
-      {
+    const { getByRole, getByTestId, queryByTestId, findByText, findByTestId } =
+      await show({
         listMyEstates: { items: [] },
         createEstate: cloudflare,
-      },
-    );
+      });
 
     await findByText(/Create an estate/);
     fireEvent.click(getByTestId("estate-create-open"));
-    fireEvent.click(getByTestId("estate-type-cloudflare"));
+    /*
+     * ⚠️ By ROLE and accessible name, not by a `data-testid`. The two
+     * segments are a `Segmented` control now (#Q2049), whose items are
+     * `role="radio"` buttons named by their own visible label - and that
+     * label is the product's name, "Bay" or "Cloudflare". Same move
+     * #Q2002 made when the raw `Select` went: name the thing a reader
+     * sees, not an attribute of whichever primitive is drawing it.
+     */
+    fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
     fireEvent.change(getByTestId("estate-create-slug"), {
       target: { value: "cf-1" },
     });
@@ -287,12 +301,12 @@ describe("MyEstates", () => {
      * root-relative href would satisfy any substring check against the
      * path, which is exactly the bug.
      */
-    const { getByTestId, findByTestId } = await show({
+    const { getByRole, getByTestId, findByTestId } = await show({
       listMyEstates: { items: [] },
     });
 
     fireEvent.click(getByTestId("estate-create-open"));
-    fireEvent.click(getByTestId("estate-type-cloudflare"));
+    fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
 
     const guide = await findByTestId("estate-create-guide");
     expect(guide.getAttribute("href")).toBe(
@@ -311,13 +325,13 @@ describe("MyEstates", () => {
       new Error('This token is missing "D1: Edit"'),
       { data: { field: "token" } },
     );
-    const { getByTestId, findByTestId } = await show({
+    const { getByRole, getByTestId, findByTestId } = await show({
       listMyEstates: { items: [] },
       createEstate: refusal,
     });
 
     fireEvent.click(getByTestId("estate-create-open"));
-    fireEvent.click(getByTestId("estate-type-cloudflare"));
+    fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
     fireEvent.change(getByTestId("estate-create-slug"), {
       target: { value: "cf-1" },
     });

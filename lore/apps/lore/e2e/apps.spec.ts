@@ -1599,8 +1599,12 @@ test.describe("Apps", () => {
       await dialog
         .getByRole("button", { name: "Create a new one", exact: true })
         .click();
+      // ⚠️ "Name", not "Estate slug": the field is a labelled `Control` now
+      // and its accessible name is that label (#Q2049). The old name was an
+      // `aria-label` on a bare input carrying a placeholder, which is the
+      // arrangement feedback #P2143 was about.
       await dialog
-        .getByRole("textbox", { name: "Estate slug" })
+        .getByRole("textbox", { name: "Name", exact: true })
         .fill(estateSlug);
       await dialog
         .getByRole("button", { name: "Create and lend", exact: true })

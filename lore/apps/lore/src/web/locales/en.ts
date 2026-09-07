@@ -1669,15 +1669,18 @@ export default {
   "estates.add.existing": "Use one of mine",
   "estates.add.new": "Create a new one",
   "estates.add.none": "You have no estate left to lend. Create one instead.",
-  "estates.add.slug": "Estate slug",
+  "estates.add.slug": "Name",
+  "estates.add.slug.hint":
+    "Your own name for it, used in URLs and commands. Lowercase letters, digits and hyphens.",
   "estates.add.slugPlaceholder": "ovh-1",
   "estates.add.invalid": "Lowercase letters, digits and hyphens, like ovh-1.",
   "estates.add.trust":
     "Everyone who can deploy in $1 will be able to run code on the machine behind $2, with everything that machine holds. Nothing here undeploys, and you can withdraw the loan at any time.",
-  "estates.type.bay": "A machine",
+  "estates.type.label": "What kind of estate",
+  "estates.type.bay": "Bay",
   "estates.type.bay.description":
     "A VPS running the bay connector. Lore mints a secret, shows it once, and the machine dials in with it.",
-  "estates.type.cloudflare": "A Cloudflare account",
+  "estates.type.cloudflare": "Cloudflare",
   "estates.type.cloudflare.description":
     "An account Lore deploys Workers to over the API. You paste a token you minted at Cloudflare; Lore checks it before the estate exists.",
   "estates.cloudflare.accountId": "Cloudflare account id",
