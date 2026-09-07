@@ -9,6 +9,7 @@ export * from "./questSizeSchema.ts";
 export * from "./appInstanceSchemas.ts";
 export * from "./artifactSchemas.ts";
 export * from "./blightSchemas.ts";
+export * from "./deploySchemas.ts";
 export * from "./epicSchemas.ts";
 export * from "./feedbackSchemas.ts";
 export * from "./folioSchemas.ts";

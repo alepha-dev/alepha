@@ -125,6 +125,7 @@ export class LorePermissions {
     "release:manage",
     "area:manage",
     "app:manage",
+    "deploy:manage",
     "sigil:manage",
     "blight:triage",
     "estate:lend",
@@ -405,6 +406,28 @@ export class LorePermissions {
     label: "permission.sigil.manage",
     groupLabel: "permission.group.sigil",
     groupOrder: 31,
+  });
+
+  /**
+   * Starting a deploy, rolling one back, and setting the variables a deployed
+   * copy runs with.
+   *
+   * Its own group rather than a verb on `app`, for the reason `sigil:manage`
+   * is: an operator may reasonably let somebody rename an app without letting
+   * them push code into their cloud account. It is the most powerful act in
+   * Lore - `NamingService` derives every resource as `<project>-<env>`, so a
+   * deploy at `production` resolves the live database, the live bucket and the
+   * live worker, with no sandbox between a valid caller and any of it.
+   *
+   * ⚠️ Grantable, and on nobody by default. `MEMBER_DEFAULT` does not carry
+   * it, so nothing changes until an owner creates a rank that does.
+   */
+  deployManage = $permission({
+    group: "deploy",
+    name: "manage",
+    label: "permission.deploy.manage",
+    groupLabel: "permission.group.deploy",
+    groupOrder: 36,
   });
 
   artifactRead = $permission({

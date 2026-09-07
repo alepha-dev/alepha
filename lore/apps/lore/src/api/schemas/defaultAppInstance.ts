@@ -1,6 +1,6 @@
 /**
- * Which instance a bare app name means: **`production` if that env exists,
- * else the first env by name.**
+ * Which instance a bare app name means: **the project's `defaultEnv` if that
+ * env exists, else `production` if it exists, else the first env by name.**
  *
  * One function because it has two callers that cannot share a class. The
  * `/apps/:app` redirect runs in the browser, so it cannot inject
@@ -8,11 +8,18 @@
  * Restating the rule in the loader is exactly how two callers end up
  * disagreeing about which page a link opens, so both read this instead.
  *
- * ⚠️ **No `projects.defaultEnv` behind it, deliberately** (#1767). v3 has no
- * consumer that needs the answer persisted, and a column on the cascade parent
- * with no settings page to set it is folio #1172's failure. The column ships
- * with epic #1's #1811, beside the `--env` fallback that reads it; when it
- * does, this function is where it plugs in.
+ * ⚠️ **`projects.defaultEnv` is consulted first, and it is allowed to name
+ * nothing.** The column shipped with #1811, beside the `lore apps` `--env`
+ * fallback that reads it, and it is deliberately not validated against the
+ * project's instances: an operator may set the env they are about to create.
+ * A value naming no row falls through to the fixed rule below rather than
+ * resolving to nothing, so a stale setting costs a redirect its preference and
+ * never costs it its answer.
+ *
+ * ⚠️ **`production` stays as the second step** rather than being replaced by
+ * the column. Every project that predates the column has no value in it, and a
+ * rule that answered "the first env by name" for those would silently move
+ * `/apps/club` from `production` to `b14-production`.
  *
  * Takes a whole list rather than a query, so the caller decides how the rows
  * were fetched. `undefined` for an app with no instance at all, which is what
@@ -26,9 +33,14 @@
 export const defaultAppInstance = <T extends { app: string; env: string }>(
   rows: T[],
   app: string,
+  defaultEnv?: string,
 ): T | undefined => {
   const siblings = rows
     .filter((row) => row.app === app)
     .sort((a, b) => a.env.localeCompare(b.env));
-  return siblings.find((row) => row.env === "production") ?? siblings[0];
+  return (
+    (defaultEnv ? siblings.find((row) => row.env === defaultEnv) : undefined) ??
+    siblings.find((row) => row.env === "production") ??
+    siblings[0]
+  );
 };

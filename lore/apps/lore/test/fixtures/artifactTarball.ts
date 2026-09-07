@@ -35,7 +35,7 @@ const octal = (value: number, width: number): Uint8Array =>
  * it wrong would not fail here - nothing in Lore verifies it - so it is done
  * properly to keep the fixture honest against tools that do.
  */
-const header = (name: string, size: number): Uint8Array => {
+const header = (name: string, size: number, typeflag = "0"): Uint8Array => {
   const block = new Uint8Array(BLOCK);
   block.set(field(name, 100), 0);
   block.set(octal(0o644, 8), 100);
@@ -44,7 +44,7 @@ const header = (name: string, size: number): Uint8Array => {
   block.set(octal(size, 12), 124);
   block.set(octal(0, 12), 136);
   block.set(field("        ", 8), 148);
-  block.set(field("0", 1), 156);
+  block.set(field(typeflag, 1), 156);
   block.set(field("ustar", 6), 257);
   block.set(field("00", 2), 263);
 
@@ -58,11 +58,13 @@ const header = (name: string, size: number): Uint8Array => {
  * An uncompressed tar of the given entries, terminated the way tar terminates
  * one: two zeroed blocks.
  */
-export const tar = (entries: Record<string, string>): Uint8Array => {
+export const tar = (entries: Record<string, string | TarEntry>): Uint8Array => {
   const parts: Uint8Array[] = [];
-  for (const [name, content] of Object.entries(entries)) {
-    const body = new TextEncoder().encode(content);
-    parts.push(header(name, body.length));
+  for (const [name, value] of Object.entries(entries)) {
+    const entry: TarEntry =
+      typeof value === "string" ? { content: value } : value;
+    const body = new TextEncoder().encode(entry.content ?? "");
+    parts.push(header(name, body.length, entry.typeflag));
     const padded = Math.ceil(body.length / BLOCK) * BLOCK;
     const block = new Uint8Array(padded);
     block.set(body);
@@ -79,6 +81,15 @@ export const tar = (entries: Record<string, string>): Uint8Array => {
   }
   return out;
 };
+
+/**
+ * An entry that is not a plain file: a directory, a symlink, a GNU long-name
+ * record. Extraction has to tell them apart; a manifest scan never did.
+ */
+export interface TarEntry {
+  content?: string;
+  typeflag?: string;
+}
 
 /**
  * `tar`, gzipped.

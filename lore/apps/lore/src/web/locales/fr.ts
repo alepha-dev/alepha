@@ -1143,6 +1143,66 @@ export default {
   "app.tab.errors": "Erreurs",
   "app.tab.explore": "Explorer",
   "app.tab.artifacts": "Artefacts",
+  "app.tab.deploy": "Déploiement",
+  "apps.table.version": "Version",
+  "apps.filter.version": "Version",
+  "app.deploy": "Déploiement",
+  "app.deploy.action": "Déployer",
+  "app.deploy.starting": "Démarrage...",
+  "app.deploy.started": "Déploiement de $1",
+  "app.deploy.pick": "Ce qui peut être déployé ici",
+  "app.deploy.wrongRuntime":
+    "Ce domaine exécute $1, et aucun build de ce tag n\u2019a été produit pour lui.",
+  "app.deploy.runs": "Déploiements",
+  "app.deploy.loading": "Chargement...",
+  "app.deploy.error": "Impossible de lire les déploiements de cette copie.",
+  "app.deploy.empty": "Rien n\u2019a encore été déployé ici.",
+  "app.deploy.log.show": "Journal",
+  "app.deploy.log.hide": "Masquer le journal",
+  "app.deploy.status.queued": "En attente",
+  "app.deploy.status.running": "En cours",
+  "app.deploy.status.succeeded": "En ligne",
+  "app.deploy.status.failed": "Échec",
+  "app.deploy.status.cancelled": "Annulé",
+  "app.deploy.rollback": "Revenir en arrière",
+  "app.deploy.rollback.title": "Revenir à $1 ?",
+  "app.deploy.rollback.fast":
+    "Cloudflare détient encore cette version : l\u2019opération prend quelques secondes et n\u2019envoie rien.",
+  "app.deploy.rollback.slow":
+    "Cette version n\u2019est plus disponible : le build stocké sera redéployé.",
+  "app.deploy.rollback.migrations":
+    "⚠️ $1 migration(s) ont été appliquées depuis. Un retour en arrière change le code et pas la base, donc cette version s\u2019exécuterait sur le schéma actuel.",
+  "app.deploy.rollback.confirm": "Revenir en arrière",
+  "app.deploy.rollback.started": "Retour en arrière lancé",
+  "app.deploy.noEstate.description":
+    "Cette copie n\u2019a pas encore de domaine, donc il n\u2019y a nulle part où la déployer. Choisissez-en un dans son onglet Paramètres.",
+  "app.deploy.noEstate.action": "Ouvrir les paramètres",
+  "app.tab.environment": "Environnement",
+  "app.environment": "Variables d\u2019environnement",
+  "app.environment.description":
+    "Ce avec quoi cette copie s\u2019exécute. Les valeurs sont chiffrées et ne sont jamais réaffichées, ici ni ailleurs : on en remplace une plutôt que de la lire. DATABASE_URL, R2_BUCKET_NAME et les noms CLOUDFLARE_* sont posés par le déploiement lui-même.",
+  "app.environment.loading": "Chargement...",
+  "app.environment.error":
+    "Impossible de lire l\u2019environnement de cette copie.",
+  "app.environment.empty":
+    "Rien de défini pour l\u2019instant. Cette copie se déploie très bien sans variable.",
+  "app.environment.masked": "Commence par $1",
+  "app.environment.masked.short": "Définie",
+  "app.environment.remove": "Supprimer",
+  "app.environment.remove.title": "Supprimer cette variable ?",
+  "app.environment.remove.description":
+    "$1 disparaîtra du prochain déploiement. La valeur ne pourra pas être récupérée.",
+  "app.environment.remove.confirm": "Supprimer",
+  "app.environment.removed": "Variable supprimée",
+  "app.environment.add": "Définir une variable",
+  "app.environment.add.description":
+    "Définir un nom qui existe déjà remplace sa valeur, ce qui est la seule façon d\u2019en changer une.",
+  "app.environment.key": "Nom",
+  "app.environment.value": "Valeur",
+  "app.environment.save": "Enregistrer",
+  "app.environment.saved": "Variable enregistrée",
+  "app.environment.ownerOnly":
+    "Seul le propriétaire du projet peut changer ce avec quoi cette copie s\u2019exécute.",
   "app.tab.settings": "Paramètres",
   "app.dashboard.token": "Jeton",
   "app.dashboard.identity": "Identité",
@@ -1237,6 +1297,19 @@ export default {
   "app.settings.estate.manage": "Gérer les domaines",
   "app.settings.estate.clear": "Aucun domaine",
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
+  "project.settings.apps.defaultEnv.title": "Environnement par défaut",
+  "project.settings.apps.defaultEnv.description":
+    "L'environnement visé par une commande qui n'en nomme aucun. `lore apps deploy` sans --env se résout ici, tout comme un lien /apps/<nom> sans environnement.",
+  "project.settings.apps.defaultEnv.label": "Environnement par défaut",
+  "project.settings.apps.defaultEnv.rowDescription":
+    "Seuls les environnements que ce projet possède déjà sont proposés.",
+  "project.settings.apps.defaultEnv.none":
+    "Ce projet n'a encore aucune copie déployée, donc aucun environnement par défaut possible.",
+  "project.settings.apps.defaultEnv.clear": "Aucun",
+  "project.settings.apps.defaultEnv.fallback":
+    "Sans valeur par défaut, production est utilisé s'il existe, sinon le premier environnement par ordre alphabétique.",
+  "project.settings.apps.defaultEnv.saved":
+    "Environnement par défaut enregistré",
   "app.settings.danger": "Zone dangereuse",
   "app.settings.delete.title": "Supprimer cette app",
   "app.settings.delete.description":
@@ -2252,6 +2325,8 @@ export default {
   "permission.app.manage": "Créer, renommer et supprimer une copie déployée",
   "permission.group.sigil": "Sigils",
   "permission.sigil.manage": "Créer, renouveler et supprimer un sigil",
+  "permission.group.deploy": "Déploiements",
+  "permission.deploy.manage": "Déployer et définir les variables",
   "permission.group.artifact": "Artefacts",
   "permission.artifact.read": "Voir ce que la CI a publié",
   "permission.group.blight": "Anomalies",

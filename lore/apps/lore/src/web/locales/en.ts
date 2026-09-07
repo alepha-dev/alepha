@@ -1141,6 +1141,65 @@ export default {
   "app.tab.errors": "Errors",
   "app.tab.explore": "Explore",
   "app.tab.artifacts": "Artifacts",
+  "app.tab.deploy": "Deploy",
+  "apps.table.version": "Version",
+  "apps.filter.version": "Version",
+  "app.deploy": "Deploy",
+  "app.deploy.action": "Deploy",
+  "app.deploy.starting": "Starting...",
+  "app.deploy.started": "Deploying $1",
+  "app.deploy.pick": "What to ship here",
+  "app.deploy.wrongRuntime":
+    "This estate runs $1, and no build of this tag was made for it.",
+  "app.deploy.runs": "Deploys",
+  "app.deploy.loading": "Loading...",
+  "app.deploy.error": "Could not read this copy's deploys.",
+  "app.deploy.empty": "Nothing has been deployed here yet.",
+  "app.deploy.log.show": "Log",
+  "app.deploy.log.hide": "Hide log",
+  "app.deploy.status.queued": "Queued",
+  "app.deploy.status.running": "Running",
+  "app.deploy.status.succeeded": "Live",
+  "app.deploy.status.failed": "Failed",
+  "app.deploy.status.cancelled": "Cancelled",
+  "app.deploy.rollback": "Roll back",
+  "app.deploy.rollback.title": "Roll back to $1?",
+  "app.deploy.rollback.fast":
+    "Cloudflare still holds that version, so this takes seconds and uploads nothing.",
+  "app.deploy.rollback.slow":
+    "That version is no longer available, so this redeploys the stored build.",
+  "app.deploy.rollback.migrations":
+    "⚠️ $1 migration(s) have been applied since it shipped. A rollback changes the code and not the database, so it would run against the current schema.",
+  "app.deploy.rollback.confirm": "Roll back",
+  "app.deploy.rollback.started": "Rolling back",
+  "app.deploy.noEstate.description":
+    "This copy has no estate yet, so there is nowhere to deploy it. Choose one on its Settings tab.",
+  "app.deploy.noEstate.action": "Open Settings",
+  "app.tab.environment": "Environment",
+  "app.environment": "Environment variables",
+  "app.environment.description":
+    "What this copy runs with. Values are encrypted and never shown again, here or anywhere else - replace one rather than read it. DATABASE_URL, R2_BUCKET_NAME and the CLOUDFLARE_* names are set by the deploy itself.",
+  "app.environment.loading": "Loading...",
+  "app.environment.error": "Could not read this copy's environment.",
+  "app.environment.empty":
+    "Nothing set yet. This copy deploys fine with no variables.",
+  "app.environment.masked": "Starts with $1",
+  "app.environment.masked.short": "Set",
+  "app.environment.remove": "Remove",
+  "app.environment.remove.title": "Remove this variable?",
+  "app.environment.remove.description":
+    "$1 will be gone from the next deploy. The value cannot be recovered.",
+  "app.environment.remove.confirm": "Remove",
+  "app.environment.removed": "Variable removed",
+  "app.environment.add": "Set a variable",
+  "app.environment.add.description":
+    "Setting a name that already exists replaces its value, which is the only way to change one.",
+  "app.environment.key": "Name",
+  "app.environment.value": "Value",
+  "app.environment.save": "Save",
+  "app.environment.saved": "Variable saved",
+  "app.environment.ownerOnly":
+    "Only the project owner can change what this copy runs with.",
   "app.tab.settings": "Settings",
   "app.dashboard.token": "Token",
   "app.dashboard.token.none": "No sigil yet",
@@ -1233,6 +1292,18 @@ export default {
   "app.settings.estate.manage": "Manage estates",
   "app.settings.estate.clear": "No estate",
   "app.settings.estate.saved": "Deploy target saved",
+  "project.settings.apps.defaultEnv.title": "Default environment",
+  "project.settings.apps.defaultEnv.description":
+    "Which environment a command means when it names none. `lore apps deploy` with no --env resolves to this, and so does a bare /apps/<name> link.",
+  "project.settings.apps.defaultEnv.label": "Default environment",
+  "project.settings.apps.defaultEnv.rowDescription":
+    "Only environments this project already has are offered.",
+  "project.settings.apps.defaultEnv.none":
+    "This project has no deployed copy yet, so there is no environment to default to.",
+  "project.settings.apps.defaultEnv.clear": "No default",
+  "project.settings.apps.defaultEnv.fallback":
+    "With no default, production is used when it exists, otherwise the first environment by name.",
+  "project.settings.apps.defaultEnv.saved": "Default environment saved",
   "app.settings.danger": "Danger zone",
   "app.settings.delete.title": "Delete this app",
   "app.settings.delete.description":
@@ -2225,6 +2296,8 @@ export default {
   "permission.app.manage": "Create, rename and delete a deployed copy",
   "permission.group.sigil": "Sigils",
   "permission.sigil.manage": "Mint, rotate and delete a sigil",
+  "permission.group.deploy": "Deploys",
+  "permission.deploy.manage": "Deploy and set variables",
   "permission.group.artifact": "Artifacts",
   "permission.artifact.read": "See what CI has pushed",
   "permission.group.blight": "Blights",

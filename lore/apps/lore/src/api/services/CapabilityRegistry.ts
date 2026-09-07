@@ -49,6 +49,12 @@ export interface CapabilityOptionDescriptor {
   wizard: boolean;
   /**
    * Rendered disabled, with a Soon badge, rather than hidden.
+   *
+   * ⚠️ **No option declares it today.** `apps.deploy` was the one, from epic
+   * #36 until epic #1 shipped the surface behind it. The mechanism stays
+   * because announcing a switch before it works is the right thing to do
+   * again - the wizard is where somebody decides what Lore is for, and hiding
+   * a planned surface means the reader who wants it never learns it is coming.
    */
   soon?: boolean;
 }
@@ -301,8 +307,12 @@ export class CapabilityRegistry {
           labelKey: "project.capability.apps.option.deploy.label",
           descriptionKey: "project.capability.apps.option.deploy.description",
           wizard: true,
+          // ⚠️ NOT preselected, although the surface is real now. A project
+          // that deploys through Lore is deploying into somebody's cloud
+          // account; that is a thing to opt into on purpose, not a default a
+          // wizard ticks on the way past. `soon: true` was here until epic #1
+          // shipped, and the option's own doc promised its removal.
           preselected: false,
-          soon: true,
         },
       ],
       mcpTools: [
@@ -327,6 +337,10 @@ export class CapabilityRegistry {
       dashboardCards: ["openBlights", "uniqueVisitors"],
       permissionGroups: [
         "app",
+        // Epic #1's. Beside `app` rather than folded into it, because letting
+        // somebody rename a copy is not the same act as letting them push code
+        // into the estate's cloud account.
+        "deploy",
         "artifact",
         "blight",
         "quality",

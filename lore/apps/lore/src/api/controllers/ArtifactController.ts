@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
-import { $storage } from "alepha/api/files";
-import { $action } from "alepha/server";
+import { $storage, FileService } from "alepha/api/files";
+import { $action, NotFoundError } from "alepha/server";
 
 import type { Artifact } from "../entities/artifacts.ts";
 import { appNameSchema } from "../schemas/appNameSchema.ts";
@@ -33,6 +33,7 @@ import { ArtifactService } from "../services/ArtifactService.ts";
  */
 export class ArtifactController {
   protected readonly artifacts = $inject(ArtifactService);
+  protected readonly files = $inject(FileService);
 
   /**
    * Declared above the actions on purpose: a `use: [...]` entry reading
@@ -107,6 +108,15 @@ export class ArtifactController {
          */
         force: z.boolean().optional(),
         file: z.file({ maxBytes: 20 * 1024 * 1024 }),
+        /**
+         * This build's source maps, as a sibling archive (#1515).
+         *
+         * ⚠️ Optional, and it has to stay optional in both directions. A build
+         * may produce none, and a CLI older than #1515 sends none because its
+         * maps are still inside the tarball - refusing those would turn every
+         * unupgraded pipeline red for a size optimisation.
+         */
+        maps: z.file({ maxBytes: 20 * 1024 * 1024 }).optional(),
       }),
       response: artifactPushResultSchema,
     },
@@ -118,6 +128,7 @@ export class ArtifactController {
         commitSha: body.commitSha,
         force: body.force,
         file: body.file,
+        maps: body.maps,
       });
 
       return { artifact: this.resource(artifact), stored };
@@ -186,6 +197,52 @@ export class ArtifactController {
         })),
         truncated: listing.truncated,
       };
+    },
+  });
+
+  /**
+   * The source maps of one stored build.
+   *
+   * ⚠️ **The only way back to them**, which is what makes excluding `*.map`
+   * from the tarball safe rather than a quiet deletion (#1515). A sibling
+   * object with no way to read it is a deletion with extra storage.
+   *
+   * `artifact:read`, like every other read of the registry. 404 when the artifact predates
+   * #1515 or its build produced none, and the message says which - "no maps"
+   * and "no such artifact" are different facts and an operator debugging a
+   * stack trace needs to know which one they have.
+   */
+  getArtifactMaps = $action({
+    use: [this.ownsProject("artifact:read")],
+    method: "GET",
+    path: "/projects/:projectId/artifacts/:artifactId/maps",
+    description: "Download the source maps stored beside one build.",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        artifactId: z.uuid(),
+      }),
+      response: z.file(),
+    },
+    handler: async ({ params, reply }) => {
+      const artifact = await this.artifacts.findById(
+        params.projectId,
+        params.artifactId,
+      );
+      if (!artifact) {
+        throw new NotFoundError("No such artifact in this project.");
+      }
+      if (!artifact.mapsFileId) {
+        throw new NotFoundError(
+          `${artifact.app} ${artifact.tag} (${artifact.runtime}) has no stored source maps. Builds pushed before source maps were split out carry them inside the artifact itself.`,
+        );
+      }
+
+      const file = await this.files.streamFile(artifact.mapsFileId, {
+        bucket: ArtifactService.BUCKET,
+      });
+      reply.setHeader("cache-control", "no-store");
+      return file;
     },
   });
 
