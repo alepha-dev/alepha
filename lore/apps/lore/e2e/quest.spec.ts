@@ -81,6 +81,18 @@ test.describe("Quest", () => {
       });
     });
 
+    /**
+     * Feedback #P2117: every mount truncates the header title, so the full
+     * text has to be reachable on hover. Asserted on the ATTRIBUTE rather
+     * than by hovering: a native tooltip is drawn by the browser chrome and
+     * is not in the DOM to be read.
+     */
+    await test.step("the truncated title carries its full text", async () => {
+      await expect(
+        page.locator(`[title="#Q${shortId} - ${questTitle}"]`).first(),
+      ).toBeVisible({ timeout: 10_000 });
+    });
+
     await test.step("the estimate is hidden until the project opts in", async () => {
       // `questEstimate` is off by default — estimation is a methodology, not
       // a default. The quest above was seeded WITH `estimateMinutes: 30`, so
@@ -898,11 +910,24 @@ test.describe("Quest", () => {
       ).toBeVisible({ timeout: 5_000 });
       await page.getByRole("button", { name: /shelve quest/i }).click();
 
-      // The header picks up a muted "Shelved" badge, and the footer flips
-      // to the reverse action.
+      // The footer flips to the reverse action.
       await expect(
         page.getByRole("button", { name: /^unshelve$/i }),
       ).toBeVisible({ timeout: 10_000 });
+
+      // ⚠️ The chips row says it, the sticky header does not (feedback
+      // #P2117). Both used to, three centimetres apart on one screen. The
+      // chip is the one that stayed: it renders in every mount, outside
+      // every `context` branch, where the header badge was one line the
+      // reader wants pinned carrying a word already on screen.
+      //
+      // The rail's Status field says it a third time, and that is left
+      // alone: a labelled field in a column of labelled fields reads as the
+      // quest's data, not as a second announcement.
+      await expect(
+        page.getByTestId("quest-header").getByText(/^Shelved$/),
+      ).toHaveCount(0);
+      await expect(page.getByText(/^Shelved$/).first()).toBeVisible();
     });
 
     await test.step("shelved quest is gone from the default board", async () => {
