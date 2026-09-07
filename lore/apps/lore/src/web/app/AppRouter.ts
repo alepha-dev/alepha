@@ -22,6 +22,7 @@ import type { FeedbackController } from "../../api/controllers/FeedbackControlle
 import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
+import type { ProjectPromptController } from "../../api/controllers/ProjectPromptController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QualityController } from "../../api/controllers/QualityController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
@@ -49,6 +50,7 @@ import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
+import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
 import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
 import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
@@ -98,6 +100,7 @@ export class AppRouter {
   roadmapApi = $client<RoadmapController>();
   sigilApi = $client<SigilController>();
   appApi = $client<AppController>();
+  promptApi = $client<ProjectPromptController>();
   estateApi = $client<EstateController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
@@ -615,6 +618,7 @@ export class AppRouter {
         instances,
         openBlights,
         areas,
+        prompts,
       ] = await Promise.all([
         this.releaseApi.getReleases({
           params: { projectId: project.id },
@@ -713,6 +717,30 @@ export class AppRouter {
         this.areaApi
           .getAreas({ params: { projectId: project.id } })
           .catch(() => undefined),
+
+        // The agent prompt templates this project has customised, read here
+        // so the copy can happen inside a click: Safari's transient
+        // activation does not survive an `await` before `writeText`.
+        //
+        // Gated on the option, which is off by default, so a project that
+        // does not use the feature pays no request.
+        //
+        // ⚠️ `{}` on failure and NOT `undefined`, unlike every neighbour
+        // above. They distinguish "could not read" from "none" because a
+        // badge must not say zero when it means unknown; here there is
+        // nothing to distinguish. The built-in defaults are a complete
+        // answer, so a failed read is indistinguishable from a project that
+        // has customised nothing, and the menus keep working either way.
+        capabilityOption(project, "work", "agentPrompts")
+          ? this.promptApi
+              .getProjectPrompts({ params: { projectId: project.id } })
+              .then((rows) =>
+                Object.fromEntries(
+                  rows.map((it) => [it.kind, it.template] as const),
+                ),
+              )
+              .catch(() => ({}))
+          : Promise.resolve({}),
       ]);
 
       this.alepha.store.set(currentProjectAtom, project);
@@ -734,6 +762,7 @@ export class AppRouter {
       });
       this.alepha.store.set(currentInstancesAtom, instances);
       this.alepha.store.set(currentAreasAtom, areas);
+      this.alepha.store.set(projectPromptsAtom, prompts);
 
       return {
         project,
@@ -751,6 +780,7 @@ export class AppRouter {
       this.alepha.store.set(currentEpicsAtom, undefined);
       this.alepha.store.set(currentInstancesAtom, undefined);
       this.alepha.store.set(currentAreasAtom, undefined);
+      this.alepha.store.set(projectPromptsAtom, undefined);
     },
     errorHandler: (error) => {
       // `/:projectSlug` matches any unclaimed root path, so a typo reaches this

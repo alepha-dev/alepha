@@ -601,6 +601,9 @@ export default {
   "project.capability.work.option.reminder.label": "Reminders",
   "project.capability.work.option.reminder.description":
     "Nudge whoever holds a quest that has gone quiet.",
+  "project.capability.work.option.agentPrompts.label": "Agent prompts",
+  "project.capability.work.option.agentPrompts.description":
+    "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for Claude Code or Codex; nothing is sent anywhere.",
   "project.capability.knowledge.label": "Write and keep knowledge",
   "project.capability.knowledge.description":
     "Wiki linked folios, files, revisions.",
@@ -1785,15 +1788,10 @@ export default {
   "epic.progress.open": "$1 open",
   "epic.progress.shelved": "$1 shelved",
   "epic.action.delete": "Delete",
-  "epic.action.review": "Review",
-  "epic.action.review.copied":
-    "Review prompt for $1 copied. Paste it into Claude Code or Codex.",
-  "epic.action.review.error": "Could not copy the review prompt.",
-  "epic.action.review.dialog.title": "Review this epic with an agent",
-  "epic.action.review.dialog.description":
-    "Tweak the prompt if you want, then copy it into Claude Code or Codex.",
-  "epic.action.review.dialog.label": "Review prompt",
-  "epic.action.review.dialog.copy": "Copy and close",
+  "agentPrompts.review": "Review",
+  "agentPrompts.copied":
+    "Prompt for $1 copied. Paste it into Claude Code or Codex.",
+  "agentPrompts.copyError": "Could not copy the prompt.",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
     'Its quests and folios stay, detached from "$1". This cannot be undone.',
