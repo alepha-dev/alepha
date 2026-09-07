@@ -215,7 +215,13 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
         </aside>
 
         {/* Right detail */}
-        <section className={cn("min-w-0 flex-1", !active && "hidden md:block")}>
+        <section
+          // The COLUMN, named so a spec can measure it: the lightbox added
+          // by #Q2021 has to escape it rather than fit inside it, which is
+          // the whole of what feedback #P2139 asked for.
+          data-testid="feedback-detail"
+          className={cn("min-w-0 flex-1", !active && "hidden md:block")}
+        >
           {active ? (
             <ProjectFeedbackDetail
               feedback={active}

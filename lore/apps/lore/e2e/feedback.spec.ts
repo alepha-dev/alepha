@@ -166,7 +166,7 @@ test.describe("Feedback", () => {
    * the same window in which a reporter would notice a wrong or missing
    * screenshot, and this was the one place they could not look.
    */
-  test("the edit drawer shows a reporter their own attachment", async ({
+  test("an attachment shows to its reporter, and opens in a lightbox for the owner", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -176,7 +176,7 @@ test.describe("Feedback", () => {
     const withoutFile = `Bare ${t}`;
 
     await registerAndVerify(page, `attach${t}@example.com`, "AttachPass123!");
-    const { id: projectId } = await createProjectViaWizard(
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       `AT${t}`.slice(0, 20),
     );
@@ -271,6 +271,55 @@ test.describe("Feedback", () => {
         timeout: 10_000,
       });
       await expect(drawer.getByText(/attachments/i)).toHaveCount(0);
+    });
+
+    await test.step("the owner's triage detail opens it in a lightbox", async () => {
+      /*
+       * Feedback #P2139: "today it's tiny, we can't verify that it's the
+       * good screenshot. Warning: page width is small by default."
+       *
+       * ⚠️ Which is why this measures rather than asserting the dialog is
+       * visible. The detail is a narrow column, and the failure the report
+       * describes is a preview that fits INSIDE it - so the assertion is
+       * that the image is wider than the column it was opened from.
+       */
+      await page.goto(`/${projectSlug}/feedback`);
+      await page.waitForLoadState("networkidle");
+      await page.getByText(withFile).first().click();
+
+      const detail = page.getByTestId("feedback-detail");
+      await expect(detail).toBeVisible({ timeout: 15_000 });
+      const column = await detail.boundingBox();
+      expect(column).not.toBeNull();
+
+      await detail.getByText("screenshot.png").click();
+
+      const shown = page.locator('[role="dialog"] img[src*="/api/files/"]');
+      await expect(shown).toBeVisible({ timeout: 10_000 });
+
+      /*
+       * ⚠️ Centred on the VIEWPORT, not on the column. That is the escape,
+       * and it is measurable where "is it wide enough" is not: the detail
+       * column is already ~900px next to the list, so a dialog capped at
+       * `sm:max-w-3xl` is legitimately NARROWER than it. What must never
+       * happen is the viewer inheriting the column's box, and a column
+       * sitting right of the list has its centre right of the viewport's.
+       */
+      // ⚠️ `has` re-anchors at the candidate element, so the filter takes a
+      // locator relative to the dialog - reusing `shown`, which is already
+      // anchored at `[role="dialog"]`, asks for a dialog inside a dialog and
+      // matches nothing.
+      const dialog = page
+        .locator('[role="dialog"]')
+        .filter({ has: page.locator('img[src*="/api/files/"]') });
+      const box = (await dialog.boundingBox())!;
+      const viewport = page.viewportSize()!;
+      expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThan(
+        2,
+      );
+      expect(column!.x + column!.width / 2).toBeGreaterThan(
+        viewport.width / 2 + 20,
+      );
     });
   });
 

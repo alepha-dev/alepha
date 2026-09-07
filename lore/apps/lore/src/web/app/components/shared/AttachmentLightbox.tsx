@@ -11,10 +11,7 @@ import { useEffect, useState } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
-import {
-  attachmentPreview,
-  PREVIEW_MAX_BYTES,
-} from "../../shared/attachmentPreview.ts";
+import { attachmentPreview, PREVIEW_MAX_BYTES } from "./attachmentPreview.ts";
 
 export interface PreviewableAttachment {
   fileId: string;
@@ -22,7 +19,7 @@ export interface PreviewableAttachment {
   mimeType: string;
 }
 
-export interface QuestAttachmentLightboxProps {
+export interface AttachmentLightboxProps {
   /**
    * Previewable attachments, in the order the row shows them.
    */
@@ -37,6 +34,17 @@ export interface QuestAttachmentLightboxProps {
 /**
  * Full-size viewer for attachments, with a carousel across the others.
  *
+ * Shared between the quest attachment row and the feedback triage detail
+ * (feedback #P2139). It was `QuestAttachmentLightbox` under
+ * `components/project/quest/` and lifted here unchanged: it never knew what
+ * a quest was, only `{ fileId, name, mimeType }`, which is why the lift was
+ * a rename rather than work. Feedback's own rows carry `url` as
+ * `/api/files/<id>`, so its `id` IS the `fileId` this asks for.
+ *
+ * ⚠️ The dialog is portalled, which is the point on the feedback side: that
+ * detail is a narrow column, and a viewer that inherited its width would be
+ * the tiny thumbnail the report was about.
+ *
  * Images render as images; markdown renders as markdown; anything else
  * text-like renders inside a fenced block so the shared `MarkdownView` gives
  * it `rehype-highlight`'s colouring for free.
@@ -45,7 +53,7 @@ export interface QuestAttachmentLightboxProps {
  * from our own origin, so rendering it would execute it, and the fence is
  * what keeps a preview a preview.
  */
-const QuestAttachmentLightbox = (props: QuestAttachmentLightboxProps) => {
+const AttachmentLightbox = (props: AttachmentLightboxProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [index, setIndex] = useState(0);
   const [text, setText] = useState<string | null>(null);
@@ -165,7 +173,7 @@ const QuestAttachmentLightbox = (props: QuestAttachmentLightboxProps) => {
             <div className="max-h-[70vh] w-full overflow-auto rounded-md">
               {tooLarge ? (
                 <p className="text-muted-foreground p-4 text-sm italic">
-                  {tr("quest.view.previewTooLarge")}
+                  {tr("attachments.previewTooLarge")}
                 </p>
               ) : text === null ? (
                 <p className="text-muted-foreground p-4 text-sm italic">
@@ -200,7 +208,7 @@ const QuestAttachmentLightbox = (props: QuestAttachmentLightboxProps) => {
               <ChevronLeft className="size-4" />
             </Button>
             <p className="text-muted-foreground text-xs">
-              {tr("quest.view.attachmentsPosition", {
+              {tr("attachments.position", {
                 args: [String(index + 1), String(count)],
               })}
             </p>
@@ -220,4 +228,4 @@ const QuestAttachmentLightbox = (props: QuestAttachmentLightboxProps) => {
   );
 };
 
-export default QuestAttachmentLightbox;
+export default AttachmentLightbox;

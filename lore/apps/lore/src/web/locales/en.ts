@@ -518,9 +518,12 @@ export default {
   "quest.view.attachHint":
     "Paste a screenshot (Ctrl/⌘+V) or drag files anywhere here.",
   "quest.view.attachFailed": "Could not attach that file.",
-  "quest.view.attachmentsPosition": "$1 of $2",
-  "quest.view.previewTooLarge": "Too large to preview. Open the file instead.",
   "quest.view.attachments": "Attachments",
+
+  // The shared `AttachmentLightbox`, which quests and feedback triage
+  // both mount. Under `quest.view.*` until it was lifted (#Q2021).
+  "attachments.position": "$1 of $2",
+  "attachments.previewTooLarge": "Too large to preview. Open the file instead.",
 
   "quest.view.actions.accept": "Accept the Quest",
 

@@ -1,11 +1,6 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@alepha/ui/components/ui/hover-card";
-import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -27,6 +22,7 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { hasCapability } from "../../../services/projectCapabilities.ts";
+import AttachmentLightbox from "../../shared/AttachmentLightbox.tsx";
 import { attachmentPreview } from "../../shared/attachmentPreview.ts";
 import { useRank } from "../../shared/useRank.ts";
 import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
@@ -58,6 +54,11 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
 
   const [busy, setBusy] = useState(false);
   const [questCreateOpen, setQuestCreateOpen] = useState(false);
+  /**
+   * The attachment the lightbox is open on, `null` while it is shut. The id
+   * IS the file id here: `attachmentUrls` builds `url` as `/api/files/<id>`.
+   */
+  const [lightboxId, setLightboxId] = useState<string | null>(null);
 
   if (!project) return null;
 
@@ -194,54 +195,49 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
             </h3>
             <ul className="flex flex-col gap-1">
               {feedback.attachmentUrls.map((a) => {
-                // The row, unchanged. It stays a real anchor so opening the
-                // full image in a tab keeps working, which the hover card
-                // must not swallow.
-                const row = (
-                  <a
-                    href={a.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 text-sm hover:underline"
-                  >
-                    <Paperclip className="size-3.5" />
-                    {/* Reporter-supplied, and escaped text. A preview must
-                        not become a second place where it is interpreted. */}
-                    <span className="truncate">{a.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      ({Math.round(a.size / 1024)} KB)
-                    </span>
-                  </a>
-                );
-
                 // The shared classifier, not an inline mime test: it answers
                 // on the extension when the browser's `type` is blank or
                 // wrong, which it often is.
                 const isImage =
                   attachmentPreview(a.name, a.mimeType).kind === "image";
-                if (!isImage) {
-                  return <li key={a.id}>{row}</li>;
-                }
 
                 return (
                   <li key={a.id}>
-                    <HoverCard>
-                      <HoverCardTrigger render={row} />
-                      {/* The content is portalled and mounts only once the
-                          card opens, so a row with five screenshots fetches
-                          nothing until one is hovered. */}
-                      <HoverCardContent
-                        className="w-auto p-1"
-                        data-testid="feedback-attachment-preview"
-                      >
-                        <img
-                          src={a.url}
-                          alt={a.name}
-                          loading="lazy"
-                          className="max-h-64 max-w-80 rounded object-contain"
-                        />
-                      </HoverCardContent>
-                    </HoverCard>
+                    {/* Still a real anchor, and that is load-bearing rather
+                        than left over: ⌘-click, middle-click and Open in new
+                        tab all keep working, and so does the whole row with
+                        no JavaScript at all. Only the PLAIN click is taken,
+                        and only for an image. */}
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={
+                        isImage
+                          ? (event) => {
+                              if (
+                                event.metaKey ||
+                                event.ctrlKey ||
+                                event.shiftKey ||
+                                event.altKey
+                              ) {
+                                return;
+                              }
+                              event.preventDefault();
+                              setLightboxId(a.id);
+                            }
+                          : undefined
+                      }
+                      className="inline-flex items-center gap-2 text-sm hover:underline"
+                    >
+                      <Paperclip className="size-3.5" />
+                      {/* Reporter-supplied, and escaped text. A preview must
+                          not become a second place where it is interpreted. */}
+                      <span className="truncate">{a.name}</span>
+                      <span className="text-muted-foreground text-xs">
+                        ({Math.round(a.size / 1024)} KB)
+                      </span>
+                    </a>
                   </li>
                 );
               })}
@@ -449,6 +445,29 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           />
         </SheetContent>
       </Sheet>
+
+      {/* ⚠️ Mounted at the component root, outside the narrow detail column
+          it is opened from: the dialog portals to the body, so it fills the
+          viewport rather than the ~380px the rows live in. Sizing the
+          thumbnail up instead was the alternative and it cannot work - that
+          column is the constraint the report named.
+
+          Images only. A `.txt` or a `.pdf` row is left as the plain link it
+          has always been, so the list is passed unfiltered and the carousel
+          pages the screenshots. */}
+      <AttachmentLightbox
+        items={(feedback.attachmentUrls ?? [])
+          .filter((a) => attachmentPreview(a.name, a.mimeType).kind === "image")
+          .map((a) => ({
+            fileId: a.id,
+            name: a.name,
+            mimeType: a.mimeType,
+          }))}
+        openId={lightboxId}
+        onOpenChange={(open) => {
+          if (!open) setLightboxId(null);
+        }}
+      />
     </div>
   );
 };
