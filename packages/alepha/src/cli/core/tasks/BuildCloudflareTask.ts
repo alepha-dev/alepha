@@ -1,5 +1,3 @@
-import { basename } from "node:path";
-
 import { $inject, AlephaError } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
 import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
@@ -116,6 +114,22 @@ export class BuildCloudflareTask extends BuildTask {
     });
   }
 
+  /**
+   * The last non-empty segment of a path, on either separator.
+   *
+   * ⚠️ Hand-rolled rather than `node:path`'s `basename`, and the reason is not
+   * taste: this task is the one build step a Cloudflare deploy runs from
+   * inside a Worker (epic #1), and `workerd-entry-graph.spec.ts` refuses any
+   * `node:` builtin reaching the workerd entry. Every other path operation
+   * here already goes through `FileSystemProvider`, which has no `basename` to
+   * offer; adding one would mean three implementations for a caller that
+   * splits a string.
+   */
+  protected basename(path: string): string {
+    const segments = path.split(/[\\/]+/).filter(Boolean);
+    return segments.at(-1) ?? "";
+  }
+
   protected async generateCloudflare(
     ctx: BuildTaskContext,
     distDir: string,
@@ -137,7 +151,7 @@ export class BuildCloudflareTask extends BuildTask {
     // `wrangler tail my-app-production`. The file cannot carry a comment
     // saying so — example-ssr's build-artifacts spec pins it as strict
     // JSON-parseable.
-    const name = basename(root)
+    const name = this.basename(root)
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, "-")
       .replace(/^-+|-+$/g, "")
@@ -215,17 +229,17 @@ export class BuildCloudflareTask extends BuildTask {
       }
     }
 
-    this.enhanceDomain(wrangler);
-    this.enhanceServices(wrangler);
+    this.enhanceDomain(ctx, wrangler);
+    this.enhanceServices(ctx, wrangler);
     this.enhanceCron(ctx, wrangler);
     this.warnUnreachableTimeouts(ctx);
-    this.enhanceDatabase(wrangler);
-    this.enhanceR2(wrangler);
-    this.enhanceKV(wrangler);
-    this.enhanceAnalyticsEngine(wrangler);
-    this.enhanceQueue(wrangler);
+    this.enhanceDatabase(ctx, wrangler);
+    this.enhanceR2(ctx, wrangler);
+    this.enhanceKV(ctx, wrangler);
+    this.enhanceAnalyticsEngine(ctx, wrangler);
+    this.enhanceQueue(ctx, wrangler);
     this.enhanceEmail(ctx, wrangler);
-    this.enhanceDurableObjects(wrangler);
+    this.enhanceDurableObjects(ctx, wrangler);
 
     await this.fs.writeFile(
       this.fs.join(root, distDir, "wrangler.jsonc"),
@@ -240,8 +254,11 @@ export class BuildCloudflareTask extends BuildTask {
   /**
    * Worker-to-worker service bindings, from CLOUDFLARE_SERVICES (JSON).
    */
-  protected enhanceServices(wrangler: WranglerConfig): void {
-    const raw = process.env.CLOUDFLARE_SERVICES;
+  protected enhanceServices(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const raw = this.envOf(ctx, "CLOUDFLARE_SERVICES");
     if (!raw) {
       return;
     }
@@ -265,8 +282,11 @@ export class BuildCloudflareTask extends BuildTask {
     }
   }
 
-  protected enhanceDomain(wrangler: WranglerConfig): void {
-    const domain = process.env.CLOUDFLARE_DOMAIN;
+  protected enhanceDomain(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const domain = this.envOf(ctx, "CLOUDFLARE_DOMAIN");
     if (!domain) {
       return;
     }
@@ -278,7 +298,8 @@ export class BuildCloudflareTask extends BuildTask {
       // `*.alepha.club` → `alepha.club`). Set CLOUDFLARE_ZONE explicitly only to
       // override (a subdomain zone, or a multi-label public suffix like `.co.uk`
       // where "last two labels" is wrong).
-      const zone = process.env.CLOUDFLARE_ZONE || this.deriveZone(domain);
+      const zone =
+        this.envOf(ctx, "CLOUDFLARE_ZONE") || this.deriveZone(domain);
       wrangler.routes = [
         {
           pattern: domain.endsWith("/*") ? domain : `${domain}/*`,
@@ -294,11 +315,11 @@ export class BuildCloudflareTask extends BuildTask {
     // Custom Domains, but among routes the most specific pattern wins — so
     // `app.club.alepha.dev/*` beats the pooled `*.club.alepha.dev/*`, while a
     // Custom Domain on that host would lose to the wildcard route entirely.
-    if (process.env.CLOUDFLARE_ZONE) {
+    if (this.envOf(ctx, "CLOUDFLARE_ZONE")) {
       wrangler.routes = [
         {
           pattern: `${domain}/*`,
-          zone_name: process.env.CLOUDFLARE_ZONE,
+          zone_name: this.envOf(ctx, "CLOUDFLARE_ZONE"),
         },
       ];
       return;
@@ -352,7 +373,7 @@ export class BuildCloudflareTask extends BuildTask {
   protected warnUnreachableTimeouts(ctx: BuildTaskContext): void {
     // A queue binding changes the budget entirely, so there is nothing to
     // warn about. Same variable `enhanceQueue` gates the producer on.
-    if (process.env.CLOUDFLARE_QUEUE_NAME) {
+    if (this.envOf(ctx, "CLOUDFLARE_QUEUE_NAME")) {
       return;
     }
     const jobs = ctx.manifest
@@ -424,19 +445,22 @@ export class BuildCloudflareTask extends BuildTask {
     return [...new Set(crons.map((c) => c.expression))];
   }
 
-  protected enhanceDatabase(wrangler: WranglerConfig): void {
-    if (process.env.HYPERDRIVE_ID) {
-      this.enhanceHyperdrive(wrangler);
+  protected enhanceDatabase(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    if (this.envOf(ctx, "HYPERDRIVE_ID")) {
+      this.enhanceHyperdrive(ctx, wrangler);
       return;
     }
 
-    this.enhanceD1(wrangler);
+    this.enhanceD1(ctx, wrangler);
   }
 
   protected static readonly D1_BINDING = "DB";
 
-  protected enhanceD1(wrangler: WranglerConfig): void {
-    const url = process.env.DATABASE_URL;
+  protected enhanceD1(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
+    const url = this.envOf(ctx, "DATABASE_URL");
     if (!url?.startsWith("d1:")) {
       return;
     }
@@ -457,8 +481,11 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.vars.DATABASE_URL = `d1://${binding}`;
   }
 
-  protected enhanceHyperdrive(wrangler: WranglerConfig): void {
-    const hyperdriveId = process.env.HYPERDRIVE_ID;
+  protected enhanceHyperdrive(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const hyperdriveId = this.envOf(ctx, "HYPERDRIVE_ID");
     if (!hyperdriveId) {
       return;
     }
@@ -472,18 +499,18 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.vars ??= {};
     wrangler.vars.DATABASE_URL = `hyperdrive://${binding}`;
 
-    if (process.env.POSTGRES_SCHEMA) {
-      wrangler.vars.POSTGRES_SCHEMA = process.env.POSTGRES_SCHEMA;
+    if (this.envOf(ctx, "POSTGRES_SCHEMA")) {
+      wrangler.vars.POSTGRES_SCHEMA = this.envOf(ctx, "POSTGRES_SCHEMA");
     }
   }
 
-  protected enhanceR2(wrangler: WranglerConfig): void {
-    const bucketName = process.env.R2_BUCKET_NAME;
+  protected enhanceR2(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
+    const bucketName = this.envOf(ctx, "R2_BUCKET_NAME");
     if (!bucketName) {
       return;
     }
 
-    const jurisdiction = process.env.CLOUDFLARE_JURISDICTION;
+    const jurisdiction = this.envOf(ctx, "CLOUDFLARE_JURISDICTION");
     wrangler.r2_buckets = wrangler.r2_buckets || [];
     wrangler.r2_buckets.push({
       binding: bucketName,
@@ -494,13 +521,13 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.vars.R2_BUCKET_NAME = bucketName;
   }
 
-  protected enhanceKV(wrangler: WranglerConfig): void {
-    const kvName = process.env.CLOUDFLARE_KV_NAME;
+  protected enhanceKV(ctx: BuildTaskContext, wrangler: WranglerConfig): void {
+    const kvName = this.envOf(ctx, "CLOUDFLARE_KV_NAME");
     if (!kvName) {
       return;
     }
 
-    const kvId = process.env.CLOUDFLARE_KV_ID;
+    const kvId = this.envOf(ctx, "CLOUDFLARE_KV_ID");
 
     wrangler.kv_namespaces = wrangler.kv_namespaces || [];
     wrangler.kv_namespaces.push({
@@ -528,8 +555,11 @@ export class BuildCloudflareTask extends BuildTask {
    * on the first data point, which is why there is no id here to pair with the
    * name, unlike KV or D1.
    */
-  protected enhanceAnalyticsEngine(wrangler: WranglerConfig): void {
-    const dataset = process.env.CLOUDFLARE_ANALYTICS_DATASET;
+  protected enhanceAnalyticsEngine(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const dataset = this.envOf(ctx, "CLOUDFLARE_ANALYTICS_DATASET");
     if (!dataset) {
       return;
     }
@@ -555,13 +585,16 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.vars.CLOUDFLARE_ANALYTICS_DATASET = dataset;
   }
 
-  protected enhanceQueue(wrangler: WranglerConfig): void {
+  protected enhanceQueue(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
     // Consuming a queue this app does not produce to, so it is deliberately
     // NOT gated on CLOUDFLARE_QUEUE_NAME: an app running jobs in direct mode
     // still wants its bounce and complaint events.
-    this.enhanceEmailEventsQueue(wrangler);
+    this.enhanceEmailEventsQueue(ctx, wrangler);
 
-    const queueName = process.env.CLOUDFLARE_QUEUE_NAME;
+    const queueName = this.envOf(ctx, "CLOUDFLARE_QUEUE_NAME");
     if (!queueName) {
       return;
     }
@@ -580,14 +613,14 @@ export class BuildCloudflareTask extends BuildTask {
     // derived default is safe.
     // `Number("")` is 0, which would silently disable retries when the
     // variable is exported but empty.
-    const rawMaxRetries = process.env.CLOUDFLARE_QUEUE_MAX_RETRIES;
+    const rawMaxRetries = this.envOf(ctx, "CLOUDFLARE_QUEUE_MAX_RETRIES");
     const maxRetries = rawMaxRetries ? Number(rawMaxRetries) : Number.NaN;
 
     wrangler.queues.consumers = wrangler.queues.consumers || [];
     wrangler.queues.consumers.push({
       queue: queueName,
       dead_letter_queue:
-        process.env.CLOUDFLARE_QUEUE_DLQ_NAME || `${queueName}-dlq`,
+        this.envOf(ctx, "CLOUDFLARE_QUEUE_DLQ_NAME") || `${queueName}-dlq`,
       max_retries: Number.isSafeInteger(maxRetries)
         ? maxRetries
         : QUEUE_DEFAULT_MAX_RETRIES,
@@ -607,8 +640,11 @@ export class BuildCloudflareTask extends BuildTask {
    * domain) is created in the dashboard or through the API, and is per
    * domain: a marketing subdomain added later needs its own.
    */
-  protected enhanceEmailEventsQueue(wrangler: WranglerConfig): void {
-    const queueName = process.env.CLOUDFLARE_EMAIL_EVENTS_QUEUE;
+  protected enhanceEmailEventsQueue(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
+    const queueName = this.envOf(ctx, "CLOUDFLARE_EMAIL_EVENTS_QUEUE");
     if (!queueName) {
       return;
     }
@@ -618,7 +654,8 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler.queues.consumers.push({
       queue: queueName,
       dead_letter_queue:
-        process.env.CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME || `${queueName}-dlq`,
+        this.envOf(ctx, "CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME") ||
+        `${queueName}-dlq`,
       max_retries: QUEUE_DEFAULT_MAX_RETRIES,
     });
   }
@@ -640,7 +677,10 @@ export class BuildCloudflareTask extends BuildTask {
    * migration tag — a duplicated tag or class declaration is a wrangler
    * deploy error.
    */
-  protected enhanceDurableObjects(wrangler: WranglerConfig): void {
+  protected enhanceDurableObjects(
+    ctx: BuildTaskContext,
+    wrangler: WranglerConfig,
+  ): void {
     if (!this.hasWebSocket) {
       return;
     }

@@ -3,6 +3,7 @@ import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
+import type { BuildTaskContext } from "../tasks/BuildTask.ts";
 
 /**
  * Exposes the protected binding enhancers so the wrangler.jsonc shape can be
@@ -57,6 +58,16 @@ describe("BuildCloudflareTask", () => {
     };
   };
 
+  /**
+   * A context with NO `env` bag, so the enhancers read `process.env` - which
+   * is what `alepha build` on a laptop does and what every case below sets up.
+   *
+   * The bag itself is #288's: a Lore deploy passes one so two deploys sharing
+   * an isolate cannot trade each other's values. `the explicit environment`
+   * below is where that path is exercised.
+   */
+  const ambient = () => ({}) as BuildTaskContext;
+
   // Snapshot + restore the env vars these enhancers read so tests don't leak.
   const ENV_KEYS = [
     "DATABASE_URL",
@@ -88,7 +99,7 @@ describe("BuildCloudflareTask", () => {
       process.env.CLOUDFLARE_JURISDICTION = "eu";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceD1(wrangler);
+      createTask().testEnhanceD1(ambient(), wrangler);
 
       expect(wrangler.d1_databases).toEqual([
         { binding: "DB", database_name: "my-db", database_id: "db-id-123" },
@@ -100,7 +111,7 @@ describe("BuildCloudflareTask", () => {
     it("ignores non-d1 DATABASE_URL", () => {
       process.env.DATABASE_URL = "postgres://localhost/db";
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceD1(wrangler);
+      createTask().testEnhanceD1(ambient(), wrangler);
       expect(wrangler.d1_databases).toBeUndefined();
     });
   });
@@ -111,7 +122,7 @@ describe("BuildCloudflareTask", () => {
       process.env.CLOUDFLARE_JURISDICTION = "eu";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceR2(wrangler);
+      createTask().testEnhanceR2(ambient(), wrangler);
 
       expect(wrangler.r2_buckets).toEqual([
         { binding: "my-bucket", bucket_name: "my-bucket", jurisdiction: "eu" },
@@ -123,7 +134,7 @@ describe("BuildCloudflareTask", () => {
     it("emits the dataset binding with no id to pair it with", () => {
       process.env.CLOUDFLARE_ANALYTICS_DATASET = "sigil_analytics";
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceAnalyticsEngine(wrangler);
+      createTask().testEnhanceAnalyticsEngine(ambient(), wrangler);
 
       // Unlike KV and D1, there is no id: Cloudflare provisions the dataset on
       // the first data point, so there is nothing to reference beforehand.
@@ -134,7 +145,7 @@ describe("BuildCloudflareTask", () => {
 
     it("emits nothing at all when no dataset is configured", () => {
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceAnalyticsEngine(wrangler);
+      createTask().testEnhanceAnalyticsEngine(ambient(), wrangler);
 
       // Absent, not `[]`: an empty array is a key wrangler then validates, and
       // every app that does not use Analytics Engine would carry it.
@@ -146,7 +157,7 @@ describe("BuildCloudflareTask", () => {
       const wrangler: Record<string, any> = {
         analytics_engine_datasets: [{ binding: "OTHER", dataset: "other" }],
       };
-      createTask().testEnhanceAnalyticsEngine(wrangler);
+      createTask().testEnhanceAnalyticsEngine(ambient(), wrangler);
 
       // The user's `cloudflare.config` is spread in before the enhancers run,
       // so a hand-written binding is already present here and must survive.
@@ -165,7 +176,7 @@ describe("BuildCloudflareTask", () => {
       process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceQueue(wrangler);
+      createTask().testEnhanceQueue(ambient(), wrangler);
 
       expect(wrangler.queues.consumers).toEqual([
         {
@@ -182,7 +193,7 @@ describe("BuildCloudflareTask", () => {
       process.env.CLOUDFLARE_QUEUE_MAX_RETRIES = "5";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceQueue(wrangler);
+      createTask().testEnhanceQueue(ambient(), wrangler);
 
       expect(wrangler.queues.consumers[0]).toEqual({
         queue: "my-queue",
@@ -196,7 +207,7 @@ describe("BuildCloudflareTask", () => {
       process.env.CLOUDFLARE_QUEUE_MAX_RETRIES = "not-a-number";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceQueue(wrangler);
+      createTask().testEnhanceQueue(ambient(), wrangler);
 
       expect(wrangler.queues.consumers[0].max_retries).toBe(3);
     });
@@ -211,7 +222,7 @@ describe("BuildCloudflareTask", () => {
       process.env.CLOUDFLARE_EMAIL_EVENTS_QUEUE = "email-events";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceQueue(wrangler);
+      createTask().testEnhanceQueue(ambient(), wrangler);
 
       expect(wrangler.queues.consumers).toEqual([
         {
@@ -228,7 +239,7 @@ describe("BuildCloudflareTask", () => {
       process.env.CLOUDFLARE_EMAIL_EVENTS_QUEUE = "email-events";
 
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceQueue(wrangler);
+      createTask().testEnhanceQueue(ambient(), wrangler);
 
       expect(
         wrangler.queues.consumers.map((c: { queue: string }) => c.queue).sort(),
@@ -239,7 +250,7 @@ describe("BuildCloudflareTask", () => {
 
     it("adds nothing when neither queue is configured", () => {
       const wrangler: Record<string, any> = {};
-      createTask().testEnhanceQueue(wrangler);
+      createTask().testEnhanceQueue(ambient(), wrangler);
 
       expect(wrangler.queues).toBeUndefined();
     });
@@ -251,7 +262,7 @@ describe("BuildCloudflareTask", () => {
       task.setHasWebSocket(true);
 
       const wrangler: Record<string, any> = {};
-      task.testEnhanceDurableObjects(wrangler);
+      task.testEnhanceDurableObjects(ambient(), wrangler);
 
       expect(wrangler.durable_objects.bindings).toEqual([
         {
@@ -269,7 +280,7 @@ describe("BuildCloudflareTask", () => {
       task.setHasWebSocket(false);
 
       const wrangler: Record<string, any> = {};
-      task.testEnhanceDurableObjects(wrangler);
+      task.testEnhanceDurableObjects(ambient(), wrangler);
 
       expect(wrangler.durable_objects).toBeUndefined();
       expect(wrangler.migrations).toBeUndefined();
@@ -290,7 +301,7 @@ describe("BuildCloudflareTask", () => {
           { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
         ],
       };
-      task.testEnhanceDurableObjects(wrangler);
+      task.testEnhanceDurableObjects(ambient(), wrangler);
 
       expect(wrangler.migrations).toEqual([
         { tag: "v1", new_sqlite_classes: ["AlephaWebSocketDurableObject"] },
@@ -311,7 +322,7 @@ describe("BuildCloudflareTask", () => {
       const wrangler: Record<string, any> = {
         migrations: [{ tag: "v1", new_classes: ["MyOwnDurableObject"] }],
       };
-      task.testEnhanceDurableObjects(wrangler);
+      task.testEnhanceDurableObjects(ambient(), wrangler);
 
       expect(wrangler.migrations).toEqual([
         { tag: "v1", new_classes: ["MyOwnDurableObject"] },
@@ -333,7 +344,7 @@ describe("BuildCloudflareTask", () => {
           ],
         },
       };
-      task.testEnhanceDurableObjects(wrangler);
+      task.testEnhanceDurableObjects(ambient(), wrangler);
 
       expect(wrangler.durable_objects.bindings).toHaveLength(1);
     });
@@ -949,6 +960,59 @@ describe("BuildCloudflareTask", () => {
       const task = createTask();
       task.testWarnUnreachableTimeouts({ manifest: manifest() } as any);
       expect(task.warnings).toHaveLength(0);
+    });
+  });
+  /**
+   * #288: a deploy passes its environment ON THE CONTEXT.
+   *
+   * ⚠️ The alternative it replaces was `CloudflareAdapter.runBuildInProcess`
+   * setting each value on `process.env` for the duration of the call and
+   * restoring it after. That is fine in a CLI process and a race inside Lore's
+   * Worker, where two deploys share an isolate: the second call's save
+   * captures the FIRST call's values, so the first finishes by restoring the
+   * second's variables and the second builds against whatever was left.
+   * Nothing about that failure looks like a race.
+   */
+  describe("the explicit environment", () => {
+    it("reads the context's bag instead of the ambient one", ({ expect }) => {
+      process.env.DATABASE_URL = "d1://ambient-db:ambient-id";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceD1(
+        { env: { DATABASE_URL: "d1://deploy-db:deploy-id" } } as never,
+        wrangler,
+      );
+
+      expect(wrangler.d1_databases).toEqual([
+        { binding: "DB", database_name: "deploy-db", database_id: "deploy-id" },
+      ]);
+    });
+
+    it("does NOT fall through to the ambient one, key by key", ({ expect }) => {
+      // The property that makes it explicit. A bag that merged over
+      // `process.env` would let a deploy inherit the operator's own
+      // `DATABASE_URL` for a database it never provisioned - and the worker
+      // would come up bound to it.
+      process.env.DATABASE_URL = "d1://ambient-db:ambient-id";
+      process.env.R2_BUCKET_NAME = "ambient-bucket";
+
+      const wrangler: Record<string, any> = {};
+      const task = createTask();
+      task.testEnhanceD1({ env: { R2_BUCKET_NAME: "b" } } as never, wrangler);
+      task.testEnhanceR2({ env: {} } as never, wrangler);
+
+      expect(wrangler.d1_databases).toBeUndefined();
+      expect(wrangler.r2_buckets).toBeUndefined();
+    });
+
+    it("still reads the ambient one when no bag is given", ({ expect }) => {
+      // `alepha build -t cloudflare` on a laptop, which is the other caller.
+      process.env.R2_BUCKET_NAME = "laptop-bucket";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceR2(ambient(), wrangler);
+
+      expect(wrangler.r2_buckets?.[0]?.bucket_name).toBe("laptop-bucket");
     });
   });
 });

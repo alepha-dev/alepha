@@ -23,6 +23,49 @@ export const cloudflareD1Schema = z.object({
 
 export type CloudflareD1 = Infer<typeof cloudflareD1Schema>;
 
+/**
+ * The body of `POST /accounts/{id}/d1/database/{id}/query`.
+ *
+ * One string, and no `params`: a migration file is DDL, so there is nothing to
+ * bind, and a placeholder array would invite somebody to split the file into
+ * one statement per request - which is what takes a table rebuild's
+ * `PRAGMA foreign_keys=OFF` out of force before its own `DROP TABLE` runs.
+ */
+export const d1QueryBodySchema = z.object({
+  sql: z.string(),
+});
+
+/**
+ * One statement's answer. D1 returns an array of these, one per statement in
+ * the submitted SQL.
+ *
+ * `results` is left as a loose array because a migration file's statements are
+ * DDL and answer nothing; only the two bookkeeping SELECTs read it, and they
+ * narrow their own rows.
+ */
+export const d1QueryResultSchema = z.object({
+  success: z.boolean().optional(),
+  results: z.array(z.record(z.text(), z.any())).optional(),
+});
+
+export type CloudflareD1QueryResult = Infer<typeof d1QueryResultSchema>;
+
+/**
+ * One step of D1's file-import flow: `init`, `ingest` or `poll`.
+ *
+ * Loosely typed on purpose. The three actions answer overlapping shapes -
+ * `init` may carry an upload URL or not, `poll` carries a status and a
+ * bookmark - and pinning a union here would refuse a response D1 is entitled
+ * to widen. What the caller reads is checked where it reads it.
+ */
+export interface CloudflareD1Import {
+  upload_url?: string;
+  filename?: string;
+  status?: string;
+  at_bookmark?: string;
+  errors?: string[];
+}
+
 // ---------------------------------------------------------------------------
 // KV
 // ---------------------------------------------------------------------------

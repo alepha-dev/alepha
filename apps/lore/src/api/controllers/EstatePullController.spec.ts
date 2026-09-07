@@ -15,10 +15,13 @@ import {
   createTestProject,
   TestEntityRepositories,
 } from "../../../test/fixtures/entities.ts";
+import { appInstances } from "../entities/appInstances.ts";
+import { appSecrets } from "../entities/appSecrets.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
+import { AppSecretService } from "../services/AppSecretService.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateController } from "./EstateController.ts";
@@ -27,6 +30,8 @@ class Repos {
   estates = $repository(estates);
   artifacts = $repository(artifacts);
   commands = $repository(estateCommands);
+  instances = $repository(appInstances);
+  secrets = $repository(appSecrets);
 }
 
 interface TestContext {
@@ -60,7 +65,13 @@ interface StoredArtifact {
 
 const setup = async (): Promise<TestContext> => {
   const alepha = Alepha.create({
-    env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
+    env: {
+      LOG_LEVEL: "error",
+      DATABASE_URL: ":memory:",
+      // ⚠️ `CredentialSealService` refuses the published default in every
+      // environment, so a spec that seals a value has to set one.
+      APP_SECRET: "a-strong-and-unique-app-secret-for-tests",
+    },
   });
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
@@ -346,9 +357,13 @@ describe("EstatePullController, the secret set", () => {
     await ctx.alepha.stop();
   });
 
-  it("answers an empty set, never cacheable, for a command the machine holds", async ({
+  it("answers an empty set, never cacheable, for a command that names no copy", async ({
     expect,
   }) => {
+    // ⚠️ Empty rather than a refusal. `restart`, `logs` and `stop` name a Bay
+    // instance by the two strings the operator typed, not by a row, so a
+    // machine executing one must not be told "no such command" for asking a
+    // question whose honest answer is nothing.
     const owner = await createOwner(ctx);
     const project = await createTestProject(ctx.alepha);
     const machine = await enrol(ctx, owner, "ovh-1");
@@ -359,6 +374,64 @@ describe("EstatePullController, the secret set", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(await res.json()).toEqual({});
+  });
+
+  it("answers the copy's own set when the command names one", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const project = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const artifact = await storeArtifact(ctx, project.id, "1.0.0");
+
+    // The copy the command's `(app, environment)` names, on this estate.
+    const instance = await ctx.repos.instances.create({
+      projectId: project.id,
+      app: "my-app",
+      env: "production",
+      estateId: machine.estate.id,
+    } as never);
+    await ctx.alepha.inject(AppSecretService).set({
+      instanceId: instance.id,
+      key: "STRIPE_SECRET_KEY",
+      value: "sk_live_abcdefghijkl",
+    });
+
+    const command = await sentDeploy(ctx, machine, artifact);
+    const res = await pull(ctx, "secrets", command.id, machine.secret);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(await res.json()).toEqual({
+      STRIPE_SECRET_KEY: "sk_live_abcdefghijkl",
+    });
+  });
+
+  it("refuses when the estate carries two copies of the same name", async ({
+    expect,
+  }) => {
+    // ⚠️ Two projects lending one estate can each name `my-app/production` on
+    // it. Taking the first row would hand one project's production secrets to
+    // the other's machine, so ambiguity is refused rather than resolved.
+    const owner = await createOwner(ctx);
+    const one = await createTestProject(ctx.alepha);
+    const two = await createTestProject(ctx.alepha);
+    const machine = await enrol(ctx, owner, "ovh-1");
+    const artifact = await storeArtifact(ctx, one.id, "1.0.0");
+
+    for (const project of [one, two]) {
+      await ctx.repos.instances.create({
+        projectId: project.id,
+        app: "my-app",
+        env: "production",
+        estateId: machine.estate.id,
+      } as never);
+    }
+
+    const command = await sentDeploy(ctx, machine, artifact);
+    const res = await pull(ctx, "secrets", command.id, machine.secret);
+
+    expect(res.status).toBe(404);
   });
 
   it("is scoped exactly like the artifact: another estate's secret and a done command are the same 404", async ({

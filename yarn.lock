@@ -4890,6 +4890,7 @@ __metadata:
     "@cloudflare/workers-types": "npm:^5.20260831.1"
     "@electric-sql/pglite": "npm:^0.5.8"
     "@faker-js/faker": "npm:^10.6.0"
+    "@noble/hashes": "npm:^1.8.0"
     "@redis/client": "npm:^6.2.1"
     "@tailwindcss/vite": "npm:^4.3.3"
     "@testing-library/dom": "npm:^10.4.1"
@@ -4901,6 +4902,7 @@ __metadata:
     "@types/react-dom": "npm:^19.2.5"
     "@types/ws": "npm:^8.18.1"
     "@vitejs/plugin-react": "npm:^6.1.1"
+    cloudflare: "npm:^7.1.0"
     cron-schedule: "npm:^6.0.0"
     dayjs: "npm:^1.11.23"
     drizzle-kit: "npm:1.0.0-rc.4"
@@ -5416,6 +5418,15 @@ __metadata:
     strip-ansi: "npm:^6.0.0"
     wrap-ansi: "npm:^7.0.0"
   checksum: 10c0/6035f5daf7383470cef82b3d3db00bec70afb3423538c50394386ffbbab135e26c3689c41791f911fa71b62d13d3863c712fdd70f0fbdffd938a1e6fd09aac00
+  languageName: node
+  linkType: hard
+
+"cloudflare@npm:^7.1.0":
+  version: 7.1.0
+  resolution: "cloudflare@npm:7.1.0"
+  bin:
+    cloudflare: bin/cli
+  checksum: 10c0/0ea8692511e463d8d1f1cb72a9bd4214c809dcbc5d3f16ce5e0393e752d2f7c663290386cfb230ad389fce9b7b8a3c3fdac77a1fbd35ad5bb8ec021888d24818
   languageName: node
   linkType: hard
 

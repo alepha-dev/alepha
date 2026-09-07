@@ -45,16 +45,17 @@ describe("the Lore CLI command surface", () => {
   };
 
   /**
-   * Six, and no root of their own: the binary IS the root, so a `lore`
+   * Seven, and no root of their own: the binary IS the root, so a `lore`
    * command inside it would read `lore lore quality push`.
    */
-  it("puts the six Lore verbs at the top level", () => {
+  it("puts the seven Lore verbs at the top level", () => {
     const names = setup()
       .testGetTopLevelCommands()
       .map((command) => command.name)
       .sort();
 
     expect(names).toEqual([
+      "apps",
       "artifacts",
       "attachments",
       "login",
@@ -77,6 +78,7 @@ describe("the Lore CLI command surface", () => {
         ]),
       ),
     ).toEqual({
+      apps: ["build", "deploy"],
       artifacts: ["push"],
       attachments: ["push"],
       quality: ["push"],
@@ -90,9 +92,18 @@ describe("the Lore CLI command surface", () => {
    * twenty-five names. `getTopLevelCommands` is deliberately NOT used here:
    * `findCommand` resolves against every registered command, so one that is
    * merely absent from the help still runs.
+   *
+   * ⚠️ **`build` is checked by PARENT, not by name.** `lore apps build`
+   * registers a command called `build`, because a child is named by its leaf -
+   * so a bare name test started failing as a false positive the moment that
+   * command existed. The two wrong fixes were both available: dropping `build`
+   * from the list would unguard the single name most likely to leak, since
+   * `BuildCommand` is exactly what #1809 moved away from; renaming the verb
+   * would make the CLI worse to use to keep a test green. What separates them
+   * is where the command sits - a leaked `alepha build` is TOP-LEVEL, and ours
+   * is a child of `apps`.
    */
   it.each([
-    "build",
     "clean",
     "db",
     "dev",
@@ -107,5 +118,22 @@ describe("the Lore CLI command surface", () => {
     const names = setup().commands.map((command) => command.name);
 
     expect(names).not.toContain(leaked);
+  });
+
+  it("carries no top-level `build`, which is the framework's", () => {
+    // The same guard as the cases above, expressed so `lore apps build` passes
+    // and `alepha build` leaking in still fails.
+    const cli = setup();
+    const top = cli.testGetTopLevelCommands().map((command) => command.name);
+
+    expect(top).not.toContain("build");
+    // ...and ours is still there, one level down, so this cannot pass by the
+    // command having disappeared.
+    expect(
+      cli
+        .testGetTopLevelCommands()
+        .find((command) => command.name === "apps")
+        ?.children.map((child) => child.name),
+    ).toEqual(["build", "deploy"]);
   });
 });

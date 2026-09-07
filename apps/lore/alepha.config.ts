@@ -35,6 +35,25 @@ export default defineConfig({
   // now leaves `dist/` Dockerfile-ready with no second build anywhere.
   build: {
     target: "docker",
+    cloudflare: {
+      config: {
+        /**
+         * ⚠️ **The Workers Paid default is 30 seconds of CPU, not 5 minutes**,
+         * and it is easy to discover the wrong way: a request that exceeds it
+         * fails with Error 1102 rather than a timeout that names itself.
+         *
+         * Lore's own CPU-heavy step is the deploy runner (#1205): BLAKE3 plus
+         * base64 over every changed asset of somebody else's site. `apps/docs`
+         * is 1545 files and 44 MB, which is real work in one invocation.
+         *
+         * Set deliberately rather than left at the default, which is the whole
+         * point: an ordinary request uses milliseconds, so raising this costs
+         * nothing on every other path and is the difference between a big
+         * site deploying and failing.
+         */
+        limits: { cpu_ms: 300_000 },
+      },
+    },
     docker: {
       // ⚠️ Not the framework's `node:24-alpine` default. `.nvmrc` is v26 and
       // the release workflow runs 26.x, so the default would ship the

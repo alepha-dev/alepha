@@ -53,6 +53,17 @@ export interface WorkspacePackResult {
    * joined with {@link WorkspacePackResult.filename}.
    */
   outputPath: string;
+
+  /**
+   * The sibling `.maps.tar.gz`, when the build produced any source map.
+   *
+   * Absent when it produced none, which is the honest answer and not an
+   * error: a caller uploads a maps object only when there is one.
+   */
+  maps?: {
+    filename: string;
+    outputPath: string;
+  };
 }
 
 /**
@@ -102,6 +113,24 @@ export class WorkspacePacker {
 
   /**
    * Paths that slip in via `dist/` and must not reach the archive.
+   *
+   * ⚠️ **`*.map` is here, so this changes what EVERY `alepha pack` produces**,
+   * not only what Lore stores. Deliberate: no runtime reads a source map out
+   * of a tarball, and Cloudflare treats them as a separate opt-in
+   * (`upload_source_maps`). Measured on `apps/lore/dist`, 266 of 267 server JS
+   * files had a sibling map and they were roughly 5 MB of a 6.4 MB gzipped
+   * archive - a 4x on every push, every pull and every stored version.
+   *
+   * ⚠️ **They are not discarded**, which is the part that makes the exclusion
+   * safe: {@link packMaps} writes them to a sibling archive in the same call,
+   * so an error report stays symbolicable by whatever reads them later. Adding
+   * a pattern here without a route for what it removes is how a diagnostic
+   * quietly stops existing.
+   *
+   * The entries are `tar` arguments, expanded by `tar` and not by the shell -
+   * each is single-quoted at the call site, so an unquoted `*.map` cannot be
+   * expanded against the cwd first. `--exclude='*.map'` matches at any depth
+   * in GNU and BSD tar alike.
    */
   protected static readonly EXCLUDES = [
     "node_modules",
@@ -112,6 +141,7 @@ export class WorkspacePacker {
     "playwright-report",
     "test-results",
     "coverage",
+    "*.map",
   ];
 
   /**
@@ -175,6 +205,70 @@ export class WorkspacePacker {
       });
     } else {
       await this.shell.run(cmd, { root });
+    }
+
+    const maps = await this.packMaps(root, includes, outputDir, project, tag);
+
+    return { filename, outputPath, maps };
+  }
+
+  /**
+   * The sibling archive holding every source map the build produced.
+   *
+   * ⚠️ **A separate object rather than a Sigil upload.** Nothing symbolicates
+   * today, so uploading into Sigil would commit to a consumer that does not
+   * exist and make a measured 4x size win wait on a feature nobody has scoped.
+   * The artifact already IS its digest, so a sibling beside it needs no table,
+   * no key and no lifecycle of its own: it is written and deleted with the
+   * artifact row.
+   *
+   * Two shell calls rather than one, and both are deliberate. `find` first, so
+   * a build with no maps produces no archive at all - an empty tarball would
+   * be a stored object that says something false. Then `tar -T <list>` rather
+   * than the paths as arguments, because a large build has thousands of maps
+   * and an argument list has a ceiling; a newline-separated list file is
+   * understood by GNU and BSD tar alike, where `--null -T -` is not.
+   */
+  protected async packMaps(
+    root: string,
+    includes: string[],
+    outputDir: string,
+    project: string,
+    tag: string,
+  ): Promise<WorkspacePackResult["maps"]> {
+    if (includes.length === 0) {
+      return undefined;
+    }
+
+    const targets = includes.map((p) => `'${p}'`).join(" ");
+    const listed = await this.shell.run(
+      `sh -c "find ${targets} -name '*.map' -type f -print"`,
+      { root, capture: true },
+    );
+
+    const paths = String(listed ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (paths.length === 0) {
+      return undefined;
+    }
+
+    const filename = `${project}-${tag}.maps.tar.gz`;
+    const outputPath = this.fs.join(outputDir, filename);
+    // Beside the archive rather than in a temp directory: `output` is already
+    // the place this call is allowed to write, and a list file left behind by
+    // a crash is then visible next to what it describes.
+    const listPath = this.fs.join(outputDir, `${filename}.list`);
+    await this.fs.writeFile(listPath, `${paths.join("\n")}\n`);
+
+    try {
+      await this.shell.run(
+        `sh -c "COPYFILE_DISABLE=1 tar -czf '${outputPath}' -T '${listPath}'"`,
+        { root },
+      );
+    } finally {
+      await this.fs.rm(listPath, { force: true });
     }
 
     return { filename, outputPath };

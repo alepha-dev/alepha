@@ -13,6 +13,7 @@ import { appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, type EstateType, estates } from "../entities/estates.ts";
 import { projects } from "../entities/projects.ts";
+import { acceptedRuntimes } from "../schemas/acceptedRuntimes.ts";
 import {
   type EstateResource,
   estateResourceSchema,
@@ -69,7 +70,10 @@ export class EstateService {
    * either.
    */
   acceptedRuntimes(type: EstateType): string[] {
-    return type === "bay" ? ["node"] : ["workerd"];
+    // Delegated rather than inlined: the Deploy tab needs the same answer and
+    // a browser cannot inject a service, so the mapping lives in a module both
+    // sides read. See `schemas/acceptedRuntimes.ts`.
+    return acceptedRuntimes(type);
   }
 
   /**

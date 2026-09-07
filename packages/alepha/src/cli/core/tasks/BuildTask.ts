@@ -20,6 +20,23 @@ export interface BuildTaskContext {
   options: BuildOptions;
 
   /**
+   * The environment this build reads, when the caller supplies one.
+   *
+   * ⚠️ **Present means it is the WHOLE answer**, never a bag merged over
+   * `process.env`. That is what makes it explicit: a deploy's values cannot be
+   * topped up from whatever the host happens to have exported, so a missing
+   * `DATABASE_URL` is a missing binding rather than the operator's own.
+   *
+   * It exists because `CloudflareAdapter.runBuildInProcess` used to SET these
+   * on `process.env` for the duration of the call and restore them after. In a
+   * CLI that is fine; in Lore's Worker two deploys share an isolate, and the
+   * second call's save captures the first call's values - so the first deploy
+   * finishes by restoring the second's variables and the second builds against
+   * whatever was left. Nothing about that failure looks like a race.
+   */
+  env?: Record<string, string | undefined>;
+
+  /**
    * CLI runner for progress logging.
    * Tasks call this when they have work to show.
    * Tasks decide IF and WHEN to call run — e.g. skip entirely if nothing to do.
@@ -109,4 +126,23 @@ export interface BuildTaskContext {
  */
 export abstract class BuildTask {
   abstract run(ctx: BuildTaskContext): Promise<void>;
+  /**
+   * One environment value, from the context when it carries one.
+   *
+   * ⚠️ **`ctx.env` is all-or-nothing.** When it is present it is the whole
+   * environment for this build, with no fall-through to `process.env`, so a
+   * caller that supplies a bag cannot accidentally inherit the host's
+   * `DATABASE_URL` for a resource it never provisioned. When it is absent the
+   * ambient environment answers, which is what `alepha build` on a laptop
+   * wants.
+   *
+   * `typeof process` is guarded because this task runs inside a Cloudflare
+   * Worker during a Lore deploy, where the global may not exist at all.
+   */
+  protected envOf(ctx: BuildTaskContext, key: string): string | undefined {
+    if (ctx.env) {
+      return ctx.env[key];
+    }
+    return typeof process === "undefined" ? undefined : process.env[key];
+  }
 }

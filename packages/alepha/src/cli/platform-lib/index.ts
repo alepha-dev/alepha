@@ -6,7 +6,9 @@ import { GitHubSecretStore } from "./providers/GitHubSecretStore.ts";
 import { MemorySecretStore } from "./providers/MemorySecretStore.ts";
 import { PlatformCacheProvider } from "./providers/PlatformCacheProvider.ts";
 import { CloudflareApi } from "./services/CloudflareApi.ts";
+import { D1MigrationsService } from "./services/D1MigrationsService.ts";
 import { NamingService } from "./services/NamingService.ts";
+import { PlatformAdapterRegistry } from "./services/PlatformAdapterRegistry.ts";
 import { PlatformInspector } from "./services/PlatformInspector.ts";
 import { PlatformOrchestrator } from "./services/PlatformOrchestrator.ts";
 import { SecretFilterService } from "./services/SecretFilterService.ts";
@@ -30,11 +32,18 @@ import { WranglerApi } from "./services/WranglerApi.ts";
  */
 export const AlephaPlatformLibPlugin = $module({
   name: "alepha.cli.platform-lib",
+  register: (alepha) =>
+    alepha
+      .inject(PlatformAdapterRegistry)
+      .set("cloudflare", CloudflareAdapter)
+      .set("bay", BayAdapter),
   services: [
     BayAdapter,
     CloudflareAdapter,
     CloudflareApi,
+    D1MigrationsService,
     WranglerApi,
+    PlatformAdapterRegistry,
     PlatformCacheProvider,
     GitHubSecretStore,
     MemorySecretStore,
@@ -48,6 +57,12 @@ export const AlephaPlatformLibPlugin = $module({
 export * from "./adapters/BayAdapter.ts";
 export * from "./adapters/CloudflareAdapter.ts";
 export * from "./adapters/PlatformAdapter.ts";
+// ⚠️ Exported here as well as from the `workerd` entry, but NOT registered:
+// under node the `cloudflare` adapter is the wrangler-driven one. A consumer
+// that means to run it - Lore's `DeployRunner` - registers it by name itself,
+// which is what makes a deploy behave the same under both runtimes rather than
+// quietly driving the shell adapter in a test.
+export * from "./adapters/WorkerCloudflareAdapter.ts";
 export * from "./atoms/platformOptions.ts";
 export * from "./providers/GitHubSecretStore.ts";
 export * from "./providers/MemorySecretStore.ts";
@@ -55,8 +70,14 @@ export * from "./providers/PlatformCacheProvider.ts";
 export * from "./providers/SecretStoreProvider.ts";
 export * from "./schemas/cloudflare.ts";
 export * from "./schemas/platform.ts";
+export * from "./secretKeys.ts";
 export * from "./services/CloudflareApi.ts";
+export * from "./services/CloudflareAssetManifest.ts";
+export * from "./services/CloudflareProvisionClient.ts";
+export * from "./services/CloudflareDeployClient.ts";
+export * from "./services/D1MigrationsService.ts";
 export * from "./services/NamingService.ts";
+export * from "./services/PlatformAdapterRegistry.ts";
 export * from "./services/PlatformInspector.ts";
 export * from "./services/PlatformOrchestrator.ts";
 export * from "./services/SecretFilterService.ts";

@@ -126,7 +126,20 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // production for a month, `artifacts` is the honest name for what the new
   // one holds, and the per-migration shape of this list is exactly what lets
   // one dead drop be excused without unguarding the live table anywhere else.
-  "20260805233951_striped_captain_flint": ["artifacts"],
+  // ⚠️ `deployments` is the SAME situation, one epic later. The 2026-08-05
+  // Bay control plane shipped an `artifacts` table with a `deployments` beside
+  // it, and this migration dropped both in the outpost purge the next day.
+  // Epic #1 gave that name back on 2026-09-07 to a table with a different
+  // shape - keyed on `app_instances`, carrying an `(app, tag, sha256)`
+  // snapshot and a Cloudflare `version_id` - so the entity walk started
+  // producing "deployments" and this historical drop became a violation
+  // retroactively, exactly as "artifacts" did.
+  //
+  // Safe for the same reason: the old table has been gone from production
+  // since 2026-08-06, the new one is created fresh by
+  // `20260907102140_bright_gorilla_man`, and no migration between the two
+  // touches either.
+  "20260805233951_striped_captain_flint": ["artifacts", "deployments"],
 };
 
 /**

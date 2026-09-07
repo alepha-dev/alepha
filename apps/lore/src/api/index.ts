@@ -11,10 +11,12 @@ import { AlephaWebSocket } from "alepha/websocket";
 import { AdminEstateController } from "./controllers/AdminEstateController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AppController } from "./controllers/AppController.ts";
+import { AppSecretController } from "./controllers/AppSecretController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
 import { DashboardController } from "./controllers/DashboardController.ts";
+import { DeployController } from "./controllers/DeployController.ts";
 import { DirectoryController } from "./controllers/DirectoryController.ts";
 import { EpicController } from "./controllers/EpicController.ts";
 import { EstateCommandController } from "./controllers/EstateCommandController.ts";
@@ -48,6 +50,7 @@ import { SigilIngestController } from "./controllers/SigilIngestController.ts";
 import { LoreDashboardCatalog } from "./dashboardCatalogModule.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
+import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
 import { ProjectRankJobs } from "./jobs/ProjectRankJobs.ts";
@@ -68,6 +71,7 @@ import { LorePermissions } from "./security/LorePermissions.ts";
 import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ProjectRankResource } from "./security/ProjectRankResource.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
+import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
 import { AreaService } from "./services/AreaService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
@@ -80,6 +84,11 @@ import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
 import { DashboardCardService } from "./services/DashboardCardService.ts";
 import { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "./services/DashboardScopeService.ts";
+import { DeployGate } from "./services/DeployGate.ts";
+import { DeployLimits } from "./services/DeployLimits.ts";
+import { DeployRegistry } from "./services/DeployRegistry.ts";
+import { DeployRunner } from "./services/DeployRunner.ts";
+import { DeployService } from "./services/DeployService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
 import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
@@ -114,6 +123,7 @@ import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
+import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
@@ -244,11 +254,25 @@ export const LoreApi = $module({
     QualityService,
     ArtifactTarReader,
     ArtifactService,
+    // Deploying a stored artifact to an estate (epic #1). `DeployRegistry` is
+    // the seam #1201 replaces with the `deployments` table; the runner is what
+    // writes through it.
+    DeployGate,
+    DeployLimits,
+    DeployRegistry,
+    DeployRunner,
+    DeployService,
+    RollbackService,
+    DeployJobs,
+    DeployController,
     ProjectLimits,
     AreaService,
     // The one write path for `app_instances`, and the only writer of
     // `sigils.name`, which mirrors it (#1767).
     AppService,
+    // One deployed copy's environment (#1813). Sealed at rest, opened only by
+    // the deploy, and never read back by any endpoint.
+    AppSecretService,
     BlightRuleService,
     OpenBlightCounter,
     // What "open quests" means, shared by the sidebar badge, the dashboard
@@ -329,6 +353,7 @@ export const LoreApi = $module({
     FolioAttachmentController,
     FeedbackController,
     AppController,
+    AppSecretController,
     SigilController,
     SigilIngestController,
     EstateController,

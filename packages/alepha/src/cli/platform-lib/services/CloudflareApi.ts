@@ -1,9 +1,12 @@
+import { md5 } from "@noble/hashes/legacy";
 import { $inject, Alepha, AlephaError, type ZType, z } from "alepha";
 
 import type {
   CloudflareAccount,
   CloudflareApiError,
   CloudflareD1,
+  CloudflareD1Import,
+  CloudflareD1QueryResult,
   CloudflareDeployment,
   CloudflareHyperdrive,
   CloudflareKV,
@@ -34,12 +37,15 @@ import {
   createQueueBodySchema,
   createR2BodySchema,
   createR2TokenBodySchema,
+  d1QueryBodySchema,
   putSecretBodySchema,
 } from "../schemas/cloudflare.ts";
 import { WranglerApi } from "./WranglerApi.ts";
 
 export type {
   CloudflareD1,
+  CloudflareD1Import,
+  CloudflareD1QueryResult,
   CloudflareDeployment,
   CloudflareHyperdrive,
   CloudflareKV,
@@ -188,6 +194,172 @@ export class CloudflareApi {
     await this.fetch(`/accounts/${accountId}/d1/database/${databaseId}`, {
       method: "DELETE",
     });
+  }
+
+  /**
+   * The uuid of a database named in `alepha.config.ts`.
+   *
+   * Everything on this class addresses D1 by uuid while the platform config,
+   * the migration path and the operator all speak in names, so exactly one
+   * place does the lookup.
+   */
+  public async resolveD1Id(name: string): Promise<string> {
+    const databases = await this.listD1();
+    const match = databases.find((it) => it.name === name);
+    if (!match) {
+      const known = databases.map((it) => it.name).sort();
+      throw new AlephaError(
+        `No D1 database named '${name}' in this account.` +
+          (known.length > 0 ? ` Found: ${known.join(", ")}.` : ""),
+      );
+    }
+    return match.uuid;
+  }
+
+  /**
+   * Run a SQL FILE against a D1 database, the way `wrangler d1 execute
+   * --remote --file` does: upload it, then have D1 ingest it.
+   *
+   * ## ⚠️ Measured 2026-09-07, against a real D1. This is not interchangeable with {@link d1Query}
+   *
+   * The same drizzle-shaped table rebuild - `PRAGMA foreign_keys=OFF`, a
+   * `CREATE`, an `INSERT ... SELECT`, a `DROP TABLE` on a CASCADE parent, a
+   * `RENAME` - run both ways against a parent holding five child rows:
+   *
+   * | transport | child rows after |
+   * | --- | --- |
+   * | `POST .../query` | **0 of 5** |
+   * | this import flow | **5 of 5** |
+   *
+   * So `/query` voids `PRAGMA foreign_keys=OFF` exactly as
+   * `wrangler d1 migrations apply` does, and putting migrations through it
+   * reproduces the incident that destroyed 2434 rows across five tables. The
+   * pragma survives only here.
+   *
+   * ⚠️ **Migration files go through this method. Nothing else may.** The
+   * bookkeeping statements stay on {@link d1Query}, which is what wrangler's
+   * own `--command` uses: they are single statements with no pragma to void.
+   *
+   * The flow is wrangler's, step for step: init with the file's md5, upload if
+   * D1 does not already hold it, ingest, then poll to completion. D1 returns
+   * the database to its original state if the ingest fails partway, which is
+   * why a failed apply is safe to retry.
+   */
+  public async d1Import(
+    databaseId: string,
+    sql: string,
+    options: { pollLimit?: number } = {},
+  ): Promise<void> {
+    const accountId = await this.resolveAccountId();
+    const bytes = new TextEncoder().encode(sql);
+    // md5, because that is what D1's upload URL answers as its ETag and what
+    // the ingest step matches against. Not a security property: it is how the
+    // service recognises a file it already holds.
+    const etag = this.hex(md5(bytes));
+    const path = `/accounts/${accountId}/d1/database/${databaseId}/import`;
+
+    let answer = await this.fetch<CloudflareD1Import>(path, {
+      method: "POST",
+      body: { action: "init", etag },
+    });
+
+    // ⚠️ `init` can answer `complete` outright, with no `upload_url` and no
+    // `filename`: D1 keys uploads by md5, so a file it has already ingested is
+    // already applied. Measured - an `ingest` after that answers
+    // "Invalid property: filename => Required", which reads as a malformed
+    // request rather than as "there was nothing to do".
+    //
+    // Safe for migrations because the bookkeeping table, not D1, decides what
+    // is pending: a file this database has genuinely already run is one
+    // `d1_migrations` already names.
+    if (answer.status === "complete") {
+      return;
+    }
+
+    if (answer.upload_url) {
+      const uploaded = await globalThis.fetch(answer.upload_url, {
+        method: "PUT",
+        body: bytes as unknown as BodyInit,
+      });
+      if (!uploaded.ok) {
+        throw new AlephaError(
+          `D1 refused the migration upload (HTTP ${uploaded.status}).`,
+        );
+      }
+      const returned = uploaded.headers.get("etag")?.replace(/^"|"$/g, "");
+      if (returned !== etag) {
+        // The bytes that arrived are not the bytes we meant to run, and the
+        // next step would ingest them. Refusing is the only safe answer.
+        throw new AlephaError(
+          "The migration did not upload intact: D1's checksum does not match the file's.",
+        );
+      }
+    }
+
+    // Ingest either way: `init` answering no `upload_url` means D1 already
+    // holds these exact bytes, which is a re-run of the same migration rather
+    // than a reason to skip applying it.
+    answer = await this.fetch<CloudflareD1Import>(path, {
+      method: "POST",
+      body: { action: "ingest", filename: answer.filename, etag },
+    });
+
+    // Bounded rather than open: a poll loop with no ceiling is a Worker that
+    // burns its CPU budget on a D1 that stopped answering.
+    const limit = options.pollLimit ?? 120;
+    for (let attempt = 0; attempt < limit; attempt++) {
+      if (answer.status === "complete") {
+        return;
+      }
+      if (answer.status === "error") {
+        throw new AlephaError(
+          `D1 could not apply the migration: ${(answer.errors ?? []).join("; ") || "no reason given"}.`,
+        );
+      }
+      answer = await this.fetch<CloudflareD1Import>(path, {
+        method: "POST",
+        body: { action: "poll", current_bookmark: answer.at_bookmark },
+      });
+    }
+
+    throw new AlephaError(
+      `D1 was still applying the migration after ${limit} polls. It rolls back on failure, so this is safe to retry.`,
+    );
+  }
+
+  protected hex(bytes: Uint8Array): string {
+    let out = "";
+    for (const byte of bytes) {
+      out += byte.toString(16).padStart(2, "0");
+    }
+    return out;
+  }
+
+  /**
+   * Run SQL against a D1 database over the query API.
+   *
+   * ⚠️ **This is `wrangler d1 execute --remote --command`, and a migration
+   * file must NOT come through here.** Measured 2026-09-07 against a real D1:
+   * this endpoint voids `PRAGMA foreign_keys=OFF`, so a drizzle table rebuild
+   * sent through it loses every child row of the table it drops - 0 of 5
+   * survived, which is the incident that destroyed 2434 rows across five
+   * tables. {@link d1Import} is the transport that keeps them (5 of 5), and
+   * `D1MigrationsService` uses this one only for the single bookkeeping
+   * statements, which have no pragma to void.
+   */
+  public async d1Query(
+    databaseId: string,
+    sql: string,
+  ): Promise<CloudflareD1QueryResult[]> {
+    const accountId = await this.resolveAccountId();
+    return await this.fetch<CloudflareD1QueryResult[]>(
+      `/accounts/${accountId}/d1/database/${databaseId}/query`,
+      {
+        method: "POST",
+        body: { sql },
+        bodySchema: d1QueryBodySchema,
+      },
+    );
   }
 
   // -------------------------------------------------------------------------

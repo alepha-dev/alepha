@@ -1,6 +1,4 @@
 import { randomBytes, scryptSync } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 
 import {
   $inject,
@@ -29,6 +27,7 @@ import {
   selectSecrets,
 } from "../secretKeys.ts";
 import { CloudflareApi } from "../services/CloudflareApi.ts";
+import { D1MigrationsService } from "../services/D1MigrationsService.ts";
 import { NamingService } from "../services/NamingService.ts";
 import { StoragePlaceholderService } from "../services/StoragePlaceholderService.ts";
 import { WranglerApi } from "../services/WranglerApi.ts";
@@ -56,6 +55,7 @@ export class CloudflareAdapter extends PlatformAdapter {
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly api = $inject(CloudflareApi);
   protected readonly wrangler = $inject(WranglerApi);
+  protected readonly d1Migrations = $inject(D1MigrationsService);
   protected readonly runner = $inject(Runner);
   protected readonly buildTask = $inject(BuildCloudflareTask);
   protected readonly placeholders = $inject(StoragePlaceholderService);
@@ -366,10 +366,8 @@ export class CloudflareAdapter extends PlatformAdapter {
 
   /**
    * Library-embed of `alepha build -t cloudflare --prebuilt`. Loads the
-   * pre-built `dist/manifest.json`, sets the per-deploy env vars on
-   * `process.env` for the duration of the call (the task's enhance*
-   * methods read them directly), then runs `BuildCloudflareTask`
-   * against a synthetic context.
+   * pre-built `dist/manifest.json` through `this.fs`, puts the per-deploy env
+   * vars ON THE CONTEXT, then runs `BuildCloudflareTask` against it.
    *
    * `ctx.alepha` is intentionally null — in manifest mode the task
    * reads resources/crons/containers from `ctx.manifest` and never
@@ -381,10 +379,14 @@ export class CloudflareAdapter extends PlatformAdapter {
     root: string,
     env: Record<string, string>,
   ): Promise<void> {
-    const manifestPath = join(root, "dist", "manifest.json");
+    const manifestPath = this.fs.join(root, "dist", "manifest.json");
     let manifest: BuildManifest;
     try {
-      manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+      // ⚠️ Through `this.fs`, never `node:fs/promises`. This is the FIRST
+      // thing a Lore deploy touches, and it unpacks the artifact into a
+      // `MemoryFileSystemProvider`: a direct read defeats that substitution
+      // and looks for a file on a disk the Worker does not have.
+      manifest = JSON.parse(await this.fs.readTextFile(manifestPath));
     } catch (err) {
       throw new AlephaError(
         `Cannot read ${manifestPath}: ${(err as Error).message}. ` +
@@ -430,21 +432,20 @@ export class CloudflareAdapter extends PlatformAdapter {
       manifest,
       platformOptions: null,
       flags: { prebuilt: true },
+      // ⚠️ On the context, not on `process.env`. This used to SET each value
+      // globally for the duration of the call and restore it after, which is
+      // fine in a CLI process and a race inside Lore's Worker: two deploys
+      // share an isolate, the second call's save captures the FIRST call's
+      // values, and the first then finishes by restoring the second's. Nothing
+      // about that failure looks like a race.
+      //
+      // Present means it is the whole environment - see `BuildTask.envOf` -
+      // so a prebuilt deploy cannot inherit the host's `DATABASE_URL` for a
+      // resource it never provisioned.
+      env,
     };
 
-    const previous: Record<string, string | undefined> = {};
-    for (const [k, v] of Object.entries(env)) {
-      previous[k] = process.env[k];
-      process.env[k] = v;
-    }
-    try {
-      await this.buildTask.run(ctx);
-    } finally {
-      for (const [k, prev] of Object.entries(previous)) {
-        if (prev === undefined) delete process.env[k];
-        else process.env[k] = prev;
-      }
-    }
+    await this.buildTask.run(ctx);
   }
 
   // -------------------------------------------------------------------------
@@ -994,11 +995,12 @@ export class CloudflareAdapter extends PlatformAdapter {
           }
         }
 
-        // Copy migrations to dist for wrangler, apply, then clean up
+        // Copy migrations to dist, apply, then clean up
         const distMigrations = this.fs.join(ctx.root, "dist", "migrations");
         await this.fs.cp(migrationsDir, distMigrations);
 
-        await this.wrangler.d1MigrationsApply(
+        await this.d1Migrations.apply(
+          this.api,
           dbName,
           ctx.root,
           // Where the copy above put them.

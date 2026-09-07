@@ -2,7 +2,15 @@ import { describe, it } from "vitest";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 
-import { APP_TABS, appTabsFor } from "./appTabs.ts";
+import {
+  APP_TABS,
+  type AppTab,
+  type AppTabOption,
+  type AppTabRoute,
+  appTabsFor,
+  appTabsFrom,
+  type GatedAppTab,
+} from "./appTabs.ts";
 
 const anInstance = (
   kinds?: string[],
@@ -78,13 +86,24 @@ describe("the instance's tab set", () => {
     ]);
   });
 
-  it("adds nothing for an estate", ({ expect }) => {
-    // Deploy and Environment are epic #1's and #1813's. No placeholder tab
-    // ships: Environment is a security surface, and a tab standing there
-    // invites somebody to fill it in without the crypto.
+  it("adds Deploy and Environment for an estate, and only for an estate", ({
+    expect,
+  }) => {
+    // Both unlock on the same predicate and for the same reason: an estate is
+    // where a deploy goes and where its variables end up, so a copy with
+    // nowhere to deploy has neither a history nor anything to configure.
+    // Choosing one on the Settings tab is what makes the pair appear.
     expect(
       routes(anInstance(undefined, { estateId: crypto.randomUUID() })),
-    ).toEqual(["app", "appArtifacts", "appSettings"]);
+    ).toEqual([
+      "app",
+      "appArtifacts",
+      "appDeploy",
+      "appEnvironment",
+      "appSettings",
+    ]);
+    expect(routes(anInstance())).not.toContain("appDeploy");
+    expect(routes(anInstance())).not.toContain("appEnvironment");
   });
 
   it("keeps Settings last in every combination", ({ expect }) => {
@@ -103,10 +122,147 @@ describe("the instance's tab set", () => {
     }
   });
 
+  it("takes the telemetry four away when the project's track option is off", ({
+    expect,
+  }) => {
+    const instance = anInstance(["beacon", "blights"]);
+    expect(
+      appTabsFor(instance, { track: false }).map((tab) => tab.route),
+    ).toEqual(["app", "appArtifacts", "appSettings"]);
+    // And gives them all back untouched when it returns: the project switch
+    // narrows, it never rewrites what each instance unlocked.
+    expect(
+      appTabsFor(instance, { track: true }).map((tab) => tab.route),
+    ).toEqual(appTabsFor(instance).map((tab) => tab.route));
+  });
+
+  it("reads a missing key as off rather than as absent", ({ expect }) => {
+    // Narrow, never widen - the rule `projectCapabilities` states for the
+    // server's own reads. An empty bag is a project with nothing switched on,
+    // not a caller declining to filter.
+    expect(
+      appTabsFor(anInstance(["beacon", "blights"]), {}).map((tab) => tab.route),
+    ).toEqual(["app", "appArtifacts", "appSettings"]);
+  });
+
+  it("gives every gated tab an option and every baseline tab none", ({
+    expect,
+  }) => {
+    // Overview, Artifacts and Settings are the Apps baseline per
+    // `appsCapabilityOptionsSchema`, so they answer to no switch at all.
+    const baseline = new Set(["app", "appArtifacts", "appSettings"]);
+    for (const tab of APP_TABS) {
+      if (baseline.has(tab.route)) {
+        expect(tab.unlockedBy).toBeUndefined();
+        expect(tab.option).toBeUndefined();
+      } else {
+        // ⚠️ Each names its own, and this used to assert `track` for all of
+        // them - which is exactly the coincidence that would have hidden the
+        // Environment tab from a project deploying through Lore with telemetry
+        // off. The set is what is asserted now, not one value.
+        expect(tab.unlockedBy).toBeTypeOf("function");
+        expect(["track", "deploy"]).toContain(tab.option);
+      }
+    }
+  });
+
+  it("gates Deploy and Environment on deploy, never on track", ({ expect }) => {
+    // ⚠️ The pair that matters. One is the screen holding a project's
+    // production credentials and the other is how anything ships at all;
+    // either vanishing because somebody turned TELEMETRY off is a support
+    // ticket nobody diagnoses, and it is exactly what the implicit
+    // `apps.track` on every gated tab used to do.
+    for (const route of ["appDeploy", "appEnvironment"]) {
+      expect(APP_TABS.find((it) => it.route === route)?.option).toBe("deploy");
+    }
+
+    const withEstate = anInstance(undefined, { estateId: crypto.randomUUID() });
+    const routesOf = (options: { track: boolean; deploy: boolean }) =>
+      appTabsFor(withEstate, options).map((it) => it.route);
+
+    expect(routesOf({ track: false, deploy: true })).toEqual([
+      "app",
+      "appArtifacts",
+      "appDeploy",
+      "appEnvironment",
+      "appSettings",
+    ]);
+    expect(routesOf({ track: true, deploy: false })).toEqual([
+      "app",
+      "appArtifacts",
+      "appSettings",
+    ]);
+  });
+
   it("carries no count on Errors and no Changelog slot", ({ expect }) => {
     expect(APP_TABS.map((tab) => tab.route)).not.toContain("appChangelog");
     // A `count` would need a query per page load to fill, and a confident `0`
     // where it had not resolved.
     expect(APP_TABS.every((tab) => !("count" in tab))).toBe(true);
+  });
+});
+
+describe("the two axes of a tab's gate", () => {
+  /**
+   * A tab set with one tab per option, which `APP_TABS` cannot be until epic
+   * #1's Deploy tab and #1813's Environment tab exist. `appArtifacts` stands in
+   * for the Deploy route purely because `AppTabRoute` has no name for it yet -
+   * nothing here depends on which route it is, only on which option it names.
+   */
+  const gatedOn = (option: AppTabOption, route: AppTabRoute): GatedAppTab => ({
+    route,
+    labelKey: "app.tab.overview",
+    unlockedBy: () => true,
+    option,
+  });
+
+  const twoAxes: AppTab[] = [
+    { route: "app", labelKey: "app.tab.overview" },
+    gatedOn("track", "appAnalytics"),
+    gatedOn("deploy", "appArtifacts"),
+    { route: "appSettings", labelKey: "app.tab.settings" },
+  ];
+
+  const routesOf = (options: Partial<Record<AppTabOption, boolean>>) =>
+    appTabsFrom(twoAxes, anInstance(), options).map((tab) => tab.route);
+
+  it("keeps the deploy tab for a project that tracks nothing", ({ expect }) => {
+    // The project this epic is for: deploys through Lore, wants no analytics
+    // sigil. Before the option was per tab it lost the Deploy tab with nothing
+    // on screen saying why, and the switch that would bring it back was
+    // labelled for telemetry.
+    expect(routesOf({ track: false, deploy: true })).toEqual([
+      "app",
+      "appArtifacts",
+      "appSettings",
+    ]);
+  });
+
+  it("keeps the telemetry tab for a project that deploys elsewhere", ({
+    expect,
+  }) => {
+    expect(routesOf({ track: true, deploy: false })).toEqual([
+      "app",
+      "appAnalytics",
+      "appSettings",
+    ]);
+  });
+
+  it("leaves the baseline standing with every option off", ({ expect }) => {
+    expect(routesOf({ track: false, deploy: false })).toEqual([
+      "app",
+      "appSettings",
+    ]);
+  });
+
+  it("keeps Settings last whichever options are on", ({ expect }) => {
+    for (const options of [
+      { track: false, deploy: false },
+      { track: true, deploy: false },
+      { track: false, deploy: true },
+      { track: true, deploy: true },
+    ]) {
+      expect(routesOf(options).at(-1)).toBe("appSettings");
+    }
   });
 });

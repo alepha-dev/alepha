@@ -3,8 +3,6 @@ import type { AppEntry } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
 import { $logger, ConsoleColorProvider } from "alepha/logger";
 
-import { BayAdapter } from "../adapters/BayAdapter.ts";
-import { CloudflareAdapter } from "../adapters/CloudflareAdapter.ts";
 import type {
   DetectedResources,
   PlatformAdapter,
@@ -12,6 +10,7 @@ import type {
   PlatformState,
 } from "../adapters/PlatformAdapter.ts";
 import { type NamingContext, NamingService } from "./NamingService.ts";
+import { PlatformAdapterRegistry } from "./PlatformAdapterRegistry.ts";
 import {
   PlatformInspector,
   type ResolvedPlatformConfig,
@@ -25,28 +24,29 @@ import {
  */
 export class PlatformOrchestrator {
   protected readonly log = $logger();
-  // Not read here: the adapter factories a test subclass overrides resolve
-  // their substitutes through it.
+  // Resolves each adapter, and the substitutes a test subclass provides for
+  // them.
   protected readonly alepha = $inject(Alepha);
   protected readonly color = $inject(ConsoleColorProvider);
   protected readonly inspector = $inject(PlatformInspector);
   protected readonly naming = $inject(NamingService);
-  protected readonly bayAdapter = $inject(BayAdapter);
-  protected readonly cloudflareAdapter = $inject(CloudflareAdapter);
+  protected readonly adapters = $inject(PlatformAdapterRegistry);
 
   // -------------------------------------------------------------------------
   // Adapter resolution
   // -------------------------------------------------------------------------
 
+  /**
+   * ⚠️ Through the registry rather than a field per adapter, so importing this
+   * file imports no adapter. A class field is eager: `$inject(BayAdapter)`
+   * here put `node:child_process` in the module graph of anything that so much
+   * as typed against the orchestrator, which is what stopped it being
+   * bundled for a Worker. The registry holds classes and `inject` is what
+   * instantiates one, so an adapter costs nothing until an environment asks
+   * for it by name.
+   */
   public resolveAdapter(adapterName: string): PlatformAdapter {
-    switch (adapterName) {
-      case "cloudflare":
-        return this.cloudflareAdapter;
-      case "bay":
-        return this.bayAdapter;
-      default:
-        throw new AlephaError(`Unknown adapter: "${adapterName}"`);
-    }
+    return this.alepha.inject(this.adapters.get(adapterName));
   }
 
   // -------------------------------------------------------------------------

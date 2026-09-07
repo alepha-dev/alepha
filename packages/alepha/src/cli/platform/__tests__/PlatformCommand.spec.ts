@@ -4,7 +4,7 @@ import { Alepha } from "alepha";
 import {
   CloudflareAdapter,
   platformOptions,
-  WranglerApi,
+  D1MigrationsService,
 } from "alepha/cli/platform-lib";
 import { CliProvider } from "alepha/command";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
@@ -17,7 +17,7 @@ import { PlatformCommand } from "../commands/platform.ts";
  * the real Cloudflare REST API for account resolution. None of that is
  * under test here — only that `platform db baseline mark` resolves the
  * right D1 database name (naming) and reaches
- * `WranglerApi.d1MigrationsBaseline` with the right arguments — so it is
+ * `D1MigrationsService.baseline` with the right arguments — so it is
  * stubbed to a no-op, same as a real `platform up` would have already
  * authenticated in an earlier step.
  */
@@ -30,24 +30,26 @@ class TestPlatformCommand extends PlatformCommand {
 }
 
 /**
- * `WranglerApi` is used for real (not substituted) — only its `shell`/`fs`
+ * `D1MigrationsService` is used for real (not substituted) — only its `api`/`fs`
  * collaborators are swapped, exactly like `d1MigrationsApply.spec.ts`. That
- * proves the whole chain (naming -> dbName -> WranglerApi call -> shelled
- * wrangler commands) actually works end-to-end, not just that the right
- * method gets called.
+ * proves the whole chain (naming -> dbName -> the service -> the SQL posted to
+ * the D1 query API) actually works end-to-end, not just that the right method
+ * gets called.
  */
-class FakeShell {
-  public readonly commands: string[] = [];
+class FakeCloudflareApi {
+  public readonly sql: string[] = [];
   public appliedNames: string[] = [];
 
-  async run(command: string) {
-    this.commands.push(command);
-    if (command.includes("SELECT name FROM d1_migrations")) {
-      return JSON.stringify([
-        { results: this.appliedNames.map((name) => ({ name })) },
-      ]);
+  async resolveD1Id(name: string) {
+    return `uuid-of-${name}`;
+  }
+
+  async d1Query(_databaseId: string, sql: string) {
+    this.sql.push(sql);
+    if (sql.includes("SELECT name FROM d1_migrations")) {
+      return [{ results: this.appliedNames.map((name) => ({ name })) }];
     }
-    return "";
+    return [];
   }
 }
 
@@ -64,7 +66,7 @@ class FakeShell {
  * directory or from a directory that merely looks like it might hold one —
  * so this end-to-end suite could pass without ever exercising v1 discovery
  * through the actual `alepha platform db baseline mark` command surface,
- * even after the underlying `WranglerApi` logic was fixed and unit-tested
+ * even after the underlying migration logic was fixed and unit-tested
  * elsewhere.
  */
 class FakeFs {
@@ -105,14 +107,19 @@ describe("PlatformCommand", () => {
       const cli = alepha.inject(CliProvider);
       const cmd = alepha.inject(TestPlatformCommand);
 
-      const wrangler = alepha.inject(WranglerApi);
-      const shell = new FakeShell();
-      const wranglerFs = new FakeFs(
+      const migrations = alepha.inject(D1MigrationsService);
+      const api = new FakeCloudflareApi();
+      const migrationsFs = new FakeFs(
         new Set(migrationPaths.map((p) => nodeJoin("/project", p))),
       );
-      Object.assign(wrangler as unknown as Record<string, unknown>, {
-        shell,
-        fs: wranglerFs,
+      // The filesystem is the service's own; the TRANSPORT is the command's,
+      // because it carries the credential (#288). So the fake goes on the
+      // command, not on the service.
+      Object.assign(migrations as unknown as Record<string, unknown>, {
+        fs: migrationsFs,
+      });
+      Object.assign(cmd as unknown as Record<string, unknown>, {
+        cloudflare: api,
       });
 
       alepha.set(platformOptions, {
@@ -141,22 +148,22 @@ describe("PlatformCommand", () => {
         return writes.join("");
       };
 
-      return { alepha, fs, cli, cmd, shell, wranglerFs, captureStdout };
+      return { alepha, fs, cli, cmd, api, migrationsFs, captureStdout };
     };
 
     /**
      * The whole point of Task 4's CLI half: `--reset` on `alepha platform db
-     * baseline mark` must actually reach `WranglerApi.d1MigrationsBaseline`
+     * baseline mark` must actually reach `D1MigrationsService.baseline`
      * (previously it was declared on core `alepha db baseline mark` and read
      * by nothing). Proven end-to-end: real naming resolves the D1 database
-     * name, the real `WranglerApi` issues the DELETE + INSERT against the
-     * (faked) shell, and the reported `replaced` count reaches stdout.
+     * name, the real service issues the DELETE + INSERT against the (faked)
+     * query API, and the reported `replaced` count reaches stdout.
      */
-    it("resolves the D1 db name and passes --reset through to d1MigrationsBaseline", async ({
+    it("resolves the D1 db name and passes --reset through to the baseline", async ({
       expect,
     }) => {
-      const { cli, cmd, shell, captureStdout } = await create();
-      shell.appliedNames = ["0001_old.sql", "0002_old.sql"];
+      const { cli, cmd, api, captureStdout } = await create();
+      api.appliedNames = ["0001_old.sql", "0002_old.sql"];
       // No `.env.production` written: the Postgres/Hyperdrive guard only
       // reads `.env.<env>` (never `process.env`), so an absent file
       // correctly falls through to the D1 path, exercised for real here.
@@ -169,16 +176,11 @@ describe("PlatformCommand", () => {
       );
 
       expect(
-        shell.commands.some((c) =>
-          c.startsWith("wrangler d1 execute my-app-production --remote"),
-        ),
+        api.sql.some((it) => it.includes("DELETE FROM d1_migrations")),
       ).toBe(true);
       expect(
-        shell.commands.some((c) => c.includes("DELETE FROM d1_migrations")),
-      ).toBe(true);
-      expect(
-        shell.commands.some((c) =>
-          c.includes(
+        api.sql.some((it) =>
+          it.includes(
             "INSERT INTO d1_migrations (name) VALUES ('0000_baseline.sql')",
           ),
         ),
@@ -195,14 +197,14 @@ describe("PlatformCommand", () => {
      * (`<tag>/migration.sql`), nothing previously recorded. Covered at the
      * unit level in `d1MigrationsApply.spec.ts`, but the command surface
      * that will actually be invoked — naming resolution, flag parsing,
-     * `WranglerApi` injection, all of it — was only ever exercised here
+     * `D1MigrationsService` injection, all of it — was only ever exercised here
      * against the flat pre-v1 layout, so a regression in how this command
      * wires up to v1 discovery would not have been caught.
      */
     it("baselines a drizzle-kit v1 layout migration, recording the folder name", async ({
       expect,
     }) => {
-      const { cli, cmd, shell, captureStdout } = await create({}, [
+      const { cli, cmd, api, captureStdout } = await create({}, [
         "migrations/sqlite/20260729013337_baseline/migration.sql",
         "migrations/sqlite/20260729013337_baseline/snapshot.json",
       ]);
@@ -215,13 +217,14 @@ describe("PlatformCommand", () => {
       );
 
       expect(
-        shell.commands.some((c) =>
-          c.includes(
+        api.sql.some((it) =>
+          it.includes(
             "INSERT INTO d1_migrations (name) VALUES ('20260729013337_baseline')",
           ),
         ),
       ).toBe(true);
-      expect(shell.commands.some((c) => c.includes("--file="))).toBe(false);
+      // Baselining runs no migration SQL at all, so nothing here reads a file.
+      expect(api.sql.every((it) => !it.includes("CREATE TABLE `"))).toBe(true);
 
       const parsed = JSON.parse(output);
       expect(parsed.dbName).toBe("my-app-production");
@@ -231,8 +234,8 @@ describe("PlatformCommand", () => {
     it("refuses without --reset when the deployed database has history, and touches nothing", async ({
       expect,
     }) => {
-      const { cli, cmd, shell } = await create();
-      shell.appliedNames = ["0001_old.sql"];
+      const { cli, cmd, api } = await create();
+      api.appliedNames = ["0001_old.sql"];
 
       await expect(
         cli.run(cmd.testBaselineMark, {
@@ -242,10 +245,10 @@ describe("PlatformCommand", () => {
       ).rejects.toThrowError(/--reset/);
 
       expect(
-        shell.commands.some((c) => c.includes("DELETE FROM d1_migrations")),
+        api.sql.some((it) => it.includes("DELETE FROM d1_migrations")),
       ).toBe(false);
       expect(
-        shell.commands.some((c) => c.includes("INSERT INTO d1_migrations")),
+        api.sql.some((it) => it.includes("INSERT INTO d1_migrations")),
       ).toBe(false);
     });
 

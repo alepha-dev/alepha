@@ -163,6 +163,7 @@
     },
     "./cli": {
       "types": "./src/cli/core/index.ts",
+      "workerd": "./src/cli/core/index.workerd.ts",
       "import": "./src/cli/core/index.ts",
       "default": "./src/cli/core/index.ts"
     },
@@ -183,6 +184,7 @@
     },
     "./cli/platform-lib": {
       "types": "./src/cli/platform-lib/index.ts",
+      "workerd": "./src/cli/platform-lib/index.workerd.ts",
       "import": "./src/cli/platform-lib/index.ts",
       "default": "./src/cli/platform-lib/index.ts"
     },
@@ -610,6 +612,7 @@
       },
       "./cli": {
         "types": "./dist/cli/core/index.d.ts",
+        "workerd": "./dist/cli/core/index.workerd.js",
         "import": "./dist/cli/core/index.js",
         "default": "./dist/cli/core/index.js"
       },
@@ -630,6 +633,7 @@
       },
       "./cli/platform-lib": {
         "types": "./dist/cli/platform-lib/index.d.ts",
+        "workerd": "./dist/cli/platform-lib/index.workerd.js",
         "import": "./dist/cli/platform-lib/index.js",
         "default": "./dist/cli/platform-lib/index.js"
       },
@@ -938,8 +942,10 @@
     "copy": "node scripts/copy-swagger.ts"
   },
   "dependencies": {
+    "@noble/hashes": "^1.8.0",
     "@redis/client": "^6.2.1",
     "@vitejs/plugin-react": "^6.1.1",
+    "cloudflare": "^7.1.0",
     "dayjs": "^1.11.23",
     "drizzle-kit": "1.0.0-rc.4",
     "drizzle-orm": "1.0.0-rc.4",

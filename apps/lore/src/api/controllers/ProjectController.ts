@@ -1,4 +1,4 @@
-import { $inject, Alepha, z } from "alepha";
+import { $inject, Alepha, AlephaError, z } from "alepha";
 import { AuditService } from "alepha/api/audits";
 import { $storage, files } from "alepha/api/files";
 import { RankService } from "alepha/api/ranks";
@@ -41,6 +41,7 @@ import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 import type { User } from "../entities/users.ts";
 import { relations } from "../relations.ts";
+import { APP_NAME_PATTERN, appNameSchema } from "../schemas/appNameSchema.ts";
 import {
   type CapabilityKey,
   capabilityKeySchema,
@@ -847,6 +848,15 @@ export class ProjectController {
         // merged: removing a key is how a column's setting is cleared, and
         // a server-side merge has no way to express that.
         kanbanColumnConfig: kanbanColumnConfigSchema.nullable().optional(),
+        // Which environment a command means when it names none. `null` clears
+        // it, and `defaultAppInstance` goes back to its fixed rule.
+        //
+        // ⚠️ Deliberately NOT validated against the project's instances: an
+        // operator may name the env they are about to create, and a value
+        // naming nothing simply falls through to the fixed rule. It IS
+        // normalised the way an env is everywhere else, so the value the CLI
+        // reads back matches a row.
+        defaultEnv: appNameSchema.nullable().optional(),
       }),
       response: projectResourceSchema,
     },
@@ -893,6 +903,19 @@ export class ProjectController {
 
       if ("kanbanColumnConfig" in body) {
         project.kanbanColumnConfig = body.kanbanColumnConfig ?? undefined;
+      }
+
+      if ("defaultEnv" in body) {
+        // Same normalisation `AppService` applies to an instance's own `env`,
+        // so what is stored here can match a row. An empty string from a
+        // cleared form field means "unset", not "the empty env".
+        const env = body.defaultEnv?.trim().toLowerCase();
+        if (env && !APP_NAME_PATTERN.test(env)) {
+          throw new AlephaError(
+            `"${env}" is not a valid environment name. Use lowercase letters, digits and interior hyphens.`,
+          );
+        }
+        project.defaultEnv = env ? env : undefined;
       }
 
       if ("preferredLanguage" in body) {

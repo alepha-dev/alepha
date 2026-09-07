@@ -45,6 +45,11 @@ const APP_TAB_ROUTES = new Set([
  * Settings, and each capability adds its own. The order and the "Settings is
  * always last" rule live there; read that file before adding one.
  *
+ * ⚠️ The Apps options go in as a BAG, not as one `tracking` boolean, because
+ * each gated tab names the option it answers to. Adding an option to
+ * `appsCapabilityOptionsSchema` means adding it here too: a key this call
+ * omits reads as off, which is the safe direction and a silent one.
+ *
  * ## Deliberately thin
  *
  * The shell used to own the range and traffic toggles and, through the
@@ -73,7 +78,10 @@ const AppLayout = () => {
 
   const activeRoute = routerState.name ?? "";
   const tabs = instance
-    ? appTabsFor(instance, capabilityOption(project, "apps", "track"))
+    ? appTabsFor(instance, {
+        track: capabilityOption(project, "apps", "track"),
+        deploy: capabilityOption(project, "apps", "deploy"),
+      })
     : [];
   const slug = project?.slug;
 
