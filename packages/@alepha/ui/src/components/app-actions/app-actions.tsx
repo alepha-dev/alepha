@@ -48,6 +48,12 @@ export interface AppActionsProps {
     logout?: string;
   };
 
+  /**
+   * Forwarded to {@link ButtonUser.avatar}: what the signed-in account
+   * button shows instead of the generic glyph. Absent, the glyph stands.
+   */
+  avatar?: ReactNode;
+
   className?: string;
 }
 
@@ -95,6 +101,7 @@ export const AppActions = (props: AppActionsProps) => {
       <ButtonDark variant="ghost" />
       <ButtonUser
         variant="ghost"
+        avatar={props.avatar}
         signInLabel={props.labels?.signIn}
         onSignIn={() => router.push(props.loginRouteName ?? "login")}
       >

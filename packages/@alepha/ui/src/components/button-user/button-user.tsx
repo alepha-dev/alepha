@@ -55,6 +55,26 @@ export interface ButtonUserProps {
    * bordered toolbar look.
    */
   variant?: "ghost" | "outline";
+
+  /**
+   * What the signed-in button shows instead of the generic `User` glyph:
+   * the viewer's own avatar (feedback #P2138).
+   *
+   * ⚠️ **A slot, and it has to be one.** This package can read
+   * `useAuth().user` and so can see `user.picture` - but that is a file id,
+   * and turning one into a URL is the consuming application's routing, not
+   * this component's. Building the URL here would hard-code one app's file
+   * route into a shared package, and the next consumer serves avatars from
+   * somewhere else entirely.
+   *
+   * Absent, the `User` glyph is rendered exactly as before, so a consumer
+   * that passes nothing and a viewer with no picture look identical. The
+   * node sizes ITSELF: the button is `size="icon"` around a `size-4` glyph,
+   * and an avatar wants to be round and fill more of it than that.
+   *
+   * Only reached when signed in - the signed-out branch returns above.
+   */
+  avatar?: ReactNode;
 }
 
 /**
@@ -117,7 +137,10 @@ export const ButtonUser = (props: ButtonUserProps) => {
             />
           }
         >
-          <User className="size-4" />
+          {/* The tooltip and `aria-label` are untouched by the avatar: a
+              face is not a label, and "Account menu" is still the accessible
+              name of the button. */}
+          {props.avatar ?? <User className="size-4" />}
         </TooltipTrigger>
         <TooltipContent>{menuLabel}</TooltipContent>
       </Tooltip>
