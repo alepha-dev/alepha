@@ -1,6 +1,7 @@
 import { $module } from "alepha";
 import { AlephaServerLinksClient } from "alepha/server/links";
 
+import { AppsCommand } from "./commands/AppsCommand.ts";
 import { ArtifactCommand } from "./commands/ArtifactCommand.ts";
 import { AttachmentCommand } from "./commands/AttachmentCommand.ts";
 import { LoginCommand } from "./commands/LoginCommand.ts";
@@ -81,6 +82,7 @@ export const AlephaLoreCli = $module({
     AttachmentUploader,
     LoreProjectResolver,
     QualityCommand,
+    AppsCommand,
     ArtifactCommand,
     AttachmentCommand,
     ReleaseCommand,
