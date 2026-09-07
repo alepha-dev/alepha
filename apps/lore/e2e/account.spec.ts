@@ -130,20 +130,29 @@ test.describe("Account area", () => {
     const emailSwitch = page.getByRole("switch", { name: "Email" });
     await expect(emailSwitch).toHaveAttribute("aria-checked", "true");
 
+    // ⚠️ Client actions are coalesced into `POST /api/_batch`, so a
+    // `waitForResponse` on the action's own path never fires. Match either,
+    // and arm it BEFORE the click: the switch answers from local state, so
+    // the assertion below is true a millisecond later whether or not anything
+    // reached the server.
     const saved = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/api/"),
+      (response) => /_batch|notification-preferences/.test(response.url()),
+      { timeout: 20_000 },
     );
     await emailSwitch.click();
-    await saved;
+    expect((await saved).ok()).toBe(true);
 
-    await page.reload();
-    await page.waitForLoadState("networkidle");
-    await expect(page.getByRole("switch", { name: "Email" })).toHaveAttribute(
-      "aria-checked",
-      "false",
-    );
+    // Polled: the batch above carries the write, and the row it produces is
+    // read back by the next page load rather than by that same round trip.
+    await expect(async () => {
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByRole("switch", { name: "Email" })).toHaveAttribute(
+        "aria-checked",
+        "false",
+        { timeout: 5_000 },
+      );
+    }).toPass({ timeout: 30_000 });
 
     // The in-app row is a statement, not a control: there is no switch to
     // find, which is what stops it reading as a broken one.
