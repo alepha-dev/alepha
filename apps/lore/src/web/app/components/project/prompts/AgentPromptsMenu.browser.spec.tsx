@@ -56,7 +56,9 @@ describe("AgentPromptsMenu", () => {
 
     return render(
       <AlephaContext.Provider value={alepha}>
-        <AgentPromptsMenu items={items.map((it) => ({ ...it, subject }))} />
+        <AgentPromptsMenu
+          items={items.map((it) => ({ ...it, subject: () => subject }))}
+        />
       </AlephaContext.Provider>,
     );
   };

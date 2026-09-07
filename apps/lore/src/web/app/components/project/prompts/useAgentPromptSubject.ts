@@ -2,6 +2,7 @@ import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -65,6 +66,29 @@ export const useAgentPromptSubject = () => {
           params: { shortId: String(quest.shortId) },
         }),
       ),
+    }),
+
+    /**
+     * ⚠️ The surface where copying field by field earns its keep. A
+     * feedback resource carries the reporter's identity, `context` with the
+     * page and user agent they reported from, and their attachments. None
+     * of that belongs on a clipboard, and the only thing keeping it off is
+     * that this builds seven fields rather than spreading a resource.
+     */
+    forFeedback: (feedback: FeedbackResource): AgentPromptSubject => ({
+      project: project?.title ?? "",
+      slug: project?.slug ?? "",
+      number: feedback.shortId,
+      id: feedback.id,
+      // ⚠️ `#P`, not `#F`. `F` is the folio's letter; feedback kept `P`
+      // from Petitions. Never build this string by hand.
+      reference: formatReference("feedback", feedback.shortId),
+      title: feedback.title,
+      // ⚠️ The INBOX, not the item. `projectFeedback` is `path:
+      // "/feedback"` with no parameter and the selection is React state, so
+      // no URL opens one report. The prompt says "The inbox:" and the agent
+      // reaches the item by its reference.
+      url: absolute(router.path("projectFeedback")),
     }),
   };
 };
