@@ -98,6 +98,12 @@ backlog does, so that a list of quests is the list of quests that can be
 accepted. Pass the epic's id as `epic` to read one epic's quests whatever
 its phase, or `includePlanned: true` to see everything.
 
+Going the other way, an epic can hand ITSELF to an agent: **Review** asks
+one to sharpen the plan while it is still open, and **Activate** hands the
+whole epic over, quest by quest. Both are in the epic's Agent Prompts menu,
+which is off until a project turns it on. See
+[Agent prompts](/lore/docs/guides-agent-prompts).
+
 ## What the roadmap shows
 
 The roadmap lists open releases and the epics inside them, sorted so that a

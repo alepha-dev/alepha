@@ -189,6 +189,17 @@ export class CapabilityRegistry {
           wizard: false,
           preselected: false,
         },
+        {
+          key: "agentPrompts",
+          labelKey: "project.capability.work.option.agentPrompts.label",
+          descriptionKey:
+            "project.capability.work.option.agentPrompts.description",
+          // The wizard asks what surfaces exist; this asks how you work with
+          // them. `wizard: true` here would put Agent prompts beside Board
+          // and Epics at project creation, which is not what it is.
+          wizard: false,
+          preselected: false,
+        },
       ],
       mcpTools: [
         "quest_list",

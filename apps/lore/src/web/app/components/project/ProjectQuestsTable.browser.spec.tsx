@@ -154,7 +154,10 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     window.localStorage.clear();
   });
 
-  const mount = async (initial?: QuestResource[]) => {
+  const mount = async (
+    initial?: QuestResource[],
+    project: unknown = projectFixture(),
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -176,7 +179,7 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     await alepha.inject(I18nProvider).setLang("en");
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, project as never);
     // One area, so the create form has something to pick: `area` is
     // required and the form seeds nothing when no quest is being edited.
     alepha.store.set(currentAreasAtom, [
@@ -439,6 +442,118 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
    * a table that trusted it verbatim would drop a newly added column and try
    * to render a removed one.
    */
+  /**
+   * ⚠️ `currentEpicsAtom` in this file's `mount` carries ONE epic, id 42,
+   * status `planned`. So a quest with `epicId: 42` is inside an epic whose
+   * plan is still open, which is exactly the phase that refuses
+   * `quest_accept` and therefore the phase where the prompt is withheld.
+   * A quest with no epic is never withheld.
+   */
+  describe("the Agent Prompts row action", () => {
+    const openRowMenu = async () => {
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Open row actions" })[0],
+      );
+      return await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')];
+        if (found.length === 0) throw new Error("not open yet");
+        return found;
+      });
+    };
+
+    it("is offered on a loose quest, between Copy ID and Edit", async () => {
+      await mount([questOf(1, "Loose quest")]);
+
+      const labels = (await openRowMenu()).map((it) => it.textContent ?? "");
+      const joined = labels.join(" ");
+      expect(joined).toContain("Agent Prompts");
+      // Its place in the list, not just its presence: the reference and a
+      // nudge are what a list is used for most, and this sits with them.
+      const copyId = labels.findIndex((it) => it.includes("Copy ID"));
+      const group = labels.findIndex((it) => it.includes("Agent Prompts"));
+      const edit = labels.findIndex((it) => it.includes("Edit"));
+      expect(copyId).toBeLessThan(group);
+      expect(group).toBeLessThan(edit);
+    });
+
+    it("is withheld while the quest's epic is still planned", async () => {
+      await mount([questOf(1, "Filed quest", false, 42)]);
+
+      const joined = (await openRowMenu())
+        .map((it) => it.textContent ?? "")
+        .join(" ");
+      // The prompt's second step is `quest_accept`, which a planned epic
+      // refuses. The other entries are unaffected.
+      expect(joined).not.toContain("Agent Prompts");
+      expect(joined).toContain("Copy ID");
+    });
+
+    it("is withheld on a completed quest", async () => {
+      const completed = {
+        ...questOf(1, "Done quest"),
+        completedAt: "2026-09-01T10:00:00.000Z",
+      };
+      await mount([completed as never]);
+
+      const joined = (await openRowMenu())
+        .map((it) => it.textContent ?? "")
+        .join(" ");
+      expect(joined).not.toContain("Agent Prompts");
+      expect(joined).toContain("Copy ID");
+    });
+
+    /**
+     * ⚠️ `projectFixture()` turns every declared option ON, so this is the
+     * only case here that has to pass an override.
+     */
+    it("is absent when the project has agent prompts off", async () => {
+      await mount(
+        [questOf(1, "Loose quest")],
+        projectFixture({ options: { work: { agentPrompts: false } } }),
+      );
+
+      const joined = (await openRowMenu())
+        .map((it) => it.textContent ?? "")
+        .join(" ");
+      expect(joined).not.toContain("Agent Prompts");
+      expect(joined).toContain("Copy ID");
+    });
+
+    it("copies the quest prompt from inside the submenu", async () => {
+      const written: string[] = [];
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (text: string) => {
+            written.push(text);
+          },
+        },
+      });
+      await mount([questOf(1, "Loose quest")]);
+
+      const items = await openRowMenu();
+      // #Q1959's gesture: a plain click opens the submenu, and its content
+      // is portalled so the child is read off `document`.
+      fireEvent.click(
+        items.find((it) => it.textContent?.includes("Agent Prompts"))!,
+      );
+      const child = await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+          (it) => it.textContent?.includes("Work on it"),
+        );
+        if (!found) throw new Error("submenu not open yet");
+        return found;
+      });
+      fireEvent.click(child);
+
+      await waitFor(() => expect(written).toHaveLength(1));
+      expect(written[0]).toContain("#Q1");
+      expect(written[0]).toContain("Loose quest");
+      expect(written[0]).toContain("shortId 1");
+      expect(written[0]).not.toContain("sg_");
+    });
+  });
+
   describe("column order", () => {
     const headerText = (view: Awaited<ReturnType<typeof mount>>["view"]) =>
       [...view.container.querySelectorAll("thead th")]

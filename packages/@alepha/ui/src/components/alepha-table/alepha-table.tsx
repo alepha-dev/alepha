@@ -20,6 +20,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
 import {
@@ -144,6 +147,26 @@ export interface RowAction<T> {
   destructive?: boolean;
   disabled?: (item: T) => boolean;
 }
+
+/**
+ * A row action that is a submenu: a label, an icon, and the actions it
+ * holds. One level only: a group's children are actions, never groups.
+ *
+ * The discriminant is the presence of `children`, so every caller that
+ * returns a plain `RowAction[]` keeps compiling unchanged.
+ *
+ * ⚠️ A group with no children renders nothing, and does not count towards
+ * the row menu existing at all: a row whose only entry is an empty group
+ * gets no three-dots trigger. That lets a caller build `children`
+ * conditionally without checking whether anything survived.
+ */
+export interface RowActionGroup<T> {
+  label: string;
+  icon?: IconType;
+  children: RowAction<T>[];
+}
+
+export type RowActionEntry<T> = RowAction<T> | RowActionGroup<T>;
 
 /**
  * Context passed to every bulk-action `onClick`. `clearSelection()`
@@ -466,8 +489,11 @@ export interface AlephaTableBaseProps<T> {
   /**
    * Per-row action menu builder. Return an array of `RowAction` per
    * item. Each `onClick` receives `(item, { refresh })`.
+   *
+   * An entry may also be a {@link RowActionGroup}: a label, an icon and
+   * the actions it holds, rendered as a submenu one level deep.
    */
-  rowActions?: (item: T) => RowAction<T>[];
+  rowActions?: (item: T) => RowActionEntry<T>[];
   /**
    * Actions applied to selected rows (enables checkbox column). A
    * {@link BulkAction} is a button whose `onClick` receives
@@ -2441,13 +2467,25 @@ const SkeletonRows = (props: { rows: number; cols: number }) => {
   );
 };
 
+function isRowActionGroup<T>(
+  entry: RowActionEntry<T>,
+): entry is RowActionGroup<T> {
+  return "children" in entry;
+}
+
 function RowActionsMenu<T>(props: {
-  actions: RowAction<T>[];
+  actions: RowActionEntry<T>[];
   item: T;
   ctx: RowActionContext;
 }) {
   const { tr } = useI18n();
-  if (props.actions.length === 0) return null;
+  // ⚠️ Effective entries, not entries: a group is one entry however many
+  // children it has, so a lone empty group would otherwise render the
+  // three-dots trigger over an empty menu.
+  const effective = props.actions.filter((action) =>
+    isRowActionGroup(action) ? action.children.length > 0 : true,
+  );
+  if (effective.length === 0) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -2464,13 +2502,42 @@ function RowActionsMenu<T>(props: {
         <MoreVertical className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {props.actions.map((action, idx) => {
+        {effective.map((action, idx) => {
           const Icon = action.icon;
+          if (isRowActionGroup(action)) {
+            return (
+              <DropdownMenuSub key={action.label}>
+                <DropdownMenuSubTrigger>
+                  {Icon && <Icon className="mr-2 size-4" />}
+                  {action.label}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {action.children.map((child) => {
+                    const ChildIcon = child.icon;
+                    return (
+                      <DropdownMenuItem
+                        key={child.label}
+                        disabled={child.disabled?.(props.item)}
+                        onClick={() => child.onClick(props.item, props.ctx)}
+                        variant={child.destructive ? "destructive" : undefined}
+                      >
+                        {ChildIcon && <ChildIcon className="mr-2 size-4" />}
+                        {child.label}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            );
+          }
           const disabled = action.disabled?.(props.item);
+          // A group is never destructive, so the previous entry being one
+          // reads as falsy here and the separator rule needs no case for it.
+          const previous = effective[idx - 1];
           const sep =
             idx > 0 &&
             action.destructive &&
-            !props.actions[idx - 1].destructive;
+            !(previous && !isRowActionGroup(previous) && previous.destructive);
           return (
             <span key={action.label}>
               {sep && <DropdownMenuSeparator />}

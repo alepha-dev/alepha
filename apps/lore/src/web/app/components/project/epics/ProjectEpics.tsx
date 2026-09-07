@@ -13,11 +13,13 @@ import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
+  Bot,
   CircleDot,
   ClipboardCheck,
   Flag,
   Play,
   Plus,
+  Rocket,
   Search,
   Trash2,
 } from "lucide-react";
@@ -38,6 +40,8 @@ import { settleBulk } from "../../shared/bulkOutcome.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import { useBulkReport } from "../../shared/useBulkReport.ts";
+import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import {
   epicBlockedBy,
@@ -46,7 +50,6 @@ import {
   STATUS_TONE,
 } from "./epicStatus.ts";
 import ProjectEpicsProgress from "./ProjectEpicsProgress.tsx";
-import { useEpicReviewPrompt } from "./useEpicReviewPrompt.ts";
 
 /**
  * Filter form, owned by AlephaTable: free-text over title + description,
@@ -134,7 +137,8 @@ const ProjectEpics = () => {
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);
   const reportBulk = useBulkReport();
-  const copyReviewPrompt = useEpicReviewPrompt();
+  const agentPrompt = useAgentPrompt();
+  const promptSubject = useAgentPromptSubject();
   const alepha = useAlepha();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -533,28 +537,62 @@ const ProjectEpics = () => {
           },
         }}
         rowActions={(epic) => [
+          // The submenu that hands this epic to an agent. Two entries under
+          // two different status gates, and the whole group behind the
+          // project's `agentPrompts` option, which is off by default.
+          //
+          // Review is offered while the plan is still open: after Begin the
+          // quest set is what is being worked, not what is being written.
+          // Activate is offered on an active epic too, because a
+          // half-worked epic can be handed over. A `done` epic gets neither,
+          // so the group has no children and `AlephaTable` renders nothing
+          // for it.
+          //
+          // ⚠️ Activate is NOT Begin. Begin is the epic's own lifecycle
+          // action and stays below, untouched; Activate copies a prompt that
+          // tells an agent to begin the epic if it needs beginning. Nothing
+          // here calls `setEpicStatus`.
+          ...(agentPrompt.enabled
+            ? [
+                {
+                  icon: Bot,
+                  label: tr("agentPrompts.menu"),
+                  children: [
+                    ...(epic.status === "planned"
+                      ? [
+                          {
+                            icon: ClipboardCheck,
+                            label: tr("agentPrompts.review"),
+                            onClick: (row: EpicResource) =>
+                              agentPrompt.copy(
+                                "epicReview",
+                                promptSubject.forEpic(row),
+                              ),
+                          },
+                        ]
+                      : []),
+                    ...(epic.status === "planned" || epic.status === "active"
+                      ? [
+                          {
+                            icon: Rocket,
+                            label: tr("agentPrompts.activate"),
+                            onClick: (row: EpicResource) =>
+                              agentPrompt.copy(
+                                "epicActivate",
+                                promptSubject.forEpic(row),
+                              ),
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              ]
+            : []),
           // Gated on the row's own status, which is why this callback reads
           // its argument now. Beginning an epic that has already begun is
           // not a thing to offer.
           ...(epic.status === "planned"
             ? [
-                {
-                  icon: ClipboardCheck,
-                  // Beside Begin, under the same gate, and for the same
-                  // reason (feedback #2087): reviewing a plan is a thing you
-                  // do while the plan is still open. After Begin the quest
-                  // set is what is being worked, not what is being written.
-                  //
-                  // Shipped unflagged despite being called a beta feature in
-                  // the report. A `features.*` key would owe its own
-                  // settings page in the same commit - folio #1172, where
-                  // the Quality tab shipped gated on a flag no UI could set
-                  // and stayed invisible - and a flag buys nothing here: the
-                  // action is inert until someone clicks it, and what it
-                  // does is write text to the clipboard.
-                  label: tr("epic.action.review"),
-                  onClick: (row: EpicResource) => copyReviewPrompt(row),
-                },
                 {
                   icon: Play,
                   // `dependsOn` is a gate since epic #31: Begin is refused
