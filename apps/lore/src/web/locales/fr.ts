@@ -1701,6 +1701,9 @@ export default {
   "estates.cloudflare.token": "Jeton d'API Cloudflare",
   "estates.cloudflare.token.placeholder": "cfut_… ou cfat_…",
   "estates.cloudflare.guide": "Quel jeton, et quelles permissions",
+  "estates.cloudflare.mint": "En créer un avec les bonnes permissions",
+  "estates.cloudflare.mint.scope":
+    "Le formulaire s'ouvre avec les six permissions déjà renseignées. Restreignez Account Resources à un seul compte avant de le créer.",
   "estates.cloudflare.checking": "Vérification chez Cloudflare…",
   "estates.cloudflare.accountLabel": "compte $1",
   "estates.credential.valid": "identifiant valide",

@@ -25,6 +25,7 @@ import { useState } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { ProjectEstateController } from "@/api/controllers/ProjectEstateController.ts";
+import { cloudflareTokenTemplateUrl } from "@/api/schemas/cloudflareTokenTemplate.ts";
 import type { OwnedEstateResource } from "@/api/schemas/ownedEstateResourceSchema.ts";
 import { estateErrorMessage } from "@/web/app/components/shared/estateCreateDraft.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -459,6 +460,24 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
                     maxLength={128}
                     data-testid="my-estate-token"
                   />
+                  {/* ⚠️ Same six permissions as a first mint, so the same
+                      link: a lapsed token is replaced by one exactly like
+                      the one it replaces, and re-adding six rows by hand is
+                      where this went wrong the first time. Unscoped for the
+                      reason `cloudflareTokenTemplateUrl` records - the
+                      estate's account id is known here, but whether the
+                      parameter narrows the form is untested. */}
+                  <span className="text-muted-foreground text-xs">
+                    <a
+                      href={cloudflareTokenTemplateUrl()}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline underline-offset-4"
+                      data-testid="my-estate-token-mint"
+                    >
+                      {tr("estates.cloudflare.mint")}
+                    </a>
+                  </span>
                   {credentialError && (
                     <span
                       className="text-destructive text-xs"

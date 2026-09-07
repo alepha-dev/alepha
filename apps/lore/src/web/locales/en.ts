@@ -1691,6 +1691,9 @@ export default {
   "estates.cloudflare.token": "Cloudflare API token",
   "estates.cloudflare.token.placeholder": "cfut_… or cfat_…",
   "estates.cloudflare.guide": "Which token, and which permissions",
+  "estates.cloudflare.mint": "Mint one with the right permissions",
+  "estates.cloudflare.mint.scope":
+    "The form opens with the six permissions filled in. Narrow Account Resources to the one account before you create it.",
   "estates.cloudflare.checking": "Checking with Cloudflare…",
   "estates.cloudflare.accountLabel": "account $1",
   "estates.credential.valid": "credential valid",

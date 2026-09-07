@@ -10,6 +10,8 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
+import { CLOUDFLARE_TOKEN_TEMPLATE } from "@/api/schemas/cloudflareTokenTemplate.ts";
+
 import { I18n } from "../../services/I18n.ts";
 import MyEstates from "./MyEstates.tsx";
 
@@ -316,6 +318,41 @@ describe("MyEstates", () => {
     // dialog with it.
     expect(guide.getAttribute("target")).toBe("_blank");
     expect(guide.getAttribute("rel")).toBe("noreferrer");
+  });
+
+  it("offers a prefilled mint link carrying the six permissions", async ({
+    expect,
+  }) => {
+    /*
+     * #Q2061: adding six permission rows by hand is six chances to get it
+     * wrong, and getting it wrong means the estate is refused and the
+     * person starts over. Cloudflare's template URL pre-fills them.
+     *
+     * ⚠️ Asserted on the DECODED JSON, not on a substring of the encoded
+     * blob: a test on the raw string passes for a URL no browser can parse.
+     */
+    const { getByTestId, getByRole, findByTestId, findByText } = await show({
+      listMyEstates: { items: [] },
+    });
+
+    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
+
+    const mint = await findByTestId("estate-create-mint");
+    const url = new URL(mint.getAttribute("href")!);
+    expect(JSON.parse(url.searchParams.get("permissionGroupKeys")!)).toEqual(
+      CLOUDFLARE_TOKEN_TEMPLATE.map((row) => ({
+        key: row.key,
+        type: row.type,
+      })),
+    );
+    // It leaves the app mid-form, like the guide link beside it.
+    expect(mint.getAttribute("target")).toBe("_blank");
+    // ⚠️ And it says the scope is the reader's to set. `accountId=*` opens
+    // the form on All accounts, and nothing here may imply otherwise until
+    // #Q2061's objective 0 has been run against a live dashboard.
+    expect(url.searchParams.get("accountId")).toBe("*");
+    expect(await findByText(/Narrow Account Resources/)).toBeTruthy();
   });
 
   it("keeps the create dialog open and names the field a refusal concerns", async ({
