@@ -54,6 +54,23 @@ export interface AppActionsProps {
    */
   avatar?: ReactNode;
 
+  /**
+   * Below `sm`, drop the three ambient SETTINGS controls - language, theme
+   * and dark mode - and keep only the account button.
+   *
+   * ⚠️ **Opt-in, and it has to be.** On a phone this cluster is most of the
+   * header and half of it is settings a reader changes about once
+   * (feedback #P2144), but hidden must never mean unreachable: language and
+   * theme live nowhere else today. So a surface passes this only when
+   * another surface still offers them - which is why `AccountHeader` does
+   * NOT, and the account area stays the place a phone reader changes both.
+   *
+   * A responsive class rather than a media-query hook, deliberately: a hook
+   * re-renders after mount, and on a server-rendered header that means the
+   * buttons paint and then vanish.
+   */
+  compact?: boolean;
+
   className?: string;
 }
 
@@ -96,9 +113,14 @@ export const AppActions = (props: AppActionsProps) => {
   return (
     <div className={cn("flex items-center gap-1", props.className)}>
       {props.before}
-      <ButtonLanguage variant="ghost" label={props.labels?.language} />
-      <ButtonTheme variant="ghost" />
-      <ButtonDark variant="ghost" />
+      {/* `contents` so the three stay direct children of the flex row and
+          keep its `gap-1`; `hidden` wins over `display: contents`, which is
+          what makes the whole group disappear below the breakpoint. */}
+      <div className={cn(props.compact ? "hidden sm:contents" : "contents")}>
+        <ButtonLanguage variant="ghost" label={props.labels?.language} />
+        <ButtonTheme variant="ghost" />
+        <ButtonDark variant="ghost" />
+      </div>
       <ButtonUser
         variant="ghost"
         avatar={props.avatar}

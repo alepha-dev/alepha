@@ -43,6 +43,12 @@ export interface HeaderActionsProps {
  * a viewer who never set a picture. A picture that 404s still lands on
  * `UserAvatar`'s fallback, since only the id is known here.
  *
+ * ⚠️ `compact` is what drops language, theme and dark mode below `sm`. It
+ * is passed HERE and not inside `AppActions` itself, because the cluster is
+ * also the account area's header, and those three live nowhere else in the
+ * product: hiding them everywhere would leave a phone reader unable to
+ * switch to their own language at all.
+ *
  * Search now arrives through `before` rather than as a sibling. It used to be
  * excluded on the grounds that a field-sized element reads as a different kind
  * of thing beside small ambient controls — true of the 224px input-shaped
@@ -58,6 +64,11 @@ const HeaderActions = (props: HeaderActionsProps) => {
 
   return (
     <AppActions
+      // The header carried eight icon buttons on a phone, half of them
+      // settings a reader changes about once (feedback #P2144). Only Lore's
+      // app chrome passes this: `AccountHeader` does not, so `/account` is
+      // where a phone reader still changes language and theme.
+      compact
       before={props.before}
       avatar={
         picture ? (
