@@ -66,6 +66,29 @@ const setup = async () => {
 
 type Ctx = Awaited<ReturnType<typeof setup>>;
 
+/**
+ * Wait for the notification outbox to settle.
+ *
+ * ⚠️ It sends nothing. The job layer's direct mode drains the outbox itself,
+ * asynchronously, so a helper that also sent would deliver every message
+ * twice - which is exactly what the first version of this did. All a test
+ * needs is to stop asserting before the drain has run.
+ */
+const settle = async (ctx: {
+  probe: { executions: { findMany: (q: any) => Promise<any[]> } };
+  sendJobName: string;
+}): Promise<void> => {
+  const terminal = new Set(["ok", "error", "cancelled"]);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const rows = await ctx.probe.executions.findMany({
+      where: { jobName: { eq: ctx.sendJobName } },
+    });
+    if (rows.every((row) => terminal.has(String(row.status)))) return;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error("The notification outbox never settled");
+};
+
 const createUser = async (ctx: Ctx, username: string) => {
   const fake = ctx.fake.generate(userDataSchema);
   const response = await ctx.admin.createUser.fetch(
@@ -113,6 +136,7 @@ describe("publishing a release", () => {
       { user: publisher },
     );
 
+    await settle(ctx);
     const rows = await ctx.probe.inbox.findMany({});
     expect(rows).toHaveLength(2);
     const byId = (a: string, b: string) => a.localeCompare(b);
@@ -146,6 +170,7 @@ describe("publishing a release", () => {
       { user: publisher },
     );
 
+    await settle(ctx);
     const rows = await ctx.probe.executions.findMany({
       where: { jobName: { eq: ctx.sendJobName } },
     });
@@ -172,6 +197,7 @@ describe("publishing a release", () => {
       { params: { id: releaseId }, body: {} },
       { user: publisher },
     );
+    await settle(ctx);
     const afterPublish = (await ctx.probe.inbox.findMany({})).length;
 
     await ctx.releases.reopenRelease.fetch(
@@ -179,6 +205,7 @@ describe("publishing a release", () => {
       { user: publisher },
     );
 
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(afterPublish);
 
     await ctx.alepha.stop();
@@ -206,6 +233,7 @@ describe("publishing a release", () => {
       { user: publisher },
     );
 
+    await settle(ctx);
     expect(await ctx.probe.inbox.findMany({})).toHaveLength(0);
 
     await ctx.alepha.stop();

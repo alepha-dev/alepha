@@ -64,10 +64,24 @@ export const outsideProtected = (
   input: string,
   fn: (segment: string) => string,
 ): string =>
+  protectedSegments(input)
+    .map((part) => (part.protected ? part.text : fn(part.text)))
+    .join("");
+
+/**
+ * The same split, as data.
+ *
+ * Exists because one consumer cannot take a string back: `FeedbackThreadBody`
+ * renders a mention as React elements rather than markdown, so it needs to
+ * know which stretches are held out without being handed a rewritten string.
+ * Both forms therefore read ONE regex, which is the point.
+ */
+export const protectedSegments = (
+  input: string,
+): Array<{ text: string; protected: boolean }> =>
   input
     .split(/(```[\s\S]*?```|`[^`\n]*`|\[\[[^\]\n]*\]\]|\]\([^)\n]*\))/g)
-    .map((part, index) => (index % 2 === 1 ? part : fn(part)))
-    .join("");
+    .map((text, index) => ({ text, protected: index % 2 === 1 }));
 
 /**
  * A bare typed reference (`#Q1204`, `#E3`, `#F12`, `#P120`, `#R7`) becomes
