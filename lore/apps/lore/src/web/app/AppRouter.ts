@@ -1,6 +1,8 @@
 import { AccountRouter } from "@alepha/ui/components/account/account-router";
+import { inboxUnreadAtom } from "@alepha/ui/components/button-inbox/inbox-unread-atom.ts";
 import { $hook, $inject, Alepha, z } from "alepha";
 import type { AdminInvitationController } from "alepha/api/invitations";
+import type { NotificationInboxController } from "alepha/api/notifications";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { ReactAuth } from "alepha/react/auth";
@@ -39,6 +41,7 @@ import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
+import { currentInboxCountAtom } from "./atoms/currentInboxCountAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -94,6 +97,9 @@ export class AppRouter {
   epicApi = $client<EpicController>();
   areaApi = $client<AreaController>();
   blightApi = $client<BlightController>();
+  // The framework's inbox, not a Lore controller: the read side of the
+  // notification channel lives in `alepha/api/notifications`.
+  inboxApi = $client<NotificationInboxController>();
   releaseApi = $client<ReleaseController>();
   roadmapApi = $client<RoadmapController>();
   sigilApi = $client<SigilController>();
@@ -615,6 +621,8 @@ export class AppRouter {
         instances,
         openBlights,
         areas,
+        unreadEverywhere,
+        unreadHere,
       ] = await Promise.all([
         this.releaseApi.getReleases({
           params: { projectId: project.id },
@@ -713,6 +721,29 @@ export class AppRouter {
         this.areaApi
           .getAreas({ params: { projectId: project.id } })
           .catch(() => undefined),
+
+        // ⚠️ TWO inbox counts, and they are different numbers.
+        //
+        // The bell is cross-project: Alepha and Odzala are open in the same
+        // session and a ping in one must not be invisible from the other, so
+        // this one passes NO scope. It seeds `inboxUnreadAtom` before the
+        // first paint, which is what the bell's own mount-fetch then does not
+        // have to do.
+        //
+        // A `count` action, never `list().items.length`: that is the bug
+        // #1744 was, where a paged list capped the Feedback badge at 10 over
+        // an inbox of 106.
+        this.inboxApi
+          .countInbox({ query: {} })
+          .then((r) => r.unread)
+          .catch(() => 0),
+
+        // The rail's badge, filtered to this project. `scope` is the opaque
+        // string the pusher wrote, compared for equality and never parsed.
+        this.inboxApi
+          .countInbox({ query: { scope: `project:${project.id}` } })
+          .then((r) => r.unread)
+          .catch(() => 0),
       ]);
 
       this.alepha.store.set(currentProjectAtom, project);
@@ -734,6 +765,8 @@ export class AppRouter {
       });
       this.alepha.store.set(currentInstancesAtom, instances);
       this.alepha.store.set(currentAreasAtom, areas);
+      this.alepha.store.set(inboxUnreadAtom, { count: unreadEverywhere });
+      this.alepha.store.set(currentInboxCountAtom, { count: unreadHere });
 
       return {
         project,
@@ -751,6 +784,10 @@ export class AppRouter {
       this.alepha.store.set(currentEpicsAtom, undefined);
       this.alepha.store.set(currentInstancesAtom, undefined);
       this.alepha.store.set(currentAreasAtom, undefined);
+      // Only the project-scoped one. `inboxUnreadAtom` counts every project,
+      // so clearing it on leaving one would zero a number that is still
+      // true - and the bell is not on screen off-project anyway.
+      this.alepha.store.set(currentInboxCountAtom, { count: 0 });
     },
     errorHandler: (error) => {
       // `/:projectSlug` matches any unclaimed root path, so a typo reaches this
