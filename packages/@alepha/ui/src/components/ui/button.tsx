@@ -3,8 +3,56 @@ import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2Icon } from "lucide-react";
 
+/*
+ * ⚠️ `disabled:cursor-not-allowed`, NOT `disabled:pointer-events-none`, which
+ * is what this used to carry and why a disabled button showed a plain arrow:
+ * an element with no pointer events is never a hit target, so it can have no
+ * cursor of its own.
+ *
+ * Dropping it costs nothing. Base UI renders a NATIVE `disabled` attribute
+ * here, and the browser suppresses click and mousedown on a disabled form
+ * control by itself. Every other disabled control in the kit already relies on
+ * exactly that - checkbox, switch, textarea, select, command, input-otp - so
+ * the button was the outlier rather than the rule.
+ *
+ * `aria-disabled:pointer-events-none` covers the case the native attribute
+ * cannot: a `nativeButton={false}` render, an anchor, where nothing stops a
+ * click from navigating.
+ *
+ * The price is that a disabled button now takes its variant's hover fill under
+ * the pointer, at `opacity-50`. That is deliberate, and it is what a disabled
+ * `select-trigger` has always done. See the warning below for why the obvious
+ * fix is worse than the wart.
+ *
+ * ⚠️ DO NOT guard the hover utilities with `not-disabled:`. It was tried, and
+ * it broke the fill of every caller that overrides one - 94 call sites, of
+ * which `useDialog`'s destructive confirm was the loudest: a red delete button
+ * that turned near-white the moment you reached for it.
+ *
+ * The variant's classes and the caller's are reconciled by tailwind-merge,
+ * which decides two classes are the same thing by utility group AND modifier
+ * prefix. `hover:bg-primary/80` and a caller's `hover:bg-destructive/90` match,
+ * so the caller's replaces it. Prefix the variant's with `not-disabled:` and
+ * they no longer match, both survive into the class list, and the browser
+ * breaks the tie on specificity - where `:not(:disabled):hover` outranks a
+ * plain `:hover` and the variant wins a fight it is supposed to lose.
+ *
+ * So: adding a class here is safe. Adding a MODIFIER PREFIX to a class callers
+ * override is not. `cursor-*` has no overrides anywhere in the kit, which is
+ * what makes the two above safe. `hover:bg-*` is the most overridden class in
+ * it.
+ *
+ * `not-disabled:` on the `active:` nudge is fine for the same reason: the
+ * press-down has three call sites and none of them override it. A disabled
+ * button that sinks under the pointer is the one part of this worth
+ * suppressing, since it promises a click that will not happen.
+ *
+ * `aria-busy:cursor-progress` wins while `loading`, which sets both attributes:
+ * busy and forbidden are different promises. The work is happening, and the
+ * button will take clicks again when it finishes.
+ */
 const buttonVariants = cva(
-  "group/button focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-3 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:ring-3 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-3 not-disabled:active:not-aria-[haspopup]:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress aria-disabled:pointer-events-none aria-invalid:ring-3 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
