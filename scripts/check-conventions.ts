@@ -928,4 +928,68 @@ if (vitestViolations.length > 0) {
   process.exit(1);
 }
 
+/**
+ * `currentProjectAtom` is written through `setCurrentProject`, never through
+ * the setter `useStore` hands back.
+ *
+ * ## Why a mechanical rule rather than a comment
+ *
+ * There already was a comment, and a helper, and eight call sites using it.
+ * The ninth reached for `const [project, setProject] = useStore(...)` and
+ * wrote the update response straight in - which drops `permissions`, because
+ * `updateProjectById` answers `projectResourceSchema` and that schema
+ * deliberately does not carry an effective permission set (it is also the
+ * shape of `getMyProjects` and the Kanban payload). `canInProject` answers
+ * FALSE for an absent set, on purpose, so the entire sidebar disappeared
+ * until the next full page load. Feedback #P2141, and it was the second time:
+ * the capability toggle did the same thing before it.
+ *
+ * A reader cannot see any of that at the call site. The write looks like
+ * every other `useStore` setter in the tree, and the field it silently
+ * discards is not mentioned within a hundred lines of it. That is exactly the
+ * kind of rule that belongs here rather than in review.
+ *
+ * Reading the atom is untouched: `const [project] = useStore(...)` is what
+ * most of these files do and is correct.
+ */
+const PROJECT_ATOM_WRITER =
+  "apps/lore/src/web/app/services/currentProjectWrite.ts";
+const projectAtomViolations: string[] = [];
+
+const atomReaders = execFileSync("git", ["ls-files", "apps/lore/src/web"], {
+  encoding: "utf8",
+})
+  .trim()
+  .split("\n")
+  .filter((file) => /\.tsx?$/.test(file) && !file.includes(".spec."));
+
+for (const file of atomReaders) {
+  if (file === PROJECT_ATOM_WRITER) continue;
+  const source = readFileSync(file, "utf8");
+  // The SETTER being destructured, not the read: a two-element pattern.
+  if (
+    /const\s*\[[^\]]*,[^\]]*\]\s*=\s*useStore\(\s*currentProjectAtom\s*\)/.test(
+      source,
+    )
+  ) {
+    projectAtomViolations.push(
+      `  ${file}\n    → takes the setter from \`useStore(currentProjectAtom)\`;` +
+        " write through `setCurrentProject` so `permissions` and `rank` survive",
+    );
+  }
+}
+
+if (projectAtomViolations.length > 0) {
+  console.error(
+    `\n${projectAtomViolations.length} currentProjectAtom write(s) bypassing the helper:\n\n` +
+      `${projectAtomViolations.join("\n")}\n\n` +
+      "`updateProjectById` and friends answer a narrow project resource with\n" +
+      "no `permissions` on it, and `canInProject` reads an absent set as false.\n" +
+      "A direct write therefore hides every rank-gated control on the page -\n" +
+      "the whole sidebar - until the next navigation. `setCurrentProject`\n" +
+      "carries the two loader-only fields forward.\n",
+  );
+  process.exit(1);
+}
+
 console.log("conventions OK");
