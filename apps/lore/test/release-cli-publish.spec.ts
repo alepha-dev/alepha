@@ -114,7 +114,7 @@ const addMember = async (
   projectId: number,
 ): Promise<void> => {
   const members = (ctx.projectController as any).members;
-  await members.create({ userId, projectId, owner: false });
+  await members.create({ userId, projectId, rank: "member" });
 };
 
 /**

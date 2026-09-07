@@ -92,7 +92,6 @@ const createProject = async (
     await ctx.entities.members.create({
       userId: member.id,
       projectId: project.id,
-      owner: false,
     });
   }
   return project;

@@ -119,7 +119,7 @@ const memberOf = async (
   project: Project,
 ): Promise<UserAccountToken> => {
   const user = await ctx.repos.users.create({});
-  await createTestMember(ctx.alepha, project, user.id, { owner: false });
+  await createTestMember(ctx.alepha, project, user.id);
   // A MEMBER, not the creator: the owner short-circuits before the
   // membership query ever happens, so measuring with the creator would
   // report one read that was never going to be seven.

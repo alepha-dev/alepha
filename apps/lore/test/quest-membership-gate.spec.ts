@@ -75,7 +75,7 @@ const memberToken = async (
   project: Project,
 ): Promise<UserAccountToken> => {
   const user = await ctx.repos.users.create({});
-  await createTestMember(ctx.alepha, project, user.id, { owner: false });
+  await createTestMember(ctx.alepha, project, user.id);
   return { id: user.id, roles: ["user"] };
 };
 

@@ -164,7 +164,6 @@ describe("feedback rate limit", () => {
     await membersRepo.create({
       userId: member.id,
       projectId,
-      owner: false,
     });
 
     const limit = ctx.alepha

@@ -132,7 +132,6 @@ export const createTestProject = async (
   await repo.members.create({
     projectId: project.id,
     userId: project.createdBy,
-    owner: true,
     rank: "owner",
   });
 
@@ -253,7 +252,11 @@ export const createTestMember = async (
   alepha: Alepha,
   project: Project,
   userId: string,
-  overrides: Partial<{ owner: boolean; rank: string }> = {},
+  // ⚠️ No `owner`. The column is retired (#Q1997) and its database DEFAULT is
+  // `true`, so every row written now says `true` and means nothing. A fixture
+  // that could still set it would let a spec claim to be testing a non-owner
+  // while the only column anything reads says otherwise.
+  overrides: Partial<{ rank: string }> = {},
 ): Promise<Member> => {
   const repo = alepha.inject(TestEntityRepositories);
 
@@ -276,7 +279,6 @@ export const createTestMember = async (
   return repo.members.create({
     projectId: project.id,
     userId,
-    owner: overrides.owner ?? true,
     ...(overrides.rank === undefined ? {} : { rank: overrides.rank }),
   });
 };

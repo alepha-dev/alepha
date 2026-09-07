@@ -371,7 +371,6 @@ export class ProjectController {
         await this.members.create({
           projectId: project.id,
           userId: user.id,
-          owner: true,
           // The creator is the project's one owner, and this is the column
           // that says so from now on. `owner` above is the frozen boolean,
           // still written only because its two readers have not gone yet.

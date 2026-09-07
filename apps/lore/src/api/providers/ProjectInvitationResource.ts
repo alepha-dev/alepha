@@ -91,7 +91,10 @@ export class ProjectInvitationResource {
       await this.members.create({
         projectId: Number(invitation.resourceId),
         userId,
-        owner: false,
+        // ⚠️ No `owner: false`. The column is retired (#Q1997) and its
+        // database DEFAULT is `true`, which cannot be changed - so every row
+        // written from here says `true` and means nothing. `rank` is the
+        // answer, and nothing reads the other column any more.
         rank: exists ? named : "member",
       });
     },
