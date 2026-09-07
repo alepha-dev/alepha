@@ -303,43 +303,93 @@ export class CloudflareDeployClient {
       })),
     ];
 
-    const answer = (await this.client.workers.scripts.update(plan.scriptName, {
-      account_id: this.accountId,
-      // ⚠️ An unresolvable `inherit` binding fails the upload instead of
-      // silently blanking a secret, which is the failure mode the old
-      // `wrangler secret put` ordering hand-rolled against.
-      bindings_inherit: "strict",
-      metadata: {
-        main_module: plan.mainModule,
-        compatibility_date: plan.compatibilityDate,
-        compatibility_flags: plan.compatibilityFlags,
-        bindings: bindings.length > 0 ? bindings : undefined,
-        migrations: plan.migrations,
-        observability: plan.observability,
-        placement: plan.placement,
-        limits: plan.limits,
-        assets: plan.assets
-          ? {
-              config: plan.assets.config,
-              // Present when this deploy uploaded something; absent when
-              // Cloudflare already held the whole set, which is what
-              // `keep_assets` is for.
-              jwt: assets?.jwt,
-              keep_assets: assets ? undefined : true,
-            }
-          : undefined,
-      } as never,
-      files: plan.modules.map(
-        (module) =>
-          new File([module.bytes as never], module.name, {
-            type: module.type ?? "application/javascript+module",
-          }),
-      ) as never,
+    const answer = (await this.uploadScript(plan, {
+      main_module: plan.mainModule,
+      compatibility_date: plan.compatibilityDate,
+      compatibility_flags: plan.compatibilityFlags,
+      bindings: bindings.length > 0 ? bindings : undefined,
+      migrations: plan.migrations,
+      observability: plan.observability,
+      placement: plan.placement,
+      limits: plan.limits,
+      assets: plan.assets
+        ? {
+            config: plan.assets.config,
+            // Present when this deploy uploaded something; absent when
+            // Cloudflare already held the whole set, which is what
+            // `keep_assets` is for.
+            jwt: assets?.jwt,
+            keep_assets: assets ? undefined : true,
+          }
+        : undefined,
     })) as { id?: string; version_id?: string } | undefined;
 
     // Two spellings, because the script endpoint and the versions endpoint
     // name it differently and which one answers depends on the upload mode.
     return answer?.version_id ?? answer?.id;
+  }
+
+  /**
+   * The multipart upload itself, in the shape Cloudflare documents.
+   *
+   * ## ⚠️ Hand-rolled, and the SDK's own `scripts.update` cannot do this
+   *
+   * Two things in `cloudflare@7` make that method wrong for a module Worker,
+   * and neither announces itself:
+   *
+   * 1. It hardcodes `Content-Type: application/javascript` on a request whose
+   *    body it then builds as multipart. Cloudflare believes the header, reads
+   *    the raw multipart envelope as a classic service-worker script, and
+   *    answers `Uncaught SyntaxError: Invalid or unexpected token at
+   *    worker.js:1:2` - a file nobody wrote, at the `--` that opens the first
+   *    boundary.
+   * 2. Its `getName` does `.split(/[\\/]/).pop()` on every part, so a module
+   *    at `server/chunk.js` is uploaded as `chunk.js`. The entry still imports
+   *    `./server/chunk.js`, and every build with a chunk directory - which is
+   *    every non-trivial build - ships a Worker whose imports dangle.
+   *
+   * So the body is composed here the way `wrangler` composes it: one
+   * `metadata` part carrying JSON, then one part per module **named by its
+   * full path**. `headers: { "Content-Type": null }` deletes the SDK's
+   * hardcoded value so the boundary the form generates is the one sent.
+   */
+  protected async uploadScript(
+    plan: CloudflareDeployPlan,
+    metadata: Record<string, unknown>,
+  ): Promise<unknown> {
+    const form = new FormData();
+    form.append(
+      "metadata",
+      new File([JSON.stringify(metadata)], "metadata.json", {
+        type: "application/json",
+      }),
+    );
+
+    for (const module of plan.modules) {
+      // ⚠️ The part NAME is the module's full path, and it is what the entry's
+      // import specifiers resolve against. The filename matches it so nothing
+      // downstream has to reconcile two spellings.
+      form.append(
+        module.name,
+        new File([module.bytes as never], module.name, {
+          type: module.type ?? "application/javascript+module",
+        }),
+      );
+    }
+
+    const answer = (await this.client.put(
+      `/accounts/${this.accountId}/workers/scripts/${plan.scriptName}`,
+      {
+        // ⚠️ An unresolvable `inherit` binding fails the upload instead of
+        // silently blanking a secret, which is the failure mode the old
+        // `wrangler secret put` ordering hand-rolled against.
+        query: { bindings_inherit: "strict" },
+        body: form,
+        headers: { "Content-Type": null },
+      },
+    )) as { result?: unknown } | undefined;
+
+    return (answer as { result?: unknown } | undefined)?.result ?? answer;
   }
 
   /**
@@ -496,6 +546,13 @@ export class CloudflareDeployClient {
  * this quest owns are readable in one place.
  */
 export interface CloudflareDeployApi {
+  /**
+   * The raw request escape hatch, used by {@link CloudflareDeployClient.uploadScript}
+   * alone: the generated `workers.scripts.update` sends a multipart body under
+   * an `application/javascript` header and basenames every part, so it cannot
+   * upload a module Worker with a chunk directory.
+   */
+  put: (path: string, options: Record<string, unknown>) => Promise<unknown>;
   workers: {
     scripts: {
       update: (

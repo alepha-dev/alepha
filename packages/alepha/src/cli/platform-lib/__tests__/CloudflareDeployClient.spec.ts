@@ -31,6 +31,7 @@ describe("the Cloudflare deploy client", () => {
 
     let uploads = 0;
     const api: CloudflareDeployApi = {
+      put: record("script.put", { result: {} }) as never,
       workers: {
         scripts: {
           update: record("scripts.update") as never,
@@ -106,6 +107,14 @@ describe("the Cloudflare deploy client", () => {
       );
 
       for (const call of calls) {
+        if (call.name === "script.put") {
+          // The raw upload carries the account in its path rather than in a
+          // params object, so it is asserted separately below.
+          expect(call.args[0], call.name).toContain(
+            "/accounts/estate-account/",
+          );
+          continue;
+        }
         const params = call.args.at(-1) as { account_id?: string };
         expect(params.account_id, call.name).toBe("estate-account");
       }
@@ -203,15 +212,15 @@ describe("the Cloudflare deploy client", () => {
         },
       );
 
-      const params = of("scripts.update")[0].args[1] as {
-        bindings_inherit?: string;
-        metadata: { assets?: { jwt?: string; keep_assets?: boolean } };
+      const options = of("script.put")[0].args[1] as {
+        query?: { bindings_inherit?: string };
       };
       // An unresolvable `inherit` binding fails the upload instead of silently
       // blanking a secret.
-      expect(params.bindings_inherit).toBe("strict");
-      expect(params.metadata.assets?.jwt).toBe("completion");
-      expect(params.metadata.assets?.keep_assets).toBeUndefined();
+      expect(options.query?.bindings_inherit).toBe("strict");
+      const metadata = await metadataOf(of("script.put")[0]);
+      expect(metadata.assets?.jwt).toBe("completion");
+      expect(metadata.assets?.keep_assets).toBeUndefined();
     });
 
     it("asks to keep the assets when nothing was uploaded", async ({
@@ -226,10 +235,8 @@ describe("the Cloudflare deploy client", () => {
         undefined,
       );
 
-      const params = of("scripts.update")[0].args[1] as {
-        metadata: { assets?: { keep_assets?: boolean } };
-      };
-      expect(params.metadata.assets?.keep_assets).toBe(true);
+      const metadata = await metadataOf(of("script.put")[0]);
+      expect(metadata.assets?.keep_assets).toBe(true);
     });
 
     it("carries the secrets as secret_text bindings in the same call", async ({
@@ -247,10 +254,8 @@ describe("the Cloudflare deploy client", () => {
         }) as never,
       );
 
-      const params = of("scripts.update")[0].args[1] as {
-        metadata: { bindings?: Array<Record<string, unknown>> };
-      };
-      expect(params.metadata.bindings).toEqual([
+      const metadata = await metadataOf(of("script.put")[0]);
+      expect(metadata.bindings).toEqual([
         { type: "d1", name: "DB", id: "db-1" },
         { type: "secret_text", name: "APP_SECRET", text: "s3cret" },
       ]);
@@ -394,6 +399,83 @@ describe("the Cloudflare deploy client", () => {
 
       expect("force" in (of("deployments.create")[0].args[1] as object)).toBe(
         false,
+      );
+    });
+  });
+  /**
+   * The `metadata` part, parsed back out of the multipart body.
+   */
+  const metadataOf = async (call: { args: unknown[] }) => {
+    const options = call.args[1] as { body: FormData };
+    const part = options.body.get("metadata") as File;
+    return JSON.parse(await part.text()) as {
+      main_module?: string;
+      bindings?: Array<Record<string, unknown>>;
+      assets?: { jwt?: string; keep_assets?: boolean };
+    };
+  };
+
+  describe("the upload the SDK cannot express", () => {
+    /**
+     * ⚠️ `cloudflare@7`'s `workers.scripts.update` hardcodes `Content-Type:
+     * application/javascript` on a body it builds as multipart. Cloudflare
+     * believes the header, reads the envelope as a classic service-worker
+     * script, and answers a syntax error at `worker.js:1:2` - the `--` that
+     * opens the first boundary. Nulling the header is what lets the form's own
+     * boundary be sent.
+     */
+    it("lets the form set the content type instead of the SDK's default", async ({
+      expect,
+    }) => {
+      const { client, of } = fake();
+
+      await client.putScript(plan() as never);
+
+      const options = of("script.put")[0].args[1] as {
+        headers: Record<string, string | null>;
+        body: FormData;
+      };
+      expect(options.headers["Content-Type"]).toBeNull();
+      expect(options.body).toBeInstanceOf(FormData);
+    });
+
+    /**
+     * ⚠️ The SDK's `getName` basenames every part (`.split(/[\\/]/).pop()`),
+     * so `server/chunk.js` would upload as `chunk.js` while the entry still
+     * imports `./server/chunk.js`. Every build with a chunk directory is
+     * affected, which is every non-trivial build.
+     */
+    it("keeps a module's directory in its part name", async ({ expect }) => {
+      const { client, of } = fake();
+
+      await client.putScript(
+        plan({
+          mainModule: "main.cloudflare.js",
+          modules: [
+            { name: "main.cloudflare.js", bytes: bytes("export default {};") },
+            { name: "server/chunk.js", bytes: bytes("export const a = 1;") },
+          ],
+        }) as never,
+      );
+
+      const body = (of("script.put")[0].args[1] as { body: FormData }).body;
+      expect([...body.keys()]).toEqual([
+        "metadata",
+        "main.cloudflare.js",
+        "server/chunk.js",
+      ]);
+      const chunk = body.get("server/chunk.js") as File;
+      expect(chunk.name).toBe("server/chunk.js");
+      expect(await chunk.text()).toBe("export const a = 1;");
+    });
+
+    it("names the entry in the metadata part", async ({ expect }) => {
+      const { client, of } = fake();
+
+      await client.putScript(plan({ mainModule: "index.js" }) as never);
+
+      expect((await metadataOf(of("script.put")[0])).main_module).toBe(
+        "index.js",
       );
     });
   });
