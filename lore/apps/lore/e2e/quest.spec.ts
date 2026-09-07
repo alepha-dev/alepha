@@ -930,7 +930,12 @@ test.describe("Quest", () => {
       // Board filters persist per project (#113), so the "Shelved" choice
       // from the previous step is still applied — clear it before asserting
       // the quest is back in the normal listing.
-      await page.getByRole("button", { name: "Reset filters" }).click();
+      //
+      // Reset moved behind the toolbar's Filters menu when this table became
+      // linkable (`fromQuery`): the bare icon button had nowhere to put the
+      // Share item that shipped with it.
+      await page.getByRole("button", { name: "Filters" }).click();
+      await page.getByRole("menuitem", { name: "Reset filters" }).click();
       await expect(page.getByText(questTitle).first()).toBeVisible({
         timeout: 10_000,
       });
