@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 import { parseTypedReference } from "../../web/app/components/shared/element/typedReference.ts";
@@ -59,8 +58,10 @@ export class SearchController {
 
   search = $action({
     use: [
-      $secure({ permissions: ["quest:read", "folio:read"] }),
-      $ownsProject({ param: "projectId" }),
+      $ownsProject({
+        requires: ["quest:read", "folio:read"],
+        param: "projectId",
+      }),
     ],
     path: "/projects/:projectId/search",
     description:

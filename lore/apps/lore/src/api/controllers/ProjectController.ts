@@ -107,13 +107,20 @@ export class ProjectController {
    * varies is the param name: here the project is `:id`, elsewhere
    * `:projectId`.
    */
-  protected ownsAsMember = () => $ownsProject({ param: "id" });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "id" });
 
   /**
-   * Project-owner gate: the creator only. Used for destructive and
-   * configuration endpoints.
+   * The acts that are the owner's STRUCTURALLY.
+   *
+   * Identical to {@link ownsProject} now, and kept as a separate name because
+   * what makes it owner-only is the PERMISSION rather than the gate:
+   * `project:delete` ends the project and `capability:manage` widens every
+   * rank at once, so both are on Lore's never-grantable list and only the
+   * `owner` built-in's `*` reaches them.
    */
-  protected ownsAsOwner = () => $ownsProject({ param: "id", owner: true });
+  protected ownsAsOwner = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "id" });
   questMapper = $inject(QuestResourceMapper);
   projectMapper = $inject(ProjectResourceMapper);
   limits = $inject(ProjectLimits);
@@ -529,7 +536,7 @@ export class ProjectController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getProjectUsers = $action({
-    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    use: [this.ownsProject("project:read")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -577,7 +584,7 @@ export class ProjectController {
    * the quest page.
    */
   getProjectActivity = $action({
-    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    use: [this.ownsProject("project:read")],
     path: "/projects/:id/activity",
     schema: {
       params: z.object({
@@ -666,7 +673,7 @@ export class ProjectController {
    * for the avatar column, so it is deliberately not repeated here.
    */
   getProjectActivityFilters = $action({
-    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    use: [this.ownsProject("project:read")],
     path: "/projects/:id/activity/filters",
     schema: {
       params: z.object({
@@ -761,7 +768,7 @@ export class ProjectController {
   }
 
   updateProjectById = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -895,7 +902,7 @@ export class ProjectController {
   }
 
   getProjectById = $action({
-    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    use: [this.ownsProject("project:read")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -957,11 +964,11 @@ export class ProjectController {
    *
    * ⚠️ **ranks: imperative.** `$owns` cannot gate this one — it looks a
    * resource up by primary key from a path param, and this param is not the
-   * key. The membership check is therefore explicit, through the same
-   * `ProjectSecurityService.assertMember` every other project-scoped read
-   * uses, and it moves to the ranks module's imperative check rather than to
-   * `$ownsProject`. A slug is guessable in a way an id is not, so this gate is
-   * the only thing standing between a typed URL and another tenant's project.
+   * key. The check is therefore explicit, through the ranks module's own
+   * imperative `assert`, naming the same `project:read` every other
+   * project-scoped read now names on its gate. A slug is guessable in a way an
+   * id is not, so this is the only thing standing between a typed URL and
+   * another tenant's project.
    */
   getProjectBySlug = $action({
     use: [$secure({ permissions: ["project:read"] })],
@@ -991,17 +998,31 @@ export class ProjectController {
         throw new NotFoundError("Project not found");
       }
 
-      const { project } = await this.projectSecurity.assertMember(
-        found.id,
-        user,
-      );
+      const project = found;
 
+      // Read ONCE, and used for two things: the gate below and the `member`
+      // field of the response. This handler used to read it twice - once
+      // inside `assertMember` and once for the field - which is six sequential
+      // awaits in the loader every project navigation runs.
       const member = await this.members.findOne({
         where: {
           projectId: { eq: project.id },
           userId: { eq: user.id },
         },
       });
+
+      if (!member && user.ownership !== false) {
+        // The same message the gate gives, so a refusal never tells a caller
+        // whether the slug names a real project.
+        throw new ForbiddenError("Not a member of this project");
+      }
+
+      await this.ranks.assert(
+        "project",
+        String(project.id),
+        "project:read",
+        user,
+      );
 
       const projectQuests = await this.quests.findMany({
         where: {
@@ -1031,14 +1052,13 @@ export class ProjectController {
 
   getProjectMembers = $action({
     use: [
-      $secure({ permissions: ["project:read"] }),
       // Same reasoning as `getMyProjects`: members are invited and removed
       // from the settings page that reads this list, so a freshness window
       // hid the owner's own change from them.
       $etag({
         control: { private: true, noCache: true },
       }),
-      this.ownsAsMember(),
+      this.ownsProject("project:read"),
     ],
     schema: {
       params: z.object({
@@ -1092,7 +1112,7 @@ export class ProjectController {
   });
 
   deleteProjectById = $action({
-    use: [$secure({ permissions: ["project:delete"] }), this.ownsAsOwner()],
+    use: [this.ownsAsOwner("project:delete")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1204,7 +1224,7 @@ export class ProjectController {
    * story for it.
    */
   removeMember = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("member:manage")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1269,7 +1289,7 @@ export class ProjectController {
   // ── Kanban column CRUD ──────────────────────────────────────────────
 
   addKanbanColumn = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -1299,7 +1319,7 @@ export class ProjectController {
   });
 
   renameKanbanColumn = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -1355,7 +1375,7 @@ export class ProjectController {
   });
 
   deleteKanbanColumn = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ name: z.string() }),
@@ -1407,7 +1427,7 @@ export class ProjectController {
   });
 
   reorderKanbanColumns = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({

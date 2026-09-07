@@ -40,7 +40,8 @@ export class FolioAttachmentController {
    * (`security-file-access.spec.ts`). It is out of scope here, and gating
    * this controller does not cover it.
    */
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
 
   /**
    * Member gate on the project the attachment named by `params.id` belongs to.
@@ -49,8 +50,8 @@ export class FolioAttachmentController {
    * its own - `findById` reads the entity's declared primary key rather than
    * assuming a column name.
    */
-  protected ownsBlob = () =>
-    $ownsProject({ repository: () => this.attachments, param: "id" });
+  protected ownsBlob = (requires: string | string[]) =>
+    $ownsProject({ requires, repository: () => this.attachments, param: "id" });
 
   /**
    * Member gate reached from the FOLIO the attachments hang off, which is
@@ -58,8 +59,12 @@ export class FolioAttachmentController {
    * the site that proves the hop is not hardcoded to "the row this
    * controller is named after".
    */
-  protected ownsFolio = () =>
-    $ownsProject({ repository: () => this.folioRows, param: "folioId" });
+  protected ownsFolio = (requires: string | string[]) =>
+    $ownsProject({
+      requires,
+      repository: () => this.folioRows,
+      param: "folioId",
+    });
 
   /**
    * The same two gates plus the Knowledge capability, for the writes.
@@ -67,11 +72,12 @@ export class FolioAttachmentController {
    * An attachment hangs off a folio, so it belongs to Knowledge. Reading and
    * downloading one stays open: the bytes are still there.
    */
-  protected ownsProjectForKnowledge = () =>
-    $ownsProject({ param: "projectId", capability: "knowledge" });
+  protected ownsProjectForKnowledge = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId", capability: "knowledge" });
 
-  protected ownsBlobForKnowledge = () =>
+  protected ownsBlobForKnowledge = (requires: string | string[]) =>
     $ownsProject({
+      requires,
       repository: () => this.attachments,
       param: "id",
       capability: "knowledge",
@@ -124,7 +130,7 @@ export class FolioAttachmentController {
    * `getAttachment` call.
    */
   getAttachmentByShortId = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
+    use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/attachments/by-short-id/:shortId",
     description: "Look up a folio attachment by per-project shortId.",
     schema: {
@@ -147,7 +153,7 @@ export class FolioAttachmentController {
   });
 
   listAttachments = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsFolio()],
+    use: [this.ownsFolio("folio:read")],
     path: "/folios/:folioId/attachments",
     description: "List the attachments of one folio.",
     schema: {
@@ -160,7 +166,7 @@ export class FolioAttachmentController {
   });
 
   getAttachment = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsBlob()],
+    use: [this.ownsBlob("folio:read")],
     path: "/folio/attachments/:id",
     description:
       "Get a single folio attachment (metadata only — use framework download for bytes).",
@@ -208,11 +214,7 @@ export class FolioAttachmentController {
 
   registerAttachment = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      $transactional(),
-      this.ownsProjectForKnowledge(),
-    ],
+    use: [$transactional(), this.ownsProjectForKnowledge("folio:write")],
     path: "/projects/:projectId/folio/attachments",
     description:
       "Register a folio attachment on top of an already-uploaded framework file.",
@@ -237,11 +239,7 @@ export class FolioAttachmentController {
 
   renameAttachment = $action({
     // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      $transactional(),
-      this.ownsBlobForKnowledge(),
-    ],
+    use: [$transactional(), this.ownsBlobForKnowledge("folio:write")],
     path: "/folio/attachments/:id/rename",
     description: "Rename a folio attachment.",
     schema: {
@@ -256,11 +254,7 @@ export class FolioAttachmentController {
 
   deleteAttachment = $action({
     // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      $transactional(),
-      this.ownsBlobForKnowledge(),
-    ],
+    use: [$transactional(), this.ownsBlobForKnowledge("folio:write")],
     path: "/folio/attachments/:id",
     description: "Delete a folio attachment (and reclaim framework storage).",
     schema: {

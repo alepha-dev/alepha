@@ -1,11 +1,7 @@
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository, $sequence, $transactional } from "alepha/orm";
-import {
-  OwnedResourceProvider,
-  type UserAccountToken,
-  $secure,
-} from "alepha/security";
+import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -107,13 +103,14 @@ export class FolioController {
    * field initializer reading another field, so a gate declared below its
    * first use is `undefined` at construction time.
    */
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
 
-  protected ownsProjectFromQuery = () =>
-    $ownsProject({ param: "projectId", from: "query" });
+  protected ownsProjectFromQuery = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId", from: "query" });
 
-  protected ownsProjectFromBody = () =>
-    $ownsProject({ param: "projectId", from: "body" });
+  protected ownsProjectFromBody = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId", from: "body" });
 
   /**
    * Member gate on the project the folio named by `params.id` belongs to.
@@ -122,8 +119,8 @@ export class FolioController {
    * to `update`: the protection-domain invariant is decided against the
    * EXISTING row, and that row is now read once, by the gate.
    */
-  protected ownsFolio = () =>
-    $ownsProject({ repository: () => this.folios, param: "id" });
+  protected ownsFolio = (requires: string | string[]) =>
+    $ownsProject({ requires, repository: () => this.folios, param: "id" });
 
   /**
    * The same two gates plus the Knowledge capability, for the writes.
@@ -132,15 +129,17 @@ export class FolioController {
    * find every folio exactly where it left them, and an endpoint refusing to
    * read them is how that becomes impossible to verify.
    */
-  protected ownsProjectFromBodyForKnowledge = () =>
+  protected ownsProjectFromBodyForKnowledge = (requires: string | string[]) =>
     $ownsProject({
+      requires,
       param: "projectId",
       from: "body",
       capability: "knowledge",
     });
 
-  protected ownsFolioForKnowledge = () =>
+  protected ownsFolioForKnowledge = (requires: string | string[]) =>
     $ownsProject({
+      requires,
       repository: () => this.folios,
       param: "id",
       capability: "knowledge",
@@ -157,10 +156,7 @@ export class FolioController {
    * folio). Optional `q` runs `LIKE %q%` over `searchText`.
    */
   list = $action({
-    use: [
-      $secure({ permissions: ["folio:read"] }),
-      this.ownsProjectFromQuery(),
-    ],
+    use: [this.ownsProjectFromQuery("folio:read")],
     description: "List the project's folios (newest first).",
     schema: {
       query: folioListQuerySchema,
@@ -192,7 +188,7 @@ export class FolioController {
     // Gated on the PARAM, not on the folio it finds: the lookup is by
     // (project, shortId), so there is nothing to hop from, and a foreign
     // project is refused before the folios table is touched.
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
+    use: [this.ownsProject("folio:read")],
     description: "Get a single folio by its per-project shortId.",
     path: "/projects/:projectId/folios/:shortId",
     schema: {
@@ -319,7 +315,7 @@ export class FolioController {
   }
 
   get = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsFolio()],
+    use: [this.ownsFolio("folio:read")],
     description: "Get a single folio by id.",
     schema: {
       params: folioIdParamsSchema,
@@ -335,7 +331,7 @@ export class FolioController {
    * MCP `folio_get` calls both and merges.
    */
   getLinks = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsFolio()],
+    use: [this.ownsFolio("folio:read")],
     description: "Get wiki-link outbound + inbound refs for a folio.",
     schema: {
       params: folioIdParamsSchema,
@@ -631,9 +627,8 @@ export class FolioController {
   create = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
     use: [
-      $secure({ permissions: ["folio:write"] }),
       $transactional(),
-      this.ownsProjectFromBodyForKnowledge(),
+      this.ownsProjectFromBodyForKnowledge("folio:write"),
     ],
     description: "Create a new folio.",
     schema: {
@@ -725,11 +720,7 @@ export class FolioController {
   update = $action({
     // Gate INSIDE the transaction - it is the read half of the
     // protection-domain check below. See `$ownsProject`.
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      $transactional(),
-      this.ownsFolioForKnowledge(),
-    ],
+    use: [$transactional(), this.ownsFolioForKnowledge("folio:write")],
     description: "Update a folio.",
     schema: {
       params: folioIdParamsSchema,
@@ -925,10 +916,7 @@ export class FolioController {
   });
 
   delete = $action({
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      this.ownsFolioForKnowledge(),
-    ],
+    use: [this.ownsFolioForKnowledge("folio:write")],
     description: "Delete a folio.",
     schema: {
       params: folioIdParamsSchema,
@@ -1030,10 +1018,7 @@ export class FolioController {
    * "who changed what, when" question can be answered across folios.
    */
   listProjectActivity = $action({
-    use: [
-      $secure({ permissions: ["folio:read"] }),
-      this.ownsProjectFromQuery(),
-    ],
+    use: [this.ownsProjectFromQuery("folio:read")],
     path: "/folios/activity",
     description:
       "Recent folio activity in a project (revisions across all folios, newest first).",
@@ -1101,7 +1086,7 @@ export class FolioController {
    * pagination here.
    */
   listHistory = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsFolio()],
+    use: [this.ownsFolio("folio:read")],
     path: "/folios/:id/history",
     description: "List the revision history of a folio (newest first).",
     schema: {
@@ -1213,11 +1198,7 @@ export class FolioController {
    */
   revertHistory = $action({
     // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      $transactional(),
-      this.ownsFolioForKnowledge(),
-    ],
+    use: [$transactional(), this.ownsFolioForKnowledge("folio:write")],
     path: "/folios/:id/history/:revisionId/revert",
     description: "Revert a folio to a prior revision (creates a new revision).",
     schema: {
@@ -1271,10 +1252,7 @@ export class FolioController {
    * older non-pinned revisions get dropped.
    */
   pinHistory = $action({
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      this.ownsFolioForKnowledge(),
-    ],
+    use: [this.ownsFolioForKnowledge("folio:write")],
     path: "/folios/:id/history/:revisionId/pin",
     description: "Toggle pin on a folio revision.",
     schema: {

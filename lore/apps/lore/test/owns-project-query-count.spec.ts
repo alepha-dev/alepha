@@ -1,7 +1,7 @@
-import { $inject, Alepha, z } from "alepha";
+import { Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
-import { AlephaOrm } from "alepha/orm";
+import { $repository, AlephaOrm } from "alepha/orm";
 import {
   $secure,
   AlephaSecurity,
@@ -9,12 +9,17 @@ import {
   SecurityProvider,
   type UserAccountToken,
 } from "alepha/security";
-import { $action, AlephaServer, ServerProvider } from "alepha/server";
+import {
+  $action,
+  AlephaServer,
+  ForbiddenError,
+  ServerProvider,
+} from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
-import type { Project } from "../src/api/entities/projects.ts";
+import { members } from "../src/api/entities/members.ts";
+import { type Project, projects } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
-import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 import {
   createTestMember,
   createTestProject,
@@ -154,7 +159,8 @@ const PORTED = [
  * control has been deleted is a number nobody can check.
  */
 class InHandlerGateControl {
-  protected readonly security = $inject(ProjectSecurityService);
+  protected readonly projects = $repository(projects);
+  protected readonly members = $repository(members);
 
   protected gated() {
     return $action({
@@ -164,7 +170,24 @@ class InHandlerGateControl {
         response: z.object({ ok: z.boolean() }),
       },
       handler: async ({ params, user }) => {
-        await this.security.assertMember(params.projectId, user);
+        // Exactly what `ProjectSecurityService.assertMember` did before this
+        // epic deleted it: the project row through the ORM's 30 s cache, then
+        // the membership row uncached. Reproduced here rather than called,
+        // because there is no longer a method to call - which is the point
+        // being measured.
+        const project = await this.projects.getOne(
+          { where: { id: { eq: params.projectId } } },
+          { cache: { ttl: 30_000 } },
+        );
+        const member = await this.members.findOne({
+          where: {
+            projectId: { eq: project.id },
+            userId: { eq: user.id },
+          },
+        });
+        if (!member) {
+          throw new ForbiddenError("Not a member of this project");
+        }
         return { ok: true };
       },
     });

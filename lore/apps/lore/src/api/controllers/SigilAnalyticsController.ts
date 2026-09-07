@@ -6,7 +6,6 @@ import {
   adminDatasetSchema,
 } from "alepha/api/analytics";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 
 import { type Sigil, sigils } from "../entities/sigils.ts";
@@ -49,10 +48,7 @@ export class SigilAnalyticsController {
    * this file, and a dataset without the dimension can never appear at all.
    */
   listAppDatasets = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: `${this.url}/datasets`,
     group: this.group,
@@ -71,10 +67,7 @@ export class SigilAnalyticsController {
    * One aggregate query, against one dataset, scoped to this app.
    */
   queryAppDataset = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "POST",
     path: `${this.url}/datasets/:name/query`,
     group: this.group,

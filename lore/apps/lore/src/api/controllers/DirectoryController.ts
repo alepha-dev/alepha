@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $repository, $transactional } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { folioAttachments } from "../entities/folioAttachments.ts";
@@ -28,19 +27,21 @@ export class DirectoryController {
    * Five of the eight sites are the direct one and could have been `$owns`
    * since July - nothing about them needed the hop.
    */
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
 
-  protected ownsDirectory = () =>
-    $ownsProject({ repository: () => this.directories, param: "id" });
+  protected ownsDirectory = (requires: string | string[]) =>
+    $ownsProject({ requires, repository: () => this.directories, param: "id" });
 
   /**
    * The same two gates plus the Knowledge capability, for the writes.
    */
-  protected ownsProjectForKnowledge = () =>
-    $ownsProject({ param: "projectId", capability: "knowledge" });
+  protected ownsProjectForKnowledge = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId", capability: "knowledge" });
 
-  protected ownsDirectoryForKnowledge = () =>
+  protected ownsDirectoryForKnowledge = (requires: string | string[]) =>
     $ownsProject({
+      requires,
       repository: () => this.directories,
       param: "id",
       capability: "knowledge",
@@ -60,7 +61,7 @@ export class DirectoryController {
    * list a folio's attachments, ask `FolioAttachmentController`.
    */
   listContents = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
+    use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/contents",
     description: "List directories + folios in a directory (or root).",
     schema: {
@@ -171,7 +172,7 @@ export class DirectoryController {
    * what a search is for.
    */
   searchFolio = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
+    use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/search",
     description:
       "Search folios + attachments + directories by name (and folio body).",
@@ -264,7 +265,7 @@ export class DirectoryController {
    * project (no UI scrolls a flat list past that).
    */
   listAllDirectories = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
+    use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/directories",
     description: "Flat list of every folio directory in the project.",
     schema: {
@@ -300,7 +301,7 @@ export class DirectoryController {
    * UUID.
    */
   getDirectoryByShortId = $action({
-    use: [$secure({ permissions: ["folio:read"] }), this.ownsProject()],
+    use: [this.ownsProject("folio:read")],
     path: "/projects/:projectId/folio/directories/:shortId",
     description: "Look up a folio directory by per-project shortId.",
     schema: {
@@ -322,11 +323,7 @@ export class DirectoryController {
 
   createDirectory = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      $transactional(),
-      this.ownsProjectForKnowledge(),
-    ],
+    use: [$transactional(), this.ownsProjectForKnowledge("folio:write")],
     path: "/projects/:projectId/folio/directories",
     description: "Create a new folio directory.",
     schema: {
@@ -348,11 +345,7 @@ export class DirectoryController {
 
   renameDirectory = $action({
     // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      $transactional(),
-      this.ownsDirectoryForKnowledge(),
-    ],
+    use: [$transactional(), this.ownsDirectoryForKnowledge("folio:write")],
     path: "/folio/directories/:id/rename",
     description: "Rename a folio directory.",
     schema: {
@@ -367,11 +360,7 @@ export class DirectoryController {
 
   moveDirectory = $action({
     // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      $transactional(),
-      this.ownsDirectoryForKnowledge(),
-    ],
+    use: [$transactional(), this.ownsDirectoryForKnowledge("folio:write")],
     path: "/folio/directories/:id/move",
     description: "Move a folio directory under a new parent (or to root).",
     schema: {
@@ -394,11 +383,7 @@ export class DirectoryController {
 
   deleteDirectory = $action({
     // Gate INSIDE the transaction - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["folio:write"] }),
-      $transactional(),
-      this.ownsDirectoryForKnowledge(),
-    ],
+    use: [$transactional(), this.ownsDirectoryForKnowledge("folio:write")],
     path: "/folio/directories/:id",
     description: "Delete a folio directory. Pass cascade=true for non-empty.",
     schema: {

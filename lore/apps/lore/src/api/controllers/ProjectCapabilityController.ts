@@ -1,5 +1,4 @@
 import { $inject, z } from "alepha";
-import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
@@ -38,8 +37,8 @@ export class ProjectCapabilityController {
    * another field is a field initializer, so a gate declared below its first
    * use is `undefined` at construction time.
    */
-  protected ownsAsOwner = () =>
-    $ownsProject({ param: "projectId", owner: true });
+  protected ownsAsOwner = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
 
   /**
    * Turn one capability on or off, and set its options.
@@ -83,7 +82,7 @@ export class ProjectCapabilityController {
    * slug, icon, repository URL, roadmap visibility.
    */
   setCapability = $action({
-    use: [$secure({ permissions: ["capability:manage"] }), this.ownsAsOwner()],
+    use: [this.ownsAsOwner("capability:manage")],
     method: "PUT",
     path: "/projects/:projectId/capabilities/:key",
     description: "Turn one of a project's capabilities on or off.",

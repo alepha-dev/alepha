@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $storage } from "alepha/api/files";
-import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 import type { Artifact } from "../entities/artifacts.ts";
@@ -40,7 +39,8 @@ export class ArtifactController {
    * another field is a field initializer, so a gate declared below its first
    * use is `undefined` at construction time.
    */
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
 
   /**
    * Where the tarballs live.
@@ -86,7 +86,7 @@ export class ArtifactController {
    * write-once and needs `force`. See {@link ArtifactService.push}.
    */
   pushArtifact = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject("artifact:read")],
     method: "POST",
     path: "/projects/:projectId/artifacts",
     description: "Push a packed build into the project's artifact registry.",
@@ -140,7 +140,7 @@ export class ArtifactController {
    * mean a 404 in a place the router already handles.
    */
   listArtifacts = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject("artifact:read")],
     method: "GET",
     path: "/projects/:projectId/artifacts",
     description: "What this project has built, grouped by tag.",

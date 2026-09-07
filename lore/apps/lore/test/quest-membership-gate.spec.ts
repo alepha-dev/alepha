@@ -211,7 +211,7 @@ describe("QuestController membership gate", () => {
     ).rejects.toThrow(BadRequestError);
   });
 
-  it("keeps the feedback link owner-only for a plain member", async ({
+  it("keeps the feedback link out of a plain member's reach", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);
@@ -234,7 +234,10 @@ describe("QuestController membership gate", () => {
         },
         { user },
       ),
-    ).rejects.toThrow("Only the project owner can link a quest to a feedback");
+      // ⚠️ The refusal NAMES the permission now. Linking a quest to a feedback
+      // item is triage, and a plain member's rank does not grant it - the same
+      // answer as before, said in a way the reader can act on.
+    ).rejects.toThrow("does not grant feedback:triage");
   });
 
   it("lets the owner past that rule, and fails on the feedback item instead", async ({

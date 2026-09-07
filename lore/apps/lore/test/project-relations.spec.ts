@@ -146,7 +146,7 @@ describe("ProjectController reads through relations", () => {
     expect(ids).toEqual([owner.id, member.id].sort());
   });
 
-  it("getProjectUsers is empty for a project with no members", async ({
+  it("getProjectUsers lists only the creator when nobody else is a member", async ({
     expect,
   }) => {
     const owner = await createTestUser(ctx);
@@ -155,12 +155,21 @@ describe("ProjectController reads through relations", () => {
       { user: owner },
     );
 
+    // ⚠️ Every row but the creator's. A project with NO membership rows at all
+    // stopped being a reachable state in epic #E39: `projects.createdBy` is no
+    // longer an authorization input, so the creator's own row is what admits
+    // them, and #Q1927's backfill wrote one for every project that lacked it.
+    // Deleting the lot now locks the owner out of their own project, which is
+    // the failure that whole quest exists to prevent - so the shape under test
+    // is "nobody but the creator".
     const repository = ctx.alepha.inject(MemberProbe).repository;
     const existing = await repository.findMany({
       where: { projectId: { eq: created.data.id } },
     });
     for (const member of existing) {
-      await repository.deleteById(member.id);
+      if (member.userId !== owner.id) {
+        await repository.deleteById(member.id);
+      }
     }
 
     const response = await ctx.projectController.getProjectUsers.fetch(
@@ -168,7 +177,9 @@ describe("ProjectController reads through relations", () => {
       { user: owner },
     );
 
-    expect(response.data).toEqual([]);
+    expect(response.data.map((it: { id: string }) => it.id)).toEqual([
+      owner.id,
+    ]);
   });
 
   it("getHomeOverview lists the user's projects, newest first", async ({

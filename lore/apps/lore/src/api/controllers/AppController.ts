@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
@@ -60,10 +59,7 @@ export class AppController {
    * the insights page all mean, and none of those is owner-only.
    */
   listApps = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/apps",
     schema: {
@@ -100,10 +96,7 @@ export class AppController {
    * membership check would have passed on the wrong project.
    */
   getApp = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/apps/:app/:env",
     schema: {
@@ -133,10 +126,9 @@ export class AppController {
    */
   createApp = $action({
     use: [
-      $secure({ permissions: ["project:update"] }),
       $ownsProject({
+        requires: "app:manage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "create an app instance" },
       }),
     ],
@@ -207,10 +199,9 @@ export class AppController {
    */
   updateApp = $action({
     use: [
-      $secure({ permissions: ["project:update"] }),
       $ownsProject({
+        requires: "app:manage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "update an app instance" },
       }),
     ],
@@ -286,10 +277,9 @@ export class AppController {
    */
   deleteApp = $action({
     use: [
-      $secure({ permissions: ["project:delete"] }),
       $ownsProject({
+        requires: "app:manage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "delete an app instance" },
       }),
     ],

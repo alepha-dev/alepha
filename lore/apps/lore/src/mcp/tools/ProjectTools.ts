@@ -1,4 +1,5 @@
 import { $inject, Alepha, z } from "alepha";
+import { RankService } from "alepha/api/ranks";
 import { $tool } from "alepha/mcp";
 import { currentUserAtom } from "alepha/security";
 import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
@@ -57,6 +58,7 @@ export class ProjectTools {
   protected readonly releaseController = $inject(ReleaseController);
   protected readonly areaService = $inject(AreaService);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
+  protected readonly ranks = $inject(RankService);
   protected readonly pinnedFolder = $inject(PinnedFolioFolder);
   protected readonly alepha = $inject(Alepha);
 
@@ -101,7 +103,7 @@ export class ProjectTools {
         throw new NotFoundError(`Project with ID ${project} not found`);
       }
       try {
-        await this.projectSecurity.assertMember(project, me);
+        await this.ranks.assert("project", String(project), "project:read", me);
       } catch (error) {
         if (error instanceof ForbiddenError || error instanceof NotFoundError) {
           throw new NotFoundError(`Project with ID ${project} not found`);

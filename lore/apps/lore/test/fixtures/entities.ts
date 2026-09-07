@@ -72,8 +72,14 @@ let folioSeq = 0;
 
 /**
  * Creates a project directly through the repository, bypassing
- * `ProjectController` (auth, slug derivation, membership rows). Fine for
- * tests that only need a valid `projectId` to hang other rows off.
+ * `ProjectController` (auth, slug derivation, preset ranks). Fine for tests
+ * that only need a valid `projectId` to hang other rows off.
+ *
+ * ⚠️ It DOES write the creator's membership row, with `rank: "owner"`.
+ * `projects.createdBy` stopped being an authorization input in epic #E39, and
+ * #Q1927's backfill gave every existing project's creator such a row - so a
+ * fixture project without one is a shape production does not have, and every
+ * gate would refuse its own creator.
  *
  * `createdBy` is a real `users` row, not a bare random uuid: `projects`
  * itself carries no FK on that column (see the comment on
@@ -121,6 +127,13 @@ export const createTestProject = async (
       overrides.slug ??
       `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${projectSeq}`,
     createdBy: overrides.createdBy ?? owner.id,
+  });
+
+  await repo.members.create({
+    projectId: project.id,
+    userId: project.createdBy,
+    owner: true,
+    rank: "owner",
   });
 
   const ALL_ON: Array<{
@@ -240,12 +253,30 @@ export const createTestMember = async (
   alepha: Alepha,
   project: Project,
   userId: string,
-  overrides: Partial<{ owner: boolean }> = {},
+  overrides: Partial<{ owner: boolean; rank: string }> = {},
 ): Promise<Member> => {
   const repo = alepha.inject(TestEntityRepositories);
+
+  // ⚠️ Idempotent, because `createTestProject` now writes the creator's own
+  // membership row. `members` carries a unique index on `(userId, projectId)`,
+  // so a spec that adds the creator explicitly - a perfectly reasonable thing
+  // to have written before ranks existed - would otherwise fail on a
+  // constraint rather than on anything it was testing.
+  const existing = await repo.members.findOne({
+    where: { projectId: { eq: project.id }, userId: { eq: userId } },
+  });
+
+  if (existing) {
+    if (overrides.rank !== undefined) {
+      return repo.members.updateById(existing.id, { rank: overrides.rank });
+    }
+    return existing;
+  }
+
   return repo.members.create({
     projectId: project.id,
     userId,
     owner: overrides.owner ?? true,
+    ...(overrides.rank === undefined ? {} : { rank: overrides.rank }),
   });
 };
