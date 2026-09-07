@@ -221,7 +221,7 @@ export class DeployService {
           // a Worker shipped without one of its variables boots half
           // configured and fails as whatever that variable was holding
           // together.
-          secrets: await this.secrets.open(instance.id),
+          secrets: await this.openSecrets(instance.id),
           credential: {
             apiToken: this.seal.open(
               estate.credential,
@@ -274,6 +274,23 @@ export class DeployService {
    * guarantees is that the ROW reaches a terminal state, which is what stops
    * the UI following a deploy forever.
    */
+  /**
+   * The copy's variables, minting the one no operator should have to.
+   *
+   * ⚠️ **Before `open`, and only ever adding what is missing.** Every Alepha
+   * app refuses to boot in production without `APP_SECRET`, and that refusal
+   * lands AFTER D1 and R2 are provisioned and the migrations are applied - so
+   * a copy nobody set one on deployed "successfully" and then answered 500,
+   * five layers from the cause. `ensureGenerated` writes the row once and
+   * leaves an existing value alone, so an operator who set their own keeps it.
+   */
+  protected async openSecrets(
+    instanceId: string,
+  ): Promise<Record<string, string>> {
+    await this.secrets.ensureGenerated(instanceId);
+    return await this.secrets.open(instanceId);
+  }
+
   protected async withTimeout<T>(
     row: Deployment,
     work: Promise<T>,

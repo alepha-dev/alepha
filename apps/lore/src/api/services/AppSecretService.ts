@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { EXCLUDED_SECRET_KEYS } from "alepha/cli/platform-lib";
+import { CryptoProvider } from "alepha/crypto";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
 
@@ -31,6 +32,7 @@ import { CredentialSealService } from "./CredentialSealService.ts";
 export class AppSecretService {
   protected readonly rows = $repository(appSecrets);
   protected readonly seal = $inject(CredentialSealService);
+  protected readonly crypto = $inject(CryptoProvider);
 
   /**
    * The label separating this key space from the estate credential's.
@@ -61,6 +63,69 @@ export class AppSecretService {
    */
   public static readonly MAX_VALUE_LENGTH = 5_000;
   public static readonly MAX_KEYS = 100;
+
+  /**
+   * The one variable a deploy mints for itself when the copy has none.
+   *
+   * ⚠️ **Not reserved.** An operator may still set it, and setting it wins:
+   * a copy replacing an existing deployment has to be able to keep the value
+   * whose sessions and sealed data are already out there. Generation fills a
+   * gap, it does not own the name.
+   */
+  public static readonly GENERATED_KEY = "APP_SECRET";
+
+  /**
+   * Characters of base64url, so 48 bytes of entropy.
+   */
+  public static readonly GENERATED_LENGTH = 64;
+
+  /**
+   * Mint {@link GENERATED_KEY} for a copy that has none, and leave one that
+   * has alone.
+   *
+   * ## ⚠️ Once, and stored - never derived per deploy
+   *
+   * It is durable state rather than a value the deploy can recompute, which is
+   * what separates it from `DATABASE_URL` and `R2_BUCKET_NAME`. Those are
+   * derived from ids the provisioning step just returned, and regenerating
+   * them is free. Regenerating this one signs out every session and makes
+   * anything the app sealed with it unreadable - so the row is written on the
+   * first deploy and read on every one after.
+   *
+   * ## Why a deploy mints it at all
+   *
+   * Every Alepha app refuses to boot in production without it, and that
+   * refusal lands AFTER D1 and R2 are provisioned and the migrations are
+   * applied - so an operator who never set one sees a 500 from a deploy that
+   * reported success, five layers from the cause. Nobody produces a better
+   * value than 48 random bytes, which is the same argument that made the
+   * derived names derived.
+   */
+  public async ensureGenerated(instanceId: string): Promise<void> {
+    const key = AppSecretService.GENERATED_KEY;
+    if (await this.find(instanceId, key)) {
+      return;
+    }
+
+    try {
+      await this.set({
+        instanceId,
+        key,
+        // No `updatedBy`: nobody set it, and naming a person as the author of
+        // a value they never chose is worse than an empty column.
+        value: this.crypto.randomText(AppSecretService.GENERATED_LENGTH),
+      });
+    } catch (error) {
+      // ⚠️ Two overlapping deploys of one copy both find nothing and both
+      // insert. The unique index on `(instanceId, key)` fails the loser, whose
+      // deploy must not die over it: the winner's value is the right one for
+      // both, so looking again IS the recovery. Rethrown when the second look
+      // finds nothing, because then the failure was not a race.
+      if (!(await this.find(instanceId, key))) {
+        throw error;
+      }
+    }
+  }
 
   /**
    * Every name a variable may not take.
