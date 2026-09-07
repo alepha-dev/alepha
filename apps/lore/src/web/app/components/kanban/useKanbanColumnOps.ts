@@ -7,6 +7,7 @@ import { useState } from "react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
@@ -58,7 +59,7 @@ export const useKanbanColumnOps = (
       const result = await fn();
       const project = alepha.store.get(currentProjectAtom);
       if (project) {
-        alepha.store.set(currentProjectAtom, apply(result, project));
+        setCurrentProject(alepha, apply(result, project));
       }
       onColumnsChanged?.();
       return true;

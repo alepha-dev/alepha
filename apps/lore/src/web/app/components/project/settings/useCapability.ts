@@ -7,6 +7,7 @@ import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "@/web/app/atoms/userProjectsAtom.ts";
 import { capabilityRegistry } from "@/web/app/services/capabilityRegistry.ts";
+import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 import {
   capabilityOption,
   hasCapability,
@@ -130,11 +131,15 @@ const useCapabilityWrite = () => {
   ) => {
     if (!project) return;
     try {
+      // ⚠️ The response carries `permissions` as well as the project, and it
+      // has to: turning a capability ON widens the effective set, so a client
+      // that kept the set it already had would leave the new capability's
+      // sidebar entries hidden until the next navigation.
       const updated = await api.setCapability({
         params: { projectId: project.id, key },
         body,
       });
-      alepha.store.set(currentProjectAtom, updated);
+      setCurrentProject(alepha, updated);
       const overview = alepha.store.get(userProjectsAtom);
       if (overview) {
         alepha.store.set(userProjectsAtom, {

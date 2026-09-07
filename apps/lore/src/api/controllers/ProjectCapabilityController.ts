@@ -4,6 +4,7 @@ import { $action } from "alepha/server";
 import { capabilityKeySchema } from "../schemas/capabilityKeySchema.ts";
 import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { ProjectPermissions } from "../security/ProjectPermissions.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
@@ -31,6 +32,7 @@ export class ProjectCapabilityController {
   protected readonly registry = $inject(CapabilityRegistry);
   protected readonly projectMapper = $inject(ProjectResourceMapper);
   protected readonly audits = $inject(LoreAudits);
+  protected readonly projectPermissions = $inject(ProjectPermissions);
 
   /**
    * Declared above the actions on purpose: a `use: [...]` entry reading
@@ -99,7 +101,21 @@ export class ProjectCapabilityController {
          */
         options: z.record(z.text(), z.boolean()).optional(),
       }),
-      response: projectResourceSchema,
+      /**
+       * The project, PLUS the caller's effective permission set.
+       *
+       * ⚠️ Not decoration, and not the same as `projectResourceSchema`.
+       * Turning a capability on WIDENS what every rank may do - `folio:read`
+       * does not exist for a project without Knowledge - so the client's
+       * `currentProjectAtom` would otherwise carry a set computed before the
+       * switch moved. `canInProject` answers `false` for a permission it does
+       * not hold, so the Folios entry never came back until the next
+       * navigation. `settings-features.spec.ts` is what says so.
+       */
+      response: projectResourceSchema.extend({
+        permissions: z.array(z.text()),
+        rank: z.object({ key: z.text(), name: z.text() }).optional(),
+      }),
     },
     handler: async ({ params, body, user }) => {
       const project = this.security.projects;
@@ -155,7 +171,24 @@ export class ProjectCapabilityController {
         where: { projectId: { eq: params.projectId } },
       });
 
-      return this.projectMapper.toResource(row, rows);
+      // Recomputed AFTER the write, from the rows that now exist. That is the
+      // whole point: the set is a function of the capability set, and this is
+      // the request that just changed it.
+      const membership = await this.security.members.findOne({
+        where: {
+          projectId: { eq: params.projectId },
+          userId: { eq: user.id },
+        },
+      });
+
+      return {
+        ...this.projectMapper.toResource(row, rows),
+        ...(await this.projectPermissions.of(
+          params.projectId,
+          user,
+          membership,
+        )),
+      };
     },
   });
 }

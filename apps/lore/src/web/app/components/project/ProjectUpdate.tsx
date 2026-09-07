@@ -14,9 +14,9 @@ import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
 import { ProjectSlugService } from "@/api/services/ProjectSlugService.ts";
+import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 
@@ -160,7 +160,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           throw error;
         });
 
-      alepha.store.set(currentProjectAtom, project);
+      setCurrentProject(alepha, project);
       const overview = alepha.store.get(userProjectsAtom);
       if (overview) {
         alepha.store.set(userProjectsAtom, {
