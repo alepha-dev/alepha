@@ -73,6 +73,14 @@ const NAV_ROUTE_NAMES = [
   "projectSettingsReleases",
   "projectSettingsQuality",
   "projectSettingsQuests",
+  // The bay console's rail - BayLayout.tsx, plus the instance page the Apps
+  // entry stays lit for and the drawer's "Open console" link.
+  "bay",
+  "bayOverview",
+  "bayApps",
+  "bayApp",
+  "bayCommands",
+  "baySettings",
   // Reports tab bar — ReportsLayout.tsx
   "reportsOverview",
   "reportsQuests",
@@ -209,6 +217,7 @@ describe("AppRouter route table", () => {
       releaseTag: "0.28.0",
       areaId: 1,
       analyticsDimension: "path",
+      estateId: "b0a1c2d3-4e5f-4a6b-8c9d-0e1f2a3b4c5d",
     };
 
     for (const name of NAV_ROUTE_NAMES) {

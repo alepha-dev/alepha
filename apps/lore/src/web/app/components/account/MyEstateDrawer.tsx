@@ -14,7 +14,13 @@ import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { KeyRound, RefreshCw, Trash2, Unlink } from "lucide-react";
+import {
+  KeyRound,
+  RefreshCw,
+  SquareTerminal,
+  Trash2,
+  Unlink,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
@@ -24,7 +30,7 @@ import { estateErrorMessage } from "@/web/app/components/shared/estateCreateDraf
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
-import MyEstateCommands from "./MyEstateCommands.tsx";
+import BayCommands from "../bay/BayCommands.tsx";
 
 export interface MyEstateDrawerProps {
   /**
@@ -310,6 +316,26 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
               </SheetDescription>
             </SheetHeader>
 
+            {/* The console (#E37) is where a `bay` estate's apps, gauges and
+                actions live. Linked from here the day the shell lands, so
+                nothing this drawer does becomes unreachable before D8 moves
+                the row's own click target. `cloudflare` has no console yet. */}
+            {estate.type === "bay" && (
+              <div className="px-4">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  data-testid="estate-open-console"
+                  onClick={() =>
+                    router.push("bay", { params: { estateId: estate.id } })
+                  }
+                >
+                  <SquareTerminal className="size-4" />
+                  {tr("bay.open")}
+                </Button>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3 px-4">
               <div className="flex items-center justify-between gap-4 text-sm">
                 <span className="flex flex-col gap-0.5">
@@ -514,10 +540,16 @@ const MyEstateDrawer = (props: MyEstateDrawerProps) => {
 
             {/* The command queue exists because a bay machine dials in and
                 asks for work. A cloudflare account has no connector to come
-                for it, and #1629 refuses one at enqueue. */}
+                for it, and #1629 refuses one at enqueue.
+                ⚠️ Since #E37 a `bay` row opens its console rather than this
+                drawer, so in practice this branch is never taken and the
+                queue is read at /bay/:estateId/commands. Kept as the guard
+                rather than deleted: it states the rule, and deleting it
+                would leave a cloudflare drawer one route change away from
+                rendering a queue nothing can serve. */}
             {!isCloudflare && (
               <div className="border-t pt-4">
-                <MyEstateCommands estateId={estate.id} />
+                <BayCommands estateId={estate.id} />
               </div>
             )}
 

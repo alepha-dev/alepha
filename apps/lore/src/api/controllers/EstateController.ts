@@ -1,11 +1,17 @@
 import { $inject, z } from "alepha";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
+import { $rateLimit } from "alepha/server/rate-limit";
 
 import { estates } from "../entities/estates.ts";
 import { cloudflareTokenSchema } from "../schemas/cloudflareCredentialSchema.ts";
 import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
+import {
+  type EstateInventoryResource,
+  estateInventoryResourceSchema,
+} from "../schemas/estateInventoryResourceSchema.ts";
 import {
   type EstateResource,
   estateResourceSchema,
@@ -18,11 +24,18 @@ import {
 } from "../schemas/ownedEstateResourceSchema.ts";
 import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
+import { EstateInventoryService } from "../services/EstateInventoryService.ts";
 import { EstateService } from "../services/EstateService.ts";
+import { EstateStatsService } from "../services/EstateStatsService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
-export type { EstateResource, MintedEstate, OwnedEstateResource };
+export type {
+  EstateInventoryResource,
+  EstateResource,
+  MintedEstate,
+  OwnedEstateResource,
+};
 
 /**
  * Owner-facing CRUD for estates: the deploy destinations a user owns, across
@@ -45,6 +58,9 @@ export class EstateController {
   protected readonly tokens = $inject(EstateTokenService);
   protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly transport = $inject(EstateCommandTransport);
+  protected readonly inventories = $inject(EstateInventoryService);
+  protected readonly stats = $inject(EstateStatsService);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly audits = $inject(LoreAudits);
 
   /**
@@ -101,18 +117,163 @@ export class EstateController {
     },
   });
 
+  /**
+   * One estate the caller owns, with the projects it is lent to and what the
+   * machine last reported.
+   *
+   * The owned shape rather than the bare resource: this route is owner-gated
+   * like every sibling, and the console's Settings tab needs the loans it
+   * detaches from. Resolved through the same `withLoans` the list uses, so
+   * there is one place that knows how a loan is shaped.
+   */
   getEstate = $action({
     use: [$secure({ permissions: ["estate:read"] })],
     method: "GET",
     path: "/estates/:estateId",
     schema: {
       params: z.object({ estateId: z.uuid() }),
-      response: estateResourceSchema,
+      response: ownedEstateResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      const [owned] = await this.service.withLoans([estate]);
+      return owned!;
+    },
+  });
+
+  /**
+   * What is running on the machine, reconciled against what Lore tracks.
+   *
+   * ⚠️ A machine that has never connected answers `{ inventory: null }` and
+   * NOT a 404. "Nothing reported yet" is a state the console renders, and the
+   * `expected` list is still worth showing beside it: those are the instances
+   * Lore believes belong here. Only the estate itself 404s, through
+   * `loadOwned`, like every sibling in this controller.
+   *
+   * Owner only, deliberately. Sharing a read-only view with members of a
+   * project this estate is lent to is wanted later and is a filter on
+   * `reconcile`, not a change here.
+   */
+  getEstateInventory = $action({
+    use: [$secure({ permissions: ["estate:read"] })],
+    method: "GET",
+    path: "/estates/:estateId/inventory",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: estateInventoryResourceSchema,
     },
     handler: async ({ params, user }) =>
-      this.service.toResource(
+      this.inventories.reconcile(
         await this.service.loadOwned(params.estateId, user),
       ),
+  });
+
+  /**
+   * The CPU and memory series, one point per day.
+   *
+   * `EstateStatsService.series` was written for #Q1627 and had no caller in
+   * the tree until this route: it divides the dataset's sums by the sample
+   * count and carries the `estimated` / `sampleInterval` disclosure, and both
+   * halves of that stay there rather than being redone here. On Analytics
+   * Engine a window is SAMPLED, and a chart that hides its own sampling is one
+   * that gets trusted more than it deserves.
+   *
+   * ⚠️ `since` is declared in `schema.query` and has to be: a `$page` loader's
+   * `query` holds only what the schema declares, so an undeclared param reads
+   * `undefined` and the page takes whichever branch that implies, silently.
+   *
+   * ⚠️ The series is off by default (`collectSeries`), so an empty answer is
+   * the common case rather than an error. The page says which of the two it
+   * is; this route answers what the dataset holds either way.
+   */
+  getEstateStats = $action({
+    use: [$secure({ permissions: ["estate:read"] })],
+    method: "GET",
+    path: "/estates/:estateId/stats",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      query: z.object({ since: z.string().max(40).optional() }),
+      response: z.object({
+        collecting: z.boolean(),
+        estimated: z.boolean(),
+        sampleInterval: z.number().optional(),
+        points: z.array(
+          z.object({
+            day: z.string().max(40),
+            cpuPercent: z.number(),
+            memoryPercent: z.number(),
+            samples: z.integer().min(0),
+          }),
+        ),
+      }),
+    },
+    handler: async ({ params, query, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      // Thirty days by default: the dataset rolls up by day, so a shorter
+      // window is a handful of points and a longer one outlives the hot
+      // retention.
+      const since =
+        query.since ??
+        new Date(this.dateTime.nowMillis() - 30 * 24 * 3600_000).toISOString();
+      const series = await this.stats.series(estate.id, since);
+      // The switch travels with the answer so the page can tell "collecting,
+      // nothing yet" from "not collecting at all" without a second read.
+      return { collecting: estate.collectSeries, ...series };
+    },
+  });
+
+  /**
+   * Ask the machine for a fresh inventory, instead of waiting up to half an
+   * hour for its next tick.
+   *
+   * ⚠️ **The answer is asynchronous, and nothing here may pretend otherwise.**
+   * The Worker cannot read a Durable Object socket's reply: it emits into the
+   * room and the machine's answer arrives later, on the machine's own
+   * connection, through the ordinary `inventory` path. So this returns
+   * "asked", and the page re-reads {@link getEstateInventory} a moment later.
+   * A promise that resolved with the inventory would be a lie about the
+   * transport.
+   *
+   * ⚠️ **Not a command, deliberately.** A row buys idempotency, a queue, an
+   * ack, redelivery and a sweep, and none of that is worth having here: the
+   * failure mode of a lost refresh is that somebody clicks again.
+   *
+   * Refused rather than silently dropped while the machine is offline. A
+   * transient frame pushed into nothing would report success for something
+   * that will never happen.
+   *
+   * The limit is per estate rather than per caller: the cost being bounded is
+   * the machine's, and one owner with two tabs is the same machine. Bay's own
+   * 5 s coalescing is the hard floor; this is the polite one.
+   */
+  refreshEstate = $action({
+    use: [
+      $secure({ permissions: ["estate:update"] }),
+      $rateLimit({
+        max: 6,
+        windowMs: 60_000,
+        key: (input: { params: { estateId: string } }) =>
+          `estate-refresh:${input.params.estateId}`,
+      }),
+    ],
+    method: "POST",
+    path: "/estates/:estateId/refresh",
+    schema: {
+      params: z.object({ estateId: z.uuid() }),
+      response: z.object({ asked: z.boolean() }),
+    },
+    handler: async ({ params, user }) => {
+      const estate = await this.service.loadOwned(params.estateId, user);
+      if (!this.service.isOnline(estate)) {
+        throw new BadRequestError(
+          `Estate "${estate.slug}" is not connected right now, so there is nothing to ask`,
+        );
+      }
+      // `false` here is the race between the liveness stamps and the socket
+      // actually being there. Reported rather than thrown: nothing was lost,
+      // and the next tick answers anyway.
+      return { asked: await this.transport.push(estate, { type: "query" }) };
+    },
   });
 
   /**

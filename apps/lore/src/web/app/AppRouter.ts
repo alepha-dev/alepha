@@ -17,6 +17,7 @@ import type { BlightController } from "../../api/controllers/BlightController.ts
 import type { DashboardController } from "../../api/controllers/DashboardController.ts";
 import type { DirectoryController } from "../../api/controllers/DirectoryController.ts";
 import type { EpicController } from "../../api/controllers/EpicController.ts";
+import type { EstateController } from "../../api/controllers/EstateController.ts";
 import type { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
@@ -34,6 +35,7 @@ import { currentBlightCountAtom } from "./atoms/currentBlightCountAtom.ts";
 import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "./atoms/currentEpicCountAtom.ts";
 import { currentEpicsAtom } from "./atoms/currentEpicsAtom.ts";
+import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
@@ -92,6 +94,7 @@ export class AppRouter {
   roadmapApi = $client<RoadmapController>();
   sigilApi = $client<SigilController>();
   appApi = $client<AppController>();
+  estateApi = $client<EstateController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
   dashboardApi = $client<DashboardController>();
@@ -182,6 +185,7 @@ export class AppRouter {
       this.register,
       this.resetPassword,
       this.project,
+      this.bay,
       this.projectCreate,
       this.projectFeedbackRequest,
       this.projectRoadmap,
@@ -391,6 +395,119 @@ export class AppRouter {
       enter: { name: "fadeIn", duration: 500, timing: "ease-out" },
     },
     lazy: () => import("./components/project/ProjectCreate.tsx"),
+  });
+
+  /**
+   * The console for one `bay` estate: what is running on the machine, what it
+   * costs, and the buttons that act on it.
+   *
+   * ⚠️ **A per-type root, and that is forced.** `"estates"` is already
+   * reserved for the machine-facing pull routes, so a generic `/estates/:id`
+   * page cannot exist. `/cloudflare/:id` follows the same shape in #E22.
+   *
+   * ⚠️ **`"bay"` is in `ProjectSlugService.reserved`**, and it has to be: the
+   * router walks static children before the param child, so without the
+   * reservation a project slugged `bay` would be silently shadowed and become
+   * unreachable for whoever picked that name. `test/app-routes.spec.ts`
+   * asserts the invariant for every static root segment.
+   *
+   * The param is the uuid, not the slug: a slug is unique per OWNER, and a
+   * root-level URL is global.
+   */
+  bay = $page({
+    children: () => [
+      this.bayOverview,
+      this.bayApps,
+      this.bayApp,
+      this.bayCommands,
+      this.baySettings,
+    ],
+    name: "bay",
+    path: "/bay/:estateId",
+    // Owner-only, and the 404 comes from the server: `getEstate` goes through
+    // `EstateService.loadOwned`, which answers 404 for anyone else, so a
+    // non-owner gets a real not-found for the whole subtree rather than an
+    // empty console.
+    use: [$secure()],
+    schema: { params: z.object({ estateId: z.string() }) },
+    head: (props) => {
+      const estate = (props as { estate?: { slug?: string } } | undefined)
+        ?.estate;
+      return { title: `${estate?.slug ?? "Estate"} › Bay` };
+    },
+    lazy: () => import("./components/bay/BayLayout.tsx"),
+    loader: async ({ params }) => {
+      const estate = await this.estateApi.getEstate({
+        params: { estateId: params.estateId },
+      });
+      this.alepha.store.set(currentEstateAtom, estate);
+      return { estate };
+    },
+    onLeave: () => {
+      this.alepha.store.set(currentEstateAtom, undefined);
+    },
+    errorHandler: (error) => {
+      if (HttpError.is(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
+    },
+  });
+
+  bayOverview = $page({
+    name: "bayOverview",
+    path: "/",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Overview`,
+    }),
+    lazy: () => import("./components/bay/BayOverview.tsx"),
+  });
+
+  bayApps = $page({
+    name: "bayApps",
+    path: "/apps",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Apps`,
+    }),
+    lazy: () => import("./components/bay/BayApps.tsx"),
+  });
+
+  /**
+   * One instance on the machine.
+   *
+   * ⚠️ `:app` and `:env` repeat the names `projectApp` uses, deliberately.
+   * `ReactRouter.path` merges the CURRENT route's params with the caller's by
+   * NAME, so two trees that mean the same thing by `app` and `env` may share
+   * them. A link from here to a project's app page has to pass `projectSlug`
+   * explicitly, because this route holds `estateId` and nothing else - and
+   * naming these two differently is what breaks, silently, with the value
+   * arriving missing.
+   */
+  bayApp = $page({
+    name: "bayApp",
+    path: "/apps/:app/:env",
+    schema: { params: z.object({ app: z.string(), env: z.string() }) },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Instance`,
+    }),
+    lazy: () => import("./components/bay/BayInstance.tsx"),
+  });
+
+  bayCommands = $page({
+    name: "bayCommands",
+    path: "/commands",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Commands`,
+    }),
+    lazy: () => import("./components/bay/BayCommands.tsx"),
+  });
+
+  baySettings = $page({
+    name: "baySettings",
+    path: "/settings",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Settings`,
+    }),
+    lazy: () => import("./components/bay/BaySettings.tsx"),
   });
 
   project = $page({

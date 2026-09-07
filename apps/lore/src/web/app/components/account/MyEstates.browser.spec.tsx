@@ -142,11 +142,18 @@ describe("MyEstates", () => {
     expect(queryByTestId("my-estate-drawer")).toBeNull();
   });
 
-  it("opens the drawer from the row, and closes it again", async ({
+  /**
+   * ⚠️ **Two behaviours in one list since the bay console landed (#E37).** A
+   * `bay` row navigates to `/bay/:estateId`, where its switches, apps and
+   * actions now live; a `cloudflare` row keeps the drawer until #E22 gives it
+   * a page of its own. This spec pins the drawer half, which is the one that
+   * still exists here.
+   */
+  it("opens the drawer from a cloudflare row, and closes it again", async ({
     expect,
   }) => {
     const { findByTestId, findByText } = await show({
-      listMyEstates: { items: [estate()] },
+      listMyEstates: { items: [estate({ type: "cloudflare" })] },
     });
 
     fireEvent.click(await findByTestId("my-estate-row"));
@@ -154,7 +161,9 @@ describe("MyEstates", () => {
     const drawer = await findByTestId("my-estate-drawer");
     // Everything the card used to hold, now behind the click.
     expect(drawer.textContent).toContain("Not lent to any project.");
-    expect(await findByText("Rotate secret")).toBeTruthy();
+    // ⚠️ No "Rotate secret" here: a cloudflare credential is pasted rather
+    // than minted, so the drawer shows that button for `bay` only.
+    expect(await findByText("Delete")).toBeTruthy();
   });
 
   /**

@@ -45,6 +45,64 @@ type statusLine struct {
 	Problems []string `json:"problems"`
 }
 
+/*
+computeStatus is the arithmetic, for one instance.
+
+Extracted so it has exactly one implementation. The connector pushes the same
+derived facts to Lore, and a second copy of the backup-staleness rule and the
+not-running rule would drift - invisibly, because each copy looks right on its
+own. `printStatusJSON` is a loop over this, and its output is unchanged.
+
+`now` and `interval` are arguments rather than read here for the reason this
+file exists at all: the whole value is the arithmetic, and arithmetic against
+a clock a caller cannot move is arithmetic nobody can test.
+*/
+func computeStatus(a listedApp, now time.Time, interval time.Duration) statusLine {
+	line := statusLine{
+		App:           a.Name,
+		Env:           a.Env,
+		Domains:       a.Domains,
+		Release:       a.Release,
+		Running:       a.Running,
+		Static:        a.Static,
+		LastRequestAt: a.LastRequestAt,
+		IdleFor:       idleFor(a.LastRequestAt, now),
+		Crons:         a.Crons,
+		Backups:       a.Backups,
+		LastBackupAt:  a.LastBackupAt,
+		Problems:      []string{},
+	}
+	if u := a.Usage; u != nil {
+		line.Restarts = u.Restarts
+		line.MemoryBytes = u.MemoryBytes
+		line.Uptime = uptimeOf(u.StartedAt)
+	}
+	// A static site has no process, so `Running` is false for it forever.
+	// Calling that a problem would make this command exit non-zero on a
+	// healthy host every time it ran - and a status command that always
+	// fails is one nobody reads on the day something is actually wrong.
+	if !a.Running && !a.Static {
+		line.Problems = append(line.Problems, "not running")
+	}
+	if line.Restarts > 0 {
+		line.Problems = append(line.Problems, fmt.Sprintf("restarted %d time(s)", line.Restarts))
+	}
+	if a.Backups {
+		stale, age := schedule.Stale(a.LastBackupAt, now, interval)
+		if a.LastBackupAt != "" {
+			line.BackupAge = age.Round(time.Minute).String()
+		}
+		line.BackupStale = stale
+		if stale {
+			line.Problems = append(line.Problems, "backup is stale")
+		}
+	}
+	if a.LastBackupError != "" {
+		line.Problems = append(line.Problems, "last backup attempt failed: "+a.LastBackupError)
+	}
+	return line
+}
+
 // printStatusJSON writes the machine view and fails the same way the human one
 // does.
 //
@@ -55,48 +113,7 @@ func printStatusJSON(apps []listedApp, now time.Time, interval time.Duration) er
 	lines := make([]statusLine, 0, len(apps))
 	problems := 0
 	for _, a := range apps {
-		line := statusLine{
-			App:           a.Name,
-			Env:           a.Env,
-			Domains:       a.Domains,
-			Release:       a.Release,
-			Running:       a.Running,
-			Static:        a.Static,
-			LastRequestAt: a.LastRequestAt,
-			IdleFor:       idleFor(a.LastRequestAt, now),
-			Crons:         a.Crons,
-			Backups:       a.Backups,
-			LastBackupAt:  a.LastBackupAt,
-			Problems:      []string{},
-		}
-		if u := a.Usage; u != nil {
-			line.Restarts = u.Restarts
-			line.MemoryBytes = u.MemoryBytes
-			line.Uptime = uptimeOf(u.StartedAt)
-		}
-		// A static site has no process, so `Running` is false for it forever.
-		// Calling that a problem would make this command exit non-zero on a
-		// healthy host every time it ran — and a status command that always
-		// fails is one nobody reads on the day something is actually wrong.
-		if !a.Running && !a.Static {
-			line.Problems = append(line.Problems, "not running")
-		}
-		if line.Restarts > 0 {
-			line.Problems = append(line.Problems, fmt.Sprintf("restarted %d time(s)", line.Restarts))
-		}
-		if a.Backups {
-			stale, age := schedule.Stale(a.LastBackupAt, now, interval)
-			if a.LastBackupAt != "" {
-				line.BackupAge = age.Round(time.Minute).String()
-			}
-			line.BackupStale = stale
-			if stale {
-				line.Problems = append(line.Problems, "backup is stale")
-			}
-		}
-		if a.LastBackupError != "" {
-			line.Problems = append(line.Problems, "last backup attempt failed: "+a.LastBackupError)
-		}
+		line := computeStatus(a, now, interval)
 		problems += len(line.Problems)
 		lines = append(lines, line)
 	}

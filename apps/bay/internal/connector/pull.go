@@ -1,6 +1,7 @@
 package connector
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -16,7 +17,8 @@ import (
 )
 
 /*
-The two pulls a deploy makes, by command id, under the estate secret (#1844).
+What a machine exchanges with the sink by command id, under the estate secret
+(#1844): the two pulls a deploy makes, and the one push a `logs` answers with.
 
 The command frame carries no bytes and no secrets: it is redelivered from
 Lore's queue table on every reconnect and must not hold either. Bay pulls
@@ -190,3 +192,52 @@ func short(digest string) string {
 
 // ErrNoArtifact is a deploy command with nothing to fetch.
 var ErrNoArtifact = errors.New("the deploy names no artifact")
+
+/*
+MaxResultBytes is what the sink accepts for a command's answer.
+
+The caller trims to fit before it posts: a payload over this is refused whole,
+and a refused upload means the row says nothing at all about what the machine
+found.
+*/
+const MaxResultBytes = 1 << 20
+
+/*
+PushResult uploads a command's answer to the sink.
+
+The one command whose result is a payload rather than an ack. The protocol has
+no reply channel, so the answer goes back over the same machine-facing seam the
+artifact and the secrets come down: addressed by command id, estate secret as
+bearer, and every refusal one 404.
+
+⚠️ Called BEFORE the terminal ack, always. The sink accepts an upload only
+while the command is `sent` or `running`, so acking `done` first turns the
+upload into a 404 and the owner sees a finished command with nothing to read.
+*/
+func PushResult(ctx context.Context, client *http.Client, cfg Config, commandID string, body []byte) error {
+	if len(body) > MaxResultBytes {
+		return fmt.Errorf("the result is %d bytes, over the %d the sink accepts", len(body), MaxResultBytes)
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		commandURL(cfg, commandID, "result"), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+cfg.Secret)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("push result: %w", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		detail, _ := io.ReadAll(io.LimitReader(res.Body, 2048))
+		// One 404 covers a command this estate does not hold, one already
+		// answered and one already finished, so the status is the diagnosis.
+		return fmt.Errorf("the sink answered %d: %s", res.StatusCode, strings.TrimSpace(string(detail)))
+	}
+	return nil
+}

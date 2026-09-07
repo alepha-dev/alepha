@@ -1,0 +1,7 @@
+{
+  "type": "command",
+  "id": "2f6e8c40-1d7b-4a93-b5e8-6c0f1a2b3d4e",
+  "kind": "backup",
+  "app": "lore",
+  "environment": "production"
+}

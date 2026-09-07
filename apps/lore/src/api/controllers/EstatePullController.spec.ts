@@ -383,3 +383,161 @@ describe("EstatePullController, the secret set", () => {
     expect(anonymous.status).toBe(401);
   });
 });
+
+/**
+ * A `logs` command queued and pushed, so it is in one of the two states a
+ * machine legitimately holds it in.
+ */
+const sentLogs = async (ctx: TestContext, machine: Machine) => {
+  const queued = await ctx.commands.enqueue(machine.estate, {
+    kind: "logs",
+    payload: {
+      app: "my-app",
+      environment: "production",
+      logs: { lines: 200 },
+    },
+  });
+  return ctx.commands.markSent(queued);
+};
+
+const pushResult = (
+  ctx: TestContext,
+  commandId: string,
+  body: string,
+  secret?: string,
+): Promise<Response> =>
+  fetch(`${ctx.base}/estates/commands/${commandId}/result`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(secret ? { authorization: `Bearer ${secret}` } : {}),
+    },
+    body,
+  });
+
+/**
+ * The one command whose answer is a payload rather than an ack.
+ *
+ * The protocol has no reply channel, so the answer comes back over this
+ * machine-facing seam, addressed by command id under the estate secret. Every
+ * rule the sibling routes hold is asserted here too, because the reason for
+ * them is the same: a machine must learn nothing about another estate's queue
+ * from the difference between "not yours" and "not there".
+ */
+describe("EstatePullController, a command's result", () => {
+  let ctx: TestContext;
+
+  beforeEach(async () => {
+    ctx = await setup();
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  it("stores the answer of a command the machine holds, and links it to the row", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const machine = await enrol(ctx, owner, "ovh-logs");
+    const command = await sentLogs(ctx, machine);
+
+    const res = await pushResult(
+      ctx,
+      command.id,
+      JSON.stringify({
+        supervised: true,
+        lines: [{ raw: "boot" }, { raw: "ready" }],
+      }),
+      machine.secret,
+    );
+
+    expect(res.status, await res.text()).toBe(200);
+    const row = await ctx.repos.commands.getOne({
+      where: { id: { eq: command.id } },
+    });
+    expect(row.resultFileId).toBeDefined();
+    // Kept for a day and swept by the framework, which is why the queue's own
+    // sweep needs to know nothing about it.
+    const file = await ctx.files.getFileById(row.resultFileId!);
+    expect(file.expirationDate).toBeDefined();
+  });
+
+  /**
+   * Accepted once. A redelivered upload must not replace an answer the owner
+   * may already be reading.
+   */
+  it("refuses a second upload for the same command", async ({ expect }) => {
+    const owner = await createOwner(ctx);
+    const machine = await enrol(ctx, owner, "ovh-logs-twice");
+    const command = await sentLogs(ctx, machine);
+
+    const first = `{"supervised":true,"lines":[{"raw":"first"}]}`;
+    expect(
+      (await pushResult(ctx, command.id, first, machine.secret)).status,
+    ).toBe(200);
+    const second = await pushResult(
+      ctx,
+      command.id,
+      `{"supervised":true,"lines":[{"raw":"second"}]}`,
+      machine.secret,
+    );
+    expect(second.status).toBe(404);
+
+    const row = await ctx.repos.commands.getOne({
+      where: { id: { eq: command.id } },
+    });
+    const stored = await ctx.files.streamFile(row.resultFileId!);
+    expect(await stored.text()).toContain("first");
+  });
+
+  /**
+   * The ordering both halves agree on: upload, THEN ack. `resolve()` accepts
+   * a command only while it is sent or running, so an answer arriving after
+   * the terminal ack has nowhere to go.
+   */
+  it("refuses an upload for a command that already finished", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const machine = await enrol(ctx, owner, "ovh-logs-late");
+    const command = await sentLogs(ctx, machine);
+    await ctx.commands.ack(machine.estate.id, {
+      id: command.id,
+      status: "done",
+    });
+
+    const res = await pushResult(
+      ctx,
+      command.id,
+      `{"supervised":true,"lines":[{"raw":"late"}]}`,
+      machine.secret,
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("refuses another estate's command, an unknown id and a missing secret identically", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const mine = await enrol(ctx, owner, "ovh-logs-mine");
+    const theirs = await enrol(ctx, owner, "ovh-logs-theirs");
+    const command = await sentLogs(ctx, mine);
+
+    const body = `{"supervised":true,"lines":[{"raw":"x"}]}`;
+    const foreign = await pushResult(ctx, command.id, body, theirs.secret);
+    const unknown = await pushResult(
+      ctx,
+      crypto.randomUUID(),
+      body,
+      theirs.secret,
+    );
+    expect(foreign.status).toBe(404);
+    expect(unknown.status).toBe(404);
+    // Identical bodies: the difference between "not yours" and "not there" is
+    // exactly what a machine must not be able to measure.
+    expect(await refusalOf(foreign)).toEqual(await refusalOf(unknown));
+
+    expect((await pushResult(ctx, command.id, body)).status).toBe(401);
+  });
+});

@@ -360,6 +360,64 @@ func (s *Systemd) Running(key string) bool {
 }
 
 /*
+Park takes the unit out of service until somebody says otherwise.
+
+`disable --now` is one call that stops the unit AND removes its
+multi-user.target.wants symlink, so the app does not come back at the next
+reboot. The same argv `removeUnit` uses, with the same tolerance: a unit that
+is not loaded is not a failure, since parking something already gone is the
+outcome the caller wanted.
+
+⚠️ Never called by deploy. `Stop` is what a redeploy uses, and it deliberately
+leaves the unit enabled - see the Runner interface for what a crash between a
+disabling Stop and the following Start would cost.
+*/
+func (s *Systemd) Park(key string, grace time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), grace+stopCallMargin)
+	defer cancel()
+
+	// The argv and the not-loaded tolerance live in `parkUnit`, so they are
+	// asserted on a host with no systemd. What stays here is the bound on the
+	// call, which is this method's own concern: a systemd that never returns
+	// must not wedge the action that asked for the park.
+	run := s.run
+	if run == nil {
+		run = func(name string, args ...string) ([]byte, error) {
+			return exec.CommandContext(ctx, name, args...).CombinedOutput()
+		}
+	}
+	if err := parkUnit(run, unitName(key)); err != nil {
+		if ctx.Err() != nil {
+			return fmt.Errorf("park %s: systemctl did not return within %s", key, grace+stopCallMargin)
+		}
+		return fmt.Errorf("park %s: %w", key, err)
+	}
+	return nil
+}
+
+/*
+State asks systemd what it calls the unit right now.
+
+`show --property=ActiveState` rather than `is-active`, because `is-active`
+answers `inactive` for a unit that failed and exits non-zero for both, which
+loses exactly the distinction this exists for. An unreadable answer is the
+empty string: the console then says nothing about the state rather than
+inventing one.
+*/
+func (s *Systemd) State(key string) string {
+	out, err := exec.Command("systemctl", "show", unitName(key)+".service",
+		"--property=ActiveState").Output()
+	if err != nil {
+		return ""
+	}
+	_, value, ok := strings.Cut(strings.TrimSpace(string(out)), "=")
+	if !ok {
+		return ""
+	}
+	return value
+}
+
+/*
 Usage asks systemd what the unit is costing.
 
 One `systemctl show` rather than reading the cgroup files directly: the cgroup

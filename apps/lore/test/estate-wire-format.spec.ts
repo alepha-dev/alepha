@@ -26,6 +26,11 @@ const SERVER_FRAMES = [
   "config.json",
   "command-restart.json",
   "command-deploy.json",
+  "command-stop.json",
+  "command-start.json",
+  "command-backup.json",
+  "command-logs.json",
+  "query.json",
 ];
 
 const CLIENT_FRAMES = [
@@ -34,6 +39,7 @@ const CLIENT_FRAMES = [
   "ack-done.json",
   "ack-failed.json",
   "stats.json",
+  "inventory.json",
 ];
 
 const load = (name: string): unknown =>
@@ -59,6 +65,58 @@ describe("Estate wire format v1, shared with Bay", () => {
       expect(parsed).toEqual(load(name));
     });
   }
+
+  /**
+   * The inventory's optionality is the point, not an oversight: Bay reads
+   * each host fact independently and degrades one unreadable `/proc` file to
+   * an absent field. A required field here would turn a container without
+   * `/proc/loadavg` into a machine that reports nothing at all.
+   */
+  it("accepts an inventory whose host reported almost nothing", () => {
+    const frame = load("inventory.json") as Record<string, unknown>;
+    expect(estateClientFrameSchema.parse({ ...frame, host: {} })).toBeDefined();
+    expect(
+      estateClientFrameSchema.parse({ ...frame, host: { cores: 2 } }),
+    ).toBeDefined();
+  });
+
+  it("bounds what a machine may push into the row", () => {
+    const frame = load("inventory.json") as Record<string, unknown>;
+    const app = (frame.apps as Record<string, unknown>[])[0];
+    // A host with 500 instances is a bug or an attack, not a page.
+    expect(() =>
+      estateClientFrameSchema.parse({
+        ...frame,
+        apps: Array.from({ length: 201 }, () => app),
+      }),
+    ).toThrow();
+    expect(() =>
+      estateClientFrameSchema.parse({
+        ...frame,
+        apps: [{ ...app, problems: Array.from({ length: 11 }, () => "x") }],
+      }),
+    ).toThrow();
+    expect(() =>
+      estateClientFrameSchema.parse({
+        ...frame,
+        apps: [{ ...app, domains: Array.from({ length: 21 }, () => "a.dev") }],
+      }),
+    ).toThrow();
+    expect(() =>
+      estateClientFrameSchema.parse({
+        ...frame,
+        apps: [{ ...app, lastBackupError: "x".repeat(2001) }],
+      }),
+    ).toThrow();
+    // Refused rather than clamped: a negative byte count is a broken reading,
+    // and storing a zero for it would be inventing a measurement.
+    expect(() =>
+      estateClientFrameSchema.parse({ ...frame, host: { memTotalBytes: -1 } }),
+    ).toThrow();
+    expect(() =>
+      estateClientFrameSchema.parse({ ...frame, host: { load1: -0.1 } }),
+    ).toThrow();
+  });
 
   it("refuses an ack past the limits Bay cuts to", () => {
     const ack = load("ack-failed.json") as Record<string, unknown>;

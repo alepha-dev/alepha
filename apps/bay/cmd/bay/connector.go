@@ -214,14 +214,20 @@ connectorLoop runs the Lore connection for the life of `serve`.
 What Lore pushes is run by `actions`, the closed vocabulary in actions.go.
 */
 func (s *server) connectorLoop(ctx context.Context) {
+	acts := newActions(s)
 	client := &connector.Client{
 		Store:   connector.NewStore(s.root),
 		Status:  s.connectorStatus,
 		Log:     s.log,
 		Reload:  s.connectorReload,
-		Handler: newActions(s),
-		Gauge:   connector.HostGauge(),
+		Handler: acts,
+		Gauge:   connector.HostGauge(s.root),
+		Version: version,
 	}
+	// The executor tells the connection when something it did is worth
+	// reporting. One direction only: the client asks for an inventory, the
+	// executor asks for it to be sent, and neither holds the other's lock.
+	acts.kick = client.KickInventory
 	client.Run(ctx)
 }
 

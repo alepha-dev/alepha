@@ -39,6 +39,16 @@ type Spec struct {
 type Runner interface {
 	Start(spec Spec) error
 	Stop(key string, grace time.Duration) error
+	// Park takes the app out of service and keeps it out across a reboot: for
+	// systemd, `systemctl disable --now`.
+	//
+	// Separate from Stop, and it has to be. Deploy calls Stop then Start
+	// internally on every redeploy; if that Stop disabled the unit and Bay
+	// crashed between the two, the app would be gone after the next reboot
+	// with nothing saying why. Park is only ever reached by an operator or a
+	// console saying "take this out of service", and Start re-enables, so a
+	// deploy or a start undoes it by construction.
+	Park(key string, grace time.Duration) error
 	// Remove uninstalls whatever the supervisor installed for the app, after
 	// Stop: for systemd that is the unit file and its enable symlink, without
 	// which an unregistered app comes back at the next reboot.
@@ -48,6 +58,15 @@ type Runner interface {
 	// deleteUser.
 	Remove(key string, purge bool) error
 	Running(key string) bool
+	// State is what the supervisor calls the unit right now, in its own
+	// words: systemd's ActiveState, so `inactive`, `failed`, `activating`,
+	// `active`. Empty when the supervisor cannot say.
+	//
+	// `Running` collapses three of those into one false, and the console has
+	// to tell them apart: an app somebody stopped, an app past its restart
+	// limit, and an auto-restart in flight are three different sentences to
+	// put in front of an operator.
+	State(key string) string
 	StopAll(grace time.Duration)
 	// Usage reports what the supervisor knows about the app right now, or
 	// false when it knows nothing — an unsupervised child process, an app that
@@ -211,6 +230,23 @@ func (r *Child) Running(key string) bool {
 	defer r.mu.Unlock()
 	_, ok := r.procs[key]
 	return ok
+}
+
+// Park is a plain Stop for a child process: there is no unit to disable, and
+// nothing survives Bay's own exit anyway. What makes the stop durable on this
+// runner is the persisted intent the boot loop reads, not anything here.
+func (r *Child) Park(key string, grace time.Duration) error {
+	return r.Stop(key, grace)
+}
+
+// State is the child runner's two-value version of systemd's ActiveState: it
+// supervises a process or it does not, and it has no notion of a unit that
+// failed past a restart limit.
+func (r *Child) State(key string) string {
+	if r.Running(key) {
+		return "active"
+	}
+	return "inactive"
 }
 
 // StopAll shuts every supervised app down, used on bay's own exit.

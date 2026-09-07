@@ -1,0 +1,83 @@
+{
+  "type": "inventory",
+  "at": "2026-09-06T12:00:00Z",
+  "host": {
+    "cores": 4,
+    "memTotalBytes": 8232062976,
+    "memUsedBytes": 5583457484,
+    "diskTotalBytes": 168874086400,
+    "diskUsedBytes": 42877714432,
+    "load1": 0.52,
+    "uptimeSeconds": 1234567,
+    "bayVersion": "0.31.0"
+  },
+  "apps": [
+    {
+      "app": "lore",
+      "env": "production",
+      "runtime": "node",
+      "release": "r-2026-09-06-1",
+      "port": 41001,
+      "domains": ["lore.alepha.dev", "www.lore.alepha.dev"],
+      "running": true,
+      "state": "active",
+      "restarts": 0,
+      "startedAt": "2026-09-04T08:12:00Z",
+      "memoryBytes": 268435456,
+      "cpuSeconds": 4821.5,
+      "tasks": 23,
+      "backups": true,
+      "lastBackupAt": "2026-09-06T03:00:00Z",
+      "lastRequestAt": "2026-09-06T11:59:41Z",
+      "crons": 3,
+      "problems": []
+    },
+    {
+      "app": "docs",
+      "env": "production",
+      "runtime": "static",
+      "release": "r-2026-08-30-2",
+      "domains": ["alepha.dev"],
+      "running": false,
+      "state": "inactive",
+      "static": true,
+      "backups": false,
+      "lastRequestAt": "2026-09-06T11:58:03Z",
+      "problems": []
+    },
+    {
+      "app": "shop",
+      "env": "staging",
+      "runtime": "node",
+      "release": "r-2026-08-11-1",
+      "port": 41004,
+      "running": false,
+      "state": "inactive",
+      "stopped": true,
+      "backups": true,
+      "lastBackupAt": "2026-08-11T03:00:00Z",
+      "backupStale": true,
+      "problems": ["backup is stale"]
+    },
+    {
+      "app": "api",
+      "env": "production",
+      "runtime": "node",
+      "release": "r-2026-09-01-3",
+      "port": 41007,
+      "domains": ["api.alepha.dev"],
+      "running": false,
+      "state": "failed",
+      "restarts": 5,
+      "backups": true,
+      "lastBackupAt": "2026-09-06T03:00:00Z",
+      "lastBackupError": "2026-09-06T03:00:12Z: upload to s3 failed: 503",
+      "lastRequestAt": "2026-09-06T09:14:22Z",
+      "problems": [
+        "not running",
+        "restarted 5 time(s)",
+        "last backup attempt failed: 2026-09-06T03:00:12Z: upload to s3 failed: 503"
+      ]
+    }
+  ]
+}
