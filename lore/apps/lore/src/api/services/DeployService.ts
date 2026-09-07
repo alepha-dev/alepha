@@ -13,6 +13,7 @@ import { DeployGate } from "./DeployGate.ts";
 import { DeployLimits } from "./DeployLimits.ts";
 import { DeployRegistry } from "./DeployRegistry.ts";
 import { DeployRunner } from "./DeployRunner.ts";
+import { EstateService } from "./EstateService.ts";
 
 /**
  * Starting a deploy, and running one.
@@ -30,6 +31,7 @@ export class DeployService {
   protected readonly seal = $inject(CredentialSealService);
   protected readonly gate = $inject(DeployGate);
   protected readonly limits = $inject(DeployLimits);
+  protected readonly estateService = $inject(EstateService);
   protected readonly runner = $inject(DeployRunner);
   protected readonly registry = $inject(DeployRegistry);
 
@@ -59,15 +61,38 @@ export class DeployService {
     // ⚠️ The same gate the run applies, here too. A queued row for a deploy
     // that can never run is a row somebody has to explain, and the caller is
     // holding a request that can carry the reason.
-    await this.gate.assert(instance);
+    const estate = await this.gate.assert(instance);
 
-    const artifact = await this.artifacts.findOne({
+    // Every variant of this tag, because the refusal has to tell "wrong
+    // variant" from "no variant at all" - `artifacts` is unique on
+    // `(projectId, app, tag, runtime)`, so one tag names one row per runtime.
+    const variants = await this.artifacts.findMany({
       where: {
         projectId: { eq: input.projectId },
         app: { eq: instance.app },
         tag: { eq: input.tag },
       },
     });
+
+    // ⚠️ Pick the one this estate can RUN rather than the first row. A project
+    // with a `node` and a `workerd` build of one tag is the multi-variant model
+    // working, and taking whichever came back first would deploy the wrong one
+    // half the time.
+    const accepted = this.estateService.acceptedRuntimes(estate.type);
+    const artifact =
+      variants.find((it) => accepted.includes(it.runtime)) ?? variants[0];
+
+    if (artifact) {
+      // Last clause of the gate, and the only one that needed the artifact row.
+      this.gate.assertRuntime({
+        estate,
+        app: instance.app,
+        tag: input.tag,
+        runtime: artifact.runtime,
+        available: variants.map((it) => it.runtime),
+      });
+    }
+
     if (!artifact) {
       // ⚠️ Refused rather than built. The tag is what decides whether a deploy
       // builds, and this entry point can only ever deploy stored bytes: CI
@@ -155,6 +180,19 @@ export class DeployService {
       const artifact = await this.artifacts.findOne({
         where: { projectId: { eq: row.projectId }, sha256: { eq: row.sha256 } },
       });
+      if (artifact) {
+        // ⚠️ Again here, not only at queue time. A row can sit queued while its
+        // instance is pointed at a different estate, and a `node` build reaching
+        // a Cloudflare Worker is a broken deploy after an upload rather than a
+        // refusal before one.
+        this.gate.assertRuntime({
+          estate,
+          app: row.app,
+          tag: row.tag,
+          runtime: artifact.runtime,
+          available: [artifact.runtime],
+        });
+      }
       if (!artifact) {
         // The snapshot says what should ship and the bytes are gone - which is
         // what replacing `latest` does. Refusing names the fact rather than

@@ -6,6 +6,7 @@ import type { AppInstance } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { EstateCloudflareService } from "./EstateCloudflareService.ts";
+import { EstateService } from "./EstateService.ts";
 
 /**
  * Everything that has to be true before a deploy has a single side effect.
@@ -50,6 +51,8 @@ import { EstateCloudflareService } from "./EstateCloudflareService.ts";
  *    let it point there
  * 4. `deployAllowed`, the owner's kill switch
  * 5. `credentialStatus`, for the estate types that have a credential
+ * 6. the artifact's **runtime**, which is last because it is the only clause
+ *    that needs the artifact row
  *
  * ⚠️ **`NamingService` derives every resource as `<project>-<env>`**, so a
  * deploy that passes here resolves the LIVE D1, the live R2 and the live
@@ -60,6 +63,7 @@ export class DeployGate {
   protected readonly estates = $repository(estates);
   protected readonly grants = $repository(estateProjects);
   protected readonly cloudflare = $inject(EstateCloudflareService);
+  protected readonly estateService = $inject(EstateService);
 
   /**
    * The estate this instance may deploy to, or a refusal saying why not.
@@ -118,5 +122,62 @@ export class DeployGate {
     }
 
     return estate;
+  }
+
+  /**
+   * Whether this estate can run these bytes at all.
+   *
+   * ## ⚠️ Nothing checked this before, and the failure was expensive
+   *
+   * Push a `node` artifact, deploy it to a Cloudflare estate, and you get a
+   * broken Worker or a confusing failure deep in the deploy - after an upload
+   * has already happened. `manifest.json`'s own doc names the shape of it:
+   * "`runtime: node`, spawn a process against a directory with no entry point".
+   *
+   * ## The error IS the deliverable
+   *
+   * Two messages, and both name the missing thing rather than saying "not
+   * found". The second is what makes the multi-variant model usable: a deploy
+   * is a LOOKUP - `artifacts` is unique on `(projectId, app, tag, runtime)`, so
+   * one tag names one row per runtime - and a miss has to say exactly which
+   * build to produce. It is also the message a Bay deploy hits when the project
+   * has only ever built for Cloudflare.
+   *
+   * ⚠️ The command in that message names `lore apps build`, which is #1812's
+   * surface. It has drifted once already: the pre-#27 spelling was
+   * `alepha build -t cloudflare && alepha lore artifacts push`, and both halves
+   * changed. The spec pins the string, so #1812 and this cannot silently
+   * disagree.
+   *
+   * Neither side needed new storage: `artifacts.runtime` is read from the
+   * manifest at push time, and `acceptedRuntimes` is a property of the estate's
+   * TYPE rather than of the row.
+   */
+  public assertRuntime(input: {
+    estate: Estate;
+    app: string;
+    tag: string;
+    runtime: string;
+    /**
+     * The runtimes this app has actually built for this tag, so the refusal
+     * can tell "wrong variant" from "no variant at all".
+     */
+    available: string[];
+  }): void {
+    const accepted = this.estateService.acceptedRuntimes(input.estate.type);
+    if (accepted.includes(input.runtime)) {
+      return;
+    }
+
+    const wanted = accepted[0] ?? "unknown";
+    if (input.available.includes(wanted)) {
+      throw new BadRequestError(
+        `Artifact ${input.app}@${input.tag} is a \`${input.runtime}\` build; estate '${input.estate.slug}' (${input.estate.type}) runs \`${accepted.join("`, `")}\`.`,
+      );
+    }
+
+    throw new BadRequestError(
+      `${input.app}@${input.tag} has no \`${wanted}\` build. Run \`lore apps build --tag ${input.tag} --env <env>\`, then \`lore artifacts push\`.`,
+    );
   }
 }
