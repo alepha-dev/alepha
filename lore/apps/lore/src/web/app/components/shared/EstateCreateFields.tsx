@@ -4,6 +4,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Cloud, Fingerprint, KeyRound, Server, Tag } from "lucide-react";
 import { useState } from "react";
 
+import { cloudflareTokenTemplateUrl } from "@/api/schemas/cloudflareTokenTemplate.ts";
 import { ESTATE_SLUG_PATTERN } from "@/api/schemas/estateSlugSchema.ts";
 import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -207,21 +208,43 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
                 {errorFor("token")}
               </span>
             )}
-            <span className="text-muted-foreground text-xs">
-              {/* The guide is the onboarding, not a footnote: which template
-                  to start from, and the two permissions it lacks. */}
-              <a
-                // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative
-                // it resolved against Lore's own origin and 404'd
-                // (feedback #P2142).
-                href={loreDocsUrl("guides-cloudflare-token")}
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-4"
-                data-testid="estate-create-guide"
-              >
-                {tr("estates.cloudflare.guide")}
-              </a>
+            <span className="text-muted-foreground flex flex-col gap-1 text-xs">
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {/* ⚠️ The mint link replaces the TEDIUM, not the
+                    explanation: the form still asks for an account scope
+                    and a TTL, and the token is still copied once. Both
+                    links stay. */}
+                <a
+                  href={cloudflareTokenTemplateUrl()}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-4"
+                  data-testid="estate-create-mint"
+                >
+                  {tr("estates.cloudflare.mint")}
+                </a>
+                {/* The guide is the onboarding, not a footnote: which
+                    template to start from, and the two permissions it
+                    lacks. */}
+                <a
+                  // ⚠️ Absolute, through `loreDocsUrl`. Written
+                  // root-relative it resolved against Lore's own origin and
+                  // 404'd (feedback #P2142).
+                  href={loreDocsUrl("guides-cloudflare-token")}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-4"
+                  data-testid="estate-create-guide"
+                >
+                  {tr("estates.cloudflare.guide")}
+                </a>
+              </span>
+              {/* ⚠️ Said out loud because the link is NOT scoped:
+                  `accountId=*` pre-selects All accounts, and whether a real
+                  account id narrows the form has not been tested against a
+                  live dashboard. Claiming a scope we have not verified
+                  would be worse than the tedium being removed. */}
+              <span>{tr("estates.cloudflare.mint.scope")}</span>
             </span>
           </div>
         </>
