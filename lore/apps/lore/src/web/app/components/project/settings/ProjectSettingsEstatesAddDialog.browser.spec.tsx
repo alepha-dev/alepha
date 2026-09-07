@@ -8,7 +8,7 @@ import { AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { afterEach, describe, it } from "vitest";
 
-import { defaultProjectFeatures } from "@/api/entities/projects.ts";
+import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 
@@ -42,19 +42,12 @@ class RecordingLinkProvider extends LinkProvider {
   }
 }
 
-const aProject = {
-  id: 1,
-  createdAt: "2026-08-26T10:00:00.000Z",
-  updatedAt: "2026-08-26T10:00:00.000Z",
-  title: "Alepha",
-  slug: "alepha",
-  createdBy: "00000000-0000-4000-8000-000000000001",
-  areas: [],
-  features: defaultProjectFeatures,
-  kanbanColumns: ["In Progress"],
-  unlockedFeatures: [],
-  unlockHistory: [],
-};
+// Through the fixture rather than by hand: `projectResourceSchema` gained a
+// required `capabilities` with epic #36, and the atom validates against it, so
+// a literal built here fails to set at all. Estates are Core - a project with
+// no capabilities still has the page - and the default set is every one of
+// them, which is what this dialog would see in practice.
+const aProject = projectFixture({ id: 1, title: "Alepha", slug: "alepha" });
 
 const CF_ACCOUNT = "0123456789abcdef0123456789abcdef";
 
