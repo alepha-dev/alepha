@@ -2,6 +2,7 @@ import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/components/admin/admin-router-options";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
+import { NotificationInboxRecipientProvider } from "alepha/api/notifications";
 import { oauthOptions } from "alepha/api/oauth";
 import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
@@ -11,6 +12,7 @@ import { LoreWebAdmin } from "@/web/admin/index.ts";
 
 import { LoreApi } from "./api/index.ts";
 import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
+import { LoreInboxRecipientProvider } from "./api/providers/LoreInboxRecipientProvider.ts";
 import { LoreSigilSinkProvider } from "./api/providers/LoreSigilSinkProvider.ts";
 import { EstateCommandTransport } from "./api/services/EstateCommandTransport.ts";
 import { WebSocketEstateCommandTransport } from "./api/services/WebSocketEstateCommandTransport.ts";
@@ -124,6 +126,18 @@ alepha.set(adminRouterOptionsAtom, loreAdminOptions);
 alepha.with({
   provide: EstateCommandTransport,
   use: WebSocketEstateCommandTransport,
+});
+
+// Who an email address belongs to, for the inbox channel. The framework's
+// default resolves nobody, which is how an app that has not implemented this
+// gets a skipped receipt rather than a crash.
+//
+// Declared BEFORE `LoreApi`, for the same reason the transport above is:
+// `LoreApi` pulls in `alepha/api/notifications`, and a substitution after the
+// service is in use is refused.
+alepha.with({
+  provide: NotificationInboxRecipientProvider,
+  use: LoreInboxRecipientProvider,
 });
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
