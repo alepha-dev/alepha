@@ -37,6 +37,7 @@ import {
   CORE_NAV,
 } from "./capabilityNav.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
+import ProjectInboxButton from "./ProjectInboxButton.tsx";
 import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
@@ -301,12 +302,26 @@ const ProjectView = () => {
               "between search and lang" (feedback #2105) without any of the
               three components needing to know about the other two: `before`
               is one node, and the order inside it is the order on screen. It
-              renders nothing when the project has no `repositoryUrl`. */}
+              renders nothing when the project has no `repositoryUrl`.
+
+              ⚠️ The bell rides the same slot rather than joining
+              `AppActions`, and that is a decision rather than convenience:
+              that cluster is "the ambient controls EVERY signed-in surface
+              carries", and the owner ruled the bell renders in the project
+              shell only. A `showInbox` prop on a component whose whole
+              argument is that it has no `show` props would be the drift it
+              exists to end. `HeaderActions`'s own docstring already settled
+              the same question for search: whether a control belongs on a
+              surface is the surface's to decide.
+
+              Last node, so the order reads search, repository, bell,
+              language. */}
             <HeaderActions
               before={
                 <>
                   <HeaderSearchButton />
                   <HeaderRepositoryButton />
+                  <ProjectInboxButton />
                 </>
               }
             />
