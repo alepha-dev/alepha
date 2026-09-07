@@ -208,6 +208,16 @@ name: the deploy provisions those resources and derives the values from the ids
 it gets back, so a value stored under one of them would be overwritten, or would
 win and point a fresh deploy at somebody else's database.
 
+Two more are filled in when the copy has none, and an explicit value wins:
+`APP_SECRET`, minted on the first deploy that finds none, and `PUBLIC_URL`,
+derived from the copy's domain the same way `alepha platform up` derives it.
+
+⚠️ `APP_SECRET` is minted **once** and read by every deploy after, because it is
+durable state rather than a derived value: regenerating it signs out every
+session and makes anything the app sealed with it unreadable. A copy replacing
+an existing deployment should set the secret it already has before its first
+deploy.
+
 ## Where to read next
 
 The end-to-end story from an empty project - lending an estate, naming a copy,
