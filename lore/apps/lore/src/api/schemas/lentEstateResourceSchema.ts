@@ -33,6 +33,18 @@ export const lentEstateResourceSchema = z.object({
   cpuPercent: z.number().optional(),
   memoryPercent: z.number().optional(),
   owner: z.object({ id: z.uuid(), name: z.string() }),
+  /**
+   * Whether the person reading this row owns the estate.
+   *
+   * ⚠️ Server-computed rather than left to the browser, even though `owner.id`
+   * is right there and could be compared against the session. The Bay console
+   * is owner-only and `EstateService.loadOwned` answers **404** to anybody
+   * else, so this flag decides whether a link resolves or dead-ends - and a
+   * rule that decides that belongs where the rule itself is enforced. It also
+   * replaces the id comparison the settings page was already doing for the
+   * Detach button, so there is one answer rather than two.
+   */
+  ownedByViewer: z.boolean(),
   lentAt: z.string(),
 });
 
