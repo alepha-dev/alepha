@@ -10,6 +10,16 @@
 -- of `projects` on D1 fires every one of those constraints.
 --
 -- Everything below the index is DATA. Read its comment before changing it.
+--
+-- ⚠️ **Regenerated after merging main, on purpose.** It first landed as
+-- `20260906181833_great_firelord`, generated from a base that did not yet have
+-- `20260906225939_mighty_spiral` - and that one was generated from a base that
+-- did not have this table. Two migrations produced in parallel from one base
+-- are mutually blind: each snapshot describes a schema the other half is
+-- missing, so the newest one on disk proposed to CREATE this table a second
+-- time and `check:migrations` went red. Regenerating after the merge is the
+-- only thing that makes the newest snapshot the union of both. Nothing in the
+-- SQL changed; only the timestamp and the snapshot beside it.
 
 CREATE TABLE `project_capabilities` (
 	`id` integer PRIMARY KEY AUTOINCREMENT,

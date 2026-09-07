@@ -1,8 +1,10 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "223fa276-11b6-42cd-9511-126bc8ef9c90",
-  "prevIds": ["0d8c9c92-07d2-4b3c-90fc-a31d9964cbd2"],
+  "id": "2eccbc6c-49d9-4ed9-bffd-9783d471e7a8",
+  "prevIds": [
+    "fae103b2-5942-4422-80c2-16c9ddaf20aa"
+  ],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -90,6 +92,10 @@
     },
     {
       "name": "estate_commands",
+      "entityType": "tables"
+    },
+    {
+      "name": "estate_inventories",
       "entityType": "tables"
     },
     {
@@ -2195,6 +2201,116 @@
       "table": "estate_commands"
     },
     {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "result_file_id",
+      "entityType": "columns",
+      "table": "estate_commands"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "estate_id",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "at",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "reported_at",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "bay_version",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "host",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "apps",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "app_count",
+      "entityType": "columns",
+      "table": "estate_inventories"
+    },
+    {
       "type": "integer",
       "notNull": false,
       "autoincrement": true,
@@ -2331,6 +2447,66 @@
       "default": null,
       "generated": null,
       "name": "secret_prefix",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential_key_version",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "account_id",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential_checked_at",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential_error",
+      "entityType": "columns",
+      "table": "estates"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "credential_expires_at",
       "entityType": "columns",
       "table": "estates"
     },
@@ -6345,9 +6521,13 @@
       "table": "verification"
     },
     {
-      "columns": ["estate_id"],
+      "columns": [
+        "estate_id"
+      ],
       "tableTo": "estates",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6356,9 +6536,13 @@
       "table": "analytics_estate_stats_raw"
     },
     {
-      "columns": ["estate_id"],
+      "columns": [
+        "estate_id"
+      ],
       "tableTo": "estates",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6367,9 +6551,13 @@
       "table": "analytics_estate_stats_rolled"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6378,9 +6566,13 @@
       "table": "analytics_sigil_errors_raw"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6389,9 +6581,13 @@
       "table": "analytics_sigil_errors_rolled"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6400,9 +6596,13 @@
       "table": "analytics_sigil_views_raw"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6411,9 +6611,13 @@
       "table": "analytics_sigil_views_rolled"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6422,9 +6626,13 @@
       "table": "analytics_sigil_vitals_raw"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6433,9 +6641,13 @@
       "table": "analytics_sigil_vitals_rolled"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6444,9 +6656,13 @@
       "table": "app_instances"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6455,9 +6671,13 @@
       "table": "app_instances"
     },
     {
-      "columns": ["estate_id"],
+      "columns": [
+        "estate_id"
+      ],
       "tableTo": "estates",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6466,9 +6686,13 @@
       "table": "app_instances"
     },
     {
-      "columns": ["created_by"],
+      "columns": [
+        "created_by"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6477,9 +6701,13 @@
       "table": "app_instances"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6488,9 +6716,13 @@
       "table": "areas"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6499,9 +6731,13 @@
       "table": "artifacts"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6510,9 +6746,13 @@
       "table": "blight_ignore_rules"
     },
     {
-      "columns": ["created_by"],
+      "columns": [
+        "created_by"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6521,9 +6761,13 @@
       "table": "blight_ignore_rules"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6532,9 +6776,13 @@
       "table": "blights"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6543,9 +6791,13 @@
       "table": "blights"
     },
     {
-      "columns": ["user_id"],
+      "columns": [
+        "user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6554,9 +6806,13 @@
       "table": "dashboard_cards"
     },
     {
-      "columns": ["user_id"],
+      "columns": [
+        "user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6565,9 +6821,13 @@
       "table": "dashboard_settings"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6576,9 +6836,13 @@
       "table": "epics"
     },
     {
-      "columns": ["release_id"],
+      "columns": [
+        "release_id"
+      ],
       "tableTo": "releases",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6587,9 +6851,13 @@
       "table": "epics"
     },
     {
-      "columns": ["depends_on"],
+      "columns": [
+        "depends_on"
+      ],
       "tableTo": "epics",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6598,9 +6866,13 @@
       "table": "epics"
     },
     {
-      "columns": ["estate_id"],
+      "columns": [
+        "estate_id"
+      ],
       "tableTo": "estates",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6609,9 +6881,13 @@
       "table": "estate_commands"
     },
     {
-      "columns": ["requested_by"],
+      "columns": [
+        "requested_by"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6620,9 +6896,28 @@
       "table": "estate_commands"
     },
     {
-      "columns": ["estate_id"],
+      "columns": [
+        "estate_id"
+      ],
       "tableTo": "estates",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_estate_inventories_estate_id_estates_id_fk",
+      "entityType": "fks",
+      "table": "estate_inventories"
+    },
+    {
+      "columns": [
+        "estate_id"
+      ],
+      "tableTo": "estates",
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6631,9 +6926,13 @@
       "table": "estate_projects"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6642,9 +6941,13 @@
       "table": "estate_projects"
     },
     {
-      "columns": ["created_by"],
+      "columns": [
+        "created_by"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6653,9 +6956,13 @@
       "table": "estate_projects"
     },
     {
-      "columns": ["owner_user_id"],
+      "columns": [
+        "owner_user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6664,9 +6971,13 @@
       "table": "estates"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6675,9 +6986,13 @@
       "table": "feedback"
     },
     {
-      "columns": ["reporter_user_id"],
+      "columns": [
+        "reporter_user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6686,9 +7001,13 @@
       "table": "feedback"
     },
     {
-      "columns": ["feedback_id"],
+      "columns": [
+        "feedback_id"
+      ],
       "tableTo": "feedback",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6697,9 +7016,13 @@
       "table": "feedback_comments"
     },
     {
-      "columns": ["author_id"],
+      "columns": [
+        "author_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6708,9 +7031,13 @@
       "table": "feedback_comments"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6719,9 +7046,13 @@
       "table": "folio_blobs"
     },
     {
-      "columns": ["folio_id"],
+      "columns": [
+        "folio_id"
+      ],
       "tableTo": "folios",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6730,9 +7061,13 @@
       "table": "folio_blobs"
     },
     {
-      "columns": ["directory_id"],
+      "columns": [
+        "directory_id"
+      ],
       "tableTo": "folio_directories",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6741,9 +7076,13 @@
       "table": "folio_blobs"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6752,9 +7091,13 @@
       "table": "folio_directories"
     },
     {
-      "columns": ["parent_id"],
+      "columns": [
+        "parent_id"
+      ],
       "tableTo": "folio_directories",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6763,9 +7106,13 @@
       "table": "folio_directories"
     },
     {
-      "columns": ["folio_id"],
+      "columns": [
+        "folio_id"
+      ],
       "tableTo": "folios",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6774,9 +7121,13 @@
       "table": "folio_revisions"
     },
     {
-      "columns": ["by_user_id"],
+      "columns": [
+        "by_user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6785,9 +7136,13 @@
       "table": "folio_revisions"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6796,9 +7151,13 @@
       "table": "folios"
     },
     {
-      "columns": ["directory_id"],
+      "columns": [
+        "directory_id"
+      ],
       "tableTo": "folio_directories",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6807,9 +7166,13 @@
       "table": "folios"
     },
     {
-      "columns": ["epic_id"],
+      "columns": [
+        "epic_id"
+      ],
       "tableTo": "epics",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6818,9 +7181,13 @@
       "table": "folios"
     },
     {
-      "columns": ["user_id"],
+      "columns": [
+        "user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6829,9 +7196,13 @@
       "table": "identities"
     },
     {
-      "columns": ["user_id"],
+      "columns": [
+        "user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6840,9 +7211,13 @@
       "table": "members"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6851,9 +7226,13 @@
       "table": "members"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6862,9 +7241,13 @@
       "table": "project_capabilities"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6873,9 +7256,13 @@
       "table": "quality_runs"
     },
     {
-      "columns": ["quest_id"],
+      "columns": [
+        "quest_id"
+      ],
       "tableTo": "quests",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6884,9 +7271,13 @@
       "table": "quest_comments"
     },
     {
-      "columns": ["author_id"],
+      "columns": [
+        "author_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6895,9 +7286,13 @@
       "table": "quest_comments"
     },
     {
-      "columns": ["shelved_by"],
+      "columns": [
+        "shelved_by"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6906,9 +7301,13 @@
       "table": "quests"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6917,9 +7316,13 @@
       "table": "quests"
     },
     {
-      "columns": ["release_id"],
+      "columns": [
+        "release_id"
+      ],
       "tableTo": "releases",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6928,9 +7331,13 @@
       "table": "quests"
     },
     {
-      "columns": ["feedback_id"],
+      "columns": [
+        "feedback_id"
+      ],
       "tableTo": "feedback",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6939,9 +7346,13 @@
       "table": "quests"
     },
     {
-      "columns": ["created_by"],
+      "columns": [
+        "created_by"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -6950,9 +7361,13 @@
       "table": "quests"
     },
     {
-      "columns": ["accepted_by"],
+      "columns": [
+        "accepted_by"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6961,9 +7376,13 @@
       "table": "quests"
     },
     {
-      "columns": ["completed_by"],
+      "columns": [
+        "completed_by"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6972,9 +7391,13 @@
       "table": "quests"
     },
     {
-      "columns": ["depends_on"],
+      "columns": [
+        "depends_on"
+      ],
       "tableTo": "quests",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6983,9 +7406,13 @@
       "table": "quests"
     },
     {
-      "columns": ["epic_id"],
+      "columns": [
+        "epic_id"
+      ],
       "tableTo": "epics",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -6994,9 +7421,13 @@
       "table": "quests"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -7005,9 +7436,13 @@
       "table": "releases"
     },
     {
-      "columns": ["user_id"],
+      "columns": [
+        "user_id"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -7016,9 +7451,13 @@
       "table": "sessions"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -7027,9 +7466,13 @@
       "table": "sigil_error_groups"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -7038,9 +7481,13 @@
       "table": "sigil_uniques_daily"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -7049,9 +7496,13 @@
       "table": "sigil_views_hourly"
     },
     {
-      "columns": ["sigil_id"],
+      "columns": [
+        "sigil_id"
+      ],
       "tableTo": "sigils",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -7060,9 +7511,13 @@
       "table": "sigil_vitals_hourly"
     },
     {
-      "columns": ["project_id"],
+      "columns": [
+        "project_id"
+      ],
       "tableTo": "projects",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
@@ -7071,9 +7526,13 @@
       "table": "sigils"
     },
     {
-      "columns": ["created_by"],
+      "columns": [
+        "created_by"
+      ],
       "tableTo": "users",
-      "columnsTo": ["id"],
+      "columnsTo": [
+        "id"
+      ],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "nameExplicit": false,
@@ -7082,329 +7541,432 @@
       "table": "sigils"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "alepha_sequences_pk",
       "table": "alepha_sequences",
       "entityType": "pks"
     },
     {
-      "columns": ["dataset"],
+      "columns": [
+        "dataset"
+      ],
       "nameExplicit": false,
       "name": "analytics_prune_floors_pk",
       "table": "analytics_prune_floors",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "api_keys_pk",
       "table": "api_keys",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "app_instances_pk",
       "table": "app_instances",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "areas_pk",
       "table": "areas",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "artifacts_pk",
       "table": "artifacts",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "audits_pk",
       "table": "audits",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "blight_ignore_rules_pk",
       "table": "blight_ignore_rules",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "blights_pk",
       "table": "blights",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "cache_entries_pk",
       "table": "cache_entries",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "dashboard_cards_pk",
       "table": "dashboard_cards",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "dashboard_settings_pk",
       "table": "dashboard_settings",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "epics_pk",
       "table": "epics",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "estate_commands_pk",
       "table": "estate_commands",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "estate_inventories_pk",
+      "table": "estate_inventories",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "estate_projects_pk",
       "table": "estate_projects",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "estates_pk",
       "table": "estates",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "petitions_pk",
       "table": "feedback",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "feedback_comments_pk",
       "table": "feedback_comments",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "files_pk",
       "table": "files",
       "entityType": "pks"
     },
     {
-      "columns": ["file_id"],
+      "columns": [
+        "file_id"
+      ],
       "nameExplicit": false,
       "name": "archive_blobs_pk",
       "table": "folio_blobs",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "archive_directories_pk",
       "table": "folio_directories",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "folio_links_pk",
       "table": "folio_links",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "archive_names_pk",
       "table": "folio_names",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "folio_revisions_pk",
       "table": "folio_revisions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "folios_pk",
       "table": "folios",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "identities_pk",
       "table": "identities",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "invitations_pk",
       "table": "invitations",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "job_executions_pk",
       "table": "job_executions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "characters_pk",
       "table": "members",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "notification_deliveries_pk",
       "table": "notification_deliveries",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "notification_suppressions_pk",
       "table": "notification_suppressions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "oauth_clients_pk",
       "table": "oauth_clients",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "parameters_pk",
       "table": "parameters",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "project_capabilities_pk",
       "table": "project_capabilities",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "campaigns_pk",
       "table": "projects",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "quality_runs_pk",
       "table": "quality_runs",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "quest_comments_pk",
       "table": "quest_comments",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "quests_pk",
       "table": "quests",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "chapters_pk",
       "table": "releases",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "sessions_pk",
       "table": "sessions",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "sigil_error_groups_pk",
       "table": "sigil_error_groups",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "sigil_uniques_daily_pk",
       "table": "sigil_uniques_daily",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "sigil_views_hourly_pk",
       "table": "sigil_views_hourly",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "sigil_vitals_hourly_pk",
       "table": "sigil_vitals_hourly",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "sigils_pk",
       "table": "sigils",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "users_pk",
       "table": "users",
       "entityType": "pks"
     },
     {
-      "columns": ["id"],
+      "columns": [
+        "id"
+      ],
       "nameExplicit": false,
       "name": "verification_pk",
       "table": "verification",
@@ -8267,6 +8829,20 @@
       "name": "estate_commands_estate_id_created_at_idx",
       "entityType": "indexes",
       "table": "estate_commands"
+    },
+    {
+      "columns": [
+        {
+          "value": "estate_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "estate_inventories_estate_id_idx",
+      "entityType": "indexes",
+      "table": "estate_inventories"
     },
     {
       "columns": [
