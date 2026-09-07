@@ -275,7 +275,7 @@ export class AppsCommand {
       sigil: z
         .boolean()
         .describe(
-          "Give this copy a sigil first, storing its key in the copy's own environment so the deploy reports to Lore. Does nothing when it already has one.",
+          "Force a sigil for this copy, storing its key in the copy's own environment. Unneeded for a build that declares SIGIL_KEY: that is detected and done for you. `--no-sigil` opts out.",
         )
         .optional(),
     }),
@@ -294,19 +294,6 @@ export class AppsCommand {
       const instance = await this.loadInstance(projectId, app, env);
       const tag = flags.tag ?? AppsCommand.DEFAULT_TAG;
 
-      // ⚠️ Before the build, so a copy that cannot be given one fails in a
-      // second rather than after a full build and push. The server answers
-      // `minted: false` for a copy that already carries its key, so leaving
-      // `--sigil` in a CI command is safe on every run after the first.
-      if (flags.sigil) {
-        const { minted } = await this.ensureSigil(projectId, app, env);
-        this.log.info(
-          minted
-            ? `Minted a sigil for ${app}/${env}; its key is in that copy's environment.`
-            : `${app}/${env} already reports to Lore.`,
-        );
-      }
-
       // ⚠️ The switch. A named tag never builds - see the class doc.
       if (!flags.tag) {
         await this.buildAndPush({
@@ -321,7 +308,12 @@ export class AppsCommand {
         });
       }
 
-      const started = await this.start(projectId, instance.id, tag);
+      const started = await this.start(
+        projectId,
+        instance.id,
+        tag,
+        flags.sigil,
+      );
       this.log.info(`Deploying ${app}@${tag} to ${app}/${env}`, {
         deployment: started.id,
       });
@@ -566,18 +558,25 @@ export class AppsCommand {
   /**
    * Ask Lore to start a run.
    *
-   * ⚠️ The body carries a tag and nothing else. The estate is the server's to
-   * resolve from the instance - see the class doc.
+   * ⚠️ The body carries a tag and, when the operator overrode it, whether this
+   * copy should have a sigil. It never carries an estate - that is the
+   * server's to resolve from the instance, see the class doc.
+   *
+   * ⚠️ `sigil` is forwarded ONLY when the flag was actually typed. Absent is a
+   * meaningful third state on the server - "do what the build declares" - so
+   * sending `false` for an unset flag would silently disable the detection
+   * this command exists to make unnecessary.
    */
   protected async start(
     projectId: number,
     instanceId: string,
     tag: string,
+    sigil?: boolean,
   ): Promise<{ id: string; status: string }> {
     try {
       return await this.deploys.startDeploy({
         params: { projectId, instanceId },
-        body: { tag },
+        body: { tag, ...(sigil === undefined ? {} : { sigil }) },
       });
     } catch (error) {
       // ⚠️ The reason in words, not a status code. Every refusal on this path
