@@ -115,6 +115,13 @@ export class DeployService {
       // ⚠️ Before any side effect. `credentialStatus` is DERIVED rather than a
       // column - expiry is applied at read time - so this is local and cheap
       // but not a field read, and a daily job is what keeps the inputs fresh.
+      //
+      // ⚠️ **#1205 owns this gate and takes this check over.** It is inline
+      // here because a run with no credential check is a run that starts
+      // provisioning against an estate whose token stopped working, and that
+      // must not wait for another quest. When #1205's gate lands, this block
+      // moves into it and the run calls it - one gate, one owner. Do not leave
+      // two implementations behind.
       if (this.cloudflare.credentialStatus(estate) !== "valid") {
         throw new BadRequestError(
           `The estate '${estate.slug}' does not have a usable Cloudflare credential. Check it on the account's Estates page before deploying.`,
