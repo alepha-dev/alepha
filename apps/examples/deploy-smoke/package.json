@@ -1,0 +1,18 @@
+{
+  "name": "deploy-smoke",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "alepha build",
+    "check:migrations": "alepha db migrations check",
+    "db:generate": "alepha db generate",
+    "dev": "alepha dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "alepha": "workspace:*"
+  },
+  "devDependencies": {
+    "@alepha/lore": "workspace:*"
+  }
+}
