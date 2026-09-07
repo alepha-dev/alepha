@@ -10,6 +10,7 @@ import { AlephaWebSocket } from "alepha/websocket";
 import { AdminEstateController } from "./controllers/AdminEstateController.ts";
 import { AdminProjectController } from "./controllers/AdminProjectController.ts";
 import { AppController } from "./controllers/AppController.ts";
+import { AppSecretController } from "./controllers/AppSecretController.ts";
 import { AreaController } from "./controllers/AreaController.ts";
 import { ArtifactController } from "./controllers/ArtifactController.ts";
 import { BlightController } from "./controllers/BlightController.ts";
@@ -58,6 +59,7 @@ import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { ProjectInvitationResource } from "./providers/ProjectInvitationResource.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
+import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
 import { AreaService } from "./services/AreaService.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
@@ -216,6 +218,9 @@ export const LoreApi = $module({
     // The one write path for `app_instances`, and the only writer of
     // `sigils.name`, which mirrors it (#1767).
     AppService,
+    // One deployed copy's environment (#1813). Sealed at rest, opened only by
+    // the deploy, and never read back by any endpoint.
+    AppSecretService,
     BlightRuleService,
     OpenBlightCounter,
     // What "open quests" means, shared by the sidebar badge, the dashboard
@@ -294,6 +299,7 @@ export const LoreApi = $module({
     FolioAttachmentController,
     FeedbackController,
     AppController,
+    AppSecretController,
     SigilController,
     SigilIngestController,
     EstateController,

@@ -53,6 +53,16 @@ export class CredentialSealService {
   public static readonly ESTATE_PURPOSE = "lore:estates:v1";
 
   /**
+   * The label for one deployed copy's environment variables (#1813).
+   *
+   * Declared here beside its sibling rather than as a literal at the call
+   * site, so the two key spaces are visible together: that adjacency is the
+   * whole reason a ciphertext moved from one column to the other fails to open
+   * instead of decrypting into the wrong context.
+   */
+  public static readonly APP_SECRETS_PURPOSE = "lore:app-secrets:v1";
+
+  /**
    * Which derivation sealed a value, written to `credentialKeyVersion`.
    *
    * One scheme exists, so every row says `1`. It is stored anyway because a

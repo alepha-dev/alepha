@@ -1116,6 +1116,32 @@ export default {
   "app.tab.errors": "Erreurs",
   "app.tab.explore": "Explorer",
   "app.tab.artifacts": "Artefacts",
+  "app.tab.environment": "Environnement",
+  "app.environment": "Variables d\u2019environnement",
+  "app.environment.description":
+    "Ce avec quoi cette copie s\u2019exécute. Les valeurs sont chiffrées et ne sont jamais réaffichées, ici ni ailleurs : on en remplace une plutôt que de la lire. DATABASE_URL, R2_BUCKET_NAME et les noms CLOUDFLARE_* sont posés par le déploiement lui-même.",
+  "app.environment.loading": "Chargement...",
+  "app.environment.error":
+    "Impossible de lire l\u2019environnement de cette copie.",
+  "app.environment.empty":
+    "Rien de défini pour l\u2019instant. Cette copie se déploie très bien sans variable.",
+  "app.environment.masked": "Commence par $1",
+  "app.environment.masked.short": "Définie",
+  "app.environment.remove": "Supprimer",
+  "app.environment.remove.title": "Supprimer cette variable ?",
+  "app.environment.remove.description":
+    "$1 disparaîtra du prochain déploiement. La valeur ne pourra pas être récupérée.",
+  "app.environment.remove.confirm": "Supprimer",
+  "app.environment.removed": "Variable supprimée",
+  "app.environment.add": "Définir une variable",
+  "app.environment.add.description":
+    "Définir un nom qui existe déjà remplace sa valeur, ce qui est la seule façon d\u2019en changer une.",
+  "app.environment.key": "Nom",
+  "app.environment.value": "Valeur",
+  "app.environment.save": "Enregistrer",
+  "app.environment.saved": "Variable enregistrée",
+  "app.environment.ownerOnly":
+    "Seul le propriétaire du projet peut changer ce avec quoi cette copie s\u2019exécute.",
   "app.tab.settings": "Paramètres",
   "app.dashboard.token": "Jeton",
   "app.dashboard.identity": "Identité",

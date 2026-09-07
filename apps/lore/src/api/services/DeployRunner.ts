@@ -53,6 +53,22 @@ export interface DeployRequest {
    * The deployment row to write status and log lines against.
    */
   deploymentId?: string;
+
+  /**
+   * The copy's environment, opened.
+   *
+   * ⚠️ **Uploaded WITH the script, not after it.** `PlatformOrchestrator.up()`
+   * runs `deploy` then `secrets`, and its own comment records the cost: about
+   * six seconds in which the new build runs against the previous secret set,
+   * and a deploy introducing a newly required variable boots without it. It is
+   * that way round only because `wrangler secret put` needs the worker to
+   * exist. Lore does the upload itself, so the constraint is gone and the
+   * window never exists - first deploy included.
+   *
+   * ⚠️ Never logged. Every line this runner writes goes onto a row every member
+   * of the project can read.
+   */
+  secrets?: Record<string, string>;
 }
 
 /**
@@ -149,7 +165,8 @@ export class DeployRunner {
         .set("cloudflare", WorkerCloudflareAdapter);
       const adapter = alepha
         .inject(WorkerCloudflareAdapter)
-        .use(request.credential);
+        .use(request.credential)
+        .withSecrets(request.secrets ?? {});
 
       const result = await alepha.inject(PlatformOrchestrator).up({
         root: DeployRunner.ROOT,

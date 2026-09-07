@@ -91,6 +91,31 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     return this;
   }
 
+  /**
+   * What the deployed Worker reads as its environment.
+   *
+   * ⚠️ **Uploaded WITH the script**, as `secret_text` bindings in the same
+   * `PUT`, which is why {@link PlatformAdapter.secrets} stays the inherited
+   * no-op here. `PlatformOrchestrator.up()` runs `deploy` then `secrets` only
+   * because `wrangler secret put` needs the worker to exist, and its own
+   * comment records what that costs: about six seconds of the new build
+   * running against the previous secret set, and a deploy introducing a newly
+   * required variable booting without it. Nothing here shells out to wrangler,
+   * so there is no such ordering and no such window.
+   *
+   * ⚠️ Never logged, never put in a progress line, never returned. The values
+   * exist on this instance for the length of one deploy.
+   */
+  public withSecrets(secrets: Record<string, string>): this {
+    this.appSecrets = secrets;
+    return this;
+  }
+
+  /**
+   * The set {@link withSecrets} was given, empty until it is called.
+   */
+  protected appSecrets: Record<string, string> = {};
+
   protected get estate(): WorkerCloudflareCredential {
     if (!this.credential) {
       throw new AlephaError(
@@ -318,6 +343,11 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           compatibilityDate: config.compatibility_date,
           compatibilityFlags: config.compatibility_flags,
           bindings: this.bindings(config),
+          // ⚠️ Sent in the same upload as the code, which is what removes the
+          // window `PlatformOrchestrator.up()`'s two-step ordering leaves open.
+          // `putScript` turns each entry into a `secret_text` binding beside
+          // the resource bindings above.
+          secrets: this.appSecrets,
           migrations: config.migrations?.[0],
           observability: config.observability,
           placement: config.placement,

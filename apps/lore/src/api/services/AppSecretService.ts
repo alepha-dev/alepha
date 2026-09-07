@@ -1,0 +1,230 @@
+import { $inject } from "alepha";
+import { EXCLUDED_SECRET_KEYS } from "alepha/cli/platform-lib";
+import { $repository } from "alepha/orm";
+import { BadRequestError } from "alepha/server";
+
+import { type AppSecret, appSecrets } from "../entities/appSecrets.ts";
+import { CredentialSealService } from "./CredentialSealService.ts";
+
+/**
+ * The one write path for a deployed copy's environment, and the only place
+ * that opens one.
+ *
+ * ## ⚠️ The read path never sees a plaintext
+ *
+ * {@link list} reads the row and answers {@link AppSecret.valuePrefix}; it does
+ * not open anything. {@link open} is the only method that decrypts, it is not
+ * reachable from a controller, and its one caller is the deploy. That
+ * separation is the whole design: a bug in a list endpoint cannot leak a value
+ * it never had.
+ *
+ * ## ⚠️ Reserved names are refused rather than accepted and overwritten
+ *
+ * `EXCLUDED_SECRET_KEYS` is the deploy chain's own list, imported rather than
+ * copied - the file it lives in says why, and a second copy drifting is the
+ * failure it warns about. Folio #1209 is the reason it matters here: the deploy
+ * provisions first and derives `DATABASE_URL` and `R2_BUCKET_NAME` from the ids
+ * it just got, then regenerates the config. A value stored under one of those
+ * names would either be overwritten silently, or worse, win and point a fresh
+ * deploy at somebody else's database.
+ */
+export class AppSecretService {
+  protected readonly rows = $repository(appSecrets);
+  protected readonly seal = $inject(CredentialSealService);
+
+  /**
+   * The label separating this key space from the estate credential's.
+   *
+   * Declared on {@link CredentialSealService} beside `ESTATE_PURPOSE` rather
+   * than written as a literal here, so the two labels are visible in one place
+   * and a ciphertext moved between the columns fails to open.
+   */
+  public static readonly PURPOSE = CredentialSealService.APP_SECRETS_PURPOSE;
+
+  /**
+   * How long a value must be before a prefix says less than the value.
+   *
+   * Four characters of a six-character secret is not a hint. Below this the
+   * prefix is empty and the list says only that a value exists.
+   */
+  public static readonly MIN_MASKABLE_LENGTH = 12;
+
+  /**
+   * How many characters the mask keeps.
+   */
+  public static readonly PREFIX_LENGTH = 4;
+
+  /**
+   * ⚠️ Bounded because the whole set is uploaded as `secret_text` bindings in
+   * one script upload. Cloudflare's own metadata limit is what an unbounded set
+   * would eventually hit, deep inside a deploy, after the assets are up.
+   */
+  public static readonly MAX_VALUE_LENGTH = 5_000;
+  public static readonly MAX_KEYS = 100;
+
+  /**
+   * Every name a variable may not take.
+   */
+  public static reserved(key: string): boolean {
+    return EXCLUDED_SECRET_KEYS.has(key.toUpperCase());
+  }
+
+  /**
+   * What this copy runs with, masked.
+   *
+   * Ordered by key so the screen is stable between saves rather than ordered by
+   * whenever somebody last edited a row.
+   */
+  public async list(instanceId: string): Promise<AppSecret[]> {
+    const rows = await this.rows.findMany({
+      where: { instanceId: { eq: instanceId } },
+    });
+    return rows.sort((a, b) => a.key.localeCompare(b.key));
+  }
+
+  /**
+   * Set one variable, replacing whatever was there.
+   *
+   * ⚠️ The plaintext is sealed before it reaches the row and is never written
+   * anywhere else - not to a log line, not to an audit record. `key` is
+   * normalised to upper case first, because `Database_Url` naming the same
+   * thing as `DATABASE_URL` is exactly how a reserved name gets past a list.
+   */
+  public async set(input: {
+    instanceId: string;
+    key: string;
+    value: string;
+    updatedBy?: string;
+  }): Promise<AppSecret> {
+    const key = this.assertKey(input.key);
+
+    if (!input.value) {
+      throw new BadRequestError(
+        `${key} has no value. Delete it instead of setting it to nothing: an empty variable and an absent one are different things to an app, and only one of them is what you meant.`,
+      );
+    }
+    if (input.value.length > AppSecretService.MAX_VALUE_LENGTH) {
+      throw new BadRequestError(
+        `${key} is longer than ${AppSecretService.MAX_VALUE_LENGTH} characters. The whole set goes up as bindings in one script upload, so an unbounded value fails the deploy rather than this request.`,
+      );
+    }
+
+    const existing = await this.find(input.instanceId, key);
+    if (!existing) {
+      const count = await this.rows.count({
+        instanceId: { eq: input.instanceId },
+      });
+      if (count >= AppSecretService.MAX_KEYS) {
+        throw new BadRequestError(
+          `This copy already has ${AppSecretService.MAX_KEYS} variables, which is as many as one deploy carries.`,
+        );
+      }
+    }
+
+    const values = {
+      valueSealed: this.seal.seal(input.value, AppSecretService.PURPOSE),
+      valuePrefix: this.mask(input.value),
+      keyVersion: CredentialSealService.KEY_VERSION,
+      updatedBy: input.updatedBy,
+    };
+
+    if (existing) {
+      return await this.rows.updateById(existing.id, values);
+    }
+    return await this.rows.create({
+      instanceId: input.instanceId,
+      key,
+      ...values,
+    });
+  }
+
+  /**
+   * Remove one variable.
+   *
+   * Answers whether there was one, so the caller can 404 rather than report a
+   * success for a name that never existed.
+   */
+  public async remove(instanceId: string, key: string): Promise<boolean> {
+    const existing = await this.find(instanceId, key.trim().toUpperCase());
+    if (!existing) {
+      return false;
+    }
+    await this.rows.deleteById(existing.id);
+    return true;
+  }
+
+  /**
+   * The set as the app will read it.
+   *
+   * ⚠️ **The only method that decrypts**, and its only caller is the deploy. It
+   * is deliberately not reachable from any controller: a value that never
+   * enters a response cannot leave in one.
+   *
+   * A row that fails to open is a refusal for the whole deploy rather than a
+   * gap in the set. `APP_SECRET` rotating without a re-seal is what makes this
+   * happen, and shipping a Worker that is missing one variable is worse than
+   * not shipping: the app boots, half-configured, and the fault surfaces as
+   * whatever that variable was holding together.
+   */
+  public async open(instanceId: string): Promise<Record<string, string>> {
+    const rows = await this.list(instanceId);
+    const set: Record<string, string> = {};
+    for (const row of rows) {
+      try {
+        set[row.key] = this.seal.open(
+          row.valueSealed,
+          AppSecretService.PURPOSE,
+        );
+      } catch {
+        throw new BadRequestError(
+          `The stored value for ${row.key} could not be opened, so this deploy would ship without it. That is what a rotated APP_SECRET looks like; set it again to re-seal it.`,
+        );
+      }
+    }
+    return set;
+  }
+
+  /**
+   * One row by name, or nothing.
+   */
+  protected async find(
+    instanceId: string,
+    key: string,
+  ): Promise<AppSecret | undefined> {
+    return await this.rows.findOne({
+      where: { instanceId: { eq: instanceId }, key: { eq: key } },
+    });
+  }
+
+  /**
+   * The name, normalised, or a refusal saying why not.
+   */
+  protected assertKey(raw: string): string {
+    const key = raw.trim().toUpperCase();
+
+    if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
+      throw new BadRequestError(
+        `"${raw}" is not an environment variable name. Use letters, digits and underscores, starting with a letter.`,
+      );
+    }
+    if (key.length > 100) {
+      throw new BadRequestError(`"${raw}" is longer than 100 characters.`);
+    }
+    if (AppSecretService.reserved(key)) {
+      throw new BadRequestError(
+        `${key} is set by the deploy, not here. Lore provisions this copy's resources and derives DATABASE_URL, R2_BUCKET_NAME and the CLOUDFLARE_* names from the ids it gets back, so a value stored under one of them would be overwritten - or would win, and point a fresh deploy at somebody else's database.`,
+      );
+    }
+    return key;
+  }
+
+  /**
+   * What a list says instead of the value.
+   */
+  protected mask(value: string): string {
+    if (value.length < AppSecretService.MIN_MASKABLE_LENGTH) {
+      return "";
+    }
+    return value.slice(0, AppSecretService.PREFIX_LENGTH);
+  }
+}

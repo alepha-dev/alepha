@@ -70,6 +70,7 @@ export * from "./providers/PlatformCacheProvider.ts";
 export * from "./providers/SecretStoreProvider.ts";
 export * from "./schemas/cloudflare.ts";
 export * from "./schemas/platform.ts";
+export * from "./secretKeys.ts";
 export * from "./services/CloudflareApi.ts";
 export * from "./services/CloudflareAssetManifest.ts";
 export * from "./services/CloudflareProvisionClient.ts";

@@ -7,6 +7,7 @@ import { appInstances } from "../entities/appInstances.ts";
 import { artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
 import { estates } from "../entities/estates.ts";
+import { AppSecretService } from "./AppSecretService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 import { DeployGate } from "./DeployGate.ts";
@@ -29,6 +30,7 @@ export class DeployService {
   protected readonly artifacts = $repository(artifacts);
   protected readonly estates = $repository(estates);
   protected readonly seal = $inject(CredentialSealService);
+  protected readonly secrets = $inject(AppSecretService);
   protected readonly gate = $inject(DeployGate);
   protected readonly limits = $inject(DeployLimits);
   protected readonly estateService = $inject(EstateService);
@@ -213,6 +215,13 @@ export class DeployService {
           env: instance.env,
           domain: instance.url ? new URL(instance.url).host : undefined,
           deploymentId: row.id,
+          // ⚠️ Opened at the last possible moment, and NOT before the gate:
+          // a run that is going to be refused must not decrypt anything.
+          // `open` refuses the whole deploy if any row fails to open, because
+          // a Worker shipped without one of its variables boots half
+          // configured and fails as whatever that variable was holding
+          // together.
+          secrets: await this.secrets.open(instance.id),
           credential: {
             apiToken: this.seal.open(
               estate.credential,
