@@ -468,3 +468,27 @@
   ) {
   border-color: var(--input-hover);
 }
+
+/*
+ * The checkbox takes the same hover border, on its UNCHECKED state only.
+ *
+ * Checked, the box is filled `--primary` and carries a `--primary` border to
+ * match, so mixing `--foreground` into that would either vanish - in dark,
+ * where `--primary` is already near-white - or lay a dark smudge along the
+ * edge of a filled box in light. The border is the affordance only while the
+ * box is empty, which is exactly the state the other slots are always in.
+ *
+ * Base UI renders a native `disabled` here AND mirrors it as `[data-disabled]`,
+ * so both spellings are excluded, the way the shared rule above does it. There
+ * is no `:has()` form to match: this slot is the control itself rather than a
+ * wrapper carrying its state on a descendant.
+ */
+[data-slot="checkbox"]:hover:not(
+    :disabled,
+    :focus-visible,
+    [data-checked],
+    [data-disabled],
+    [aria-invalid="true"]
+  ) {
+  border-color: var(--input-hover);
+}
