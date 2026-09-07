@@ -73,10 +73,13 @@ export interface CloudflarePermissionProbe {
  * passing does not prove Edit, and nothing can prove Edit short of writing;
  * the message says "Edit" and the guide names the template.
  *
- * ⚠️ {@link PERMISSION_PROBES} is a **contract** with #1517 and with the
- * guide at `/lore/docs/guides-cloudflare-token`. When #1517 learns what a
- * Lore deploy really calls, this table, the spec that pins it and that page
- * all change together. `yarn check:docs` cannot see that drift.
+ * ⚠️ {@link PERMISSION_PROBES} is a **contract** with #1517, with the guide
+ * at `/lore/docs/guides-cloudflare-token`, and with
+ * `schemas/cloudflareTokenTemplate.ts` - the list that pre-fills the
+ * dashboard form a person mints the token on. When #1517 learns what a Lore
+ * deploy really calls, this table, that module, the spec that pins them and
+ * that page all change together. `yarn check:docs` cannot see any of that
+ * drift; `test/cloudflare-token-template.spec.ts` sees the code half of it.
  *
  * ⚠️ **The token is an argument, never an environment variable.** It lives
  * as a sealed column, is opened at the moment of use and passed in. There is

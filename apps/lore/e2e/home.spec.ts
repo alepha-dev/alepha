@@ -73,6 +73,69 @@ test.describe("Home (SSR)", () => {
  * five the "see all" link must NOT appear, and a test built on five would pass
  * against a cap that had silently stopped working.
  */
+test.describe("Home (mobile chrome)", () => {
+  test("a phone header keeps the work controls and drops the settings ones", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    /*
+     * Feedback #P2144: the header carried eight icon buttons on a phone -
+     * create, search, repository, bell, language, palette, dark, account -
+     * all the same weight, and half of them settings a reader changes about
+     * once.
+     *
+     * ⚠️ Asserted at 411px, the width the earlier mobile reports came in
+     * at, and then again wide: the whole point is that they come BACK, and
+     * a test that only checked the narrow case would pass against a build
+     * that had simply deleted them.
+     */
+    await registerAndVerify(
+      page,
+      `mob${Date.now()}@example.com`,
+      "MobileTest123!",
+    );
+
+    const settings = ["Language", "Pick theme", "Toggle color mode"];
+    // Only the account button: search, create and the bell are the PROJECT
+    // shell's, passed through `before`, and home has none of them.
+    const work = ["Account menu"];
+
+    await page.setViewportSize({ width: 411, height: 800 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    for (const name of work) {
+      await expect(page.getByLabel(name).first()).toBeVisible({
+        timeout: 15_000,
+      });
+    }
+    for (const name of settings) {
+      await expect(page.getByLabel(name).first()).toBeHidden();
+    }
+
+    await page.setViewportSize({ width: 1200, height: 800 });
+    for (const name of settings) {
+      await expect(page.getByLabel(name).first()).toBeVisible();
+    }
+
+    /*
+     * ⚠️ And hidden is not removed. `AccountHeader` renders the same
+     * cluster WITHOUT `compact`, deliberately: language and theme live
+     * nowhere else in the product, so the account area is where a phone
+     * reader still changes them. Drop that distinction and this case goes
+     * red rather than a reader finding out.
+     */
+    await page.setViewportSize({ width: 411, height: 800 });
+    await page.goto("/account");
+    await page.waitForLoadState("networkidle");
+    for (const name of settings) {
+      await expect(page.getByLabel(name).first()).toBeVisible({
+        timeout: 15_000,
+      });
+    }
+  });
+});
+
 test.describe("Home (recent projects cap)", () => {
   test("caps at five, and the rest are on the account page", async ({
     page,
@@ -110,6 +173,20 @@ test.describe("Home (recent projects cap)", () => {
     // The badge is derived from `createdBy`, so a page that rendered no badge
     // at all would still pass a bare row count.
     await expect(page.getByText("Owner").first()).toBeVisible();
+
+    /*
+     * Feedback #P2146: the quota was only ever shown as a refusal, so a
+     * reader met the number at the moment it stopped them.
+     *
+     * ⚠️ Six OWNED, and this account owns all six - which is exactly why
+     * the assertion names the number rather than just the element: a
+     * counter reading `projects.length` would also say 6 here and would be
+     * wrong the moment somebody is invited to a project they do not own.
+     * The limit is 100 since #Q2013.
+     */
+    await expect(page.getByTestId("project-quota")).toHaveText(
+      "6 of 100 projects owned",
+    );
 
     // The switcher caps too, and always keeps the project you are looking at.
     // `firstSlug` is the LEAST recently updated of the six (it was created

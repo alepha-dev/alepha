@@ -36,14 +36,23 @@ test.describe("Mobile topbar and sidebar", () => {
       const header = document.querySelector("header")!;
       return {
         overflow: header.scrollWidth - header.clientWidth,
-        controls: Array.from(header.querySelectorAll("button")).map((b) => {
-          const r = b.getBoundingClientRect();
-          return {
-            label: b.getAttribute("aria-label"),
-            offscreen: Math.round(r.x + r.width) > vw || r.x < 0,
-            collapsed: r.width < 20 || r.height < 20,
-          };
-        }),
+        controls: Array.from(header.querySelectorAll("button"))
+          // ⚠️ A control the layout deliberately REMOVES is not a squeezed
+          // one. Since #Q2049 the three ambient settings buttons are
+          // `display: none` below `sm` (feedback #P2144), and a
+          // display-none element measures 0x0 - which read as "collapsed"
+          // and failed this for the opposite of the reason it exists.
+          // `getClientRects()` is empty only for an element generating no
+          // box at all, so a control flexed down to nothing still counts.
+          .filter((b) => b.getClientRects().length > 0)
+          .map((b) => {
+            const r = b.getBoundingClientRect();
+            return {
+              label: b.getAttribute("aria-label"),
+              offscreen: Math.round(r.x + r.width) > vw || r.x < 0,
+              collapsed: r.width < 20 || r.height < 20,
+            };
+          }),
       };
     }, width);
 

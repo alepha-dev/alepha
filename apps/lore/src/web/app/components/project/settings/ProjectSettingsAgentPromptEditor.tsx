@@ -109,6 +109,12 @@ export const ProjectSettingsAgentPromptEditor = (
         </span>
       </div>
 
+      {/* ⚠️ Deliberately not a `LoreEditor` (#Q2069). This holds a TEMPLATE,
+          not prose: `{{placeholder}}` tokens, monospaced, spellcheck off,
+          against a character cap. A markdown editor would style it as
+          markdown, offer a format toolbar for a document that is never
+          rendered as one, and put a `[[` picker over text whose braces are
+          the only syntax that matters. */}
       <Textarea
         value={text}
         rows={10}

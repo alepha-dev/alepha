@@ -1072,6 +1072,7 @@ export default {
   "account.projects.description":
     "Every project you belong to, whether you own it or joined it.",
   "account.projects.empty": "You are not part of any project yet.",
+  "account.projects.quota": "$1 of $2 projects owned",
   "account.projects.owner": "Owner",
   "account.projects.member": "Member",
   "account.projects.updated": "Updated $1",
@@ -1669,15 +1670,18 @@ export default {
   "estates.add.existing": "Use one of mine",
   "estates.add.new": "Create a new one",
   "estates.add.none": "You have no estate left to lend. Create one instead.",
-  "estates.add.slug": "Estate slug",
+  "estates.add.slug": "Name",
+  "estates.add.slug.hint":
+    "Your own name for it, used in URLs and commands. Lowercase letters, digits and hyphens.",
   "estates.add.slugPlaceholder": "ovh-1",
   "estates.add.invalid": "Lowercase letters, digits and hyphens, like ovh-1.",
   "estates.add.trust":
     "Everyone who can deploy in $1 will be able to run code on the machine behind $2, with everything that machine holds. Nothing here undeploys, and you can withdraw the loan at any time.",
-  "estates.type.bay": "A machine",
+  "estates.type.label": "What kind of estate",
+  "estates.type.bay": "Bay",
   "estates.type.bay.description":
     "A VPS running the bay connector. Lore mints a secret, shows it once, and the machine dials in with it.",
-  "estates.type.cloudflare": "A Cloudflare account",
+  "estates.type.cloudflare": "Cloudflare",
   "estates.type.cloudflare.description":
     "An account Lore deploys Workers to over the API. You paste a token you minted at Cloudflare; Lore checks it before the estate exists.",
   "estates.cloudflare.accountId": "Cloudflare account id",
@@ -1688,6 +1692,9 @@ export default {
   "estates.cloudflare.token": "Cloudflare API token",
   "estates.cloudflare.token.placeholder": "cfut_… or cfat_…",
   "estates.cloudflare.guide": "Which token, and which permissions",
+  "estates.cloudflare.mint": "Mint one with the right permissions",
+  "estates.cloudflare.mint.scope":
+    "The form opens with the six permissions filled in. Narrow Account Resources to the one account before you create it.",
   "estates.cloudflare.checking": "Checking with Cloudflare…",
   "estates.cloudflare.accountLabel": "account $1",
   "estates.credential.valid": "credential valid",
@@ -1957,6 +1964,14 @@ export default {
   "agentPrompts.review": "Review",
   "agentPrompts.activate": "Activate",
   "agentPrompts.workOnIt": "Work on it",
+  "agentPrompts.review.description":
+    "Asks an agent to read the epic and its quests, and to challenge the plan before any of it is built.",
+  "agentPrompts.activate.description":
+    "Asks an agent to begin the epic and work its quests to completion, one at a time.",
+  "agentPrompts.questWork.description":
+    "Hands the quest, its objectives and everything it links to, to a coding agent.",
+  "agentPrompts.feedbackWork.description":
+    "Hands the report to a coding agent, ending in a quest linked back to it.",
   "agentPrompts.copied":
     "Prompt for $1 copied. Paste it into Claude Code or Codex.",
   "agentPrompts.settings.title": "Agent prompts",

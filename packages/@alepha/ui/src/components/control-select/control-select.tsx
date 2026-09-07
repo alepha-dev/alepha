@@ -320,8 +320,29 @@ const optIcon = (o: SelectOption): ReactNode =>
  */
 const titlecase = (s: string) =>
   s.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-const segmentedLabel = (o: SelectOption) =>
-  typeof o === "string" ? titlecase(o) : o.label;
+/**
+ * What one segment shows.
+ *
+ * ⚠️ The option's `icon` is rendered HERE rather than dropped, which is what
+ * this path did until #Q2049. `SegmentedOption.label` is a `ReactNode`, so
+ * there was never a reason for it: an option list carrying icons for the
+ * dropdown carried them for the segments too, and dropping them silently
+ * made a caller choose between two shapes for one list.
+ */
+const segmentedLabel = (o: SelectOption): ReactNode => {
+  if (typeof o === "string") {
+    return titlecase(o);
+  }
+  if (!o.icon) {
+    return o.label;
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {o.icon}
+      {o.label}
+    </span>
+  );
+};
 
 export const ControlSelect = (props: ControlSelectProps) => {
   const { tr } = useI18n();
@@ -367,7 +388,26 @@ export const ControlSelect = (props: ControlSelectProps) => {
   // Labels and `disabled` flags are part of the identity: keying on the
   // joined values alone collided (`["ab","c"]` vs `["a","bc"]`) and kept a
   // stale list when only the labels changed.
-  const enumKey = JSON.stringify(enumValues);
+  //
+  // ⚠️ `icon` is EXCLUDED, and it has to be. It is a `ReactNode`, and a
+  // rendered element holds a fiber that points back at its DOM node, so
+  // `JSON.stringify` on the raw option threw "Converting circular structure
+  // to JSON" - a documented prop that crashed the component the first time
+  // anyone used it (#Q2049). Two lists that differ only by icon share a key,
+  // which is right: the key exists to notice a changed VALUE or LABEL.
+  const enumKey = JSON.stringify(
+    enumValues.map((option) =>
+      typeof option === "string"
+        ? option
+        : {
+            value: option.value,
+            label: option.label,
+            description: option.description,
+            tag: option.tag,
+            disabled: option.disabled,
+          },
+    ),
+  );
   const min = meta.constraints.minimum;
   const max = meta.constraints.maximum;
   // Derived, not stored: this is a pure function of the schema. As state

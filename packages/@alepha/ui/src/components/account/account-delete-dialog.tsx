@@ -3,6 +3,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
@@ -180,7 +181,7 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
             />
           </div>
 
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <Button type="button" variant="ghost" onClick={close}>
               {tr("account.delete.cancel", { default: "Cancel" })}
             </Button>
@@ -191,7 +192,7 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
             >
               {tr("account.delete.submit", { default: "Delete account" })}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

@@ -1,17 +1,19 @@
-import { Button } from "@alepha/ui/components/ui/button";
-import { Input } from "@alepha/ui/components/ui/input";
+import { Control } from "@alepha/ui/components/control/control";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { Cloud, Fingerprint, KeyRound, Server, Tag } from "lucide-react";
+import { useState } from "react";
 
-import {
-  ESTATE_SLUG_MAX_LENGTH,
-  ESTATE_SLUG_PATTERN,
-} from "@/api/schemas/estateSlugSchema.ts";
+import { cloudflareTokenTemplateUrl } from "@/api/schemas/cloudflareTokenTemplate.ts";
+import { ESTATE_SLUG_PATTERN } from "@/api/schemas/estateSlugSchema.ts";
+import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import {
   type EstateCreateDraft,
   estateDraftSlug,
 } from "./estateCreateDraft.ts";
+import { estateCreateFormSchema } from "./estateCreateFormSchema.ts";
 
 export interface EstateCreateFieldsProps {
   draft: EstateCreateDraft;
@@ -40,7 +42,25 @@ export interface EstateCreateFieldsProps {
  * password manager offering to save a Cloudflare deploy token under
  * lore.alepha.dev is the leak the masked rendering was supposed to prevent.
  * It is never prefilled, cleared when the dialog closes, and never echoed in
- * a toast or an error.
+ * a toast or an error. `Control`'s `password` gives the first, and its own
+ * `autoComplete` prop the second - never `inputProps`, which
+ * `ControlPassword` overrides with `"current-password"`.
+ *
+ * ## Every field is a labelled `Control` (feedback #P2143)
+ *
+ * They were bare `Input`s carrying PLACEHOLDERS where labels belong, which
+ * is why the report opens "ovh-1 ?? what is ovh-1 ??". A placeholder names a
+ * field only until somebody types in it, and the one description that
+ * existed floated under its input with nothing tying the two together.
+ *
+ * ⚠️ **The form is the draft's mirror, not its owner.** The two dialogs hold
+ * an `EstateCreateDraft` and derive submit-ability and the request body from
+ * it (`estateDraftValid`, `estateDraftBody`), and they reset it on close. So
+ * `initialValues` is seeded ONCE, from a `useState` initialiser rather than
+ * from `props.draft` directly: seeded from the prop it would re-seed on
+ * every keystroke, because the parent's draft changes on every keystroke.
+ * Both dialogs unmount their content when they close, which is what puts a
+ * fresh empty form behind the next open.
  */
 const EstateCreateFields = (props: EstateCreateFieldsProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -53,68 +73,101 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
   const errorFor = (field: "accountId" | "token") =>
     props.error?.field === field ? props.error.message : undefined;
 
-  const set = (over: Partial<EstateCreateDraft>) =>
-    props.onChange({ ...draft, ...over });
+  // Captured on mount, never from `props.draft` - see this file's doc.
+  const [initialValues] = useState(() => ({ ...props.draft }));
+
+  const form = useForm({
+    schema: estateCreateFormSchema,
+    initialValues,
+    // The dialogs own the submit button, and the request body is built from
+    // the draft rather than from these values, so the form's own handler is
+    // never reached.
+    handler: () => props.onSubmit?.(),
+    onChange: (_key, _value, store) =>
+      props.onChange({
+        type: store.type === "cloudflare" ? "cloudflare" : "bay",
+        slug: String(store.slug ?? ""),
+        accountId: String(store.accountId ?? ""),
+        token: String(store.token ?? ""),
+      }),
+  });
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2" role="group">
-        {(["bay", "cloudflare"] as const).map((type) => (
-          <Button
-            key={type}
-            type="button"
-            size="sm"
-            variant={draft.type === type ? "default" : "outline"}
-            aria-pressed={draft.type === type}
-            disabled={props.busy}
-            data-testid={`estate-type-${type}`}
-            onClick={() => set({ type })}
-          >
-            {type === "bay"
-              ? tr("estates.type.bay")
-              : tr("estates.type.cloudflare")}
-          </Button>
-        ))}
-      </div>
+      {/* "A machine" was a placeholder for a product name, and the product
+          has one. The description under it follows the segment, so the
+          explanation is attached to the choice rather than floating beside
+          it. */}
+      <Control
+        segmented
+        input={form.input.type}
+        label={tr("estates.type.label")}
+        description={
+          draft.type === "bay"
+            ? tr("estates.type.bay.description")
+            : tr("estates.type.cloudflare.description")
+        }
+        disabled={props.busy}
+        items={[
+          {
+            value: "bay",
+            label: String(tr("estates.type.bay")),
+            icon: <Server className="size-3.5" />,
+          },
+          {
+            value: "cloudflare",
+            label: String(tr("estates.type.cloudflare")),
+            icon: <Cloud className="size-3.5" />,
+          },
+        ]}
+      />
 
-      <span className="text-muted-foreground text-sm">
-        {draft.type === "bay"
-          ? tr("estates.type.bay.description")
-          : tr("estates.type.cloudflare.description")}
-      </span>
-
-      <div className="flex flex-col gap-1">
-        <Input
-          value={draft.slug}
-          onChange={(event) => set({ slug: event.target.value })}
-          placeholder={tr("estates.add.slugPlaceholder")}
-          maxLength={ESTATE_SLUG_MAX_LENGTH}
-          aria-label={tr("estates.add.slug")}
-          aria-invalid={slugError || undefined}
-          data-testid="estate-create-slug"
-        />
-        {slugError && (
-          <span className="text-destructive text-xs">
-            {tr("estates.add.invalid")}
-          </span>
-        )}
-      </div>
+      <Control
+        input={form.input.slug}
+        label={tr("estates.add.slug")}
+        // The answer to "what is ovh-1": the reader's own name for it,
+        // nothing Cloudflare or the machine hands them.
+        description={
+          slugError ? tr("estates.add.invalid") : tr("estates.add.slug.hint")
+        }
+        icon={Tag}
+        placeholder={String(tr("estates.add.slugPlaceholder"))}
+        disabled={props.busy}
+        inputProps={{
+          "data-testid": "estate-create-slug",
+          "aria-invalid": slugError || undefined,
+        }}
+      />
 
       {draft.type === "cloudflare" && (
         <>
           <div className="flex flex-col gap-1">
-            <Input
-              value={draft.accountId}
-              onChange={(event) => set({ accountId: event.target.value })}
-              placeholder={tr("estates.cloudflare.accountId.placeholder")}
-              maxLength={64}
-              aria-label={tr("estates.cloudflare.accountId")}
-              aria-invalid={Boolean(errorFor("accountId")) || undefined}
-              data-testid="estate-create-account"
+            <Control
+              input={form.input.accountId}
+              label={tr("estates.cloudflare.accountId")}
+              // The hint used to float under the field with nothing tying
+              // the two together; a Control puts it where it belongs.
+              description={tr("estates.cloudflare.accountId.hint")}
+              icon={Fingerprint}
+              placeholder={String(
+                tr("estates.cloudflare.accountId.placeholder"),
+              )}
+              disabled={props.busy}
+              // Not clearable: an optional text field grows a clear button,
+              // and this one is required the moment Cloudflare is picked -
+              // it is optional in the SCHEMA only because a bay estate has
+              // no such field at all.
+              clearable={false}
+              inputProps={{
+                "data-testid": "estate-create-account",
+                "aria-invalid": Boolean(errorFor("accountId")) || undefined,
+              }}
             />
-            <span className="text-muted-foreground text-xs">
-              {tr("estates.cloudflare.accountId.hint")}
-            </span>
+            {/* ⚠️ Below the control rather than in its `description`, and
+                still `text-destructive`. `Control` takes its error from the
+                form's own validation state and offers no prop for one, so a
+                SERVER refusal routed through `description` would render in
+                muted grey - a refusal that does not look like one. */}
             {errorFor("accountId") && (
               <span
                 className="text-destructive text-xs"
@@ -126,30 +179,27 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <Input
-              type="password"
+            <Control
+              password
+              input={form.input.token}
+              label={tr("estates.cloudflare.token")}
+              icon={KeyRound}
+              placeholder={String(tr("estates.cloudflare.token.placeholder"))}
+              disabled={props.busy}
+              clearable={false}
+              // ⚠️ The second half of the protection this file documents,
+              // and it MUST be this prop rather than `inputProps`:
+              // `ControlPassword` writes `autoComplete` after spreading
+              // `inputProps`, defaulting to `"current-password"` - which on
+              // a Cloudflare deploy token is the password-manager prompt the
+              // masking exists to avoid.
               autoComplete="off"
-              value={draft.token}
-              onChange={(event) => set({ token: event.target.value })}
-              placeholder={tr("estates.cloudflare.token.placeholder")}
-              maxLength={128}
-              aria-label={tr("estates.cloudflare.token")}
-              aria-invalid={Boolean(errorFor("token")) || undefined}
-              data-testid="estate-create-token"
+              inputProps={{
+                "data-testid": "estate-create-token",
+                "aria-invalid": Boolean(errorFor("token")) || undefined,
+              }}
             />
-            <span className="text-muted-foreground text-xs">
-              {/* The guide is the onboarding, not a footnote: which template
-                  to start from, and the two permissions it lacks. */}
-              <a
-                href="/lore/docs/guides-cloudflare-token"
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-4"
-                data-testid="estate-create-guide"
-              >
-                {tr("estates.cloudflare.guide")}
-              </a>
-            </span>
+            {/* Same reasoning as the account id above. */}
             {errorFor("token") && (
               <span
                 className="text-destructive text-xs"
@@ -158,6 +208,44 @@ const EstateCreateFields = (props: EstateCreateFieldsProps) => {
                 {errorFor("token")}
               </span>
             )}
+            <span className="text-muted-foreground flex flex-col gap-1 text-xs">
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {/* ⚠️ The mint link replaces the TEDIUM, not the
+                    explanation: the form still asks for an account scope
+                    and a TTL, and the token is still copied once. Both
+                    links stay. */}
+                <a
+                  href={cloudflareTokenTemplateUrl()}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-4"
+                  data-testid="estate-create-mint"
+                >
+                  {tr("estates.cloudflare.mint")}
+                </a>
+                {/* The guide is the onboarding, not a footnote: which
+                    template to start from, and the two permissions it
+                    lacks. */}
+                <a
+                  // ⚠️ Absolute, through `loreDocsUrl`. Written
+                  // root-relative it resolved against Lore's own origin and
+                  // 404'd (feedback #P2142).
+                  href={loreDocsUrl("guides-cloudflare-token")}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-4"
+                  data-testid="estate-create-guide"
+                >
+                  {tr("estates.cloudflare.guide")}
+                </a>
+              </span>
+              {/* ⚠️ Said out loud because the link is NOT scoped:
+                  `accountId=*` pre-selects All accounts, and whether a real
+                  account id narrows the form has not been tested against a
+                  live dashboard. Claiming a scope we have not verified
+                  would be worse than the tedium being removed. */}
+              <span>{tr("estates.cloudflare.mint.scope")}</span>
+            </span>
           </div>
         </>
       )}

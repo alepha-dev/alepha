@@ -159,6 +159,18 @@ describe("ProjectArtifacts", () => {
     const { findByText, getByTestId } = await show(listing([]));
 
     expect(await findByText(/Nothing has been pushed yet/)).toBeTruthy();
+    // ⚠️ It WRAPS rather than scrolling (feedback #P2145). jsdom lays
+    // nothing out, so this asserts the classes that decide it rather than a
+    // measured overflow - the widths are checked in a real browser. A `pre`
+    // that lost `whitespace-pre-wrap` is back to a horizontal scrollbar
+    // cutting the command mid-word.
+    const command = getByTestId("artifacts-table").querySelector("pre")!;
+    expect(command.className).toContain("whitespace-pre-wrap");
+    expect(command.className).toContain("break-words");
+    // And left, against the shared empty state's `text-center`: a command
+    // centred over three wrapped lines reads worse than the clipped one did.
+    expect(command.className).toContain("text-left");
+    expect(command.className).not.toContain("overflow-x-auto");
     expect(getByTestId("artifacts-table").textContent).toContain(
       "lore artifacts push --project alepha --app <app>",
     );

@@ -27,6 +27,22 @@ Cloudflare's side, to "the person who set this up has left".
 
 ## Minting a user token
 
+**The short way.** This link opens Cloudflare's Custom token form with all six
+permissions already added:
+
+<https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=%5B%7B%22key%22%3A%22account_settings%22%2C%22type%22%3A%22read%22%7D%2C%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22d1%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_kv_storage%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_r2%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22queues%22%2C%22type%22%3A%22edit%22%7D%5D&accountId=*&zoneId=all&name=lore-deploy>
+
+Lore shows the same link beside the token field, so you can reach it from the
+form you are filling in.
+
+⚠️ **It does not choose the account for you.** The link opens on **All
+accounts**, which is exactly what step 7 below says not to leave. Narrow
+**Account Resources** to the one account this estate names before you create
+the token.
+
+The manual steps are below, for anyone who would rather see what they are
+agreeing to, or whose dashboard does not honour the parameter.
+
 1. Open the Cloudflare dashboard and click your **profile icon**, top right.
 2. **API Tokens**.
 3. **Create Token**.
@@ -44,7 +60,13 @@ Cloudflare's side, to "the person who set this up has left".
 
 ## Minting an account-owned token
 
-Same permissions, a different starting point.
+Same permissions, a different starting point. The prefilled link for this kind
+is:
+
+<https://dash.cloudflare.com/?to=/:account/api-tokens&permissionGroupKeys=%5B%7B%22key%22%3A%22account_settings%22%2C%22type%22%3A%22read%22%7D%2C%7B%22key%22%3A%22workers_scripts%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22d1%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_kv_storage%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22workers_r2%22%2C%22type%22%3A%22edit%22%7D%2C%7B%22key%22%3A%22queues%22%2C%22type%22%3A%22edit%22%7D%5D&name=lore-deploy>
+
+It carries no account parameter at all - that entry point resolves the account
+from the dashboard - so the scoping happens on the form either way.
 
 1. In the dashboard, select the **account**, then **Manage Account**.
 2. **Account API Tokens**.
@@ -74,10 +96,15 @@ All six are **Account** permissions. There are no Zone rows to add: every app
 Lore deploys uses a plain custom domain, which Cloudflare serves as an
 account-level call under Workers Scripts.
 
-⚠️ **The obvious template is not enough.** "Edit Cloudflare Workers" is the
-template most people reach for, and it covers Workers Scripts, KV and R2 but
-**not D1 and not Queues**. Start from it if you like, then add those two, or
-build a Custom token with all six from the start.
+⚠️ **Do not start from "Edit Cloudflare Workers".** It is the template most
+people reach for, and it is wrong in both directions. It covers **four** of the
+six - Account Settings, Workers Scripts, KV and R2 - and misses **D1 and
+Queues**, so a token minted from it is refused at the D1 check. It also grants
+**nine things a Lore deploy never uses**: Cloudflare Pages, Containers, Workers
+Observability, Workers Builds Configuration, Workers Agents Configuration,
+Workers Tail, User Details, Memberships, and a Zone-level Workers Routes.
+
+Use the prefilled link above, or build a Custom token with all six by hand.
 
 ⚠️ **Two spellings of the same thing.** Cloudflare's dashboard says **Edit**
 where its API documentation says **Write**. They are the same permission. This
