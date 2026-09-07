@@ -112,6 +112,68 @@ the web UI and for the MCP tools, so no surface anywhere accepts one.
 Minting a deploy target as a side effect of a typo is how a fleet grows a copy
 nobody meant to make.
 
+## From another server
+
+An app whose environments have a lifecycle of their own - one copy per tenant,
+per branch, per customer - drives Lore programmatically rather than through a
+pipeline. `@alepha/lore/client` is that seam.
+
+```ts
+import { AlephaLoreClient, LoreDeployService } from "@alepha/lore/client";
+
+const alepha = Alepha.create().with(AlephaLoreClient);
+const lore = alepha.inject(LoreDeployService);
+
+// A club owner signs up with the slug "wassup":
+const { url } = await lore.deploy({
+  app: "club",
+  env: "wassup",
+  tag: "latest",
+  domain: "wassup.club.example",
+});
+```
+
+Configured by the same three variables as CI - `LORE_URL`, `LORE_API_KEY`,
+`LORE_PROJECT` - so one deployment configures both halves. The key's user needs
+`app:manage` to create a copy and `deploy:manage` to ship to one.
+
+**It ensures the copy.** One that does not exist is created, because that is
+what the caller is doing: a program provisioning a tenant is not a person
+mistyping `--env`. `lore apps deploy` refuses instead, and the difference is
+deliberate. ⚠️ Only a **404** creates: a revoked key or an unreachable Lore
+rethrows, so an outage cannot become a burst of copies nobody asked for.
+
+A copy created this way takes the estate the project was **lent first**, so the
+call carries no infrastructure at all. Pass `estate` with a slug to choose
+another; it is resolved against the estates lent to this project rather than
+trusted, and the refusal lists the ones that are. A project with **no** estate
+lent is an error, raised before the copy is created rather than after.
+
+⚠️ The oldest lending, not the newest. Lending a second estate would otherwise
+silently re-point every new tenant while the fleet already running stayed where
+it was, and nothing on any screen would explain the split. With one estate lent,
+which is the ordinary case, the distinction does not arise.
+
+`domain` is **the same field an environment declares in `alepha.config.ts`**.
+The static path reads it from a committed file and this one from the copy's
+row, but it lands in the same place: the environment's `domain`, then the
+Worker's `custom_domain` route. A bare host, no scheme and no path.
+
+⚠️ It is what makes the answer a URL. The adapter reports one only for a domain
+it put into effect, so a copy created with no domain deploys perfectly well,
+runs on `*.workers.dev`, and answers nothing to link to.
+
+⚠️ The zone has to be on that estate's own Cloudflare account: a custom domain
+is a zone-scoped call, not an arbitrary hostname pointed at a Worker.
+
+⚠️ It is read only when the call CREATES the copy. An existing one keeps the
+address it has, and a domain that disagrees is logged rather than applied -
+re-pointing a live tenant is a config change, not a deploy.
+
+⚠️ **It does not build.** `lore apps build` and `lore artifacts push` belong in
+CI, on the machine holding the source; this ships bytes that already exist and
+refuses when the tag names none.
+
 ## From an agent
 
 Three MCP tools sit on the same endpoints: `deploy_start`, `deploy_status` and
