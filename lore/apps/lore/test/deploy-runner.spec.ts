@@ -219,4 +219,79 @@ describe("deploying an artifact from inside the Worker", () => {
 
     expect(calls).toContain("deploy:my-app-b14-preview");
   });
+  /**
+   * ⚠️ A retried or replayed job execution REPLAYS the whole run, so every
+   * step has to be safe to repeat. It already is, and this says so rather than
+   * leaving it assumed: provisioning checks before it creates, the script
+   * upload is a PUT, and migrations are guarded by `d1_migrations`.
+   */
+  describe("replaying a run", () => {
+    it("provisions the same resources without creating a second one", async ({
+      expect,
+    }) => {
+      const created = new Set<string>();
+      const calls: string[] = [];
+      const bytes = await packed({ hasDatabase: true, hasBucket: true });
+
+      const provision = {
+        // Modelled on the real client: `ensure*` LISTS first and creates only
+        // what is missing, so a second run finds what the first made.
+        ensureD1: async (name: string) => {
+          calls.push(`d1:${name}`);
+          if (!created.has(`d1:${name}`)) created.add(`d1:${name}`);
+          return { uuid: "db-uuid", name };
+        },
+        ensureR2: async (name: string) => {
+          calls.push(`r2:${name}`);
+          created.add(`r2:${name}`);
+        },
+        ensureKV: async () => ({ id: "kv", title: "kv" }),
+        ensureQueue: async (name: string) => ({
+          queue_id: "q",
+          queue_name: name,
+        }),
+        resolveD1Id: async () => "db-uuid",
+        d1Query: async () => [{ results: [{ name: "0001_init" }] }],
+        d1Import: async () => {
+          calls.push("migrate");
+        },
+      };
+      const deploy = {
+        deploy: async (plan: { scriptName: string }) => {
+          calls.push(`deploy:${plan.scriptName}`);
+          return { versionId: "v1" };
+        },
+      };
+
+      const runner = alepha.inject(DeployRunner);
+      const container = (
+        runner as unknown as { container: () => Alepha }
+      ).container.bind(runner);
+      Object.assign(runner as unknown as Record<string, unknown>, {
+        artifactBytes: async () => bytes,
+        container: () => {
+          const child = container();
+          Object.assign(
+            child.inject(WorkerCloudflareAdapter) as unknown as Record<
+              string,
+              unknown
+            >,
+            { provisioner: () => provision, deployer: () => deploy },
+          );
+          return child;
+        },
+      });
+
+      await runner.run(request() as never);
+      await runner.run(request() as never);
+
+      // Two runs, two of each call, and one of each resource.
+      expect(created.size).toBe(2);
+      expect(calls.filter((it) => it.startsWith("deploy:"))).toHaveLength(2);
+      // ⚠️ And the migration did NOT run a second time: `d1_migrations`
+      // already names it, which is what makes a replay safe rather than a
+      // second table rebuild against live data.
+      expect(calls.filter((it) => it === "migrate")).toHaveLength(0);
+    });
+  });
 });
