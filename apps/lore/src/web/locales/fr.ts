@@ -1740,7 +1740,7 @@ export default {
   "feedback.thread.placeholder": "Posez une question ou notez un constat.",
   "feedback.thread.submit": "Commenter",
   "feedback.thread.noNotification":
-    "Personne n'est notifié. La réponse sera là à leur retour.",
+    "Les membres du projet sont notifiés quand vous écrivez leur @nom. Personne d'autre ne l'est : la réponse sera là à leur retour.",
   "feedback.thread.edited": "modifié",
   "feedback.thread.agent": "agent",
   "feedback.thread.unknownAuthor": "Un ancien membre",

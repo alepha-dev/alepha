@@ -19,10 +19,16 @@ import { users } from "./users.ts";
  * is "member of the project OR the reporter of this item", not membership
  * alone. See `FeedbackCommentController`.
  *
- * **No notifications**, the same decision quest comments took: a comment
- * creates the expectation that someone is told, and that is Notifications
- * v2 (epic #6). The thread exists so the answer is there when they come
- * back.
+ * **⚠️ Only a project MEMBER's comment can reach anybody** (epic #E42). A
+ * `@name` written by a member puts a message in the named member's inbox; a
+ * comment written by anybody else notifies nobody, whatever it contains.
+ * The gate is on the author, not on the matched handle, because a reporter
+ * is usually an outsider and a public feedback form is not going to be an
+ * unsolicited-message channel.
+ *
+ * So for a reporter the old promise still holds and the copy still says so:
+ * the thread is there when they come back. What changed is that a member
+ * answering in that thread can now reach a colleague.
  */
 export const feedbackComments = $entity({
   name: "feedback_comments",
