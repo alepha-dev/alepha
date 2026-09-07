@@ -24,7 +24,7 @@ const { url } = await lore.deploy({
   app: "club",
   env: "wassup",
   tag: "latest",
-  create: true,
+  domain: "wassup.club.example",
 });
 ```
 

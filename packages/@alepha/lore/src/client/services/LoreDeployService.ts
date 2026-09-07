@@ -60,16 +60,30 @@ export interface LoreDeployInput {
    */
   project?: string;
   /**
-   * Where the copy answers, e.g. `https://wassup.club.example`.
+   * The host this copy answers on, e.g. `wassup.club.example`.
    *
-   * Only read when this call CREATES the copy, and it is what makes a
-   * per-tenant address work: `DeployRunner` takes the host from
-   * `app_instances.url` and hands it to the adapter as the environment's
-   * domain, and the adapter answers a URL only when it put one into effect.
-   * **Omit it and a successful deploy answers no URL**, because there is no
-   * domain for it to name.
+   * **The same `domain` `alepha.config.ts` declares per environment.** The
+   * static path reads it from a committed file and this one reads it from the
+   * copy's row, but it lands in the same place: `platformOptions
+   * .environments[env].domain`, then the adapter's `custom_domain` route.
+   *
+   * A bare host: no scheme, no port, no path. It is stored on the copy as an
+   * origin so the Apps table renders a working link, and the deploy takes the
+   * host back off it.
+   *
+   * ⚠️ **Omit it and a successful deploy answers no URL.** The Worker is live
+   * on `*.workers.dev`, but nothing here can name where: the adapter reports a
+   * URL only for a domain it put into effect.
+   *
+   * ⚠️ **The zone has to be on the estate's own Cloudflare account.** A custom
+   * domain is `workers.domains.update` with a zone id, not an arbitrary
+   * hostname pointed at a Worker.
+   *
+   * ⚠️ Only read when this call CREATES the copy. An existing one keeps the
+   * address it has, and a domain passed that disagrees with it is logged
+   * rather than applied - this client does not re-point a live tenant.
    */
-  url?: string;
+  domain?: string;
   /**
    * Which estate a newly created copy deploys to, **by slug**.
    *
@@ -103,15 +117,14 @@ export interface LoreDeployInput {
  *   app: "club",
  *   env: "wassup",
  *   tag: "latest",
- *   url: "https://wassup.club.example",
+ *   domain: "wassup.club.example",
  * });
  * ```
  *
- * ⚠️ **The `url` is what makes the answer a URL.** `DeployRunner` takes the
- * host from `app_instances.url` and hands it to the adapter as the
- * environment's domain, and the adapter answers a URL only when it put one
- * into effect. A copy created with no address deploys perfectly well and
- * answers nothing to link to.
+ * ⚠️ **`domain` is the same field `alepha.config.ts` declares per
+ * environment**, and it is what makes the answer a URL. The adapter reports one
+ * only for a domain it put into effect, so a copy created with no domain
+ * deploys perfectly well and answers nothing to link to.
  *
  * ## It ENSURES the copy
  *
@@ -238,9 +251,25 @@ export class LoreDeployService {
   ): Promise<LoreAppInstance> {
     const found = await this.findInstance(projectId, input.app, input.env);
     if (found) {
+      // ⚠️ Said out loud rather than applied. Re-pointing a live tenant is a
+      // config change, not a deploy, and a client that did it silently on
+      // every call would move an address somebody set by hand on the Settings
+      // tab. Silently ignoring it is the other half of the trap, so it is a
+      // log line.
+      if (input.domain && found.url !== `https://${input.domain}`) {
+        this.log.info(
+          `${found.app}/${found.env} already answers on ${found.url ?? "no address"}; the domain passed was not applied`,
+          { passed: input.domain },
+        );
+      }
       return found;
     }
 
+    // ⚠️ Validated before anything is written. A malformed host that reached
+    // the row would create a copy whose deploy then fails on Cloudflare's own
+    // error, leaving the copy behind.
+    const domain =
+      input.domain === undefined ? undefined : this.assertDomain(input.domain);
     const estateId = await this.estateFor(projectId, input);
     const created = await this.api.request<LoreAppInstance>(
       "POST",
@@ -248,7 +277,10 @@ export class LoreDeployService {
       {
         app: input.app,
         env: input.env,
-        ...(input.url === undefined ? {} : { url: input.url }),
+        // Stored as an origin because `app_instances.url` is what the Apps
+        // table renders as an `href`; `DeployService` takes the host back off
+        // it for the adapter.
+        ...(domain === undefined ? {} : { url: `https://${domain}` }),
       },
     );
 
@@ -319,6 +351,24 @@ export class LoreDeployService {
 
       await this.dateTime.wait(LoreDeployService.POLL_INTERVAL_MS);
     }
+  }
+
+  /**
+   * A hostname, or a refusal saying what shape one is.
+   *
+   * Lowercased, because a hostname is case-insensitive and the row would
+   * otherwise carry whatever was typed. At least one dot: a deploy target is a
+   * name in a zone, so a bare label is a mistake rather than a shorthand.
+   */
+  protected assertDomain(raw: string): string {
+    const domain = raw.trim().toLowerCase();
+    const label = "[a-z0-9]([a-z0-9-]*[a-z0-9])?";
+    if (!new RegExp(`^${label}(\\.${label})+$`).test(domain)) {
+      throw new AlephaError(
+        `"${raw}" is not a hostname. Pass the host on its own - \`wassup.club.example\` - with no scheme, no port and no path: it becomes this copy's Cloudflare custom domain, the same \`domain\` an environment declares in alepha.config.ts.`,
+      );
+    }
+    return domain;
   }
 
   /**

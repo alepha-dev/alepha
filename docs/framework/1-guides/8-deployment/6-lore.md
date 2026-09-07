@@ -129,7 +129,7 @@ const { url } = await lore.deploy({
   app: "club",
   env: "wassup",
   tag: "latest",
-  url: "https://wassup.club.example",
+  domain: "wassup.club.example",
 });
 ```
 
@@ -154,10 +154,21 @@ silently re-point every new tenant while the fleet already running stayed where
 it was, and nothing on any screen would explain the split. With one estate lent,
 which is the ordinary case, the distinction does not arise.
 
-⚠️ **The `url` is what makes the answer a URL.** The deploy takes the domain
-from the copy's own address and the adapter answers a URL only when it put one
-into effect, so a copy created with no address deploys perfectly well and
-answers nothing to link to.
+`domain` is **the same field an environment declares in `alepha.config.ts`**.
+The static path reads it from a committed file and this one from the copy's
+row, but it lands in the same place: the environment's `domain`, then the
+Worker's `custom_domain` route. A bare host, no scheme and no path.
+
+⚠️ It is what makes the answer a URL. The adapter reports one only for a domain
+it put into effect, so a copy created with no domain deploys perfectly well,
+runs on `*.workers.dev`, and answers nothing to link to.
+
+⚠️ The zone has to be on that estate's own Cloudflare account: a custom domain
+is a zone-scoped call, not an arbitrary hostname pointed at a Worker.
+
+⚠️ It is read only when the call CREATES the copy. An existing one keeps the
+address it has, and a domain that disagrees is logged rather than applied -
+re-pointing a live tenant is a config change, not a deploy.
 
 ⚠️ **It does not build.** `lore apps build` and `lore artifacts push` belong in
 CI, on the machine holding the source; this ships bytes that already exist and

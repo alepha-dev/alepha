@@ -23,7 +23,7 @@ import { LoreDeployService } from "./services/LoreDeployService.ts";
  *   app: "club",
  *   env: "wassup",
  *   tag: "latest",
- *   create: true,
+ *   domain: "wassup.club.example",
  * });
  * ```
  *
