@@ -95,6 +95,16 @@ export default defineConfig({
       // catalog.
       scan: ["src", "../../packages/@alepha/ui/src"],
       dynamicPrefixes: [
+        // tr(`agentPrompts.settings.placeholder.${name}`) - the seven
+        // placeholder names, and tr(`agentPrompts.settings.${kind}.title` /
+        // `.description`) - the four prompt kinds. Both sets are iterated
+        // from a constant list, so writing them out would be the same
+        // literals twice with nothing keeping them in step.
+        "agentPrompts.settings.placeholder.",
+        "agentPrompts.settings.epicReview.",
+        "agentPrompts.settings.epicActivate.",
+        "agentPrompts.settings.questWork.",
+        "agentPrompts.settings.feedbackWork.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
         // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail
