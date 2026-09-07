@@ -6,6 +6,7 @@ import { NotificationEmailChannel } from "./channels/NotificationEmailChannel.ts
 import { NotificationInboxChannel } from "./channels/NotificationInboxChannel.ts";
 import { NotificationSmsChannel } from "./channels/NotificationSmsChannel.ts";
 import { AdminNotificationController } from "./controllers/AdminNotificationController.ts";
+import { NotificationInboxController } from "./controllers/NotificationInboxController.ts";
 import { NotificationUnsubscribeController } from "./controllers/NotificationUnsubscribeController.ts";
 import { NotificationWebhookController } from "./controllers/NotificationWebhookController.ts";
 import { NotificationJobs } from "./jobs/NotificationJobs.ts";
@@ -29,6 +30,7 @@ export * from "./channels/NotificationEmailChannel.ts";
 export * from "./channels/NotificationInboxChannel.ts";
 export * from "./channels/NotificationSmsChannel.ts";
 export * from "./controllers/AdminNotificationController.ts";
+export * from "./controllers/NotificationInboxController.ts";
 export * from "./controllers/NotificationUnsubscribeController.ts";
 export * from "./controllers/NotificationWebhookController.ts";
 export * from "./entities/notificationDeliveryEntity.ts";
@@ -42,6 +44,9 @@ export * from "./schemas/notificationAttachmentSchema.ts";
 export * from "./schemas/notificationContactPreferencesSchema.ts";
 export * from "./schemas/notificationDeliveryEventSchema.ts";
 export * from "./schemas/notificationDetailResourceSchema.ts";
+export * from "./schemas/notificationInboxCountSchema.ts";
+export * from "./schemas/notificationInboxPageSchema.ts";
+export * from "./schemas/notificationInboxQuerySchema.ts";
 export * from "./schemas/notificationInboxResourceSchema.ts";
 export * from "./schemas/notificationPayloadSchema.ts";
 export * from "./schemas/notificationPreviewResourceSchema.ts";
@@ -169,6 +174,7 @@ export const AlephaApiNotifications = $module({
     NotificationInboxRecipientProvider,
     NotificationJobs,
     AdminNotificationController,
+    NotificationInboxController,
     NotificationUnsubscribeController,
     NotificationWebhookController,
   ],
