@@ -1,25 +1,10 @@
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
 
 import { outsideProtected } from "../../web/app/components/project/quest/commentReferences.ts";
-import { displayName } from "../../web/app/services/displayName.ts";
 import { matchMentions } from "../../web/app/services/mentions.ts";
 import { LoreInboxNotifications } from "../notifications/LoreInboxNotifications.ts";
-import { relations } from "../relations.ts";
-
-/**
- * One member of a project, in the shape both the matcher and the push need.
- *
- * `name` is what `@handle` is compared against and it is built with
- * `displayName`, the same function the renderer uses. A roster assembled any
- * other way disagrees with the comment box about what `@nfo` even is.
- */
-export interface MentionRecipient {
-  userId: string;
-  email: string;
-  name: string;
-}
+import { ProjectRoster, type ProjectRosterEntry } from "./ProjectRoster.ts";
 
 /**
  * What a mention points at, resolved by the caller.
@@ -79,7 +64,7 @@ export interface MentionSubject {
 export class MentionNotifier {
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
-  protected readonly membersWith = $repository(relations, "members");
+  protected readonly roster = $inject(ProjectRoster);
   protected readonly templates = $inject(LoreInboxNotifications);
 
   /**
@@ -102,8 +87,10 @@ export class MentionNotifier {
       // The cheap gate, before any query. See the class docstring.
       if (!options.body.includes("@")) return;
 
-      const roster = await this.roster(options.subject.projectId);
+      const roster = await this.roster.of(options.subject.projectId);
       const author = roster.find((it) => it.userId === options.authorId);
+      // The author is dropped here rather than after matching, so it cannot
+      // be reintroduced by a later change to the matcher.
       const recipients = roster.filter(
         (it) => it.userId !== options.authorId && it.email,
       );
@@ -130,34 +117,6 @@ export class MentionNotifier {
   }
 
   /**
-   * Who this project's members are, as the matcher wants them.
-   *
-   * One read, selecting everything both halves need: the id to compare
-   * against the author, the email to push to, and enough to build the
-   * handle. `matchMentions` is generic over `{ name: string }` precisely so
-   * these rows come back unchanged, with no second lookup by name.
-   */
-  protected async roster(projectId: number): Promise<MentionRecipient[]> {
-    const rows = await this.membersWith.findMany({
-      where: { projectId: { eq: projectId } },
-      include: { user: true },
-    });
-
-    const roster: MentionRecipient[] = [];
-    for (const row of rows) {
-      // A membership whose account is gone. The row survives the user by
-      // design, and there is nobody to mention.
-      if (!row.user) continue;
-      roster.push({
-        userId: row.user.id,
-        email: row.user.email ?? "",
-        name: displayName(row.user, ""),
-      });
-    }
-    return roster;
-  }
-
-  /**
    * Everybody named in one body.
    *
    * ⚠️ `outsideProtected` is not optional. It holds out fenced blocks,
@@ -167,9 +126,9 @@ export class MentionNotifier {
    */
   protected mentioned(
     body: string,
-    recipients: MentionRecipient[],
-  ): MentionRecipient[] {
-    const found: MentionRecipient[] = [];
+    recipients: ProjectRosterEntry[],
+  ): ProjectRosterEntry[] {
+    const found: ProjectRosterEntry[] = [];
     outsideProtected(body, (segment) => {
       for (const member of matchMentions(segment, recipients)) {
         if (!found.includes(member)) found.push(member);
@@ -181,8 +140,8 @@ export class MentionNotifier {
 
   protected async push(
     subject: MentionSubject,
-    author: MentionRecipient | undefined,
-    recipient: MentionRecipient,
+    author: ProjectRosterEntry | undefined,
+    recipient: ProjectRosterEntry,
     body: string,
   ): Promise<void> {
     const baseUrl = this.alepha.env.PUBLIC_URL ?? "";
