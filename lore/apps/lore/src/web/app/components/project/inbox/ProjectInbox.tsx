@@ -224,7 +224,12 @@ const ProjectInbox = () => {
                 label=""
                 icon={Search}
                 placeholder={tr("inbox.filter.search")}
-                inputProps={{ "aria-label": tr("inbox.filter.search") }}
+                // ⚠️ A different key from the placeholder. Every filter bar
+                // says plain "Search" (#Q1750), which is thin for a screen
+                // reader on a page carrying several controls - so the
+                // accessible name keeps the fuller phrase the placeholder
+                // used to show.
+                inputProps={{ "aria-label": tr("inbox.filter.searchLabel") }}
               />
             </FilterSlot>
           ),
@@ -241,6 +246,19 @@ const ProjectInbox = () => {
           title: {
             label: tr("inbox.table.message"),
             sortable: true,
+            // The same pair the Quests and Releases tables use, and it needs
+            // both halves: the table is auto-layout, so `max-width: 0` is
+            // what stops this column claiming its content width and
+            // `width: 100%` is what makes it absorb whatever the others
+            // leave. Without the pair the column grows to fit the longest
+            // message and the ellipsis never fires.
+            //
+            // `min-w-48` is the floor. Once the other columns' intrinsic
+            // widths fill the container there is nothing for `width: 100%`
+            // to claim and `max-width: 0` collapses this to literally zero;
+            // min-width wins over max-width, so it stops there and the
+            // table's own `overflow-x-auto` takes over.
+            className: "w-full max-w-0 min-w-48",
             cell: (row) => (
               <span className="flex min-w-0 items-center gap-2">
                 {!row.readAt && (
