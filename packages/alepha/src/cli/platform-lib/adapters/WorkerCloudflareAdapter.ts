@@ -363,7 +363,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           // window `PlatformOrchestrator.up()`'s two-step ordering leaves open.
           // `putScript` turns each entry into a `secret_text` binding beside
           // the resource bindings above.
-          secrets: this.appSecrets,
+          secrets: this.secretsFor(ctx),
           migrations: config.migrations?.[0],
           observability: config.observability,
           placement: config.placement,
@@ -392,6 +392,27 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * config sets `rules: [{ type: "ESModule", globs: ["index.js", "server/*.js"] }]`,
    * so the upload set is a directory listing.
    */
+  /**
+   * The app's own variables, plus the one the copy's address implies.
+   *
+   * ⚠️ **Parity with `CloudflareAdapter`, which has derived `PUBLIC_URL` from
+   * the configured domain all along.** Without it, absolute links resolve to
+   * nothing at runtime - notification emails, OAuth callbacks and the sitemap
+   * all read it - so the same app deployed from a laptop and through Lore
+   * behaved differently in a way neither side announced.
+   *
+   * An explicit value always wins. On this path it is a variable the operator
+   * set on the copy, and a copy deployed behind a proxy or under a vanity host
+   * has to be able to say so.
+   */
+  protected secretsFor(ctx: PlatformContext): Record<string, string> {
+    const domain = ctx.envConfig.domain;
+    if (!domain || this.appSecrets.PUBLIC_URL) {
+      return this.appSecrets;
+    }
+    return { ...this.appSecrets, PUBLIC_URL: `https://${domain}` };
+  }
+
   /**
    * The name a module is uploaded under, from a path a config wrote relative.
    *

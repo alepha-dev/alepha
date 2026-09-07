@@ -258,4 +258,58 @@ describe("the worker-side Cloudflare adapter", () => {
       /names `nope.js` as its entry/,
     );
   });
+  describe("what the copy's address implies", () => {
+    /**
+     * ⚠️ `CloudflareAdapter` has derived `PUBLIC_URL` from the configured
+     * domain all along, and this adapter did not. Notification emails, OAuth
+     * callbacks and the sitemap all read it, so the same app deployed from a
+     * laptop and through Lore resolved absolute links differently, and neither
+     * side said so.
+     */
+    it("derives PUBLIC_URL from the domain the copy deploys to", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential).withSecrets({ OTHER: "kept" });
+      await deployable(fs, "./main.cloudflare.js");
+      const calls = recordingDeployer(adapter);
+
+      const ctx = context(naming);
+      ctx.envConfig.domain = "app.example.com";
+      await adapter.deploy(ctx, run);
+
+      expect(calls[0]!.secrets).toEqual({
+        OTHER: "kept",
+        PUBLIC_URL: "https://app.example.com",
+      });
+    });
+
+    it("keeps an explicit PUBLIC_URL, for a copy behind a proxy", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter
+        .use(credential)
+        .withSecrets({ PUBLIC_URL: "https://vanity.example" });
+      await deployable(fs, "./main.cloudflare.js");
+      const calls = recordingDeployer(adapter);
+
+      const ctx = context(naming);
+      ctx.envConfig.domain = "app.example.com";
+      await adapter.deploy(ctx, run);
+
+      expect(calls[0]!.secrets.PUBLIC_URL).toBe("https://vanity.example");
+    });
+
+    it("adds nothing when the copy has no domain", async ({ expect }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential).withSecrets({ OTHER: "kept" });
+      await deployable(fs, "./main.cloudflare.js");
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.secrets).toEqual({ OTHER: "kept" });
+    });
+  });
 });

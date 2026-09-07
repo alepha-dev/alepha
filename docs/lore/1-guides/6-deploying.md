@@ -80,6 +80,23 @@ Two families of name are refused, and the refusal says so:
   fresh deploy at somebody else's database.
 - Framework knobs the platform sets itself, like `LOG_LEVEL`.
 
+### Two you do not have to set
+
+A deploy fills these in when the copy has no value of its own, and an explicit
+value always wins:
+
+- **`APP_SECRET`** is minted on the first deploy that finds none, and stored
+  like any other variable. Every Alepha app refuses to boot in production
+  without it, and that refusal would otherwise land after the database and the
+  bucket are already created, as a 500 from a deploy that reported success.
+  ⚠️ It is minted **once** and read on every deploy after. Rotating it signs
+  out every session and makes anything the app sealed with it unreadable, so a
+  copy replacing an existing deployment should set its own before the first
+  deploy rather than take a new one.
+- **`PUBLIC_URL`** is derived from the copy's address, so absolute links in
+  emails, OAuth callbacks and the sitemap resolve. Set it yourself for a copy
+  answering on some other host, such as one behind a proxy.
+
 ## 5. Push a build
 
 Builds come from the machine holding the source, because Lore cannot run Vite.

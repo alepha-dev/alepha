@@ -303,6 +303,84 @@ describe("a deployed copy's environment", () => {
     });
   });
 
+  describe("the variable a deploy mints for itself", () => {
+    /**
+     * ⚠️ The refusal it exists to prevent lands AFTER D1 and R2 are
+     * provisioned and the migrations are applied, so a copy nobody set one on
+     * deployed "successfully" and then answered 500 from five layers away.
+     */
+    it("mints APP_SECRET for a copy that has none", async ({ expect }) => {
+      const w = await world();
+      const secrets = alepha.inject(AppSecretService);
+
+      expect(await secrets.open(w.instance.id)).toEqual({});
+      await secrets.ensureGenerated(w.instance.id);
+
+      const set = await secrets.open(w.instance.id);
+      expect(Object.keys(set)).toEqual(["APP_SECRET"]);
+      expect(set.APP_SECRET!.length).toBe(AppSecretService.GENERATED_LENGTH);
+    });
+
+    /**
+     * ⚠️ The property that makes it durable state rather than a derived value.
+     * Regenerating it signs out every session and makes anything the app
+     * sealed with it unreadable, so a second deploy must read the row rather
+     * than mint beside it.
+     */
+    it("mints once and never again", async ({ expect }) => {
+      const w = await world();
+      const secrets = alepha.inject(AppSecretService);
+
+      await secrets.ensureGenerated(w.instance.id);
+      const first = (await secrets.open(w.instance.id)).APP_SECRET;
+      await secrets.ensureGenerated(w.instance.id);
+      await secrets.ensureGenerated(w.instance.id);
+
+      expect((await secrets.open(w.instance.id)).APP_SECRET).toBe(first);
+      const rows = await alepha
+        .inject(TestRows)
+        .secrets.findMany({ where: { key: { eq: "APP_SECRET" } } });
+      expect(rows.length).toBe(1);
+    });
+
+    /**
+     * ⚠️ A copy replacing an existing deployment has to keep the value whose
+     * sessions and sealed data are already out there, so generation fills a
+     * gap rather than owning the name.
+     */
+    it("leaves an operator's own value alone", async ({ expect }) => {
+      const w = await world();
+      const secrets = alepha.inject(AppSecretService);
+      await set(w, "APP_SECRET", "the-one-already-in-production");
+
+      await secrets.ensureGenerated(w.instance.id);
+
+      expect((await secrets.open(w.instance.id)).APP_SECRET).toBe(
+        "the-one-already-in-production",
+      );
+    });
+
+    it("survives two deploys of one copy racing to mint it", async ({
+      expect,
+    }) => {
+      // ⚠️ Both find nothing and both insert; the unique index fails the
+      // loser, whose deploy must not die over a value the winner already
+      // stored correctly for both.
+      const w = await world();
+      const secrets = alepha.inject(AppSecretService);
+
+      await Promise.all([
+        secrets.ensureGenerated(w.instance.id),
+        secrets.ensureGenerated(w.instance.id),
+      ]);
+
+      const rows = await alepha
+        .inject(TestRows)
+        .secrets.findMany({ where: { key: { eq: "APP_SECRET" } } });
+      expect(rows.length).toBe(1);
+    });
+  });
+
   describe("removing one", () => {
     it("removes it, and 404s a name that was never there", async ({
       expect,
