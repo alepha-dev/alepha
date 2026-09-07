@@ -1053,6 +1053,46 @@ test.describe("Quest", () => {
     await page.goto(`/${projectSlug}/quests`);
     await openQuestForm();
 
+    /**
+     * Feedback #P2118: the Preview toggle floats over the corner the format
+     * toolbar reserves for it (`pr-10`), and the two used to disagree by 3px
+     * because they are different heights positioned from different origins.
+     *
+     * Asserted as an EQUALITY between the two centres, never as pixel
+     * coordinates: what must hold is that they share a row, and a font or a
+     * padding change moves both together.
+     */
+    await test.step("the Preview toggle sits level with the toolbar", async () => {
+      // ⚠️ The toolbar mounts only once CodeMirror hands back its view - it
+      // has no selection to act on before that - so the toggle is on screen
+      // for a moment while the row it must line up with is not.
+      await page.getByTestId("markdown-format-toolbar").first().waitFor();
+
+      const centres = await page.evaluate(() => {
+        const centre = (el: Element | null) => {
+          if (!el) return null;
+          const box = el.getBoundingClientRect();
+          return box.top + box.height / 2;
+        };
+        return {
+          toggle: centre(
+            document.querySelector('[data-testid="markdown-mode-toggle"]'),
+          ),
+          button: centre(
+            document.querySelector(
+              '[data-testid="markdown-format-toolbar"] button',
+            ),
+          ),
+        };
+      });
+
+      expect(centres.toggle).not.toBeNull();
+      expect(centres.button).not.toBeNull();
+      expect(Math.abs(centres.toggle! - centres.button!)).toBeLessThanOrEqual(
+        0.5,
+      );
+    });
+
     await test.step("Enter creates the typed area", async () => {
       await areaCombobox.click();
       await areaSearch.fill("Donjon");
