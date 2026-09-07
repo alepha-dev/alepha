@@ -78,7 +78,7 @@ describe("the Lore CLI command surface", () => {
         ]),
       ),
     ).toEqual({
-      apps: ["build"],
+      apps: ["build", "deploy"],
       artifacts: ["push"],
       attachments: ["push"],
       quality: ["push"],
@@ -134,6 +134,6 @@ describe("the Lore CLI command surface", () => {
         .testGetTopLevelCommands()
         .find((command) => command.name === "apps")
         ?.children.map((child) => child.name),
-    ).toEqual(["build"]);
+    ).toEqual(["build", "deploy"]);
   });
 });
