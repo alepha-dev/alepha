@@ -605,6 +605,9 @@ export default {
   "project.capability.work.option.reminder.label": "Rappels",
   "project.capability.work.option.reminder.description":
     "Relancer qui détient une quête restée silencieuse.",
+  "project.capability.work.option.agentPrompts.label": "Invites pour agents",
+  "project.capability.work.option.agentPrompts.description":
+    "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour Claude Code ou Codex ; rien n’est envoyé nulle part.",
   "project.capability.knowledge.label": "Écrire et conserver le savoir",
   "project.capability.knowledge.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
@@ -1856,15 +1859,48 @@ export default {
   "epic.progress.open": "$1 ouvertes",
   "epic.progress.shelved": "$1 en veille",
   "epic.action.delete": "Supprimer",
-  "epic.action.review": "Relire",
-  "epic.action.review.copied":
-    "Invite de relecture pour $1 copiée. Collez-la dans Claude Code ou Codex.",
-  "epic.action.review.error": "Impossible de copier l’invite de relecture.",
-  "epic.action.review.dialog.title": "Faire relire cette épopée par un agent",
-  "epic.action.review.dialog.description":
-    "Ajustez l’invite si besoin, puis copiez-la dans Claude Code ou Codex.",
-  "epic.action.review.dialog.label": "Invite de relecture",
-  "epic.action.review.dialog.copy": "Copier et fermer",
+  "agentPrompts.menu": "Invites pour agents",
+  "agentPrompts.review": "Relire",
+  "agentPrompts.activate": "Activer",
+  "agentPrompts.workOnIt": "S’en charger",
+  "agentPrompts.copied":
+    "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
+  "agentPrompts.settings.title": "Invites pour agents",
+  "agentPrompts.settings.description":
+    "Le texte que chaque entrée Invites pour agents place dans le presse-papiers. Les invites sont rédigées en anglais à dessein : leurs mots sont les noms des outils qu’un agent appelle.",
+  "agentPrompts.settings.legend": "Variables",
+  "agentPrompts.settings.placeholder.project":
+    "Le titre du projet, celui qu’un appel MCP compare.",
+  "agentPrompts.settings.placeholder.slug":
+    "Le slug du projet dans l’URL. Pas interchangeable avec le titre.",
+  "agentPrompts.settings.placeholder.number":
+    "Le numéro qu’un lecteur reconnaît : 41 pour l’épopée #E41.",
+  "agentPrompts.settings.placeholder.id":
+    "L’identifiant global, celui par lequel une liste de quêtes filtre une épopée.",
+  "agentPrompts.settings.placeholder.reference":
+    "La référence typée : #E41, #Q1798, #P2087.",
+  "agentPrompts.settings.placeholder.title": "Le titre du sujet lui-même.",
+  "agentPrompts.settings.placeholder.url": "Un lien vers celui-ci.",
+  "agentPrompts.settings.save": "Enregistrer",
+  "agentPrompts.settings.saved": "Invite enregistrée.",
+  "agentPrompts.settings.reset": "Rétablir par défaut",
+  "agentPrompts.settings.reset.title": "Rétablir cette invite ?",
+  "agentPrompts.settings.reset.description":
+    "Votre version est abandonnée et cette invite suit de nouveau celle fournie, améliorations futures comprises.",
+  "agentPrompts.settings.wasReset": "Invite rétablie par défaut.",
+  "agentPrompts.settings.epicReview.title": "Épopée : relire",
+  "agentPrompts.settings.epicReview.description":
+    "Proposée sur une épopée encore planifiée. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
+  "agentPrompts.settings.epicActivate.title": "Épopée : activer",
+  "agentPrompts.settings.epicActivate.description":
+    "Proposée sur une épopée planifiée ou active. Confie l’épopée entière, quête par quête.",
+  "agentPrompts.settings.questWork.title": "Quête : s’en charger",
+  "agentPrompts.settings.questWork.description":
+    "Proposée sur une quête non terminée. Une quête, une branche, un commit.",
+  "agentPrompts.settings.feedbackWork.title": "Retour : s’en charger",
+  "agentPrompts.settings.feedbackWork.description":
+    "Proposée sur un retour en attente ou accepté. Crée la quête, fait le travail, répond au rapporteur.",
+  "agentPrompts.copyError": "Impossible de copier l’invite.",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":
     'Ses quêtes et folios sont conservés, détachés de "$1". Cette action est irréversible.',

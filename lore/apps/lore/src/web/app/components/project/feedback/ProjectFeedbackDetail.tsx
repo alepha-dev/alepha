@@ -26,7 +26,10 @@ import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { hasCapability } from "../../../services/projectCapabilities.ts";
 import { attachmentPreview } from "../../shared/attachmentPreview.ts";
+import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import QuestCreate from "../quest/QuestCreate.tsx";
 import FeedbackThread from "./FeedbackThread.tsx";
 
@@ -41,6 +44,11 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [project] = useStore(currentProjectAtom);
   const [currentUser] = useStore(currentUserAtom);
+  const promptSubject = useAgentPromptSubject();
+  // Stated here rather than left to the route guard. The panel is a
+  // component and a spec can mount it directly, so a gate that only exists
+  // upstream is a gate this component does not have.
+  const supportEnabled = hasCapability(project, "support");
   const feedbackApi = useClient<FeedbackController>();
   const router = useRouter<AppRouter>();
   const toaster = useToast();
@@ -337,6 +345,29 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
 
       {feedback.status === "pending" && (
         <div className="border-border flex flex-wrap justify-end gap-2 border-t p-3">
+          {/* ⚠️ Leftmost, before Delete, so the primary verb stays on the
+              right where it is on every other footer here. Not on
+              `rejected`: the prompt's first step accepts the item.
+
+              Two capabilities, and this reads the second only to NARROW
+              what it offers. Support decides whether this panel exists at
+              all; the prompt ends in `quest_create`, which needs Work, so
+              Work's `agentPrompts` option decides whether the entry does.
+              A capability may read another's state to do less, never to do
+              more. */}
+          <AgentPromptsMenu
+            items={
+              supportEnabled
+                ? [
+                    {
+                      kind: "feedbackWork" as const,
+                      label: String(tr("agentPrompts.workOnIt")),
+                      subject: () => promptSubject.forFeedback(feedback),
+                    },
+                  ]
+                : []
+            }
+          />
           <Button variant="ghost" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
@@ -356,6 +387,29 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
 
       {feedback.status === "accepted" && (
         <div className="border-border flex flex-wrap justify-end gap-2 border-t p-3">
+          {/* ⚠️ Leftmost, before Delete, so the primary verb stays on the
+              right where it is on every other footer here. Not on
+              `rejected`: the prompt's first step accepts the item.
+
+              Two capabilities, and this reads the second only to NARROW
+              what it offers. Support decides whether this panel exists at
+              all; the prompt ends in `quest_create`, which needs Work, so
+              Work's `agentPrompts` option decides whether the entry does.
+              A capability may read another's state to do less, never to do
+              more. */}
+          <AgentPromptsMenu
+            items={
+              supportEnabled
+                ? [
+                    {
+                      kind: "feedbackWork" as const,
+                      label: String(tr("agentPrompts.workOnIt")),
+                      subject: () => promptSubject.forFeedback(feedback),
+                    },
+                  ]
+                : []
+            }
+          />
           <Button variant="ghost" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
