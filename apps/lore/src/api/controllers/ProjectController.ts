@@ -3,7 +3,7 @@ import { AuditService } from "alepha/api/audits";
 import { $storage, files } from "alepha/api/files";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
-import { $repository, db, pageQuerySchema } from "alepha/orm";
+import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
 import {
   $owns,
   $secure,
@@ -184,8 +184,27 @@ export class ProjectController {
     mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
   });
 
+  /**
+   * ⚠️ `$transactional()` is a best-effort net, not a guarantee.
+   *
+   * `Repository.transaction` degrades to running the callback in place when
+   * the driver says `supportsTransactions === false`, and
+   * `CloudflareD1Provider` says exactly that: D1 rejects BEGIN, COMMIT and
+   * ROLLBACK and offers only `batch()`. So on `lore.alepha.dev` this
+   * middleware opens nothing and rolls back nothing, while on the Node SQLite
+   * driver (which is what the specs and `yarn v` run) it is a real
+   * transaction.
+   *
+   * That is why the handler ALSO compensates by hand when the membership
+   * write fails: on D1 the compensating delete is the only thing standing
+   * between a crash here and a project whose creator can never open it.
+   *
+   * There is no gate on this action, so the ordering rule in
+   * {@link $ownsProject} - the gate goes after `$transactional()` - does not
+   * bite here.
+   */
   createProject = $action({
-    use: [$secure({ permissions: ["project:create"] })],
+    use: [$secure({ permissions: ["project:create"] }), $transactional()],
     schema: {
       body: projects.insertSchema.pick({ title: true, icon: true }).extend({
         /**
@@ -278,17 +297,39 @@ export class ProjectController {
         await this.projects.save(project);
       }
 
-      await this.members.create({
-        projectId: project.id,
-        userId: user.id,
-        owner: true,
-      });
+      // The one write whose failure must leave nothing behind. A project row
+      // whose creator holds no membership is a permanent lockout the moment
+      // the `createdBy` fallback goes away, and on D1 the transaction above is
+      // a no-op — so the compensation is written out rather than assumed.
+      try {
+        await this.members.create({
+          projectId: project.id,
+          userId: user.id,
+          owner: true,
+        });
+      } catch (error) {
+        // `deleteProject` and not a bare `deleteById`: it also frees the slug,
+        // which a soft-deleted row would otherwise hold hostage against the
+        // retry this rethrow is asking the caller to make.
+        await this.projectDeletion.deleteProject(project.id);
+        this.log.error(
+          "createProject: membership write failed, project rolled back by hand",
+          { projectId: project.id, userId: user.id, error },
+        );
+        throw error;
+      }
 
-      // ⚠️ The fourth and fifth writes of a create that is not
-      // `$transactional()`, so a failure here leaves a project with no
-      // capabilities rather than no project. Recoverable from Settings, which
-      // the two writes above it are not; wrapping the whole handler is wanted
-      // for a second reason by Ranks and belongs to whichever lands first.
+      // ⚠️ The fourth and fifth writes. Inside the transaction now, but their
+      // failure deliberately does NOT compensate: a project with no capability
+      // rows is repairable from Settings, and deleting a usable project to fix
+      // a recoverable state is the worse outcome. Only the membership row
+      // above triggers the rollback by hand.
+      //
+      // ⚠️ Ordering slot, for Ranks: preset rank seeding goes AFTER this loop,
+      // not after the membership row. A preset is a pure function of the
+      // ENABLED capability set, so seeding any earlier computes all three
+      // presets against a project that has no capabilities yet and every
+      // seeded rank comes out empty.
       const rows = [];
       for (const capability of capabilities) {
         rows.push(
