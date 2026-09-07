@@ -192,6 +192,24 @@ An implementation must consider **both axes**: a channel switched off
 entirely, and one category refused. "No email at all" and "no email about
 this" are different answers, and an unsubscribe link expresses the second.
 
+### The other seam of the same shape
+
+```typescript check
+import { NotificationInboxRecipientProvider } from "alepha/api/notifications";
+```
+
+`push({ contact })` hands **one string to every channel**, and the inbox
+channel needs a person rather than an address. This is how an app answers
+"who is this?" without the notifications module learning what a user is.
+
+The default returns null, so an app that has not implemented it declines
+rather than crashes. The contact arrives normalized, trimmed and lower-cased;
+normalize on the way in too, because the column you look it up against is
+probably not normalized either.
+
+An app that implements one of these two usually wants the other: this one
+answers who the contact is, the one above whether they accept the message.
+
 The gate runs at **send** time, never at push time: a suppression can land in
 between, and the send-time answer is the authoritative one. A refused send
 returns without throwing, so the job completes and no retry fights the gate.
@@ -214,14 +232,32 @@ mail must still work.
 
 ## 7. Delivery receipts
 
-Every send writes one receipt, on all three outcomes: `sent`, `skipped` (the
-gate refused it) and `failed` (the provider threw). Provider events then
-update it to `delivered`, `bounced`, `complained` and so on.
+Every send writes one receipt, on all three outcomes: `sent`, `skipped` and
+`failed` (the provider threw). Provider events then update it to `delivered`,
+`bounced`, `complained` and so on.
 
-**Two retention clocks.** The job outbox keeps `retentionDays` (7 by
+A `skipped` receipt carries a `skipReason`, and there are **three**:
+
+| `skipReason`  | who decided                                             |
+| ------------- | ------------------------------------------------------- |
+| `suppressed`  | the suppression list: bounced, complained, unsubscribed |
+| `declined`    | the app's preference provider                           |
+| `unavailable` | the **channel**, before anything was rendered           |
+
+The first two are the gate, which runs before the channel is asked anything.
+The third is the channel's own answer, and it exists because the alternative
+is worse: a channel handed a contact it cannot deliver to used to have no
+option but to throw from `render()`, which the sender calls **outside** its
+attempt wrapper - so it wrote no receipt at all and the job retried an address
+that would never resolve, burning every attempt down to a terminal failure.
+See {@link NotificationChannel.unavailable} in section 12.
+
+**Three retention clocks.** The job outbox keeps `retentionDays` (7 by
 default); receipts keep `receiptRetentionDays` (90), because a complaint can
-arrive weeks after the send. The admin detail view joins the outbox row when
-it still exists and renders correctly when it does not.
+arrive weeks after the send; and read inbox messages keep
+`inboxRetentionDays` (90), because a read message is one the reader has
+already dealt with. The admin detail view joins the outbox row when it still
+exists and renders correctly when it does not.
 
 `storeRenderedBody` is **off by default**: 90 days of full HTML for every
 notification is real bytes, and a fan-out over a roster multiplies it. The
@@ -360,11 +396,16 @@ machinery exists for.
 
 ## 12. Writing a channel
 
-`email` and `sms` are not special. Each is a `NotificationChannel` service
-registered in the notifications module, and a package outside the framework
-adds its own the same way. `@alepha/discord` is the worked example: it posts
-an ops message into a Discord room through an incoming webhook, and it is
-about two hundred lines.
+`email`, `sms` and `inbox` are not special. Each is a `NotificationChannel`
+service registered in the notifications module, and a package outside the
+framework adds its own the same way. `@alepha/discord` is the worked example:
+it posts an ops message into a Discord room through an incoming webhook, and
+it is about two hundred lines.
+
+The three built-ins are not a closed set and none of them takes a shortcut the
+contract does not offer: `inbox` in particular ships in the box and is written
+exactly the way the rest of this section describes, declaration merge
+included. Section 13 is what it does with that.
 
 A channel is **three** declarations, and missing one of them is the usual
 mistake.
@@ -465,7 +506,7 @@ The gate is skipped for a sink deliberately. A suppression row spelled
 `discord:alerts` would be indelible: nobody can click an unsubscribe link for
 a chatroom, so one stray bounce would silence an ops alert for good.
 
-### Two members that look optional and are not
+### Three members that look optional and are not
 
 `render()` must return a **`recipient`**. It is written straight into the
 delivery receipt's `contact` column, which is `NOT NULL`, and it is the whole
@@ -477,6 +518,33 @@ adapter. The default is the channel's own class name, which is right for a
 channel that IS its transport. `NotificationEmailChannel` overrides it so a
 receipt keeps saying `BrevoEmailProvider`; nothing asserts on that field by
 default, so getting it wrong degrades the audit trail silently.
+
+**`unavailable()`** is how a channel says it cannot deliver this message,
+before anything is rendered:
+
+```typescript
+public override async unavailable(payload: NotificationPayload) {
+  const user = await this.recipients.resolve(payload.contact ?? "");
+  return user ? undefined : { reason: "unresolved-recipient", recipient: payload.contact! };
+}
+```
+
+The sender consults it after the gate and before `render()`, for **every**
+channel including sinks - a sink can be misconfigured too. Returning a reason
+writes one `skipped` receipt with `skipReason: "unavailable"` and ends the job
+`ok`. The default is `undefined`, so a channel that never overrides it is
+unaffected.
+
+`recipient` comes back beside the reason because the receipt's `contact`
+column is `NOT NULL`, and a channel that cannot resolve a user still knows the
+string it was handed.
+
+> ⚠️ **The admin preview does not consult it.** `preview` calls the sender's
+> `render()` directly, with no gate, so previewing a message whose recipient
+> has since disappeared reaches a `render()` that resolves nobody, throws, and
+> is reported as `template-missing` when the template is fine. Deliberate: a
+> more precise label on a screen an operator reaches once a quarter is not
+> worth a schema change and a UI branch.
 
 ### Configuration belongs in an atom
 
@@ -508,6 +576,84 @@ provides, naming the template, the channel and the module to import. A plugin
 should add its own half in a `$hook({ on: "start" })`: that every destination
 exists, that at most one is flagged `default`, and that every `to` a template
 names is configured.
+
+## 13. The inbox channel
+
+The third built-in delivers to a **table** rather than to a transport: one row
+per message in `notification_inbox`, which a person reads, clicks and
+dismisses. It is `addressable`, so it keeps the whole gate.
+
+A template declares it beside its other channels:
+
+```typescript check
+import { z } from "alepha";
+import { $notification } from "alepha/api/notifications";
+
+class Templates {
+  readonly mentioned = $notification({
+    name: "app:mentioned",
+    category: "mentions",
+    schema: z.object({ who: z.text(), where: z.text(), project: z.text() }),
+    inbox: {
+      title: (v) => `${v.who} mentioned you`,
+      body: (v) => v.where,
+      href: (v) => `/quests/${v.where}`,
+      scope: (v) => `project:${v.project}`,
+      scopeLabel: () => "Alepha",
+    },
+  });
+}
+```
+
+`href` is required. A message that cannot be clicked makes the reader hunt for
+what it is about.
+
+### Two opaque strings, and why there are two
+
+`scope` is **app-owned**. The framework stores it, compares it for
+**equality**, and never parses it - the same discipline an opaque environment
+slug keeps. That is what lets one project-agnostic table serve a
+project-filtered URL without the module learning what a project is.
+
+`scopeLabel` is the price of that opacity: nothing downstream can turn
+`project:65` into a name. The framework must not parse it, and a shared UI
+component cannot resolve it either, because an inbox is cross-scope by
+nature. So the pusher writes the readable string too, and it is **frozen at
+send time** - a renamed project keeps the name it had when it pinged you.
+
+### Reading it back
+
+`NotificationInboxController` serves four actions behind a bare `$secure()`:
+`listInbox`, `countInbox`, `markInboxRead` and `markAllInboxRead`.
+
+There is **no user id in any of their signatures**. Every row is filtered by
+the session's own, which is what makes the surface safe to leave
+un-permissioned, and a row belonging to somebody else is a **404 rather than a
+403**, so the endpoint never confirms an id exists.
+
+Paging is an opaque cursor over `(createdAt, id)`, not an offset: the list is
+append-heavy, so an offset page shifts under the reader every time a message
+arrives. A malformed cursor is a 400, never a silent page one.
+
+### What an app owns
+
+Two things, and neither is optional.
+
+**Resolving the recipient.** Substitute `NotificationInboxRecipientProvider`
+(section 5). The default resolves nobody, so without it every inbox send is a
+`skipped` receipt.
+
+**Deleting an account's messages.** `notification_inbox.userId` is a bare
+uuid with **no foreign key** - this module imports nothing from
+`alepha/api/users`, so there is no table to point at and nothing cascades.
+Call `NotificationInboxService.deleteForUser(userId)` from the app's own
+`user:delete:before` handler, **after** whatever refusal that handler already
+performs: a separate handler can run first and empty the inbox of an account
+whose deletion is then refused.
+
+The hourly purge covers expiry, and only ever removes messages that have been
+**read**. An unread message is kept at any age: it waited for you, which is
+the feature.
 
 ## See also
 
