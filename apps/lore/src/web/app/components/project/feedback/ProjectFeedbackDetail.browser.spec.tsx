@@ -346,16 +346,31 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
   const trigger = () =>
     screen.queryByRole("button", { name: /agent prompts/i });
 
-  it("is offered on a pending report", async ({ expect }) => {
+  it("is offered on a pending report, last in the row", async ({ expect }) => {
     await mount(pendingFeedback);
     await waitFor(() => expect(trigger()).not.toBeNull());
-    // Leftmost, so the primary verb keeps the right-hand slot.
+
+    /*
+     * ⚠️ The row runs the other way now (feedback #P2150): ordered by
+     * importance left to right, with the weight falling off as it goes.
+     * The primary used to be last, which put it under the floating
+     * feedback bubble in the corner and clipped it.
+     */
     const footer = trigger()!.closest("div")!;
     const labels = [...footer.querySelectorAll("button")].map(
       (it) => it.textContent ?? "",
     );
-    expect(labels[0]).toContain("Agent Prompts");
-    expect(labels.join(" ")).toContain("Delete");
+    expect(labels[0]).toContain("Promote to Quest");
+    expect(labels[1]).toContain("Reject");
+    expect(labels[2]).toContain("Delete");
+
+    // Last, and icon-only - so its accessible name comes from `aria-label`
+    // and its text content is empty.
+    expect(labels[3]).toBe("");
+    expect(trigger()).toBe(footer.querySelectorAll("button")[3]);
+    // ⚠️ `title` as well, per #Q2017: an `aria-label` alone leaves a
+    // pointer user with an unlabelled glyph.
+    expect(trigger()!.getAttribute("title")).toBe("Agent Prompts");
   });
 
   it("is offered on an accepted report", async ({ expect }) => {
