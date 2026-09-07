@@ -37,6 +37,8 @@ export * from "./providers/MemorySecretStore.ts";
 export * from "./providers/SecretStoreProvider.ts";
 export * from "./schemas/cloudflare.ts";
 export * from "./schemas/platform.ts";
+export * from "./services/CloudflareAssetManifest.ts";
+export * from "./services/CloudflareDeployClient.ts";
 export * from "./services/NamingService.ts";
 export * from "./services/PlatformAdapterRegistry.ts";
 export * from "./services/PlatformInspector.ts";

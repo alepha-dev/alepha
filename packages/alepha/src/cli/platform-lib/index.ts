@@ -65,6 +65,8 @@ export * from "./providers/SecretStoreProvider.ts";
 export * from "./schemas/cloudflare.ts";
 export * from "./schemas/platform.ts";
 export * from "./services/CloudflareApi.ts";
+export * from "./services/CloudflareAssetManifest.ts";
+export * from "./services/CloudflareDeployClient.ts";
 export * from "./services/D1MigrationsService.ts";
 export * from "./services/NamingService.ts";
 export * from "./services/PlatformAdapterRegistry.ts";

@@ -40,6 +40,15 @@ ignores:
   - "react-is"
   - "@playwright/test"
   - "wrangler"
+  # wrangler's own BLAKE3 hasher, used as the ORACLE in
+  # `CloudflareAssetManifest.spec.ts`: the asset hash Cloudflare expects is
+  # undocumented, and a wrong one fails silently (every deploy re-uploads
+  # everything) rather than loudly. It cannot be a declared dependency at all -
+  # `yarn add blake3-wasm` fails because its own
+  # `@c4312/blake3-internal@2.1.7` has no candidates on the registry - so it is
+  # reached through wrangler's tree, which is already a devDependency here. If
+  # wrangler ever drops it the spec fails at import, which is the right noise.
+  - "blake3-wasm"
   - "vercel"
   # Every font is pulled by an `@import` in a `.css` file, which depcheck does
   # not read, so all of them look unused. Self-hosted rather than fetched from

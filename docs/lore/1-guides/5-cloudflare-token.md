@@ -89,6 +89,14 @@ token can be proven to have Edit without writing something. The check catches
 the token that has no access at all, which is the mistake people actually make;
 the wording asks for Edit because Edit is what a deploy needs.
 
+⚠️ **One thing the check cannot tell you: whether this account has a
+workers.dev subdomain.** A deploy asks for one when the app is published there,
+and an account that has never registered one answers an error that looks exactly
+like a missing permission. Probing it would refuse perfectly good tokens, so
+Lore does not, and the failure arrives at deploy time instead, naming the
+account rather than the token. Register a workers.dev subdomain in the
+Cloudflare dashboard, or deploy to a custom domain only.
+
 ## The account id
 
 On the dashboard's account overview page, in the right-hand column, labelled

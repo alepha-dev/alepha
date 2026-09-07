@@ -123,6 +123,27 @@ export class EstateCloudflareService {
    * `PUT /accounts/{id}/workers/domains` under "Workers Scripts: Edit": the
    * `workers` probe already proves it. Wildcard hosts go away when Alepha
    * Club goes mono-tenant after epic #1 (owner's ruling, 2026-09-06).
+   *
+   * ⚠️ **Verified against the deploy on 2026-09-07 (#1517), and unchanged.**
+   * The contract above says this table moves when the real calls are known;
+   * they are now, and they need nothing it does not already carry.
+   * `CloudflareDeployClient` makes seven calls, and all seven land inside two
+   * of these groups:
+   *
+   * | call | group |
+   * | --- | --- |
+   * | assets upload session | `workers` |
+   * | asset batch upload | `workers` |
+   * | `workers.scripts.update` | `workers` |
+   * | `workers.scripts.schedules.update` | `workers` |
+   * | `workers.domains.update` | `workers` |
+   * | `workers.scripts.subdomain.create` | `workers`, and see below |
+   * | `queues.consumers.create` | `queues` |
+   *
+   * `d1`, `kv` and `r2` are proved for provisioning rather than for the
+   * upload, which is why they stay. The subdomain call is the one whose
+   * failure a probe could not have predicted, so the guide now says what a
+   * deploy-time refusal from it means.
    */
   public static readonly PERMISSION_PROBES: readonly CloudflarePermissionProbe[] =
     [
