@@ -3,6 +3,7 @@ import { AlephaApiJobs } from "alepha/api/jobs";
 import { AlephaApiParameters } from "alepha/api/parameters";
 
 import { NotificationEmailChannel } from "./channels/NotificationEmailChannel.ts";
+import { NotificationInboxChannel } from "./channels/NotificationInboxChannel.ts";
 import { NotificationSmsChannel } from "./channels/NotificationSmsChannel.ts";
 import { AdminNotificationController } from "./controllers/AdminNotificationController.ts";
 import { NotificationUnsubscribeController } from "./controllers/NotificationUnsubscribeController.ts";
@@ -25,11 +26,13 @@ import { NotificationUnsubscribeService } from "./services/NotificationUnsubscri
 
 export * from "./channels/NotificationChannel.ts";
 export * from "./channels/NotificationEmailChannel.ts";
+export * from "./channels/NotificationInboxChannel.ts";
 export * from "./channels/NotificationSmsChannel.ts";
 export * from "./controllers/AdminNotificationController.ts";
 export * from "./controllers/NotificationUnsubscribeController.ts";
 export * from "./controllers/NotificationWebhookController.ts";
 export * from "./entities/notificationDeliveryEntity.ts";
+export * from "./entities/notificationInboxEntity.ts";
 export * from "./entities/notificationSuppressionEntity.ts";
 export * from "./jobs/NotificationJobs.ts";
 export * from "./primitives/$notification.ts";
@@ -39,6 +42,7 @@ export * from "./schemas/notificationAttachmentSchema.ts";
 export * from "./schemas/notificationContactPreferencesSchema.ts";
 export * from "./schemas/notificationDeliveryEventSchema.ts";
 export * from "./schemas/notificationDetailResourceSchema.ts";
+export * from "./schemas/notificationInboxResourceSchema.ts";
 export * from "./schemas/notificationPayloadSchema.ts";
 export * from "./schemas/notificationPreviewResourceSchema.ts";
 export * from "./schemas/notificationQuerySchema.ts";
@@ -55,6 +59,54 @@ export * from "./services/NotificationSuppressionService.ts";
 export * from "./services/NotificationUnsubscribeService.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+declare module "alepha/api/notifications" {
+  interface NotificationChannels<V> {
+    /**
+     * A message filed in the recipient's own inbox, in
+     * `notification_inbox`, rather than sent anywhere.
+     *
+     * Declared here by declaration merging rather than inline beside `email`
+     * and `sms`, because that is the mechanism a channel plugin uses and
+     * this module should not have a private road its own third channel takes
+     * and nobody else can.
+     */
+    inbox?: {
+      /**
+       * The one line the reader sees in the bell and in the list.
+       */
+      title: string | ((variables: V) => string | Promise<string>);
+      /**
+       * The optional second line. Plain text: a surface rendering it decides
+       * how, and the framework never promises markdown.
+       */
+      body?: string | ((variables: V) => string | Promise<string>);
+      /**
+       * Where clicking the message goes. Required: a message that cannot be
+       * clicked makes the reader hunt for what it is about.
+       */
+      href: string | ((variables: V) => string | Promise<string>);
+      /**
+       * The app-owned partition this message belongs to, e.g. `project:65`.
+       *
+       * Opaque to the framework, which stores it and compares it for
+       * equality and never parses it. That is what lets one table serve a
+       * scope-filtered view without the module learning what a project is.
+       */
+      scope?: string | ((variables: V) => string | Promise<string>);
+      /**
+       * What to call {@link scope} on screen, e.g. `Alepha`.
+       *
+       * Written by the pusher because nothing downstream can derive it: the
+       * framework must not parse `scope`, and a shared component cannot
+       * resolve it either, since an inbox is cross-scope by nature. Frozen at
+       * send time, so a renamed project keeps the name it had when it pinged
+       * you.
+       */
+      scopeLabel?: string | ((variables: V) => string | Promise<string>);
+    };
+  }
+}
 
 declare module "alepha" {
   interface Hooks {
@@ -104,6 +156,7 @@ export const AlephaApiNotifications = $module({
     // the framework's own templates.
     NotificationEmailChannel,
     NotificationSmsChannel,
+    NotificationInboxChannel,
     NotificationChannelService,
     NotificationSenderService,
     NotificationSettings,
