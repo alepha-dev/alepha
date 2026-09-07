@@ -1012,6 +1012,61 @@ test.describe("Folio workspace", () => {
     await page.keyboard.press("Enter");
   });
 
+  test("09g - right-clicking below the tree creates at the root", async () => {
+    // Feedback #P2134: `FolioTreeContextMenu` is mounted per ROW, so the
+    // empty area under the last one - the largest target in the pane - had
+    // only the browser's own menu on it.
+    const stampe = `${stamp}e`;
+    const folioTitle = `Rowmenu ${stampe}`;
+    await createFolio(folioTitle);
+    await page.goto(`/${projectSlug}/folios`);
+    const tree = page.locator('[data-slot="folio-tree"]');
+    await expect(tree).toBeVisible({ timeout: 15_000 });
+
+    // ⚠️ The half `FolioTree.browser.spec.tsx` cannot assert: that the
+    // filler is real space a pointer can land on. jsdom lays nothing out, so
+    // there the element's existence is the whole of what a case can see.
+    const area = tree.locator('[data-slot="folio-tree-root-area"]');
+    const box = await area.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThan(0);
+
+    await area.click({ button: "right" });
+    await expect(
+      page.getByRole("menuitem", { name: "New folio" }),
+    ).toBeVisible();
+    // Two items, and none of the row menu's own: Open, rename and delete are
+    // all questions about a row.
+    await expect(page.getByRole("menuitem", { name: "Rename" })).toHaveCount(0);
+    await page.getByRole("menuitem", { name: "New directory" }).click();
+
+    const renaming = tree.getByRole("textbox");
+    await expect(renaming).toBeVisible({ timeout: 15_000 });
+    const dirName = `Root ${stampe}`;
+    await renaming.fill(dirName);
+    await page.keyboard.press("Enter");
+
+    // ⚠️ At the ROOT, which is the word the report used. `aria-level` is
+    // depth + 1, so 1 is a child of nothing - the assertion a create that
+    // inherited the last selection would fail.
+    await expect(
+      tree.getByRole("treeitem").filter({ hasText: dirName }),
+    ).toHaveAttribute("aria-level", "1", { timeout: 15_000 });
+
+    // And the row menu still wins over a row, which is why the trigger is a
+    // sibling filler rather than a wrapper around the whole tree. Asserted
+    // on a FOLIO row: its menu is the only one that offers no create at all,
+    // so a second menu opening behind it would show here.
+    await tree
+      .getByRole("treeitem")
+      .filter({ hasText: folioTitle })
+      .click({ button: "right" });
+    await expect(page.getByRole("menuitem", { name: "Rename" })).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "New directory" }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+  });
+
   test("09d - /folios?dir=<shortId> opens the tree at that directory", async () => {
     // The breadcrumb's directory segments and the tree's own Open / Open in
     // new tab both build this link. Nothing read the parameter, so both
