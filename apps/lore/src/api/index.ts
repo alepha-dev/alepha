@@ -106,6 +106,7 @@ import { QuestService } from "./services/QuestService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
+import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
@@ -207,6 +208,7 @@ export const LoreApi = $module({
     DeployRegistry,
     DeployRunner,
     DeployService,
+    RollbackService,
     DeployJobs,
     DeployController,
     ProjectLimits,

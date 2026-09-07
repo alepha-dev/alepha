@@ -19,6 +19,7 @@ describe("the Cloudflare deploy client", () => {
   const fake = (
     session: { jwt?: string; buckets?: string[][] } = {},
     uploadJwts: Array<string | undefined> = [],
+    versions: Array<{ id: string; created_on?: string }> = [],
   ) => {
     const calls: Array<{ name: string; args: unknown[] }> = [];
     const record =
@@ -37,6 +38,12 @@ describe("the Cloudflare deploy client", () => {
             upload: { create: record("assets.session", session) as never },
           },
           schedules: { update: record("schedules.update") as never },
+          versions: {
+            list: record("versions.list", { result: versions }) as never,
+          },
+          deployments: {
+            create: record("deployments.create") as never,
+          },
           subdomain: { create: record("subdomain.create") as never },
         },
         assets: {
@@ -338,6 +345,56 @@ describe("the Cloudflare deploy client", () => {
         type: "worker",
         script_name: "my-app-staging",
       });
+    });
+  });
+  describe("rolling back", () => {
+    it("lists the versions Cloudflare still holds", async ({ expect }) => {
+      // ⚠️ What decouples rollback from retention: without it, `latest`-only
+      // retention would leave nothing to roll back to and the fast path would
+      // need a keep-N policy plus a GC job.
+      const { client, of } = fake(
+        {},
+        [],
+        [
+          { id: "v2", created_on: "2026-09-07T10:00:00Z" },
+          { id: "v1", created_on: "2026-09-06T10:00:00Z" },
+        ],
+      );
+
+      const versions = await client.listVersions("my-app-staging");
+
+      expect(versions.map((it) => it.id)).toEqual(["v2", "v1"]);
+      expect(of("versions.list")[0].args[1]).toMatchObject({
+        account_id: "estate-account",
+      });
+    });
+
+    it("points the whole deployment at one version", async ({ expect }) => {
+      const { client, of } = fake();
+
+      await client.rollbackTo("my-app-staging", "v1", "rolled back by Lore");
+
+      expect(of("deployments.create")[0].args[1]).toMatchObject({
+        strategy: "percentage",
+        versions: [{ version_id: "v1", percentage: 100 }],
+        annotations: { "workers/message": "rolled back by Lore" },
+      });
+    });
+
+    it("does not force past a boundary Cloudflare refuses", async ({
+      expect,
+    }) => {
+      // Cloudflare blocks a rollback across a change it considers unsafe - a
+      // secret that has since changed, a Durable Object migration a version
+      // cannot be rolled past. Forcing past that is an operator's decision with
+      // a warning in front of them, not this method's default.
+      const { client, of } = fake();
+
+      await client.rollbackTo("my-app-staging", "v1");
+
+      expect("force" in (of("deployments.create")[0].args[1] as object)).toBe(
+        false,
+      );
     });
   });
 });

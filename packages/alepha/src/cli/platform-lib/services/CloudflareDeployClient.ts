@@ -410,6 +410,49 @@ export class CloudflareDeployClient {
   }
 
   /**
+   * Every version Cloudflare still holds for this Worker, newest first.
+   *
+   * ⚠️ **This is what decouples rollback from retention.** Without it,
+   * `latest`-only retention would leave nothing to roll back to, and the
+   * epic's fast rollback would force a keep-N policy plus a GC job plus a pin
+   * on whatever is live. With it, retention stays "one row, one object".
+   */
+  public async listVersions(
+    scriptName: string,
+  ): Promise<Array<{ id: string; created_on?: string }>> {
+    const answer = await this.client.workers.scripts.versions.list(scriptName, {
+      account_id: this.accountId,
+    });
+    return answer.result ?? [];
+  }
+
+  /**
+   * Point the Worker's live deployment at one version, wholly.
+   *
+   * ⚠️ **Seconds, with no artifact and no upload**, which is the whole reason
+   * this path exists beside an artifact rollback. Cloudflare keeps every
+   * uploaded version server-side, so the bytes are already there.
+   *
+   * ⚠️ `force` is deliberately NOT passed. Cloudflare blocks a rollback across
+   * a change it considers unsafe - a secret that has since changed, a Durable
+   * Object migration a version cannot be rolled past - and forcing past that is
+   * a decision an operator makes with a warning in front of them, not a default
+   * this method takes on their behalf.
+   */
+  public async rollbackTo(
+    scriptName: string,
+    versionId: string,
+    message?: string,
+  ): Promise<void> {
+    await this.client.workers.scripts.deployments.create(scriptName, {
+      account_id: this.accountId,
+      strategy: "percentage",
+      versions: [{ version_id: versionId, percentage: 100 }],
+      annotations: message ? { "workers/message": message } : undefined,
+    });
+  }
+
+  /**
    * Split the hashes Cloudflare asked for into requests this isolate can hold.
    *
    * The size is read from the manifest we already sent rather than from the
@@ -474,6 +517,23 @@ export interface CloudflareDeployApi {
         update: (
           name: string,
           params: { account_id: string; body: Array<{ cron: string }> },
+        ) => Promise<unknown>;
+      };
+      versions: {
+        list: (
+          name: string,
+          params: { account_id: string },
+        ) => Promise<{ result?: Array<{ id: string; created_on?: string }> }>;
+      };
+      deployments: {
+        create: (
+          name: string,
+          params: {
+            account_id: string;
+            strategy: "percentage";
+            versions: Array<{ version_id: string; percentage: number }>;
+            annotations?: Record<string, string>;
+          },
         ) => Promise<unknown>;
       };
       subdomain: {

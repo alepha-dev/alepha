@@ -1,5 +1,6 @@
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
+import { CloudflareDeployClient } from "alepha/cli/platform-lib";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -20,6 +21,7 @@ import { DeployJobs } from "../src/api/jobs/DeployJobs.ts";
 import { DeployGate } from "../src/api/services/DeployGate.ts";
 import { DeployRegistry } from "../src/api/services/DeployRegistry.ts";
 import { DeployService } from "../src/api/services/DeployService.ts";
+import { RollbackService } from "../src/api/services/RollbackService.ts";
 
 /**
  * The row a deploy is followed through, and the run that writes it.
@@ -747,5 +749,180 @@ describe("the deploy gate", () => {
         .inject(DeployGate)
         .assert((await rows.instances.findById(instance.id)) as never),
     ).rejects.toThrowError(/usable Cloudflare credential/);
+  });
+});
+
+/**
+ * Rolling back, and the two paths it has.
+ *
+ * ⚠️ The fast one does not touch the artifact registry at all: Cloudflare keeps
+ * every uploaded version, so pointing at an older one is seconds. That is what
+ * decouples rollback from retention - without it, `latest`-only retention would
+ * leave nothing to roll back to.
+ */
+describe("rolling back", () => {
+  let alepha: Alepha;
+
+  beforeEach(async () => {
+    alepha = await setup();
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  const world = async (
+    estate: Record<string, unknown>,
+    row: Record<string, unknown> = {},
+  ) => {
+    const rows = alepha.inject(TestRows);
+    const owner = await aUser(alepha);
+    const project = await aProject(alepha, owner);
+    await enableApps(alepha, project.id, owner);
+    const instance = await anInstance(alepha, project.id, owner);
+    const created = await rows.estates.create({
+      ownerUserId: owner.id,
+      deployAllowed: true,
+      ...estate,
+    } as never);
+    await rows.grants.create({
+      estateId: created.id,
+      projectId: project.id,
+    } as never);
+    await rows.instances.updateById(instance.id, { estateId: created.id });
+    const deployment = await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: "my-app",
+      tag: "1.2.3",
+      sha256: "e".repeat(64),
+      status: "succeeded",
+      ...row,
+    } as never);
+    return { project, instance, deployment, rows };
+  };
+
+  it("never offers the fast path for a Bay estate", async ({ expect }) => {
+    // ⚠️ A Bay machine has NO version history. Unavailable in the plan rather
+    // than disabled in the UI, so no caller reaches it by asking directly.
+    const { project, deployment } = await world(
+      { slug: "vps", type: "bay" },
+      { versionId: "v1" },
+    );
+
+    const plan = await alepha
+      .inject(RollbackService)
+      .plan(project.id, deployment.id);
+
+    expect(plan.path).toBe("artifact");
+    expect(plan.reason).toMatch(/keeps no version history/);
+  });
+
+  it("falls back when the run recorded no version", async ({ expect }) => {
+    const { project, deployment } = await world({
+      slug: "zug",
+      type: "cloudflare",
+      accountId: "acct",
+      credential: "sealed",
+    });
+
+    const plan = await alepha
+      .inject(RollbackService)
+      .plan(project.id, deployment.id);
+
+    expect(plan.path).toBe("artifact");
+    expect(plan.reason).toMatch(/recorded no Cloudflare version/);
+  });
+
+  it("falls back when Cloudflare no longer holds the version", async ({
+    expect,
+  }) => {
+    // ⚠️ Asked of Cloudflare rather than assumed from the row: a version can be
+    // gone, and offering a fast rollback onto one that is not there fails after
+    // the operator has already confirmed.
+    const { project, deployment } = await world(
+      {
+        slug: "zug",
+        type: "cloudflare",
+        accountId: "acct",
+        credential: "sealed",
+      },
+      { versionId: "v-gone" },
+    );
+    const service = alepha.inject(RollbackService);
+    Object.assign(service as unknown as Record<string, unknown>, {
+      seal: { open: () => "token" },
+    });
+    // The client is constructed per call, so the seam is the listing itself.
+    const original = CloudflareDeployClient.prototype.listVersions;
+    CloudflareDeployClient.prototype.listVersions = async () => [
+      { id: "v-other" },
+    ];
+    try {
+      const plan = await service.plan(project.id, deployment.id);
+      expect(plan.path).toBe("artifact");
+      expect(plan.reason).toMatch(/no longer holds that version/);
+    } finally {
+      CloudflareDeployClient.prototype.listVersions = original;
+    }
+  });
+
+  it("refuses to roll past migrations without an acknowledgement", async ({
+    expect,
+  }) => {
+    // ⚠️ Rollback is code-only. Old code against a new schema is the failure,
+    // and the version path invites clicking precisely because it is cheap - so
+    // the acknowledgement is REQUIRED rather than displayed.
+    const { project, instance, deployment, rows } = await world(
+      {
+        slug: "zug",
+        type: "cloudflare",
+        accountId: "acct",
+        credential: "sealed",
+      },
+      { versionId: "v1" },
+    );
+    // A later run against the same copy, with different bytes.
+    await rows.deployments.create({
+      projectId: project.id,
+      instanceId: instance.id,
+      app: "my-app",
+      tag: "1.2.4",
+      sha256: "f".repeat(64),
+      status: "succeeded",
+      versionId: "v2",
+    } as never);
+
+    const service = alepha.inject(RollbackService);
+    Object.assign(service as unknown as Record<string, unknown>, {
+      seal: { open: () => "token" },
+    });
+    const original = CloudflareDeployClient.prototype.listVersions;
+    CloudflareDeployClient.prototype.listVersions = async () => [
+      { id: "v1" },
+      { id: "v2" },
+    ];
+    try {
+      const plan = await service.plan(project.id, deployment.id);
+      expect(plan.path).toBe("version");
+      expect(plan.migrationsSince).toBe(1);
+
+      await expect(
+        service.rollback(project.id, deployment.id),
+      ).rejects.toThrowError(/migration\(s\) have been applied/);
+    } finally {
+      CloudflareDeployClient.prototype.listVersions = original;
+    }
+  });
+
+  it("refuses a run that did not succeed", async ({ expect }) => {
+    const { project, deployment } = await world(
+      { slug: "zug", type: "cloudflare", accountId: "a", credential: "c" },
+      { status: "failed" },
+    );
+
+    await expect(
+      alepha.inject(RollbackService).plan(project.id, deployment.id),
+    ).rejects.toThrowError(/nothing to roll back to/);
   });
 });
