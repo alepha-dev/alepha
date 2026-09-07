@@ -14,7 +14,6 @@ import { currentBlightCountAtom } from "../../atoms/currentBlightCountAtom.ts";
 import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
-import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
 import { currentInstanceAtom } from "../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -66,7 +65,6 @@ const ProjectView = () => {
   const [questCount] = useStore(currentQuestCountAtom);
   const [feedbackCount] = useStore(currentFeedbackCountAtom);
   const [blightCount] = useStore(currentBlightCountAtom);
-  const [folioPath] = useStore(currentFolioPathAtom);
   const [instances] = useStore(currentInstancesAtom);
   const [instance] = useStore(currentInstanceAtom);
   const [epic] = useStore(currentEpicAtom);
@@ -267,18 +265,30 @@ const ProjectView = () => {
   if (name === "projectRelease" && routerState.params.releaseTag) {
     breadcrumbs.push({ label: String(routerState.params.releaseTag) });
   }
-  // Folio routes contribute their directory chain (and the folio
-  // title leaf) via `currentFolioPathAtom`, written by the folio loaders.
-  if (name.startsWith("projectFolios") && folioPath.length > 0) {
-    for (const segment of folioPath) {
-      breadcrumbs.push({
-        label: segment.name,
-        href:
-          segment.shortId !== undefined
-            ? `${router.path("projectFolios", { params: { projectSlug } })}?dir=${segment.shortId}`
-            : undefined,
-      });
-    }
+  // And the folio DETAIL page contributes `#F12`, the same shape as the epic
+  // and quest leaves above and for the same reason (feedback #P2137): the
+  // title heads the document immediately under this bar, and it used to be
+  // spelled out here after every directory it sits in - "Odzala › Folios ›
+  // context › Congo-Brazzaville: country, buyer and timing", which is a bar
+  // made of one title.
+  //
+  // Read from the route params like the release tag, not from
+  // `currentFolioPathAtom`: the URL already carries the number, so this leaf
+  // cannot lag a loader.
+  //
+  // ⚠️ The directory chain is DROPPED, and that is a real capability going
+  // rather than only noise: its segments carried `?dir=<shortId>`, so the bar
+  // was one way back up the tree. The tree pane beside the document is the
+  // other, and it is the one the workspace calls its navigation.
+  //
+  // It took `currentFolioPathAtom` with it. The listing route wrote `[]` into
+  // that atom deliberately - `/folios` reads just "Folios" - so this leaf was
+  // its only consumer, and an atom nothing reads is a loader write and a
+  // subscription for nothing.
+  if (name === "projectFoliosFolio" && routerState.params.shortId) {
+    breadcrumbs.push({
+      label: formatReference("folio", Number(routerState.params.shortId)),
+    });
   }
 
   return (
