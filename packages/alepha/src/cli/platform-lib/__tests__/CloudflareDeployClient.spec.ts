@@ -479,4 +479,62 @@ describe("the Cloudflare deploy client", () => {
       );
     });
   });
+  describe("the version a deploy can roll back to", () => {
+    /**
+     * ⚠️ `PUT /workers/scripts/{name}` answers `{ startup_time_ms, id }` where
+     * `id` is the SCRIPT NAME. There is no `version_id` in that shape, so
+     * reading `version_id ?? id` stored `my-app-staging` as the version of
+     * every successful deploy - which `RollbackService` compares against the
+     * real version list, never matches, and silently falls back to redeploying
+     * the artifact. Fast rollback could not work and nothing said so.
+     */
+    it("reads the version back rather than trusting the upload response", async ({
+      expect,
+    }) => {
+      const { client } = fake(
+        {},
+        [],
+        [
+          { id: "v-new", created_on: "2026-09-07T10:00:00Z" },
+          { id: "v-old", created_on: "2026-09-01T10:00:00Z" },
+        ],
+      );
+
+      expect(await client.putScript(plan() as never)).toBe("v-new");
+    });
+
+    it("takes the newest, not the first the API happened to list", async ({
+      expect,
+    }) => {
+      const { client } = fake(
+        {},
+        [],
+        [
+          { id: "v-old", created_on: "2026-09-01T10:00:00Z" },
+          { id: "v-new", created_on: "2026-09-07T10:00:00Z" },
+        ],
+      );
+
+      expect(await client.putScript(plan() as never)).toBe("v-new");
+    });
+
+    /**
+     * ⚠️ The script is already live by the time this read runs. Throwing away
+     * a Worker that deployed fine because a bookkeeping call failed would be
+     * far worse than losing the fast path: `undefined` already means "this run
+     * cannot be rolled back to".
+     */
+    it("answers undefined rather than failing a deploy that already shipped", async ({
+      expect,
+    }) => {
+      const { client } = fake();
+      Object.assign(client as unknown as Record<string, unknown>, {
+        listVersions: async () => {
+          throw new Error("Cloudflare timed out");
+        },
+      });
+
+      expect(await client.putScript(plan() as never)).toBeUndefined();
+    });
+  });
 });
