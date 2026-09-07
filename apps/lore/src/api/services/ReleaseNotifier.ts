@@ -86,8 +86,9 @@ export class ReleaseNotifier {
           // the field is explicit only, because a fan-out is usually a cron
           // with no request to read one from. There is no per-user language
           // to read either, so everybody gets the app default and that is a
-          // known limitation rather than an oversight.
-          lang: "en",
+          // known limitation rather than an oversight. One constant, in
+          // `LoreInboxNotifications.lang`.
+          lang: this.templates.lang,
         })),
         // ⚠️ The release id is in the key, not just the contact. A key is
         // concurrency dedup and not idempotence over time - the job layer

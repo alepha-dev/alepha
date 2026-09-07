@@ -34,6 +34,23 @@ export class LoreInboxNotifications {
   protected readonly html = $inject(NotificationHtmlEscaper);
 
   /**
+   * The language every push in this epic sends in.
+   *
+   * ⚠️ **Explicit, and one constant rather than a literal per call site.**
+   * `$notification` resolves the language from the CURRENT REQUEST, which
+   * belongs to whoever triggered the message: a French author pinging an
+   * English colleague would mail them French, unpredictably, per message.
+   * `pushMany` has no fallback at all - its per-contact `lang` is documented
+   * as explicit only.
+   *
+   * And there is nothing better to read: `users` carries no `language`
+   * column, and Lore's language lives in a cookie in the reader's browser.
+   * Adding that column is a real feature with a settings surface and a
+   * backfill, and this is the one place that changes the day it lands.
+   */
+  public readonly lang = "en";
+
+  /**
    * Somebody wrote your name in a comment.
    *
    * `reference` is built by the caller through `formatReference`, never by
