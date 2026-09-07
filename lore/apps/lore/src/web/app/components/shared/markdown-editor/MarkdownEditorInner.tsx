@@ -6,6 +6,7 @@ import type { WikiLinkSuggestion } from "../../folios/editor/wikilink/wikiLinkSu
 import CodeMirrorEditor from "./CodeMirrorEditor.tsx";
 import MarkdownFormatToolbar from "./MarkdownFormatToolbar.tsx";
 import MarkdownSelectionToolbar from "./MarkdownSelectionToolbar.tsx";
+import MarkdownToolbarBand from "./MarkdownToolbarBand.tsx";
 import { createMentionCompletion } from "./mentionCompletion.ts";
 import { createWikiLinkCompletion } from "./wikiLinkCompletion.ts";
 
@@ -155,9 +156,17 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
             consumer of this component need an i18n provider it does not
             otherwise require. */}
         {view && <MarkdownSelectionToolbar view={view} />}
-        {view && props.formatToolbar && (
-          <MarkdownFormatToolbar view={view} flush={!bare} />
-        )}
+        {/* ⚠️ The band before the buttons. `onViewReady` fires in an effect,
+            so there is at least one paint with no editor yet - and without
+            the fallback the strip's height would arrive one frame late,
+            which is the same jump feedback #P2147 is about, just smaller
+            and only on mount. */}
+        {props.formatToolbar &&
+          (view ? (
+            <MarkdownFormatToolbar view={view} flush={!bare} />
+          ) : (
+            <MarkdownToolbarBand flush={!bare} />
+          ))}
         <CodeMirrorEditor
           value={props.value}
           onChange={props.onChange}
@@ -194,6 +203,17 @@ const MarkdownEditorInner = (props: MarkdownEditorInnerProps) => {
       className={`lore-md-view min-w-0 ${frame}`.trim()}
       style={props.minHeight ? { minHeight: props.minHeight } : undefined}
     >
+      {/* ⚠️ The same band, empty (feedback #P2147). Without it the strip's
+          height left the layout on every Preview, and everything below slid
+          up - on a form, the button a reader was about to press moved under
+          their pointer. The formatting buttons do not come with it: they
+          act on a CodeMirror selection, and there is none over rendered
+          output.
+
+          Gated on `formatToolbar` for the same reason the edit branch is: a
+          consumer that never had a band must not gain an empty one. */}
+
+      {props.formatToolbar && <MarkdownToolbarBand flush={!bare} />}
       <MarkdownView content={props.viewContent ?? props.value} />
     </div>
   );
