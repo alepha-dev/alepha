@@ -15,6 +15,15 @@ import {
 export interface CapabilitySwitch {
   enabled: boolean;
   toggle: (value: boolean) => Promise<void>;
+  /**
+   * Whether the viewer may move this switch at all.
+   *
+   * ⚠️ Disabled rather than hidden, and this is the exception the rule allows:
+   * a capability settings page with its switch removed is a page that says
+   * nothing at all. The reader sees the state and cannot change it, which is
+   * the honest rendering of `capability:manage` being owner-only.
+   */
+  canToggle: boolean;
 }
 
 /**
@@ -33,10 +42,12 @@ export interface CapabilitySwitch {
  */
 export const useCapabilityToggle = (key: CapabilityKey): CapabilitySwitch => {
   const write = useCapabilityWrite();
+  const can = useCapabilityCan();
   const [project] = useStore(currentProjectAtom);
   const [pending, setPending] = useState<boolean | undefined>(undefined);
 
   return {
+    canToggle: can,
     enabled: pending ?? hasCapability(project, key),
     toggle: async (value) => {
       setPending(value);
@@ -74,10 +85,12 @@ export const useCapabilityOption = (
   option: string,
 ): CapabilitySwitch => {
   const write = useCapabilityWrite();
+  const can = useCapabilityCan();
   const [project] = useStore(currentProjectAtom);
   const [pending, setPending] = useState<boolean | undefined>(undefined);
 
   return {
+    canToggle: can,
     enabled: pending ?? capabilityOption(project, key, option),
     toggle: async (value) => {
       setPending(value);
@@ -149,3 +162,15 @@ const useCapabilityWrite = () => {
     }
   };
 };
+
+/**
+ * May the viewer move a capability switch?
+ *
+ * ⚠️ `capability:manage` is owner-only STRUCTURALLY: turning a capability ON
+ * widens every rank's effective set at once, the actor's own included, and the
+ * subset rule does not catch it because a switch is not a grant. Read off the
+ * ACTION, so this repeats no permission string - the requirement travels from
+ * `$ownsProject({ requires })` through the registry to `can()`.
+ */
+const useCapabilityCan = (): boolean =>
+  useClient<ProjectCapabilityController>().setCapability.can();

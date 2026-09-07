@@ -61,7 +61,7 @@ export const useInviteMember = (): InviteMember => {
     }
   };
 
-  return { invite, loading };
+  return { invite, loading, can: invitationApi.createInvitation.can() };
 };
 
 export interface InviteMember {
@@ -72,4 +72,11 @@ export interface InviteMember {
    */
   invite: (projectId: number, email: string) => Promise<boolean>;
   loading: boolean;
+  /**
+   * Whether this reader's rank may invite at all. Returned beside the verb
+   * rather than asked separately by each caller, so the two entry points
+   * cannot disagree about who is offered the control - which is the same
+   * duplication this hook exists to end.
+   */
+  can: boolean;
 }

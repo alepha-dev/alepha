@@ -350,7 +350,9 @@ const ProjectRelease = () => {
           error={changelogError}
           onCopy={() => void handleCopy()}
           onDownload={handleDownload}
-          onSaveToFolio={() => setFolioOpen(true)}
+          onSaveToFolio={
+            folioApi.create.can() ? () => setFolioOpen(true) : undefined
+          }
         />
       ) : (
         <>

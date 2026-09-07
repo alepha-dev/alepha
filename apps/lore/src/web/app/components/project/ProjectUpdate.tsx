@@ -57,6 +57,7 @@ const LANGUAGE_OPTIONS: Array<{ value: string; label: string }> = [
 
 const ProjectUpdate = (props: ProjectUpdateProps) => {
   const projectApi = useClient<ProjectController>();
+  const canUpdate = projectApi.updateProjectById.can();
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
@@ -196,6 +197,12 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
     <AutoForm
       form={form}
       layout="row"
+      // ⚠️ Disabled rather than hidden, and this is the exception the epic's
+      // rule allows: a settings form with its fields removed is a page that
+      // says nothing. The reader sees the project's identity and cannot
+      // change it, which is the honest rendering of a rank without
+      // `project:update`.
+      disabled={!canUpdate}
       disabledIfPristine
       // Only Name is required, and a project without one is not a thing you
       // could have meant. The asterisk singles out the field nobody was going

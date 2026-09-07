@@ -45,6 +45,10 @@ const EpicReleaseControl = (props: EpicReleaseControlProps) => {
   const [releases] = useStore(currentReleasesAtom);
   const [submitting, setSubmitting] = useState(false);
 
+  // Picking a row IS the write, so a rank that cannot update an epic gets no
+  // control at all rather than a select that refuses on change.
+  const canAttach = epicApi.updateEpic.can();
+
   const current = releases?.find((r) => r.id === props.epic.releaseId);
   const options = (releases ?? []).filter(
     (r) => !r.releasedAt || r.id === props.epic.releaseId,
@@ -82,6 +86,8 @@ const EpicReleaseControl = (props: EpicReleaseControlProps) => {
     handler: async () => {},
     onChange: (_key, value) => void change(value as number | undefined),
   });
+
+  if (!canAttach) return null;
 
   return (
     <Control

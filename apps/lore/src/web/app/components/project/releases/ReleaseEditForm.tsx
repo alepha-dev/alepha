@@ -220,7 +220,7 @@ const ReleaseEditForm = (props: ReleaseEditFormProps) => {
         >
           {tr("common.cancel")}
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" disabled={submitting || !api.updateRelease.can()}>
           <Save className="size-4" />
           {tr("release.detail.save")}
         </Button>

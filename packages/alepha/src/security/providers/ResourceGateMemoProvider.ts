@@ -68,6 +68,33 @@ export class ResourceGateMemoProvider {
   });
 
   /**
+   * The key `$owns` stores a membership row under.
+   *
+   * Public, and the only reason it is a method rather than a template literal
+   * inside the guard: an **imperative** membership read - a resolver keyed on
+   * a slug, a closure handed to another module, a file route deciding per
+   * bucket - reads the same row for the same request, and without a shared key
+   * the two cannot meet. On MCP that is not a micro-optimisation: a tool call
+   * is one operation per HTTP request, so there is no sibling to amortize the
+   * duplicate against and it is paid in full on every call.
+   *
+   * Keyed on the columns as well as the values: two gates may join the same
+   * table on different pairs, and the caller's id belongs in the key even
+   * though a request has one - an impersonating or service-account path that
+   * ever ran two identities in one request would otherwise answer the second
+   * with the first one's row.
+   */
+  public static membershipKey(input: {
+    table: string;
+    resourceColumn: string;
+    resourceId: unknown;
+    userColumn: string;
+    userId: string;
+  }): string {
+    return `via:${input.table}:${input.resourceColumn}=${String(input.resourceId)}:${input.userColumn}=${input.userId}`;
+  }
+
+  /**
    * Run `load` once per `key` for the lifetime of the current request.
    *
    * Falls straight through to `load` when there is no request layer to hang a

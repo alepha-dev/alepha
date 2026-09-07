@@ -8,6 +8,8 @@ import { LinkProvider } from "alepha/server/links";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 
+import { virtualClientFake } from "@/testing/virtualClientFake.ts";
+
 import { useInviteMember } from "./useInviteMember.ts";
 
 /**
@@ -21,7 +23,7 @@ class FakeLinkProvider extends LinkProvider {
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
-    return {
+    return virtualClientFake({
       createInvitation: async (config: {
         body: { email: string; resourceId: string };
       }) => {
@@ -29,7 +31,7 @@ class FakeLinkProvider extends LinkProvider {
         if (this.refuse) throw new Error(this.refuse);
         return { id: "inv-1" };
       },
-    };
+    });
   }
 }
 

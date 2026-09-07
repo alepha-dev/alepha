@@ -47,9 +47,8 @@ class RecordingLinkProvider extends LinkProvider {
     return new Proxy(
       {},
       {
-        get:
-          (_target, action: string) =>
-          async (config: { body?: unknown } = {}) => {
+        get: (_target, action: string) => {
+          const fn = async (config: { body?: unknown } = {}) => {
             this.calls.push({ action, body: config.body });
             const answer = this.responses[action];
             // An `Error` in the table is a refusal, which is the only way to
@@ -57,7 +56,12 @@ class RecordingLinkProvider extends LinkProvider {
             // answer one.
             if (answer instanceof Error) throw answer;
             return answer ?? {};
-          },
+          };
+          // Every virtual action carries `can()`, and the dialog's submit
+          // reads it. See `virtualClientFake` for the whole story.
+          fn.can = () => true;
+          return fn;
+        },
       },
     );
   }

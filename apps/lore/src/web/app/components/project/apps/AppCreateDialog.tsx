@@ -249,7 +249,10 @@ const AppCreateDialog = (props: AppCreateDialogProps) => {
               >
                 {tr("apps.create.cancel")}
               </Button>
-              <Button type="submit" disabled={submitting}>
+              <Button
+                type="submit"
+                disabled={submitting || !appApi.createApp.can()}
+              >
                 {tr("apps.create.submit")}
               </Button>
             </DialogFooter>

@@ -264,13 +264,17 @@ export function $owns(options: OwnsOptions): Middleware {
 
         const link = via.repository();
 
-        // Keyed on the columns as well as the values: two gates may join the
-        // same table on different pairs, and the caller's id belongs in the
-        // key even though a request has one - an impersonating or
-        // service-account path that ever ran two identities in one request
-        // would otherwise answer the second with the first one's grant.
+        // The key is built by `ResourceGateMemoProvider` rather than written
+        // here, so an imperative read of the same membership row lands on the
+        // same entry. See that method for why the columns are in the key.
         return (await memo.resolve(
-          `via:${link.tableName}:${via.resource}=${authorityId}:${via.user}=${ctx.user.id}`,
+          ResourceGateMemoProvider.membershipKey({
+            table: link.tableName,
+            resourceColumn: via.resource,
+            resourceId: authorityId,
+            userColumn: via.user,
+            userId: ctx.user.id,
+          }),
           () =>
             link.findOne({
               where: {

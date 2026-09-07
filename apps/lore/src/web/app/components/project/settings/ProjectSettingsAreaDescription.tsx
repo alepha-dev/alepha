@@ -63,7 +63,11 @@ const ProjectSettingsAreaDescription = (
         <div className="flex justify-end">
           <Button
             onClick={() => void save()}
-            disabled={saving || value === props.area.description}
+            disabled={
+              saving ||
+              value === props.area.description ||
+              !areaApi.updateArea.can()
+            }
           >
             {tr("area.detail.description.save")}
           </Button>

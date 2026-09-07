@@ -92,7 +92,12 @@ export const useFolioImageUpload = (
     [attachmentApi, projectId, folioId],
   );
 
-  return enabled && projectId !== undefined && folioId !== undefined
+  // A paste is a write: dropping an image into the editor uploads a file to
+  // the project whether or not the draft is ever saved.
+  return enabled &&
+    projectId !== undefined &&
+    folioId !== undefined &&
+    attachmentApi.registerAttachment.can()
     ? handler
     : undefined;
 };

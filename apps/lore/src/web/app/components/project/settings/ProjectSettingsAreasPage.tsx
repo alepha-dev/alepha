@@ -67,6 +67,9 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
     });
   };
 
+  // One permission behind three areas verbs on the server, so one flag here.
+  const canManage = areaApi.deleteArea.can();
+
   const remove = async (area: AreaResource) => {
     const ok = await dialog.confirm({
       title: String(tr("project.settings.areas.delete.confirm")),
@@ -118,9 +121,11 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
                   }),
             )}
           </span>
-          <Button size="sm" onClick={() => setMerging(true)}>
-            {tr("project.settings.areas.merge.action")}
-          </Button>
+          {canManage && (
+            <Button size="sm" onClick={() => setMerging(true)}>
+              {tr("project.settings.areas.merge.action")}
+            </Button>
+          )}
         </div>
       )}
 
@@ -200,7 +205,7 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
                         : tr("project.settings.areas.never")}
                     </TableCell>
                     <TableCell className="text-right">
-                      {area.questCount === 0 && (
+                      {area.questCount === 0 && canManage && (
                         <Button
                           variant="ghost"
                           size="sm"

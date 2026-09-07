@@ -35,7 +35,6 @@ import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { KanbanColumnConfig } from "@/api/services/KanbanColumnConfig.ts";
-import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
@@ -86,7 +85,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const [quests, setQuests] = useState<QuestResource[]>(initialQuests);
   const [loading, setLoading] = useState(false);
   const [currentAreas] = useStore(currentAreasAtom);
-  const { can } = useRank();
   const areaOptions = useMemo(
     () => (currentAreas ?? []).map((a) => ({ value: a.name, label: a.name })),
     [currentAreas],
@@ -193,9 +191,13 @@ const KanbanBoard = (props: KanbanBoardProps) => {
    * offering the controls to a member would promise a 403. Same reasoning as
    * the members settings page.
    */
-  const canManageColumns = can("project:update");
+  // The column bar is project configuration; the cards on it are the work.
+  // Two different permissions, so two flags - a Contributor rearranges cards
+  // and does not rename a column.
+  const canMoveCards = kanbanApi.moveQuestOnBoard.can();
   const reloadRef = useRef<() => void>(() => {});
   const columnOps = useKanbanColumnOps(project.id, () => reloadRef.current());
+  const canManageColumns = columnOps.can;
 
   useEffect(() => {
     questApi
@@ -995,6 +997,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                       : descriptor;
                     return (
                       <KanbanColumn
+                        draggable={canMoveCards}
                         key={scoped.key}
                         descriptor={scoped}
                         quests={laneGrouped[descriptor.key] ?? []}

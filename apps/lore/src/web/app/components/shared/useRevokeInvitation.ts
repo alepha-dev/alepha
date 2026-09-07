@@ -70,7 +70,7 @@ export const useRevokeInvitation = (): RevokeInvitation => {
     }
   };
 
-  return { revoke, loading };
+  return { revoke, loading, can: invitationApi.revokeProjectInvitation.can() };
 };
 
 export interface RevokeInvitation {
@@ -89,4 +89,9 @@ export interface RevokeInvitation {
     email: string,
   ) => Promise<boolean>;
   loading: boolean;
+  /**
+   * Whether this reader's rank may revoke. Beside the verb for the reason
+   * {@link InviteMember.can} is.
+   */
+  can: boolean;
 }

@@ -22,7 +22,12 @@ export interface ReleaseChangelogPanelProps {
   error: boolean;
   onCopy: () => void;
   onDownload: () => void;
-  onSaveToFolio: () => void;
+  /**
+   * Absent when the reader's rank cannot write a folio. Copy and Download are
+   * not gated with it: both are the changelog leaving the browser, not a write
+   * into the project.
+   */
+  onSaveToFolio?: () => void;
 }
 
 /**
@@ -64,10 +69,12 @@ const ReleaseChangelogPanel = (props: ReleaseChangelogPanelProps) => {
           <Download className="size-3.5" />
           {tr("release.changelog.md")}
         </Button>
-        <Button variant="outline" size="sm" onClick={props.onSaveToFolio}>
-          <BookMarked className="size-3.5" />
-          {tr("release.changelog.saveToFolio")}
-        </Button>
+        {props.onSaveToFolio && (
+          <Button variant="outline" size="sm" onClick={props.onSaveToFolio}>
+            <BookMarked className="size-3.5" />
+            {tr("release.changelog.saveToFolio")}
+          </Button>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-10">

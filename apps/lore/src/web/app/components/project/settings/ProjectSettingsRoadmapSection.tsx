@@ -96,7 +96,7 @@ const ProjectSettingsRoadmapSection = () => {
         <Segmented
           size="sm"
           value={current}
-          disabled={pending}
+          disabled={pending || !projectApi.updateProjectById.can()}
           onChange={(next) => {
             void apply(next as RoadmapVisibility);
           }}
@@ -120,6 +120,7 @@ const ProjectSettingsRoadmapSection = () => {
           description={url}
         >
           <Button
+            disabled={!projectApi.updateProjectById.can()}
             size="sm"
             variant="outline"
             aria-label={tr("project.settings.roadmap.url.copy")}

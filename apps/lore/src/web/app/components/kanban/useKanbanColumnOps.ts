@@ -85,6 +85,11 @@ export const useKanbanColumnOps = (
   return {
     pending,
 
+    // The four verbs are one permission server-side, so one flag - and it
+    // comes off the action rather than a string, which is what stops the
+    // board and Settings from asking two different questions.
+    can: projectApi.addKanbanColumn.can(),
+
     add: (name: string) =>
       run(
         "add",
@@ -182,6 +187,11 @@ export interface KanbanColumnOps {
    * spinner does not disable the whole board.
    */
   pending: string | null;
+  /**
+   * Whether this reader's rank may edit columns at all. Every caller should
+   * gate its own affordances on this rather than on a permission string.
+   */
+  can: boolean;
   add: (name: string) => Promise<boolean>;
   rename: (oldName: string, newName: string) => Promise<boolean>;
   /**

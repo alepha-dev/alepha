@@ -68,7 +68,16 @@ const withSigil = (lastSeenAt?: string) => ({
 class FakeLinkProvider extends LinkProvider {
   // matches the real client's own loose virtual-action shape
   override client(): any {
-    return new Proxy({}, { get: () => async () => ({}) });
+    return new Proxy(
+      {},
+      {
+        get: () => {
+          const fn: any = async () => ({});
+          fn.can = () => true;
+          return fn;
+        },
+      },
+    );
   }
 }
 

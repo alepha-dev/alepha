@@ -94,11 +94,21 @@ const ProjectActionsCreateButton = () => {
   // an oversight rather than a decision because every other item here already
   // named its capability, and it left a Knowledge-only project offering the
   // one create that answers 400 - the first thing a reader would try.
-  const questEnabled = hasCapability(project, "work");
-  const folioEnabled = hasCapability(project, "knowledge");
+  const questEnabled = hasCapability(project, "work") && canCreateQuest;
+  const folioEnabled =
+    hasCapability(project, "knowledge") && can("folio:write");
+  // Not rank-gated: this row navigates to the first-party request form, which
+  // any signed-in user may submit through - membership is not its gate, so a
+  // rank is not either.
   const feedbackEnabled = hasCapability(project, "support");
-  const epicsEnabled = capabilityOption(project, "work", "epics");
-  const releasesEnabled = capabilityOption(project, "work", "releases");
+  // ⚠️ Capability AND rank, on every row. A capability says the project does
+  // this at all; a rank says whether THIS reader may. Offering a create a
+  // Viewer's rank refuses is the same failure the Quest note above describes,
+  // one conjunct further in.
+  const epicsEnabled =
+    capabilityOption(project, "work", "epics") && can("epic:write");
+  const releasesEnabled =
+    capabilityOption(project, "work", "releases") && can("release:manage");
   const isOwner = can("app:manage");
   // ⚠️ Gated on ownership as well as on the capability. Creating an instance
   // is owner-only server-side, so a member shown this item would open a dialog
@@ -118,7 +128,9 @@ const ProjectActionsCreateButton = () => {
   // capability off is a legal state (the epic's decision 8, and its modularity
   // test), and before this the "+" opened onto one permanently disabled row.
   // The owner keeps it for Invite, which belongs to no capability.
-  if (!questEnabled && !hasCreateAction && !isOwner) {
+  const canInvite = can("invitation:create");
+
+  if (!questEnabled && !hasCreateAction && !canInvite) {
     return null;
   }
 
@@ -162,10 +174,7 @@ const ProjectActionsCreateButton = () => {
         </Tooltip>
         <DropdownMenuContent align="end" className="min-w-44">
           {questEnabled && (
-            <DropdownMenuItem
-              disabled={!canCreateQuest}
-              onClick={() => setShowDialog(true)}
-            >
+            <DropdownMenuItem onClick={() => setShowDialog(true)}>
               <ScrollText className="size-4" />
               {mainLabel}
             </DropdownMenuItem>
@@ -217,8 +226,8 @@ const ProjectActionsCreateButton = () => {
               {tr("project.menu.create-feedback")}
             </DropdownMenuItem>
           )}
-          {isOwner && <DropdownMenuSeparator />}
-          {isOwner && (
+          {canInvite && <DropdownMenuSeparator />}
+          {canInvite && (
             <DropdownMenuItem onClick={() => setShowInvite(true)}>
               <UserPlus className="size-4" />
               {tr("project.menu.invite-member")}

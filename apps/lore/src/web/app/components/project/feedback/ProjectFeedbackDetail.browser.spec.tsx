@@ -41,12 +41,20 @@ class FakeLinkProvider extends LinkProvider {
         },
       } as Record<string, unknown>,
       {
-        get: (target, prop: string) =>
-          target[prop] ??
+        get: (target, prop: string) => {
+          const own = target[prop] as any;
+          if (own) {
+            own.can ??= () => true;
+            return own;
+          }
           // An empty array carrying `content` / `items` so it satisfies
           // callers that map the response and callers that unwrap a page,
           // without this fake having to know which is which.
-          (async () => Object.assign([], { content: [], items: [] })),
+          const fallback: any = async () =>
+            Object.assign([], { content: [], items: [] });
+          fallback.can = () => true;
+          return fallback;
+        },
       },
     );
   }

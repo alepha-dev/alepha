@@ -86,7 +86,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
   // "Maximum update depth exceeded" loop. The stable facade that makes the
   // shared row's memo hold removed the need for the workaround too.
   const { onActions } = props;
-  const { commands } = tree;
+  const { commands, canWrite } = tree;
   useEffect(() => {
     onActions?.({
       createFolio: () => void commands.createFolio(),
@@ -104,24 +104,32 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
         <span className="text-muted-foreground flex-1 truncate text-xs font-medium tracking-wide uppercase">
           {tr("folios.editor.tree.title")}
         </span>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          onClick={() => commands.createFolio()}
-          aria-label={String(tr("folios.editor.tree.new-folio"))}
-        >
-          <FilePlus className="size-3.5" />
-        </Button>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          onClick={() => commands.createDirectory()}
-          aria-label={String(tr("folios.editor.tree.new-directory"))}
-        >
-          <FolderPlus className="size-3.5" />
-        </Button>
+        {/* Both doors to a write, and the same permission behind them - the
+            one `FolioTreeContextMenu` already asks for its own items. The
+            tree itself stays: reading the project's folios is a Viewer's
+            whole point. */}
+        {canWrite && (
+          <>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              onClick={() => commands.createFolio()}
+              aria-label={String(tr("folios.editor.tree.new-folio"))}
+            >
+              <FilePlus className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              onClick={() => commands.createDirectory()}
+              aria-label={String(tr("folios.editor.tree.new-directory"))}
+            >
+              <FolderPlus className="size-3.5" />
+            </Button>
+          </>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-1">
@@ -170,7 +178,9 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
               projectSlug={props.projectSlug}
             />
           )}
-          draggable
+          // Dragging a row IS a move, so a reader who may not write does not
+          // get to start one.
+          draggable={canWrite}
           dragId={tree.dragId}
           drop={tree.drop}
           onDragStart={commands.onDragStart}
