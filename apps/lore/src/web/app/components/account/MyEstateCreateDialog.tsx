@@ -2,6 +2,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
@@ -99,7 +100,11 @@ const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
         props.onOpenChange(next);
       }}
     >
-      <DialogContent>
+      {/* ⚠️ Wider than the default. Two of these fields hold fixed-width
+          machine values - a 32-character account id and a token - and at the
+          default width the id filled its input edge to edge with nowhere for
+          a cursor to sit (feedback #P2143). */}
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{tr("account.estates.create")}</DialogTitle>
         </DialogHeader>
@@ -116,7 +121,12 @@ const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
             busy={busy}
             error={error}
           />
-          <div className="flex justify-end gap-2">
+          {/* `DialogFooter` rather than a hand-rolled row: it is where the
+              border-top, the tinted band and the rounded bottom live, which
+              is what the imperative dialogs (`useDialog`'s confirm and
+              prompt) have always looked like. This form floated its buttons
+              on the body surface instead. */}
+          <DialogFooter>
             <Button
               type="button"
               variant="secondary"
@@ -137,7 +147,7 @@ const MyEstateCreateDialog = (props: MyEstateCreateDialogProps) => {
                 ? tr("estates.cloudflare.checking")
                 : tr("account.estates.create.submit")}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

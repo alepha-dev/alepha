@@ -1679,15 +1679,18 @@ export default {
   "estates.add.existing": "Un des miens",
   "estates.add.new": "En créer un nouveau",
   "estates.add.none": "Vous n'avez plus de domaine à prêter. Créez-en un.",
-  "estates.add.slug": "Identifiant du domaine",
+  "estates.add.slug": "Nom",
+  "estates.add.slug.hint":
+    "Votre propre nom pour ce domaine, utilisé dans les URL et les commandes. Minuscules, chiffres et tirets.",
   "estates.add.slugPlaceholder": "ovh-1",
   "estates.add.invalid": "Lettres minuscules, chiffres et tirets, comme ovh-1.",
   "estates.add.trust":
     "Toute personne pouvant déployer dans $1 pourra exécuter du code sur la machine derrière $2, avec tout ce que cette machine contient. Rien n'est retiré du déploiement ici, et vous pouvez reprendre le prêt à tout moment.",
-  "estates.type.bay": "Une machine",
+  "estates.type.label": "Quel type de domaine",
+  "estates.type.bay": "Bay",
   "estates.type.bay.description":
     "Un VPS qui exécute le connecteur bay. Lore génère un secret, l'affiche une fois, et la machine s'y connecte avec.",
-  "estates.type.cloudflare": "Un compte Cloudflare",
+  "estates.type.cloudflare": "Cloudflare",
   "estates.type.cloudflare.description":
     "Un compte où Lore déploie des Workers via l'API. Vous collez un jeton créé chez Cloudflare ; Lore le vérifie avant que le domaine existe.",
   "estates.cloudflare.accountId": "Identifiant de compte Cloudflare",

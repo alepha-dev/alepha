@@ -5,8 +5,9 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { AlephaReactRouter } from "alepha/react/router";
+import { setupJsdomMocks } from "alepha/react/testing";
 import { LinkProvider } from "alepha/server/links";
-import { afterEach, describe, it } from "vitest";
+import { afterEach, beforeAll, describe, it } from "vitest";
 
 import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
@@ -63,6 +64,12 @@ const CF_TOKEN = `cfut_${"a1B2c3D4e5".repeat(4)}0123abcd`;
  * sits above the button that grants it.
  */
 describe("ProjectSettingsEstatesAddDialog", () => {
+  beforeAll(() => {
+    // `Segmented` measures its own thumb, so the estate type control needs a
+    // ResizeObserver the moment these fields render (#Q2049).
+    setupJsdomMocks();
+  });
+
   let alepha: Alepha | undefined;
 
   afterEach(async () => {
@@ -105,7 +112,7 @@ describe("ProjectSettingsEstatesAddDialog", () => {
   it("creates and lends a cloudflare estate in one call", async ({
     expect,
   }) => {
-    const { links, findByTestId, getByTestId } = await show({
+    const { links, findByRole, findByTestId, getByTestId } = await show({
       createProjectEstate: {
         id: "00000000-0000-4000-8000-000000000001",
         slug: "cf-1",
@@ -120,7 +127,7 @@ describe("ProjectSettingsEstatesAddDialog", () => {
     });
 
     // The owner has nothing to lend, so the dialog is already in "new" mode.
-    fireEvent.click(await findByTestId("estate-type-cloudflare"));
+    fireEvent.click(await findByRole("radio", { name: "Cloudflare" }));
     fireEvent.change(getByTestId("estate-create-slug"), {
       target: { value: "cf-1" },
     });
@@ -153,7 +160,7 @@ describe("ProjectSettingsEstatesAddDialog", () => {
   });
 
   it("keeps saying machine for a bay estate", async ({ expect }) => {
-    const { findByTestId, getByTestId } = await show();
+    const { findByTestId, getByRole } = await show();
 
     fireEvent.change(await findByTestId("estate-create-slug"), {
       target: { value: "ovh-1" },
@@ -163,8 +170,10 @@ describe("ProjectSettingsEstatesAddDialog", () => {
     expect(warning.textContent).toContain("machine");
     // Bay is the default, so no type had to be chosen to get here, which is
     // what keeps the existing e2e passing unchanged.
-    expect(getByTestId("estate-type-bay").getAttribute("aria-pressed")).toBe(
-      "true",
-    );
+    // `aria-checked` on a `role="radio"` segment, where the old pair of
+    // buttons carried `aria-pressed`.
+    expect(
+      getByRole("radio", { name: "Bay" }).getAttribute("aria-checked"),
+    ).toBe("true");
   });
 });

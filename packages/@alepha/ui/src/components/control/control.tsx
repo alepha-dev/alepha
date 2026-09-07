@@ -230,6 +230,12 @@ export interface ControlProps {
    * compile. Without this a control cannot carry a test hook, which meant a
    * surface with an e2e had to keep a raw `<input>` rather than adopt the
    * shared control.
+   *
+   * ⚠️ **`autoComplete` does not go here.** `Control` takes it as a
+   * first-class prop, and `ControlPassword` writes its own after spreading
+   * this object - so a value passed through `inputProps` is silently
+   * replaced by `"current-password"`, which on a field holding a deploy
+   * token is the password-manager prompt the masking exists to avoid.
    */
   inputProps?: HTMLAttributes<HTMLElement> & {
     [attribute: `data-${string}`]: string | number | boolean | undefined;

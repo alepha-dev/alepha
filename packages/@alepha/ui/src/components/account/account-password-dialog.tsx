@@ -3,6 +3,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
@@ -167,14 +168,14 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
             autoComplete="new-password"
             required
           />
-          <div className="flex justify-end gap-2">
+          <DialogFooter>
             <Button type="button" variant="ghost" onClick={close}>
               {tr("account.password.cancel", { default: "Cancel" })}
             </Button>
             <Button type="submit" disabled={submitting}>
               {title}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

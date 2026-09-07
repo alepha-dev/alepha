@@ -181,7 +181,9 @@ const ProjectSettingsEstatesAddDialog = (
 
   return (
     <Dialog open={props.open} onOpenChange={close}>
-      <DialogContent>
+      {/* Same width as `MyEstateCreateDialog`: it renders the same fields,
+          and a 32-character account id needs the room in both. */}
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {tr("estates.add.title", { args: [project.title] })}

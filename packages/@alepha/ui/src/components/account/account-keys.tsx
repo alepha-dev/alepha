@@ -4,6 +4,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@alepha/ui/components/ui/dialog";
@@ -192,7 +193,13 @@ const AccountKeys = (props: AccountKeysProps) => {
                 required
               />
             </div>
-            <div className="flex justify-end gap-2">
+            {/* `DialogFooter`, not a hand-rolled row: the border-top, the
+                tinted band and the rounded bottom live there, and they are
+                what every imperative dialog (`useDialog`'s confirm and
+                prompt) already looks like. These floated their buttons on
+                the body surface instead (feedback #P2143 asked for it
+                generically, from Lore's estate dialog). */}
+            <DialogFooter>
               <Button
                 type="button"
                 variant="ghost"
@@ -203,7 +210,7 @@ const AccountKeys = (props: AccountKeysProps) => {
               <Button type="submit" disabled={creating}>
                 {tr("account.keys.submit", { default: "Create" })}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -235,7 +242,7 @@ const AccountKeys = (props: AccountKeysProps) => {
             <code className="bg-muted rounded-md border p-3 font-mono text-xs break-all">
               {freshToken}
             </code>
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button variant="secondary" onClick={copy}>
                 {copied ? (
                   <Check className="size-4" />
@@ -254,7 +261,7 @@ const AccountKeys = (props: AccountKeysProps) => {
               >
                 {tr("account.keys.done", { default: "Done" })}
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>
