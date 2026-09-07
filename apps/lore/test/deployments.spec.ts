@@ -413,6 +413,95 @@ describe("a deployment", () => {
  * shut.
  */
 /**
+ * ⚠️ Nothing checked this before. Push a `node` artifact, deploy it to a
+ * Cloudflare estate, and you got a broken Worker or a confusing failure deep in
+ * the deploy - after an upload had already happened.
+ */
+describe("the runtime gate", () => {
+  let alepha: Alepha;
+
+  beforeEach(async () => {
+    alepha = await setup();
+  });
+
+  afterEach(async () => {
+    await alepha.stop();
+  });
+
+  const cloudflareEstate = { slug: "zug", type: "cloudflare" } as never;
+  const bayEstate = { slug: "vps", type: "bay" } as never;
+
+  it("accepts the variant the estate can run", ({ expect }) => {
+    const gate = alepha.inject(DeployGate);
+
+    expect(() =>
+      gate.assertRuntime({
+        estate: cloudflareEstate,
+        app: "panda",
+        tag: "1.2.3",
+        runtime: "workerd",
+        available: ["workerd"],
+      }),
+    ).not.toThrow();
+  });
+
+  it("names both sides when the wrong variant is picked", ({ expect }) => {
+    // Both builds exist, and this deploy reached for the wrong one.
+    const gate = alepha.inject(DeployGate);
+
+    expect(() =>
+      gate.assertRuntime({
+        estate: cloudflareEstate,
+        app: "panda",
+        tag: "1.2.3",
+        runtime: "node",
+        available: ["node", "workerd"],
+      }),
+    ).toThrowError(
+      "Artifact panda@1.2.3 is a `node` build; estate 'zug' (cloudflare) runs `workerd`.",
+    );
+  });
+
+  it("names the missing variant and how to produce it", ({ expect }) => {
+    // ⚠️ What makes the multi-variant model usable: a deploy is a LOOKUP, so a
+    // miss has to say exactly which build to make. The command drifted once
+    // already, so the string is pinned here and #1812 has to match it.
+    const gate = alepha.inject(DeployGate);
+
+    expect(() =>
+      gate.assertRuntime({
+        estate: cloudflareEstate,
+        app: "panda",
+        tag: "1.2.3",
+        runtime: "node",
+        available: ["node"],
+      }),
+    ).toThrowError(
+      "panda@1.2.3 has no `workerd` build. Run `lore apps build --tag 1.2.3 --env <env>`, then `lore artifacts push`.",
+    );
+  });
+
+  it("refuses a workerd build on a Bay machine, the other way round", ({
+    expect,
+  }) => {
+    // The Bay story: a project that has only ever built for Cloudflare is lent
+    // a VPS, and the message has to say which build is missing rather than
+    // "not found".
+    const gate = alepha.inject(DeployGate);
+
+    expect(() =>
+      gate.assertRuntime({
+        estate: bayEstate,
+        app: "panda",
+        tag: "1.2.3",
+        runtime: "workerd",
+        available: ["workerd"],
+      }),
+    ).toThrowError(/has no `node` build/);
+  });
+});
+
+/**
  * The bounds a deploy runs inside.
  */
 describe("the deploy limits", () => {
@@ -444,6 +533,7 @@ describe("the deploy limits", () => {
       limits: { concurrency: async () => 1, timeoutMs: async () => 60_000 },
       gate: {
         assert: async () => ({ slug: "e", accountId: "a", credential: "c" }),
+        assertRuntime: () => {},
       },
       instances: { findById: async () => ({ id: "i", app: "a", env: "e" }) },
       artifacts: { findOne: async () => ({ id: "x", sha256: "y" }) },
@@ -497,6 +587,7 @@ describe("the deploy limits", () => {
       limits: { concurrency: async () => 4, timeoutMs: async () => 20 },
       gate: {
         assert: async () => ({ slug: "e", accountId: "a", credential: "c" }),
+        assertRuntime: () => {},
       },
       artifacts: { findOne: async () => ({ id: "x", sha256: "y" }) },
       seal: { open: () => "token" },
