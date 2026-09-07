@@ -145,6 +145,13 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   // leaf with no detail route under it, so its crumb is the open page and
   // stays inert, the same reading as `projectQuests` on the list itself.
   projectActivity: "project.menu.activity",
+  // ⚠️ A leaf too, and out of `SECTION_HREF_ROUTES` for the same reason:
+  // `/inbox` is the whole section, so an href would link the page to itself.
+  //
+  // It matters more than the others since the rail entry was removed
+  // (#Q2006): this crumb is now the only thing on screen naming where the
+  // reader is. The key is `capabilityNav`'s own, so the two cannot drift.
+  projectInbox: "project.menu.inbox",
   projectQuests: "project.menu.quests",
   projectQuest: "project.menu.quests",
   projectKanban: "project.menu.kanban",

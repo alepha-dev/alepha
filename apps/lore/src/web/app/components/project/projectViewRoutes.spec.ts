@@ -70,6 +70,25 @@ describe("projectViewRoutes", () => {
   });
 
   /**
+   * Notifications had no crumb at all until feedback #P2128: `ProjectView`
+   * pushes the section crumb only for a route in the label map, and
+   * `projectInbox` was not in it - so the header read "Alepha" and stopped
+   * where every sibling page reads "Alepha > Something".
+   *
+   * A leaf, so it is deliberately NOT in the href map: `/inbox` is the whole
+   * section, and an href there would link the page to itself. Both halves are
+   * asserted, because adding the label and "helpfully" adding an href is the
+   * next mistake.
+   */
+  it("gives Notifications a crumb, and an inert one", () => {
+    expect(SECTION_LABEL_KEYS.projectInbox).toBe("project.menu.inbox");
+    expect(SECTION_HREF_ROUTES.projectInbox).toBeUndefined();
+    // The same shape, and the reason the rule is written down rather than
+    // remembered.
+    expect(SECTION_HREF_ROUTES.projectActivity).toBeUndefined();
+  });
+
+  /**
    * Reports is the same trap one page over, and it fell into it (#1748, from
    * feedback #2079: "It must be 100% width, 100% height, and scroll only the
    * content of the page"). It has been on `PlateLayout` since #1693 - a
