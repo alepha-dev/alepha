@@ -187,10 +187,13 @@ Settings ▸ Work and turns it on, `lore.alepha.dev` included.
   `page.goto`.
 - ⚠️ **`{{project}}` is the project's TITLE and `{{slug}}` is its slug.**
   `ProjectTools.resolveProjectId` matches `project_name` against
-  `projects.title` lowercased and never reads `projects.slug`, so a project
-  titled `Kanban v2` (slug `kanban-v2`) is not found by its slug. The prompt
-  that shipped before this epic resolved only because this project is titled
-  `Alepha`.
+  `projects.title` lowercased FIRST, and only then against the slug it
+  derives from each title. Both spellings resolve since #Q1968; before it,
+  a project titled `Kanban v2` was not findable by `kanban-v2` at all, and
+  the prompt that shipped with this epic resolved only because this project
+  is titled `Alepha`. The slug pass **derives** rather than reading
+  `projects.slug` (a stored slug is disambiguated on collision), and refuses
+  when two titles slugify alike rather than picking one.
 
 Two smaller things worth not rediscovering. A subject is **seven named
 fields**, built by `useAgentPromptSubject` and never a resource: this text
