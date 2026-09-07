@@ -169,10 +169,17 @@ test.describe("Estates", () => {
     await page.goto("/admin/estates");
     await page.waitForLoadState("networkidle");
 
-    await expect(page.getByText("hetzner", { exact: true })).toBeVisible({
-      timeout: 15_000,
+    const row = page.locator("tbody tr", {
+      has: page.getByText("hetzner", { exact: true }),
     });
-    await expect(page.getByText("offline", { exact: true })).toBeVisible();
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    // ⚠️ Scoped to the row, not the page. This list shows EVERY estate on the
+    // instance - which is what the test is named for - and the suite runs
+    // fully parallel over one server per worker, so a sibling test's estate is
+    // on this page too and reads `offline` as well. Unscoped, the assertion
+    // was a strict-mode violation whenever another estate happened to exist,
+    // which made it pass or fail on test ORDER.
+    await expect(row.getByText("offline", { exact: true })).toBeVisible();
     // The masking rule has no exception for the admin role: nothing shaped
     // like a secret is on this page, prefix included.
     await expect(page.getByText(/est_[A-Za-z0-9_-]+/)).toHaveCount(0);

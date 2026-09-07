@@ -20,7 +20,20 @@ export default defineConfig({
   // worker's admin, and hands each spec its own `baseURL`.
   fullyParallel: true,
   timeout: 60_000,
-  globalTimeout: 600_000,
+  /**
+   * ⚠️ Sized from a measurement, and 600_000 was no longer one.
+   *
+   * On 2026-09-07 CI ran 162 tests on 2 workers, reported `147 passed (10.0m)`
+   * and `13 did not run`: the suite had grown past the ceiling, so the job
+   * went red with nothing broken in it. A global timeout that the healthy
+   * suite reaches is not a hang detector, it is a flake.
+   *
+   * 15 minutes is ~35% over the clean run, and the `e2e` job's own
+   * `timeout-minutes: 30` is the real ceiling - the whole job (build plus
+   * every app's suite) took 14 minutes that day, of which lore was 10. Raise
+   * this and check that budget, not just this line.
+   */
+  globalTimeout: 900_000,
   // Email verification is delivered by a fire-and-forget background job
   // (DirectJobDispatcher defers the send), so `registerAndVerify` races the
   // deferred file write. Under CI load that write occasionally slips past the
