@@ -508,7 +508,13 @@ export class CloudflareDeployClient {
     const answer = await this.client.workers.scripts.versions.list(scriptName, {
       account_id: this.accountId,
     });
-    return answer.result ?? [];
+    // ⚠️ `result.items`, not `result`. This endpoint paginates as
+    // `V4PagePagination`, whose `result` is an OBJECT wrapping `items` - unlike
+    // `V4PagePaginationArray`, where `result` is the array. Reading `result`
+    // here handed every caller a non-array that `.some()` and a spread both
+    // choke on, so the version check inside a rollback and the version this
+    // client reports after an upload were BOTH dead.
+    return answer.result?.items ?? [];
   }
 
   /**
@@ -612,10 +618,18 @@ export interface CloudflareDeployApi {
         ) => Promise<unknown>;
       };
       versions: {
+        /**
+         * ⚠️ `result` is an OBJECT wrapping `items`, because this endpoint
+         * paginates as `V4PagePagination` rather than `V4PagePaginationArray`.
+         * The shape is spelled out here so a caller cannot read `result` as an
+         * array again.
+         */
         list: (
           name: string,
           params: { account_id: string },
-        ) => Promise<{ result?: Array<{ id: string; created_on?: string }> }>;
+        ) => Promise<{
+          result?: { items?: Array<{ id: string; created_on?: string }> };
+        }>;
       };
       deployments: {
         create: (

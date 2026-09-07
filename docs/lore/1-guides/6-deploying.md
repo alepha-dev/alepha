@@ -65,6 +65,24 @@ want to.
 Then open that copy's **Settings** tab and choose the estate it deploys to.
 Doing so is what makes its **Deploy** and **Environment** tabs appear.
 
+### Giving it a sigil at the same time
+
+A copy can be created with its telemetry already wired:
+
+```bash
+lore apps deploy --env production --sigil
+```
+
+Lore mints the sigil and writes `SIGIL_KEY` straight into that copy's
+environment, so the app reports without anybody pasting a credential. The token
+is never in your terminal and never in a response.
+
+⚠️ **Only a fresh sigil can be stored this way.** A sigil is kept as a hash, so
+Lore holds the token for the moment it mints it and never again. A copy that
+already has a sigil and no `SIGIL_KEY` cannot be given one: rotate the sigil, or
+set `SIGIL_KEY` yourself. Running `--sigil` on a copy that already reports does
+nothing, so it is safe to leave in a CI command.
+
 ## 4. Set what it runs with
 
 The **Environment** tab holds the variables this copy runs with. They are
