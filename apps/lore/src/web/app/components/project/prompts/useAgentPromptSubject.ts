@@ -2,6 +2,7 @@ import { useStore } from "alepha/react";
 import { useRouter } from "alepha/react/router";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { AgentPromptSubject } from "@/web/app/prompts/renderPromptTemplate.ts";
@@ -45,6 +46,23 @@ export const useAgentPromptSubject = () => {
       url: absolute(
         router.path("projectEpic", {
           params: { epicNumber: String(epic.number) },
+        }),
+      ),
+    }),
+
+    forQuest: (quest: QuestResource): AgentPromptSubject => ({
+      project: project?.title ?? "",
+      slug: project?.slug ?? "",
+      // ⚠️ The two differ, and the prompt uses both: `quest_get` takes the
+      // per-project `shortId`, and a global id handed to it finds another
+      // project's quest or nothing.
+      number: quest.shortId,
+      id: quest.id,
+      reference: formatReference("quest", quest.shortId),
+      title: quest.title,
+      url: absolute(
+        router.path("projectQuest", {
+          params: { shortId: String(quest.shortId) },
         }),
       ),
     }),

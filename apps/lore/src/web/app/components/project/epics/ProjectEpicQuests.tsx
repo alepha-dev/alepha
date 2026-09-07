@@ -12,7 +12,7 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Plus, X } from "lucide-react";
+import { Bot, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
@@ -22,6 +22,8 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
+import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_RANK,
@@ -82,6 +84,8 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
   const router = useRouter<AppRouter>();
   const dateFormatter = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
+  const agentPrompt = useAgentPrompt();
+  const promptSubject = useAgentPromptSubject();
   const quests = props.quests;
   const attachedIds = new Set((quests ?? []).map((q) => q.id));
   // The create sheet, opened from the toolbar beside Attach (feedback #2057).
@@ -259,8 +263,8 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                   ),
                 },
               }}
-              rowActions={(quest) =>
-                planEditable
+              rowActions={(quest) => [
+                ...(planEditable
                   ? [
                       {
                         icon: X,
@@ -272,8 +276,48 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                         onClick: () => props.onDetach(quest),
                       },
                     ]
-                  : []
-              }
+                  : []),
+                // ⚠️ Outside the `planEditable` branch, because this is
+                // exactly the case that had no row menu at all: on an
+                // ACTIVE epic the plan is frozen, so Detach is gone, and
+                // an active epic is precisely when its quests are being
+                // handed out one at a time.
+                //
+                // The two never coexist by construction: a planned epic
+                // gets Detach and no group (the gate wants `active`), an
+                // active one gets the group and no Detach, a concluded one
+                // gets neither. The group is OMITTED here rather than
+                // handed over empty, and #Q1959's effective-entry count is
+                // the backstop rather than the mechanism.
+                //
+                // ⚠️ The gate reads `props.epic.status` and NOT
+                // `questAgentGate`. The shared helper resolves a quest's
+                // epic through `currentEpicsAtom`, which this table has no
+                // other reason to read and which is `undefined` after a
+                // failed load; the epic is a PROP here, so its phase is
+                // known directly. Same condition, better source.
+                ...(agentPrompt.enabled &&
+                !quest.completedAt &&
+                props.epic.status === "active"
+                  ? [
+                      {
+                        icon: Bot,
+                        label: tr("agentPrompts.menu"),
+                        children: [
+                          {
+                            icon: Bot,
+                            label: tr("agentPrompts.workOnIt"),
+                            onClick: (row: QuestResource) =>
+                              agentPrompt.copy(
+                                "questWork",
+                                promptSubject.forQuest(row),
+                              ),
+                          },
+                        ],
+                      },
+                    ]
+                  : []),
+              ]}
             />
           )}
         </CardContent>

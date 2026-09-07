@@ -132,6 +132,7 @@ describe("ProjectEpicQuests - columns", () => {
   const mount = async (
     quests: QuestResource[],
     status: EpicResource["status"] = "planned",
+    project: unknown = projectFixture(),
   ) => {
     alepha = Alepha.create()
       .with(AlephaDateTime)
@@ -150,7 +151,7 @@ describe("ProjectEpicQuests - columns", () => {
     await alepha.inject(I18nProvider).setLang("en");
     // The create sheet reads the project and the areas from the atoms the
     // project route fills; both validate against their full schemas.
-    alepha.store.set(currentProjectAtom, projectFixture() as never);
+    alepha.store.set(currentProjectAtom, project as never);
     alepha.store.set(currentAreasAtom, [
       {
         id: 1,
@@ -230,7 +231,12 @@ describe("ProjectEpicQuests - columns", () => {
    * The plan freeze (epic #31). Once the epic has begun the server refuses
    * attach, detach and create-into, so the affordances go with the
    * permission instead of answering 400: no New Quest, no Attach Quest, and
-   * no row menu, since Detach was the only entry in it.
+   * no Detach.
+   *
+   * ⚠️ The row menu itself no longer disappears with them on an ACTIVE
+   * epic: that is exactly when its quests are handed out one at a time, so
+   * the Agent Prompts group takes the slot Detach left. On a CONCLUDED epic
+   * both are gone and the table is back to no menu at all.
    */
   it("hides Create, Attach and Detach once the plan is frozen", async () => {
     for (const status of ["active", "done"] as const) {
@@ -242,14 +248,111 @@ describe("ProjectEpicQuests - columns", () => {
       await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
       expect(screen.queryByRole("button", { name: "New Quest" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Attach Quest" })).toBeNull();
-      expect(
-        screen.queryAllByRole("button", { name: /actions|menu/i }),
-      ).toEqual([]);
+
+      const menus = screen.queryAllByRole("button", { name: /actions|menu/i });
+      if (status === "active") {
+        // The group, and nothing else: Detach is gone with the freeze.
+        expect(menus.length).toBe(1);
+        fireEvent.click(menus[0]);
+        const items = await waitFor(() => {
+          const found = [...document.querySelectorAll('[role="menuitem"]')];
+          if (found.length === 0) throw new Error("not open yet");
+          return found;
+        });
+        expect(items.map((it) => it.textContent).join(" ")).toContain(
+          "Agent Prompts",
+        );
+        expect(items.map((it) => it.textContent).join(" ")).not.toContain(
+          "Detach",
+        );
+      } else {
+        expect(menus).toEqual([]);
+      }
 
       view.unmount();
       await alepha?.stop();
       alepha = undefined;
     }
+  });
+
+  /**
+   * ⚠️ The case #Q1959's effective-entry count exists for, reached here and
+   * nowhere else: an ACTIVE epic (no Detach) holding a COMPLETED quest (the
+   * agent gate fails) leaves a row with nothing to offer. This table omits
+   * the group rather than handing over an empty one, and the table's own
+   * count is the backstop.
+   */
+  it("renders no menu on a completed quest inside an active epic", async () => {
+    const completed = {
+      ...questOf(12, "Ship the thing", "low"),
+      completedAt: "2026-09-01T10:00:00.000Z",
+    };
+    await mount([completed as never], "active");
+
+    await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
+    expect(screen.queryAllByRole("button", { name: /actions|menu/i })).toEqual(
+      [],
+    );
+  });
+
+  /**
+   * ⚠️ `projectFixture()` turns every declared option ON, so this is the
+   * only case that has to pass an override.
+   */
+  it("renders no menu on an active epic when agent prompts are off", async () => {
+    await mount(
+      [questOf(12, "Ship the thing", "low")],
+      "active",
+      projectFixture({ options: { work: { agentPrompts: false } } }),
+    );
+
+    await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
+    expect(screen.queryAllByRole("button", { name: /actions|menu/i })).toEqual(
+      [],
+    );
+  });
+
+  it("copies the quest prompt from the group", async () => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          written.push(text);
+        },
+      },
+    });
+    await mount([questOf(12, "Ship the thing", "low")], "active");
+
+    await screen.findByRole("link", { name: "#Q12 - Ship the thing" });
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /actions|menu/i })[0],
+    );
+    const trigger = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (it) => it.textContent?.includes("Agent Prompts"),
+      );
+      if (!found) throw new Error("not open yet");
+      return found;
+    });
+    // #Q1959's gesture: a plain click opens the submenu, and its content is
+    // portalled so the child is read off `document`.
+    fireEvent.click(trigger);
+    const child = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (it) => it.textContent?.includes("Work on it"),
+      );
+      if (!found) throw new Error("submenu not open yet");
+      return found;
+    });
+    fireEvent.click(child);
+
+    await waitFor(() => expect(written).toHaveLength(1));
+    expect(written[0]).toContain("#Q12");
+    expect(written[0]).toContain("Ship the thing");
+    // `quest_get` takes the per-project shortId, never the global id.
+    expect(written[0]).toContain("shortId 12");
+    expect(written[0]).not.toContain("sg_");
   });
   /**
    * New Quest beside Attach Quest (feedback #2057): the same sheet the

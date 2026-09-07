@@ -1791,6 +1791,7 @@ export default {
   "agentPrompts.menu": "Agent Prompts",
   "agentPrompts.review": "Review",
   "agentPrompts.activate": "Activate",
+  "agentPrompts.workOnIt": "Work on it",
   "agentPrompts.copied":
     "Prompt for $1 copied. Paste it into Claude Code or Codex.",
   "agentPrompts.settings.title": "Agent prompts",
