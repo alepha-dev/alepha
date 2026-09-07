@@ -50,6 +50,7 @@ import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { BlightJobs } from "./jobs/BlightJobs.ts";
 import { EstateCommandJobs } from "./jobs/EstateCommandJobs.ts";
 import { EstateCredentialJobs } from "./jobs/EstateCredentialJobs.ts";
+import { ProjectRankJobs } from "./jobs/ProjectRankJobs.ts";
 import { QualityJobs } from "./jobs/QualityJobs.ts";
 import { QuestJobs } from "./jobs/QuestJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
@@ -205,6 +206,7 @@ export const LoreApi = $module({
     QuestJobs,
     BlightJobs,
     SigilJobs,
+    ProjectRankJobs,
     QualityJobs,
     EstateCommandJobs,
     EstateCredentialJobs,

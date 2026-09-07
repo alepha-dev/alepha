@@ -37,7 +37,7 @@ apps/lore/                # This app
 │   │   ├── controllers/  # 20 controllers — see list below
 │   │   ├── entities/     # 23 entities — see list below
 │   │   ├── providers/    # AppSecurityProvider (the `$realm`; the membership/owner gates are `services/ProjectSecurityService`), ProjectInvitationResource (the `$invitationResource` for `type: "project"`), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report — a Worker can't fetch its own hostname)
-│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), QuestJobs (reminder sweep), QualityJobs (quality-run cap sweep)
+│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), QuestJobs (reminder sweep), QualityJobs (quality-run cap sweep), ProjectRankJobs (preset-rank backfill)
 │   │   ├── schemas/      # Request/response schemas
 │   │   └── services/     # 18 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
@@ -448,6 +448,18 @@ change - they are stored as data in every rank definition), the resource is
 `ProjectRankResource`, the presets are `ProjectRankPresets`, and the module is
 `alepha/api/ranks`. A new project is seeded with Admin, Contributor and Viewer
 as ordinary custom ranks, computed from the capabilities it actually has.
+
+⚠️ **A project holding NO definition rows is seeded nightly**
+(`ProjectRankJobs.seedMissingPresetRanks`). `createProject` is the only other
+writer of the presets, so every project older than epic #E39 held the two
+built-ins and nothing else - and its owner's rank picker offered `Member`
+alone (feedback #P2122). The predicate is deliberately "no rows at all"
+rather than "no row for this key": a project with rows has been through the
+rank editor, and an owner who deleted Admin must not find it back in the
+morning. The sweep writes through `RankService.save` as the project's OWNER,
+so the module's invariants run, and it names the ranks in **English**,
+decided rather than defaulted - a sweep has no `Accept-Language`, and
+`projects.preferredLanguage` says of itself that it does not affect the UI.
 
 ⚠️ **Where a rank is read on the client.** `currentProjectAtom.permissions` is
 the effective set, filled by `getProjectBySlug`, and `canInProject` answers
