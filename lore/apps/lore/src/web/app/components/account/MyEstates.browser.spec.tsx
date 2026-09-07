@@ -6,8 +6,11 @@ import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
+import { setupJsdomMocks } from "alepha/react/testing";
 import { LinkProvider } from "alepha/server/links";
-import { afterEach, describe, it } from "vitest";
+import { afterEach, beforeAll, describe, it } from "vitest";
+
+import { CLOUDFLARE_TOKEN_TEMPLATE } from "@/api/schemas/cloudflareTokenTemplate.ts";
 
 import { I18n } from "../../services/I18n.ts";
 import MyEstates from "./MyEstates.tsx";
@@ -86,6 +89,12 @@ const estate = (over: Record<string, unknown> = {}) => ({
  * would catch.
  */
 describe("MyEstates", () => {
+  beforeAll(() => {
+    // `Segmented` measures its own thumb, so the estate type control needs a
+    // ResizeObserver the moment these fields render (#Q2049).
+    setupJsdomMocks();
+  });
+
   let alepha: Alepha | undefined;
 
   afterEach(async () => {
@@ -245,16 +254,23 @@ describe("MyEstates", () => {
         deployAllowed: true,
       }),
     };
-    const { getByTestId, queryByTestId, findByText, findByTestId } = await show(
-      {
+    const { getByRole, getByTestId, queryByTestId, findByText, findByTestId } =
+      await show({
         listMyEstates: { items: [] },
         createEstate: cloudflare,
-      },
-    );
+      });
 
     await findByText(/Create an estate/);
     fireEvent.click(getByTestId("estate-create-open"));
-    fireEvent.click(getByTestId("estate-type-cloudflare"));
+    /*
+     * ⚠️ By ROLE and accessible name, not by a `data-testid`. The two
+     * segments are a `Segmented` control now (#Q2049), whose items are
+     * `role="radio"` buttons named by their own visible label - and that
+     * label is the product's name, "Bay" or "Cloudflare". Same move
+     * #Q2002 made when the raw `Select` went: name the thing a reader
+     * sees, not an attribute of whichever primitive is drawing it.
+     */
+    fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
     fireEvent.change(getByTestId("estate-create-slug"), {
       target: { value: "cf-1" },
     });
@@ -274,6 +290,71 @@ describe("MyEstates", () => {
     expect(queryByTestId("my-estate-secret-dialog")).toBeNull();
   });
 
+  it("links the token guide at the docs origin, not at Lore's", async ({
+    expect,
+  }) => {
+    /*
+     * Feedback #P2142. Written `/lore/docs/...` the href resolved against
+     * the PAGE's origin - Lore - which serves no such route, so the one
+     * link a stuck reader clicks answered 404. The docs are a different
+     * site on a different host.
+     *
+     * ⚠️ Asserted as an ABSOLUTE string rather than with `toContain`: a
+     * root-relative href would satisfy any substring check against the
+     * path, which is exactly the bug.
+     */
+    const { getByRole, getByTestId, findByTestId } = await show({
+      listMyEstates: { items: [] },
+    });
+
+    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
+
+    const guide = await findByTestId("estate-create-guide");
+    expect(guide.getAttribute("href")).toBe(
+      "https://alepha.dev/lore/docs/guides-cloudflare-token",
+    );
+    // It leaves the app mid-form, so it must not take the half-filled
+    // dialog with it.
+    expect(guide.getAttribute("target")).toBe("_blank");
+    expect(guide.getAttribute("rel")).toBe("noreferrer");
+  });
+
+  it("offers a prefilled mint link carrying the six permissions", async ({
+    expect,
+  }) => {
+    /*
+     * #Q2061: adding six permission rows by hand is six chances to get it
+     * wrong, and getting it wrong means the estate is refused and the
+     * person starts over. Cloudflare's template URL pre-fills them.
+     *
+     * ⚠️ Asserted on the DECODED JSON, not on a substring of the encoded
+     * blob: a test on the raw string passes for a URL no browser can parse.
+     */
+    const { getByTestId, getByRole, findByTestId, findByText } = await show({
+      listMyEstates: { items: [] },
+    });
+
+    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
+
+    const mint = await findByTestId("estate-create-mint");
+    const url = new URL(mint.getAttribute("href")!);
+    expect(JSON.parse(url.searchParams.get("permissionGroupKeys")!)).toEqual(
+      CLOUDFLARE_TOKEN_TEMPLATE.map((row) => ({
+        key: row.key,
+        type: row.type,
+      })),
+    );
+    // It leaves the app mid-form, like the guide link beside it.
+    expect(mint.getAttribute("target")).toBe("_blank");
+    // ⚠️ And it says the scope is the reader's to set. `accountId=*` opens
+    // the form on All accounts, and nothing here may imply otherwise until
+    // #Q2061's objective 0 has been run against a live dashboard.
+    expect(url.searchParams.get("accountId")).toBe("*");
+    expect(await findByText(/Narrow Account Resources/)).toBeTruthy();
+  });
+
   it("keeps the create dialog open and names the field a refusal concerns", async ({
     expect,
   }) => {
@@ -281,13 +362,13 @@ describe("MyEstates", () => {
       new Error('This token is missing "D1: Edit"'),
       { data: { field: "token" } },
     );
-    const { getByTestId, findByTestId } = await show({
+    const { getByRole, getByTestId, findByTestId } = await show({
       listMyEstates: { items: [] },
       createEstate: refusal,
     });
 
     fireEvent.click(getByTestId("estate-create-open"));
-    fireEvent.click(getByTestId("estate-type-cloudflare"));
+    fireEvent.click(getByRole("radio", { name: "Cloudflare" }));
     fireEvent.change(getByTestId("estate-create-slug"), {
       target: { value: "cf-1" },
     });

@@ -1069,6 +1069,7 @@ export default {
   "account.projects.description":
     "Tous les projets dont vous faites partie, que vous en soyez le propriétaire ou un membre.",
   "account.projects.empty": "Vous ne faites partie d'aucun projet.",
+  "account.projects.quota": "$1 projets possédés sur $2",
   "account.projects.owner": "Propriétaire",
   "account.projects.member": "Membre",
   "account.projects.updated": "Mis à jour $1",
@@ -1679,15 +1680,18 @@ export default {
   "estates.add.existing": "Un des miens",
   "estates.add.new": "En créer un nouveau",
   "estates.add.none": "Vous n'avez plus de domaine à prêter. Créez-en un.",
-  "estates.add.slug": "Identifiant du domaine",
+  "estates.add.slug": "Nom",
+  "estates.add.slug.hint":
+    "Votre propre nom pour ce domaine, utilisé dans les URL et les commandes. Minuscules, chiffres et tirets.",
   "estates.add.slugPlaceholder": "ovh-1",
   "estates.add.invalid": "Lettres minuscules, chiffres et tirets, comme ovh-1.",
   "estates.add.trust":
     "Toute personne pouvant déployer dans $1 pourra exécuter du code sur la machine derrière $2, avec tout ce que cette machine contient. Rien n'est retiré du déploiement ici, et vous pouvez reprendre le prêt à tout moment.",
-  "estates.type.bay": "Une machine",
+  "estates.type.label": "Quel type de domaine",
+  "estates.type.bay": "Bay",
   "estates.type.bay.description":
     "Un VPS qui exécute le connecteur bay. Lore génère un secret, l'affiche une fois, et la machine s'y connecte avec.",
-  "estates.type.cloudflare": "Un compte Cloudflare",
+  "estates.type.cloudflare": "Cloudflare",
   "estates.type.cloudflare.description":
     "Un compte où Lore déploie des Workers via l'API. Vous collez un jeton créé chez Cloudflare ; Lore le vérifie avant que le domaine existe.",
   "estates.cloudflare.accountId": "Identifiant de compte Cloudflare",
@@ -1698,6 +1702,9 @@ export default {
   "estates.cloudflare.token": "Jeton d'API Cloudflare",
   "estates.cloudflare.token.placeholder": "cfut_… ou cfat_…",
   "estates.cloudflare.guide": "Quel jeton, et quelles permissions",
+  "estates.cloudflare.mint": "En créer un avec les bonnes permissions",
+  "estates.cloudflare.mint.scope":
+    "Le formulaire s'ouvre avec les six permissions déjà renseignées. Restreignez Account Resources à un seul compte avant de le créer.",
   "estates.cloudflare.checking": "Vérification chez Cloudflare…",
   "estates.cloudflare.accountLabel": "compte $1",
   "estates.credential.valid": "identifiant valide",
@@ -1972,6 +1979,14 @@ export default {
   "agentPrompts.review": "Relire",
   "agentPrompts.activate": "Activer",
   "agentPrompts.workOnIt": "S’en charger",
+  "agentPrompts.review.description":
+    "Demande à un agent de lire l'épopée et ses quêtes, et de challenger le plan avant toute construction.",
+  "agentPrompts.activate.description":
+    "Demande à un agent de démarrer l'épopée et de mener ses quêtes à terme, une par une.",
+  "agentPrompts.questWork.description":
+    "Confie la quête, ses objectifs et tout ce qu'elle référence à un agent de code.",
+  "agentPrompts.feedbackWork.description":
+    "Confie le signalement à un agent de code, avec à la clé une quête qui y est liée.",
   "agentPrompts.copied":
     "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
   "agentPrompts.settings.title": "Invites pour agents",

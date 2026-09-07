@@ -176,6 +176,18 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
       )}
 
       <div className="flex flex-col gap-2">
+        {/* ⚠️ A `Textarea`, and it stays one (#Q2069, owner's ruling
+            2026-09-07). Every other markdown surface in Lore is a
+            `LoreEditor`, so this reads like an oversight and has been swept
+            for once already.
+
+            It is not. `FeedbackThreadBody` renders this body as PLAIN TEXT
+            on purpose - a reporter is an outsider and the body is shown to
+            the project owner - so a format toolbar here would produce
+            syntax the reader sees literally, and would put pressure on the
+            renderer to start interpreting outsider input. The editor and
+            the renderer are one decision; changing only this half is the
+            wrong half. */}
         <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}

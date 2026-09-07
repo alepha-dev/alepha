@@ -11,6 +11,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { markdownCommands } from "./markdownCommands.ts";
 import { MARKDOWN_TOOLBAR_GROUPS } from "./markdownToolbarActions.ts";
+import MarkdownToolbarBand from "./MarkdownToolbarBand.tsx";
 
 export interface MarkdownFormatToolbarProps {
   /**
@@ -47,51 +48,55 @@ const MarkdownFormatToolbar = (props: MarkdownFormatToolbarProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
-    <div
-      data-testid="markdown-format-toolbar"
-      role="toolbar"
-      // `pr-10`: the mode toggle floats in the frame's top-right corner
-      // (see `LoreEditor`), and the bar must not run underneath it.
-      className={`border-border mb-2 flex flex-wrap items-center gap-0.5 border-b px-2 py-1 pr-10 ${props.flush ? "-mx-3 -mt-3" : ""}`}
-    >
-      {MARKDOWN_TOOLBAR_GROUPS.map((group) => (
-        <div
-          key={group[0].id}
-          className="border-border flex items-center gap-0.5 border-l pl-1 first:border-l-0 first:pl-0"
-        >
-          {group.map(({ id, labelKey, Icon }) => {
-            const label = String(tr(labelKey));
-            return (
-              <Tooltip key={id}>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      type="button"
-                      size="icon-xs"
-                      variant="ghost"
-                      aria-label={label}
-                      // No `title`: a real tooltip and the browser's own
-                      // would both fire. See the selection toolbar.
-                      className="lore-md-toolbar-button text-muted-foreground hover:text-foreground"
-                      // `mousedown`, not `click`, and prevented: a click
-                      // would blur the editor first and lose the selection
-                      // the command is about to act on.
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        markdownCommands[id](props.view);
-                      }}
-                    >
-                      <Icon className="size-3.5" />
-                    </Button>
-                  }
-                />
-                <TooltipContent>{label}</TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-      ))}
-    </div>
+    // ⚠️ The band's geometry lives in `MarkdownToolbarBand`, not here, and
+    // that is the fix for feedback #P2147: view mode renders the same band
+    // with nothing in it, so toggling Preview moves nothing. Two class
+    // strings agreeing would drift the first time one is touched.
+    <MarkdownToolbarBand flush={props.flush}>
+      <div
+        data-testid="markdown-format-toolbar"
+        role="toolbar"
+        className="flex flex-wrap items-center gap-0.5"
+      >
+        {MARKDOWN_TOOLBAR_GROUPS.map((group) => (
+          <div
+            key={group[0].id}
+            className="border-border flex items-center gap-0.5 border-l pl-1 first:border-l-0 first:pl-0"
+          >
+            {group.map(({ id, labelKey, Icon }) => {
+              const label = String(tr(labelKey));
+              return (
+                <Tooltip key={id}>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        size="icon-xs"
+                        variant="ghost"
+                        aria-label={label}
+                        // No `title`: a real tooltip and the browser's own
+                        // would both fire. See the selection toolbar.
+                        className="lore-md-toolbar-button text-muted-foreground hover:text-foreground"
+                        // `mousedown`, not `click`, and prevented: a click
+                        // would blur the editor first and lose the selection
+                        // the command is about to act on.
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          markdownCommands[id](props.view);
+                        }}
+                      >
+                        <Icon className="size-3.5" />
+                      </Button>
+                    }
+                  />
+                  <TooltipContent>{label}</TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </MarkdownToolbarBand>
   );
 };
 

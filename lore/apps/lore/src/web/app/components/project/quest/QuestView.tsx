@@ -606,7 +606,6 @@ const QuestView = (props: QuestViewProps) => {
                         : [
                             {
                               kind: "questWork" as const,
-                              label: String(tr("agentPrompts.workOnIt")),
                               subject: () => promptSubject.forQuest(quest),
                             },
                           ]

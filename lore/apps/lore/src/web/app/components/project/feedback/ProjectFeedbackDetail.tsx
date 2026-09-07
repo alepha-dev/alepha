@@ -343,35 +343,25 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
 
       {feedback.status === "pending" && (
         <div className="border-border flex flex-wrap justify-end gap-2 border-t p-3">
-          {/* ⚠️ Leftmost, before Delete, so the primary verb stays on the
-              right where it is on every other footer here. Not on
-              `rejected`: the prompt's first step accepts the item.
+          {/* ⚠️ Ordered by importance, left to right, with the weight
+              falling off as it goes: filled, outlined, bare, icon
+              (feedback #P2150). It ran the other way, primary last, which
+              put the most important control under the floating feedback
+              bubble in the bottom-right corner - "Promote to Q…" was
+              clipped by it.
 
-              Two capabilities, and this reads the second only to NARROW
-              what it offers. Support decides whether this panel exists at
-              all; the prompt ends in `quest_create`, which needs Work, so
-              Work's `agentPrompts` option decides whether the entry does.
-              A capability may read another's state to do less, never to do
-              more. */}
-          <AgentPromptsMenu
-            items={
-              supportEnabled
-                ? [
-                    {
-                      kind: "feedbackWork" as const,
-                      label: String(tr("agentPrompts.workOnIt")),
-                      subject: () => promptSubject.forFeedback(feedback),
-                    },
-                  ]
-                : []
-            }
-          />
-          <Button variant="ghost" onClick={handleDelete} disabled={busy}>
-            {tr("feedback.delete")}
-          </Button>
-          <Button variant="outline" onClick={handleReject} disabled={busy}>
-            {tr("feedback.reject")}
-          </Button>
+              Delete is the quietest control here and it is the most
+              destructive, which is deliberate and safe only because it is
+              confirmed by a dialog. It keeps a real label so it does not
+              read as the disabled sibling of the icon button beside it.
+
+              Agent Prompts is last and icon-only: the least urgent control
+              and, labelled, the widest. Two capabilities, and this reads
+              the second only to NARROW what it offers. Support decides
+              whether this panel exists at all; the prompt ends in
+              `quest_create`, which needs Work, so Work's `agentPrompts`
+              option decides whether the entry does. A capability may read
+              another's state to do less, never to do more. */}
           <Button
             onClick={handlePromote}
             disabled={busy}
@@ -380,41 +370,52 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
             <Plus className="size-4" />
             {tr("feedback.promote")}
           </Button>
-        </div>
-      )}
-
-      {feedback.status === "accepted" && (
-        <div className="border-border flex flex-wrap justify-end gap-2 border-t p-3">
-          {/* ⚠️ Leftmost, before Delete, so the primary verb stays on the
-              right where it is on every other footer here. Not on
-              `rejected`: the prompt's first step accepts the item.
-
-              Two capabilities, and this reads the second only to NARROW
-              what it offers. Support decides whether this panel exists at
-              all; the prompt ends in `quest_create`, which needs Work, so
-              Work's `agentPrompts` option decides whether the entry does.
-              A capability may read another's state to do less, never to do
-              more. */}
+          <Button variant="outline" onClick={handleReject} disabled={busy}>
+            {tr("feedback.reject")}
+          </Button>
+          <Button variant="ghost" onClick={handleDelete} disabled={busy}>
+            {tr("feedback.delete")}
+          </Button>
           <AgentPromptsMenu
+            iconOnly
             items={
               supportEnabled
                 ? [
                     {
                       kind: "feedbackWork" as const,
-                      label: String(tr("agentPrompts.workOnIt")),
                       subject: () => promptSubject.forFeedback(feedback),
                     },
                   ]
                 : []
             }
           />
-          <Button variant="ghost" onClick={handleDelete} disabled={busy}>
-            {tr("feedback.delete")}
-          </Button>
+        </div>
+      )}
+
+      {feedback.status === "accepted" && (
+        <div className="border-border flex flex-wrap justify-end gap-2 border-t p-3">
+          {/* Same order as the pending footer above, minus Reject: an
+              accepted item has nothing to reject. */}
           <Button onClick={handlePromote} disabled={busy}>
             <Plus className="size-4" />
             {tr("feedback.createQuest")}
           </Button>
+          <Button variant="ghost" onClick={handleDelete} disabled={busy}>
+            {tr("feedback.delete")}
+          </Button>
+          <AgentPromptsMenu
+            iconOnly
+            items={
+              supportEnabled
+                ? [
+                    {
+                      kind: "feedbackWork" as const,
+                      subject: () => promptSubject.forFeedback(feedback),
+                    },
+                  ]
+                : []
+            }
+          />
         </div>
       )}
 

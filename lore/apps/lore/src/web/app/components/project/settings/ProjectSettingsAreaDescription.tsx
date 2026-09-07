@@ -54,6 +54,10 @@ const ProjectSettingsAreaDescription = (
         <CardTitle>{tr("area.detail.description.title")}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        {/* ⚠️ Deliberately not a `LoreEditor` (#Q2069). One or two lines
+            naming what an area is for, shown in a settings card - a format
+            toolbar, a mode toggle and a CodeMirror chunk is more chrome than
+            the field is. */}
         <Textarea
           value={value}
           rows={4}

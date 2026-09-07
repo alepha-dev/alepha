@@ -1126,6 +1126,42 @@ test.describe("Quest", () => {
       );
     });
 
+    await test.step("toggling Preview moves nothing under it", async () => {
+      /*
+       * Feedback #P2147: view mode rendered no toolbar band at all, so its
+       * height left the layout and everything below slid up - on a form,
+       * the button a reader was about to press moved under their pointer.
+       *
+       * ⚠️ Measured against what is BELOW the editor, not the editor's own
+       * box: the field grows and shrinks with its content anyway, and it is
+       * the rest of the form moving that the report is about.
+       */
+      const submit = page.locator("form button[type=submit]");
+      const topOf = async () => Math.round((await submit.boundingBox())!.y);
+      const toggle = page.getByTestId("markdown-mode-toggle");
+
+      const before = await topOf();
+      await toggle.click();
+      await expect(page.locator(".lore-md-view")).toBeVisible({
+        timeout: 10_000,
+      });
+      const after = await topOf();
+
+      // The band is still there, empty, so the submit button has not moved.
+      await expect(
+        page.locator('.lore-md-view [data-testid="markdown-toolbar-band"]'),
+      ).toBeVisible();
+      expect(after).toBe(before);
+
+      // And back, so the case does not leave the form in preview for the
+      // steps below it.
+      await toggle.click();
+      await expect(page.locator(".lore-md-edit")).toBeVisible({
+        timeout: 10_000,
+      });
+      expect(await topOf()).toBe(before);
+    });
+
     await test.step("Enter creates the typed area", async () => {
       await areaCombobox.click();
       await areaSearch.fill("Donjon");
