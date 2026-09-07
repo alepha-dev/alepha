@@ -515,10 +515,11 @@ export default {
   "quest.view.attachHint":
     "Collez une capture (Ctrl/⌘+V) ou déposez des fichiers ici.",
   "quest.view.attachFailed": "Impossible de joindre ce fichier.",
-  "quest.view.attachmentsPosition": "$1 sur $2",
-  "quest.view.previewTooLarge":
-    "Trop volumineux pour un aperçu. Ouvrez le fichier.",
   "quest.view.attachments": "Pièces jointes",
+
+  "attachments.position": "$1 sur $2",
+  "attachments.previewTooLarge":
+    "Trop volumineux pour un aperçu. Ouvrez le fichier.",
 
   "quest.view.actions.accept": "Accepter la quête",
 
