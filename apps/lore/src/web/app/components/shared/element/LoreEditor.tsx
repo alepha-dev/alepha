@@ -22,6 +22,16 @@ export interface LoreEditorProps {
   variant?: "document" | "field";
   minHeight?: number;
   /**
+   * Freeze the text while a save is in flight.
+   *
+   * ⚠️ It reaches CodeMirror's own `readOnly`, which is why it exists as a
+   * pass-through rather than a `disabled` prop the wrapper swallows: a
+   * control that draws itself disabled and still accepts keystrokes is worse
+   * than one that never claimed to.
+   */
+  readOnly?: boolean;
+
+  /**
    * CONTROLLED mode. Pass both to drive the view/edit state from outside —
    * the folio workspace does, because its menubar and ⌘E own the mode and
    * it has to survive a re-render.
@@ -132,6 +142,7 @@ const LoreEditor = (props: LoreEditorProps) => {
         value={props.value}
         onChange={props.onChange}
         placeholder={props.placeholder}
+        readOnly={props.readOnly}
         mode={mode}
         // View mode shows the RESOLVED markdown; Edit always shows the raw
         // stored text, which is what makes the round-trip lossless.
