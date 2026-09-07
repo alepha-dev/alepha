@@ -7,7 +7,6 @@ import { $inject, z } from "alepha";
 import type { AnalyticsDataset, AnalyticsFilter } from "alepha/api/analytics";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 
 import { LoreAnalytics } from "../entities/loreAnalytics.ts";
@@ -234,10 +233,7 @@ export class InsightsController {
   protected errorGroups = $repository(sigilErrorGroups);
 
   getInsights = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/insights",
     schema: {
@@ -715,10 +711,7 @@ export class InsightsController {
   });
 
   getInsightsDimension = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/insights/dimensions/:dimension",
     schema: {
@@ -856,10 +849,7 @@ export class InsightsController {
   });
 
   getVitalsPaths = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/insights/vitals-paths",
     schema: {

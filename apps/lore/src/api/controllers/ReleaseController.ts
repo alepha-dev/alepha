@@ -1,11 +1,7 @@
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
-import {
-  OwnedResourceProvider,
-  type UserAccountToken,
-  $secure,
-} from "alepha/security";
+import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -79,47 +75,44 @@ export class ReleaseController {
   owned = $inject(OwnedResourceProvider);
 
   /**
-   * The four gates this controller needs, and the first place in the app
-   * where both variants sit on one class.
+   * The gates this controller needs: the param names the project, or it names
+   * a release that belongs to one.
    *
-   * Member for reading a release; owner for creating, closing, editing and
-   * deleting one - a release is part of a project's configuration, not of the
-   * work. `owner: true` drops the `via` join rather than adding a second
-   * check, which is how `$owns` has always expressed owner-only.
+   * ⚠️ There used to be four, because each shape had an `owner: true` twin:
+   * reading a release was member-gated and creating, closing, editing or
+   * deleting one was the owner's, since a release is part of a project's
+   * configuration rather than of the work. That distinction is a PERMISSION
+   * now - `release:read` against `release:manage` - so a rank can carry it and
+   * the twins collapse.
    *
-   * Declared above the actions: `use: [this.ownsRelease()]` is a field
+   * Declared above the actions: `use: [this.ownsRelease(...)]` is a field
    * initializer reading another field.
    */
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
 
-  protected ownsProjectAsOwner = () =>
-    $ownsProject({ param: "projectId", owner: true });
-
-  protected ownsRelease = () =>
-    $ownsProject({ repository: () => this.releases, param: "id" });
-
-  protected ownsReleaseAsOwner = () =>
-    $ownsProject({
-      repository: () => this.releases,
-      param: "id",
-      owner: true,
-    });
+  protected ownsRelease = (requires: string | string[]) =>
+    $ownsProject({ requires, repository: () => this.releases, param: "id" });
 
   /**
-   * The same two owner gates plus the Work capability, for the writes.
+   * The same two plus the Work capability, for the writes.
    *
    * A release holds the epics and quests due to ship in it, so it belongs to
    * Work. Reads stay open: turning Work off hides releases and deletes none
    * of them.
    */
-  protected ownsProjectAsOwnerForWork = () =>
-    $ownsProject({ param: "projectId", owner: true, capability: "work" });
-
-  protected ownsReleaseAsOwnerForWork = () =>
+  protected ownsProjectForWork = (requires: string | string[]) =>
     $ownsProject({
+      requires,
+      param: "projectId",
+      capability: "work",
+    });
+
+  protected ownsReleaseForWork = (requires: string | string[]) =>
+    $ownsProject({
+      requires,
       repository: () => this.releases,
       param: "id",
-      owner: true,
       capability: "work",
     });
 
@@ -142,8 +135,7 @@ export class ReleaseController {
 
   getReleases = $action({
     use: [
-      $secure({ permissions: ["quest:read"] }),
-      this.ownsProject(),
+      this.ownsProject("release:read"),
       // `noCache` rather than a `maxAge` window: this list changes the
       // instant someone creates, closes or deletes a release, and a
       // freshness window made those mutations invisible to the browser for
@@ -212,11 +204,7 @@ export class ReleaseController {
 
   createRelease = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["quest:create"] }),
-      $transactional(),
-      this.ownsProjectAsOwnerForWork(),
-    ],
+    use: [$transactional(), this.ownsProjectForWork("release:manage")],
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -287,10 +275,7 @@ export class ReleaseController {
    * prevent.
    */
   publishRelease = $action({
-    use: [
-      $secure({ permissions: ["quest:create"] }),
-      this.ownsReleaseAsOwnerForWork(),
-    ],
+    use: [this.ownsReleaseForWork("release:manage")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -340,10 +325,7 @@ export class ReleaseController {
    * computed live rather than keeping a snapshot nothing agrees with.
    */
   reopenRelease = $action({
-    use: [
-      $secure({ permissions: ["quest:create"] }),
-      this.ownsReleaseAsOwnerForWork(),
-    ],
+    use: [this.ownsReleaseForWork("release:manage")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -376,10 +358,7 @@ export class ReleaseController {
   });
 
   updateRelease = $action({
-    use: [
-      $secure({ permissions: ["quest:create"] }),
-      this.ownsReleaseAsOwnerForWork(),
-    ],
+    use: [this.ownsReleaseForWork("release:manage")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -414,10 +393,7 @@ export class ReleaseController {
   });
 
   deleteRelease = $action({
-    use: [
-      $secure({ permissions: ["quest:delete"] }),
-      this.ownsReleaseAsOwnerForWork(),
-    ],
+    use: [this.ownsReleaseForWork("release:manage")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -458,7 +434,7 @@ export class ReleaseController {
    * set of numbers.
    */
   getReleaseContents = $action({
-    use: [$secure({ permissions: ["quest:read"] }), this.ownsRelease()],
+    use: [this.ownsRelease("release:read")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -549,8 +525,7 @@ export class ReleaseController {
 
   getReleaseChangelog = $action({
     use: [
-      $secure({ permissions: ["quest:read"] }),
-      this.ownsRelease(),
+      this.ownsRelease("release:read"),
       // Same reasoning as `getReleases`: an open release's changelog is
       // recomputed from its contents, so a freshness window hides work that
       // just landed. ETag-only revalidation keeps it cheap.

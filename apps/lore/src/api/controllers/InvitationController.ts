@@ -49,8 +49,10 @@ export class InvitationController {
     path: `${this.url}/project/:projectId`,
     group: this.group,
     use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId", owner: true }),
+      $ownsProject({
+        requires: "member:manage",
+        param: "projectId",
+      }),
     ],
     description: "List pending invitations for a project the caller owns",
     schema: {
@@ -110,7 +112,7 @@ export class InvitationController {
     method: "POST",
     path: `${this.url}/project/:projectId/:id/revoke`,
     group: this.group,
-    use: [$secure(), $ownsProject({ param: "projectId", owner: true })],
+    use: [$ownsProject({ requires: "member:manage", param: "projectId" })],
     description: "Revoke a pending invitation for a project the caller owns",
     schema: {
       params: z.object({ projectId: z.integer(), id: z.uuid() }),

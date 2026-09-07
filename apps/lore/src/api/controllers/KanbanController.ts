@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $repository, $transactional } from "alepha/orm";
-import { $secure, OwnedResourceProvider } from "alepha/security";
+import { OwnedResourceProvider } from "alepha/security";
 import { $action } from "alepha/server";
 
 import { type Project, projects } from "../entities/projects.ts";
@@ -30,10 +30,7 @@ export class KanbanController {
    * only — Lore projects are private, there is no public-share path.
    */
   getBoard = $action({
-    use: [
-      $secure({ permissions: ["quest:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "quest:read", param: "projectId" })],
     method: "GET",
     path: "/kanban/:projectId",
     schema: {
@@ -103,9 +100,12 @@ export class KanbanController {
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`. The
     // quest it reads is the row this handler then re-ranks and saves.
     use: [
-      $secure({ permissions: ["quest:update"] }),
       $transactional(),
-      $ownsProject({ repository: () => this.quests, param: "id" }),
+      $ownsProject({
+        requires: "quest:update",
+        repository: () => this.quests,
+        param: "id",
+      }),
     ],
     schema: {
       params: z.object({

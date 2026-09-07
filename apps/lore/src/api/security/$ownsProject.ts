@@ -26,11 +26,28 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * endpoints, so they live here. A call site states only what varies:
  *
  * ```typescript
- * $ownsProject({ param: "projectId" })                          // the param names the project
- * $ownsProject({ repository: () => this.epics, param: "id" })   // the param names a row that has one
- * $ownsProject({ repository: () => this.releases, param: "id", owner: true })
- * $ownsProject({ param: "projectId", from: "query" })
+ * $ownsProject({ param: "projectId", requires: "quest:read" })
+ * $ownsProject({ repository: () => this.epics, param: "id", requires: "epic:write" })
+ * $ownsProject({ repository: () => this.releases, param: "id", requires: "release:manage" })
+ * $ownsProject({ param: "projectId", from: "query", requires: "quest:read" })
  * ```
+ *
+ * ## ⚠️ `requires` replaces the `$secure` beside it, and `owner: true`
+ *
+ * `requires` is one string checked twice: `$owns` folds it into
+ * `secure.permissions`, so the application-scope check runs exactly as the
+ * separate `$secure({ permissions })` did and the permission still reaches
+ * the middleware's `[OPTIONS]` for the client's action registry, and it is
+ * then handed to the rank check for the project scope. Stating it twice, in
+ * two mechanisms, is how a page and an endpoint come to disagree about who
+ * may do something - which is the failure this file's whole existence is
+ * about.
+ *
+ * `owner: true` was a two-value rank system hard-coded across the app, and it
+ * is **gone**. Every gate is the membership join; what varies is the
+ * permission. "Only the owner" is expressed by naming a permission on Lore's
+ * never-grantable list, so the refusal says which act was refused rather than
+ * merely that the caller is not somebody special.
  *
  * ## Why this is a const and not a method on a class
  *
@@ -79,6 +96,7 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
     param: options.param,
     from: options.from,
     secure: options.secure,
+    requires: options.requires,
 
     // The same window `assertMember` used, kept so the port is not a latency
     // regression: that call read the project row through the ORM's keyed
@@ -109,24 +127,26 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
           cast: Number,
         }),
 
-    owner: "createdBy",
+    // ⚠️ No `owner:` column. `projects.createdBy` records who created the row
+    // and is not an authorization input any more: after #Q1927's backfill
+    // every creator holds a membership row whose `rank` is `owner`, so the
+    // join answers what the column used to.
+    //
+    // That also retires `owner: true`. "Only the owner" is now a permission on
+    // Lore's never-grantable list (`project:delete`, `capability:manage`):
+    // no custom rank can be given one, so only the `owner` built-in's `*`
+    // grants it, and the gate says which act it is rather than merely that the
+    // caller must be somebody special.
+    via: {
+      repository: () => security.members,
+      resource: "projectId",
+      user: "userId",
+    },
 
-    ...(options.owner
-      ? {}
-      : {
-          via: {
-            repository: () => security.members,
-            resource: "projectId",
-            user: "userId",
-          },
-        }),
-
-    // Same wording the service used, and deliberately the same message on
-    // both branches of each variant: a different message per branch tells a
-    // caller whether the resource exists and who owns it.
-    message: options.owner
-      ? "Only the project owner can perform this action"
-      : "Not a member of this project",
+    // One message on both branches, deliberately: a different message per
+    // branch tells a caller whether the resource exists and who owns it. The
+    // rank layer supplies its own when the refusal is about a permission.
+    message: "Not a member of this project",
   });
 
   if (!options.capability) {
@@ -183,7 +203,7 @@ export const $ownsProject = (options: OwnsProjectOptions): Middleware => {
 
 export interface OwnsProjectOptions extends Pick<
   OwnsOptions,
-  "param" | "from" | "cache" | "secure"
+  "param" | "from" | "cache" | "secure" | "requires"
 > {
   /**
    * Repository the route param's row is loaded from, when the param names
@@ -225,17 +245,6 @@ export interface OwnsProjectOptions extends Pick<
    * Ignored without {@link OwnsProjectOptions.repository}.
    */
   column?: string;
-
-  /**
-   * Restrict to the project's creator rather than any member.
-   *
-   * For project *configuration* - releases, areas, sigils, invitations,
-   * settings. The work itself (quests, folios, epics and their satellites) is
-   * member-gated. Which side an endpoint belongs on is the rule written up in
-   * `apps/lore/CLAUDE.md`, not a matter of copying whichever neighbouring
-   * endpoint was read first.
-   */
-  owner?: boolean;
 
   /**
    * Refuse unless the project has this capability, checked AFTER membership.

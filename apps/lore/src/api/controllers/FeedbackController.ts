@@ -1,6 +1,7 @@
 import { sigilScrubUrl } from "@alepha/lore/sigil";
 import { $inject, z } from "alepha";
 import { $storage, FileService, files } from "alepha/api/files";
+import { RankService } from "alepha/api/ranks";
 import {
   $repository,
   $sequence,
@@ -89,6 +90,7 @@ export class FeedbackController {
     ...FeedbackController.withRelations,
     project: true,
   } as const;
+  protected readonly ranks = $inject(RankService);
 
   protected rateLimiter = $inject(FeedbackRateLimiter);
   protected bound = $inject(BoundParameters);
@@ -945,19 +947,27 @@ export class FeedbackController {
   // param, so no `use:` entry can express them. They move to the ranks
   // module's imperative check, never to `$ownsProject`.
   /**
-   * Owner guard. Delegates to `ProjectSecurityService.assertOwner` and returns
-   * the resolved project for handlers that need it.
+   * Triage guard: accepting, rejecting and removing a feedback item.
    */
   protected async ensureOwner(projectId: number, user: UserAccountToken) {
-    return await this.security.assertOwner(projectId, user);
+    await this.ranks.assert(
+      "project",
+      String(projectId),
+      "feedback:triage",
+      user,
+    );
   }
 
   /**
-   * Member guard. Delegates to `ProjectSecurityService.assertMember` for the
-   * read endpoints (list/detail) that any project member may access.
+   * Read guard, for the inbox list and detail any project member may open.
    */
   protected async ensureMember(projectId: number, user: UserAccountToken) {
-    return await this.security.assertMember(projectId, user);
+    await this.ranks.assert(
+      "project",
+      String(projectId),
+      "feedback:read",
+      user,
+    );
   }
 
   /**

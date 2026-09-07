@@ -1,7 +1,6 @@
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action, BadRequestError } from "alepha/server";
 import { FileSystemProvider } from "alepha/system";
 
@@ -43,10 +42,7 @@ export class ProjectQuestPortabilityController {
   exportQuests = $action({
     // A permission, so the token carries a computed `ownership` for the
     // membership gate below (a bare `$secure()` leaves it undefined).
-    use: [
-      $secure({ permissions: ["quest:read"] }),
-      $ownsProject({ param: "id" }),
-    ],
+    use: [$ownsProject({ requires: "quest:read", param: "id" })],
     method: "GET",
     path: "/projects/:id/quests/export",
     schema: {
@@ -118,8 +114,10 @@ export class ProjectQuestPortabilityController {
 
   importQuests = $action({
     use: [
-      $secure({ permissions: ["project:update"] }),
-      $ownsProject({ param: "id", owner: true }),
+      // Importing writes quests, so it is the quest permission rather than
+      // the project's identity: an Admin who may not rename the project can
+      // still bulk-import work into it.
+      $ownsProject({ requires: "quest:create", param: "id" }),
     ],
     method: "POST",
     path: "/projects/:id/quests/import",

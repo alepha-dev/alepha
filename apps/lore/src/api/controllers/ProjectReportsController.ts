@@ -7,7 +7,6 @@ import {
   SqlExpressionProvider,
   sql,
 } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
@@ -97,11 +96,10 @@ export class ProjectReportsController {
    */
   getReportsOverview = $action({
     use: [
-      $secure({ permissions: ["stats:read"] }),
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
       }),
-      $ownsProject({ param: "id" }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
     ],
     schema: {
       params: z.object({
@@ -310,11 +308,10 @@ export class ProjectReportsController {
    */
   getReportsQuests = $action({
     use: [
-      $secure({ permissions: ["stats:read"] }),
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
       }),
-      $ownsProject({ param: "id" }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
     ],
     schema: {
       params: z.object({
@@ -515,11 +512,10 @@ export class ProjectReportsController {
    */
   getReportsMembers = $action({
     use: [
-      $secure({ permissions: ["stats:read"] }),
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
       }),
-      $ownsProject({ param: "id" }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
     ],
     schema: {
       params: z.object({

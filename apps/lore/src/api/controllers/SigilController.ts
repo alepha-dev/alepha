@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
 
 import { SIGIL_KINDS, type Sigil, sigils } from "../entities/sigils.ts";
@@ -58,10 +57,9 @@ export class SigilController {
    */
   createSigil = $action({
     use: [
-      $secure({ permissions: ["project:update"] }),
       $ownsProject({
+        requires: "sigil:manage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "mint a sigil" },
       }),
     ],
@@ -135,10 +133,7 @@ export class SigilController {
    * insights page mean, and neither of those is owner-only.
    */
   listSigils = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/sigils",
     schema: {
@@ -167,10 +162,9 @@ export class SigilController {
    */
   rotateSigil = $action({
     use: [
-      $secure({ permissions: ["project:update"] }),
       $ownsProject({
+        requires: "sigil:manage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "rotate a sigil" },
       }),
     ],
@@ -234,10 +228,9 @@ export class SigilController {
    */
   updateSigil = $action({
     use: [
-      $secure({ permissions: ["project:update"] }),
       $ownsProject({
+        requires: "sigil:manage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "update a sigil" },
       }),
     ],
@@ -280,10 +273,9 @@ export class SigilController {
    */
   deleteSigil = $action({
     use: [
-      $secure({ permissions: ["project:delete"] }),
       $ownsProject({
+        requires: "sigil:manage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "delete a sigil" },
       }),
     ],

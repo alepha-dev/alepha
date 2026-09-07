@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
-import { $secure, OwnedResourceProvider } from "alepha/security";
+import { OwnedResourceProvider } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type Area, areas } from "../entities/areas.ts";
@@ -36,17 +36,14 @@ export class AreaController {
    * the area itself lands on `this.owned.get<Area>()`, which is why no
    * handler below reads it again.
    */
-  protected ownsArea = (owner?: boolean) =>
-    $ownsProject({ repository: () => this.areas, param: "id", owner });
+  protected ownsArea = (requires: string | string[]) =>
+    $ownsProject({ requires, repository: () => this.areas, param: "id" });
   quests = $repository(quests);
   service = $inject(AreaService);
   security = $inject(ProjectSecurityService);
 
   getAreas = $action({
-    use: [
-      $secure({ permissions: ["quest:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "area:read", param: "projectId" })],
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.array(areaResourceSchema),
@@ -57,7 +54,7 @@ export class AreaController {
   });
 
   getArea = $action({
-    use: [$secure({ permissions: ["quest:read"] }), this.ownsArea()],
+    use: [this.ownsArea("area:read")],
     path: "/areas/:id",
     schema: {
       params: z.object({ id: z.integer() }),
@@ -89,7 +86,7 @@ export class AreaController {
   });
 
   updateArea = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsArea(true)],
+    use: [this.ownsArea("area:manage")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -142,7 +139,7 @@ export class AreaController {
    * navigates to it.
    */
   renameArea = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsArea(true)],
+    use: [this.ownsArea("area:manage")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ name: z.string().min(1).max(48) }),
@@ -173,8 +170,10 @@ export class AreaController {
 
   mergeAreas = $action({
     use: [
-      $secure({ permissions: ["quest:create"] }),
-      $ownsProject({ param: "projectId", owner: true }),
+      $ownsProject({
+        requires: "area:manage",
+        param: "projectId",
+      }),
     ],
     schema: {
       params: z.object({ projectId: z.integer() }),
@@ -207,7 +206,7 @@ export class AreaController {
    * (its component delete forces a reassignment).
    */
   deleteArea = $action({
-    use: [$secure({ permissions: ["quest:delete"] }), this.ownsArea(true)],
+    use: [this.ownsArea("area:manage")],
     schema: {
       params: z.object({ id: z.integer() }),
       response: okSchema,

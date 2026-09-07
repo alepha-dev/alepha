@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $repository, $transactional } from "alepha/orm";
-import { $secure } from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -66,10 +65,7 @@ export class BlightController {
    * `quest:*` rows. Owner-only.
    */
   listBlights = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "blight:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/blights",
     schema: {
@@ -125,10 +121,7 @@ export class BlightController {
    * Readable by any project member.
    */
   countOpenBlights = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "blight:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/blights/count",
     schema: {
@@ -158,10 +151,9 @@ export class BlightController {
    */
   resolveBlight = $action({
     use: [
-      $secure({ permissions: ["project:update"] }),
       $ownsProject({
+        requires: "blight:triage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "resolve a blight" },
       }),
     ],
@@ -190,11 +182,10 @@ export class BlightController {
    */
   forwardBlightToQuest = $action({
     use: [
-      $secure({ permissions: ["quest:create"] }),
       $transactional(),
       $ownsProject({
+        requires: "blight:triage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "forward a blight" },
       }),
     ],
@@ -277,10 +268,9 @@ export class BlightController {
    */
   deleteBlight = $action({
     use: [
-      $secure({ permissions: ["project:delete"] }),
       $ownsProject({
+        requires: "blight:triage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "delete a blight" },
       }),
     ],
@@ -308,10 +298,9 @@ export class BlightController {
    */
   deleteBlights = $action({
     use: [
-      $secure({ permissions: ["project:delete"] }),
       $ownsProject({
+        requires: "blight:triage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "delete blights" },
       }),
     ],
@@ -347,10 +336,7 @@ export class BlightController {
    * inbox surfaces them in the rules dialog); mutations stay owner-only.
    */
   listBlightRules = $action({
-    use: [
-      $secure({ permissions: ["project:read"] }),
-      $ownsProject({ param: "projectId" }),
-    ],
+    use: [$ownsProject({ requires: "blight:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/blights/rules",
     schema: {
@@ -371,10 +357,9 @@ export class BlightController {
    */
   createBlightRule = $action({
     use: [
-      $secure({ permissions: ["project:update"] }),
       $ownsProject({
+        requires: "blight:triage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "create a blight rule" },
       }),
     ],
@@ -406,10 +391,9 @@ export class BlightController {
    */
   deleteBlightRule = $action({
     use: [
-      $secure({ permissions: ["project:update"] }),
       $ownsProject({
+        requires: "blight:triage",
         param: "projectId",
-        owner: true,
         capability: { key: "apps", action: "delete a blight rule" },
       }),
     ],
