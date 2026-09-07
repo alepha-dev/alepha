@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "3877b8e4-0a85-417a-9fd3-7e55366ea53b",
-  "prevIds": ["0f6c9907-8197-458c-b7b0-3987563f8194"],
+  "id": "5bd8c13b-4354-488b-879a-3c0a334664ef",
+  "prevIds": ["b5e68464-8d28-449e-953e-bf3bf1714844"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -182,6 +182,10 @@
     },
     {
       "name": "project_capabilities",
+      "entityType": "tables"
+    },
+    {
+      "name": "project_prompts",
       "entityType": "tables"
     },
     {
@@ -4844,6 +4848,66 @@
       "generated": null,
       "name": "id",
       "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "project_id",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "template",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
       "table": "projects"
     },
     {
@@ -7262,6 +7326,17 @@
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "nameExplicit": false,
+      "name": "fk_project_prompts_project_id_projects_id_fk",
+      "entityType": "fks",
+      "table": "project_prompts"
+    },
+    {
+      "columns": ["project_id"],
+      "tableTo": "projects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
       "name": "fk_quality_runs_project_id_projects_id_fk",
       "entityType": "fks",
       "table": "quality_runs"
@@ -7732,6 +7807,13 @@
       "nameExplicit": false,
       "name": "project_capabilities_pk",
       "table": "project_capabilities",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "project_prompts_pk",
+      "table": "project_prompts",
       "entityType": "pks"
     },
     {
@@ -9648,6 +9730,24 @@
       "name": "project_capabilities_project_id_key_idx",
       "entityType": "indexes",
       "table": "project_capabilities"
+    },
+    {
+      "columns": [
+        {
+          "value": "project_id",
+          "isExpression": false
+        },
+        {
+          "value": "kind",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "project_prompts_project_id_kind_idx",
+      "entityType": "indexes",
+      "table": "project_prompts"
     },
     {
       "columns": [
