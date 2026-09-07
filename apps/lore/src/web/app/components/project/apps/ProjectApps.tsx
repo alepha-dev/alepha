@@ -122,7 +122,10 @@ const filtersSchema = z.object({
  * and the Settings tab's delete both do.
  */
 const ProjectApps = () => {
-  const { tr } = useI18n<I18n, "en">();
+  // `l` for the two date columns. ⚠️ `I18nLocalizeOptions` has `date` only,
+  // so a date-and-time cell passes a dayjs format string rather than a
+  // `time` option that does not exist.
+  const { tr, l } = useI18n<I18n, "en">();
   const { can } = useRank();
   const router = useRouter<AppRouter>();
   const dateTime = useInject(DateTimeProvider);
@@ -224,6 +227,20 @@ const ProjectApps = () => {
       <AlephaTable<AppInstanceResource>
         className="min-h-0 flex-1"
         data={instances}
+        // ⚠️ **No `persistenceKey`, and the hidden columns below therefore do
+        // not survive a reload.** That is a known cost, taken deliberately.
+        //
+        // `AlephaTable` persists column visibility only through that one prop,
+        // which stores the FILTERS and the sort with it - there is no
+        // per-facet opt-out. Turning it on here was tried and it changed
+        // behaviour nobody asked for: the Apps list opened narrowed by
+        // whatever the reader last typed, which is the hazard `seedValues`'s
+        // own note names ("landing on last week's stored filter"). `apps.spec`
+        // caught it, by arriving at the list after an earlier step had
+        // searched.
+        //
+        // Persisting columns without filters is a change to `AlephaTable` and
+        // affects every table; it is not this one's to make.
         // Not "no apps enrolled": enrolment is no longer how an app comes into
         // existence, and the empty state's job here is to offer the create.
         empty={
@@ -482,6 +499,58 @@ const ProjectApps = () => {
                 </span>
               );
             },
+          },
+          /*
+           * ⚠️ The three below start HIDDEN, and the split is by what this
+           * list is FOR: it answers "what do we run and where", so identity
+           * and liveness are on and provenance is a click away.
+           *
+           * ⚠️ No Status column, deliberately. Liveness is already the dot in
+           * the App column, and a second rendering of one fact is what the
+           * shelved-quest badge was. What IS worth a column is the value
+           * BEHIND the dot - when it last reported, rather than whether -
+           * which is `lastSeenAt` below.
+           */
+          lastSeenAt: {
+            label: tr("apps.table.lastSeen"),
+            sortable: true,
+            defaultHidden: true,
+            // The value lives under `sigil`, so the sort cannot come from the
+            // column key. An instance with no sigil has none at all and sorts
+            // last, which `paginateLocal` does with a nullish value whichever
+            // way the arrow points.
+            sortValue: (instance) => instance.sigil?.lastSeenAt,
+            cell: (instance) =>
+              instance.sigil?.lastSeenAt ? (
+                <span className="text-muted-foreground text-xs whitespace-nowrap">
+                  {String(l(instance.sigil.lastSeenAt, { date: "lll" }))}
+                </span>
+              ) : (
+                // Nothing, not a dash: a copy with no sigil never reports, so
+                // there is no last time rather than an unknown one.
+                <span />
+              ),
+          },
+          estate: {
+            label: tr("apps.table.estate"),
+            sortable: true,
+            defaultHidden: true,
+            sortValue: (instance) => instance.estate?.slug,
+            cell: (instance) => (
+              <span className="text-muted-foreground truncate text-xs">
+                {instance.estate?.slug ?? ""}
+              </span>
+            ),
+          },
+          createdAt: {
+            label: tr("apps.table.created"),
+            sortable: true,
+            defaultHidden: true,
+            cell: (instance) => (
+              <span className="text-muted-foreground text-xs whitespace-nowrap">
+                {String(l(instance.createdAt, { date: "lll" }))}
+              </span>
+            ),
           },
         }}
       />
