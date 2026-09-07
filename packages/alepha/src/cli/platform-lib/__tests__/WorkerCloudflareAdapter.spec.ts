@@ -189,4 +189,73 @@ describe("the worker-side Cloudflare adapter", () => {
     await expect(adapter.inspect()).rejects.toThrowError(/does not inspect/);
     await expect(adapter.teardown()).rejects.toThrowError(/does not tear down/);
   });
+  /**
+   * ⚠️ The entry is the ONE name that has to agree across two spellings.
+   *
+   * `BuildCloudflareTask` writes `main: "./main.cloudflare.js"`, and
+   * `modules()` names every uploaded part from a directory listing, so the
+   * parts carry no `./`. Cloudflare does not validate the mismatch: it
+   * answers `Uncaught SyntaxError: Invalid or unexpected token at
+   * worker.js:1:2`, naming a file nobody wrote. This test uses the config the
+   * build really writes rather than a pre-normalised one, which is why the
+   * bug survived a green `CloudflareDeployClient` spec.
+   */
+  const deployable = async (fs: MemoryFileSystemProvider, main: string) => {
+    await fs.writeFile(
+      "/deploy/dist/wrangler.jsonc",
+      JSON.stringify({
+        name: "my-app",
+        main,
+        compatibility_date: "2025-11-17",
+        rules: [{ type: "ESModule", globs: ["index.js"] }],
+      }),
+    );
+    await fs.writeFile("/deploy/dist/main.cloudflare.js", "export default {};");
+    await fs.writeFile("/deploy/dist/index.js", "export const a = 1;");
+  };
+
+  const recordingDeployer = (adapter: WorkerCloudflareAdapter) => {
+    const calls: Array<Record<string, any>> = [];
+    Object.assign(adapter as unknown as Record<string, unknown>, {
+      deployer: () => ({
+        deploy: async (plan: Record<string, any>) => {
+          calls.push(plan);
+          return { versionId: "v1" };
+        },
+      }),
+    });
+    return calls;
+  };
+
+  it("uploads the entry under the name the modules actually carry", async ({
+    expect,
+  }) => {
+    const { adapter, fs, naming } = setup();
+    adapter.use(credential);
+    await deployable(fs, "./main.cloudflare.js");
+    const calls = recordingDeployer(adapter);
+
+    await adapter.deploy(context(naming), run);
+
+    const plan = calls[0]!;
+    expect(plan.mainModule).toBe("main.cloudflare.js");
+    // The invariant, rather than the string: the entry must name an uploaded
+    // part, whatever either side spells it.
+    expect(plan.modules.map((it: { name: string }) => it.name)).toContain(
+      plan.mainModule,
+    );
+  });
+
+  it("refuses locally when the entry names no uploaded module", async ({
+    expect,
+  }) => {
+    const { adapter, fs, naming } = setup();
+    adapter.use(credential);
+    await deployable(fs, "./nope.js");
+    recordingDeployer(adapter);
+
+    await expect(adapter.deploy(context(naming), run)).rejects.toThrowError(
+      /names `nope.js` as its entry/,
+    );
+  });
 });
