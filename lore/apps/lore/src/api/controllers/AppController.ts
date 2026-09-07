@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
@@ -12,6 +11,7 @@ import {
   appInstanceResourceSchema,
 } from "../schemas/appInstanceResourceSchema.ts";
 import { appNameSchema } from "../schemas/appNameSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { AppService } from "../services/AppService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
@@ -61,7 +61,7 @@ export class AppController {
    * the insights page all mean, and none of those is owner-only.
    */
   listApps = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/apps",
     schema: {
@@ -72,8 +72,6 @@ export class AppController {
       }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
       const rows = await this.instances.findMany({
         where: { projectId: { eq: params.projectId } },
         orderBy: [
@@ -100,7 +98,7 @@ export class AppController {
    * membership check would have passed on the wrong project.
    */
   getApp = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/apps/:app/:env",
     schema: {
@@ -112,7 +110,6 @@ export class AppController {
       response: appInstanceResourceSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
       const instance = await this.service.load(
         params.projectId,
         params.app,
@@ -130,7 +127,13 @@ export class AppController {
    * somebody comes back to.
    */
   createApp = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [
+      $ownsProject({
+        requires: "app:manage",
+        param: "projectId",
+        capability: { key: "apps", action: "create an app instance" },
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/apps",
     schema: {
@@ -155,12 +158,6 @@ export class AppController {
       response: appInstanceResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand rather than on `$ownsProject`: this controller still checks membership in its handlers, and porting fifty of those is its own quest.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "create an app instance",
-      });
-
       const instance = await this.service.create({
         projectId: params.projectId,
         app: body.app,
@@ -203,7 +200,13 @@ export class AppController {
    * not be split from its rename - which is why THAT pair lives in one method.
    */
   updateApp = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [
+      $ownsProject({
+        requires: "app:manage",
+        param: "projectId",
+        capability: { key: "apps", action: "update an app instance" },
+      }),
+    ],
     method: "PATCH",
     path: "/projects/:projectId/apps/:app/:env",
     schema: {
@@ -230,11 +233,6 @@ export class AppController {
       response: appInstanceResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand rather than on `$ownsProject`: this controller still checks membership in its handlers, and porting fifty of those is its own quest.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "update an app instance",
-      });
       let instance = await this.service.load(
         params.projectId,
         params.app,
@@ -280,7 +278,13 @@ export class AppController {
    * - the confirmation dialog is the UI's.
    */
   deleteApp = $action({
-    use: [$secure({ permissions: ["project:delete"] })],
+    use: [
+      $ownsProject({
+        requires: "app:manage",
+        param: "projectId",
+        capability: { key: "apps", action: "delete an app instance" },
+      }),
+    ],
     method: "DELETE",
     path: "/projects/:projectId/apps/:app/:env",
     schema: {
@@ -292,11 +296,6 @@ export class AppController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand rather than on `$ownsProject`: this controller still checks membership in its handlers, and porting fifty of those is its own quest.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "delete an app instance",
-      });
       const instance = await this.service.load(
         params.projectId,
         params.app,

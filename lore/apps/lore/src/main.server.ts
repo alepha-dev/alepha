@@ -2,20 +2,28 @@ import { SigilSinkProvider } from "@alepha/lore/sigil";
 import { adminRouterOptionsAtom } from "@alepha/ui/components/admin/admin-router-options";
 import { Alepha, run } from "alepha";
 import { FileAccessProvider } from "alepha/api/files";
+import {
+  NotificationInboxRecipientProvider,
+  NotificationPreferenceProvider,
+} from "alepha/api/notifications";
 import { oauthOptions } from "alepha/api/oauth";
 import { CaptchaProvider, TurnstileCaptchaProvider } from "alepha/captcha";
 import { AlephaEmailCloudflare } from "alepha/email/cloudflare";
+import { ScopeGrantsProvider } from "alepha/server/links";
 
 import { loreAdminOptions } from "@/web/admin/adminChrome.tsx";
 import { LoreWebAdmin } from "@/web/admin/index.ts";
 
 import { LoreApi } from "./api/index.ts";
 import { LoreFileAccessProvider } from "./api/providers/LoreFileAccessProvider.ts";
+import { LoreInboxRecipientProvider } from "./api/providers/LoreInboxRecipientProvider.ts";
+import { LoreNotificationPreferences } from "./api/providers/LoreNotificationPreferences.ts";
 import { LoreSigilSinkProvider } from "./api/providers/LoreSigilSinkProvider.ts";
 import { EstateCommandTransport } from "./api/services/EstateCommandTransport.ts";
 import { WebSocketEstateCommandTransport } from "./api/services/WebSocketEstateCommandTransport.ts";
 import { LoreMcp } from "./mcp/index.ts";
 import { LoreWebApp } from "./web/app/index.ts";
+import { ProjectScopeGrants } from "./web/app/services/ProjectScopeGrants.ts";
 
 const alepha = Alepha.create({
   env: {
@@ -125,6 +133,42 @@ alepha.with({
   provide: EstateCommandTransport,
   use: WebSocketEstateCommandTransport,
 });
+
+// What `action.can()` means inside a project.
+//
+// ⚠️ At the top of the ENTRY, not in `LoreWebApp.register()`, and the two are
+// not interchangeable. A module's `register` runs when the module is injected,
+// which here is after `LoreApi` and `LoreMcp` have already instantiated
+// `LinkProvider` - and `LinkProvider` injects `ScopeGrantsProvider`, so the
+// substitution arrives as a `TooLateSubstitutionError` and the server does not
+// boot. Every other substitution in this file is up here for the same reason.
+//
+// ⚠️ And in BOTH entries, not only the browser one: `can()` runs during render
+// on both sides of hydration, and a control the server renders and the client
+// then hides is exactly the drift `LinkProvider.can`'s own comment exists to
+// prevent.
+alepha.with({ provide: ScopeGrantsProvider, use: ProjectScopeGrants });
+
+// Who an email address belongs to, for the inbox channel. The framework's
+// default resolves nobody, which is how an app that has not implemented this
+// gets a skipped receipt rather than a crash.
+//
+// Declared BEFORE `LoreApi`, for the same reason the transport above is:
+// `LoreApi` pulls in `alepha/api/notifications`, and a substitution after the
+// service is in use is refused.
+alepha.with({
+  provide: NotificationInboxRecipientProvider,
+  use: LoreInboxRecipientProvider,
+});
+
+// Whether somebody still wants to be told. A read seam with no table in the
+// framework, on purpose: a preference is an app's own product decision, and
+// this is Lore's answer. Same ordering constraint as the line above.
+alepha.with({
+  provide: NotificationPreferenceProvider,
+  use: LoreNotificationPreferences,
+});
+
 alepha.with(LoreApi);
 alepha.with(LoreMcp);
 

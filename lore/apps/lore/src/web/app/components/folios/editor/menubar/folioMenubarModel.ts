@@ -452,6 +452,26 @@ const NEEDS_SAVED_FOLIO = new Set<FolioActionId>([
  * Actions that edit the document text, so they need CodeMirror mounted —
  * i.e. Edit mode. In View mode there is nothing to apply them to.
  */
+/**
+ * Actions that WRITE, and are therefore refused outright to a rank that does
+ * not hold `folio:write`.
+ *
+ * `folio.export` is not here on purpose: it is the document leaving the
+ * browser, not a change to the project. Neither are the `edit.*` / `insert.*`
+ * groups - those act on the draft in CodeMirror, and it is `folio.save` that
+ * would try to persist it.
+ */
+const NEEDS_WRITE = new Set<FolioActionId>([
+  "folio.new",
+  "folio.newDirectory",
+  "folio.save",
+  "folio.duplicate",
+  "folio.move",
+  "folio.pin",
+  "folio.encrypt",
+  "folio.delete",
+]);
+
 const NEEDS_EDIT_MODE = new Set<FolioActionId>([
   "edit.bold",
   "edit.italic",
@@ -504,6 +524,12 @@ export interface FolioActionState {
    * editor to act on. False in View mode, where they are inert.
    */
   editing?: boolean;
+  /**
+   * The reader's rank does not grant `folio:write`, so every action in
+   * {@link NEEDS_WRITE} is inert. Reading, exporting and the view toggles
+   * are untouched - a Viewer opens folios, that is the point of the rank.
+   */
+  readOnly?: boolean;
 }
 
 export const isFolioActionEnabled = (
@@ -513,6 +539,9 @@ export const isFolioActionEnabled = (
   const item = folioMenuItems().find((i) => i.id === id);
   // Checked first: with no document open there is no draft to be new or
   // locked, so the other two branches have nothing to reason about.
+  // Ahead of `noFolio`: a rank that cannot write cannot write on the empty
+  // state either, where `folio.new` is otherwise available.
+  if (state.readOnly && NEEDS_WRITE.has(id)) return false;
   if (state.noFolio) return item?.availableWithoutFolio === true;
   if (!state.editing && NEEDS_EDIT_MODE.has(id)) return false;
   if (state.isNew && NEEDS_SAVED_FOLIO.has(id)) return false;

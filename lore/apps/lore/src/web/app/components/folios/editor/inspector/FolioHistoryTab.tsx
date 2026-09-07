@@ -153,6 +153,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
   const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
   const folioApi = useClient<FolioController>();
+  const canWrite = folioApi.update.can();
 
   const [revisions, setRevisions] = useState<HistoryRevision[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -309,48 +310,53 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-6"
-                          aria-label={tr("folios.history.actions")}
-                        />
-                      }
-                    >
-                      <MoreVertical className="size-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => handlePinToggle(revision)}
+                  {/* Pin and Revert both write. The revision list itself is
+                      a read and stays, which is what makes History useful to
+                      a reader who cannot change anything. */}
+                  {canWrite && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-6"
+                            aria-label={tr("folios.history.actions")}
+                          />
+                        }
                       >
-                        {revision.pinned ? (
-                          <PinOff className="size-4" />
-                        ) : (
-                          <Pin className="size-4" />
+                        <MoreVertical className="size-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handlePinToggle(revision)}
+                        >
+                          {revision.pinned ? (
+                            <PinOff className="size-4" />
+                          ) : (
+                            <Pin className="size-4" />
+                          )}
+                          {tr(
+                            revision.pinned
+                              ? "folios.history.unpin"
+                              : "folios.editor.inspector.keep",
+                          )}
+                        </DropdownMenuItem>
+                        {!isNewest && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleRevert(revision.id)}
+                              disabled={busy}
+                            >
+                              <RotateCcw className="size-4" />
+                              {tr("folios.editor.inspector.revert")}
+                            </DropdownMenuItem>
+                          </>
                         )}
-                        {tr(
-                          revision.pinned
-                            ? "folios.history.unpin"
-                            : "folios.editor.inspector.keep",
-                        )}
-                      </DropdownMenuItem>
-                      {!isNewest && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleRevert(revision.id)}
-                            disabled={busy}
-                          >
-                            <RotateCcw className="size-4" />
-                            {tr("folios.editor.inspector.revert")}
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
                 <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center">
                   <ChevronRight

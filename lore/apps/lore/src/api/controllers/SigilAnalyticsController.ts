@@ -6,11 +6,10 @@ import {
   adminDatasetSchema,
 } from "alepha/api/analytics";
 import { $repository } from "alepha/orm";
-import { $secure, type UserAccountToken } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 
 import { type Sigil, sigils } from "../entities/sigils.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 
 /**
  * The per-app query explorer: the framework's analytics query builder, narrowed
@@ -38,7 +37,6 @@ export class SigilAnalyticsController {
   protected readonly group = "sigil:analytics";
 
   protected sigils = $repository(sigils);
-  protected security = $inject(ProjectSecurityService);
   protected service = $inject(AdminAnalyticsService);
 
   /**
@@ -50,7 +48,7 @@ export class SigilAnalyticsController {
    * this file, and a dataset without the dimension can never appear at all.
    */
   listAppDatasets = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "GET",
     path: `${this.url}/datasets`,
     group: this.group,
@@ -60,7 +58,7 @@ export class SigilAnalyticsController {
       response: z.array(adminDatasetSchema),
     },
     handler: async ({ params, user }) => {
-      await this.assertApp(params.projectId, params.sigilId, user);
+      await this.assertApp(params.projectId, params.sigilId);
       return this.service.listDatasets({ pin: { sigilId: params.sigilId } });
     },
   });
@@ -69,7 +67,7 @@ export class SigilAnalyticsController {
    * One aggregate query, against one dataset, scoped to this app.
    */
   queryAppDataset = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ requires: "app:read", param: "projectId" })],
     method: "POST",
     path: `${this.url}/datasets/:name/query`,
     group: this.group,
@@ -84,7 +82,7 @@ export class SigilAnalyticsController {
       response: adminAnalyticsResultSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.assertApp(params.projectId, params.sigilId, user);
+      await this.assertApp(params.projectId, params.sigilId);
       return this.service.queryDataset(params.name, body, {
         pin: { sigilId: params.sigilId },
       });
@@ -92,15 +90,15 @@ export class SigilAnalyticsController {
   });
 
   /**
-   * Proves the caller may read this app, and returns it.
+   * Proves this app belongs to the project, and returns it.
    *
-   * Two checks, and the second is the one that is easy to forget. Membership
-   * is on the PROJECT, so a sigil id arriving from the client has to be proved
-   * to belong to that project before it narrows anything — otherwise this
-   * reads another project's traffic through a project the caller is a
-   * legitimate member of. `InsightsController` states the same rule for its
-   * `?sigilId=`, and the proof is the same shape: the lookup carries
-   * `projectId`, so a stranger's id simply does not resolve.
+   * Membership is `$ownsProject` on the action, but that gates the PROJECT
+   * only - so a sigil id arriving from the client still has to be proved to
+   * belong to that project before it narrows anything, or this reads another
+   * project's traffic through a project the caller is a legitimate member of.
+   * `InsightsController` states the same rule for its `?sigilId=`, and the
+   * proof is the same shape: the lookup carries `projectId`, so a stranger's
+   * id simply does not resolve.
    *
    * A stranger's id is a 404 rather than a 403, and so is an app with Beacon
    * off. Both are "no such app here", which is the true answer: the tab is
@@ -110,10 +108,7 @@ export class SigilAnalyticsController {
   protected async assertApp(
     projectId: number,
     sigilId: string,
-    user: UserAccountToken,
   ): Promise<Sigil> {
-    await this.security.assertMember(projectId, user);
-
     const sigil = await this.sigils.findOne({
       where: { id: { eq: sigilId }, projectId: { eq: projectId } },
     });

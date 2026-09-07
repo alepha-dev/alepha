@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 import { parseTypedReference } from "../../web/app/components/shared/element/typedReference.ts";
@@ -31,6 +30,7 @@ import { quests } from "../entities/quests.ts";
 import type { CapabilityKey } from "../schemas/capabilityKeySchema.ts";
 import { searchHitSchema } from "../schemas/searchHitSchema.ts";
 import { orderSearchHits } from "../searchRanking.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 /**
  * One row of a search result, whatever it turned out to be.
  *
@@ -57,7 +57,12 @@ export class SearchController {
   protected readonly registry = $inject(CapabilityRegistry);
 
   search = $action({
-    use: [$secure({ permissions: ["quest:read", "folio:read"] })],
+    use: [
+      $ownsProject({
+        requires: ["quest:read", "folio:read"],
+        param: "projectId",
+      }),
+    ],
     path: "/projects/:projectId/search",
     description:
       "Search quests, folios and directories in one project by name.",
@@ -70,8 +75,6 @@ export class SearchController {
       response: z.object({ hits: z.array(searchHitSchema) }),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
       // ⚠️ **The palette is Core; the tables it reaches into are not.** A
       // Knowledge-only project must never answer with a quest: disabling
       // hides, so the rows are still there and a search that found them would

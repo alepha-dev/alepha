@@ -1,9 +1,10 @@
 import { TreeViewResizer } from "@alepha/ui/components/tree-view/tree-view-resizer";
-import { useStore } from "alepha/react";
+import { useClient, useStore } from "alepha/react";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { type ReactElement, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+import type { FolioController } from "@/api/controllers/FolioController.ts";
 import type { FolioResource } from "@/api/schemas/folioResourceSchema.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
@@ -130,6 +131,7 @@ export interface FolioWorkspaceProps {
 const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   useReadingFonts();
   const [project] = useStore(currentProjectAtom);
+  const folioApi = useClient<FolioController>();
   const router = useRouter<AppRouter>();
   const panes = useFolioPanes();
   const [inspectorTab, setInspectorTab] =
@@ -191,9 +193,16 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
   // just below advertised ⌘\ and ⌘. as enabled while nothing listened for
   // them. `enabled` keeps the two call sites from ever binding at once; see
   // the hook's doc.
+  // The empty state has no `useFolioActions` to ask, so it asks the client
+  // directly - same question, same action.
+  const emptyStateActionState: FolioActionState = {
+    ...EMPTY_STATE_ACTION_STATE,
+    readOnly: !folioApi.update.can(),
+  };
+
   useFolioShortcuts(
     emptyStateHandlers,
-    EMPTY_STATE_ACTION_STATE,
+    emptyStateActionState,
     "view",
     props.empty === true,
   );
@@ -271,15 +280,18 @@ const FolioWorkspace = (props: FolioWorkspaceProps): ReactElement => {
               createPortal(
                 <FolioMenubar
                   handlers={emptyStateHandlers}
-                  state={EMPTY_STATE_ACTION_STATE}
+                  state={emptyStateActionState}
                 />,
                 chromeSlot,
               )}
             <FolioEmptyState
-              onCreate={() =>
-                router.push("projectFoliosNew", {
-                  params: { projectSlug: project?.slug ?? "" },
-                })
+              onCreate={
+                folioApi.update.can()
+                  ? () =>
+                      router.push("projectFoliosNew", {
+                        params: { projectSlug: project?.slug ?? "" },
+                      })
+                  : undefined
               }
             />
           </div>

@@ -192,7 +192,6 @@ describe("Lore domain audits", () => {
     await membersRepo.create({
       userId: member.id,
       projectId: project.id,
-      owner: false,
     });
 
     await ctx.projectController.leaveProject.fetch(
@@ -216,7 +215,6 @@ describe("Lore domain audits", () => {
     await membersRepo.create({
       userId: member.id,
       projectId: project.id,
-      owner: false,
     });
 
     await ctx.projectController.removeMember.fetch(

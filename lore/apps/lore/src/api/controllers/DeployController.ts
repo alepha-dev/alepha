@@ -1,5 +1,4 @@
 import { $inject, z } from "alepha";
-import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { DeployJobs } from "../jobs/DeployJobs.ts";
@@ -40,15 +39,18 @@ export class DeployController {
    * `requires:` and a page and an endpoint cannot disagree about which gates
    * apply.
    *
-   * `owner: true` because deploying into somebody's cloud account is the most
-   * powerful action in Lore; widening it later is one line. The capability
-   * option because a project that does not deploy through Lore should not have
-   * the endpoint at all.
+   * `requires: "deploy:manage"` because deploying into somebody's cloud
+   * account is the most powerful act in Lore, and it is its own permission
+   * rather than `app:manage` for the reason `sigil:manage` is its own: letting
+   * somebody rename a copy is not letting them push code into an estate. On
+   * nobody by default, so widening it is an owner creating a rank that carries
+   * it. The capability option because a project that does not deploy through
+   * Lore should not have the endpoint at all.
    */
   protected deployGate = () =>
     $ownsProject({
       param: "projectId",
-      owner: true,
+      requires: "deploy:manage",
       capability: { key: "apps", option: "deploy" },
     });
 
@@ -57,10 +59,11 @@ export class DeployController {
    * never deletes anything, so a project that turns `deploy` off must get an
    * empty tab rather than an error on the history it already has.
    */
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = () =>
+    $ownsProject({ param: "projectId", requires: "app:read" });
 
   startDeploy = $action({
-    use: [$secure(), this.deployGate()],
+    use: [this.deployGate()],
     method: "POST",
     path: "/projects/:projectId/apps/:instanceId/deployments",
     description: "Deploy a stored build onto one deployed copy.",
@@ -103,7 +106,7 @@ export class DeployController {
   });
 
   listDeployments = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject()],
     method: "GET",
     path: "/projects/:projectId/apps/:instanceId/deployments",
     description: "What has been deployed to this copy, newest first.",
@@ -132,7 +135,7 @@ export class DeployController {
    * this before anybody asks for anything.
    */
   planDeploymentRollback = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject()],
     method: "GET",
     path: "/projects/:projectId/deployments/:deploymentId/rollback",
     description: "What a rollback to this run would do.",
@@ -156,7 +159,7 @@ export class DeployController {
    * failure that reads as every test in the app breaking at once.
    */
   rollbackDeployment = $action({
-    use: [$secure(), this.deployGate()],
+    use: [this.deployGate()],
     method: "POST",
     path: "/projects/:projectId/deployments/:deploymentId/rollback",
     description: "Point this copy back at a version it ran before.",
@@ -188,7 +191,7 @@ export class DeployController {
    * runaway deploy cannot make it unbounded.
    */
   getDeployment = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject()],
     method: "GET",
     path: "/projects/:projectId/deployments/:deploymentId",
     description: "One deploy run, with its log.",

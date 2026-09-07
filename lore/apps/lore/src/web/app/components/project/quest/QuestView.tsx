@@ -6,7 +6,6 @@ import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
-  Archive,
   ArrowLeft,
   CalendarClock,
   CircleDot,
@@ -14,6 +13,7 @@ import {
   Inbox,
   ListChecks,
   Paperclip,
+  PlayCircle,
   Signature,
   Swords,
 } from "lucide-react";
@@ -30,6 +30,9 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
 import { formatReference } from "../../shared/element/typedReference.ts";
+import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
+import { questAgentGate } from "../prompts/questAgentGate.ts";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import { QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
@@ -128,6 +131,7 @@ const QuestView = (props: QuestViewProps) => {
 
   const [project] = useStore(currentProjectAtom);
   const [epics] = useStore(currentEpicsAtom);
+  const promptSubject = useAgentPromptSubject();
 
   // The epic phase gate (epic #31): a quest can be accepted only while its
   // epic is active, and this page reaches a planned epic's quest by direct
@@ -138,11 +142,16 @@ const QuestView = (props: QuestViewProps) => {
     quest.epicId != null
       ? epics?.find((e) => e.id === quest.epicId)
       : undefined;
+  // ⚠️ The condition itself lives in `questAgentGate`, shared with the two
+  // quest tables, and it answers a CODE rather than a sentence: a pure
+  // helper cannot call `tr`, and duplicating the key mapping is exactly the
+  // drift the extraction prevents. The mapping stays here, once.
+  const withheldReason = questAgentGate(quest, epics);
   const acceptWithheld =
-    questEpic && questEpic.status !== "active"
+    withheldReason && questEpic
       ? String(
           tr(
-            questEpic.status === "planned"
+            withheldReason === "epicPlanned"
               ? "quest.view.accept.epicPlanned"
               : "quest.view.accept.epicDone",
             { args: [String(questEpic.number)] },
@@ -157,6 +166,7 @@ const QuestView = (props: QuestViewProps) => {
   const statusLabel = {
     new: tr("quest.status.new"),
     accepted: tr("quest.status.accepted"),
+    held: tr("quest.status.held"),
     completed: tr("quest.status.completed"),
     shelved: tr("quest.status.shelved"),
   }[quest.metadata.status];
@@ -235,6 +245,17 @@ const QuestView = (props: QuestViewProps) => {
       <span className="text-muted-foreground">-</span> {quest.title}
     </>
   );
+  /*
+   * The same text as a plain string, for the `title` attribute the two
+   * elements carry. Every mount truncates - 28px on the page, 18px on the
+   * card and in the dialog - so a long title is cut with no way to read the
+   * rest, and this quest's own title was the example in the report.
+   *
+   * Beside `titleContent` and built from the same two values for the same
+   * reason that exists: the tooltip and the rendered line must not come to
+   * disagree about what the quest is called.
+   */
+  const titleText = `${formatReference("quest", quest.shortId)} - ${quest.title}`;
 
   /**
    * Unassign. The server method is still called `abandonQuest`, but it
@@ -308,6 +329,52 @@ const QuestView = (props: QuestViewProps) => {
     },
   };
 
+  const holdQuest = {
+    disabled: !questApi.holdQuest.can(),
+    onClick: async () => {
+      // A prompt rather than the markdown composer the discussion uses. The
+      // reason IS a comment, so the composer would be the consistent choice,
+      // but a hold reason is one sentence and `validate` is what makes the
+      // requirement visible before the request rather than as a 400 after
+      // it. Mentions are unaffected: nothing in Lore autocompletes a handle
+      // anywhere, the composer included - `MentionNotifier` matches `@name`
+      // out of whatever text it is given.
+      const reason = await dialog.prompt({
+        title: tr("quest.view.hold.title"),
+        description: tr("quest.view.hold.description"),
+        placeholder: String(tr("quest.view.hold.placeholder")),
+        confirmLabel: tr("quest.view.hold.submit"),
+        cancelLabel: tr("common.cancel"),
+        validate: (value) =>
+          value.trim() ? null : String(tr("quest.view.hold.reasonRequired")),
+      });
+      // `null` is cancel; the validator has already refused empty text, so
+      // this cannot be an accidental hold with no reason.
+      if (!reason?.trim()) return;
+
+      const updatedQuest = await questMutations.hold(quest.id, reason.trim());
+      updateQuest(updatedQuest);
+      alepha.store.set(currentQuestAtom, updatedQuest);
+    },
+  };
+
+  const unholdQuest = {
+    disabled: !questApi.unholdQuest.can(),
+    onClick: async () => {
+      const ok = await dialog.confirm({
+        title: tr("quest.view.unhold.title"),
+        description: tr("quest.view.unhold.confirm"),
+        confirmLabel: tr("quest.view.unhold.confirmButton"),
+        cancelLabel: tr("common.cancel"),
+      });
+      if (!ok) return;
+
+      const updatedQuest = await questMutations.unhold(quest.id);
+      updateQuest(updatedQuest);
+      alepha.store.set(currentQuestAtom, updatedQuest);
+    },
+  };
+
   // Hoisted so the two mounts can place the same rail differently: the page
   // stands it up as a full-height column beside the scrolling body, the card
   // stacks it underneath.
@@ -320,9 +387,13 @@ const QuestView = (props: QuestViewProps) => {
       }}
       onShelve={shelveQuest.onClick}
       onUnshelve={unshelveQuest.onClick}
+      onHold={holdQuest.onClick}
+      onUnhold={unholdQuest.onClick}
       onUnassign={unassignQuest.onClick}
       shelveDisabled={shelveQuest.disabled}
       unshelveDisabled={unshelveQuest.disabled}
+      holdDisabled={holdQuest.disabled}
+      unholdDisabled={unholdQuest.disabled}
       unassignDisabled={unassignQuest.disabled}
     />
   );
@@ -416,7 +487,13 @@ const QuestView = (props: QuestViewProps) => {
               chips row above, which is what sits flush with the top edge.
               Carries the title (prefixed with #shortId), the priority badge
               and the edit/duplicate/timer affordances. */}
-          <header className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-center gap-3 border-b px-10 py-3">
+          <header
+            // Named so a spec can ask what this row carries. It is what
+            // #P2117 was about: the row must hold the title and the actions
+            // and nothing the chips above it already said.
+            data-testid="quest-header"
+            className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-center gap-3 border-b px-10 py-3"
+          >
             {/* Card mount only. On the page the breadcrumb already walks up
                 and the arrow was redundant beside it, but in the kanban
                 drawer this IS the close affordance: the sheet has no other
@@ -458,6 +535,7 @@ const QuestView = (props: QuestViewProps) => {
                     params: { shortId: String(quest.shortId) },
                   })}
                   className="truncate text-lg leading-tight font-bold"
+                  title={titleText}
                 >
                   {titleContent}
                 </Link>
@@ -468,22 +546,30 @@ const QuestView = (props: QuestViewProps) => {
                       ? "text-[28px] tracking-[-0.6px]"
                       : "text-lg font-bold"
                   }`}
+                  title={titleText}
                 >
                   {titleContent}
                 </span>
               )}
             </div>
 
-            {quest.shelvedAt && (
-              <Badge
-                variant="secondary"
-                className="text-muted-foreground shrink-0"
-              >
-                <Archive className="size-3" />
-                {tr("quest.status.shelved")}
-              </Badge>
-            )}
+            {/* ⚠️ No Shelved badge here, deliberately. It used to sit
+                between the title and Edit and said the same word the status
+                chip above the title already says, in every mount - the chips
+                row is outside every `context` branch - so a shelved quest
+                announced itself twice on one screen (feedback #P2117).
 
+                Same decision as the tags three lines above: the chips row is
+                where what this quest IS belongs, and the header is the one
+                line worth pinning while the body scrolls.
+
+                ⚠️ The same holds for HELD, which is why there is no badge
+                for it here either. `held` is a derived status like the
+                other four, so `statusLabel` / `statusTone` above already
+                render it as an "On hold" chip in the destructive tone. The
+                one thing the header does carry for a hold is the WAY OUT:
+                the lifecycle slot below offers Lift hold in place of an
+                Accept or Complete the server would refuse. */}
             {/* Edit, then the lifecycle primary. The sticky bottom action
                 bar this replaces held Accept / Complete opposite Shelve and
                 Abandon; the mockup has no bar, so the two lifecycle verbs
@@ -493,6 +579,31 @@ const QuestView = (props: QuestViewProps) => {
                 once it is done. */}
             {!quest.completedAt && project && (
               <div className="flex shrink-0 items-center gap-1">
+                {/* ⚠️ Page context only, and for the same reason the
+                    lifecycle verb is: the dialog withholds a decision that
+                    wants the quest in front of you, and handing it to an
+                    agent is that kind of decision.
+
+                    The completed half of the gate is met by placement, this
+                    whole block being inside `!quest.completedAt`; only the
+                    epic phase has to be asserted, and `withheldReason` is
+                    the shared helper's answer. The menu renders nothing on
+                    an empty list, so a withheld quest shows no button. */}
+                {context === "page" && (
+                  <AgentPromptsMenu
+                    items={
+                      withheldReason
+                        ? []
+                        : [
+                            {
+                              kind: "questWork" as const,
+                              label: String(tr("agentPrompts.workOnIt")),
+                              subject: () => promptSubject.forQuest(quest),
+                            },
+                          ]
+                    }
+                  />
+                )}
                 <QuestViewEditButton
                   quest={quest}
                   onUpdate={(it) => {
@@ -508,7 +619,24 @@ const QuestView = (props: QuestViewProps) => {
                     which would have read as "this quest cannot be taken"
                     rather than "not from here". Both verbs are one click
                     away through the title. */}
-                {context === "dialog" ? null : quest.acceptedAt ? (
+                {context === "dialog" ? null : quest.heldAt ? (
+                  // ⚠️ Not "Accept, disabled". Both Accept and Complete are
+                  // refused server-side while a quest is held, and a greyed
+                  // primary with a tooltip would say the quest is stuck
+                  // without offering the one click that unsticks it. The
+                  // slot is state-dependent already; held is a state.
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={unholdQuest.disabled}
+                    onClick={unholdQuest.onClick}
+                  >
+                    <PlayCircle className="size-4" />
+                    <span className="hidden sm:inline">
+                      {tr("quest.view.actions.unhold")}
+                    </span>
+                  </Button>
+                ) : quest.acceptedAt ? (
                   <Button
                     type="button"
                     className="bg-green-600 text-white hover:bg-green-700"
@@ -652,7 +780,9 @@ const QuestView = (props: QuestViewProps) => {
                   <QuestAttachments
                     questId={quest.id}
                     value={quest.attachments ?? []}
-                    disabled={!!quest.completedAt}
+                    disabled={
+                      !!quest.completedAt || !questApi.updateQuestById.can()
+                    }
                     onChange={async (attachments) => {
                       const updated = await questApi.updateQuestById({
                         params: { id: quest.id },

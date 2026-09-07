@@ -113,6 +113,13 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
       ? String(tr("epic.begin.blocked", { args: [String(blockedBy)] }))
       : undefined;
 
+  // The whole control, not each button: an epic's phase is not something a
+  // rank without `epic:write` can move at all, so a disabled Begin beside a
+  // disabled Conclude would be two dead affordances where none belongs.
+  if (!epicApi.setEpicStatus.can()) {
+    return null;
+  }
+
   return (
     <div className="flex items-center gap-2">
       {props.epic.status === "planned" && (

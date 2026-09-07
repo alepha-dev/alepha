@@ -1,6 +1,8 @@
 import { AccountRouter } from "@alepha/ui/components/account/account-router";
+import { inboxUnreadAtom } from "@alepha/ui/components/button-inbox/inbox-unread-atom.ts";
 import { $hook, $inject, Alepha, z } from "alepha";
 import type { AdminInvitationController } from "alepha/api/invitations";
+import type { NotificationInboxController } from "alepha/api/notifications";
 import type { RealmController } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { ReactAuth } from "alepha/react/auth";
@@ -22,6 +24,7 @@ import type { FeedbackController } from "../../api/controllers/FeedbackControlle
 import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
+import type { ProjectPromptController } from "../../api/controllers/ProjectPromptController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QualityController } from "../../api/controllers/QualityController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
@@ -39,6 +42,7 @@ import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
+import { currentInboxCountAtom } from "./atoms/currentInboxCountAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -49,6 +53,7 @@ import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
+import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
 import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
 import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
@@ -59,6 +64,7 @@ import {
   capabilityOption,
   hasCapability,
 } from "./services/projectCapabilities.ts";
+import { canInProject } from "./services/projectRank.ts";
 
 /**
  * The leaderboards that have a detail page, which is exactly the set
@@ -94,10 +100,14 @@ export class AppRouter {
   epicApi = $client<EpicController>();
   areaApi = $client<AreaController>();
   blightApi = $client<BlightController>();
+  // The framework's inbox, not a Lore controller: the read side of the
+  // notification channel lives in `alepha/api/notifications`.
+  inboxApi = $client<NotificationInboxController>();
   releaseApi = $client<ReleaseController>();
   roadmapApi = $client<RoadmapController>();
   sigilApi = $client<SigilController>();
   appApi = $client<AppController>();
+  promptApi = $client<ProjectPromptController>();
   estateApi = $client<EstateController>();
   folioApi = $client<FolioController>();
   directoryApi = $client<DirectoryController>();
@@ -531,6 +541,7 @@ export class AppRouter {
       this.projectFolios,
       this.projectFeedback,
       this.projectBlights,
+      this.projectInbox,
       this.projectApps,
       this.projectApp,
       this.projectAppRedirect,
@@ -615,6 +626,9 @@ export class AppRouter {
         instances,
         openBlights,
         areas,
+        unreadEverywhere,
+        unreadHere,
+        prompts,
       ] = await Promise.all([
         this.releaseApi.getReleases({
           params: { projectId: project.id },
@@ -713,6 +727,53 @@ export class AppRouter {
         this.areaApi
           .getAreas({ params: { projectId: project.id } })
           .catch(() => undefined),
+
+        // ⚠️ TWO inbox counts, and they are different numbers.
+        //
+        // The bell is cross-project: Alepha and Odzala are open in the same
+        // session and a ping in one must not be invisible from the other, so
+        // this one passes NO scope. It seeds `inboxUnreadAtom` before the
+        // first paint, which is what the bell's own mount-fetch then does not
+        // have to do.
+        //
+        // A `count` action, never `list().items.length`: that is the bug
+        // #1744 was, where a paged list capped the Feedback badge at 10 over
+        // an inbox of 106.
+        this.inboxApi
+          .countInbox({ query: {} })
+          .then((r) => r.unread)
+          .catch(() => 0),
+
+        // The rail's badge, filtered to this project. `scope` is the opaque
+        // string the pusher wrote, compared for equality and never parsed.
+        this.inboxApi
+          .countInbox({ query: { scope: `project:${project.id}` } })
+          .then((r) => r.unread)
+          .catch(() => 0),
+
+        // The agent prompt templates this project has customised, read here
+        // so the copy can happen inside a click: Safari's transient
+        // activation does not survive an `await` before `writeText`.
+        //
+        // Gated on the option, which is off by default, so a project that
+        // does not use the feature pays no request.
+        //
+        // ⚠️ `{}` on failure and NOT `undefined`, unlike every neighbour
+        // above. They distinguish "could not read" from "none" because a
+        // badge must not say zero when it means unknown; here there is
+        // nothing to distinguish. The built-in defaults are a complete
+        // answer, so a failed read is indistinguishable from a project that
+        // has customised nothing, and the menus keep working either way.
+        capabilityOption(project, "work", "agentPrompts")
+          ? this.promptApi
+              .getProjectPrompts({ params: { projectId: project.id } })
+              .then((rows) =>
+                Object.fromEntries(
+                  rows.map((it) => [it.kind, it.template] as const),
+                ),
+              )
+              .catch(() => ({}))
+          : Promise.resolve({}),
       ]);
 
       this.alepha.store.set(currentProjectAtom, project);
@@ -734,6 +795,9 @@ export class AppRouter {
       });
       this.alepha.store.set(currentInstancesAtom, instances);
       this.alepha.store.set(currentAreasAtom, areas);
+      this.alepha.store.set(inboxUnreadAtom, { count: unreadEverywhere });
+      this.alepha.store.set(currentInboxCountAtom, { count: unreadHere });
+      this.alepha.store.set(projectPromptsAtom, prompts);
 
       return {
         project,
@@ -751,6 +815,11 @@ export class AppRouter {
       this.alepha.store.set(currentEpicsAtom, undefined);
       this.alepha.store.set(currentInstancesAtom, undefined);
       this.alepha.store.set(currentAreasAtom, undefined);
+      // Only the project-scoped one. `inboxUnreadAtom` counts every project,
+      // so clearing it on leaving one would zero a number that is still
+      // true - and the bell is not on screen off-project anyway.
+      this.alepha.store.set(currentInboxCountAtom, { count: 0 });
+      this.alepha.store.set(projectPromptsAtom, undefined);
     },
     errorHandler: (error) => {
       // `/:projectSlug` matches any unclaimed root path, so a typo reaches this
@@ -762,6 +831,43 @@ export class AppRouter {
         return createElement(NotFound, { style: { height: "100%" } });
       }
     },
+  });
+
+  /**
+   * Every message addressed to the viewer, from every project.
+   *
+   * ⚠️ **One route, not two.** A `/account/inbox` would be a second page for
+   * the same list differing only in a default filter. The filter is a query
+   * param instead, so both entry points reach the same page with the default
+   * each of them wants: the sidebar lands on this project, and the header
+   * bell's "See all" says `?scope=all`, because that dropdown is
+   * cross-project and a footer showing fewer rows than the menu it came from
+   * reads as messages going missing.
+   *
+   * No capability gate. The events that fill it span `work` and `support`,
+   * so gating on either would leave a project generating messages with no
+   * door to them - the same argument that puts the sidebar entry in
+   * `CORE_NAV`.
+   *
+   * No loader: the page hands the controller to its own list, the way
+   * `projectBlights` does, and the parent loader already seeded both counts.
+   */
+  projectInbox = $page({
+    name: "projectInbox",
+    path: "/inbox",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Notifications`,
+    }),
+    // ⚠️ Declared, so the loader's `query` is not empty. A param the schema
+    // does not name reads `undefined` in a loader while `useRouter().query`
+    // three lines away in the component still has it, which is the trap the
+    // invitation link cost an hour to.
+    schema: {
+      query: z.object({
+        scope: z.string().optional(),
+      }),
+    },
+    lazy: () => import("./components/project/inbox/ProjectInbox.tsx"),
   });
 
   projectBlights = $page({
@@ -1307,6 +1413,17 @@ export class AppRouter {
       if (!hasCapability(project, "work")) {
         throw new NotFoundError("Work is not enabled for this project");
       }
+      // ⚠️ A permission NAME, and a module-level function rather than
+      // `useRank()`: a `$page` loader runs outside React and cannot call a
+      // hook, and the loader and the component must not disagree about which
+      // pages exist. Same arrangement as `hasCapability` beside it.
+      //
+      // 404 rather than 403, matching the capability guard above it: a page
+      // the reader may not open is a page that does not exist for them, and a
+      // 403 would confirm what is behind it.
+      if (!canInProject(project, "quest:read")) {
+        throw new NotFoundError("Your rank does not open quests here");
+      }
     },
   });
 
@@ -1511,6 +1628,19 @@ export class AppRouter {
       if (!hasCapability(project, "support")) {
         throw new NotFoundError("Support is not enabled for this project");
       }
+      // ⚠️ A permission NAME, and a module-level function rather than
+      // `useRank()`: a `$page` loader runs outside React and cannot call a
+      // hook, and the loader and the component must not disagree about which
+      // pages exist. Same arrangement as `hasCapability` beside it.
+      //
+      // 404 rather than 403, matching the capability guard above it: a page
+      // the reader may not open is a page that does not exist for them, and a
+      // 403 would confirm what is behind it.
+      if (!canInProject(project, "feedback:read")) {
+        throw new NotFoundError(
+          "Your rank does not open the feedback inbox here",
+        );
+      }
       // The first page only. `Show more` fetches the rest from inside the
       // page, so the loader is one screenful regardless of inbox size.
       const { items, hasMore } = await this.feedbackApi.listFeedback({
@@ -1626,6 +1756,7 @@ export class AppRouter {
     children: () => [
       this.projectSettingsBanner,
       this.projectSettingsMembers,
+      this.projectSettingsRanks,
       this.projectSettingsAreas,
       this.projectSettingsArea,
       this.projectSettingsWork,
@@ -1676,16 +1807,56 @@ export class AppRouter {
       // sidebar SECTION on a page about something else, and it
       // distinguishes "empty" from "unreadable". Here the invitations ARE
       // the page.
+      //
+      // ⚠️ The invitations read is SKIPPED for a reader who cannot manage
+      // members, not caught. It is gated on `member:manage`, and since epic
+      // #E39 that is a rank rather than "is a member", so a plain member
+      // opening this page got a 403 ERROR PAGE where the members list should
+      // be - the list itself is `member:read`, which every rank holds.
+      //
+      // `canInProject` rather than `useRank`: this is a loader, and a loader
+      // cannot call a hook. Same reason `hasCapability` is a module-level
+      // function.
+      const manages = canInProject(
+        this.alepha.store.get(currentProjectAtom),
+        "member:manage",
+      );
+
       const [members, pendingInvitations] = await Promise.all([
         this.projectApi.getProjectMembers({
           params: { id: project.id },
         }),
-        this.invitationApi.listProjectInvitations({
-          params: { projectId: project.id },
-        }),
+        manages
+          ? this.invitationApi.listProjectInvitations({
+              params: { projectId: project.id },
+            })
+          : Promise.resolve([]),
       ]);
       return { members, pendingInvitations };
     },
+  });
+
+  /**
+   * What each rank in this project may do (epic #E39).
+   *
+   * No loader: the page fetches four things that belong to it alone - the
+   * permission catalogue, the ranks, the members holding them and the presets
+   * - and none of them is read anywhere else, so putting them in the layout's
+   * loader would make every other settings page pay for this one.
+   *
+   * ⚠️ Unguarded, like every other settings route. Who may EDIT ranks is
+   * `rank:manage`, which hides the nav entry and which the module re-checks on
+   * every write; a route guard would only turn a link somebody already holds
+   * into a 404, and the page reads nothing a member may not read.
+   */
+  projectSettingsRanks = $page({
+    name: "projectSettingsRanks",
+    path: "/ranks",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Ranks`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsRanksPage.tsx"),
   });
 
   /**
@@ -1968,6 +2139,17 @@ export class AppRouter {
       }
       if (!hasCapability(project, "knowledge")) {
         throw new NotFoundError("Knowledge is not enabled for this project");
+      }
+      // ⚠️ A permission NAME, and a module-level function rather than
+      // `useRank()`: a `$page` loader runs outside React and cannot call a
+      // hook, and the loader and the component must not disagree about which
+      // pages exist. Same arrangement as `hasCapability` beside it.
+      //
+      // 404 rather than 403, matching the capability guard above it: a page
+      // the reader may not open is a page that does not exist for them, and a
+      // 403 would confirm what is behind it.
+      if (!canInProject(project, "folio:read")) {
+        throw new NotFoundError("Your rank does not open folios here");
       }
       // The tree's own two lists, which `seedFolioTree` owns — the folio
       // list AND the directory list, the latter load-bearing: the tree's

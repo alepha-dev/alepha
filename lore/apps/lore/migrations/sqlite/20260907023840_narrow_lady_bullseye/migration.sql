@@ -1,1 +1,0 @@
-ALTER TABLE `artifacts` ADD `maps_file_id` text;

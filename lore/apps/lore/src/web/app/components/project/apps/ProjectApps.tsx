@@ -6,15 +6,23 @@ import { DateTimeProvider } from "alepha/datetime";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Plus, Search, Tag, TriangleAlert } from "lucide-react";
+import {
+  Boxes,
+  Layers,
+  Plus,
+  Radio,
+  Search,
+  Tag,
+  TriangleAlert,
+} from "lucide-react";
 import { useState } from "react";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import AppCreateDialog from "./AppCreateDialog.tsx";
@@ -35,13 +43,30 @@ const filtersSchema = z.object({
    */
   search: z.string().optional(),
   /**
+   * Single selects, one value or none - the reporter asked for "(mono)" and
+   * the two questions they answer are singular: which envs does `api` have,
+   * which apps are in `production`.
+   *
+   * ⚠️ No sentinel item, per the convention settled in #Q1816: the EMPTY
+   * selection is the unfiltered state, which is what `clearable` gives back.
+   * An "All apps" row would be a value the schema has to carry and every
+   * predicate has to special-case.
+   *
+   * `app` and `env` are plain strings and not enums on purpose. An env is an
+   * opaque free slug, so the option list is derived from the rows the page
+   * already holds; a union here would be a closed set over an open one.
+   */
+  app: z.string().optional(),
+  env: z.string().optional(),
+  status: z.enum(["reporting", "silent", "none"]).optional(),
+  /**
    * The deployed tag, as a select over the values actually present.
    *
    * ⚠️ `latest` is in that list like any other value, and the label must not
    * imply that everything on it is one build: `artifacts.tag` allows `latest`
    * and its bytes may change, so two copies both reading `latest` may be
-   * running different code. Local state like `search`, over the in-memory
-   * array.
+   * running different code. Same shape as `app` and `env` above: a single
+   * select with no sentinel row, over the rows already on screen.
    */
   version: z.string().optional(),
 });
@@ -98,12 +123,12 @@ const filtersSchema = z.object({
  */
 const ProjectApps = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const router = useRouter<AppRouter>();
   const dateTime = useInject(DateTimeProvider);
 
   const [project] = useStore(currentProjectAtom);
   const [instances] = useStore(currentInstancesAtom);
-  const [member] = useStore(currentProjectMemberAtom);
   const [creating, setCreating] = useState(false);
 
   if (!project) {
@@ -113,17 +138,41 @@ const ProjectApps = () => {
   // Creating an instance is owner-only server-side, so the action is hidden
   // rather than shown and refused. A member reads the list and does not add to
   // it.
-  const isOwner = member?.owner ?? false;
+  const isOwner = can("app:manage");
   const now = dateTime.nowMillis();
 
-  // The distinct values present, sorted as text. ⚠️ Not as a semver: `latest`
-  // is in this list and has no place in a version order, and the column it
-  // filters does not sort that way either.
-  const versions = [
+  /**
+   * The App and Env option lists, derived from the rows on screen.
+   *
+   * Alphabetical, and `localeCompare` rather than `<` so an accented or
+   * uppercase name lands where a reader expects it rather than by code point.
+   * Both are unbounded sets - an app name exists because a row carries it,
+   * and an env is a free slug - so there is no enum to read them from and
+   * there must not be one.
+   */
+  const optionsOf = (key: "app" | "env") =>
+    [...new Set((instances ?? []).map((instance) => instance[key]))]
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ value, label: value }));
+
+  // ⚠️ Plain calls, never `useMemo`: this sits below `if (!project) return
+  // null`, so a hook here would be a conditional one. The lists are a Set
+  // over the rows already on screen, which is cheaper than the render that
+  // follows it.
+  const appOptions = optionsOf("app");
+  const envOptions = optionsOf("env");
+
+  // ⚠️ Not `optionsOf`: a copy that has never deployed has no version at all,
+  // so this list is the values PRESENT rather than one per row. Sorted as
+  // text and never as a semver - `latest` is in it and has no place in a
+  // version order, and the column it filters does not sort that way either.
+  const versionOptions = [
     ...new Set(
       (instances ?? []).flatMap((it) => (it.version ? [it.version] : [])),
     ),
-  ].sort();
+  ]
+    .sort((a, b) => a.localeCompare(b))
+    .map((value) => ({ value, label: value }));
 
   const openInstance = (instance: AppInstanceResource) =>
     void router.push("app", {
@@ -214,50 +263,141 @@ const ProjectApps = () => {
         filters={{
           schema: filtersSchema,
           render: (form) => (
-            <FilterSlot>
-              <Control
-                input={form.input.search}
-                label=""
-                icon={Search}
-                placeholder={tr("apps.filter.search")}
-                inputProps={{ "aria-label": tr("apps.filter.search") }}
-              />
-              {/*
-                Over the values present, not over every tag ever pushed: this
-                narrows a list of copies, so a tag nothing runs would be an
-                option that empties the table.
-              */}
-              {versions.length > 0 ? (
+            <>
+              <FilterSlot>
                 <Control
-                  input={form.input.version}
+                  input={form.input.search}
                   label=""
-                  clearable
-                  icon={Tag}
-                  clearLabel={tr("apps.filter.allVersions")}
-                  items={versions.map((version) => ({
-                    label: version,
-                    value: version,
-                  }))}
+                  icon={Search}
+                  placeholder={tr("apps.filter.search")}
+                  inputProps={{ "aria-label": tr("apps.filter.search") }}
                 />
-              ) : null}
-            </FilterSlot>
+              </FilterSlot>
+              {/* Both lists are hidden below two values, the way the Epics
+                  table hides its Release filter with no release: a select
+                  whose only option matches every row is a control with
+                  nothing to do. */}
+              {appOptions.length > 1 && (
+                <FilterSlot>
+                  <Control
+                    select
+                    clearable
+                    input={form.input.app}
+                    label=""
+                    icon={Boxes}
+                    triggerClassName="w-full"
+                    // Doubles as the empty trigger's placeholder, which is
+                    // the whole of the way #Q1816 settled: there is no clear
+                    // ROW in the list, so the label says what unfiltered
+                    // means and the trigger's `x` is how you get back to it.
+                    clearLabel={String(tr("apps.filter.app"))}
+                    items={appOptions}
+                    inputProps={{ "aria-label": tr("apps.filter.app") }}
+                  />
+                </FilterSlot>
+              )}
+              {envOptions.length > 1 && (
+                <FilterSlot>
+                  <Control
+                    select
+                    clearable
+                    input={form.input.env}
+                    label=""
+                    icon={Layers}
+                    triggerClassName="w-full"
+                    // Doubles as the empty trigger's placeholder, which is
+                    // the whole of the way #Q1816 settled: there is no clear
+                    // ROW in the list, so the label says what unfiltered
+                    // means and the trigger's `x` is how you get back to it.
+                    clearLabel={String(tr("apps.filter.env"))}
+                    items={envOptions}
+                    inputProps={{ "aria-label": tr("apps.filter.env") }}
+                  />
+                </FilterSlot>
+              )}
+              <FilterSlot>
+                <Control
+                  select
+                  clearable
+                  input={form.input.status}
+                  label=""
+                  icon={Radio}
+                  triggerClassName="w-full"
+                  // Doubles as the empty trigger's placeholder, which is
+                  // the whole of the way #Q1816 settled: there is no clear
+                  // ROW in the list, so the label says what unfiltered
+                  // means and the trigger's `x` is how you get back to it.
+                  clearLabel={String(tr("apps.filter.status"))}
+                  // Semantic order, not alphabetical: reporting, silent,
+                  // never wired up. The labels are `AppStatusDot`'s own, so
+                  // the dot and the filter cannot come to disagree about what
+                  // a state is called.
+                  items={[
+                    {
+                      value: "reporting",
+                      label: tr("apps.status.reporting"),
+                    },
+                    { value: "silent", label: tr("apps.status.silent") },
+                    { value: "none", label: tr("apps.status.none") },
+                  ]}
+                  inputProps={{ "aria-label": tr("apps.filter.status") }}
+                />
+              </FilterSlot>
+              {/* ⚠️ Hidden when NOTHING has a version, not below two values
+                  like App and Env: one deployed copy among ten is exactly the
+                  case somebody wants to isolate, and a select with a single
+                  option is still doing work here. */}
+              {versionOptions.length > 0 && (
+                <FilterSlot>
+                  <Control
+                    select
+                    clearable
+                    input={form.input.version}
+                    label=""
+                    icon={Tag}
+                    triggerClassName="w-full"
+                    clearLabel={String(tr("apps.filter.version"))}
+                    items={versionOptions}
+                    inputProps={{ "aria-label": tr("apps.filter.version") }}
+                  />
+                </FilterSlot>
+              )}
+            </>
           ),
         }}
-        // The built-in field matching pairs a filter with the same-named
-        // property, and this one is not: `search` spans three values.
+        // ⚠️ A caller-supplied `filter` REPLACES the built-in field matching
+        // entirely (`paginateLocal`), so every filter is answered here - `app`
+        // and `env` included, even though they are named after properties.
+        // Leaving them to the built-in pass would not work twice over: it
+        // never runs once this prop is set, and it matches a string as a
+        // case-insensitive SUBSTRING, so picking `club` would also keep
+        // `clubhouse`. A single select means equality.
+        //
+        // `status` could not use it either way: it is derived by
+        // `appLiveness`, not carried on the row.
+        //
+        // Only values that are actually set reach this, so each clause is a
+        // guard rather than a default.
         filter={(instance, values) => {
           const version = String(values.version ?? "");
           if (version && instance.version !== version) {
             return false;
           }
           const search = String(values.search ?? "").toLowerCase();
-          if (!search) return true;
-          const url = appUrl(instance) ?? "";
-          return (
-            instance.app.toLowerCase().includes(search) ||
-            instance.env.toLowerCase().includes(search) ||
-            url.toLowerCase().includes(search)
-          );
+          if (search) {
+            const url = appUrl(instance) ?? "";
+            const hit =
+              instance.app.toLowerCase().includes(search) ||
+              instance.env.toLowerCase().includes(search) ||
+              url.toLowerCase().includes(search);
+            if (!hit) return false;
+          }
+          if (values.app && instance.app !== values.app) return false;
+          if (values.env && instance.env !== values.env) return false;
+          if (values.status && appLiveness(instance, now) !== values.status) {
+            return false;
+          }
+          return true;
         }}
         onRowClick={openInstance}
         columns={{

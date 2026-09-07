@@ -47,7 +47,7 @@ class GateTestController {
   readProjectAsOwner = $action({
     method: "GET",
     path: "/gate-test/projects/:projectId/owner",
-    use: [$ownsProject({ param: "projectId", owner: true })],
+    use: [$ownsProject({ param: "projectId", requires: "project:delete" })],
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.text(),
@@ -74,7 +74,7 @@ class GateTestController {
       $ownsProject({
         repository: () => this.epics,
         param: "id",
-        owner: true,
+        requires: "project:delete",
       }),
     ],
     schema: {
@@ -145,7 +145,7 @@ const memberToken = async (
   project: Project,
 ): Promise<UserAccountToken> => {
   const user = await ctx.repos.users.create({});
-  await createTestMember(ctx.alepha, project, user.id, { owner: false });
+  await createTestMember(ctx.alepha, project, user.id);
   return { id: user.id, roles: ["user"] };
 };
 
@@ -249,6 +249,15 @@ describe("$ownsProject", () => {
     });
   });
 
+  /**
+   * ⚠️ There is no `owner: true` any more.
+   *
+   * "Only the owner" is a PERMISSION on Lore's never-grantable list -
+   * `project:delete` here - so no custom rank can be given it and only the
+   * `owner` built-in's `*` reaches it. The gate itself is the same membership
+   * join it is everywhere else, which is what let `projects.createdBy` stop
+   * being an authorization input.
+   */
   describe("the owner variant", () => {
     it("admits the creator", async ({ expect }) => {
       const project = await createTestProject(ctx.alepha);
@@ -268,8 +277,8 @@ describe("$ownsProject", () => {
       const user = await memberToken(ctx, project);
 
       // The same caller, the same project, both variants - this is the pair
-      // that proves `owner: true` drops `via` rather than adding a check that
-      // happens to pass for the creator.
+      // that proves the rank narrows what membership admitted, rather than
+      // membership answering both questions.
       expect(
         await ctx.controller.readProject(
           { params: { projectId: project.id } },
@@ -282,7 +291,7 @@ describe("$ownsProject", () => {
           { params: { projectId: project.id } },
           { user },
         ),
-      ).rejects.toThrow("Only the project owner can perform this action");
+      ).rejects.toThrow("does not grant project:delete");
     });
 
     it("refuses a member on the hop branch too", async ({ expect }) => {

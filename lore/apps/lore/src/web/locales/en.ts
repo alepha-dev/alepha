@@ -414,6 +414,8 @@ export default {
   "quest.event.reminderSent": "received a reminder",
   "quest.event.shelved": "shelved the quest",
   "quest.event.unshelved": "put the quest back in play",
+  "quest.event.held": "put the quest on hold",
+  "quest.event.unheld": "lifted the hold",
   "quest.event.updated": "updated the quest",
   "quest.event.change.priority": "changed the priority from $1 to $2",
   "quest.event.change.priorityTo": "set the priority to $1",
@@ -437,6 +439,7 @@ export default {
   "quest.status.accepted": "In progress",
   "quest.status.completed": "Completed",
   "quest.status.shelved": "Shelved",
+  "quest.status.held": "On hold",
   "quest.rail.estimate": "Estimate",
   "quest.rail.assign.unassigned": "Unassigned",
   "quest.rail.size": "Size",
@@ -481,6 +484,8 @@ export default {
   "quest.view.actions.unassign": "Unassign",
   "quest.view.actions.shelve": "Shelve",
   "quest.view.actions.unshelve": "Unshelve",
+  "quest.view.actions.hold": "Put on hold",
+  "quest.view.actions.unhold": "Lift hold",
   "quest.view.complete.title": "Complete this quest",
   "quest.view.complete.description":
     "Leave a short summary of what was done: what changed, decisions made, what a future reader (human or AI) would need to know.",
@@ -581,7 +586,17 @@ export default {
   // ── Capabilities ────────────────────────────────────────────────────────
   // The four product surfaces a project composes, and the switches inside
   // each. Labels move; the persisted keys never do.
+  // ⚠️ `.short` is the NAV's name for a capability, one word, and it exists
+  // beside `.label` rather than replacing it (feedback #P2123). The
+  // sentence is right where it is used - the creation wizard, where the
+  // reader is choosing what a project does and the phrase IS the
+  // explanation, and the settings section headings - and it is right a
+  // second time in `CapabilityRegistry.name`, which feeds the refusal
+  // messages: "Turn on Plan and track work" reads better than "Turn on
+  // Work". A rail beside a permission matrix is the one place that wants
+  // the word alone.
   "project.capability.work.label": "Plan and track work",
+  "project.capability.work.short": "Work",
   "project.capability.work.description": "Quests, epics, releases, a board.",
   "project.capability.work.option.board.label": "Board",
   "project.capability.work.option.board.description":
@@ -601,7 +616,11 @@ export default {
   "project.capability.work.option.reminder.label": "Reminders",
   "project.capability.work.option.reminder.description":
     "Nudge whoever holds a quest that has gone quiet.",
+  "project.capability.work.option.agentPrompts.label": "Agent prompts",
+  "project.capability.work.option.agentPrompts.description":
+    "Adds an Agent Prompts menu to epics, quests and feedback. A click copies a prompt for Claude Code or Codex; nothing is sent anywhere.",
   "project.capability.knowledge.label": "Write and keep knowledge",
+  "project.capability.knowledge.short": "Knowledge",
   "project.capability.knowledge.description":
     "Wiki linked folios, files, revisions.",
   "project.capability.knowledge.option.agentSummary.label":
@@ -609,6 +628,7 @@ export default {
   "project.capability.knowledge.option.agentSummary.description":
     "Show the summary field on a folio. It is written and read over MCP either way.",
   "project.capability.apps.label": "Deploy and watch apps",
+  "project.capability.apps.short": "Deploy",
   "project.capability.apps.description":
     "Instances, analytics, errors, vitals.",
   "project.capability.apps.option.track.label": "Track apps",
@@ -618,6 +638,7 @@ export default {
   "project.capability.apps.option.deploy.description":
     "Push a build to a machine you own.",
   "project.capability.support.label": "Collect feedback",
+  "project.capability.support.short": "Support",
   "project.capability.support.description":
     "A public request form and a triage inbox.",
   "project.settings.areas.title": "Areas",
@@ -993,6 +1014,17 @@ export default {
   "quest.view.shelve.confirmWithDependents":
     "Set this quest aside as out of scope? It leaves the backlog, but $1 depends on it and will stay blocked until you unshelve and complete it.",
   "quest.view.shelve.confirmButton": "Shelve Quest",
+  "quest.view.hold.title": "Put this quest on hold",
+  "quest.view.hold.description":
+    "Say what it is waiting for. This is posted to the discussion, so you can @mention whoever can unblock it.",
+  "quest.view.hold.placeholder":
+    "Waiting on... (markdown supported, @mention to notify)",
+  "quest.view.hold.submit": "Put on hold",
+  "quest.view.hold.reasonRequired": "A hold needs a reason.",
+  "quest.view.unhold.title": "Lift this hold",
+  "quest.view.unhold.confirm":
+    "The quest goes back to what it was before the hold, still assigned to whoever had it. The reason stays in the discussion.",
+  "quest.view.unhold.confirmButton": "Lift Hold",
   "quest.view.edit": "Edit",
   "quest.view.back": "Back",
   "quest.view.reminder.title": "Reminder",
@@ -1070,11 +1102,15 @@ export default {
   "common.previous": "Previous",
   "common.noResults": "No results",
 
+  "project.menu.inbox": "Notifications",
   "project.menu.feedback": "Feedback",
   "project.menu.blights": "Blights",
   "project.menu.apps": "Apps",
 
   "apps.filter.search": "Search",
+  "apps.filter.app": "App",
+  "apps.filter.env": "Environment",
+  "apps.filter.status": "Status",
   "apps.status.reporting": "Reporting",
   "apps.status.silent": "Silent for over a day",
   "apps.status.none": "No sigil, nothing reports",
@@ -1109,7 +1145,7 @@ export default {
   "app.tab.artifacts": "Artifacts",
   "app.tab.deploy": "Deploy",
   "apps.table.version": "Version",
-  "apps.filter.allVersions": "All versions",
+  "apps.filter.version": "Version",
   "app.deploy": "Deploy",
   "app.deploy.action": "Deploy",
   "app.deploy.starting": "Starting...",
@@ -1738,12 +1774,53 @@ export default {
   "feedback.rejected": "Feedback rejected",
   "feedback.rejectError": "Failed to reject feedback",
   "feedback.delete": "Delete",
+  "inbox.title": "Notifications",
+  "inbox.empty": "Nothing new.",
+  "account.notifications.title": "Notifications",
+  "account.notifications.description": "What you want to hear about, and how.",
+  "account.notifications.channels": "Channels",
+  "account.notifications.channels.description": "Where messages reach you.",
+  "account.notifications.email": "Email",
+  "account.notifications.email.description":
+    "Turn this off and nothing is mailed to you. Sign-in codes and password resets are not affected.",
+  "account.notifications.inbox": "In-app",
+  "account.notifications.inbox.description":
+    "Always on. Messages wait for you in the bell, and a message you cannot see is one that was never sent.",
+  "account.notifications.categories": "Kinds of message",
+  "account.notifications.categories.description":
+    "These apply to both channels.",
+  "account.notifications.saveFailed": "Could not save your preferences.",
+  "account.notifications.category.mentions": "Mentions",
+  "account.notifications.category.mentions.description":
+    "Somebody writes your name in a quest or feedback comment.",
+  "account.notifications.category.releases": "Releases",
+  "account.notifications.category.releases.description":
+    "A project you belong to publishes a release.",
+  "account.notifications.category.tasks": "Quest reminders",
+  "account.notifications.category.tasks.description":
+    "Nudges about a quest you accepted and have not finished.",
+  "account.notifications.category.estates": "Deploy credentials",
+  "account.notifications.category.estates.description":
+    "A deploy credential you own has stopped working.",
+  "inbox.empty.description": "Messages addressed to you show up here.",
+  "inbox.noMatch": "No match",
+  "inbox.noMatch.description": "Try adjusting or clearing the search.",
+  "inbox.filter.search": "Search messages",
+  "inbox.table.message": "Message",
+  "inbox.table.project": "Project",
+  "inbox.table.when": "When",
+  "inbox.unread": "Unread",
+  "inbox.loadMore": "Load more",
+  "inbox.scope.all": "All projects",
+  "inbox.scope.project": "This project",
+  "inbox.markAllRead": "Mark all read",
+  "inbox.seeAll": "See all",
   "feedback.thread.title": "Discussion",
   "feedback.thread.empty": "Nothing has been said about this yet.",
   "feedback.thread.placeholder": "Ask a question or record a finding.",
   "feedback.thread.submit": "Comment",
   "feedback.thread.noNotification":
-    "Nobody is notified. The reply is here when they come back.",
+    "Project members are notified when you write their @name. Nobody else is: the reply is here when they come back.",
   "feedback.thread.edited": "edited",
   "feedback.thread.agent": "agent",
   "feedback.thread.unknownAuthor": "A former member",
@@ -1856,15 +1933,48 @@ export default {
   "epic.progress.open": "$1 open",
   "epic.progress.shelved": "$1 shelved",
   "epic.action.delete": "Delete",
-  "epic.action.review": "Review",
-  "epic.action.review.copied":
-    "Review prompt for $1 copied. Paste it into Claude Code or Codex.",
-  "epic.action.review.error": "Could not copy the review prompt.",
-  "epic.action.review.dialog.title": "Review this epic with an agent",
-  "epic.action.review.dialog.description":
-    "Tweak the prompt if you want, then copy it into Claude Code or Codex.",
-  "epic.action.review.dialog.label": "Review prompt",
-  "epic.action.review.dialog.copy": "Copy and close",
+  "agentPrompts.menu": "Agent Prompts",
+  "agentPrompts.review": "Review",
+  "agentPrompts.activate": "Activate",
+  "agentPrompts.workOnIt": "Work on it",
+  "agentPrompts.copied":
+    "Prompt for $1 copied. Paste it into Claude Code or Codex.",
+  "agentPrompts.settings.title": "Agent prompts",
+  "agentPrompts.settings.description":
+    "The text each Agent Prompts entry puts on the clipboard. The prompts are written in English on purpose: their words are the tool names an agent calls.",
+  "agentPrompts.settings.legend": "Placeholders",
+  "agentPrompts.settings.placeholder.project":
+    "The project's title, which is what an MCP call matches on.",
+  "agentPrompts.settings.placeholder.slug":
+    "The project's URL slug, which is how the address names it. Not interchangeable with the title.",
+  "agentPrompts.settings.placeholder.number":
+    "The number a reader recognises: 41 for epic #E41.",
+  "agentPrompts.settings.placeholder.id":
+    "The global id, which is what a quest list filters an epic by.",
+  "agentPrompts.settings.placeholder.reference":
+    "The typed reference: #E41, #Q1798, #P2087.",
+  "agentPrompts.settings.placeholder.title": "The subject's own title.",
+  "agentPrompts.settings.placeholder.url": "A link to it.",
+  "agentPrompts.settings.save": "Save",
+  "agentPrompts.settings.saved": "Prompt saved.",
+  "agentPrompts.settings.reset": "Reset to default",
+  "agentPrompts.settings.reset.title": "Reset this prompt?",
+  "agentPrompts.settings.reset.description":
+    "Your version is discarded and this prompt follows the built-in one again, including its future improvements.",
+  "agentPrompts.settings.wasReset": "Prompt reset to its default.",
+  "agentPrompts.settings.epicReview.title": "Epic: Review",
+  "agentPrompts.settings.epicReview.description":
+    "Offered on an epic that is still planned. Asks an agent to sharpen the plan before anyone works it.",
+  "agentPrompts.settings.epicActivate.title": "Epic: Activate",
+  "agentPrompts.settings.epicActivate.description":
+    "Offered on a planned or active epic. Hands the whole epic over, quest by quest.",
+  "agentPrompts.settings.questWork.title": "Quest: Work on it",
+  "agentPrompts.settings.questWork.description":
+    "Offered on a quest that is not finished. One quest, one branch, one commit.",
+  "agentPrompts.settings.feedbackWork.title": "Feedback: Work on it",
+  "agentPrompts.settings.feedbackWork.description":
+    "Offered on a pending or accepted report. Creates the quest, does the work, answers the reporter.",
+  "agentPrompts.copyError": "Could not copy the prompt.",
   "epic.delete.title": "Delete this epic?",
   "epic.delete.confirm":
     'Its quests and folios stay, detached from "$1". This cannot be undone.',
@@ -2141,4 +2251,119 @@ export default {
   "activity.fields": "changed $1",
   "activity.capability.enabled": "turned on $1",
   "activity.capability.disabled": "turned off $1",
+
+  // The rank matrix's column labels, one per `$permission` declared in
+  // `LorePermissions`, plus a heading per group. Rendered dynamically from the
+  // catalogue (`tr(permission.label)`), which is why `permission.` is a
+  // `dynamicPrefixes` entry in `alepha.config.ts`.
+  //
+  // ⚠️ These are the only part of a permission that may change. The KEY of the
+  // permission itself - `folio:write` - is stored in every rank definition and
+  // can never be renamed; see the note on `LorePermissions`.
+  "permission.group.project": "Project",
+  "permission.project.read": "Open the project",
+  "permission.project.update": "Rename the project and edit its details",
+  "permission.project.delete": "Delete the project",
+  "permission.project.create": "Create a project",
+  "permission.group.member": "Members",
+  "permission.member.read": "See who is in the project",
+  "permission.member.manage": "Invite, remove and rank members",
+  "permission.group.rank": "Ranks",
+  "permission.rank.manage": "Edit what the ranks grant",
+  "permission.group.capability": "Capabilities",
+  "permission.capability.manage": "Turn capabilities on and off",
+  "permission.group.invitation": "Invitations",
+  "permission.invitation.create": "Send an invitation",
+  "permission.group.stats": "Reports",
+  "permission.stats.read": "Read the reports",
+  "permission.group.quest": "Quests",
+  "permission.quest.read": "Read quests",
+  "permission.quest.create": "Create quests",
+  "permission.quest.update": "Edit quests and move them along",
+  "permission.quest.delete": "Delete quests",
+  "permission.group.epic": "Epics",
+  "permission.epic.read": "Read epics",
+  "permission.epic.write": "Create and edit epics",
+  "permission.group.release": "Releases",
+  "permission.release.read": "Read releases",
+  "permission.release.manage": "Create, edit and publish releases",
+  "permission.group.area": "Areas",
+  "permission.area.read": "Read areas",
+  "permission.area.manage": "Rename, merge and delete areas",
+  "permission.group.folio": "Folios",
+  "permission.folio.read": "Read folios",
+  "permission.folio.write": "Write folios, directories and attachments",
+  "permission.group.app": "Apps",
+  "permission.app.read": "See the deployed copies",
+  "permission.app.manage": "Create, rename and delete a deployed copy",
+  "permission.group.sigil": "Sigils",
+  "permission.sigil.manage": "Mint, rotate and delete a sigil",
+  "permission.group.deploy": "Deploys",
+  "permission.deploy.manage": "Deploy and set variables",
+  "permission.group.artifact": "Artifacts",
+  "permission.artifact.read": "See what CI has pushed",
+  "permission.group.blight": "Blights",
+  "permission.blight.read": "Read the crash inbox",
+  "permission.blight.triage": "Resolve, ignore and forward blights",
+  "permission.group.quality": "Quality",
+  "permission.quality.read": "Read coverage and test totals",
+  "permission.group.estate": "Estates",
+  "permission.estate.read": "See the estates lent to the project",
+  "permission.estate.update": "Edit an estate",
+  "permission.estate.lend": "Lend an estate to the project, and take it back",
+  "permission.estate.create": "Create an estate",
+  "permission.estate.delete": "Delete an estate",
+  "permission.group.feedback": "Feedback",
+  "permission.feedback.read": "Read the feedback inbox",
+  "permission.feedback.triage": "Accept, reject and remove feedback",
+  "project.settings.members.rank.label": "Rank",
+  "project.settings.members.rank.assigned": "Rank updated",
+  "project.settings.members.invite.rank": "Rank they land on",
+  "project.settings.members.transfer.action": "Transfer ownership",
+  "project.settings.members.transfer.title": "Transfer this project to $1",
+  "project.settings.members.transfer.description":
+    "There is exactly one owner. Pick the rank you keep, then confirm.",
+  "project.settings.members.transfer.keep": "Your rank afterwards",
+  "project.settings.members.transfer.confirmTitle": "Give this project to $1?",
+  "project.settings.members.transfer.confirmDescription":
+    "$1 becomes the owner and you become $2. This cannot be undone by you: only the new owner can give it back.",
+  "project.settings.members.transfer.confirm": "Transfer it",
+  "project.settings.members.transfer.done": "$1 owns this project now",
+  "project.settings.nav.ranks": "Ranks",
+  "project.settings.ranks.title": "What each rank may do",
+  "project.settings.ranks.description":
+    "Permissions down the left, one column per rank. A permission belonging to a capability this project does not have is not listed at all.",
+  "project.settings.ranks.delay":
+    "A change to what a rank grants can take up to a minute to reach everybody. Removing somebody from the project, or moving them to another rank, takes effect at once.",
+  "project.settings.ranks.permission": "Permission",
+  "project.settings.ranks.empty":
+    "No permission to show for this project's capabilities.",
+  "project.settings.ranks.builtin": "Built-in",
+  "project.settings.ranks.holders": "$1 member(s)",
+  "project.settings.ranks.actions": "Actions for $1",
+  "project.settings.ranks.rename": "Rename",
+  "project.settings.ranks.rename.title": "Rename this rank",
+  "project.settings.ranks.rename.confirm": "Rename",
+  "project.settings.ranks.delete": "Delete",
+  "project.settings.ranks.delete.title": "Delete $1?",
+  "project.settings.ranks.delete.description":
+    "The rank disappears from this project. Nobody holds it, so nobody is affected.",
+  "project.settings.ranks.delete.confirm": "Delete the rank",
+  "project.settings.ranks.delete.held.title": "$1 is still held",
+  "project.settings.ranks.delete.held.description":
+    "Move these members to another rank first: $1. Ranks are changed on the Members page.",
+  "project.settings.ranks.deleted": "Rank deleted",
+  "project.settings.ranks.create": "New rank",
+  "project.settings.ranks.create.blank": "Empty rank",
+  "project.settings.ranks.create.preset": "From $1",
+  "project.settings.ranks.create.title": "Name the new rank",
+  "project.settings.ranks.create.description":
+    "The name is what members read. Nothing is stored until you confirm.",
+  "project.settings.ranks.create.confirm": "Create",
+  "project.settings.ranks.created": "Rank created",
+  "project.settings.ranks.save": "Save the ranks",
+  "project.settings.ranks.saved": "Ranks saved",
+  "rank.preset.admin": "Admin",
+  "rank.preset.contributor": "Contributor",
+  "rank.preset.viewer": "Viewer",
 };

@@ -1,5 +1,4 @@
 import { $inject, z } from "alepha";
-import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
 import type { QualityRun } from "../entities/qualityRuns.ts";
@@ -36,7 +35,8 @@ export class QualityController {
    * another field is a field initializer, so a gate declared below its first
    * use is `undefined` at construction time.
    */
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
 
   /**
    * How much history one read hands the tab. With one row per branch per day,
@@ -64,7 +64,7 @@ export class QualityController {
    * a red push shows as a warning annotation rather than blocking anything.
    */
   pushQualityRun = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject("quality:read")],
     method: "POST",
     path: "/projects/:projectId/quality/runs",
     description: "Record coverage and test totals for one commit.",
@@ -95,7 +95,7 @@ export class QualityController {
    * empty response is what the "nothing pushed yet" panel is for.
    */
   getQualityRuns = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject("quality:read")],
     method: "GET",
     path: "/projects/:projectId/quality/runs",
     description: "The latest quality run and the series behind it.",

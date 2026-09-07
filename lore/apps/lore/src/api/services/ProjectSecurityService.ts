@@ -4,7 +4,7 @@ import {
   ResourceGateMemoProvider,
   type UserAccountToken,
 } from "alepha/security";
-import { BadRequestError, ForbiddenError } from "alepha/server";
+import { BadRequestError } from "alepha/server";
 
 import { type Member, members } from "../entities/members.ts";
 import {
@@ -29,19 +29,28 @@ import { CapabilityRegistry } from "./CapabilityRegistry.ts";
  * Authorization is domain logic; realm configuration is infrastructure. They
  * do not belong in one class.
  *
- * ## Two roles, and the newer one is the default
+ * ## It no longer performs the check
  *
- * This class both PERFORMS the check ({@link assertMember} /
- * {@link assertOwner}, called from a handler body) and SUPPLIES it
+ * `assertMember` and `assertOwner` are **gone**. This class SUPPLIES the gate
  * (`projects` and `members`, which `$ownsProject` joins declaratively in a
- * `use:` array). A new endpoint takes the second: a gate in `use:` cannot be
- * forgotten the way a missing line in a handler can, it runs before the
- * handler on every transport including MCP, and it hands the rows it read to
- * the handler instead of making it query them again.
+ * `use:` array) and nothing more: a gate in `use:` cannot be forgotten the way
+ * a missing line in a handler can, it runs before the handler on every
+ * transport including MCP, and it hands the rows it read to the handler
+ * instead of making it query them again.
  *
- * The assert methods remain for the controllers not yet ported, and
- * {@link isMember} / {@link isMemberById} are not going anywhere at all -
- * they answer questions that are not gates.
+ * The handful of call sites a middleware genuinely cannot serve - a file route
+ * deciding per bucket, a closure handed to another module, a resolver keyed on
+ * a slug - ask `RankService.can` / `assert` instead, each naming the
+ * permission it needs. Grep for `ranks: imperative`.
+ *
+ * {@link isMember} / {@link isMemberById} are not going anywhere: they answer
+ * questions that are not gates (exempting a member from the feedback rate
+ * limit, handing a quest to somebody else).
+ *
+ * ⚠️ Both lost their `project.createdBy === userId` branch. After #Q1927's
+ * backfill every creator holds a membership row, so membership means exactly
+ * "a `members` row exists" - and `createdBy` records who created the project
+ * and is never an authorization input again.
  */
 export class ProjectSecurityService {
   projects = $repository(projects);
@@ -59,8 +68,8 @@ export class ProjectSecurityService {
   protected readonly memo = $inject(ResourceGateMemoProvider);
 
   /**
-   * How long `assertMember`'s project read may be served from the ORM's
-   * in-memory query cache.
+   * How long the gate's project read may be served from the ORM's in-memory
+   * query cache.
    *
    * This one row is read by EVERY project-scoped request in the app —
    * same query, same params — so it is the highest-value cacheable read
@@ -87,53 +96,11 @@ export class ProjectSecurityService {
   public static readonly CAPABILITY_MEMO_PREFIX = "lore.projectCapabilities:";
 
   /**
-   * Membership gate. Requires the caller to be the project owner or a
-   * member (membership row exists). Used for every project-scoped read
-   * AND write — Lore projects are always private; there is no
-   * non-member visibility path.
-   *
-   * `user.ownership === false` is a privileged identity (admin without
-   * narrow ownership scope) and bypasses the membership check.
-   */
-  async assertMember(
-    projectId: number,
-    user: UserAccountToken,
-  ): Promise<ProjectGuard> {
-    const project = await this.projects.getOne(
-      { where: { id: { eq: projectId } } },
-      { cache: { ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS } },
-    );
-
-    // `=== false`, not a falsy test: the token only carries `ownership` when
-    // `$secure` was given permissions. On a bare `$secure()` action it is
-    // `undefined`, and `!user.ownership` let every logged-in user through.
-    if (project.createdBy === user.id || user.ownership === false) {
-      return { project };
-    }
-
-    // Deliberately NOT cached, unlike the project read above. `createdBy`
-    // is immutable, so a stale project row cannot widen the owner branch
-    // — but membership is revocable, and caching this would keep a
-    // removed member reading the project for the length of the window.
-    const member = await this.members.findOne({
-      where: {
-        projectId: { eq: projectId },
-        userId: { eq: user.id },
-      },
-    });
-
-    if (!member) {
-      throw new ForbiddenError("Not a member of this project");
-    }
-    return { project, member };
-  }
-
-  /**
    * Non-throwing **literal** membership check — `true` when the caller created
    * the project or holds a membership in it.
    *
-   * Unlike {@link assertMember}, this deliberately does NOT honor the
-   * `user.ownership` privileged-identity bypass: that bypass governs *access*
+   * Deliberately does NOT honor the `user.ownership` privileged-identity
+   * bypass: that bypass governs *access*
    * (a privileged admin may read member-gated data), whereas this answers
    * "does the caller *belong* to this project?". Used to branch on membership
    * (e.g. exempting members from the feedback rate limit), not to gate access.
@@ -144,9 +111,6 @@ export class ProjectSecurityService {
     });
     if (!project) {
       return false;
-    }
-    if (project.createdBy === user.id) {
-      return true;
     }
     const member = await this.members.findOne({
       where: {
@@ -175,9 +139,6 @@ export class ProjectSecurityService {
     });
     if (!project) {
       return false;
-    }
-    if (project.createdBy === userId) {
-      return true;
     }
     const member = await this.members.findOne({
       where: {
@@ -250,31 +211,6 @@ export class ProjectSecurityService {
   }
 
   /**
-   * Owner-only gate. Requires the caller to be the project creator (or a
-   * privileged identity with `user.ownership === false`). Use for
-   * destructive or project-configuration endpoints: delete project,
-   * change features, manage kanban columns, manage releases, import quests,
-   * send invitations.
-   */
-  async assertOwner(
-    projectId: number,
-    user: UserAccountToken,
-  ): Promise<ProjectGuard> {
-    const project = await this.projects.getOne({
-      where: { id: { eq: projectId } },
-    });
-
-    // Same rule as assertMember: undefined is NOT the privileged identity.
-    if (project.createdBy !== user.id && user.ownership !== false) {
-      throw new ForbiddenError(
-        "Only the project owner can perform this action",
-      );
-    }
-
-    return { project };
-  }
-
-  /**
    * Which capabilities this project has turned on, and the options inside
    * each.
    *
@@ -287,7 +223,7 @@ export class ProjectSecurityService {
    *
    * Two layers of caching, and they answer different questions:
    *
-   * - **30 s TTL**, the same window {@link assertMember}'s project read takes.
+   * - **30 s TTL**, the same window the gate's project read takes.
    *   Capabilities are configuration, exactly what `features.*` was, so they
    *   get the project row's treatment and not membership's - membership is
    *   revocable and deliberately never cached. `Repository` invalidates the
@@ -380,10 +316,9 @@ export class ProjectSecurityService {
   /**
    * Refuse unless this project has the capability, and the option inside it.
    *
-   * The one gate, reached three ways: as a `capability` option on
-   * `$ownsProject` where the gate is middleware, called by hand beside
-   * `assertMember` / `assertOwner` in the controllers that still gate in their
-   * handlers, and called by hand in MCP tools.
+   * The one gate, reached two ways: as a `capability` option on
+   * `$ownsProject`, which is how every HTTP action reaches it, and called by
+   * hand in MCP tools.
    *
    * ⚠️ **A 400, never a 404 or a 403.** A route under a disabled capability is
    * a page that does not exist, so the router answers 404; an API call into
@@ -459,7 +394,7 @@ export interface ProjectGuard {
   /**
    * The project's enabled capabilities, when the gate read them.
    *
-   * Optional because {@link ProjectSecurityService.assertMember} does not pay
+   * Optional because the membership gate does not pay
    * for the read: most endpoints gate on membership and never ask. The gate
    * that does ask fills it, so a handler behind one need not query again.
    */

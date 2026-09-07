@@ -37,7 +37,7 @@ apps/lore/                # This app
 │   │   ├── controllers/  # 20 controllers — see list below
 │   │   ├── entities/     # 23 entities — see list below
 │   │   ├── providers/    # AppSecurityProvider (the `$realm`; the membership/owner gates are `services/ProjectSecurityService`), ProjectInvitationResource (the `$invitationResource` for `type: "project"`), LoreFileAccessProvider (per-file IDOR gate), LoreSigilSinkProvider (in-process self-report — a Worker can't fetch its own hostname)
-│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), QuestJobs (reminder sweep), QualityJobs (quality-run cap sweep)
+│   │   ├── jobs/         # BlightJobs (retention purge), SigilJobs (analytics collapse), QuestJobs (reminder sweep), QualityJobs (quality-run cap sweep), ProjectRankJobs (preset-rank backfill)
 │   │   ├── schemas/      # Request/response schemas
 │   │   └── services/     # 18 services — see list below
 │   ├── mcp/              # MCP protocol integration (tools, resources)
@@ -56,7 +56,7 @@ apps/lore/                # This app
 └── public/               # Static assets served at /
 ```
 
-**Controllers (33)** - `App` (every write to a deployed copy: create, rename either half, url, estate, delete - see "Apps and instances" below), `AppSecret` (the Environment tab: list masked, set, delete; reads member-gated, writes owner-gated behind `apps.deploy`, and no response ever carries a value), `Artifact`, `Blight`, `Directory`, `Estate`, `EstateCommand`, `EstateSocket` (the `$websocket` a Bay machine holds open, `/ws/estates`; the first websocket in Lore, and the first Durable Object on production), `EstatePull` (the two root `$route`s a machine pulls a deploy's artifact bytes and secret set from, by command id, under its estate secret; the secret set is real since #1813, resolved from the estate plus the command's own `(app, environment)` and refused rather than guessed when that names more than one copy), `AdminEstate` (the instance-wide backstop for an estate whose owner is gone: list and delete behind `admin:estate:read` / `admin:estate:delete`, masked like the owner's own view, no credential for the admin role either; #1838), `ProjectEstate`, `Feedback`, `FeedbackComment`, `Folio`, `FolioAttachment`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Roadmap`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
+**Controllers (34)** - `App` (every write to a deployed copy: create, rename either half, url, estate, delete - see "Apps and instances" below), `AppSecret` (the Environment tab: list masked, set, delete; reads member-gated, writes owner-gated behind `apps.deploy`, and no response ever carries a value), `Artifact`, `Blight`, `Directory`, `Estate`, `EstateCommand`, `EstateSocket` (the `$websocket` a Bay machine holds open, `/ws/estates`; the first websocket in Lore, and the first Durable Object on production), `EstatePull` (the two root `$route`s a machine pulls a deploy's artifact bytes and secret set from, by command id, under its estate secret; the secret set is real since #1813, resolved from the estate plus the command's own `(app, environment)` and refused rather than guessed when that names more than one copy), `AdminEstate` (the instance-wide backstop for an estate whose owner is gone: list and delete behind `admin:estate:read` / `admin:estate:delete`, masked like the owner's own view, no credential for the admin role either; #1838), `ProjectEstate`, `ProjectRank` (one action: the three presets computed from the project's enabled capabilities, which neither `alepha/api/ranks` nor the browser can work out - everything else about ranks is the module's own controller), `Feedback`, `FeedbackComment`, `Folio`, `FolioAttachment`, `Insights`, `Invitation`, `Kanban`, `Quality`, `Release`, `Roadmap`, `Project`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`, `Sigil`, `SigilIngest`.
 
 > **Invitations moved out of Lore entirely** (epic #23, quest #1663). The
 > entity, `InvitationService`, `InvitationJobs` and `AdminInvitationController`
@@ -86,9 +86,9 @@ apps/lore/                # This app
 > `MySessionController`'s actions verbatim. Reach for the `alepha/api/users` and
 > `alepha/api/oauth` controllers instead of re-adding an app-local one.
 
-**Entities (36)** - `appInstances` (one deployed copy of one app, the pair `(app, env)`; **there is no `apps` table** - see "Apps and instances" below), `appSecrets` (that copy's environment, one row per variable, the value sealed under `lore:app-secrets:v1` and never read back by any endpoint; cascades from `app_instances`), `artifacts`, `blightIgnoreRules`, `blights`, `estates` (a user-owned deploy destination, lent to projects; epic #20, folio #1194), `estateProjects` (the lending join), `estateCommands` (the queue behind the connector, `pending` to `sent` to `running` to `done` or `failed`, swept by `EstateCommandJobs`), `feedback`, `feedbackComments`, `files`, `folioAttachments`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `members`, `releases`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`.
+**Entities (37)** - `appInstances` (one deployed copy of one app, the pair `(app, env)`; **there is no `apps` table** - see "Apps and instances" below), `appSecrets` (that copy's environment, one row per variable, the value sealed under `lore:app-secrets:v1` and never read back by any endpoint; cascades from `app_instances`), `artifacts`, `blightIgnoreRules`, `blights`, `estates` (a user-owned deploy destination, lent to projects; epic #20, folio #1194), `estateProjects` (the lending join), `estateCommands` (the queue behind the connector, `pending` to `sent` to `running` to `done` or `failed`, swept by `EstateCommandJobs`), `feedback`, `feedbackComments`, `files`, `folioAttachments`, `folioDirectories`, `folioLinks`, `folioNames`, `folioRevisions`, `folios`, `identities`, `members`, `releases`, `projects`, `questComments`, `quests`, `sessions`, `sigilErrorGroups`, `sigilUniquesDaily`, `sigilViewsHourly`, `sigilVitalsHourly`, `sigils`, `users`, plus `rank_definitions` from `alepha/api/ranks` (Lore declares no entity for ranks: the definitions belong to the module, and the ASSIGNMENT is a column on `members`).
 
-**Services (47)** - `AppService` (the one write path for a deployed copy, and the only writer of `sigils.name`), `AppSecretService` (seals, masks, refuses the derived names, and owns the ONLY method that decrypts - whose one caller is the deploy), `BlightRuleService`, `EstateCommandService`, `EstateCommandTransport` (the seam; `WebSocketEstateCommandTransport` is the real one, substituted in `main.server.ts`), `EstateService`, `EstateStatsService` (the gauge upsert on the row on every push, and the `estate_stats` `$analytics` series only while `collectSeries` is on; the series is read back as daily means through `series()`, which carries the `estimated` disclosure), `EstateTokenService`, `FeedbackRateLimiter`, `FolioAttachmentService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `PinnedFolioFolder`, `ProjectActivityService`, `ProjectLimits`, `ProjectSecurityService`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
+**Services (47)** - `AppService` (the one write path for a deployed copy, and the only writer of `sigils.name`), `AppSecretService` (seals, masks, refuses the derived names, and owns the ONLY method that decrypts - whose one caller is the deploy), `BlightRuleService`, `EstateCommandService`, `EstateCommandTransport` (the seam; `WebSocketEstateCommandTransport` is the real one, substituted in `main.server.ts`), `EstateService`, `EstateStatsService` (the gauge upsert on the row on every push, and the `estate_stats` `$analytics` series only while `collectSeries` is on; the series is read back as daily means through `series()`, which carries the `estimated` disclosure), `EstateTokenService`, `FeedbackRateLimiter`, `FolioAttachmentService`, `FolioDirectoryService`, `FolioHistoryService`, `FolioLinkService`, `FolioNameService`, `PinnedFolioFolder`, `ProjectActivityService`, `ProjectLimits`, `ProjectSecurityService`, `ProjectPermissions` (the effective set: application permission AND rank AND capability), `ProjectRankPresets`, `QuestCsvFormatter`, `QuestCsvParser`, `QuestImportFormatProvider`, `QuestResourceMapper`, `QuestService`, `SigilIngestService`, `SigilTokenService`, plus `parsers/`.
 
 **MCP tools (12)** - `AppInstanceTools` (`app_instance_list` / `_create` / `_update` / `_delete`; the list also answers the distinct app names, because no table holds them), `ArtifactTools` (`artifact_list` / `artifact_get`, read-only: pushing is CI's job and the credential for it lives in CI, so there is deliberately no `artifact_push`), `BlightTools`, `DeployTools` (`deploy_start` / `deploy_status` / `deploy_rollback`, over the instance an agent already names by `(app, env)`. ⚠️ **No estate argument on any of them** and no `estate_*` tool at all: an estate is user-owned and lent, `app_instance_list` already says which one a copy uses, and an agent that could name one could deploy into somebody else's cloud account. `deploy_start`'s description states that an omitted tag means `latest` and that `latest`'s bytes may be replaced), `EpicTools`, `FeedbackTools` (`feedback_comment_add`, plus the thread inlined on `feedback_get`), `FolioTools` (absorbed the old `ArchiveTools`: `directory_*` / `folio_attachment_*` live here now), `InsightsTools` , `ReleaseTools` (`release_list` / `_get` / `_create` / `_update` / `_publish` / `_reopen` / `_attach` / `_detach` / `_changelog` / `_delete`, every one naming the release by its TAG), `ProjectTools` (including `project_activity`, the one call for everything that moved since a timestamp), `QuestTools` (`quest_comment_add`, `quest_objective_set`, `quest_unassign`, `quest_attachment_get` / `_add`, `quest_commit_add`, and the discussion inlined on `quest_get`), `SigilTools`.
 
@@ -98,12 +98,12 @@ Since epic #36 (2026-09-06) a project is not a quest tracker with extras. It is
 a container that composes four **capabilities**, picked in the creation wizard
 and changed on their own Settings pages:
 
-| capability  | what it brings                                                                                                          |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `work`      | quests, areas, epics, releases, the board - options `board` / `epics` / `releases` / `estimate` / `chrono` / `reminder` |
-| `knowledge` | folios, their directories and attachments - option `agentSummary`                                                       |
-| `apps`      | deployed copies, sigils, blights, artifacts, quality - options `track` / `deploy`                                       |
-| `support`   | the feedback inbox and the first-party request form. No options                                                         |
+| capability  | what it brings                                                                                                                           |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `work`      | quests, areas, epics, releases, the board - options `board` / `epics` / `releases` / `estimate` / `chrono` / `reminder` / `agentPrompts` |
+| `knowledge` | folios, their directories and attachments - option `agentSummary`                                                                        |
+| `apps`      | deployed copies, sigils, blights, artifacts, quality - options `track` / `deploy`                                                        |
+| `support`   | the feedback inbox and the first-party request form. No options                                                                          |
 
 A **capability** is a product surface: it owns nav entries, routes, entities,
 MCP tools, a settings page, dashboard cards, search kinds, activity kinds and
@@ -141,6 +141,66 @@ wizard is asking a question and "none" is not an answer to it.
 neither the column, its DEFAULT nor any key inside it can ever change - see the
 block on `projectFeaturesSchema` and the two incidents it names.
 `test/project-features-frozen.spec.ts` fails if anything reads it again.
+
+## Agent prompts (epic #41)
+
+Every surface that names a piece of work offers the prompt that hands it to a
+coding agent. The owner writes those prompts once, in Settings.
+
+**The switch is the Work option `agentPrompts`, and it is OFF by default with
+no backfill.** So a project shows no Agent Prompts menu until someone opens
+Settings ▸ Work and turns it on, `lore.alepha.dev` included.
+
+| piece          | where                                                                                                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the four kinds | `src/api/schemas/agentPromptKindSchema.ts` - `epicReview`, `epicActivate`, `questWork`, `feedbackWork`                                                                                                        |
+| the table      | `project_prompts (projectId, kind, template)`, unique on the pair. **A row exists only for a CUSTOMISED kind; absence means the built-in default**, and Reset deletes the row rather than storing the default |
+| the write path | `ProjectPromptController` - member read, owner upsert, owner reset                                                                                                                                            |
+| the defaults   | `src/web/app/prompts/` - one file per kind, mapped by `agentPromptDefaults.ts`                                                                                                                                |
+| the renderer   | `src/web/app/prompts/renderPromptTemplate.ts` - seven placeholders, one pass                                                                                                                                  |
+| the atom       | `projectPromptsAtom`, filled by the `project` route loader, cleared in `onLeave`                                                                                                                              |
+| the hook       | `components/project/prompts/useAgentPrompt.ts`, plus `useAgentPromptSubject` and `questAgentGate` beside it                                                                                                   |
+| the menus      | a `RowActionGroup` on the three tables, `AgentPromptsMenu` on the three detail pages                                                                                                                          |
+
+**Four rules, and none of them is obvious from the code.**
+
+- ⚠️ **The copy happens INSIDE the click, with nothing awaited before it.**
+  Safari's transient activation does not survive an `await` before
+  `navigator.clipboard.writeText`. That is why the templates are read once per
+  project into an atom instead of fetched at click time, and it is why the
+  epic-review DIALOG existed before this epic. `useAgentPrompt.copy` must
+  never grow a fetch.
+- ⚠️ **The prompts are read by the `project` route loader, not by a
+  component**, gated on `capabilityOption(project, "work", "agentPrompts")`,
+  beside `currentEpicsAtom` and `currentAreasAtom`. It catches to `{}` and not
+  to `undefined`, unlike its neighbours: they distinguish "could not read"
+  from "none" because a badge must not say zero when it means unknown, and
+  here the built-in defaults are a complete answer either way.
+- ⚠️ **The Settings section refetches the rows unconditionally**, and that is
+  load-bearing rather than tidy. The loader writes `{}` when the option is off
+  AND when nothing is customised, so the atom cannot say whether it was ever
+  filled, and flipping the switch does not re-run the loader. Without the
+  refetch, an owner with stored templates who turns the option on and copies
+  from Epics gets the built-in defaults, silently, until the next full page
+  load. `e2e/agent-prompts.spec.ts` catches exactly this, which is why its
+  navigation from Settings to Epics is a sidebar CLICK and never a
+  `page.goto`.
+- ⚠️ **`{{project}}` is the project's TITLE and `{{slug}}` is its slug.**
+  `ProjectTools.resolveProjectId` matches `project_name` against
+  `projects.title` lowercased FIRST, and only then against the slug it
+  derives from each title. Both spellings resolve since #Q1968; before it,
+  a project titled `Kanban v2` was not findable by `kanban-v2` at all, and
+  the prompt that shipped with this epic resolved only because this project
+  is titled `Alepha`. The slug pass **derives** rather than reading
+  `projects.slug` (a stored slug is disambiguated on collision), and refuses
+  when two titles slugify alike rather than picking one.
+
+Two smaller things worth not rediscovering. A subject is **seven named
+fields**, built by `useAgentPromptSubject` and never a resource: this text
+goes to a clipboard, and a feedback resource carries the reporter's identity,
+their `context` and their attachments. And `AgentPromptsMenu`'s `subject` is a
+**thunk**, called on click, because building one reaches for the router and an
+eager one runs on every render of every surface that might show the menu.
 
 ## Routes
 
@@ -186,9 +246,10 @@ Defined in `src/web/app/AppRouter.ts`. Route names (the `$page` keys) are what `
 | `/:projectSlug/folios/:shortId`                              | `projectFoliosFolio`       | `folios/editor/FolioWorkspace.tsx`            | Folio workspace — always-editable, summary/body, auto-saved. The old read-only `FolioView` + separate `/edit` route (`projectFoliosFolioEdit`) were merged into this one surface and the `/edit` route was deleted, not redirected                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `/:projectSlug/settings`                                     | `projectSettings`          | `project/settings/ProjectSettings.tsx`        | Settings layout (sub-routes below)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `/:projectSlug/settings/`                                    | `projectSettingsBanner`    | `…/ProjectSettingsGeneralPage.tsx`            | General / banner                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `/:projectSlug/settings/members`                             | `projectSettingsMembers`   | `…/ProjectSettingsMembersPage.tsx`            | Members & pending invitations — the future home of per-member access rights                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `/:projectSlug/settings/members`                             | `projectSettingsMembers`   | `…/ProjectSettingsMembersPage.tsx`            | Members, their ranks and the pending invitations. A rank picker per row, and Transfer ownership in the row menu (owner only, and never a permission - a rank that could be granted the right to take ownership away would make ownership grantable). ⚠️ The list is `member:read`, which every rank holds; the pending invitations are `member:manage`, so the loader skips that read rather than 403ing the whole page                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `/:projectSlug/settings/areas`                               | `projectSettingsAreas`     | `…/ProjectSettingsAreasPage.tsx`              | Areas config                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `/:projectSlug/settings/areas/:areaId`                       | `projectSettingsArea`      | `…/ProjectSettingsAreaPage.tsx`               | One area: rename, merge, delete. Param is the area's `id`, not its name — a rename must not change the URL under the person doing it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `/:projectSlug/settings/ranks`                               | `projectSettingsRanks`     | `…/ProjectSettingsRanksPage.tsx`              | What each rank may do: permissions down the left, one column per rank, on `@alepha/ui`'s `PermissionMatrix`. The nav entry is gated on `rank:manage`; the ROUTE is not, like every other settings route. A group whose capability is off is dropped entirely rather than greyed, and a group the application never labelled (the framework's own `admin:*`, `api-key:*`, `file:*`) never appears                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `/:projectSlug/settings/estates`                             | `projectSettingsEstates`   | `…/ProjectSettingsEstatesPage.tsx`            | The estates lent to this project. ⚠️ Its own entry, outside the four capability pages, and it stays that way: an estate is owned by a USER and lent to a project, so folding it under Apps would hide a lent estate from the project that most needs to see it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `/:projectSlug/settings/work`                                | `projectSettingsWork`      | `…/ProjectSettingsWorkPage.tsx`               | The **Work** capability: its master switch and six options (board, epics, releases, estimate, chrono, reminder)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `/:projectSlug/settings/knowledge`                           | `projectSettingsKnowledge` | `…/ProjectSettingsKnowledgePage.tsx`          | The **Knowledge** capability, and its one option (`agentSummary`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -351,11 +412,63 @@ When `onClose` is provided, it's used instead of router navigation. When `onQues
 
 ### Project access model
 
-Lore projects are private. Every project-scoped endpoint is gated
-member-or-owner, or creator-only, with **exactly one exception**: the
-roadmap (below). The old `project.public` flag is not that exception and is
-not coming back - it was removed, and the column is kept in the schema only
-because dropping it on D1 triggers a cascade-wipe.
+Lore projects are private. Every project-scoped endpoint is gated on
+**membership AND a permission**, with **exactly one exception**: the roadmap
+(below). The old `project.public` flag is not that exception and is not coming
+back - it was removed, and the column is kept in the schema only because
+dropping it on D1 triggers a cascade-wipe.
+
+#### Ranks: what a member may do (epic #E39, 2026-09-07)
+
+"Member or owner" is gone as a two-value system. A membership row carries a
+**rank**, and a rank is a permission set inside one project:
+
+- **`role` is application-scope, `rank` is project-scope.** The same person is
+  `user` everywhere; whether they may publish a release differs per project.
+  Never conflate the two in prose either - that conflation is what the name
+  was chosen to prevent. (The word `rank` also named the F/C/B/A/S difficulty
+  scale erased on 2026-08-20. Unrelated, and the older meaning is dead.)
+- **Effective access is application permission AND rank AND capability**,
+  narrowing only. A rank can never widen what a role grants, and a capability
+  that is off removes its permissions from every rank at once.
+- **`projects.createdBy` is not an authorization input.** It cannot be, once
+  ownership can be transferred: `members.rank === "owner"` is the one answer,
+  and the creator column is history. `members.owner` is a frozen dead column
+  whose database default writes `true` on every new row and means nothing.
+- **Two acts are owner-only structurally** and are never grantable to a rank:
+  `project:delete` and `capability:manage`. One permission is never removable:
+  `project:read`. Both lists are `LoreRankBounds`, in a file the browser can
+  import - `LorePermissions` imports `$permission`, whose barrel has no
+  browser condition.
+- **Ownership is transferred, not assigned.** `assignRank` refuses `owner`;
+  `ProjectController.transferOwnership` swaps the two rows in a single
+  `UPDATE ... CASE ... RETURNING`, because D1 has no transactions and a pair
+  of writes can leave a project with zero owners or two.
+
+The vocabulary is `LorePermissions` (37 declarations, names that can never
+change - they are stored as data in every rank definition), the resource is
+`ProjectRankResource`, the presets are `ProjectRankPresets`, and the module is
+`alepha/api/ranks`. A new project is seeded with Admin, Contributor and Viewer
+as ordinary custom ranks, computed from the capabilities it actually has.
+
+⚠️ **A project holding NO definition rows is seeded nightly**
+(`ProjectRankJobs.seedMissingPresetRanks`). `createProject` is the only other
+writer of the presets, so every project older than epic #E39 held the two
+built-ins and nothing else - and its owner's rank picker offered `Member`
+alone (feedback #P2122). The predicate is deliberately "no rows at all"
+rather than "no row for this key": a project with rows has been through the
+rank editor, and an owner who deleted Admin must not find it back in the
+morning. The sweep writes through `RankService.save` as the project's OWNER,
+so the module's invariants run, and it names the ranks in **English**,
+decided rather than defaulted - a sweep has no `Accept-Language`, and
+`projects.preferredLanguage` says of itself that it does not affect the UI.
+
+⚠️ **Where a rank is read on the client.** `currentProjectAtom.permissions` is
+the effective set, filled by `getProjectBySlug`, and `canInProject` answers
+**false** for an absent set. Every writer of that atom must go through
+`setCurrentProject`, which carries `permissions` and `rank` forward - a writer
+that spreads a plain project resource hides every rank-gated control on the
+page, the whole sidebar included, until the next navigation.
 
 #### ⚠️ The roadmap is the one anonymous read path
 
@@ -437,15 +550,29 @@ page useless for the one question it exists to answer. The safeguard is the
 confirmation naming that outcome before the switch applies, not a filter in
 the endpoint - a filter there would silently contradict the members page.
 
-**Two mechanisms, and the declarative one is the default for anything new.**
+**One mechanism now, and six documented exceptions.**
 `$ownsProject` (below) is middleware in a `use:` array; it cannot be
 forgotten the way a missing line in a handler can, it runs before the
 handler on every transport including MCP, and it hands the rows it read to
-the handler. `ProjectSecurityService.assertMember` / `assertOwner` are the
-older in-handler form, still used by the controllers not yet ported -
-Area, Kanban, Reports, Feedback, Blight, Insights, Search, Sigil, Quest
-portability. Ported as of 2026-08-29: Quest, QuestComment, Epic, Release,
-Folio, Directory, FolioAttachment.
+the handler. Every project-scoped **action** is on it as of 2026-09-07,
+including `ProjectController`'s own seven, which used to build `$owns` by
+hand and restate the rule.
+
+`ProjectSecurityService.assertMember` / `assertOwner` are **gone**. What
+survives at exactly six call sites is the ranks module's own imperative check
+(`RankService.assert`), each carrying a `ranks: imperative` marker saying why
+a `use:` entry cannot serve it. Grep for that marker before adding a seventh:
+
+- `LoreFileAccessProvider.assertReadable` - a `$secure` guard on a file route, deciding which project to ask about per bucket.
+- `ProjectInvitationResource.assertCanInvite` - a closure handed to `alepha/api/invitations`, with no middleware chain to sit in.
+- `FeedbackController`'s `ensureOwner` / `ensureMember` - called from handlers, on a project resolved from a feedback row.
+- `ProjectTools`'s project resolver - MCP, and it turns the gate's 403 into a 404 on purpose.
+- `ProjectController.getProjectBySlug` - `$owns` keys on a primary key, and a slug is not one.
+- `EstateCommandController`'s deploy branch - membership on the artifact's project, conditional, while the action's own gate is the estate's owner.
+
+`DashboardScopeService` names `assertMember` and calls neither: a card scoped
+to several projects has no single project to gate on, so it proves each id
+against the caller's own membership set instead.
 
 `isMember` / `isMemberById` are not going anywhere: they answer questions
 that are not gates (branching on membership, or asking about somebody other
@@ -457,17 +584,20 @@ being on instead of membership, so any logged-in Lore user can submit
 feedback to a project that opts in. The feedback module toggle is the
 owner's opt-in/out lever.
 
-**Which side of the split an endpoint belongs on is "is this the work, or
-the project's configuration".** The work is member-gated end to end —
-quests, folios (with their directories and attachments), kanban moves, and
-**epics** (`EpicController`, member-gated since 2026-08-28; it was
-owner-only, which made the header's "Create epic" entry answer 403 for
-every member it was shown to, and left an epic nobody but the owner could
-activate or attach anything to). Configuration is owner-only: areas
-(rename / merge / delete), releases, kanban columns, sigils, invitations,
-project settings and portability, plus the triage decisions on feedback
-and blights. Adding an endpoint means placing it on that line, not copying
-whichever neighbouring controller was read first.
+**Which side of the split an endpoint belongs on is now a PERMISSION, not a
+side.** The work / configuration line survives as the shape of the default
+`member` rank (`LorePermissions.MEMBER_DEFAULT`): the work is what a plain
+member holds - quests, folios with their directories and attachments, kanban
+moves, epics - and the configuration is what they do not - areas, releases,
+kanban columns, sigils, invitations, project settings and portability, and the
+triage decisions on feedback and blights.
+
+⚠️ The difference from before is that the line is now **editable per project**
+and the endpoint states its own requirement. Adding an endpoint means naming
+the permission it needs in `$ownsProject({ requires })`, and adding that
+permission to `MEMBER_DEFAULT` or to `OWNER_TODAY` in `LorePermissions` -
+`member-permission-defaults.spec.ts` refuses a permission that lands on
+neither.
 
 #### `$ownsProject` - the gate, and why it lives outside a class
 
@@ -475,13 +605,27 @@ whichever neighbouring controller was read first.
 authorization rule, so a call site states only what varies:
 
 ```typescript
-$ownsProject({ param: "projectId" }); // the param names the project
-$ownsProject({ repository: () => this.epics, param: "id" }); // the param names a row that has one
-$ownsProject({ repository: () => this.releases, param: "id", owner: true });
-$ownsProject({ param: "projectId", from: "query" });
+$ownsProject({ param: "projectId", requires: "quest:read" });
+$ownsProject({
+  repository: () => this.epics,
+  param: "id",
+  requires: "epic:write",
+});
+$ownsProject({
+  repository: () => this.releases,
+  param: "id",
+  requires: "release:manage",
+});
+$ownsProject({ param: "projectId", from: "query", requires: "quest:read" });
 ```
 
-`owner: "createdBy"`, the `via` join onto `members`, both denial messages and
+⚠️ **`owner: true` is gone.** It was a two-value rank system hard-coded across
+the app. Every gate is the membership join; what varies is the permission, and
+"only the owner" is expressed by naming one on the never-grantable list - so
+the refusal says which act was refused rather than that the caller is not
+somebody special.
+
+The `via` join onto `members`, both denial messages and
 the 30s cache window are constants of this application, not of these
 endpoints. `ProjectSecurityService` supplies the repositories.
 

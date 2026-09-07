@@ -77,7 +77,6 @@ const addMember = async (
   await membersRepo.create({
     userId,
     projectId,
-    owner: false,
   });
 };
 

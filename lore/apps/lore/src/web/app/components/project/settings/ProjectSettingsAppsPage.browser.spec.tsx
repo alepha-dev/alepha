@@ -8,6 +8,7 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import { projectFixture } from "@/testing/projectFixture.ts";
+import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
@@ -34,23 +35,26 @@ class FakeLinkProvider extends LinkProvider {
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
-    return {
-      setCapability: async (config: SetCapabilityCall) => {
-        this.calls.push(config);
-        return {
-          ...aProject,
-          capabilities: config.body.enabled
-            ? [
-                {
-                  key: config.params.key,
-                  enabledAt: "2026-09-06T10:00:00.000Z",
-                  options: config.body.options ?? {},
-                },
-              ]
-            : [],
-        };
-      },
+    const setCapability: any = async (config: SetCapabilityCall) => {
+      this.calls.push(config);
+      return {
+        ...aProject,
+        capabilities: config.body.enabled
+          ? [
+              {
+                key: config.params.key,
+                enabledAt: "2026-09-06T10:00:00.000Z",
+                options: config.body.options ?? {},
+              },
+            ]
+          : [],
+      };
     };
+    // ⚠️ Every virtual action carries `can()`, and the capability switch reads
+    // it since epic #E39: `capability:manage` is owner-only structurally. The
+    // wrapper answers for the ones this page reads and this fake does not
+    // stub - the ignore-rules dialog's own two, for instance.
+    return virtualClientFake({ setCapability });
   }
 }
 

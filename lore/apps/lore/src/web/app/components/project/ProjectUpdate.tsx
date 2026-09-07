@@ -14,9 +14,9 @@ import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import { projectTitleSchema } from "@/api/schemas/projectTitleSchema.ts";
 import { ProjectSlugService } from "@/api/services/ProjectSlugService.ts";
+import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
-import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 
@@ -57,6 +57,7 @@ const LANGUAGE_OPTIONS: Array<{ value: string; label: string }> = [
 
 const ProjectUpdate = (props: ProjectUpdateProps) => {
   const projectApi = useClient<ProjectController>();
+  const canUpdate = projectApi.updateProjectById.can();
   const alepha = useAlepha();
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
@@ -159,7 +160,7 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           throw error;
         });
 
-      alepha.store.set(currentProjectAtom, project);
+      setCurrentProject(alepha, project);
       const overview = alepha.store.get(userProjectsAtom);
       if (overview) {
         alepha.store.set(userProjectsAtom, {
@@ -173,6 +174,10 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
                   ...project,
                   areaCount: p.areaCount,
                   openQuestCount: p.openQuestCount,
+                  // Same reasoning: `owner` is computed by `getHomeOverview`
+                  // from a batched `members` read, so an update response has
+                  // no idea and dropping it would flip the Owner badge off.
+                  owner: p.owner,
                 }
               : p,
           ),
@@ -192,6 +197,12 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
     <AutoForm
       form={form}
       layout="row"
+      // ⚠️ Disabled rather than hidden, and this is the exception the epic's
+      // rule allows: a settings form with its fields removed is a page that
+      // says nothing. The reader sees the project's identity and cannot
+      // change it, which is the honest rendering of a rank without
+      // `project:update`.
+      disabled={!canUpdate}
       disabledIfPristine
       // Only Name is required, and a project without one is not a thing you
       // could have meant. The asterisk singles out the field nobody was going

@@ -8,6 +8,7 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
@@ -20,7 +21,7 @@ import EpicReleaseControl from "./EpicReleaseControl.tsx";
 class FakeLinkProvider extends LinkProvider {
   // matches the real client's own loose virtual-action shape
   override client(): any {
-    return {};
+    return virtualClientFake({});
   }
 }
 

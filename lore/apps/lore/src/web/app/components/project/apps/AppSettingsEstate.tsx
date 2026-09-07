@@ -1,25 +1,21 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { SettingsRow } from "@alepha/ui/components/settings/settings-row";
 import { SettingsSection } from "@alepha/ui/components/settings/settings-section";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@alepha/ui/components/ui/select";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
+import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
+import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { useState } from "react";
 
 import type { AppController } from "@/api/controllers/AppController.ts";
 import type { ProjectEstateController } from "@/api/controllers/ProjectEstateController.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 /**
@@ -30,6 +26,13 @@ import type { I18n } from "../../../services/I18n.ts";
  * estate had been chosen.
  */
 const CLEARED = "__none__";
+
+/**
+ * The one field this row is. Required, so `Control` does not make it
+ * deselectable: clearing has its own row in the list, and a re-press of the
+ * chosen estate must not silently post `null`.
+ */
+const estateFieldSchema = z.object({ estateId: z.text() });
 
 /**
  * Where this deployed copy deploys to.
@@ -60,15 +63,28 @@ const CLEARED = "__none__";
  */
 const AppSettingsEstate = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const toaster = useToast();
   const appApi = useClient<AppController>();
   const estateApi = useClient<ProjectEstateController>();
 
   const [project] = useStore(currentProjectAtom);
-  const [member] = useStore(currentProjectMemberAtom);
   const [instance, setInstance] = useStore(currentInstanceAtom);
   const [instances, setInstances] = useStore(currentInstancesAtom);
   const [busy, setBusy] = useState(false);
+
+  const form = useForm({
+    schema: estateFieldSchema,
+    // ⚠️ Re-seeded from the ATOM, which `select` writes on a successful save:
+    // the field follows the server, and a refusal leaves it showing the estate
+    // this instance actually points at.
+    initialValues: { estateId: instance?.estateId ?? CLEARED },
+    // Saves on change - "which estate" is one choice with nothing else to
+    // submit beside it - so the form's own submit is never reached.
+    handler: () => {},
+    onChange: (_key, value) =>
+      void select(value === CLEARED ? undefined : String(value)),
+  });
 
   const { data } = useQuery(
     {
@@ -88,10 +104,13 @@ const AppSettingsEstate = () => {
     return null;
   }
 
-  const isOwner = member?.owner ?? false;
+  const isOwner = can("estate:lend");
   const estates = data?.items ?? [];
 
   const select = async (estateId: string | undefined) => {
+    // ⚠️ Also the re-entrancy guard for the restore below: putting the field
+    // back calls this again, and this line ends it.
+    if ((estateId ?? CLEARED) === (instance.estateId ?? CLEARED)) return;
     setBusy(true);
     try {
       const updated = await appApi.updateApp({
@@ -110,6 +129,10 @@ const AppSettingsEstate = () => {
       );
       toaster.success(tr("app.settings.estate.saved"));
     } catch (error) {
+      // Back to what the instance still points at: nothing re-seeds the field
+      // on a refusal, so it would otherwise keep showing an estate this copy
+      // does not deploy to.
+      form.input.estateId.set(instance.estateId ?? CLEARED);
       toaster.error(error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
@@ -137,40 +160,32 @@ const AppSettingsEstate = () => {
             {tr("app.settings.estate.manage")}
           </Link>
         ) : (
-          // A plain select rather than `ControlSelect`: that one binds to a
-          // `useForm` field, and this row has no form - it saves on change,
-          // because "which estate" is one choice with nothing else to submit
-          // beside it.
-          <Select
-            value={instance.estateId ?? CLEARED}
+          <Control
+            select
+            input={form.input.estateId}
+            label=""
             disabled={!isOwner || busy}
-            onValueChange={(value) =>
-              void select(value === CLEARED ? undefined : String(value))
-            }
-          >
-            <SelectTrigger
-              className="w-full sm:w-72"
-              aria-label={String(tr("app.settings.estate.label"))}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {/* Clearing is a real operation: an instance pointed at the
-                  wrong estate has to be able to stop pointing anywhere. A
-                  sentinel rather than `""`, which Base UI reads as "no
-                  value" and renders as the placeholder. */}
-              <SelectItem value={CLEARED}>
-                {tr("app.settings.estate.clear")}
-              </SelectItem>
-              {estates.map((estate) => (
-                <SelectItem key={estate.id} value={estate.id}>
-                  {estate.label
-                    ? `${estate.slug} (${estate.label})`
-                    : estate.slug}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            triggerClassName="w-full sm:w-72"
+            inputProps={{
+              "aria-label": String(tr("app.settings.estate.label")),
+            }}
+            items={[
+              // Clearing is a real operation: an instance pointed at the
+              // wrong estate has to be able to stop pointing anywhere. A
+              // sentinel rather than `""`, which Base UI reads as "no value"
+              // and renders as the placeholder.
+              {
+                value: CLEARED,
+                label: String(tr("app.settings.estate.clear")),
+              },
+              ...estates.map((estate) => ({
+                value: estate.id,
+                label: estate.label
+                  ? `${estate.slug} (${estate.label})`
+                  : estate.slug,
+              })),
+            ]}
+          />
         )}
       </SettingsRow>
     </SettingsSection>

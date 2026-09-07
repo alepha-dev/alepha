@@ -105,6 +105,16 @@ export interface FolioTreeState {
    * number of renders without going stale.
    */
   commands: FolioTreeCommands;
+  /**
+   * Whether this reader's rank may write a folio at all.
+   *
+   * One flag for every verb the tree can trigger, because one permission is
+   * behind all of them server-side. Consumers gate their own affordances on
+   * it - the header's two buttons, the context menu's items, and the drag
+   * that would move a row - while the tree itself, its rows and its
+   * navigation stay exactly as they are for a reader.
+   */
+  canWrite: boolean;
 }
 
 /**
@@ -866,5 +876,6 @@ export const useFolioTreeModel = (
     dragId,
     drop,
     commands,
+    canWrite: folioApi.create.can(),
   };
 };

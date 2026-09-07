@@ -1,11 +1,18 @@
 import { $pageAccount } from "@alepha/ui/components/account/account-router-page";
 import { $client } from "alepha/server/links";
-import { FolderKanban, Mail, MessageSquareWarning, Server } from "lucide-react";
+import {
+  Bell,
+  FolderKanban,
+  Mail,
+  MessageSquareWarning,
+  Server,
+} from "lucide-react";
 import { createElement } from "react";
 
 import type { EstateController } from "@/api/controllers/EstateController.ts";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { InvitationController } from "@/api/controllers/InvitationController.ts";
+import type { NotificationPreferenceController } from "@/api/controllers/NotificationPreferenceController.ts";
 
 /**
  * Lore's own pages inside the shared `/account` area.
@@ -32,6 +39,8 @@ export class LoreAccountRouter {
   protected readonly invitationApi = $client<InvitationController>();
   protected readonly feedbackApi = $client<FeedbackController>();
   protected readonly estateApi = $client<EstateController>();
+  protected readonly notificationApi =
+    $client<NotificationPreferenceController>();
 
   /**
    * The complete project list, behind Home's and the switcher's five.
@@ -106,6 +115,29 @@ export class LoreAccountRouter {
    * like the two above. Order 103: the next free slot in the Lore group,
    * never below 100.
    */
+  /**
+   * What this account still wants to be told about.
+   *
+   * Order 104, the next free slot in the Lore group. Gated on the read
+   * action rather than on a permission, like the three above: an action name
+   * resolves against `/api/_links`, so the entry disappears for an app that
+   * never registered the controller, while a permission is self-declaring
+   * whether or not anything backs it.
+   */
+  notifications = $pageAccount({
+    path: "/notifications",
+    name: "accountNotifications",
+    head: { title: "Notifications" },
+    can: () => this.notificationApi.getMyNotificationPreferences.can(),
+    nav: {
+      label: "Notifications",
+      icon: createElement(Bell),
+      group: "Lore",
+      order: 104,
+    },
+    lazy: () => import("./MyNotifications.tsx"),
+  });
+
   estates = $pageAccount({
     path: "/estates",
     name: "accountEstates",

@@ -15,6 +15,7 @@ import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
 import { currentFolioPathAtom } from "../../atoms/currentFolioPathAtom.ts";
+import { currentInboxCountAtom } from "../../atoms/currentInboxCountAtom.ts";
 import { currentInstanceAtom } from "../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -26,6 +27,7 @@ import {
   capabilityOption,
   hasCapability,
 } from "../../services/projectCapabilities.ts";
+import { canInProject } from "../../services/projectRank.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
 import HeaderRepositoryButton from "../shared/header/HeaderRepositoryButton.tsx";
@@ -37,6 +39,7 @@ import {
   CORE_NAV,
 } from "./capabilityNav.ts";
 import ProjectActionsCreateButton from "./ProjectActionsCreateButton.tsx";
+import ProjectInboxButton from "./ProjectInboxButton.tsx";
 import ProjectQuestLogRail from "./ProjectQuestLogRail.tsx";
 import ProjectSwitcher from "./ProjectSwitcher.tsx";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
@@ -64,6 +67,7 @@ const ProjectView = () => {
   const [questCount] = useStore(currentQuestCountAtom);
   const [feedbackCount] = useStore(currentFeedbackCountAtom);
   const [blightCount] = useStore(currentBlightCountAtom);
+  const [inboxCount] = useStore(currentInboxCountAtom);
   const [folioPath] = useStore(currentFolioPathAtom);
   const [instances] = useStore(currentInstancesAtom);
   const [instance] = useStore(currentInstanceAtom);
@@ -123,6 +127,7 @@ const ProjectView = () => {
     epicCount: epicCount?.count,
     feedbackCount: feedbackCount?.count,
     blightCount: blightCount?.count,
+    inboxCount: inboxCount?.count,
     collectsBlights,
   };
 
@@ -147,7 +152,17 @@ const ProjectView = () => {
           )
         : [],
     ),
-  ];
+    // ⚠️ The rank is the second filter, applied to the SAME computation the
+    // palette reads through `projectNavAtom`. A second map would be a second
+    // answer, and the two would eventually disagree about which destinations
+    // exist - which is exactly what this one map was built to prevent.
+    //
+    // An entry leading to a 403 is worse than no entry: it advertises a place
+    // the reader cannot go. Never enforcement, though - the page's own loader
+    // refuses too.
+  ].filter(
+    (entry) => !entry.permission || canInProject(project, entry.permission),
+  );
 
   // Sorted by the entry's own `order`, not by which capability it came from:
   // Record reads Folios, Releases, Reports - Knowledge, then Work, then Core -
@@ -301,12 +316,26 @@ const ProjectView = () => {
               "between search and lang" (feedback #2105) without any of the
               three components needing to know about the other two: `before`
               is one node, and the order inside it is the order on screen. It
-              renders nothing when the project has no `repositoryUrl`. */}
+              renders nothing when the project has no `repositoryUrl`.
+
+              ⚠️ The bell rides the same slot rather than joining
+              `AppActions`, and that is a decision rather than convenience:
+              that cluster is "the ambient controls EVERY signed-in surface
+              carries", and the owner ruled the bell renders in the project
+              shell only. A `showInbox` prop on a component whose whole
+              argument is that it has no `show` props would be the drift it
+              exists to end. `HeaderActions`'s own docstring already settled
+              the same question for search: whether a control belongs on a
+              surface is the surface's to decide.
+
+              Last node, so the order reads search, repository, bell,
+              language. */}
             <HeaderActions
               before={
                 <>
                   <HeaderSearchButton />
                   <HeaderRepositoryButton />
+                  <ProjectInboxButton />
                 </>
               }
             />

@@ -16,12 +16,12 @@ import { useState } from "react";
 
 import type { SigilController } from "@/api/controllers/SigilController.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import TokenReveal from "../../shared/TokenReveal.tsx";
 
@@ -55,12 +55,13 @@ import TokenReveal from "../../shared/TokenReveal.tsx";
  * is the real gate and it does not move. The controls are disabled here for a
  * member with a tooltip, purely so nobody is walked through a destructive
  * confirmation only to be refused at the end. It is a UX hint over
- * `currentProjectMemberAtom.owner`, the same server-authoritative boolean the
+ * the caller's effective permission set, the same server-authoritative answer the
  * viewer's membership row already carries, not a second authorization
  * boundary.
  */
 const AppSettingsSigil = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const toaster = useToast();
   const dialog = useDialog();
   const sigilApi = useClient<SigilController>();
@@ -68,7 +69,6 @@ const AppSettingsSigil = () => {
   const router = useRouter<AppRouter>();
 
   const [project] = useStore(currentProjectAtom);
-  const [member] = useStore(currentProjectMemberAtom);
   const [instance, setInstance] = useStore(currentInstanceAtom);
   const [instances, setInstances] = useStore(currentInstancesAtom);
 
@@ -85,7 +85,7 @@ const AppSettingsSigil = () => {
 
   const collectsFeedback = hasCapability(project, "support");
 
-  const isOwner = member?.owner ?? false;
+  const isOwner = can("sigil:manage");
   const sigil = instance.sigil;
   const label = `${instance.app}/${instance.env}`;
 

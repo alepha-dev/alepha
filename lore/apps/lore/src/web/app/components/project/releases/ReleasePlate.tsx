@@ -246,13 +246,18 @@ const ReleasePlate = (props: ReleasePlateProps) => {
         {/* Hidden rather than disabled once published. A published release
             is a record: the server refuses every write to it, and an
             affordance that always fails is worse than no affordance. */}
-        {!published && (
+        {!published && releaseApi.updateRelease.can() && (
           <Button variant="outline" size="lg" onClick={props.onEdit}>
             <Pencil className="size-4" />
             {tr("release.detail.edit")}
           </Button>
         )}
-        {published ? (
+        {/* ⚠️ Hidden, not disabled, when the rank lacks `release:manage`: a
+            release nobody here may publish should not advertise a Publish
+            button. The rule for the whole epic is hide by default and disable
+            only where absence would make the layout lie - this row has other
+            content, so it does not. */}
+        {!releaseApi.publishRelease.can() ? null : published ? (
           // Quieter than Publish was, and deliberately not a toggle beside
           // it: reopening is what you do when you published by mistake, and
           // it clears the frozen record.

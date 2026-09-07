@@ -125,7 +125,7 @@ const AreaRenameDialog = (props: AreaRenameDialogProps) => {
           </Button>
           <Button
             onClick={() => void submit()}
-            disabled={submitting}
+            disabled={submitting || !areaApi.renameArea.can()}
             variant={collision ? "destructive" : "default"}
           >
             {collision

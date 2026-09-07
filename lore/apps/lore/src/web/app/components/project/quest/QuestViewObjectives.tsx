@@ -47,7 +47,13 @@ const QuestViewObjectives = (props: QuestViewObjectivesProps) => {
     return null;
   }
 
-  const disabled = !!quest.completedAt || !quest.acceptedAt;
+  // A checkbox nobody may tick is disabled rather than hidden: the objective
+  // list IS the quest's content, and removing the boxes would leave a reader
+  // unable to see how much of it is done.
+  const disabled =
+    !!quest.completedAt ||
+    !quest.acceptedAt ||
+    !questApi.completeObjective.can();
 
   return (
     <div className="flex flex-col gap-2 px-3 py-2">

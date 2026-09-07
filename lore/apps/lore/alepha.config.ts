@@ -114,6 +114,22 @@ export default defineConfig({
       // catalog.
       scan: ["src", "../../packages/@alepha/ui/src"],
       dynamicPrefixes: [
+        // tr(`account.notifications.category.${category}`) and its
+        // `.description`. A category is a string a `$notification` template
+        // registers, so the set is the DECLARATIONS: a plugin can add one
+        // this app has no key for, and the page falls back to the raw
+        // category name rather than rendering a blank row.
+        "account.notifications.category.",
+        // tr(`agentPrompts.settings.placeholder.${name}`) - the seven
+        // placeholder names, and tr(`agentPrompts.settings.${kind}.title` /
+        // `.description`) - the four prompt kinds. Both sets are iterated
+        // from a constant list, so writing them out would be the same
+        // literals twice with nothing keeping them in step.
+        "agentPrompts.settings.placeholder.",
+        "agentPrompts.settings.epicReview.",
+        "agentPrompts.settings.epicActivate.",
+        "agentPrompts.settings.questWork.",
+        "agentPrompts.settings.feedbackWork.",
         // tr(`feedback.filter.${status}`) - pending/accepted/rejected.
         "feedback.filter.",
         // tr(`feedback.empty.detail.${status}.title` / `.body`) - the detail
@@ -155,6 +171,11 @@ export default defineConfig({
         "dashboard.group.",
         "dashboard.filterField.",
         "dashboard.filterValue.",
+        // The rank matrix is GENERATED from the `$permission` catalogue, so
+        // every column heading and every group heading is constructed:
+        // `tr(permission.label)` off the registry entry. Declaring a
+        // permission adds keys under this prefix and touches no component.
+        "permission.",
       ],
     }),
     // Retired app-local commands, kept as notes:

@@ -7,7 +7,6 @@ import {
   SqlExpressionProvider,
   sql,
 } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 import { $etag } from "alepha/server/etag";
 
@@ -20,8 +19,8 @@ import {
   reportsOverviewSchema,
   reportsQuestsSchema,
 } from "../schemas/reportsSchemas.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class ProjectReportsController {
   quests = $repository(quests);
@@ -30,7 +29,6 @@ export class ProjectReportsController {
   users = $repository(users);
   database = $inject(DatabaseProvider);
   sqlx = $inject(SqlExpressionProvider);
-  security = $inject(ProjectSecurityService);
   epicVisibility = $inject(EpicVisibilityService);
   dt = $inject(DateTimeProvider);
 
@@ -98,10 +96,10 @@ export class ProjectReportsController {
    */
   getReportsOverview = $action({
     use: [
-      $secure({ permissions: ["stats:read"] }),
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
       }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
     ],
     schema: {
       params: z.object({
@@ -110,8 +108,6 @@ export class ProjectReportsController {
       response: reportsOverviewSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.id, user);
-
       const inScope = this.questInScope(
         await this.epicVisibility.plannedEpicIds(params.id),
       );
@@ -312,10 +308,10 @@ export class ProjectReportsController {
    */
   getReportsQuests = $action({
     use: [
-      $secure({ permissions: ["stats:read"] }),
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
       }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
     ],
     schema: {
       params: z.object({
@@ -324,8 +320,6 @@ export class ProjectReportsController {
       response: reportsQuestsSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.id, user);
-
       const inScope = this.questInScope(
         await this.epicVisibility.plannedEpicIds(params.id),
       );
@@ -518,10 +512,10 @@ export class ProjectReportsController {
    */
   getReportsMembers = $action({
     use: [
-      $secure({ permissions: ["stats:read"] }),
       $etag({
         control: { private: true, maxAge: 60, staleWhileRevalidate: 300 },
       }),
+      $ownsProject({ requires: "stats:read", param: "id" }),
     ],
     schema: {
       params: z.object({
@@ -530,8 +524,6 @@ export class ProjectReportsController {
       response: reportsMembersSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.id, user);
-
       const inScope = this.questInScope(
         await this.epicVisibility.plannedEpicIds(params.id),
       );

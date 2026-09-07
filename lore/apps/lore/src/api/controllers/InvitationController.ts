@@ -5,6 +5,7 @@ import {
   InvitationService,
   InvitationTokenService,
 } from "alepha/api/invitations";
+import { RankService } from "alepha/api/ranks";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -13,8 +14,9 @@ import { $action, BadRequestError, okSchema } from "alepha/server";
 import { projects } from "../entities/projects.ts";
 import { invitationInboxItemSchema } from "../schemas/invitationInboxItemSchema.ts";
 import { invitationTokenPreviewSchema } from "../schemas/invitationTokenPreviewSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
+import { ProjectRankResource } from "../security/ProjectRankResource.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class InvitationController {
   protected readonly url = "/invitations";
@@ -22,8 +24,8 @@ export class InvitationController {
   protected readonly invitationService = $inject(InvitationService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly invitationTokens = $inject(InvitationTokenService);
-  protected readonly security = $inject(ProjectSecurityService);
   protected readonly users = $repository(users);
+  protected readonly ranks = $inject(RankService);
   protected readonly projects = $repository(projects);
 
   /**
@@ -39,7 +41,33 @@ export class InvitationController {
       body: createInvitationSchema,
       response: invitationResourceSchema,
     },
-    handler: ({ body, user }) => this.invitationService.create(body, user),
+    handler: async ({ body, user }) => {
+      // ⚠️ `roles` is how an invitation names the RANK its invitee lands on.
+      // The field, the column and `grant` have carried a string list end to
+      // end since the module shipped and nobody read it; this is the reader.
+      //
+      // Validated HERE rather than at accept, and the difference matters: an
+      // invitation can sit unanswered for days, and checking the subset rule
+      // at accept would check it against whoever happens to be around then
+      // rather than against the person who offered the rank.
+      const key = body.roles?.[0];
+
+      if (key) {
+        if (key === ProjectRankResource.OWNER_KEY) {
+          throw new BadRequestError(
+            "Ownership is transferred, not invited. Invite them, then transfer.",
+          );
+        }
+        await this.ranks.assertAssignable(
+          "project",
+          body.resourceId,
+          key,
+          user,
+        );
+      }
+
+      return await this.invitationService.create(body, user);
+    },
   });
 
   /**
@@ -49,14 +77,18 @@ export class InvitationController {
   public readonly listProjectInvitations = $action({
     path: `${this.url}/project/:projectId`,
     group: this.group,
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $ownsProject({
+        requires: "member:manage",
+        param: "projectId",
+      }),
+    ],
     description: "List pending invitations for a project the caller owns",
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.array(invitationResourceSchema),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user);
       return this.invitationService.findByResource(
         "project",
         String(params.projectId),
@@ -109,7 +141,7 @@ export class InvitationController {
     method: "POST",
     path: `${this.url}/project/:projectId/:id/revoke`,
     group: this.group,
-    use: [$secure()],
+    use: [$ownsProject({ requires: "member:manage", param: "projectId" })],
     description: "Revoke a pending invitation for a project the caller owns",
     schema: {
       params: z.object({ projectId: z.integer(), id: z.uuid() }),
@@ -119,7 +151,6 @@ export class InvitationController {
       // Ownership is asserted on the project named in the PATH, so this
       // runs first: it is what makes the assertion below meaningful rather
       // than a check against whatever project the row happens to name.
-      await this.security.assertOwner(params.projectId, user);
       const invitation = await this.invitationService.getById(params.id);
       // `resourceType` before `Number(resourceId)`, so a future non-project
       // invitation is never gated against a project that shares its numeric

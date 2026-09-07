@@ -13,9 +13,17 @@ import { users } from "./users.ts";
  * MCP, which is the point of the feature: the owner leaves "do X
  * differently" on a quest, and the next session sees it.
  *
- * **No notifications.** Decided before the table existed: comments create an
- * expectation that someone is told, and that is a separate feature which
- * should not be bundled while Lore is small-team.
+ * **`@name` reaches a person** (epic #E42). A handle matching a project
+ * member puts a message in their inbox and, unless they have turned it off,
+ * mails them. Anything else in a comment notifies nobody: writing here is
+ * not broadcasting.
+ *
+ * This reverses what stood until 2026-09-07 - "no notifications, comments
+ * create an expectation that someone is told, and that is a separate feature
+ * which should not be bundled while Lore is small-team". It was right while
+ * Lore had one user. A second person on a project is what made it wrong: a
+ * quest gets blocked, the answer is in somebody else's head, and nothing
+ * told them so.
  */
 export const questComments = $entity({
   name: "quest_comments",

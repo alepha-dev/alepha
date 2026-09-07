@@ -4,20 +4,13 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { projects } from "../entities/projects.ts";
+import { NotificationHtmlEscaper } from "./NotificationHtmlEscaper.ts";
 
 export class InvitationNotifications {
+  protected readonly html = $inject(NotificationHtmlEscaper);
   protected readonly alepha = $inject(Alepha);
   protected readonly log = $logger();
   protected readonly projects = $repository(projects);
-
-  protected escapeHtml(value: string): string {
-    return value
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
 
   /**
    * The invitation mail. One link, and the link does the work.
@@ -46,9 +39,9 @@ export class InvitationNotifications {
     email: {
       subject: "You have been invited to a project",
       body: (it) => {
-        const projectTitle = this.escapeHtml(it.projectTitle);
-        const inviterName = this.escapeHtml(it.inviterName);
-        const invitedEmail = this.escapeHtml(it.invitedEmail);
+        const projectTitle = this.html.escape(it.projectTitle);
+        const inviterName = this.html.escape(it.inviterName);
+        const invitedEmail = this.html.escape(it.invitedEmail);
         const acceptUrl = encodeURI(it.acceptUrl);
         return `
         <h1>${projectTitle}</h1>

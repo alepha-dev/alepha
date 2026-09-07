@@ -59,6 +59,9 @@ const ProjectSettingsCapabilitySection = (
         description={tr(descriptor.descriptionKey as never)}
       >
         <Switch
+          // Disabled rather than hidden: a capability page with no switch says
+          // nothing at all. `capability:manage` is owner-only structurally.
+          disabled={!master.canToggle}
           checked={master.enabled}
           onCheckedChange={(value) => {
             void master.toggle(value);
@@ -115,7 +118,7 @@ const CapabilityOptionRow = (props: CapabilityOptionRowProps) => {
     >
       <Switch
         checked={option.enabled}
-        disabled={props.disabled}
+        disabled={props.disabled || !option.canToggle}
         onCheckedChange={(value) => {
           void option.toggle(value);
         }}

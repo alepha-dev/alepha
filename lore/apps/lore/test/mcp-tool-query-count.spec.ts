@@ -4,7 +4,11 @@ import { AlephaEmail } from "alepha/email";
 import { AlephaFake } from "alepha/fake";
 import { AlephaMcp } from "alepha/mcp";
 import { AlephaOrm } from "alepha/orm";
-import { AlephaSecurity, currentUserAtom } from "alepha/security";
+import {
+  AlephaSecurity,
+  ResourceGateMemoProvider,
+  currentUserAtom,
+} from "alepha/security";
 import { AlephaServer, NotFoundError } from "alepha/server";
 import { describe, expect, it } from "vitest";
 
@@ -56,6 +60,14 @@ const setup = async () => {
   const asUser = <R>(userId: string, fn: () => R): R =>
     alepha.context.run(() => {
       alepha.store.set(currentUserAtom, { id: userId, roles: ["user"] } as any);
+      // Seeded the way `server:onRequest` seeds it. MCP is served over HTTP,
+      // so a real tool call always has this Map; a bare `context.run` does
+      // not, and without it every gate read happens twice over and the number
+      // below would be measuring the harness rather than the call.
+      alepha.context.set(
+        ResourceGateMemoProvider.KEY,
+        new Map<string, Promise<unknown>>(),
+      );
       return fn();
     });
 
@@ -104,17 +116,31 @@ describe("MCP tool query count", () => {
       project: ctx.project.id,
     });
 
-    // Four, and each one is now doing something: `projects` authorizes the
-    // call, `users` names the reporters, `feedback` is the page, `quests` are
-    // the linked quests. It was six - the two extra were `getMyProjects`
-    // reading the caller and their whole project list to hand back the id it
-    // was given.
+    // Six, cold, and each one is doing something: `projects` authorizes the
+    // call, `members` carries the caller's rank, `rank_definitions` says what
+    // that rank grants, `users` names the reporters, `feedback` is the page,
+    // `quests` are the linked quests.
     //
-    // The `projects` read is served from the ORM's keyed cache for 30s
-    // (`ProjectSecurityService.PROJECT_CACHE_TTL_MS`), so a second tool call
-    // inside that window pays three. This asserts the cold number, which is
-    // what a first call after a deploy actually costs.
-    expect(ctx.totalReads()).toBeLessThanOrEqual(4);
+    // ⚠️ It was four before epic #E39, and the two new ones are the epic's
+    // stated cost. The creator used to short-circuit on
+    // `projects.createdBy === user.id` and never read a membership row at all;
+    // `createdBy` is not an authorization input any more, so the join answers
+    // instead - and once a rank is known, what it grants has to be looked up.
+    //
+    // ⚠️ `members` is ONE read across two checks. The resolver above asks the
+    // rank module imperatively (it turns a 403 into a 404, which middleware
+    // cannot do) and the action's own `$ownsProject` then gates the same
+    // request; both reach the row through
+    // `ResourceGateMemoProvider.membershipKey`, so the second is a memo hit.
+    // Seven here means that shared key was broken, and on MCP a duplicate is
+    // paid in full - one operation per HTTP request, no sibling to amortize
+    // it against.
+    //
+    // `projects` and `rank_definitions` are both served from the ORM's keyed
+    // cache for 30s, so a second tool call inside that window pays four. This
+    // asserts the cold number, which is what a first call after a deploy
+    // actually costs.
+    expect(ctx.totalReads()).toBeLessThanOrEqual(6);
 
     await ctx.alepha.stop();
   });

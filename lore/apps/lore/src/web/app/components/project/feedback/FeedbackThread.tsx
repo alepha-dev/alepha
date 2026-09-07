@@ -2,7 +2,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject } from "alepha/react";
+import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bot, MessageSquare, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -10,6 +10,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { FeedbackCommentController } from "@/api/controllers/FeedbackCommentController.ts";
 import type { FeedbackCommentResource } from "@/api/schemas/feedbackCommentResourceSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { displayName } from "../../../services/displayName.ts";
+import { useProjectUsers } from "../../shared/useProjectUsers.ts";
+import FeedbackThreadBody from "./FeedbackThreadBody.tsx";
 
 export interface FeedbackThreadProps {
   feedbackId: number;
@@ -33,14 +38,27 @@ export interface FeedbackThreadProps {
  * only asymmetry is who may delete what, and that is a server rule this
  * only mirrors.
  *
- * **Nobody is notified.** The copy says so rather than letting a reporter
- * wait for an email that is not coming; notifications are Notifications v2.
+ * ## Who a mention here reaches
+ *
+ * A `@name` written by a **project member** reaches the member it names. One
+ * written by anybody else reaches nobody, whatever it contains: the gate is
+ * on the author, server-side, and a public feedback form is not going to be
+ * an unsolicited-message channel. The copy under the box says which case the
+ * reader is in.
+ *
+ * The body is still plain text with no markdown - see `FeedbackThreadBody`
+ * for what that costs and what it keeps.
  */
 const FeedbackThread = (props: FeedbackThreadProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<FeedbackCommentController>();
   const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
+  const [project] = useStore(currentProjectAtom);
+  // Empty outside the project shell, which is exactly the reporter's own
+  // sheet: no roster to read there, and no handle should link.
+  const projectUsers = useProjectUsers();
+  const members = projectUsers.map((u) => ({ name: displayName(u, "") }));
 
   const [comments, setComments] = useState<FeedbackCommentResource[]>([]);
   const [draft, setDraft] = useState("");
@@ -142,10 +160,16 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                   </button>
                 )}
               </div>
-              {/* Plain text, deliberately. A reporter is an outsider and
-                  this body is shown to the project owner: the same reason
-                  a blight's fields are never rendered as markdown. */}
-              <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
+              {/* Still plain text, deliberately: a reporter is an outsider
+                  and this body is shown to the project owner, the same
+                  reason a blight's fields are never rendered as markdown.
+                  The one exception is a resolved mention, which becomes an
+                  element rather than markup. */}
+              <FeedbackThreadBody
+                body={comment.body}
+                members={members}
+                projectSlug={project?.slug}
+              />
             </li>
           ))}
         </ul>

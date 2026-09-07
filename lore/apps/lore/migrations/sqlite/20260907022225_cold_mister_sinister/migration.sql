@@ -1,1 +1,0 @@
-ALTER TABLE `projects` ADD `default_env` text;

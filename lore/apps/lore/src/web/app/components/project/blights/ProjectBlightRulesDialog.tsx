@@ -34,6 +34,9 @@ export interface ProjectBlightRulesDialogProps {
 const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const blightApi = useClient<BlightController>();
+  // The rule list stays readable - it is what the inbox is filtering on - and
+  // only the two writes close.
+  const canManage = blightApi.createBlightRule.can();
   const toaster = useToast();
 
   const [rules, setRules] = useState<BlightRuleResource[]>([]);
@@ -128,7 +131,10 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
             placeholder={tr("blights.rules.placeholder")}
             onChange={(e) => setPattern(e.target.value)}
           />
-          <Button type="submit" disabled={saving || !pattern.trim()}>
+          <Button
+            type="submit"
+            disabled={saving || !pattern.trim() || !canManage}
+          >
             <Plus className="size-4" />
             {tr("blights.rules.add")}
           </Button>
@@ -157,6 +163,7 @@ const ProjectBlightRulesDialog = (props: ProjectBlightRulesDialogProps) => {
                   variant="ghost"
                   size="icon"
                   className="text-destructive shrink-0"
+                  disabled={!canManage}
                   onClick={() => void remove(rule)}
                   aria-label={tr("blights.rules.remove")}
                 >

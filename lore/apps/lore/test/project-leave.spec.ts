@@ -122,7 +122,6 @@ describe("ProjectController leaveProject", () => {
     await membersRepo.create({
       userId: member.id,
       projectId: created.data.id,
-      owner: false,
     });
 
     // Sanity: project is visible to the member before leaving.
@@ -177,7 +176,6 @@ describe("ProjectController removeMember", () => {
     await membersRepo.create({
       userId: member.id,
       projectId: created.data.id,
-      owner: false,
     });
     return { owner, member, projectId: created.data.id };
   };

@@ -99,7 +99,9 @@ const QuestReleaseControl = (props: QuestReleaseControlProps) => {
       minimal
       size="xs"
       triggerClassName="w-auto"
-      disabled={submitting || !!current?.releasedAt}
+      disabled={
+        submitting || !!current?.releasedAt || !questApi.updateQuestById.can()
+      }
       items={options.map((release) => ({
         value: String(release.id),
         label: release.tag ?? release.title,

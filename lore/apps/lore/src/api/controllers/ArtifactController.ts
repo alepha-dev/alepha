@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $storage, FileService } from "alepha/api/files";
-import { $secure } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
 
 import type { Artifact } from "../entities/artifacts.ts";
@@ -41,7 +40,8 @@ export class ArtifactController {
    * another field is a field initializer, so a gate declared below its first
    * use is `undefined` at construction time.
    */
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
 
   /**
    * Where the tarballs live.
@@ -87,7 +87,7 @@ export class ArtifactController {
    * write-once and needs `force`. See {@link ArtifactService.push}.
    */
   pushArtifact = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject("artifact:read")],
     method: "POST",
     path: "/projects/:projectId/artifacts",
     description: "Push a packed build into the project's artifact registry.",
@@ -151,7 +151,7 @@ export class ArtifactController {
    * mean a 404 in a place the router already handles.
    */
   listArtifacts = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject("artifact:read")],
     method: "GET",
     path: "/projects/:projectId/artifacts",
     description: "What this project has built, grouped by tag.",
@@ -207,13 +207,13 @@ export class ArtifactController {
    * from the tarball safe rather than a quiet deletion (#1515). A sibling
    * object with no way to read it is a deletion with extra storage.
    *
-   * Member-gated like every other project read. 404 when the artifact predates
+   * `artifact:read`, like every other read of the registry. 404 when the artifact predates
    * #1515 or its build produced none, and the message says which - "no maps"
    * and "no such artifact" are different facts and an operator debugging a
    * stack trace needs to know which one they have.
    */
   getArtifactMaps = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject("artifact:read")],
     method: "GET",
     path: "/projects/:projectId/artifacts/:artifactId/maps",
     description: "Download the source maps stored beside one build.",

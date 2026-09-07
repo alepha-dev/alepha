@@ -1,11 +1,17 @@
 import { $inject, Alepha, AlephaError, z } from "alepha";
 import { AuditService } from "alepha/api/audits";
 import { $storage, files } from "alepha/api/files";
+import { RankService } from "alepha/api/ranks";
 import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
-import { $repository, db, pageQuerySchema } from "alepha/orm";
 import {
-  $owns,
+  $repository,
+  $transactional,
+  db,
+  pageQuerySchema,
+  sql,
+} from "alepha/orm";
+import {
   $secure,
   OwnedResourceProvider,
   type UserAccountToken,
@@ -51,6 +57,10 @@ import {
 import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
+import { ProjectPermissions } from "../security/ProjectPermissions.ts";
+import { ProjectRankPresets } from "../security/ProjectRankPresets.ts";
+import { ProjectRankResource } from "../security/ProjectRankResource.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
@@ -96,33 +106,29 @@ export class ProjectController {
   /**
    * Project-member gate: the project creator, or any user holding a
    * membership in it. Privileged identities bypass both.
+   *
+   * These two used to build `$owns` by hand, which meant this file restated
+   * `owner: "createdBy"`, the `members` join and both denial messages - the
+   * one rule this application has, written a second time. They go through
+   * {@link $ownsProject} like every other gate now, so a change to the rule
+   * cannot reach fifteen call sites and miss these seven. The only thing that
+   * varies is the param name: here the project is `:id`, elsewhere
+   * `:projectId`.
    */
-  protected ownsAsMember = () =>
-    $owns({
-      repository: () => this.projects,
-      param: "id",
-      owner: "createdBy",
-      cast: Number,
-      via: {
-        repository: () => this.members,
-        resource: "projectId",
-        user: "userId",
-      },
-      message: "Not a member of this project",
-    });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "id" });
 
   /**
-   * Project-owner gate: the creator only. Used for destructive and
-   * configuration endpoints.
+   * The acts that are the owner's STRUCTURALLY.
+   *
+   * Identical to {@link ownsProject} now, and kept as a separate name because
+   * what makes it owner-only is the PERMISSION rather than the gate:
+   * `project:delete` ends the project and `capability:manage` widens every
+   * rank at once, so both are on Lore's never-grantable list and only the
+   * `owner` built-in's `*` reaches them.
    */
-  protected ownsAsOwner = () =>
-    $owns({
-      repository: () => this.projects,
-      param: "id",
-      owner: "createdBy",
-      cast: Number,
-      message: "Only the project owner can perform this action",
-    });
+  protected ownsAsOwner = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "id" });
   questMapper = $inject(QuestResourceMapper);
   projectMapper = $inject(ProjectResourceMapper);
   limits = $inject(ProjectLimits);
@@ -132,7 +138,60 @@ export class ProjectController {
   audits = $inject(LoreAudits);
   auditService = $inject(AuditService);
   areaService = $inject(AreaService);
+  rankPresets = $inject(ProjectRankPresets);
+  projectPermissions = $inject(ProjectPermissions);
+  ranks = $inject(RankService);
   openQuests = $inject(OpenQuestScope);
+
+  /**
+   * Seed the three preset ranks, as ordinary custom ranks.
+   *
+   * Goes through {@link RankService.save} rather than writing rows: that is
+   * the write path with the invariants on it, so a preset that ever grew an
+   * owner-only permission or lost the floor would be refused here rather than
+   * stored and enforced.
+   *
+   * ⚠️ Non-fatal by contract. A project whose seeding failed works on its
+   * built-ins, which is exactly the state every project created before this
+   * epic is in, and its owner can create a rank from a template afterwards.
+   *
+   * ⚠️ Existing projects ARE swept, since #Q2001. They used to keep zero
+   * definition rows forever, on the reasoning that seeding them would invent
+   * three ranks nobody asked for in twenty-five projects at once; the owner
+   * of one of those projects then opened the members page and asked where
+   * Admin was (feedback #P2122). `ProjectRankJobs.seedMissingPresetRanks`
+   * gives a project holding NO definition rows the same three, nightly, which
+   * also heals a project whose seeding failed here.
+   */
+  protected async seedPresetRanks(
+    projectId: number,
+    capabilities: Array<{ key: CapabilityKey }>,
+    user: UserAccountToken,
+  ): Promise<void> {
+    try {
+      const language = this.alepha.store.get("alepha.http.request")?.language;
+
+      for (const preset of this.rankPresets.presetsFor(
+        capabilities.map((it) => it.key),
+      )) {
+        await this.ranks.save(
+          "project",
+          String(projectId),
+          {
+            key: preset.key,
+            name: this.rankPresets.nameFor(preset, language),
+            permissions: preset.permissions,
+          },
+          user,
+        );
+      }
+    } catch (error) {
+      this.log.warn(
+        "createProject: preset ranks were not seeded; the project works on its built-ins",
+        { projectId, error },
+      );
+    }
+  }
 
   /**
    * Reserve-and-collision gate for a project slug.
@@ -185,8 +244,27 @@ export class ProjectController {
     mimeTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
   });
 
+  /**
+   * ⚠️ `$transactional()` is a best-effort net, not a guarantee.
+   *
+   * `Repository.transaction` degrades to running the callback in place when
+   * the driver says `supportsTransactions === false`, and
+   * `CloudflareD1Provider` says exactly that: D1 rejects BEGIN, COMMIT and
+   * ROLLBACK and offers only `batch()`. So on `lore.alepha.dev` this
+   * middleware opens nothing and rolls back nothing, while on the Node SQLite
+   * driver (which is what the specs and `yarn v` run) it is a real
+   * transaction.
+   *
+   * That is why the handler ALSO compensates by hand when the membership
+   * write fails: on D1 the compensating delete is the only thing standing
+   * between a crash here and a project whose creator can never open it.
+   *
+   * There is no gate on this action, so the ordering rule in
+   * {@link $ownsProject} - the gate goes after `$transactional()` - does not
+   * bite here.
+   */
   createProject = $action({
-    use: [$secure({ permissions: ["project:create"] })],
+    use: [$secure({ permissions: ["project:create"] }), $transactional()],
     schema: {
       body: projects.insertSchema.pick({ title: true, icon: true }).extend({
         /**
@@ -236,8 +314,19 @@ export class ProjectController {
     },
     handler: async ({ body, user }) => {
       const maxProjectsPerUser = await this.limits.maxProjectsPerUser();
-      const count = await this.projects.count({
-        createdBy: { eq: user.id },
+      // ⚠️ Owner ROWS, not `projects.createdBy`. `createdBy` never changes, so
+      // once ownership can be transferred a quota counting it charges the
+      // giver forever and the receiver nothing - a limit two clicks route
+      // around, and a user who hands a project to a colleague is still told
+      // they have reached the maximum.
+      //
+      // Exactly equivalent to the old count on day one, soft deletes
+      // included: `ProjectDeletionService` HARD-deletes the membership rows,
+      // so a soft-deleted project has none and cannot be counted here either.
+      // The two only diverge where they should, at a transfer.
+      const count = await this.members.count({
+        userId: { eq: user.id },
+        rank: { eq: ProjectRankResource.OWNER_KEY },
       });
 
       if (count >= maxProjectsPerUser) {
@@ -279,17 +368,42 @@ export class ProjectController {
         await this.projects.save(project);
       }
 
-      await this.members.create({
-        projectId: project.id,
-        userId: user.id,
-        owner: true,
-      });
+      // The one write whose failure must leave nothing behind. A project row
+      // whose creator holds no membership is a permanent lockout the moment
+      // the `createdBy` fallback goes away, and on D1 the transaction above is
+      // a no-op — so the compensation is written out rather than assumed.
+      try {
+        await this.members.create({
+          projectId: project.id,
+          userId: user.id,
+          // The creator is the project's one owner, and this is the column
+          // that says so from now on. `owner` above is the frozen boolean,
+          // still written only because its two readers have not gone yet.
+          rank: ProjectRankResource.OWNER_KEY,
+        });
+      } catch (error) {
+        // `deleteProject` and not a bare `deleteById`: it also frees the slug,
+        // which a soft-deleted row would otherwise hold hostage against the
+        // retry this rethrow is asking the caller to make.
+        await this.projectDeletion.deleteProject(project.id);
+        this.log.error(
+          "createProject: membership write failed, project rolled back by hand",
+          { projectId: project.id, userId: user.id, error },
+        );
+        throw error;
+      }
 
-      // ⚠️ The fourth and fifth writes of a create that is not
-      // `$transactional()`, so a failure here leaves a project with no
-      // capabilities rather than no project. Recoverable from Settings, which
-      // the two writes above it are not; wrapping the whole handler is wanted
-      // for a second reason by Ranks and belongs to whichever lands first.
+      // ⚠️ The fourth and fifth writes. Inside the transaction now, but their
+      // failure deliberately does NOT compensate: a project with no capability
+      // rows is repairable from Settings, and deleting a usable project to fix
+      // a recoverable state is the worse outcome. Only the membership row
+      // above triggers the rollback by hand.
+      //
+      // ⚠️ Ordering slot, for Ranks: preset rank seeding goes AFTER this loop,
+      // not after the membership row. A preset is a pure function of the
+      // ENABLED capability set, so seeding any earlier computes all three
+      // presets against a project that has no capabilities yet and every
+      // seeded rank comes out empty.
       const rows = [];
       for (const capability of capabilities) {
         rows.push(
@@ -303,6 +417,18 @@ export class ProjectController {
           }),
         );
       }
+
+      // The ordering slot the loop above names: AFTER the capability rows,
+      // because a preset is a pure function of the ENABLED capability set and
+      // seeding any earlier computes all three against a project that has none.
+      //
+      // Non-fatal, deliberately. A project whose seeding failed works on its
+      // built-ins (`owner` and `member`), which is the same state every project
+      // created before ranks existed is in, and the owner can create a rank
+      // from a template afterwards. Destroying a usable project over it would
+      // be the wrong trade, and the compensating delete above is reserved for
+      // the one write that is not recoverable.
+      await this.seedPresetRanks(project.id, capabilities, user);
 
       await this.audits.project.logSuccess("create", {
         ...this.audits.actor(user),
@@ -386,16 +512,13 @@ export class ProjectController {
     handler: async ({ user }) => {
       const maxProjectsPerUser = await this.limits.maxProjectsPerUser();
 
-      const [me, ownedCount] = await Promise.all([
-        this.usersWith.findById(user.id, {
-          include: {
-            projects: {
-              orderBy: { column: "updatedAt", direction: "desc" },
-            },
+      const me = await this.usersWith.findById(user.id, {
+        include: {
+          projects: {
+            orderBy: { column: "updatedAt", direction: "desc" },
           },
-        }),
-        this.projects.count({ createdBy: { eq: user.id } }),
-      ]);
+        },
+      });
 
       const result = me?.projects ?? [];
 
@@ -403,24 +526,52 @@ export class ProjectController {
       // the Home page's "N areas" stat is re-sourced from the `areas` table
       // here instead, one batched query rather than one per card.
       const projectIds = result.map((it) => it.id);
-      const [areaCounts, openQuestCounts, capabilityRows] = await Promise.all([
-        this.areaService.countByProjectIds(projectIds),
-        // The dashboard rail's per-project number. Counted through the same
-        // scope as the sidebar badge and the Active Quests tile: all three are
-        // visible together, and a disagreement between them is one of them
-        // lying rather than a rounding difference.
-        this.openQuests.countByProject(projectIds),
-        // Third batched read on the same id list. The Home cards, the create
-        // menu and the sidebar all read the capability set, and one query per
-        // card is N round trips on D1 for a list already in memory.
-        this.projectSecurity.capabilityRowsForProjects(projectIds),
-      ]);
+      const [areaCounts, openQuestCounts, capabilityRows, ownedIds] =
+        await Promise.all([
+          this.areaService.countByProjectIds(projectIds),
+          // The dashboard rail's per-project number. Counted through the same
+          // scope as the sidebar badge and the Active Quests tile: all three are
+          // visible together, and a disagreement between them is one of them
+          // lying rather than a rounding difference.
+          this.openQuests.countByProject(projectIds),
+          // Third batched read on the same id list. The Home cards, the create
+          // menu and the sidebar all read the capability set, and one query per
+          // card is N round trips on D1 for a list already in memory.
+          this.projectSecurity.capabilityRowsForProjects(projectIds),
+          // Fourth batched read on the same id list, and the one that answers
+          // the Owner badge. Off `members.rank`, not `projects.createdBy`: the
+          // creator column stopped being an authorization input in epic #E39,
+          // and after an ownership transfer the two disagree.
+          //
+          // ⚠️ Short-circuited on an empty list: `inArray: []` THROWS rather
+          // than matching nothing, and a brand-new account with no projects is
+          // exactly the request that hits it.
+          projectIds.length === 0
+            ? Promise.resolve(new Set<number>())
+            : this.members
+                .findMany({
+                  where: {
+                    projectId: { inArray: projectIds },
+                    userId: { eq: user.id },
+                    rank: { eq: "owner" },
+                  },
+                })
+                .then((rows) => new Set(rows.map((it) => it.projectId))),
+        ]);
+
+      // ⚠️ The badge read IS the quota read, and one query answers both. The
+      // `projects` relation is every project the caller belongs to, so the
+      // owner rows inside it are all the owner rows there are - and counting
+      // `projects.createdBy` separately would have disagreed with the badge
+      // beside it the moment a project was transferred.
+      const ownedCount = ownedIds.size;
 
       return {
         projects: result.map((it) => ({
           ...this.projectMapper.toResource(it, capabilityRows.get(it.id) ?? []),
           areaCount: areaCounts.get(it.id) ?? 0,
           openQuestCount: openQuestCounts.get(it.id) ?? 0,
+          owner: ownedIds.has(it.id),
         })),
         totalCount: result.length,
         ownedCount,
@@ -433,7 +584,7 @@ export class ProjectController {
   // -------------------------------------------------------------------------------------------------------------------
 
   getProjectUsers = $action({
-    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    use: [this.ownsProject("project:read")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -481,7 +632,7 @@ export class ProjectController {
    * the quest page.
    */
   getProjectActivity = $action({
-    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    use: [this.ownsProject("project:read")],
     path: "/projects/:id/activity",
     schema: {
       params: z.object({
@@ -570,7 +721,7 @@ export class ProjectController {
    * for the avatar column, so it is deliberately not repeated here.
    */
   getProjectActivityFilters = $action({
-    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    use: [this.ownsProject("project:read")],
     path: "/projects/:id/activity/filters",
     schema: {
       params: z.object({
@@ -665,7 +816,7 @@ export class ProjectController {
   }
 
   updateProjectById = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -821,7 +972,7 @@ export class ProjectController {
   }
 
   getProjectById = $action({
-    use: [$secure({ permissions: ["project:read"] }), this.ownsAsMember()],
+    use: [this.ownsProject("project:read")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -833,6 +984,25 @@ export class ProjectController {
          * Total number of members in this project (including the viewer).
          */
         memberCount: z.integer(),
+        /**
+         * What the caller may do in THIS project: application permission AND
+         * rank AND capability, resolved server-side into one flat list.
+         *
+         * ⚠️ On the EXTENDED response, never on `projectResourceSchema`. That
+         * schema is also the shape of `getMyProjects`, `getHomeOverview` and
+         * the Kanban payload, and an effective set there would be computed per
+         * project in a list.
+         *
+         * ⚠️ Declared here or it is silently dropped: the response schema is
+         * what serializes, and the client would read `undefined` and hide
+         * every control.
+         */
+        permissions: z.array(z.text()),
+        /**
+         * Which rank produced them, for the surfaces that NAME it rather than
+         * gate on it. Absent for a privileged identity, which holds no rank.
+         */
+        rank: z.object({ key: z.text(), name: z.text() }).optional(),
       }),
     },
     handler: async ({ params, user }) => {
@@ -869,6 +1039,9 @@ export class ProjectController {
         ),
         member,
         memberCount,
+        // Off the membership row the gate already read, and the definitions
+        // and capability rows the request has already paid for.
+        ...(await this.projectPermissions.of(params.id, user, member)),
       };
     },
   });
@@ -881,11 +1054,12 @@ export class ProjectController {
    * takes an integer `projectId`, read off that atom. That is what keeps slug
    * routing out of the rest of the API surface.
    *
-   * `$owns` cannot gate this one — it looks a resource up by primary key from
-   * a path param, and this param is not the key. The membership check is
-   * therefore explicit, through the same `ProjectSecurityService.assertMember`
-   * every other project-scoped read uses. A slug is guessable in a way an id
-   * is not, so this gate is the only thing standing between a typed URL and
+   * ⚠️ **ranks: imperative.** `$owns` cannot gate this one — it looks a
+   * resource up by primary key from a path param, and this param is not the
+   * key. The check is therefore explicit, through the ranks module's own
+   * imperative `assert`, naming the same `project:read` every other
+   * project-scoped read now names on its gate. A slug is guessable in a way an
+   * id is not, so this is the only thing standing between a typed URL and
    * another tenant's project.
    */
   getProjectBySlug = $action({
@@ -903,6 +1077,25 @@ export class ProjectController {
          * Total number of members in this project (including the viewer).
          */
         memberCount: z.integer(),
+        /**
+         * What the caller may do in THIS project: application permission AND
+         * rank AND capability, resolved server-side into one flat list.
+         *
+         * ⚠️ On the EXTENDED response, never on `projectResourceSchema`. That
+         * schema is also the shape of `getMyProjects`, `getHomeOverview` and
+         * the Kanban payload, and an effective set there would be computed per
+         * project in a list.
+         *
+         * ⚠️ Declared here or it is silently dropped: the response schema is
+         * what serializes, and the client would read `undefined` and hide
+         * every control.
+         */
+        permissions: z.array(z.text()),
+        /**
+         * Which rank produced them, for the surfaces that NAME it rather than
+         * gate on it. Absent for a privileged identity, which holds no rank.
+         */
+        rank: z.object({ key: z.text(), name: z.text() }).optional(),
       }),
     },
     handler: async ({ params, user }) => {
@@ -916,17 +1109,31 @@ export class ProjectController {
         throw new NotFoundError("Project not found");
       }
 
-      const { project } = await this.projectSecurity.assertMember(
-        found.id,
-        user,
-      );
+      const project = found;
 
+      // Read ONCE, and used for two things: the gate below and the `member`
+      // field of the response. This handler used to read it twice - once
+      // inside `assertMember` and once for the field - which is six sequential
+      // awaits in the loader every project navigation runs.
       const member = await this.members.findOne({
         where: {
           projectId: { eq: project.id },
           userId: { eq: user.id },
         },
       });
+
+      if (!member && user.ownership !== false) {
+        // The same message the gate gives, so a refusal never tells a caller
+        // whether the slug names a real project.
+        throw new ForbiddenError("Not a member of this project");
+      }
+
+      await this.ranks.assert(
+        "project",
+        String(project.id),
+        "project:read",
+        user,
+      );
 
       const projectQuests = await this.quests.findMany({
         where: {
@@ -950,20 +1157,20 @@ export class ProjectController {
         ),
         member,
         memberCount,
+        ...(await this.projectPermissions.of(project.id, user, member)),
       };
     },
   });
 
   getProjectMembers = $action({
     use: [
-      $secure({ permissions: ["project:read"] }),
       // Same reasoning as `getMyProjects`: members are invited and removed
       // from the settings page that reads this list, so a freshness window
       // hid the owner's own change from them.
       $etag({
         control: { private: true, noCache: true },
       }),
-      this.ownsAsMember(),
+      this.ownsProject("project:read"),
     ],
     schema: {
       params: z.object({
@@ -999,10 +1206,16 @@ export class ProjectController {
         membersWithUsers.push({ ...member, user: member.user });
       }
 
-      // Sort by owner first, then by creation date
+      // Sort by owner first, then by creation date.
+      //
+      // Off `rank`, not off the frozen `owner` boolean: that column's database
+      // default is `true` and cannot be changed, so it is only ever as correct
+      // as its writers, and it has two of them. `rank` is the one answer.
+      const isOwner = (member: { rank?: string }) => member.rank === "owner";
+
       return membersWithUsers.sort((a, b) => {
-        if (a.owner && !b.owner) return -1;
-        if (!a.owner && b.owner) return 1;
+        if (isOwner(a) && !isOwner(b)) return -1;
+        if (!isOwner(a) && isOwner(b)) return 1;
         return (
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
@@ -1011,7 +1224,7 @@ export class ProjectController {
   });
 
   deleteProjectById = $action({
-    use: [$secure({ permissions: ["project:delete"] }), this.ownsAsOwner()],
+    use: [this.ownsAsOwner("project:delete")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1052,14 +1265,6 @@ export class ProjectController {
         where: { id: { eq: params.id } },
       });
 
-      // Owner cannot leave their own project — they must delete it or
-      // transfer ownership (transfer not implemented yet).
-      if (project.createdBy === user.id) {
-        throw new ForbiddenError(
-          "The owner cannot leave their own project. Delete it instead.",
-        );
-      }
-
       const member = await this.members.findOne({
         where: {
           userId: { eq: user.id },
@@ -1070,6 +1275,16 @@ export class ProjectController {
       if (!member) {
         // Idempotent: leaving a project you're not a member of is a no-op.
         return { ok: true };
+      }
+
+      // ⚠️ The RANK, not `projects.createdBy`. The two agreed until ownership
+      // could be transferred; after a transfer the creator is an ordinary
+      // member who may leave, and the new owner is the one who may not. The
+      // message names the transfer because it exists now.
+      if (member.rank === ProjectRankResource.OWNER_KEY) {
+        throw new ForbiddenError(
+          "The owner cannot leave their own project. Transfer ownership first, or delete the project.",
+        );
       }
 
       // Release any in-flight quests the user accepted but did not complete,
@@ -1101,6 +1316,138 @@ export class ProjectController {
   });
 
   /**
+   * Hand the project to somebody else, and stop being its owner.
+   *
+   * ## One statement, and that is the whole design
+   *
+   * D1 has no transactions (see #Q1926), so a demote-then-promote pair can
+   * leave the project with **no** owner if the second write fails, and a
+   * promote-then-demote pair can leave it with **two**. Neither state is
+   * expressible anywhere else in this application: `getProjectMembers` sorts
+   * on one owner, the quota counts them, and `leaveProject` refuses the one.
+   *
+   * So the swap is a single `UPDATE ... CASE ... RETURNING`. `$transactional()`
+   * is still declared for the drivers that honour it - it costs nothing and it
+   * is correct on Postgres - but the correctness on D1 comes from there being
+   * one statement.
+   *
+   * ⚠️ `RETURNING` is not decoration. `Repository.query` throws `DbError` on a
+   * result that is not an array of rows, which is what an `UPDATE` without it
+   * answers. One column, with its own schema: see the note on the statement.
+   *
+   * ⚠️ `sql.identifier(t.rank.name)` on the left of the `SET`, not `${t.rank}`.
+   * Interpolating the column object renders it QUALIFIED (`"members"."rank"`),
+   * which SQLite rejects there - `near ".": syntax error`. Everywhere else in
+   * the statement the qualified form is what you want.
+   *
+   * ## What it is not
+   *
+   * Not a rank assignment. `assignRank` refuses `owner` as a target on
+   * purpose: a rank you can be GIVEN is not ownership, and this act demotes
+   * the person performing it, which no assignment does. The promoter's new
+   * rank is theirs to choose and defaults to `member`.
+   */
+  transferOwnership = $action({
+    // `member:manage` gets the gate to load the rows; being the owner is
+    // checked below, off the membership row the gate read. Transfer is
+    // deliberately not a permission - a rank that could be granted the right
+    // to take ownership away would make ownership grantable.
+    use: [$transactional(), this.ownsProject("member:manage")],
+    method: "POST",
+    path: "/projects/:id/transfer",
+    schema: {
+      params: z.object({ id: z.integer() }),
+      body: z.object({
+        userId: z.uuid(),
+        /**
+         * What the outgoing owner becomes. Chosen in the confirmation, and
+         * `member` when the caller says nothing: every project has that rank,
+         * whatever else it has.
+         */
+        rank: z.text({ maxLength: 64 }).optional(),
+      }),
+      response: okSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const project = this.owned.get<Project>();
+
+      if (body.userId === user.id) {
+        throw new BadRequestError("You already own this project.");
+      }
+
+      const [mine, theirs] = await Promise.all([
+        this.members.findOne({
+          where: {
+            projectId: { eq: params.id },
+            userId: { eq: user.id },
+          },
+        }),
+        this.members.findOne({
+          where: {
+            projectId: { eq: params.id },
+            userId: { eq: body.userId },
+          },
+        }),
+      ]);
+
+      if (mine?.rank !== ProjectRankResource.OWNER_KEY) {
+        throw new ForbiddenError(
+          "Only the project owner can transfer ownership.",
+        );
+      }
+
+      if (!theirs) {
+        throw new BadRequestError(
+          "That person is not a member of this project.",
+        );
+      }
+
+      const promoterRank = body.rank ?? ProjectRankResource.DEFAULT_KEY;
+
+      if (promoterRank === ProjectRankResource.OWNER_KEY) {
+        throw new BadRequestError(
+          "A project has exactly one owner. Pick the rank you keep.",
+        );
+      }
+
+      const ranks = await this.ranks.ranksOf("project", String(params.id));
+      if (!ranks.some((it) => it.key === promoterRank)) {
+        throw new BadRequestError(`No rank "${promoterRank}" in this project.`);
+      }
+
+      await this.members.query(
+        (t) => sql`
+          UPDATE ${t}
+          SET ${sql.identifier(t.rank.name)} = CASE
+            WHEN ${t.userId} = ${body.userId} THEN ${ProjectRankResource.OWNER_KEY}
+            ELSE ${promoterRank}
+          END
+          WHERE ${t.projectId} = ${params.id}
+            AND ${t.userId} IN (${body.userId}, ${user.id})
+          RETURNING ${t.userId}
+        `,
+        // ⚠️ One column, and a schema for it. `RETURNING *` decodes every
+        // returned row through the ENTITY schema, and SQLite hands `createdAt`
+        // back as a number - so the statement succeeds and the decode throws,
+        // which reads as a failed transfer that already happened.
+        z.object({ userId: z.uuid() }),
+      );
+
+      await this.audits.member.logSuccess("transfer", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(params.id),
+        severity: "warning",
+        resourceType: "project",
+        resourceId: String(params.id),
+        description: project.title,
+        metadata: { toUserId: body.userId, keptRank: promoterRank },
+      });
+
+      return { ok: true };
+    },
+  });
+
+  /**
    * The owner removes somebody from the project.
    *
    * The mirror of {@link ProjectController.leaveProject}, and deliberately a
@@ -1123,7 +1470,7 @@ export class ProjectController {
    * story for it.
    */
   removeMember = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("member:manage")],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -1133,15 +1480,6 @@ export class ProjectController {
     },
     handler: async ({ params, user }) => {
       const project = this.owned.get<Project>();
-
-      // The owner's own row is not removable, for the reason they cannot
-      // leave either: a project with no owner has nobody who can delete it,
-      // rename it, or let anybody back in.
-      if (project.createdBy === params.userId) {
-        throw new ForbiddenError(
-          "The owner cannot be removed from their own project.",
-        );
-      }
 
       const member = await this.members.findOne({
         where: {
@@ -1154,6 +1492,16 @@ export class ProjectController {
         // Idempotent, like `leaveProject`: removing somebody who is already
         // gone is the state the caller asked for.
         return { ok: true };
+      }
+
+      // The owner's own row is not removable, for the reason they cannot
+      // leave either: a project with no owner has nobody who can delete it,
+      // rename it, or let anybody back in. Read off the rank since a transfer
+      // can move it away from the creator.
+      if (member.rank === ProjectRankResource.OWNER_KEY) {
+        throw new ForbiddenError(
+          "The owner cannot be removed from their own project.",
+        );
       }
 
       await this.quests.updateMany(
@@ -1188,7 +1536,7 @@ export class ProjectController {
   // ── Kanban column CRUD ──────────────────────────────────────────────
 
   addKanbanColumn = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -1218,7 +1566,7 @@ export class ProjectController {
   });
 
   renameKanbanColumn = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -1274,7 +1622,7 @@ export class ProjectController {
   });
 
   deleteKanbanColumn = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ name: z.string() }),
@@ -1326,7 +1674,7 @@ export class ProjectController {
   });
 
   reorderKanbanColumns = $action({
-    use: [$secure({ permissions: ["project:update"] }), this.ownsAsOwner()],
+    use: [this.ownsProject("project:update")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({

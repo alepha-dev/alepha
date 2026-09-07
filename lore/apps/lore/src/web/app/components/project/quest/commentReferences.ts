@@ -1,3 +1,4 @@
+import { mentionPattern, resolveMention } from "../../../services/mentions.ts";
 import {
   formatReference,
   parseTypedReference,
@@ -52,15 +53,35 @@ export interface CommentReferenceOptions {
  * existing `[[…]]` (or the expansion double-wraps its own output), and a
  * markdown link's target (or `](/docs/page#42)` becomes a quest reference).
  * Everything else is expanded.
+ *
+ * ⚠️ **Exported because the server runs it too.** The api decides who a
+ * comment pings, and it has to hold out the same four shapes or a comment
+ * explaining an `@decorator` in a code span mentions somebody. Same argument
+ * as the shared matcher in `services/mentions.ts`: one definition, two
+ * importers.
  */
-const outsideProtected = (
+export const outsideProtected = (
   input: string,
   fn: (segment: string) => string,
 ): string =>
+  protectedSegments(input)
+    .map((part) => (part.protected ? part.text : fn(part.text)))
+    .join("");
+
+/**
+ * The same split, as data.
+ *
+ * Exists because one consumer cannot take a string back: `FeedbackThreadBody`
+ * renders a mention as React elements rather than markdown, so it needs to
+ * know which stretches are held out without being handed a rewritten string.
+ * Both forms therefore read ONE regex, which is the point.
+ */
+export const protectedSegments = (
+  input: string,
+): Array<{ text: string; protected: boolean }> =>
   input
     .split(/(```[\s\S]*?```|`[^`\n]*`|\[\[[^\]\n]*\]\]|\]\([^)\n]*\))/g)
-    .map((part, index) => (index % 2 === 1 ? part : fn(part)))
-    .join("");
+    .map((text, index) => ({ text, protected: index % 2 === 1 }));
 
 /**
  * A bare typed reference (`#Q1204`, `#E3`, `#F12`, `#P120`, `#R7`) becomes
@@ -101,13 +122,13 @@ const expandMentions = (
 ): string => {
   if (options.members.length === 0) return segment;
 
+  // The pattern and the comparison both come from `services/mentions.ts`,
+  // which the api imports too. A regex written here instead is how the
+  // rendered link and the delivered ping start disagreeing.
   return segment.replace(
-    /(^|[^\w@/])@([\w.-]+)/g,
+    mentionPattern(),
     (match, prefix: string, handle: string) => {
-      const known = options.members.some(
-        (m) => m.name.toLowerCase() === handle.toLowerCase(),
-      );
-      if (!known) return match;
+      if (!resolveMention(handle, options.members)) return match;
       return `${prefix}[@${handle}](/${options.projectSlug}/settings/members)`;
     },
   );
