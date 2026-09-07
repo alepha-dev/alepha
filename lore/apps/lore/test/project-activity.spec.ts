@@ -86,7 +86,6 @@ const setup = async () => {
   await (projectApi as any).members.create({
     userId: MATE,
     projectId: project.id,
-    owner: false,
   });
 
   return {
@@ -237,7 +236,6 @@ describe("Lore MCP: project_activity", () => {
     await (projectApi as any).members.create({
       userId: MATE,
       projectId: other.id,
-      owner: false,
     });
 
     const since = anHourAgo(dt);

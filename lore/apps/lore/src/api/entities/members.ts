@@ -24,20 +24,28 @@ export const members = $entity({
     }),
 
     /**
-     * @deprecated Read nothing off this. Use {@link rank}.
+     * @deprecated Read nothing off this, and write nothing to it. Use
+     * {@link rank}.
+     *
+     * ⚠️ **Every row written from now on says `true`, and that means nothing.**
+     * The column's database DEFAULT is `true` and cannot be changed (a default
+     * on this table is a table rebuild, which this app does not do), so with
+     * the last writer gone the default is what fills it. A future reader must
+     * not conclude from a table full of `true` that a project has many owners:
+     * the answer is {@link rank}, and there is exactly one `owner` per
+     * project.
+     *
+     * Nothing reads it. #Q1997 removed the last two writers - `createProject`
+     * wrote `true`, `ProjectInvitationResource.grant` wrote `false` - and it
+     * could only run once the readers were gone: dropping the `false` write
+     * while the members list still read the column would have rendered every
+     * newly accepted invitation as an owner, in production, with no human gate
+     * between here and the deploy.
      *
      * Frozen rather than dropped, like every other retired column in this app.
      * `members` has no children so a rebuild would cascade-wipe nothing and a
      * DROP would be defensible, but the convention is worth more than the
      * column.
-     *
-     * ⚠️ **Its database default is `true`, and that cannot be changed** - a
-     * default on this table is a table rebuild. So its two writers
-     * (`createProject` writing `true`, `ProjectInvitationResource.grant`
-     * writing `false`) stay live until the last reader is gone: dropping the
-     * `false` write while the members list still reads the column would make
-     * every newly accepted invitation render as an owner, in production, with
-     * no human gate between here and the deploy. #Q1997 removes them.
      */
     owner: db.default(z.boolean(), true),
 

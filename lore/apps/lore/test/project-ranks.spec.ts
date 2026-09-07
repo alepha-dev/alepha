@@ -107,7 +107,6 @@ describe("Lore's rank resource", () => {
     await ctx.repos.members.create({
       projectId: project.id,
       userId: invitee.id,
-      owner: false,
     });
 
     // Ownership is transferred, not handed out: a project with two owners is
@@ -319,7 +318,6 @@ describe("Lore's rank resource", () => {
     await ctx.repos.members.create({
       projectId: created.id,
       userId: taker.id,
-      owner: false,
       rank: "member",
     });
 
@@ -354,7 +352,6 @@ describe("Lore's rank resource", () => {
     await ctx.repos.members.create({
       projectId: created.id,
       userId: other.id,
-      owner: false,
       // `admin` holds `member:manage`, so it passes the gate and is refused
       // by the owner check inside - which is the point: transfer is not a
       // permission, and a rank that could be granted it would make ownership
@@ -384,7 +381,6 @@ describe("Lore's rank resource", () => {
     await ctx.repos.members.create({
       projectId: created.id,
       userId: taker.id,
-      owner: false,
       rank: "member",
     });
 
@@ -423,7 +419,6 @@ describe("Lore's rank resource", () => {
     await ctx.repos.members.create({
       projectId: created.id,
       userId: taker.id,
-      owner: false,
       rank: "member",
     });
 
@@ -550,7 +545,6 @@ describe("Lore's rank resource", () => {
     await ctx.repos.members.create({
       projectId: created.id,
       userId: member.id,
-      owner: false,
       rank: "contributor",
     });
 
