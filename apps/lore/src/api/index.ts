@@ -55,6 +55,7 @@ import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
 import { ProjectInvitationResource } from "./providers/ProjectInvitationResource.ts";
+import { LorePermissions } from "./security/LorePermissions.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AppService } from "./services/AppService.ts";
 import { AreaService } from "./services/AreaService.ts";
@@ -142,6 +143,12 @@ export const LoreApi = $module({
     // Declares the `$realm`. Nothing injects it — it must be listed here
     // explicitly or the realm (and every permission) is never registered.
     AppSecurityProvider,
+    // Declares every `$permission`. Nothing injects it either: the strings
+    // reach the registry through `$secure()` anyway, and what this class adds
+    // is their LABELS and their group order - which the rank matrix renders
+    // from. Unlisted, the matrix would show raw `group:name` strings in
+    // whatever order the gates happened to run.
+    LorePermissions,
     // Declares the $audit types. Nothing but the controllers inject it, and
     // they inject it lazily - listed here so the types are registered at
     // boot and the admin filter offers them before any row exists.
