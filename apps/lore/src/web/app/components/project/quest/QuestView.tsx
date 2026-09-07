@@ -6,7 +6,6 @@ import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
-  Archive,
   ArrowLeft,
   CalendarClock,
   CircleDot,
@@ -244,6 +243,17 @@ const QuestView = (props: QuestViewProps) => {
       <span className="text-muted-foreground">-</span> {quest.title}
     </>
   );
+  /*
+   * The same text as a plain string, for the `title` attribute the two
+   * elements carry. Every mount truncates - 28px on the page, 18px on the
+   * card and in the dialog - so a long title is cut with no way to read the
+   * rest, and this quest's own title was the example in the report.
+   *
+   * Beside `titleContent` and built from the same two values for the same
+   * reason that exists: the tooltip and the rendered line must not come to
+   * disagree about what the quest is called.
+   */
+  const titleText = `${formatReference("quest", quest.shortId)} - ${quest.title}`;
 
   /**
    * Unassign. The server method is still called `abandonQuest`, but it
@@ -425,7 +435,13 @@ const QuestView = (props: QuestViewProps) => {
               chips row above, which is what sits flush with the top edge.
               Carries the title (prefixed with #shortId), the priority badge
               and the edit/duplicate/timer affordances. */}
-          <header className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-center gap-3 border-b px-10 py-3">
+          <header
+            // Named so a spec can ask what this row carries. It is what
+            // #P2117 was about: the row must hold the title and the actions
+            // and nothing the chips above it already said.
+            data-testid="quest-header"
+            className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-center gap-3 border-b px-10 py-3"
+          >
             {/* Card mount only. On the page the breadcrumb already walks up
                 and the arrow was redundant beside it, but in the kanban
                 drawer this IS the close affordance: the sheet has no other
@@ -467,6 +483,7 @@ const QuestView = (props: QuestViewProps) => {
                     params: { shortId: String(quest.shortId) },
                   })}
                   className="truncate text-lg leading-tight font-bold"
+                  title={titleText}
                 >
                   {titleContent}
                 </Link>
@@ -477,22 +494,22 @@ const QuestView = (props: QuestViewProps) => {
                       ? "text-[28px] tracking-[-0.6px]"
                       : "text-lg font-bold"
                   }`}
+                  title={titleText}
                 >
                   {titleContent}
                 </span>
               )}
             </div>
 
-            {quest.shelvedAt && (
-              <Badge
-                variant="secondary"
-                className="text-muted-foreground shrink-0"
-              >
-                <Archive className="size-3" />
-                {tr("quest.status.shelved")}
-              </Badge>
-            )}
+            {/* ⚠️ No Shelved badge here, deliberately. It used to sit
+                between the title and Edit and said the same word the status
+                chip above the title already says, in every mount - the chips
+                row is outside every `context` branch - so a shelved quest
+                announced itself twice on one screen (feedback #P2117).
 
+                Same decision as the tags three lines above: the chips row is
+                where what this quest IS belongs, and the header is the one
+                line worth pinning while the body scrolls. */}
             {/* Edit, then the lifecycle primary. The sticky bottom action
                 bar this replaces held Accept / Complete opposite Shelve and
                 Abandon; the mockup has no bar, so the two lifecycle verbs
