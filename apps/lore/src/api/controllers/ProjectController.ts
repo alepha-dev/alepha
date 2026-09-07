@@ -1007,10 +1007,16 @@ export class ProjectController {
         membersWithUsers.push({ ...member, user: member.user });
       }
 
-      // Sort by owner first, then by creation date
+      // Sort by owner first, then by creation date.
+      //
+      // Off `rank`, not off the frozen `owner` boolean: that column's database
+      // default is `true` and cannot be changed, so it is only ever as correct
+      // as its writers, and it has two of them. `rank` is the one answer.
+      const isOwner = (member: { rank?: string }) => member.rank === "owner";
+
       return membersWithUsers.sort((a, b) => {
-        if (a.owner && !b.owner) return -1;
-        if (!a.owner && b.owner) return 1;
+        if (isOwner(a) && !isOwner(b)) return -1;
+        if (!isOwner(a) && isOwner(b)) return 1;
         return (
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
