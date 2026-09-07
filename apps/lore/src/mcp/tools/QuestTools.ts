@@ -246,7 +246,8 @@ export class QuestTools {
   quest_comment_add = $tool({
     description:
       "Leave a comment on a quest, as yourself. Comments interleave with the quest's own history into its Discussion, and are what an agent uses to report what it decided, what it could not do, or what the next session should know. Read them back with `quest_get`. " +
-      "Anything posted through this tool is recorded as agent-authored and shown that way in Lore, so do not sign your messages or announce that you are an AI: the thread already says so.",
+      "Anything posted through this tool is recorded as agent-authored and shown that way in Lore, so do not sign your messages or announce that you are an AI: the thread already says so. " +
+      "⚠️ **`@name` reaches a person.** A handle matching a project member puts a message in their inbox and, unless they have turned it off, sends them an email. Mention somebody when you need them, not to address the room.",
     title: "Comment on a quest",
     annotations: { readOnlyHint: false, idempotentHint: false },
     schema: {

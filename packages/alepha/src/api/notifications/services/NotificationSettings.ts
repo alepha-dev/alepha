@@ -29,6 +29,12 @@ export class NotificationSettings {
         .describe(
           "Days to keep delivery receipts. Longer than the outbox on purpose: a complaint can arrive weeks after the send, and the outbox row is already gone.",
         ),
+      inboxRetentionDays: z
+        .integer()
+        .min(1)
+        .describe(
+          "Days to keep a READ inbox message. Its own window because a read message is one the reader has already dealt with, and this is how long they might come back looking for it. An unread message is never swept, whatever this says.",
+        ),
       storeRenderedBody: z
         .boolean()
         .describe(
@@ -56,6 +62,7 @@ export class NotificationSettings {
     default: {
       retentionDays: 7,
       receiptRetentionDays: 90,
+      inboxRetentionDays: 90,
       storeRenderedBody: false,
       maxStoredBodyBytes: 64_000,
       maxAttachmentCount: 10,

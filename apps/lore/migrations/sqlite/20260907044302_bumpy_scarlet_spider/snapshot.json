@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "36a2f3eb-c7a5-4121-8674-a92986c66418",
-  "prevIds": ["316912bd-db30-4237-8ac5-a0cbd83c4ed8"],
+  "id": "5bd8c13b-4354-488b-879a-3c0a334664ef",
+  "prevIds": ["b5e68464-8d28-449e-953e-bf3bf1714844"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -161,6 +161,14 @@
       "entityType": "tables"
     },
     {
+      "name": "notification_inbox",
+      "entityType": "tables"
+    },
+    {
+      "name": "notification_preferences",
+      "entityType": "tables"
+    },
+    {
       "name": "notification_suppressions",
       "entityType": "tables"
     },
@@ -177,6 +185,10 @@
       "entityType": "tables"
     },
     {
+      "name": "project_prompts",
+      "entityType": "tables"
+    },
+    {
       "name": "projects",
       "entityType": "tables"
     },
@@ -190,10 +202,6 @@
     },
     {
       "name": "quests",
-      "entityType": "tables"
-    },
-    {
-      "name": "rank_definitions",
       "entityType": "tables"
     },
     {
@@ -4018,16 +4026,6 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "rank",
-      "entityType": "columns",
-      "table": "members"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
       "name": "id",
       "entityType": "columns",
       "table": "notification_deliveries"
@@ -4211,6 +4209,196 @@
       "name": "error",
       "entityType": "columns",
       "table": "notification_deliveries"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "scope",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "scope_label",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "template",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "category",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "title",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "body",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "href",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "read_at",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "organization_id",
+      "entityType": "columns",
+      "table": "notification_inbox"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "notification_preferences"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "notification_preferences"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "notification_preferences"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "table": "notification_preferences"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "true",
+      "generated": null,
+      "name": "email_enabled",
+      "entityType": "columns",
+      "table": "notification_preferences"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "'[]'",
+      "generated": null,
+      "name": "muted_categories",
+      "entityType": "columns",
+      "table": "notification_preferences"
     },
     {
       "type": "text",
@@ -4651,6 +4839,66 @@
       "name": "options",
       "entityType": "columns",
       "table": "project_capabilities"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": true,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "project_id",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "template",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "project_prompts"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": "(unixepoch('subsec') * 1000)",
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "project_prompts"
     },
     {
       "type": "integer",
@@ -5491,116 +5739,6 @@
       "name": "commits",
       "entityType": "columns",
       "table": "quests"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "id",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "0",
-      "generated": null,
-      "name": "version",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "(unixepoch('subsec') * 1000)",
-      "generated": null,
-      "name": "created_at",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "(unixepoch('subsec') * 1000)",
-      "generated": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "organization_id",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "type",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "scope_id",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "key",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "name",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "integer",
-      "notNull": true,
-      "autoincrement": false,
-      "default": "false",
-      "generated": null,
-      "name": "builtin",
-      "entityType": "columns",
-      "table": "rank_definitions"
-    },
-    {
-      "type": "text",
-      "notNull": true,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "permissions",
-      "entityType": "columns",
-      "table": "rank_definitions"
     },
     {
       "type": "integer",
@@ -7160,6 +7298,17 @@
       "table": "members"
     },
     {
+      "columns": ["user_id"],
+      "tableTo": "users",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_notification_preferences_user_id_users_id_fk",
+      "entityType": "fks",
+      "table": "notification_preferences"
+    },
+    {
       "columns": ["project_id"],
       "tableTo": "projects",
       "columnsTo": ["id"],
@@ -7169,6 +7318,17 @@
       "name": "fk_project_capabilities_project_id_projects_id_fk",
       "entityType": "fks",
       "table": "project_capabilities"
+    },
+    {
+      "columns": ["project_id"],
+      "tableTo": "projects",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_project_prompts_project_id_projects_id_fk",
+      "entityType": "fks",
+      "table": "project_prompts"
     },
     {
       "columns": ["project_id"],
@@ -7610,6 +7770,20 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
+      "name": "notification_inbox_pk",
+      "table": "notification_inbox",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "notification_preferences_pk",
+      "table": "notification_preferences",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
       "name": "notification_suppressions_pk",
       "table": "notification_suppressions",
       "entityType": "pks"
@@ -7638,6 +7812,13 @@
     {
       "columns": ["id"],
       "nameExplicit": false,
+      "name": "project_prompts_pk",
+      "table": "project_prompts",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
       "name": "campaigns_pk",
       "table": "projects",
       "entityType": "pks"
@@ -7661,13 +7842,6 @@
       "nameExplicit": false,
       "name": "quests_pk",
       "table": "quests",
-      "entityType": "pks"
-    },
-    {
-      "columns": ["id"],
-      "nameExplicit": false,
-      "name": "rank_definitions_pk",
-      "table": "rank_definitions",
       "entityType": "pks"
     },
     {
@@ -9360,6 +9534,64 @@
     {
       "columns": [
         {
+          "value": "user_id",
+          "isExpression": false
+        },
+        {
+          "value": "read_at",
+          "isExpression": false
+        },
+        {
+          "value": "created_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "notification_inbox_user_id_read_at_created_at_idx",
+      "entityType": "indexes",
+      "table": "notification_inbox"
+    },
+    {
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false
+        },
+        {
+          "value": "scope",
+          "isExpression": false
+        },
+        {
+          "value": "created_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "notification_inbox_user_id_scope_created_at_idx",
+      "entityType": "indexes",
+      "table": "notification_inbox"
+    },
+    {
+      "columns": [
+        {
+          "value": "user_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "notification_preferences_user_id_idx",
+      "entityType": "indexes",
+      "table": "notification_preferences"
+    },
+    {
+      "columns": [
+        {
           "value": "organization_id",
           "isExpression": false
         },
@@ -9498,6 +9730,24 @@
       "name": "project_capabilities_project_id_key_idx",
       "entityType": "indexes",
       "table": "project_capabilities"
+    },
+    {
+      "columns": [
+        {
+          "value": "project_id",
+          "isExpression": false
+        },
+        {
+          "value": "kind",
+          "isExpression": false
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "origin": "manual",
+      "name": "project_prompts_project_id_kind_idx",
+      "entityType": "indexes",
+      "table": "project_prompts"
     },
     {
       "columns": [
@@ -9690,46 +9940,6 @@
       "name": "quests_project_id_updated_at_idx",
       "entityType": "indexes",
       "table": "quests"
-    },
-    {
-      "columns": [
-        {
-          "value": "type",
-          "isExpression": false
-        },
-        {
-          "value": "scope_id",
-          "isExpression": false
-        },
-        {
-          "value": "key",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "rank_definitions_type_scope_id_key_idx",
-      "entityType": "indexes",
-      "table": "rank_definitions"
-    },
-    {
-      "columns": [
-        {
-          "value": "type",
-          "isExpression": false
-        },
-        {
-          "value": "scope_id",
-          "isExpression": false
-        }
-      ],
-      "isUnique": false,
-      "where": null,
-      "origin": "manual",
-      "name": "rank_definitions_type_scope_id_idx",
-      "entityType": "indexes",
-      "table": "rank_definitions"
     },
     {
       "columns": [

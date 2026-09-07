@@ -1,4 +1,5 @@
-import { $hook, z } from "alepha";
+import { $hook, $inject, z } from "alepha";
+import { NotificationInboxService } from "alepha/api/notifications";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
 import { $action, ConflictError } from "alepha/server";
@@ -50,11 +51,25 @@ import { quests } from "../entities/quests.ts";
 export class UserDeletionHook {
   protected readonly projects = $repository(projects);
   protected readonly quests = $repository(quests);
+  protected readonly inbox = $inject(NotificationInboxService);
 
   /**
    * Emitted without `{ log: true }` by `MyAccountController`, so the error
    * thrown here reaches the browser unwrapped — the count in this message is
    * what the person actually reads.
+   *
+   * ### The inbox cleanup rides here, and the order is the point
+   *
+   * `notification_inbox.userId` is a bare uuid with no foreign key, on
+   * purpose: `alepha/api/notifications` imports nothing from
+   * `alepha/api/users` and has no table to point at. So nothing cascades and
+   * the app has to ask.
+   *
+   * It runs in **this** handler rather than its own, after the refusal above.
+   * A second handler on the same event has no ordering guarantee against this
+   * one, so it could delete the messages of an account whose deletion is then
+   * refused — leaving a user who is still here with an inbox that has been
+   * emptied under them.
    */
   onUserDelete = $hook({
     on: "user:delete:before",
@@ -68,6 +83,9 @@ export class UserDeletionHook {
             : `You still own ${owned} projects. Delete them before deleting your account.`,
         );
       }
+
+      // Past the refusal, so the account really is going.
+      await this.inbox.deleteForUser(userId);
     },
   });
 

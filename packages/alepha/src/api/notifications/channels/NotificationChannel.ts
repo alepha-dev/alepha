@@ -171,6 +171,43 @@ export abstract class NotificationChannel<
   abstract send(rendered: R): Promise<{ messageId?: string }>;
 
   /**
+   * Say that this message cannot be delivered, before anything is rendered.
+   *
+   * The sender consults it after the gate and before {@link render}, for
+   * every channel, sinks included: a sink can be misconfigured too, and a
+   * destination that resolves to nothing is the same situation as a contact
+   * that does.
+   *
+   * Returning a reason writes ONE `skipped` receipt and ends the job `ok`.
+   * That is the whole point: the alternative available to a channel today is
+   * to throw from `render()`, which is called outside the sender's attempt
+   * wrapper, so it writes no receipt at all and the job retries a contact
+   * that will never resolve, burning every attempt down to a terminal
+   * failure.
+   *
+   * `recipient` comes back with the reason because the receipt's `contact`
+   * column is `NOT NULL`, and a channel that cannot resolve a user still
+   * knows the string it was handed.
+   *
+   * ⚠️ **The admin preview does not consult this.**
+   * `AdminNotificationController.preview` calls the sender's `render()`
+   * directly, with no gate, so previewing a message whose recipient has
+   * since disappeared reaches a `render()` that cannot resolve anybody. It
+   * throws, and the preview reports `template-missing` where the template is
+   * in fact fine. That is deliberate: widening the preview resource's
+   * `reason` for a rare row on a deleted account costs a schema change and a
+   * UI branch in `@alepha/ui`, for a more precise label on a screen an
+   * operator reaches once a quarter.
+   *
+   * Default undefined, so every existing channel is unaffected.
+   */
+  public async unavailable(
+    _payload: NotificationPayload,
+  ): Promise<{ reason: string; recipient: string } | undefined> {
+    return undefined;
+  }
+
+  /**
    * What the delivery receipt records as the provider.
    *
    * Defaults to this channel's own class name. A channel that is a thin

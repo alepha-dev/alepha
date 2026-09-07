@@ -68,7 +68,19 @@ describe("members.rank migration", () => {
     // it with them.
     const sql = statementsOf(rankMigration!);
     expect(sql).not.toMatch(/DROP TABLE/i);
-    expect(sql).not.toMatch(/CREATE TABLE/i);
+
+    // ⚠️ A bare `CREATE TABLE` is allowed, and the assertion narrowed rather
+    // than the file split. This migration also creates `rank_definitions`,
+    // because the two were regenerated into one file when origin/main moved
+    // under the branch - two migrations written in parallel from one base
+    // leave the LAST snapshot claiming neither change exists.
+    //
+    // What must never appear is drizzle's REBUILD, which is `CREATE TABLE
+    // __new_x`, `INSERT FROM SELECT`, `DROP`, `RENAME` - and the `DROP` is
+    // what cascades on D1. A new table is not that.
+    expect(sql).not.toMatch(/CREATE TABLE\s+`?__new/i);
+    expect(sql).not.toMatch(/CREATE TABLE\s+`?members`?\s*\(/i);
+    expect(sql).not.toMatch(/INSERT INTO\s+`?__new/i);
   });
 
   it("adds the column nullable", ({ expect }) => {
@@ -84,7 +96,13 @@ describe("members.rank migration", () => {
     // Rejected by decision, not by omission: D1 has no transactions and SQLite
     // checks UNIQUE per row while a statement runs, so a one-statement
     // ownership transfer could trip it mid-statement depending on row order.
-    expect(statementsOf(rankMigration!)).not.toMatch(/CREATE UNIQUE INDEX/i);
+    //
+    // ⚠️ On `members` specifically. The file carries a unique index on
+    // `rank_definitions`, which is a different table and a different question:
+    // one definition per `(type, scope, key)` is not "one owner per project".
+    expect(statementsOf(rankMigration!)).not.toMatch(
+      /CREATE UNIQUE INDEX[^;]*ON\s+`?members`?/i,
+    );
   });
 
   it("touches no column of projects", ({ expect }) => {

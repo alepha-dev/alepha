@@ -6,7 +6,9 @@ import { type Infer, z } from "alepha";
  * A quest list is always there when Work is on; these organize it. `board`,
  * `epics` and `releases` are surfaces; `estimate`, `chrono` and `reminder` are
  * the three quest toggles, one methodology in three parts, adopted later
- * rather than picked at creation.
+ * rather than picked at creation. `agentPrompts` is neither: it adds a menu to
+ * surfaces the other options decide the existence of, and its templates are
+ * edited on this same Settings page.
  *
  * ⚠️ **`releases` is what `features.milestones` became.** That key could never
  * be fixed in place: renaming a required key inside `projects.features` leaves
@@ -32,6 +34,7 @@ export const workCapabilityOptionsSchema = z.object({
   estimate: z.boolean().default(false),
   chrono: z.boolean().default(false),
   reminder: z.boolean().default(false),
+  agentPrompts: z.boolean().default(false),
 });
 
 export type WorkCapabilityOptions = Infer<typeof workCapabilityOptionsSchema>;

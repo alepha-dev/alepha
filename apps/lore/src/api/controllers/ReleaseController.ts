@@ -12,6 +12,7 @@ import { $etag } from "alepha/server/etag";
 
 import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import { epics } from "../entities/epics.ts";
+import type { Project } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { type Release, releases } from "../entities/releases.ts";
 import { compareReleaseTags } from "../releaseOrder.ts";
@@ -32,6 +33,7 @@ import {
   type ReleaseContents,
   ReleaseContentService,
 } from "../services/ReleaseContentService.ts";
+import { ReleaseNotifier } from "../services/ReleaseNotifier.ts";
 
 export class ReleaseController {
   releases = $repository(releases);
@@ -73,6 +75,7 @@ export class ReleaseController {
     });
   }
   owned = $inject(OwnedResourceProvider);
+  releaseNotifier = $inject(ReleaseNotifier);
 
   /**
    * The gates this controller needs: the param names the project, or it names
@@ -311,6 +314,17 @@ export class ReleaseController {
       // Publishing is one-way and freezes the record, which is exactly what
       // makes it worth a row.
       await this.logRelease("publish", release, user);
+
+      // After the write AND the audit row, deliberately: a notification for a
+      // release that failed to persist is the one failure mode worse than a
+      // missing notification. The count comes off the `contents` already read
+      // above, never a third query.
+      await this.releaseNotifier.published({
+        release: published,
+        project: this.owned.authority<Project>(),
+        publisherId: user.id,
+        questCount: contents.quests.length,
+      });
 
       return published;
     },

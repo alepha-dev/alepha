@@ -108,6 +108,7 @@ describe("Project capabilities", () => {
       estimate: false,
       chrono: false,
       reminder: false,
+      agentPrompts: false,
     });
   });
 

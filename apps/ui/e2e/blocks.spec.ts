@@ -317,6 +317,40 @@ test.describe("AlephaTable", () => {
     await expect(page.getByText("Alan Turing")).toBeVisible();
     await expect(page.getByText("Ada Lovelace")).toHaveCount(0);
   });
+
+  test("a grouped row action opens a submenu and runs its child", async ({
+    page,
+  }) => {
+    await page.goto("/blocks/table");
+    await expect(page.getByText("Ada Lovelace")).toBeVisible();
+
+    // The first row's three-dots trigger. A submenu is the one shape a jsdom
+    // spec cannot prove lays out, which is why this case is here and not
+    // only in `alepha-table-row-action-group.browser.spec.tsx`.
+    await page
+      .getByRole("button", { name: "Open row actions" })
+      .first()
+      .click();
+
+    // Closed, the group shows its label and none of its children.
+    await expect(
+      page.getByRole("menuitem", { name: "Agent Prompts" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("menuitem", { name: "Copy invite prompt" }),
+    ).toHaveCount(0);
+
+    await page.getByRole("menuitem", { name: "Agent Prompts" }).click();
+
+    const child = page.getByRole("menuitem", { name: "Copy invite prompt" });
+    await expect(child).toBeVisible();
+    await child.click();
+
+    // The child's handler ran with the row it belongs to.
+    await expect(
+      page.getByText("Prompt copied for Ada Lovelace"),
+    ).toBeVisible();
+  });
 });
 
 test.describe("blocks", () => {
