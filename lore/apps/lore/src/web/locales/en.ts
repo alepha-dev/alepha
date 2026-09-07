@@ -1714,7 +1714,7 @@ export default {
   "feedback.thread.placeholder": "Ask a question or record a finding.",
   "feedback.thread.submit": "Comment",
   "feedback.thread.noNotification":
-    "Nobody is notified. The reply is here when they come back.",
+    "Project members are notified when you write their @name. Nobody else is: the reply is here when they come back.",
   "feedback.thread.edited": "edited",
   "feedback.thread.agent": "agent",
   "feedback.thread.unknownAuthor": "A former member",
