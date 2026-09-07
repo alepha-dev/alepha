@@ -17,6 +17,10 @@ in Lore**, the build target is resolved through the estate behind it, and
 So the absence of that file is the assertion. If someone adds one to quiet a
 tool, this app stops testing the thing it exists for.
 
+It also bundles the sigil module, so its manifest declares `SIGIL_KEY` - which
+is what a deploy detects to mint the copy's sigil and seal the key into that
+copy's environment, with no flag passed.
+
 ```bash
 lore artifacts push --tag smoke-1 --app deploy-smoke
 lore apps deploy --env production --tag smoke-1
