@@ -88,17 +88,18 @@ const strangerToken = (): UserAccountToken => ({
  *
  * Unlike {@link strangerToken} this has to touch the database: `members`
  * carries a real FK on `userId`, so a membership row for an invented uuid
- * fails the insert. `owner: false` is what makes the token meaningful —
- * `createTestMember` defaults that flag to `true`, and while
- * `ProjectSecurityService` reads only `project.createdBy`, a row claiming
- * ownership would make the fixture lie about what it is testing.
+ * fails the insert.
+ *
+ * ⚠️ The absence of a `rank` is what makes the token meaningful: a NULL reads
+ * as the built-in `member`, which is exactly what a non-owner is. It used to
+ * be `owner: false`, on a column nothing reads any more (#Q1997).
  */
 const memberToken = async (
   ctx: TestContext,
   project: Project,
 ): Promise<UserAccountToken> => {
   const user = await ctx.repos.users.create({});
-  await createTestMember(ctx.alepha, project, user.id, { owner: false });
+  await createTestMember(ctx.alepha, project, user.id);
   return { id: user.id, roles: ["user"] };
 };
 

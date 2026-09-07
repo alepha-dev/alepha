@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import { projectFixture } from "@/testing/projectFixture.ts";
 
+import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { I18n } from "../../../services/I18n.ts";
 import ProjectSettingsMembersSection from "./ProjectSettingsMembersSection.tsx";
 
@@ -39,22 +40,49 @@ class Links extends LinkProvider {
   removed: Array<{ id: number; userId: string }> = [];
 
   override client(): any {
-    const action: any = async (input: any) => {
-      this.removed.push(input.params);
-      return { ok: true };
-    };
-    action.can = () => true;
-    return new Proxy({} as Record<string, unknown>, { get: () => action });
+    // ⚠️ Keyed on the action NAME, not one function for every property. The
+    // section reads more than one action now - the rank picker asks
+    // `getRanks` on mount - and a fake that recorded every call as a removal
+    // failed the "nothing was removed" case for a call about ranks.
+    return new Proxy({} as Record<string, unknown>, {
+      get: (_target, name: string) => {
+        const action: any = async (input: any) => {
+          if (name === "removeMember") {
+            this.removed.push(input.params);
+          }
+          return name === "getRanks" ? { items: [] } : { ok: true };
+        };
+        action.can = () => true;
+        return action;
+      },
+    });
   }
 }
 
-const project = projectFixture({ title: "Alepha", slug: "alepha" }) as never;
+/**
+ * ⚠️ The section reads the viewer's rank off `currentProjectAtom` now, not off
+ * a prop: what it offers is `member:manage`, which a custom Admin rank may
+ * hold. The prop is still the project's identity.
+ */
+const projectFor = (viewer: string) =>
+  projectFixture({
+    title: "Alepha",
+    slug: "alepha",
+    permissions: viewer === OWNER ? ["*"] : ["project:read", "member:read"],
+    rank:
+      viewer === OWNER
+        ? { key: "owner", name: "Owner" }
+        : { key: "member", name: "Member" },
+  }) as never;
 
 const member = (id: string, username: string) => ({
   id: `m-${id}`,
   userId: id,
   projectId: 1,
   owner: id === OWNER,
+  // The remove menu hides on the OWNER's row, off the rank rather than off
+  // `project.createdBy`: after an ownership transfer the two disagree.
+  rank: id === OWNER ? "owner" : "member",
   createdAt: "2026-08-26T10:00:00.000Z",
   updatedAt: "2026-08-26T10:00:00.000Z",
   user: { id, username, email: `${username}@example.com` },
@@ -74,12 +102,13 @@ describe("ProjectSettingsMembersSection", () => {
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(currentUserAtom, { id: viewer, roles: ["user"] });
+    alepha.store.set(currentProjectAtom, projectFor(viewer));
 
     const view = render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <ProjectSettingsMembersSection
-            project={project}
+            project={projectFor(viewer)}
             members={[member(OWNER, "owner"), member(MEMBER, "kim")] as never}
             pendingInvitations={[]}
           />

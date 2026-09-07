@@ -47,7 +47,17 @@ import { AccountRouter } from "./account-router.tsx";
  *   invitations = $pageAccount({
  *     path: "/invitations",
  *     name: "accountInvitations",
- *     nav: { label: "Invitations", icon: <Mail />, group: "Lore", order: 100 },
+ *     nav: {
+ *       label: "Invitations",
+ *       // ⚠️ `createElement(Mail)`, never `<Mail />`. This module graph is
+ *       // imported by `alepha db migrations create` under `tsx` with the
+ *       // classic JSX transform, where the element form emits a bare
+ *       // `React.createElement` and breaks migration generation for the
+ *       // whole app - far from the icon that caused it.
+ *       icon: createElement(Mail),
+ *       group: "Lore",
+ *       order: 100,
+ *     },
  *     can: () => this.invitationApi.listMyInvitations.can(),
  *     lazy: () => import("./MyInvitations.tsx"),
  *   });

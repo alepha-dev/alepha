@@ -4,6 +4,7 @@ import {
   type InvitationDescription,
   type InvitationEntity,
 } from "alepha/api/invitations";
+import { RankService } from "alepha/api/ranks";
 import { type UserEntity, users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { ForbiddenError } from "alepha/server";
@@ -11,7 +12,6 @@ import { ForbiddenError } from "alepha/server";
 import { members } from "../entities/members.ts";
 import { projects } from "../entities/projects.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * Everything `alepha/api/invitations` does not know about a Lore project.
@@ -26,7 +26,7 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * whose shape it cannot know.
  */
 export class ProjectInvitationResource {
-  protected readonly security = $inject(ProjectSecurityService);
+  protected readonly ranks = $inject(RankService);
   protected readonly limits = $inject(ProjectLimits);
   protected readonly projects = $repository(projects);
   protected readonly members = $repository(members);
@@ -35,13 +35,15 @@ export class ProjectInvitationResource {
   public readonly project = $invitationResource({
     type: "project",
 
-    // Owning the project is the whole gate, exactly as it was before the
-    // extraction: `InvitationService.create` called `assertOwner` directly.
+    // Inviting is `member:manage` now rather than "owns the project", so an
+    // Admin rank can do it. `resourceId` is passed through as the string the
+    // module stores: the scope of a Lore rank is the project id as text.
+    // ⚠️ ranks: imperative. This is a closure handed to
+    // `alepha/api/invitations`, not an action's `use:` entry, so there is no
+    // middleware chain to put a gate in. It moves to the ranks module's
+    // imperative check, never to `$ownsProject`.
     assertCanInvite: async (resourceId, inviter) => {
-      // `assertOwner` returns the rows it read; the seam wants only the
-      // refusal, so the return value is dropped here rather than widened
-      // into the module's signature.
-      await this.security.assertOwner(Number(resourceId), inviter);
+      await this.ranks.assert("project", resourceId, "member:manage", inviter);
     },
 
     assertRoom: (resourceId) => this.assertRoomForOneMore(resourceId),
@@ -69,14 +71,31 @@ export class ProjectInvitationResource {
       return !!member;
     },
 
-    // Every accept has always written `owner: false`; `invitation.roles` is
-    // carried by the module and read by nobody. See the note on
-    // `ProjectInvitationResource` in the module's own docs.
+    // ⚠️ `invitation.roles[0]` is the RANK the invitee lands on, validated
+    // when the invitation was written (`InvitationController.createInvitation`)
+    // rather than here: the subset rule has to hold against the person who
+    // offered the rank, not against whoever is around when it is accepted.
+    //
+    // It falls back to `member` when the field is absent - every invitation
+    // sent before this shipped - and also when the rank has been DELETED since,
+    // which is a real state: the matrix refuses to delete a held rank, and an
+    // unanswered invitation holds nothing.
     grant: async (userId, invitation) => {
+      const named = invitation.roles?.[0];
+      const exists =
+        named &&
+        (await this.ranks.ranksOf("project", invitation.resourceId)).some(
+          (it) => it.key === named,
+        );
+
       await this.members.create({
         projectId: Number(invitation.resourceId),
         userId,
-        owner: false,
+        // ⚠️ No `owner: false`. The column is retired (#Q1997) and its
+        // database DEFAULT is `true`, which cannot be changed - so every row
+        // written from here says `true` and means nothing. `rank` is the
+        // answer, and nothing reads the other column any more.
+        rank: exists ? named : "member",
       });
     },
 

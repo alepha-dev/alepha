@@ -1,4 +1,5 @@
 import { $inject, type Infer, z } from "alepha";
+import { RankService } from "alepha/api/ranks";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -21,10 +22,10 @@ import {
   type MintedLentEstate,
   mintedLentEstateSchema,
 } from "../schemas/lentEstateResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type { LentEstateResource, MintedLentEstate };
 
@@ -63,7 +64,7 @@ export class ProjectEstateController {
   protected readonly grants = $repository(estateProjects);
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
-  protected readonly security = $inject(ProjectSecurityService);
+  protected readonly ranks = $inject(RankService);
   protected readonly service = $inject(EstateService);
   protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly audits = $inject(LoreAudits);
@@ -74,7 +75,7 @@ export class ProjectEstateController {
    * ask, and nothing in the answer belongs to the owner alone.
    */
   listProjectEstates = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ requires: "estate:read", param: "projectId" })],
     method: "GET",
     path: "/projects/:projectId/estates",
     schema: {
@@ -82,7 +83,6 @@ export class ProjectEstateController {
       response: z.object({ items: z.array(lentEstateResourceSchema) }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
       return { items: await this.lentTo(params.projectId) };
     },
   });
@@ -91,7 +91,12 @@ export class ProjectEstateController {
    * Lend one of the caller's own estates to this project.
    */
   attachEstate = $action({
-    use: [$secure({ permissions: ["estate:lend"] })],
+    use: [
+      $ownsProject({
+        requires: "estate:lend",
+        param: "projectId",
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/estates",
     schema: {
@@ -100,7 +105,6 @@ export class ProjectEstateController {
       response: lentEstateResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
       // 404 for an estate the caller does not own, like every other read of
       // somebody else's estate: the id alone must not confirm it exists.
       const estate = await this.service.loadOwned(body.estateId, user);
@@ -116,7 +120,12 @@ export class ProjectEstateController {
    * nothing because the owner already holds the token.
    */
   createProjectEstate = $action({
-    use: [$secure({ permissions: ["estate:lend"] })],
+    use: [
+      $ownsProject({
+        requires: "estate:lend",
+        param: "projectId",
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/estates/new",
     schema: {
@@ -125,7 +134,6 @@ export class ProjectEstateController {
       response: mintedLentEstateSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
       if (body.type === "cloudflare") {
         const { estate } = await this.service.createCloudflare(user, body);
         return this.lend(params.projectId, estate, user);
@@ -158,13 +166,21 @@ export class ProjectEstateController {
       if (!grant) {
         throw new NotFoundError("Estate not lent to this project");
       }
-      const [project, estate] = await Promise.all([
-        this.projects.getOne({ where: { id: { eq: params.projectId } } }),
-        this.estates.getOne({ where: { id: { eq: params.estateId } } }),
-      ]);
-      const projectOwner = project.createdBy === user.id;
+      const estate = await this.estates.getOne({
+        where: { id: { eq: params.estateId } },
+      });
+      // ⚠️ ranks: imperative, and an OR a middleware cannot express: either
+      // side of the loan may end it. The project half is a rank question now
+      // rather than `project.createdBy === user.id` - `createdBy` records who
+      // created a row and is never an authorization input again.
+      const mayLend = await this.ranks.can(
+        "project",
+        String(params.projectId),
+        "estate:lend",
+        user,
+      );
       const estateOwner = estate.ownerUserId === user.id;
-      if (!projectOwner && !estateOwner) {
+      if (!mayLend && !estateOwner) {
         throw new ForbiddenError(
           "Only the project owner or the estate owner can detach an estate",
         );

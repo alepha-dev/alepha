@@ -1,5 +1,7 @@
 import { $inject, Alepha, z } from "alepha";
+import { RankService } from "alepha/api/ranks";
 import { $tool } from "alepha/mcp";
+import { $repository } from "alepha/orm";
 import { currentUserAtom } from "alepha/security";
 import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 
@@ -8,10 +10,12 @@ import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
+import { members } from "../../api/entities/members.ts";
 import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
 import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
 import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
+import { ProjectSlugService } from "../../api/services/ProjectSlugService.ts";
 import {
   projectActivityParamsSchema,
   projectActivityResultSchema,
@@ -57,6 +61,9 @@ export class ProjectTools {
   protected readonly releaseController = $inject(ReleaseController);
   protected readonly areaService = $inject(AreaService);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
+  protected readonly slugs = $inject(ProjectSlugService);
+  protected readonly ranks = $inject(RankService);
+  protected readonly members = $repository(members);
   protected readonly pinnedFolder = $inject(PinnedFolioFolder);
   protected readonly alepha = $inject(Alepha);
 
@@ -93,12 +100,15 @@ export class ProjectTools {
       // non-member can learn, so both refusals collapse into the message
       // this resolver has always returned. Anything else is a real failure
       // and propagates untouched.
+      // ⚠️ ranks: imperative. MCP has no middleware chain of its own here,
+      // and this resolver deliberately turns the gate's 403 into a 404 - see
+      // below. It moves to the ranks module's imperative check.
       const me = this.alepha.store.get(currentUserAtom);
       if (!me) {
         throw new NotFoundError(`Project with ID ${project} not found`);
       }
       try {
-        await this.projectSecurity.assertMember(project, me);
+        await this.ranks.assert("project", String(project), "project:read", me);
       } catch (error) {
         if (error instanceof ForbiddenError || error instanceof NotFoundError) {
           throw new NotFoundError(`Project with ID ${project} not found`);
@@ -113,13 +123,42 @@ export class ProjectTools {
       // reads the list. It is the rarer of the two: an agent that has called
       // any tool once is holding ids.
       const projects = await this.projectController.getMyProjects();
-      const found = projects.find(
-        (p) => p.title.toLowerCase() === projectName.toLowerCase(),
-      );
-      if (!found) {
-        throw new NotFoundError(`Project "${projectName}" not found`);
+      const needle = projectName.toLowerCase();
+      const found = projects.find((p) => p.title.toLowerCase() === needle);
+      if (found) {
+        return found.id;
       }
-      return found.id;
+
+      // The slug is the spelling an agent actually MEETS. It is what the URL
+      // shows (`/:projectSlug/quests/12`), what a pasted link carries, and
+      // what `SIGIL_KEY` encodes as `sg_<projectSlug>_<secret>`. Titles agree
+      // with their slug only when they are one alphanumeric word, so an agent
+      // that read `kanban-v2` off any of those and called a tool with it was
+      // told the project does not exist - which reads as "you are not a
+      // member" rather than "you spelled it the other way".
+      //
+      // Exact title first, above: a project literally titled `kanban-v2`
+      // still wins over one titled `Kanban V2`.
+      //
+      // ⚠️ Derived from the title, never read off `projects.slug`. The stored
+      // slug is disambiguated on collision, so reading it would let this
+      // resolver disagree with what the URL says about the same row; deriving
+      // gives the resolver one source.
+      const bySlug = projects.filter(
+        (p) => this.slugs.slugify(p.title) === needle,
+      );
+      // ⚠️ Ambiguity resolves to NOTHING, not to the first row. Two titles
+      // can slugify alike (`Kanban v2` and `Kanban V2`): a tool that silently
+      // writes into the wrong project is worse than one that says it cannot
+      // tell them apart. The exact-title pass above has the same hazard and
+      // is left as it is - this does not widen it.
+      if (bySlug.length === 1) {
+        return bySlug[0].id;
+      }
+
+      // Unchanged, and deliberately the same string for "no such project" and
+      // "not yours" - see the id branch above.
+      throw new NotFoundError(`Project "${projectName}" not found`);
     }
 
     throw new BadRequestError(
@@ -151,7 +190,7 @@ export class ProjectTools {
    */
   project_list = $tool({
     description:
-      "List all projects the user has access to (owned + member-of). Use this to find the project id (required by most other tools) and check the title for project_name lookups. Each entry includes id, title, public (boolean), isOwner (boolean).",
+      "List all projects the user has access to (owned + member-of). Use this to find the project id (required by most other tools) and check the title for project_name lookups. Each entry includes id, title, public (boolean) and `rank` - the caller's rank in that project, as `{ key, name }`. What that rank actually GRANTS is `permissions` on `project_info` / `project_context`, which answer for one project.",
     title: "List projects",
     annotations: {
       readOnlyHint: true,
@@ -163,21 +202,54 @@ export class ProjectTools {
     },
     handler: async () => {
       const projects = await this.projectController.getMyProjects();
-
-      // `createdBy !== undefined` was true for every row, so a plain member
-      // was told it could run owner-only mutations and only found out when
-      // one failed. `getMyProjects` returns project resources, not the
-      // membership row, so ownership is read the way the web app reads it:
-      // the creator is the owner.
       const me = this.alepha.store.get(currentUserAtom);
 
+      // ⚠️ `isOwner` is gone, and it was wrong twice over. It was derived
+      // from `projects.createdBy`, which stopped being an authorization
+      // input in epic #E39 and disagrees with the truth the moment a project
+      // is transferred - and a boolean told an agent nothing it could act on
+      // anyway: it could not know whether `release_create` would work
+      // without trying it and reading the 403.
+      //
+      // The rank rather than the permission set, and that is the whole
+      // reason for the two batched reads below instead of one call per
+      // project: a set per row would be one definitions read per project.
+      // `project_info` and `project_context` carry the set, for the one
+      // project they are about.
+      const ids = projects.map((it) => it.id);
+      const [rows, ranksByScope] = await Promise.all([
+        ids.length === 0 || !me
+          ? Promise.resolve([])
+          : this.members.findMany({
+              where: {
+                projectId: { inArray: ids },
+                userId: { eq: me.id },
+              },
+            }),
+        this.ranks.ranksOfMany(
+          "project",
+          ids.map((it) => String(it)),
+        ),
+      ]);
+
+      const rankOf = new Map(
+        rows.map((row) => [row.projectId, row.rank ?? "member"]),
+      );
+
       return {
-        projects: projects.map((p) => ({
-          id: p.id,
-          title: p.title,
-          public: p.public ?? false,
-          isOwner: me !== undefined && p.createdBy === me.id,
-        })),
+        projects: projects.map((p) => {
+          const key = rankOf.get(p.id);
+          const named = key
+            ? ranksByScope.get(String(p.id))?.find((it) => it.key === key)
+            : undefined;
+
+          return {
+            id: p.id,
+            title: p.title,
+            public: p.public ?? false,
+            ...(key ? { rank: { key, name: named?.name ?? key } } : {}),
+          };
+        }),
       };
     },
   });
@@ -222,7 +294,8 @@ export class ProjectTools {
           area: quest.area,
           priority: quest.priority,
         })),
-        isOwner: result.member?.owner ?? false,
+        ...(result.rank ? { rank: result.rank } : {}),
+        permissions: result.permissions ?? [],
       };
     },
   });
@@ -411,7 +484,8 @@ export class ProjectTools {
               pinnedFoliosTruncated,
             }
           : {}),
-        isOwner: result.member?.owner ?? false,
+        ...(result.rank ? { rank: result.rank } : {}),
+        permissions: result.permissions ?? [],
         preferredLanguage: result.preferredLanguage,
       };
     },

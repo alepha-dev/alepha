@@ -20,6 +20,7 @@ export class AppRouter {
       this.blocksDetail,
       this.blocksPlate,
       this.blocksSettings,
+      this.blocksPermissionMatrix,
       this.controlText,
       this.controlNumber,
       this.controlDate,
@@ -125,6 +126,13 @@ export class AppRouter {
     static: true,
     head: { title: "Settings - Alepha UI" },
     lazy: () => import("./pages/blocks/Settings.tsx"),
+  });
+
+  blocksPermissionMatrix = $page({
+    path: "/blocks/permission-matrix",
+    static: true,
+    head: { title: "Permission matrix - Alepha UI" },
+    lazy: () => import("./pages/blocks/PermissionMatrixPage.tsx"),
   });
 
   /**

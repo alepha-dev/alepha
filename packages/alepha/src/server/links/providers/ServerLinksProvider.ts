@@ -462,6 +462,15 @@ export class ServerLinksProvider {
         kind: link.kind,
         contentType: link.contentType,
         service: link.service,
+        // The last link of a four-step chain, and the only one that is
+        // visible from the client: `$owns({ requires })` folds the permission
+        // into `secure.permissions`, `createMiddleware` puts it in the
+        // middleware's `[OPTIONS]`, `registerLink` above copies it onto
+        // `link.secured`, and this publishes it. Break any of them and
+        // nothing throws - the action simply arrives with no permissions,
+        // `can()` falls through to "the action exists", and every write
+        // control stays visible for a viewer who may not use it.
+        permissions: this.linkProvider.permissionsOfLink(link),
       };
     }
 
@@ -492,6 +501,10 @@ export class ServerLinksProvider {
           method: action.method,
           contentType: action.contentType,
           service: remote.name,
+          // Carried across, not recomputed: a remote's gates are the remote's
+          // to state, and dropping them here would make a proxied action the
+          // one thing in the registry a scope cannot narrow.
+          permissions: action.permissions,
         };
       }
 

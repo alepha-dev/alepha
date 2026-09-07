@@ -113,6 +113,13 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
   const epicApi = useClient<EpicController>();
   const questApi = useClient<QuestController>();
 
+  // A published release is frozen for everyone, and a rank that holds neither
+  // write is read-only on an open one - so both collapse into the flag the
+  // three attach/detach blocks below already read.
+  const readOnly =
+    props.readOnly ||
+    !(epicApi.updateEpic.can() && questApi.updateQuestById.can());
+
   const epics = props.contents?.epics ?? [];
   const looseQuests = props.contents?.looseQuests ?? [];
   const [attachableEpics, setAttachableEpics] = useState<EpicResource[]>([]);
@@ -255,7 +262,9 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
         <div className="flex-1" />
 
         {/* Published: say what happened, rather than hiding two buttons and
-            leaving the reader to notice their absence. */}
+            leaving the reader to notice their absence. `props.readOnly`, not
+            the folded flag below: this line says the release is frozen, which
+            is not what a rank without the writes means. */}
         {props.readOnly && (
           <span className="text-muted-foreground flex items-center gap-1.5 text-[11.5px]">
             <Lock className="size-3.5" aria-hidden />
@@ -266,7 +275,7 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
         {/* Attaching from the release side. The write path is the same one
             the epic page and the quest rail use; this is a second door to
             it, not a second path. */}
-        {!props.readOnly && adding === null && (
+        {!readOnly && adding === null && (
           <>
             <Button
               variant="outline"
@@ -286,7 +295,7 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
             </Button>
           </>
         )}
-        {!props.readOnly && adding !== null && (
+        {!readOnly && adding !== null && (
           <div className="flex items-center gap-2">
             <Control
               input={attachForm.input.target}
@@ -377,7 +386,7 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
               <span className="text-muted-foreground shrink-0 font-mono text-[11.5px]">
                 {completed}/{total}
               </span>
-              {!props.readOnly && (
+              {!readOnly && (
                 <Button
                   variant="ghost"
                   size="icon-sm"

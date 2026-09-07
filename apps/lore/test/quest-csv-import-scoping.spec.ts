@@ -101,7 +101,6 @@ const addMember = async (
   await (ctx.projectController as any).members.create({
     userId,
     projectId,
-    owner: false,
   });
 };
 

@@ -415,6 +415,8 @@ export default {
   "quest.event.reminderSent": "a reçu un rappel",
   "quest.event.shelved": "a mis la quête de côté",
   "quest.event.unshelved": "a remis la quête en jeu",
+  "quest.event.held": "a mis la quête en attente",
+  "quest.event.unheld": "a levé la mise en attente",
   "quest.event.updated": "a mis à jour la quête",
   "quest.event.change.priority": "a changé la priorité de $1 à $2",
   "quest.event.change.priorityTo": "a défini la priorité sur $1",
@@ -438,6 +440,7 @@ export default {
   "quest.status.accepted": "En cours",
   "quest.status.completed": "Terminée",
   "quest.status.shelved": "Mise de côté",
+  "quest.status.held": "En attente",
   "quest.rail.estimate": "Estimation",
   "quest.rail.assign.unassigned": "Non assignée",
   "quest.rail.size": "Taille",
@@ -481,6 +484,8 @@ export default {
   "quest.view.actions.unassign": "Se désassigner",
   "quest.view.actions.shelve": "Mettre de côté",
   "quest.view.actions.unshelve": "Remettre en jeu",
+  "quest.view.actions.hold": "Mettre en attente",
+  "quest.view.actions.unhold": "Lever l'attente",
   "quest.view.complete.title": "Terminer cette quête",
   "quest.view.complete.description":
     "Laissez un bref résumé de ce qui a été fait : changements, décisions prises, ce qu'un lecteur futur (humain ou IA) doit savoir.",
@@ -584,7 +589,10 @@ export default {
   "project.settings.data.import.details": "Voir les détails",
   "project.settings.data.import.error.title": "L'import a échoué",
   // ── Capacités ───────────────────────────────────────────────────────────
+  // Voir la note dans en.ts : `.short` est le nom court du rail, `.label`
+  // reste la phrase de l'assistant de création et des titres de section.
   "project.capability.work.label": "Planifier et suivre le travail",
+  "project.capability.work.short": "Travail",
   "project.capability.work.description":
     "Quêtes, épopées, versions, un tableau.",
   "project.capability.work.option.board.label": "Tableau",
@@ -605,7 +613,11 @@ export default {
   "project.capability.work.option.reminder.label": "Rappels",
   "project.capability.work.option.reminder.description":
     "Relancer qui détient une quête restée silencieuse.",
+  "project.capability.work.option.agentPrompts.label": "Invites pour agents",
+  "project.capability.work.option.agentPrompts.description":
+    "Ajoute un menu Invites pour agents aux épopées, aux quêtes et aux retours. Un clic copie une invite pour Claude Code ou Codex ; rien n’est envoyé nulle part.",
   "project.capability.knowledge.label": "Écrire et conserver le savoir",
+  "project.capability.knowledge.short": "Savoir",
   "project.capability.knowledge.description":
     "Des folios liés entre eux, des fichiers, des révisions.",
   "project.capability.knowledge.option.agentSummary.label":
@@ -613,6 +625,7 @@ export default {
   "project.capability.knowledge.option.agentSummary.description":
     "Afficher le champ résumé sur un folio. Il est écrit et lu via MCP dans tous les cas.",
   "project.capability.apps.label": "Déployer et surveiller des applications",
+  "project.capability.apps.short": "Déploiement",
   "project.capability.apps.description":
     "Instances, analytique, erreurs, Web Vitals.",
   "project.capability.apps.option.track.label": "Surveiller les applications",
@@ -622,6 +635,7 @@ export default {
   "project.capability.apps.option.deploy.description":
     "Envoyer un build sur une machine qui vous appartient.",
   "project.capability.support.label": "Recueillir les retours",
+  "project.capability.support.short": "Support",
   "project.capability.support.description":
     "Un formulaire public et une boîte de tri.",
   "project.settings.areas.title": "Domaines",
@@ -1002,6 +1016,17 @@ export default {
   "quest.view.shelve.confirmWithDependents":
     "Mettre cette quête de côté ? Elle quitte le backlog, mais $1 en dépend et restera bloquée tant que vous ne l'aurez pas remise en jeu puis terminée.",
   "quest.view.shelve.confirmButton": "Mettre de côté",
+  "quest.view.hold.title": "Mettre la quête en attente",
+  "quest.view.hold.description":
+    "Indiquez ce qui bloque. Le message est publié dans la discussion, vous pouvez donc @mentionner la personne qui peut débloquer.",
+  "quest.view.hold.placeholder":
+    "En attente de... (markdown accepté, @mention pour notifier)",
+  "quest.view.hold.submit": "Mettre en attente",
+  "quest.view.hold.reasonRequired": "Une mise en attente exige une raison.",
+  "quest.view.unhold.title": "Lever l'attente",
+  "quest.view.unhold.confirm":
+    "La quête revient à son état d'avant l'attente, toujours assignée à la même personne. La raison reste dans la discussion.",
+  "quest.view.unhold.confirmButton": "Lever l'attente",
   "quest.view.edit": "Modifier",
   "quest.view.back": "Retour",
   "quest.view.reminder.title": "Rappel",
@@ -1079,11 +1104,15 @@ export default {
   "common.previous": "Précédent",
   "common.noResults": "Aucun résultat",
 
+  "project.menu.inbox": "Notifications",
   "project.menu.feedback": "Retours",
   "project.menu.blights": "Fléaux",
   "project.menu.apps": "Applications",
 
   "apps.filter.search": "Rechercher",
+  "apps.filter.app": "Application",
+  "apps.filter.env": "Environnement",
+  "apps.filter.status": "État",
   "apps.status.reporting": "Remonte des données",
   "apps.status.silent": "Silencieuse depuis plus d\u2019un jour",
   "apps.status.none": "Pas de sigil, rien ne remonte",
@@ -1118,7 +1147,7 @@ export default {
   "app.tab.artifacts": "Artefacts",
   "app.tab.deploy": "Déploiement",
   "apps.table.version": "Version",
-  "apps.filter.allVersions": "Toutes les versions",
+  "apps.filter.version": "Version",
   "app.deploy": "Déploiement",
   "app.deploy.action": "Déployer",
   "app.deploy.starting": "Démarrage...",
@@ -1762,12 +1791,57 @@ export default {
   "feedback.rejected": "Retour rejeté",
   "feedback.rejectError": "Échec du rejet du retour",
   "feedback.delete": "Supprimer",
+  "inbox.title": "Notifications",
+  "inbox.empty": "Rien de nouveau.",
+  "account.notifications.title": "Notifications",
+  "account.notifications.description":
+    "Ce dont vous voulez être informé, et comment.",
+  "account.notifications.channels": "Canaux",
+  "account.notifications.channels.description":
+    "Par où les messages vous parviennent.",
+  "account.notifications.email": "E-mail",
+  "account.notifications.email.description":
+    "Désactivez ceci et plus rien ne vous sera envoyé par e-mail. Les codes de connexion et les réinitialisations de mot de passe ne sont pas concernés.",
+  "account.notifications.inbox": "Dans l'application",
+  "account.notifications.inbox.description":
+    "Toujours actif. Les messages vous attendent dans la cloche, et un message invisible équivaut à un message jamais envoyé.",
+  "account.notifications.categories": "Types de message",
+  "account.notifications.categories.description":
+    "Ces réglages valent pour les deux canaux.",
+  "account.notifications.saveFailed":
+    "Impossible d'enregistrer vos préférences.",
+  "account.notifications.category.mentions": "Mentions",
+  "account.notifications.category.mentions.description":
+    "Quelqu'un écrit votre nom dans un commentaire de quête ou de retour.",
+  "account.notifications.category.releases": "Versions",
+  "account.notifications.category.releases.description":
+    "Un projet dont vous êtes membre publie une version.",
+  "account.notifications.category.tasks": "Rappels de quête",
+  "account.notifications.category.tasks.description":
+    "Rappels sur une quête que vous avez acceptée et pas terminée.",
+  "account.notifications.category.estates": "Identifiants de déploiement",
+  "account.notifications.category.estates.description":
+    "Un identifiant de déploiement que vous possédez a cessé de fonctionner.",
+  "inbox.empty.description":
+    "Les messages qui vous sont adressés apparaissent ici.",
+  "inbox.noMatch": "Aucun résultat",
+  "inbox.noMatch.description": "Ajustez ou effacez la recherche.",
+  "inbox.filter.search": "Rechercher un message",
+  "inbox.table.message": "Message",
+  "inbox.table.project": "Projet",
+  "inbox.table.when": "Quand",
+  "inbox.unread": "Non lu",
+  "inbox.loadMore": "Charger plus",
+  "inbox.scope.all": "Tous les projets",
+  "inbox.scope.project": "Ce projet",
+  "inbox.markAllRead": "Tout marquer comme lu",
+  "inbox.seeAll": "Tout voir",
   "feedback.thread.title": "Discussion",
   "feedback.thread.empty": "Rien n'a encore été dit à ce sujet.",
   "feedback.thread.placeholder": "Posez une question ou notez un constat.",
   "feedback.thread.submit": "Commenter",
   "feedback.thread.noNotification":
-    "Personne n'est notifié. La réponse sera là à leur retour.",
+    "Les membres du projet sont notifiés quand vous écrivez leur @nom. Personne d'autre ne l'est : la réponse sera là à leur retour.",
   "feedback.thread.edited": "modifié",
   "feedback.thread.agent": "agent",
   "feedback.thread.unknownAuthor": "Un ancien membre",
@@ -1883,15 +1957,48 @@ export default {
   "epic.progress.open": "$1 ouvertes",
   "epic.progress.shelved": "$1 en veille",
   "epic.action.delete": "Supprimer",
-  "epic.action.review": "Relire",
-  "epic.action.review.copied":
-    "Invite de relecture pour $1 copiée. Collez-la dans Claude Code ou Codex.",
-  "epic.action.review.error": "Impossible de copier l’invite de relecture.",
-  "epic.action.review.dialog.title": "Faire relire cette épopée par un agent",
-  "epic.action.review.dialog.description":
-    "Ajustez l’invite si besoin, puis copiez-la dans Claude Code ou Codex.",
-  "epic.action.review.dialog.label": "Invite de relecture",
-  "epic.action.review.dialog.copy": "Copier et fermer",
+  "agentPrompts.menu": "Invites pour agents",
+  "agentPrompts.review": "Relire",
+  "agentPrompts.activate": "Activer",
+  "agentPrompts.workOnIt": "S’en charger",
+  "agentPrompts.copied":
+    "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
+  "agentPrompts.settings.title": "Invites pour agents",
+  "agentPrompts.settings.description":
+    "Le texte que chaque entrée Invites pour agents place dans le presse-papiers. Les invites sont rédigées en anglais à dessein : leurs mots sont les noms des outils qu’un agent appelle.",
+  "agentPrompts.settings.legend": "Variables",
+  "agentPrompts.settings.placeholder.project":
+    "Le titre du projet, celui qu’un appel MCP compare.",
+  "agentPrompts.settings.placeholder.slug":
+    "Le slug du projet dans l’URL. Pas interchangeable avec le titre.",
+  "agentPrompts.settings.placeholder.number":
+    "Le numéro qu’un lecteur reconnaît : 41 pour l’épopée #E41.",
+  "agentPrompts.settings.placeholder.id":
+    "L’identifiant global, celui par lequel une liste de quêtes filtre une épopée.",
+  "agentPrompts.settings.placeholder.reference":
+    "La référence typée : #E41, #Q1798, #P2087.",
+  "agentPrompts.settings.placeholder.title": "Le titre du sujet lui-même.",
+  "agentPrompts.settings.placeholder.url": "Un lien vers celui-ci.",
+  "agentPrompts.settings.save": "Enregistrer",
+  "agentPrompts.settings.saved": "Invite enregistrée.",
+  "agentPrompts.settings.reset": "Rétablir par défaut",
+  "agentPrompts.settings.reset.title": "Rétablir cette invite ?",
+  "agentPrompts.settings.reset.description":
+    "Votre version est abandonnée et cette invite suit de nouveau celle fournie, améliorations futures comprises.",
+  "agentPrompts.settings.wasReset": "Invite rétablie par défaut.",
+  "agentPrompts.settings.epicReview.title": "Épopée : relire",
+  "agentPrompts.settings.epicReview.description":
+    "Proposée sur une épopée encore planifiée. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
+  "agentPrompts.settings.epicActivate.title": "Épopée : activer",
+  "agentPrompts.settings.epicActivate.description":
+    "Proposée sur une épopée planifiée ou active. Confie l’épopée entière, quête par quête.",
+  "agentPrompts.settings.questWork.title": "Quête : s’en charger",
+  "agentPrompts.settings.questWork.description":
+    "Proposée sur une quête non terminée. Une quête, une branche, un commit.",
+  "agentPrompts.settings.feedbackWork.title": "Retour : s’en charger",
+  "agentPrompts.settings.feedbackWork.description":
+    "Proposée sur un retour en attente ou accepté. Crée la quête, fait le travail, répond au rapporteur.",
+  "agentPrompts.copyError": "Impossible de copier l’invite.",
   "epic.delete.title": "Supprimer cette épopée ?",
   "epic.delete.confirm":
     'Ses quêtes et folios sont conservés, détachés de "$1". Cette action est irréversible.',
@@ -2172,4 +2279,124 @@ export default {
   "activity.fields": "a modifié $1",
   "activity.capability.enabled": "a activé $1",
   "activity.capability.disabled": "a désactivé $1",
+
+  // The rank matrix's column labels, one per `$permission` declared in
+  // `LorePermissions`, plus a heading per group. Rendered dynamically from the
+  // catalogue (`tr(permission.label)`), which is why `permission.` is a
+  // `dynamicPrefixes` entry in `alepha.config.ts`.
+  //
+  // ⚠️ These are the only part of a permission that may change. The KEY of the
+  // permission itself - `folio:write` - is stored in every rank definition and
+  // can never be renamed; see the note on `LorePermissions`.
+  "permission.group.project": "Projet",
+  "permission.project.read": "Ouvrir le projet",
+  "permission.project.update":
+    "Renommer le projet et modifier ses informations",
+  "permission.project.delete": "Supprimer le projet",
+  "permission.project.create": "Créer un projet",
+  "permission.group.member": "Membres",
+  "permission.member.read": "Voir qui fait partie du projet",
+  "permission.member.manage": "Inviter, retirer et classer les membres",
+  "permission.group.rank": "Rangs",
+  "permission.rank.manage": "Modifier ce que les rangs accordent",
+  "permission.group.capability": "Capacités",
+  "permission.capability.manage": "Activer et désactiver les capacités",
+  "permission.group.invitation": "Invitations",
+  "permission.invitation.create": "Envoyer une invitation",
+  "permission.group.stats": "Rapports",
+  "permission.stats.read": "Lire les rapports",
+  "permission.group.quest": "Quêtes",
+  "permission.quest.read": "Lire les quêtes",
+  "permission.quest.create": "Créer des quêtes",
+  "permission.quest.update": "Modifier les quêtes et les faire avancer",
+  "permission.quest.delete": "Supprimer des quêtes",
+  "permission.group.epic": "Épopées",
+  "permission.epic.read": "Lire les épopées",
+  "permission.epic.write": "Créer et modifier des épopées",
+  "permission.group.release": "Versions",
+  "permission.release.read": "Lire les versions",
+  "permission.release.manage": "Créer, modifier et publier des versions",
+  "permission.group.area": "Domaines",
+  "permission.area.read": "Lire les domaines",
+  "permission.area.manage": "Renommer, fusionner et supprimer des domaines",
+  "permission.group.folio": "Folios",
+  "permission.folio.read": "Lire les folios",
+  "permission.folio.write": "Écrire folios, dossiers et pièces jointes",
+  "permission.group.app": "Applications",
+  "permission.app.read": "Voir les copies déployées",
+  "permission.app.manage": "Créer, renommer et supprimer une copie déployée",
+  "permission.group.sigil": "Sigils",
+  "permission.sigil.manage": "Créer, renouveler et supprimer un sigil",
+  "permission.group.deploy": "Déploiements",
+  "permission.deploy.manage": "Déployer et définir les variables",
+  "permission.group.artifact": "Artefacts",
+  "permission.artifact.read": "Voir ce que la CI a publié",
+  "permission.group.blight": "Anomalies",
+  "permission.blight.read": "Lire la boîte des anomalies",
+  "permission.blight.triage": "Résoudre, ignorer et transférer les anomalies",
+  "permission.group.quality": "Qualité",
+  "permission.quality.read": "Lire la couverture et les totaux de tests",
+  "permission.group.estate": "Hébergements",
+  "permission.estate.read": "Voir les hébergements prêtés au projet",
+  "permission.estate.update": "Modifier un hébergement",
+  "permission.estate.lend": "Prêter un hébergement au projet, et le reprendre",
+  "permission.estate.create": "Créer un hébergement",
+  "permission.estate.delete": "Supprimer un hébergement",
+  "permission.group.feedback": "Retours",
+  "permission.feedback.read": "Lire la boîte des retours",
+  "permission.feedback.triage": "Accepter, rejeter et supprimer un retour",
+  "project.settings.members.rank.label": "Rang",
+  "project.settings.members.rank.assigned": "Rang mis \u00e0 jour",
+  "project.settings.members.invite.rank": "Rang \u00e0 l'arriv\u00e9e",
+  "project.settings.members.transfer.action":
+    "Transf\u00e9rer la propri\u00e9t\u00e9",
+  "project.settings.members.transfer.title":
+    "Transf\u00e9rer ce projet \u00e0 $1",
+  "project.settings.members.transfer.description":
+    "Il y a exactement un propri\u00e9taire. Choisissez le rang que vous gardez, puis confirmez.",
+  "project.settings.members.transfer.keep": "Votre rang ensuite",
+  "project.settings.members.transfer.confirmTitle":
+    "Donner ce projet \u00e0 $1 ?",
+  "project.settings.members.transfer.confirmDescription":
+    "$1 devient propri\u00e9taire et vous devenez $2. Vous ne pourrez pas revenir en arri\u00e8re : seul le nouveau propri\u00e9taire peut vous le rendre.",
+  "project.settings.members.transfer.confirm": "Transf\u00e9rer",
+  "project.settings.members.transfer.done":
+    "$1 est maintenant propri\u00e9taire de ce projet",
+  "project.settings.nav.ranks": "Rangs",
+  "project.settings.ranks.title": "Ce que chaque rang peut faire",
+  "project.settings.ranks.description":
+    "Les permissions \u00e0 gauche, une colonne par rang. Une permission qui appartient \u00e0 une capacit\u00e9 que ce projet n'a pas n'est pas list\u00e9e du tout.",
+  "project.settings.ranks.delay":
+    "Une modification de ce qu'un rang accorde peut mettre jusqu'\u00e0 une minute \u00e0 atteindre tout le monde. Retirer quelqu'un du projet, ou le changer de rang, prend effet imm\u00e9diatement.",
+  "project.settings.ranks.permission": "Permission",
+  "project.settings.ranks.empty":
+    "Aucune permission à afficher pour les capacités de ce projet.",
+  "project.settings.ranks.builtin": "Intégré",
+  "project.settings.ranks.holders": "$1 membre(s)",
+  "project.settings.ranks.actions": "Actions pour $1",
+  "project.settings.ranks.rename": "Renommer",
+  "project.settings.ranks.rename.title": "Renommer ce rang",
+  "project.settings.ranks.rename.confirm": "Renommer",
+  "project.settings.ranks.delete": "Supprimer",
+  "project.settings.ranks.delete.title": "Supprimer $1 ?",
+  "project.settings.ranks.delete.description":
+    "Le rang dispara\u00eet de ce projet. Personne ne le d\u00e9tient, personne n'est affect\u00e9.",
+  "project.settings.ranks.delete.confirm": "Supprimer le rang",
+  "project.settings.ranks.delete.held.title": "$1 est encore détenu",
+  "project.settings.ranks.delete.held.description":
+    "D\u00e9placez d'abord ces membres vers un autre rang : $1. Les rangs se changent sur la page Membres.",
+  "project.settings.ranks.deleted": "Rang supprimé",
+  "project.settings.ranks.create": "Nouveau rang",
+  "project.settings.ranks.create.blank": "Rang vide",
+  "project.settings.ranks.create.preset": "À partir de $1",
+  "project.settings.ranks.create.title": "Nommer le nouveau rang",
+  "project.settings.ranks.create.description":
+    "Le nom est ce que les membres lisent. Rien n'est enregistr\u00e9 tant que vous n'avez pas confirm\u00e9.",
+  "project.settings.ranks.create.confirm": "Créer",
+  "project.settings.ranks.created": "Rang créé",
+  "project.settings.ranks.save": "Enregistrer les rangs",
+  "project.settings.ranks.saved": "Rangs enregistrés",
+  "rank.preset.admin": "Administrateur",
+  "rank.preset.contributor": "Contributeur",
+  "rank.preset.viewer": "Lecteur",
 };

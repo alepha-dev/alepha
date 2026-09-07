@@ -12,8 +12,8 @@ import type { AppSecretController } from "@/api/controllers/AppSecretController.
 
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { useRank } from "../../shared/useRank.ts";
 import AppEnvironmentAdd from "./AppEnvironmentAdd.tsx";
 import AppEnvironmentRow from "./AppEnvironmentRow.tsx";
 
@@ -42,9 +42,9 @@ import AppEnvironmentRow from "./AppEnvironmentRow.tsx";
  */
 const AppEnvironment = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const secretApi = useClient<AppSecretController>();
   const [project] = useStore(currentProjectAtom);
-  const [member] = useStore(currentProjectMemberAtom);
   const [instance] = useStore(currentInstanceAtom);
 
   const { data, loading, error, refetch } = useQuery(
@@ -66,7 +66,10 @@ const AppEnvironment = () => {
   }
 
   const items = data?.items ?? [];
-  const isOwner = member?.owner ?? false;
+  // Rank, not ownership: `deploy:manage` is its own permission and an owner
+  // may have granted it to a rank. ⚠️ Never the boundary - the endpoints refuse
+  // server-side, and a hidden button refuses nothing.
+  const canDeploy = can("deploy:manage");
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -101,7 +104,7 @@ const AppEnvironment = () => {
                   secret={item}
                   projectId={project.id}
                   instanceId={instance.id}
-                  canWrite={isOwner}
+                  canWrite={canDeploy}
                   onChanged={refetch}
                 />
               ))}
@@ -110,7 +113,7 @@ const AppEnvironment = () => {
         </CardContent>
       </Card>
 
-      {isOwner ? (
+      {canDeploy ? (
         <AppEnvironmentAdd
           projectId={project.id}
           instanceId={instance.id}

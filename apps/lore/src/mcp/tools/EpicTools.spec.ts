@@ -155,7 +155,6 @@ const setup = async (options: { failEpicAttach?: boolean } = {}) => {
     await membersProbe.members.create({
       userId: member.id,
       projectId: project.id,
-      owner: false,
     });
     return member.id;
   };

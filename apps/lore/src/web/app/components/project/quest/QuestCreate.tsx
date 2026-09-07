@@ -479,7 +479,10 @@ const QuestCreate = (props: QuestCreateProps) => {
 
       <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">
         {update ? (
-          <Button type="submit" disabled={submitting}>
+          <Button
+            type="submit"
+            disabled={submitting || !questApi.updateQuestById.can()}
+          >
             <Save className="size-4" />
             {tr("quest.create.update")}
           </Button>
@@ -487,7 +490,7 @@ const QuestCreate = (props: QuestCreateProps) => {
           <div className="flex items-stretch">
             <Button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !questApi.createQuest.can()}
               className="rounded-r-none"
             >
               <Plus className="size-4" />
@@ -498,7 +501,11 @@ const QuestCreate = (props: QuestCreateProps) => {
                 render={
                   <Button
                     type="button"
-                    disabled={submitting}
+                    disabled={
+                      submitting ||
+                      !questApi.createQuest.can() ||
+                      !questApi.acceptQuest.can()
+                    }
                     aria-label={tr("quest.create.submitAndAccept")}
                     className="border-primary-foreground/20 -ml-px rounded-l-none border-l px-2"
                   />

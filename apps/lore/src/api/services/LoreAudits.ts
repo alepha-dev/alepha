@@ -131,6 +131,8 @@ export class LoreAudits {
       "reopen",
       "shelve",
       "unshelve",
+      "hold",
+      "unhold",
       "comment",
       "attachment",
       "commit",
@@ -206,11 +208,15 @@ export class LoreAudits {
    * exist: a member joins by accepting an invitation, and leaves either by
    * their own hand (`leaveProject`) or the owner's (`removeMember`, #1695).
    * Who did it is the actor on the row, which is what tells the two apart.
+   *
+   * `rank` is an assignment; `transfer` is the one act that changes who owns
+   * the project, and it is separate for the reason it carries `warning`: it
+   * demotes the person performing it and cannot be undone by them.
    */
   readonly member = $audit({
     type: "member",
     description: "Project membership",
-    actions: ["join", "leave"],
+    actions: ["join", "leave", "rank", "transfer"],
   });
 
   /**

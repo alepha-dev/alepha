@@ -52,7 +52,11 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
   const [dropping, setDropping] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
 
-  const canUpload = !!props.folioId && !!props.projectId && !props.disabled;
+  // The list stays: an attachment is content, and a reader needs to be able
+  // to copy its reference. Upload, rename and delete are what close.
+  const canWrite = attachmentApi.registerAttachment.can();
+  const canUpload =
+    !!props.folioId && !!props.projectId && !props.disabled && canWrite;
 
   const refresh = async (): Promise<void> => {
     if (!props.folioId) return;
@@ -242,7 +246,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
               </span>
               <button
                 type="button"
-                disabled={props.disabled}
+                disabled={props.disabled || !canWrite}
                 onClick={() => void rename(attachment.id, attachment.name)}
                 aria-label={String(tr("folios.editor.tree.rename"))}
                 title={String(tr("folios.editor.tree.rename"))}
@@ -265,7 +269,7 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
               </button>
               <button
                 type="button"
-                disabled={props.disabled}
+                disabled={props.disabled || !canWrite}
                 onClick={() => void remove(attachment.id, attachment.name)}
                 aria-label={String(tr("folio.action.delete"))}
                 title={String(tr("folio.action.delete"))}

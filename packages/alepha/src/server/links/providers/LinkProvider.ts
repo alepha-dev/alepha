@@ -30,6 +30,7 @@ import {
   apiRegistryResponseSchema,
 } from "../schemas/apiLinksResponseSchema.ts";
 import { BatchCollector } from "../services/BatchCollector.ts";
+import { ScopeGrantsProvider } from "./ScopeGrantsProvider.ts";
 
 /**
  * Browser, SSR friendly, service to handle links.
@@ -44,12 +45,24 @@ export class LinkProvider {
   protected readonly httpClient = $inject(HttpClient);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly crypto = $inject(CryptoProvider);
+  protected readonly scopeGrants = $inject(ScopeGrantsProvider);
 
   // Server-side: all registered links (local + remote), keyed by name
   protected serverLinkMap = new Map<string, HttpClientLink>();
 
   // Browser/SSR: parsed from the registry response
   protected actionMap = new Map<string, HttpClientLink>();
+
+  /**
+   * Each action's required permissions, as the registry stated them.
+   *
+   * Static per action rather than per user, so it costs nothing per request
+   * and leaks nothing: the caller can already see the action, and the server
+   * pruned the ones they may not call at all. What this adds is the second
+   * question - whether the permission holds in the SCOPE being rendered - and
+   * {@link ScopeGrantsProvider} is what answers it.
+   */
+  protected actionPermissions = new Map<string, string[]>();
 
   /**
    * One parsed registry per remote, keyed by {@link registryKey}.
@@ -130,9 +143,14 @@ export class LinkProvider {
     this.lastLoadedRegistry = registry;
     this.permissions.clear();
     this.actionMap.clear();
+    this.actionPermissions.clear();
     this.restricted.clear();
 
     for (const [name, action] of Object.entries(registry.actions)) {
+      if (action.permissions?.length) {
+        this.actionPermissions.set(name, action.permissions);
+      }
+
       this.actionMap.set(name, {
         name,
         path: action.path,
@@ -504,13 +522,19 @@ export class LinkProvider {
     }
 
     // Action check — O(1) map lookup
+    //
+    // ⚠️ All three branches answer "the action exists", and all three have to
+    // narrow by scope. Filtering only the first would make SSR and the client
+    // disagree, which is the hydration drift the comment above exists to
+    // prevent.
     if (this.actionMap.size > 0) {
-      if (this.actionMap.has(name)) return true;
+      if (this.actionMap.has(name)) return this.scopeAllows(name);
     } else {
       // Fallback for server-side where actionMap may not be populated
-      if (this.serverLinkMap.has(name)) return true;
+      if (this.serverLinkMap.has(name)) return this.scopeAllows(name);
       // Also check links getter (for SSR with atom)
-      if (this.links.some((link) => link.name === name)) return true;
+      if (this.links.some((link) => link.name === name))
+        return this.scopeAllows(name);
     }
 
     // Permission check — wildcard matching
@@ -526,6 +550,82 @@ export class LinkProvider {
     }
 
     return false;
+  }
+
+  /**
+   * The second half of {@link can}, for an action that exists.
+   *
+   * Answers true whenever there is nothing to narrow by: an action naming no
+   * permission, or a viewer who is not inside a scope. Only a scope that
+   * answers, on an action that names permissions, can turn a `true` into a
+   * `false` - which is what keeps an application with no
+   * {@link ScopeGrantsProvider} substituted byte-identical to before.
+   */
+  protected scopeAllows(name: string): boolean {
+    const required = this.permissionsOfAction(name);
+
+    if (!required?.length) {
+      return true;
+    }
+
+    const held = this.scopeGrants.current();
+
+    // `undefined` is "no scope", NOT "no permissions". An empty array is the
+    // second, and hides everything.
+    if (!held) {
+      return true;
+    }
+
+    return required.every((permission) =>
+      held.some(
+        (granted) =>
+          granted === permission ||
+          (granted.endsWith("*") &&
+            permission.startsWith(granted.slice(0, -1))),
+      ),
+    );
+  }
+
+  /**
+   * The permissions an action requires, from whichever side of the wire this
+   * process is on.
+   *
+   * The registry states them in the browser; on the server the action's own
+   * `$secure` options are right there, and the registry may never have been
+   * built at all (SSR reads `serverLinkMap` directly).
+   */
+  protected permissionsOfAction(name: string): string[] | undefined {
+    const fromRegistry = this.actionPermissions.get(name);
+    if (fromRegistry) {
+      return fromRegistry;
+    }
+
+    const link = this.serverLinkMap.get(name);
+    return link ? this.permissionsOfLink(link) : undefined;
+  }
+
+  /**
+   * The permission strings a link's `$secure` options name, normalized.
+   *
+   * `SecureOptions.permissions` accepts a string or a `{ group, name }`
+   * object, and `$owns({ requires })` folds its own into the same list - so
+   * this is the one place that turns either spelling into the `group:name`
+   * form the registry publishes and the client compares against.
+   */
+  public permissionsOfLink(link: HttpClientLink): string[] | undefined {
+    const secured = link.secured;
+
+    if (!secured || secured === true || !secured.permissions?.length) {
+      return undefined;
+    }
+
+    return secured.permissions.map((permission) =>
+      typeof permission === "string"
+        ? permission
+        : permission.group
+          ? `${permission.group}:${permission.name}`
+          : permission.name,
+    );
   }
 
   /**

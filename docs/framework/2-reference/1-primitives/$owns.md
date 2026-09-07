@@ -19,11 +19,15 @@ silent authorization hole.
 and publishes it via `OwnedResourceProvider` so the handler does not
 re-fetch what the gate already read.
 
-Two checks, applied in order:
+Three checks, applied in order:
 
 1. **Owner**: `row[owner] === user.id`.
 2. **Membership**: when `via` is set, a row in the join entity links the
    caller to this resource.
+3. **Grant**: when `requires` is set, `ResourceGrantsProvider` says
+   whether the caller holds that permission INSIDE this resource. Its
+   default answers allow, so an application that never substitutes it
+   behaves exactly as it did before the option existed.
 
 Both are read off the row the param names, unless `through` says ownership
 lives one hop away - on the project a quest belongs to, say. The resource
@@ -67,7 +71,8 @@ class CampaignController {
 | `param`      | `string`                             | Yes      | Key holding the resource id, in whichever source `OwnsOptions.from` names                                                           |
 | `from`       | `"params" \| "query" \| "body"`      | No       | Where to read `OwnsOptions.param` from                                                                                              |
 | `through`    | `OwnsHop \| OwnsHop[]`               | No       | The second hop: say that ownership is not held by the row the param names, but by a row it belongs to                               |
-| `owner`      | `string`                             | Yes      | Column holding the owner's user id, on the row the decision is made against - the resource itself, or the row `through` lands on.   |
+| `owner`      | `string`                             | No       | Column holding the owner's user id, on the row the decision is made against - the resource itself, or the row `through` lands on    |
+| `requires`   | `string \| string[]`                 | No       | Permission(s) the caller must hold **inside this resource**, on top of being its owner or one of its members                        |
 | `via`        | `Object`                             | No       | Membership fallback: a join entity linking users to the row the decision is made against                                            |
 | `cast`       | `Object`                             | No       | Coerce the raw value before querying                                                                                                |
 | `cache`      | `StatementOptions["cache"]`          | No       | Cache window for the **authority read** - the row the gate decides against, which is the resource itself when there is no `through` |

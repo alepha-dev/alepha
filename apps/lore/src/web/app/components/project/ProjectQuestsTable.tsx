@@ -27,6 +27,7 @@ import {
   Archive,
   ArchiveRestore,
   CircleDot,
+  Bot,
   Hash,
   Layers,
   Link2,
@@ -60,6 +61,9 @@ import FilterSlot from "../shared/FilterSlot.tsx";
 import { useBulkReport } from "../shared/useBulkReport.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import { UserAvatar } from "../shared/UserAvatar.tsx";
+import { questAgentGate } from "./prompts/questAgentGate.ts";
+import { useAgentPrompt } from "./prompts/useAgentPrompt.ts";
+import { useAgentPromptSubject } from "./prompts/useAgentPromptSubject.ts";
 import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_TONE,
@@ -104,6 +108,8 @@ const ProjectQuestsTable = () => {
   const [currentAreas] = useStore(currentAreasAtom);
   const [releases] = useStore(currentReleasesAtom);
   const [epics] = useStore(currentEpicsAtom);
+  const agentPrompt = useAgentPrompt();
+  const promptSubject = useAgentPromptSubject();
   const questApi = useClient<QuestController>();
   const questMutations = useQuestMutations();
   const reportBulk = useBulkReport();
@@ -401,12 +407,24 @@ const ProjectQuestsTable = () => {
                     )
                   }
                   triggerClassName="w-full"
-                  items={(
-                    ["new", "accepted", "completed", "shelved"] as const
-                  ).map((status) => ({
-                    label: String(tr(`quest.status.${status}`)),
-                    value: status,
-                  }))}
+                  items={
+                    // ⚠️ Hand-written, so widening `questStatusSchema`
+                    // does NOT bring a value here and typecheck stays
+                    // green while the filter silently offers one fewer
+                    // option than the table can render.
+                    (
+                      [
+                        "new",
+                        "accepted",
+                        "held",
+                        "completed",
+                        "shelved",
+                      ] as const
+                    ).map((status) => ({
+                      label: String(tr(`quest.status.${status}`)),
+                      value: status,
+                    }))
+                  }
                   inputProps={{ "aria-label": tr("board.filter.status") }}
                 />
               </FilterSlot>
@@ -808,6 +826,35 @@ const ProjectQuestsTable = () => {
               }
             },
           },
+          // Between Copy ID and Edit: the reference and a nudge are what a
+          // list is used for most, and handing the quest over sits with
+          // them rather than among the lifecycle moves below.
+          //
+          // Two gates. The `agentPrompts` option, off by default. And the
+          // epic phase, which is the same condition that decides whether
+          // Accept is withheld: the prompt's second step is `quest_accept`,
+          // and a planned or concluded epic refuses it.
+          ...(agentPrompt.enabled &&
+          !quest.completedAt &&
+          questAgentGate(quest, epics) === undefined
+            ? [
+                {
+                  icon: Bot,
+                  label: tr("agentPrompts.menu"),
+                  children: [
+                    {
+                      icon: Bot,
+                      label: tr("agentPrompts.workOnIt"),
+                      onClick: (row: QuestResource) =>
+                        agentPrompt.copy(
+                          "questWork",
+                          promptSubject.forQuest(row),
+                        ),
+                    },
+                  ],
+                },
+              ]
+            : []),
           ...(questApi.updateQuestById.can()
             ? [
                 {

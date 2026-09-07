@@ -52,13 +52,20 @@ class FakeLinkProvider extends LinkProvider {
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
-    const record =
-      (name: string) =>
-      async (config: { params: { id: number } }): Promise<QuestResource> => {
+    const record = (name: string) => {
+      const action = async (config: {
+        params: { id: number };
+      }): Promise<QuestResource> => {
         this.calls.push(`${name}:${config.params.id}`);
         return this.quest(config.params.id);
       };
-    return {
+      // ⚠️ Every virtual action carries `can()`, and the hook reads it for
+      // each transition since epic #E39. A fake without it throws where the
+      // real client answers.
+      action.can = () => true;
+      return action;
+    };
+    const named: Record<string, unknown> = {
       acceptQuest: record("accept"),
       abandonQuest: record("abandon"),
       completeQuest: record("complete"),
@@ -70,6 +77,15 @@ class FakeLinkProvider extends LinkProvider {
         return { count: this.openCount };
       },
     };
+
+    // ⚠️ A Proxy rather than a fixed map: the real virtual client answers for
+    // EVERY action on the controller, and the hook now reads `can()` on one
+    // this spec never calls (`updateQuestById`). A fixed map is a fake that
+    // has to be edited every time the subject reads one more action, which is
+    // how a spec starts failing for a reason it is not about.
+    return new Proxy(named, {
+      get: (target, prop: string) => target[prop] ?? record(prop),
+    });
   }
 }
 

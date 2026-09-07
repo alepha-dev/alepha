@@ -1,6 +1,5 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
 import { $action, NotFoundError, okSchema } from "alepha/server";
 
 import { appInstances } from "../entities/appInstances.ts";
@@ -24,12 +23,15 @@ import { AppSecretService } from "../services/AppSecretService.ts";
  *
  * ## The read/write split, and why the read is not owner-only
  *
- * Reads are member-gated like every other project read; writes are owner-only
- * and additionally take the `apps.deploy` capability. A member learns which
+ * Reads take `app:read`, like every other read on this page; writes take
+ * `deploy:manage` and additionally the `apps.deploy` capability. A variable is
+ * part of what a deploy ships, so the act of setting one is the act of
+ * deploying rather than of renaming an app. A member learns which
  * variables exist and four characters of the long ones, which is the same order
  * of exposure as the deploy log and the artifact list they can already read -
- * and the alternative, an owner-only read, would leave the tab answering 403 to
- * everyone it is shown to, with nothing on screen saying why.
+ * and the alternative, gating the read on `deploy:manage` too, would leave the
+ * tab answering 403 to everyone it is shown to with nothing on screen saying
+ * why.
  *
  * ⚠️ Reads do NOT take the capability, for the reason `DeployController`'s do
  * not: disabling a capability hides it and never deletes anything, so a project
@@ -47,14 +49,15 @@ export class AppSecretController {
   protected writeGate = () =>
     $ownsProject({
       param: "projectId",
-      owner: true,
+      requires: "deploy:manage",
       capability: { key: "apps", option: "deploy" },
     });
 
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = () =>
+    $ownsProject({ param: "projectId", requires: "app:read" });
 
   listAppSecrets = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [this.ownsProject()],
     method: "GET",
     path: "/projects/:projectId/apps/:instanceId/secrets",
     description: "What this deployed copy runs with. Never the values.",
@@ -70,7 +73,7 @@ export class AppSecretController {
   });
 
   setAppSecret = $action({
-    use: [$secure(), this.writeGate()],
+    use: [this.writeGate()],
     method: "PUT",
     path: "/projects/:projectId/apps/:instanceId/secrets",
     description: "Set one variable, replacing whatever was there.",
@@ -99,7 +102,7 @@ export class AppSecretController {
   });
 
   deleteAppSecret = $action({
-    use: [$secure(), this.writeGate()],
+    use: [this.writeGate()],
     method: "DELETE",
     path: "/projects/:projectId/apps/:instanceId/secrets/:key",
     description: "Remove one variable.",

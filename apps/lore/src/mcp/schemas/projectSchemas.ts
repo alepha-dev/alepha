@@ -28,13 +28,36 @@ const questOrientationRefSchema = z.object({
 // project_list
 // -----------------------------------------------------------------------------
 
+/**
+ * A rank as a list row names it: the stored key and what a person reads.
+ *
+ * The key is what everything else addresses; the name is what the project's
+ * owner called it, and for a rank somebody created the key is opaque
+ * (`r1x9k2`), so a row showing only one of the two is showing the wrong one.
+ */
+export const rankRefSchema = z.object({
+  key: z.text(),
+  name: z.text(),
+});
+
 export const projectListResultSchema = z.object({
   projects: z.array(
     z.object({
       id: z.integer(),
       title: z.string(),
       public: z.boolean(),
-      isOwner: z.boolean(),
+      /**
+       * The caller's rank in this project.
+       *
+       * ⚠️ The rank, not the permission set. A set per row would be one
+       * definitions read per project; `project_get` and `project_context`
+       * carry the full set for the ONE project they are about, which is
+       * where an agent asks "may I do this".
+       *
+       * Absent for a project whose membership row predates epic #E39's
+       * backfill, which reads as `member`.
+       */
+      rank: rankRefSchema.optional(),
     }),
   ),
 });
@@ -58,9 +81,20 @@ export const projectInfoResultSchema = z.object({
   createdAt: z.datetime(),
   activeQuests: z.array(questOrientationRefSchema),
   /**
-   * `true` when the calling user owns (created) this project.
+   * The caller's rank in this project.
    */
-  isOwner: z.boolean(),
+  rank: rankRefSchema.optional(),
+  /**
+   * What the caller may actually do here: the effective set, already narrowed
+   * by their rank and by which capabilities this project has.
+   *
+   * ⚠️ It replaced `isOwner`, and the reason is what an agent can act on. A
+   * boolean says nothing about whether `release_create` will work; this says
+   * exactly that, before the call rather than after a 403. `["*"]` is the
+   * owner - listing an owner permission by permission would leave them behind
+   * every time a new one is declared.
+   */
+  permissions: z.array(z.text()),
 });
 
 // -----------------------------------------------------------------------------
@@ -233,9 +267,14 @@ export const projectContextResultSchema = z.object({
    */
   pinnedFoliosTruncated: z.boolean().optional(),
   /**
-   * `true` when the calling user owns (created) this project.
+   * The caller's rank in this project.
    */
-  isOwner: z.boolean(),
+  rank: rankRefSchema.optional(),
+  /**
+   * What the caller may actually do here. See `projectInfoResultSchema` for
+   * why this replaced `isOwner`.
+   */
+  permissions: z.array(z.text()),
   /**
    * ISO 639-1 code (e.g. "fr", "ja") the owner picked as the preferred
    * language for AI-generated content. When set, agents should write

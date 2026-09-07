@@ -7,6 +7,7 @@ import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { userProjectsAtom } from "@/web/app/atoms/userProjectsAtom.ts";
 import { capabilityRegistry } from "@/web/app/services/capabilityRegistry.ts";
+import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 import {
   capabilityOption,
   hasCapability,
@@ -15,6 +16,15 @@ import {
 export interface CapabilitySwitch {
   enabled: boolean;
   toggle: (value: boolean) => Promise<void>;
+  /**
+   * Whether the viewer may move this switch at all.
+   *
+   * ⚠️ Disabled rather than hidden, and this is the exception the rule allows:
+   * a capability settings page with its switch removed is a page that says
+   * nothing at all. The reader sees the state and cannot change it, which is
+   * the honest rendering of `capability:manage` being owner-only.
+   */
+  canToggle: boolean;
 }
 
 /**
@@ -33,10 +43,12 @@ export interface CapabilitySwitch {
  */
 export const useCapabilityToggle = (key: CapabilityKey): CapabilitySwitch => {
   const write = useCapabilityWrite();
+  const can = useCapabilityCan();
   const [project] = useStore(currentProjectAtom);
   const [pending, setPending] = useState<boolean | undefined>(undefined);
 
   return {
+    canToggle: can,
     enabled: pending ?? hasCapability(project, key),
     toggle: async (value) => {
       setPending(value);
@@ -74,10 +86,12 @@ export const useCapabilityOption = (
   option: string,
 ): CapabilitySwitch => {
   const write = useCapabilityWrite();
+  const can = useCapabilityCan();
   const [project] = useStore(currentProjectAtom);
   const [pending, setPending] = useState<boolean | undefined>(undefined);
 
   return {
+    canToggle: can,
     enabled: pending ?? capabilityOption(project, key, option),
     toggle: async (value) => {
       setPending(value);
@@ -117,11 +131,15 @@ const useCapabilityWrite = () => {
   ) => {
     if (!project) return;
     try {
+      // ⚠️ The response carries `permissions` as well as the project, and it
+      // has to: turning a capability ON widens the effective set, so a client
+      // that kept the set it already had would leave the new capability's
+      // sidebar entries hidden until the next navigation.
       const updated = await api.setCapability({
         params: { projectId: project.id, key },
         body,
       });
-      alepha.store.set(currentProjectAtom, updated);
+      setCurrentProject(alepha, updated);
       const overview = alepha.store.get(userProjectsAtom);
       if (overview) {
         alepha.store.set(userProjectsAtom, {
@@ -135,6 +153,10 @@ const useCapabilityWrite = () => {
                   ...updated,
                   areaCount: p.areaCount,
                   openQuestCount: p.openQuestCount,
+                  // Same reasoning: `owner` is computed by `getHomeOverview`
+                  // from a batched `members` read, so an update response has
+                  // no idea and dropping it would flip the Owner badge off.
+                  owner: p.owner,
                 }
               : p,
           ),
@@ -145,3 +167,15 @@ const useCapabilityWrite = () => {
     }
   };
 };
+
+/**
+ * May the viewer move a capability switch?
+ *
+ * ⚠️ `capability:manage` is owner-only STRUCTURALLY: turning a capability ON
+ * widens every rank's effective set at once, the actor's own included, and the
+ * subset rule does not catch it because a switch is not a grant. Read off the
+ * ACTION, so this repeats no permission string - the requirement travels from
+ * `$ownsProject({ requires })` through the registry to `can()`.
+ */
+const useCapabilityCan = (): boolean =>
+  useClient<ProjectCapabilityController>().setCapability.can();

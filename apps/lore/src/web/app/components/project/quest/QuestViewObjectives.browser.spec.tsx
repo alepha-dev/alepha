@@ -13,6 +13,7 @@ import {
   type QuestResource,
   questResourceSchema,
 } from "@/api/schemas/questResourceSchema.ts";
+import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 import { I18n } from "@/web/app/services/I18n.ts";
 
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
@@ -30,12 +31,12 @@ class FailingLinkProvider extends LinkProvider {
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
-    return {
+    return virtualClientFake({
       completeObjective: async () => {
         this.calls++;
         throw new Error("nope");
       },
-    };
+    });
   }
 
   public quest(): QuestResource {

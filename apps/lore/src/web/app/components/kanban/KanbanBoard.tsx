@@ -191,9 +191,13 @@ const KanbanBoard = (props: KanbanBoardProps) => {
    * offering the controls to a member would promise a 403. Same reasoning as
    * the members settings page.
    */
-  const canManageColumns = project.createdBy === auth.user?.id;
+  // The column bar is project configuration; the cards on it are the work.
+  // Two different permissions, so two flags - a Contributor rearranges cards
+  // and does not rename a column.
+  const canMoveCards = kanbanApi.moveQuestOnBoard.can();
   const reloadRef = useRef<() => void>(() => {});
   const columnOps = useKanbanColumnOps(project.id, () => reloadRef.current());
+  const canManageColumns = columnOps.can;
 
   useEffect(() => {
     questApi
@@ -993,6 +997,7 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                       : descriptor;
                     return (
                       <KanbanColumn
+                        draggable={canMoveCards}
                         key={scoped.key}
                         descriptor={scoped}
                         quests={laneGrouped[descriptor.key] ?? []}

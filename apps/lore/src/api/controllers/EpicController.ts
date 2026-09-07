@@ -1,11 +1,7 @@
 import { $inject, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
-import {
-  OwnedResourceProvider,
-  type UserAccountToken,
-  $secure,
-} from "alepha/security";
+import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
@@ -106,7 +102,8 @@ export class EpicController {
    * field initializer reading another field, so a gate declared below the
    * first action that uses it is `undefined` at construction time.
    */
-  protected ownsProject = () => $ownsProject({ param: "projectId" });
+  protected ownsProject = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId" });
 
   /**
    * Member gate on the project the epic named by `params.id` belongs to.
@@ -115,8 +112,8 @@ export class EpicController {
    * needs the row reads it back rather than issuing the same `getById` the
    * gate just did.
    */
-  protected ownsEpic = () =>
-    $ownsProject({ repository: () => this.epics, param: "id" });
+  protected ownsEpic = (requires: string | string[]) =>
+    $ownsProject({ requires, repository: () => this.epics, param: "id" });
 
   /**
    * The same two gates plus the Work capability, for the writes.
@@ -126,11 +123,12 @@ export class EpicController {
    * either way - the rule `projectKanban` set. Reads stay open, because
    * disabling hides and never deletes.
    */
-  protected ownsProjectForWork = () =>
-    $ownsProject({ param: "projectId", capability: "work" });
+  protected ownsProjectForWork = (requires: string | string[]) =>
+    $ownsProject({ requires, param: "projectId", capability: "work" });
 
-  protected ownsEpicForWork = () =>
+  protected ownsEpicForWork = (requires: string | string[]) =>
     $ownsProject({
+      requires,
       repository: () => this.epics,
       param: "id",
       capability: "work",
@@ -146,7 +144,7 @@ export class EpicController {
   protected epicNumber = $sequence();
 
   getEpics = $action({
-    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
+    use: [this.ownsProject("epic:read")],
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -211,7 +209,7 @@ export class EpicController {
    * the same way `ProjectEpics` already derives it.
    */
   getEpicRefs = $action({
-    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
+    use: [this.ownsProject("epic:read")],
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -233,7 +231,7 @@ export class EpicController {
     // Gated on the PARAM, not on the epic it finds: a foreign project is
     // refused before the epics table is touched, and there is nothing to hop
     // from anyway since the lookup is by (project, number) rather than by id.
-    use: [$secure({ permissions: ["quest:read"] }), this.ownsProject()],
+    use: [this.ownsProject("epic:read")],
     path: "/projects/:projectId/epics/:number",
     schema: {
       params: z.object({
@@ -256,11 +254,7 @@ export class EpicController {
 
   createEpic = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
-    use: [
-      $secure({ permissions: ["quest:create"] }),
-      $transactional(),
-      this.ownsProjectForWork(),
-    ],
+    use: [$transactional(), this.ownsProjectForWork("epic:write")],
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
@@ -301,7 +295,7 @@ export class EpicController {
   });
 
   updateEpic = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
+    use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -396,7 +390,7 @@ export class EpicController {
    * assertion.
    */
   setEpicStatus = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
+    use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -482,7 +476,7 @@ export class EpicController {
    * them by hand.
    */
   deleteEpic = $action({
-    use: [$secure({ permissions: ["quest:delete"] }), this.ownsEpicForWork()],
+    use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
       response: okSchema,
@@ -502,7 +496,7 @@ export class EpicController {
   });
 
   attachQuest = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
+    use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ questId: z.integer() }),
@@ -550,7 +544,7 @@ export class EpicController {
   });
 
   detachQuest = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
+    use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer(), questId: z.integer() }),
       response: epicResourceSchema,
@@ -574,7 +568,7 @@ export class EpicController {
   });
 
   attachFolio = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
+    use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ folioId: z.uuid() }),
@@ -601,7 +595,7 @@ export class EpicController {
   });
 
   detachFolio = $action({
-    use: [$secure({ permissions: ["quest:create"] }), this.ownsEpicForWork()],
+    use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer(), folioId: z.uuid() }),
       response: epicResourceSchema,

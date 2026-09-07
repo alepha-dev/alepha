@@ -7,6 +7,7 @@ import { $client } from "./primitives/$client.ts";
 import { $remote } from "./primitives/$remote.ts";
 import { LinkProvider } from "./providers/LinkProvider.ts";
 import { RemotePrimitiveProvider } from "./providers/RemotePrimitiveProvider.ts";
+import { ScopeGrantsProvider } from "./providers/ScopeGrantsProvider.ts";
 import { ServerLinksProvider } from "./providers/ServerLinksProvider.ts";
 import type { ApiRegistryResponse } from "./schemas/apiLinksResponseSchema.ts";
 import { BatchCollector } from "./services/BatchCollector.ts";
@@ -19,6 +20,7 @@ export * from "./primitives/$client.ts";
 export * from "./primitives/$remote.ts";
 export * from "./providers/LinkProvider.ts";
 export * from "./providers/RemotePrimitiveProvider.ts";
+export * from "./providers/ScopeGrantsProvider.ts";
 export * from "./providers/ServerLinksProvider.ts";
 export * from "./schemas/apiLinksResponseSchema.ts";
 export * from "./services/BatchCollector.ts";
@@ -63,7 +65,7 @@ export const AlephaServerLinksClient = $module({
   atoms: [apiLinksAtom, linkOptionsAtom],
   primitives: [$client],
   imports: [AlephaHttpClient],
-  services: [LinkProvider, BatchCollector],
+  services: [LinkProvider, BatchCollector, ScopeGrantsProvider],
 });
 
 /**

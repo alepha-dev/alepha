@@ -6,7 +6,12 @@ import type { ReactElement } from "react";
 import type { I18n } from "../../../../services/I18n.ts";
 
 export interface FolioEmptyStateProps {
-  onCreate: () => void;
+  /**
+   * Absent when the reader's rank does not grant `folio:write`. The two
+   * lines of copy stay: they point at the tree, which is where a reader who
+   * cannot create still has somewhere to go.
+   */
+  onCreate?: () => void;
 }
 
 /**
@@ -32,10 +37,12 @@ const FolioEmptyState = (props: FolioEmptyStateProps): ReactElement => {
           {tr("folios.editor.empty.hint")}
         </p>
       </div>
-      <Button variant="outline" size="sm" onClick={props.onCreate}>
-        <FilePlus className="size-4" />
-        {tr("folios.editor.tree.new-folio")}
-      </Button>
+      {props.onCreate && (
+        <Button variant="outline" size="sm" onClick={props.onCreate}>
+          <FilePlus className="size-4" />
+          {tr("folios.editor.tree.new-folio")}
+        </Button>
+      )}
     </div>
   );
 };

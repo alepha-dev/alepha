@@ -15,12 +15,12 @@ import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import type { AppController } from "@/api/controllers/AppController.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 
 /**
@@ -40,13 +40,13 @@ import type { I18n } from "../../../services/I18n.ts";
  */
 const AppSettingsDelete = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const router = useRouter<AppRouter>();
   const toaster = useToast();
   const dialog = useDialog();
   const appApi = useClient<AppController>();
 
   const [project] = useStore(currentProjectAtom);
-  const [member] = useStore(currentProjectMemberAtom);
   const [instance] = useStore(currentInstanceAtom);
   const [instances, setInstances] = useStore(currentInstancesAtom);
   const [busy, setBusy] = useState(false);
@@ -55,7 +55,7 @@ const AppSettingsDelete = () => {
     return null;
   }
 
-  const isOwner = member?.owner ?? false;
+  const isOwner = can("app:manage");
   const label = `${instance.app}/${instance.env}`;
 
   const remove = async () => {

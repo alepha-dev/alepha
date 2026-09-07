@@ -1,6 +1,7 @@
 import { sigilScrubUrl } from "@alepha/lore/sigil";
 import { $inject, z } from "alepha";
 import { $storage, FileService, files } from "alepha/api/files";
+import { RankService } from "alepha/api/ranks";
 import {
   $repository,
   $sequence,
@@ -8,7 +9,7 @@ import {
   db,
   pageQuerySchema,
 } from "alepha/orm";
-import { $secure, type UserAccountToken } from "alepha/security";
+import { $secure } from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -34,6 +35,7 @@ import {
   type MyFeedbackResource,
   myFeedbackResourceSchema,
 } from "../schemas/myFeedbackResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
@@ -89,6 +91,7 @@ export class FeedbackController {
     ...FeedbackController.withRelations,
     project: true,
   } as const;
+  protected readonly ranks = $inject(RankService);
 
   protected rateLimiter = $inject(FeedbackRateLimiter);
   protected bound = $inject(BoundParameters);
@@ -360,7 +363,7 @@ export class FeedbackController {
    * project member; triage (accept/reject/remove) stays owner-only.
    */
   listFeedback = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ param: "projectId", requires: "feedback:read" })],
     method: "GET",
     path: "/projects/:projectId/feedback",
     schema: {
@@ -398,8 +401,6 @@ export class FeedbackController {
       }),
     },
     handler: async ({ params, query, user }) => {
-      await this.ensureMember(params.projectId, user);
-
       const status = query.status ?? "pending";
       const limit = query.limit ?? 10;
       const offset = query.offset ?? 0;
@@ -438,7 +439,7 @@ export class FeedbackController {
    * `countOpenBlights` / `countOpenQuests`.
    */
   countFeedback = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ param: "projectId", requires: "feedback:read" })],
     method: "GET",
     path: "/projects/:projectId/feedback/count",
     schema: {
@@ -452,8 +453,6 @@ export class FeedbackController {
       response: z.object({ count: z.integer() }),
     },
     handler: async ({ params, query, user }) => {
-      await this.ensureMember(params.projectId, user);
-
       const status = query.status ?? "pending";
       const where = this.feedback.createQueryWhere();
       where.projectId = { eq: params.projectId };
@@ -474,7 +473,7 @@ export class FeedbackController {
    * any project member.
    */
   getFeedback = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ param: "projectId", requires: "feedback:read" })],
     method: "GET",
     path: "/projects/:projectId/feedback/:feedbackId",
     schema: {
@@ -485,7 +484,6 @@ export class FeedbackController {
       response: feedbackResourceSchema,
     },
     handler: async ({ params, user }) => {
-      await this.ensureMember(params.projectId, user);
       const feedback = await this.loadFeedback(
         params.projectId,
         params.feedbackId,
@@ -501,7 +499,7 @@ export class FeedbackController {
    * wiki-link hover card, which knows the number and nothing else.
    */
   getFeedbackByShortId = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ param: "projectId", requires: "feedback:read" })],
     method: "GET",
     path: "/projects/:projectId/feedback/by-short-id/:shortId",
     schema: {
@@ -512,7 +510,6 @@ export class FeedbackController {
       response: feedbackResourceSchema,
     },
     handler: async ({ params, user }) => {
-      await this.ensureMember(params.projectId, user);
       const row = await this.feedbackWith.findOne({
         where: {
           shortId: { eq: params.shortId },
@@ -536,7 +533,7 @@ export class FeedbackController {
    * attachments, so the cost is one narrow query however large the inbox.
    */
   listFeedbackRefs = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ param: "projectId", requires: "feedback:read" })],
     method: "GET",
     path: "/projects/:projectId/feedback/refs",
     schema: {
@@ -550,7 +547,6 @@ export class FeedbackController {
       ),
     },
     handler: async ({ params, user }) => {
-      await this.ensureMember(params.projectId, user);
       const rows = await this.feedback.findMany({
         where: { projectId: { eq: params.projectId } },
         columns: ["shortId", "title", "status"],
@@ -573,7 +569,7 @@ export class FeedbackController {
    * 5 MB upload cap bounds the base64 payload (~6.7 MB).
    */
   getFeedbackAttachment = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [$ownsProject({ param: "projectId", requires: "feedback:read" })],
     method: "GET",
     path: "/projects/:projectId/feedback/:feedbackId/attachments/:attachmentId",
     schema: {
@@ -591,7 +587,6 @@ export class FeedbackController {
       }),
     },
     handler: async ({ params, user }) => {
-      await this.ensureMember(params.projectId, user);
       const feedback = await this.loadFeedback(
         params.projectId,
         params.feedbackId,
@@ -635,7 +630,7 @@ export class FeedbackController {
    * Owner-only.
    */
   acceptFeedback = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
     method: "POST",
     path: "/projects/:projectId/feedback/:feedbackId/accept",
     schema: {
@@ -646,7 +641,6 @@ export class FeedbackController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.ensureOwner(params.projectId, user);
       // Triage is Support's. Gated by hand: this controller still checks
       // membership in its handlers, and porting fifty of those is its own
       // quest.
@@ -687,7 +681,7 @@ export class FeedbackController {
    * audit. Owner-only.
    */
   rejectFeedback = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
     method: "POST",
     path: "/projects/:projectId/feedback/:feedbackId/reject",
     schema: {
@@ -698,7 +692,6 @@ export class FeedbackController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.ensureOwner(params.projectId, user);
       // Triage is Support's. Gated by hand: this controller still checks
       // membership in its handlers, and porting fifty of those is its own
       // quest.
@@ -731,7 +724,7 @@ export class FeedbackController {
    * Soft-delete a feedback row. Owner-only.
    */
   removeFeedback = $action({
-    use: [$secure({ permissions: ["project:delete"] })],
+    use: [$ownsProject({ param: "projectId", requires: "feedback:triage" })],
     method: "DELETE",
     path: "/projects/:projectId/feedback/:feedbackId",
     schema: {
@@ -742,7 +735,6 @@ export class FeedbackController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.ensureOwner(params.projectId, user);
       // Triage is Support's. Gated by hand: this controller still checks
       // membership in its handlers, and porting fifty of those is its own
       // quest.
@@ -939,22 +931,6 @@ export class FeedbackController {
       return { ok: true };
     },
   });
-
-  /**
-   * Owner guard. Delegates to `ProjectSecurityService.assertOwner` and returns
-   * the resolved project for handlers that need it.
-   */
-  protected async ensureOwner(projectId: number, user: UserAccountToken) {
-    return await this.security.assertOwner(projectId, user);
-  }
-
-  /**
-   * Member guard. Delegates to `ProjectSecurityService.assertMember` for the
-   * read endpoints (list/detail) that any project member may access.
-   */
-  protected async ensureMember(projectId: number, user: UserAccountToken) {
-    return await this.security.assertMember(projectId, user);
-  }
 
   /**
    * Load the target project and reject when Support is off.

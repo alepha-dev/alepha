@@ -5,10 +5,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@alepha/ui/components/ui/card";
+import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { X } from "lucide-react";
 
+import type { EpicController } from "@/api/controllers/EpicController.ts";
 import type { Folio } from "@/api/entities/folios.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -35,18 +37,26 @@ export interface ProjectEpicFoliosProps {
 const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
+  const epicApi = useClient<EpicController>();
   const attachedIds = new Set((props.folios ?? []).map((f) => f.id));
+
+  // Asked here rather than threaded down from the page: the picker and the
+  // detach button are this component's own affordances, and the list of
+  // attached folios stays readable without either.
+  const canAttach = epicApi.attachFolio.can();
 
   return (
     <div className="min-h-0 flex-1 overflow-auto p-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle>{tr("epic.folios.title")}</CardTitle>
-          <EpicFolioPicker
-            projectId={props.projectId}
-            attachedIds={attachedIds}
-            onAttach={props.onAttach}
-          />
+          {canAttach && (
+            <EpicFolioPicker
+              projectId={props.projectId}
+              attachedIds={attachedIds}
+              onAttach={props.onAttach}
+            />
+          )}
         </CardHeader>
         <CardContent>
           {props.folios === null ? (
@@ -72,16 +82,18 @@ const ProjectEpicFolios = (props: ProjectEpicFoliosProps) => {
                   >
                     {folio.title}
                   </Link>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 shrink-0 p-0"
-                    aria-label={tr("epic.folios.detach")}
-                    onClick={() => props.onDetach(folio)}
-                  >
-                    <X className="size-4" />
-                  </Button>
+                  {canAttach && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 shrink-0 p-0"
+                      aria-label={tr("epic.folios.detach")}
+                      onClick={() => props.onDetach(folio)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>

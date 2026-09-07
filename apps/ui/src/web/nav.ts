@@ -105,6 +105,12 @@ export const NAV: NavGroup[] = [
             label: "Settings",
             description: "Sticky rail, cards of rows, and a danger zone.",
           },
+          {
+            href: "/blocks/permission-matrix",
+            label: "Permission matrix",
+            description:
+              "Permissions down the left, one column per rank, a checkbox at each crossing.",
+          },
         ],
       },
       {

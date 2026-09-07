@@ -693,6 +693,48 @@ another realm happened to declare first.
 `$role.can(permission)` and `$role.check(permission)` ask the same question from
 the other side, given only a role name.
 
+#### The registry as a catalogue
+
+Everything the application ever named is in one registry: `$secure()` registers
+a bare entry for every string it is handed, `$permission()` adds the rest.
+`SecurityProvider.permissionCatalogue()` reads that registry back as ordered
+groups, which is what a screen offering permissions - a role editor, a
+per-resource rank matrix - renders itself from.
+
+```typescript check
+import { $permission } from "alepha/security";
+
+class ArticlePermissions {
+  publish = $permission({
+    name: "publish",
+    group: "article",
+    label: "permissions.article.publish",
+    groupLabel: "permissions.article.group",
+    groupOrder: 2,
+  });
+}
+```
+
+`label` and `groupLabel` are translation **keys**, not text: a localised UI
+renders the matrix in the reader's language, and `description` is a plain
+string that cannot do that. `groupOrder` places the section, because
+alphabetical is not the order anyone thinks in; a group nobody ordered sorts
+after every group somebody did.
+
+A group has no declaration of its own - it exists because permissions name it -
+so its label and order are declared on the permissions inside it, and every
+permission in one group must agree. Two declarations that disagree are refused
+when the second one registers, rather than resolved by load order. For the same
+reason, a later declaration **enriches** an earlier bare one: a `$secure` that
+initialises before its `$permission` no longer swallows the label.
+
+⚠️ **`group:name` is a stable id.** Whatever grants a permission stores that
+string, so renaming either half silently re-points every grant that held the old
+one, with nothing going red. Never derive an id from a position in an array
+either: inserting a permission in the middle then re-maps every stored grant,
+and the grants that move are not the ones being edited. Say what a permission is
+called with `label`, which nothing stores and which is free to change.
+
 #### `issuer` on a role, and the ordering trap
 
 A `$role` with no `issuer` attaches to **every** realm, including realms

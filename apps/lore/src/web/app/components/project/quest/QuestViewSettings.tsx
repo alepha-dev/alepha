@@ -75,7 +75,10 @@ const QuestViewSettings = (props: QuestViewSettingsProps) => {
         })
       : tr("quest.view.reminder.none");
 
-  const canEditReminder = !!props.quest.acceptedAt && !props.quest.completedAt;
+  const canEditReminder =
+    !!props.quest.acceptedAt &&
+    !props.quest.completedAt &&
+    client.setQuestReminder.can();
 
   return (
     <div className="flex flex-col gap-2 px-1">

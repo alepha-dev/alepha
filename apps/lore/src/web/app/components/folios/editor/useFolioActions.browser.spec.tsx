@@ -12,6 +12,7 @@ import { LinkProvider } from "alepha/server/links";
 import { describe, it } from "vitest";
 
 import type { Folio } from "@/api/entities/folios.ts";
+import { virtualClientFake } from "@/testing/virtualClientFake.ts";
 
 import {
   forgetAllProtectedKeys,
@@ -76,7 +77,7 @@ class FakeLinkProvider extends LinkProvider {
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
-    return {
+    return virtualClientFake({
       update: async (config: {
         params: { id: string };
         body: Record<string, unknown>;
@@ -97,7 +98,7 @@ class FakeLinkProvider extends LinkProvider {
       delete: async () => {
         throw new Error("not used by this test");
       },
-    };
+    });
   }
 
   // The fake's own tiny in-memory "row", seeded by the test and updated by

@@ -41,3 +41,4 @@ API surface missing.
 ### Providers
 
 - [`LinkProvider`](/docs/reference-providers-linkprovider) - Browser, SSR friendly, service to handle links.
+- [`ScopeGrantsProvider`](/docs/reference-providers-scopegrantsprovider) - What the viewer may do inside the scope the UI is currently rendering.

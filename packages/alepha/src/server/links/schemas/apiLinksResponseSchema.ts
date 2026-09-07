@@ -33,6 +33,13 @@ export const apiActionSchema = z.object({
         "Service name associated with the action, used for service discovery and routing.",
     })
     .optional(),
+
+  permissions: z
+    .array(z.text())
+    .describe(
+      "Permissions this action's `$secure` gate requires, as `group:name`. Static per action rather than per user: the caller can already see the action, and the server pruned the ones they may not call at all. It is here so `LinkProvider.can(action)` can ask the second question - whether the permission holds in the SCOPE currently being rendered - without any screen repeating a permission string.",
+    )
+    .optional(),
 });
 
 export const apiRegistryResponseSchema = z.object({

@@ -93,7 +93,7 @@ describe("notification channels", () => {
         .all()
         .map((it) => it.channel)
         .sort(),
-    ).toEqual(["email", "fax", "sms"]);
+    ).toEqual(["email", "fax", "inbox", "sms"]);
     expect(channels.find("fax")).toBeInstanceOf(FaxChannel);
     expect(channels.find("telex")).toBeUndefined();
 

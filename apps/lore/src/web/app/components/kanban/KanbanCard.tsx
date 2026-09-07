@@ -9,6 +9,7 @@ import {
   CalendarClock,
   Lock,
   Paperclip,
+  PauseCircle,
   Sparkles,
   Timer,
   Flag,
@@ -28,6 +29,11 @@ import { UserAvatar } from "../shared/UserAvatar.tsx";
 
 export interface KanbanCardProps {
   quest: QuestResource;
+  /**
+   * Whether this card may be picked up. `false` for a rank that may read the
+   * board and not move anything on it.
+   */
+  draggable?: boolean;
   onSelect: (quest: QuestResource) => void;
   /**
    * Dot class for the quest's area, resolved by the board once for the
@@ -97,11 +103,22 @@ const priorityVariant = (
 const KanbanCard = (props: KanbanCardProps) => {
   const { quest, onSelect } = props;
   const dt = useInject(DateTimeProvider);
-  const { l } = useI18n<I18n, "en">();
+  const { l, tr } = useI18n<I18n, "en">();
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `quest-${quest.id}`,
       data: { type: "quest", quest },
+      // ⚠️ A drag handle is a write control with no button to hide. A rank
+      // without `quest:update` still opens the card - the board is a READ
+      // surface too - and simply cannot pick one up. The board asks the
+      // action, so no permission string is written here.
+      //
+      // A held card is undraggable for a different reason: every lifecycle
+      // move a drop can express (accept, move, complete) is refused server
+      // side while the quest is on hold, so a draggable one would animate
+      // into another column and snap back on the error. Lift the hold from
+      // the card to move it.
+      disabled: props.draggable === false || Boolean(quest.heldAt),
     });
   // A card is a drop target as well as a draggable: dropping onto one is
   // how a position WITHIN a column is expressed. The column droppable
@@ -140,10 +157,15 @@ const KanbanCard = (props: KanbanCardProps) => {
     quest.dueAt && !quest.completedAt
       ? dueDate.describe(quest.dueAt, dt)
       : undefined;
+  // Read off the quest rather than taken as a prop like `blocked`: a hold
+  // is a column on the row, where `blocked` is a fact about a DIFFERENT
+  // quest (its predecessor) that only the board can work out.
+  const held = Boolean(quest.heldAt);
   const hasBadges =
     attachmentCount > 0 ||
     timerRunning ||
     props.blocked ||
+    held ||
     Boolean(due) ||
     objectives.total > 0;
 
@@ -236,6 +258,13 @@ const KanbanCard = (props: KanbanCardProps) => {
               data-testid="kanban-card-badges"
               className="text-muted-foreground flex items-center gap-1.5 pt-1"
             >
+              {held && (
+                <PauseCircle
+                  data-testid="kanban-card-held"
+                  aria-label={String(tr("quest.status.held"))}
+                  className="text-destructive size-3"
+                />
+              )}
               {props.blocked && (
                 <Lock
                   data-testid="kanban-card-blocked"

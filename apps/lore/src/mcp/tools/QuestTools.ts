@@ -44,6 +44,10 @@ import {
   questTagsResultSchema,
   questUnassignParamsSchema,
   questUnassignResultSchema,
+  questHoldParamsSchema,
+  questHoldResultSchema,
+  questUnholdParamsSchema,
+  questUnholdResultSchema,
   questUnshelveParamsSchema,
   questUnshelveResultSchema,
   questUpdateParamsSchema,
@@ -205,11 +209,19 @@ export class QuestTools {
    * Get quest status from quest data. Delegates so the MCP surface cannot
    * drift from the status the REST resource and the controller's transition
    * guards report — this used to be a third, independently-ordered copy.
+   *
+   * ⚠️ **Every timestamp the mapper reads must be listed here.** They are all
+   * optional on `Quest`, so an object type that omits one is still assignable
+   * to the mapper's `Pick` and typecheck stays green — the status simply
+   * comes back as whatever the missing column would have overridden. Leaving
+   * `heldAt` out reported every held quest as `accepted` or `new`, across
+   * `quest_list`, `quest_get` and every transition result at once.
    */
   protected getQuestStatus(quest: {
     acceptedAt?: string;
     completedAt?: string;
     shelvedAt?: string;
+    heldAt?: string;
   }): QuestStatus {
     return this.questMapper.questStatus(quest);
   }
@@ -246,7 +258,8 @@ export class QuestTools {
   quest_comment_add = $tool({
     description:
       "Leave a comment on a quest, as yourself. Comments interleave with the quest's own history into its Discussion, and are what an agent uses to report what it decided, what it could not do, or what the next session should know. Read them back with `quest_get`. " +
-      "Anything posted through this tool is recorded as agent-authored and shown that way in Lore, so do not sign your messages or announce that you are an AI: the thread already says so.",
+      "Anything posted through this tool is recorded as agent-authored and shown that way in Lore, so do not sign your messages or announce that you are an AI: the thread already says so. " +
+      "⚠️ **`@name` reaches a person.** A handle matching a project member puts a message in their inbox and, unless they have turned it off, sends them an email. Mention somebody when you need them, not to address the room.",
     title: "Comment on a quest",
     annotations: { readOnlyHint: false, idempotentHint: false },
     schema: {
@@ -374,6 +387,7 @@ export class QuestTools {
           acceptedAt: quest.acceptedAt,
           completedAt: quest.completedAt,
           shelvedAt: quest.shelvedAt,
+          heldAt: quest.heldAt,
           epic: quest.epicId != null ? epicRefs.get(quest.epicId) : undefined,
         })),
         total: result.page.totalElements ?? 0,
@@ -605,6 +619,75 @@ export class QuestTools {
   });
 
   /**
+   * Hold a quest — block it on something outside itself, with a reason.
+   */
+  quest_hold = $tool({
+    description:
+      "Put a quest on hold: it is blocked on something outside itself and cannot move until that resolves. Use it when work is waiting on an answer, a credential, a decision or a deploy window — for waiting on ANOTHER QUEST use `dependsOn` on `quest_update` instead, which draws the questline. " +
+      "A held quest keeps everything it had (its assignee, its objectives, its kanban column) and reads as `held` rather than as `new` or `accepted`; `quest_unhold` gives the previous status back with nothing to restore by hand. While held, `quest_accept` and `quest_complete` are both refused and say so. " +
+      "`reason` is REQUIRED and is posted as a comment on the quest's discussion, so an `@handle` in it reaches that project member's inbox — mention whoever you are waiting on rather than hoping they look. " +
+      "Reachable from 'new' and 'accepted' only, and NOT idempotent: holding an already-held quest is refused rather than silently discarding the new reason, because a reason is what this call is for. To change why a quest is held, add a comment; to replace the hold, unhold and hold again.",
+    title: "Hold quest",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+    },
+    schema: {
+      params: questHoldParamsSchema,
+      result: questHoldResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const quest = await this.questController.holdQuest({
+        params: { id },
+        body: { reason: params.reason },
+      });
+
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        title: quest.title,
+        heldAt: quest.heldAt!,
+        status: this.getQuestStatus(quest),
+      };
+    },
+  });
+
+  /**
+   * Unhold a quest — lift the block and give it its previous status back.
+   */
+  quest_unhold = $tool({
+    description:
+      "Lift a quest's hold. No reason and no conditions: whatever it was waiting for either arrived or stopped mattering. " +
+      'The quest goes back to whatever it was before the hold — `accepted` and still assigned to the same person if somebody had it, `new` otherwise — so read `status` in the result rather than assuming. Use `quest_list` with `status: "held"` to see what is currently blocked. ' +
+      "Refused inside a concluded epic, where nothing reopens; allowed while the epic is planned (that edits an open plan) or active.",
+    title: "Unhold quest",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questUnholdParamsSchema,
+      result: questUnholdResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const quest = await this.questController.unholdQuest({
+        params: { id },
+      });
+
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        title: quest.title,
+        status: this.getQuestStatus(quest),
+      };
+    },
+  });
+
+  /**
    * Send an accepted quest back to the backlog.
    */
   quest_unassign = $tool({
@@ -788,6 +871,7 @@ export class QuestTools {
         acceptedAt: quest.acceptedAt,
         completedAt: quest.completedAt,
         shelvedAt: quest.shelvedAt,
+        heldAt: quest.heldAt,
         dueAt: quest.dueAt,
         completionMessage: quest.completionMessage,
         completionMessageUpdatedAt: quest.completionMessageUpdatedAt,

@@ -1,5 +1,6 @@
 import { $inject, z } from "alepha";
 import { FileService } from "alepha/api/files";
+import { RankService } from "alepha/api/ranks";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { $secure } from "alepha/security";
@@ -22,7 +23,6 @@ import {
 import { EstateCommandService } from "../services/EstateCommandService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type { EstateCommandListItem, EstateCommandResource };
 
@@ -50,7 +50,7 @@ export type { EstateCommandListItem, EstateCommandResource };
 export class EstateCommandController {
   protected readonly estates = $inject(EstateService);
   protected readonly commands = $inject(EstateCommandService);
-  protected readonly security = $inject(ProjectSecurityService);
+  protected readonly ranks = $inject(RankService);
   protected readonly artifacts = $repository(artifacts);
   protected readonly grants = $repository(estateProjects);
   protected readonly rows = $repository(estateCommands);
@@ -205,13 +205,23 @@ export class EstateCommandController {
         );
       }
 
+      // ⚠️ ranks: imperative. The check here is on the ARTIFACT's project,
+      // named indirectly by the body and only on the `deploy` branch of a
+      // discriminated union - while the action's own gate is the estate's
+      // owner. A middleware cannot serve a conditional check on a second
+      // scope, so this asks the ranks module directly.
       const artifact = await this.artifacts.findOne({
         where: { id: { eq: body.artifactId } },
       });
       if (!artifact) {
         throw new NotFoundError("Artifact not found");
       }
-      await this.security.assertMember(artifact.projectId, user);
+      await this.ranks.assert(
+        "project",
+        String(artifact.projectId),
+        "artifact:read",
+        user,
+      );
       const lent = await this.grants.findOne({
         where: {
           estateId: { eq: estate.id },

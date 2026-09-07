@@ -65,7 +65,7 @@ const questEpicRefSchema = z.object({
 export const questListParamsSchema = projectParamsSchema.extend({
   status: questStatusSchema
     .describe(
-      "Filter by quest status. Omit to list everything still in scope — shelved quests are excluded unless you ask for them explicitly.",
+      'Filter by quest status. Omit to list everything still in scope — shelved quests are excluded unless you ask for them explicitly, and HELD quests are not: a held quest is blocked, not out of scope, and it is the one you may be able to unblock. `held` is exclusive with `new` and `accepted`, so `status: "accepted"` never returns a quest that is currently on hold.',
     )
     .optional(),
   search: z.string().describe("Search quests by title").optional(),
@@ -164,6 +164,12 @@ export const questListResultSchema = z.object({
       acceptedAt: z.datetime().optional(),
       completedAt: z.datetime().optional(),
       shelvedAt: z.datetime().optional(),
+      heldAt: z
+        .datetime()
+        .describe(
+          "When this quest was put on hold. Present exactly when `status` is `held`; the reason is a comment on the quest, so read the discussion with `quest_get` to find out what it is waiting for.",
+        )
+        .optional(),
       epic: questEpicRefSchema
         .describe(
           "The epic this quest is filed under, if any. Includes the epic's own status so a quest under a `planned` epic reads as parked rather than as unlabeled noise in this list.",
@@ -334,6 +340,7 @@ export const questGetResultSchema = z.object({
   acceptedAt: z.datetime().optional(),
   completedAt: z.datetime().optional(),
   shelvedAt: z.datetime().optional(),
+  heldAt: z.datetime().optional(),
   dueAt: z.datetime().optional(),
   completionMessage: z.string().optional(),
   completionMessageUpdatedAt: z.datetime().optional(),
@@ -493,6 +500,41 @@ export const questUnshelveResultSchema = z.object({
   id: z.integer(),
   shortId: z.integer(),
   title: z.string(),
+  status: questStatusSchema,
+});
+
+// -----------------------------------------------------------------------------
+// quest_hold / quest_unhold
+// -----------------------------------------------------------------------------
+
+export const questHoldParamsSchema = entityRefSchema.extend({
+  reason: z
+    .string()
+    .min(1)
+    .describe(
+      "Why this quest is blocked, and ideally what would unblock it. REQUIRED: a hold with no reason is indistinguishable from an abandoned quest. This is posted as a comment on the quest's discussion, not stored on a field, so `@handle` reaches that project member's inbox exactly as it does in `quest_comment_add` — mention whoever you are waiting on.",
+    ),
+});
+
+export const questHoldResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  heldAt: z.datetime(),
+  status: questStatusSchema,
+});
+
+export const questUnholdParamsSchema = entityRefSchema;
+
+export const questUnholdResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  /**
+   * What the quest went back to, which is whatever it was before the hold.
+   * Worth returning rather than assuming `new`: a quest held while somebody
+   * had it comes back `accepted`, still theirs.
+   */
   status: questStatusSchema,
 });
 

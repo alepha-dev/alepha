@@ -83,6 +83,35 @@ export class NotificationSenderService {
       }
     }
 
+    // ⚠️ **Every channel, addressable or not**, and deliberately its own
+    // receipt write rather than a branch folded into the gate above: the
+    // gate is suppression plus preferences, which a sink must never get.
+    // A sink can still be misconfigured, so it is asked the same question.
+    //
+    // This runs before `render()` because that is the whole point. `render()`
+    // is called outside `attempt()`, so a channel that throws there writes no
+    // receipt and the job retries a contact that will never resolve.
+    const unavailable = await channel.unavailable(payload);
+    if (unavailable) {
+      this.log.info("Notification unavailable", {
+        type: payload.type,
+        template: payload.template,
+        contact: unavailable.recipient,
+        reason: unavailable.reason,
+      });
+      await this.writeReceipt(context, payload, {
+        status: "skipped",
+        skipReason: "unavailable",
+        recipient: unavailable.recipient,
+        error: unavailable.reason,
+      });
+      return {
+        type: payload.type,
+        to: unavailable.recipient,
+        skipped: "unavailable" as const,
+      };
+    }
+
     const rendered = await channel.render(this.renderInput(payload, channel));
     const result = await this.attempt(
       context,
@@ -157,7 +186,7 @@ export class NotificationSenderService {
     outcome: {
       status: "sent" | "failed" | "skipped";
       messageId?: string | null;
-      skipReason?: "suppressed" | "declined";
+      skipReason?: "suppressed" | "declined" | "unavailable";
       subject?: string | null;
       body?: string | null;
       error?: string | null;

@@ -9,6 +9,7 @@ import { ForbiddenError, NotFoundError } from "alepha/server";
 import { currentAuthorityAtom } from "../atoms/currentAuthorityAtom.ts";
 import { currentResourceAtom } from "../atoms/currentResourceAtom.ts";
 import { ResourceGateMemoProvider } from "../providers/ResourceGateMemoProvider.ts";
+import { ResourceGrantsProvider } from "../providers/ResourceGrantsProvider.ts";
 import { $secure, type SecureOptions } from "./$secure.ts";
 
 /**
@@ -23,11 +24,15 @@ import { $secure, type SecureOptions } from "./$secure.ts";
  * and publishes it via `OwnedResourceProvider` so the handler does not
  * re-fetch what the gate already read.
  *
- * Two checks, applied in order:
+ * Three checks, applied in order:
  *
  * 1. **Owner**: `row[owner] === user.id`.
  * 2. **Membership**: when `via` is set, a row in the join entity links the
  *    caller to this resource.
+ * 3. **Grant**: when `requires` is set, {@link ResourceGrantsProvider} says
+ *    whether the caller holds that permission INSIDE this resource. Its
+ *    default answers allow, so an application that never substitutes it
+ *    behaves exactly as it did before the option existed.
  *
  * Both are read off the row the param names, unless `through` says ownership
  * lives one hop away - on the project a quest belongs to, say. The resource
@@ -67,8 +72,46 @@ export function $owns(options: OwnsOptions): Middleware {
   const { alepha } = $context();
   const memo = alepha.inject(ResourceGateMemoProvider);
 
+  // ⚠️ Constructed here, at declaration time, which fixes an ordering rule a
+  // module that SUBSTITUTES this provider has to respect: it must be
+  // registered before the classes whose gates use it. `alepha/api/ranks` is
+  // the one that does, and getting the order wrong throws
+  // `TooLateSubstitutionError` at boot, naming both classes.
+  //
+  // Loud is the right failure. Resolving it per request instead would throw
+  // `ContainerLockedError` on a container that never constructed it, and
+  // deferring the substitution with `optional: true` would SKIP it silently -
+  // which means every `requires` in the application allows, and nothing says
+  // so. That is why `ResourceGrantsProvider` is deliberately absent from
+  // `AlephaSecurity.services`: constructing it at module registration would
+  // make every substitution too late by definition.
+  const grants = alepha.inject(ResourceGrantsProvider);
+
+  if (options.owner === undefined && !options.via) {
+    throw new AlephaError(
+      "$owns: a gate with neither `owner` nor `via` allows every authenticated caller. " +
+        "Name the owner column, the membership join, or both.",
+    );
+  }
+
+  const requires = options.requires
+    ? Array.isArray(options.requires)
+      ? options.requires
+      : [options.requires]
+    : [];
+
   return $secure({
     ...options.secure,
+    // One string, checked twice. Folding it in here is what runs the
+    // APPLICATION-scope check exactly as a separate `$secure({ permissions })`
+    // beside this gate would have, and it is also what puts the permission in
+    // the middleware's `[OPTIONS]` - where `ServerLinksProvider` reads it and
+    // publishes it to the client's action registry. A `requires` that stopped
+    // short of `secure.permissions` would break that chain silently, and every
+    // write control the client hides on a permission would stay visible.
+    permissions: requires.length
+      ? [...(options.secure?.permissions ?? []), ...requires]
+      : options.secure?.permissions,
     guard: async (ctx) => {
       const from = options.from ?? "params";
 
@@ -200,42 +243,92 @@ export function $owns(options: OwnsOptions): Middleware {
         return true;
       }
 
-      if (authority[options.owner] === ctx.user.id) {
-        return true;
-      }
+      const isOwner =
+        options.owner !== undefined && authority[options.owner] === ctx.user.id;
 
-      if (!options.via) {
-        throw new ForbiddenError(
-          options.message ?? "Not the owner of this resource",
-        );
-      }
-
-      const link = options.via.repository();
       const via = options.via;
 
-      // Keyed on the columns as well as the values: two gates may join the
-      // same table on different pairs, and the caller's id belongs in the key
-      // even though a request has one - an impersonating or service-account
-      // path that ever ran two identities in one request would otherwise
-      // answer the second with the first one's grant.
-      const membership = await memo.resolve(
-        `via:${link.tableName}:${via.resource}=${authorityId}:${via.user}=${ctx.user.id}`,
-        () =>
-          link.findOne({
-            where: {
-              // `authorityId`, not `id`: with `through` the membership rows
-              // point at the authority (the project), never at the row the
-              // param names.
-              [via.resource]: { eq: authorityId },
-              [via.user]: { eq: ctx.user.id },
-            },
-          } as any),
-      );
+      // Read the membership row when the decision needs it, and once per
+      // request either way.
+      //
+      // ⚠️ An owner reads it too whenever `requires` is set. The owner check
+      // above short-circuits before the join, which is exactly why the owner
+      // of a resource costs one read fewer than a plain member does - and a
+      // permission set lives ON that join row, so a gate that named one and
+      // then skipped the read would hand an owner an empty grant. The cost is
+      // real and is the creator's alone.
+      const readMembership = async () => {
+        if (!via) {
+          return undefined;
+        }
 
-      if (!membership) {
-        throw new ForbiddenError(
-          options.message ?? "Not a member of this resource",
-        );
+        const link = via.repository();
+
+        // The key is built by `ResourceGateMemoProvider` rather than written
+        // here, so an imperative read of the same membership row lands on the
+        // same entry. See that method for why the columns are in the key.
+        return (await memo.resolve(
+          ResourceGateMemoProvider.membershipKey({
+            table: link.tableName,
+            resourceColumn: via.resource,
+            resourceId: authorityId,
+            userColumn: via.user,
+            userId: ctx.user.id,
+          }),
+          () =>
+            link.findOne({
+              where: {
+                // `authorityId`, not `id`: with `through` the membership rows
+                // point at the authority (the project), never at the row the
+                // param names.
+                [via.resource]: { eq: authorityId },
+                [via.user]: { eq: ctx.user.id },
+              },
+            } as any),
+        )) as Record<string, unknown> | undefined;
+      };
+
+      let membership: Record<string, unknown> | undefined;
+
+      if (!isOwner || requires.length) {
+        membership = await readMembership();
+      }
+
+      if (!isOwner) {
+        if (!via) {
+          throw new ForbiddenError(
+            options.message ?? "Not the owner of this resource",
+          );
+        }
+
+        if (!membership) {
+          throw new ForbiddenError(
+            options.message ?? "Not a member of this resource",
+          );
+        }
+      }
+
+      // The second layer, and the only one that can narrow. Skipped entirely
+      // when the call site named no permission, so an application that never
+      // adopts this pays nothing for it.
+      if (requires.length) {
+        const decision = await grants.check({
+          user: ctx.user,
+          authority,
+          membership,
+          requires,
+        });
+
+        if (!decision.allowed) {
+          // The provider's message when it wrote one: it is the only party
+          // that knows which conjunct failed. `options.message` otherwise,
+          // so a gate that already says what this resource is keeps saying it.
+          throw new ForbiddenError(
+            decision.message ??
+              options.message ??
+              `Permission '${requires.join("', '")}' required in this resource`,
+          );
+        }
       }
 
       return true;
@@ -331,8 +424,38 @@ export interface OwnsOptions {
   /**
    * Column holding the owner's user id, on the row the decision is made
    * against - the resource itself, or the row `through` lands on.
+   *
+   * Optional, so a **via-only** gate is expressible: membership is then the
+   * whole answer, and an application that has stopped treating "who created
+   * the row" as an authorization input has nothing to name here. That
+   * application will typically have moved the distinction onto the join row
+   * instead, where {@link requires} can read it.
+   *
+   * ⚠️ A gate with neither `owner` nor `via` allows every authenticated
+   * caller, so it is refused at declaration time rather than at request time.
    */
-  owner: string;
+  owner?: string;
+
+  /**
+   * Permission(s) the caller must hold **inside this resource**, on top of
+   * being its owner or one of its members.
+   *
+   * One string, checked twice. It is folded into
+   * {@link OwnsOptions.secure}`.permissions`, so the application-scope check
+   * runs exactly as a separate `$secure({ permissions })` beside this gate
+   * would have; it is then handed to {@link ResourceGrantsProvider} for the
+   * resource-scope check. No call site can therefore name one permission at
+   * one layer and a different one at the other.
+   *
+   * ```ts
+   * $ownsProject({ param: "projectId", requires: "release:manage" })
+   * ```
+   *
+   * A list is an AND. With no {@link ResourceGrantsProvider} substituted the
+   * second layer allows unconditionally, which is what makes this option safe
+   * to adopt one call site at a time.
+   */
+  requires?: string | string[];
 
   /**
    * Membership fallback: a join entity linking users to the row the decision

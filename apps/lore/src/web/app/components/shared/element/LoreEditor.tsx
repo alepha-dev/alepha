@@ -97,17 +97,37 @@ const LoreEditor = (props: LoreEditorProps) => {
     // rather than a control on it. Same treatment the folio workspace
     // already gives it, which is why `iconOnly` and `className` exist.
     <div className="relative">
-      {!controlled && !props.hideModeToggle && (
-        <MarkdownModeToggle
-          mode={mode ?? "edit"}
-          onChange={setMode}
-          iconOnly
-          // Transparent with a border, not a filled chip: it sits inside the
-          // field, and a solid block in the corner read as a separate
-          // control pasted on top of the input rather than part of it.
-          className="absolute top-1.5 right-1.5 z-10 border bg-transparent"
-        />
-      )}
+      {!controlled &&
+        !props.hideModeToggle && (
+          // ⚠️ The BAND is what is positioned here, and the toggle is centred
+          // inside it. It used to be `absolute top-1.5` on the button itself,
+          // which put its centre 3px below the format-toolbar buttons it shares
+          // a row with (feedback #P2118): the toolbar's are 24px at `py-1`,
+          // this one is 28px, and no single `top` centres two heights.
+          //
+          // Both numbers are the frame's rather than hand-tuned. `top-px` is
+          // the frame's 1px border, which the toolbar sits below and an offset
+          // measured from this wrapper does not - `MarkdownEditorInner`'s
+          // `-mt-3` cancels the frame's `p-3` and never the border, which is
+          // the pixel the quest's own arithmetic missed. `h-8` is the toolbar's
+          // band, `py-1` twice around a `size-6` button, so both centres land
+          // 17px below the frame whatever size this button is.
+          //
+          // Anchored to the TOP of the band rather than centred on the whole
+          // toolbar because the toolbar is `flex-wrap`: a narrow field wraps it
+          // onto two rows, and the first row is the one this lines up with.
+          <div className="absolute top-px right-1.5 z-10 flex h-8 items-center">
+            <MarkdownModeToggle
+              mode={mode ?? "edit"}
+              onChange={setMode}
+              iconOnly
+              // Transparent with a border, not a filled chip: it sits inside
+              // the field, and a solid block in the corner read as a separate
+              // control pasted on top of the input rather than part of it.
+              className="border bg-transparent"
+            />
+          </div>
+        )}
       <MarkdownEditor
         value={props.value}
         onChange={props.onChange}

@@ -93,6 +93,37 @@ $owns({
 
 Checks run in order: owner first, then membership. When you supply the `message` option, it's used for **both** denials on purpose - a different message per branch tells an attacker whether the resource exists and who owns it. (Without a custom `message`, the defaults differ; set one for endpoints where that distinction matters.)
 
+`owner` is optional, so a **via-only** gate is legal: membership is then the whole answer, which is what an application that has stopped treating "who created the row" as an authorization input wants. A gate with neither `owner` nor `via` would allow every authenticated caller, so it is refused when the class is constructed rather than at request time.
+
+## What a member may do: `requires`
+
+`via` answers whether you are in. It does not answer what you may do once you are, and applications that give their members different powers - a viewer, a contributor, an administrator - need that second answer from the same gate. A rule split across a middleware and a hand-written check in the handler is a rule with two versions of itself.
+
+```typescript
+$owns({
+  repository: () => this.campaigns,
+  param: "id",
+  via: {
+    repository: () => this.members,
+    resource: "campaignId",
+    user: "userId",
+  },
+  requires: "release:manage",
+});
+```
+
+**One string, checked twice.** It is folded into `secure.permissions`, so the application-scope check runs exactly as a separate `$secure({ permissions: ["release:manage"] })` beside the gate would have - and it lands in the middleware's options, which is what publishes it to the client's action registry and lets the UI hide a control nobody may use. It is then handed to `ResourceGrantsProvider` for the resource-scope check. No call site can name one permission at one layer and a different one at the other.
+
+`ResourceGrantsProvider`'s default answers allow, unconditionally. An application that never substitutes it behaves exactly as it did before `requires` existed, whether or not its call sites use the option. Substitute it like any other seam:
+
+```typescript
+alepha.with({ provide: ResourceGrantsProvider, use: RankGrantsProvider });
+```
+
+An implementation receives the **rows** the gate already read - the authority row and the membership row - and never their ids. That is the whole performance contract: it cannot go and query for the assignment, because it was handed nothing to query with, so the assignment has to be a column on a row the request already pays for. It answers `{ allowed: true }`, or `{ allowed: false, message }` - the message being its own to write, since it is the only party that knows which conjunct failed.
+
+⚠️ **An owner reads the membership row when `requires` is set.** The owner check short-circuits before the join, which is exactly why the owner of a resource costs one read fewer than a plain member - and a permission set lives on that join row. A gate that named a permission and then skipped the read would hand the owner an empty grant.
+
 ## The second hop: `through`
 
 `via` only works when the route param names **the thing being shared**. It usually doesn't. Membership lives on a campaign; the route names a quest that belongs to one. There is no join to make, and `via` cannot express the rule at all.

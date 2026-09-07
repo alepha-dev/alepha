@@ -19,8 +19,8 @@ import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 import type { AppRouter } from "../../../AppRouter.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { useRank } from "../../shared/useRank.ts";
 import AppArtifactsList from "./AppArtifactsList.tsx";
 import AppDeployRuns from "./AppDeployRuns.tsx";
 
@@ -51,12 +51,12 @@ import AppDeployRuns from "./AppDeployRuns.tsx";
  */
 const AppDeploy = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const toaster = useToast();
   const router = useRouter<AppRouter>();
   const deployApi = useClient<DeployController>();
 
   const [project] = useStore(currentProjectAtom);
-  const [member] = useStore(currentProjectMemberAtom);
   const [instance] = useStore(currentInstanceAtom);
   const [busy, setBusy] = useState("");
   const [reload, setReload] = useState(0);
@@ -96,7 +96,10 @@ const AppDeploy = () => {
     );
   }
 
-  const isOwner = member?.owner ?? false;
+  // Rank, not ownership: `deploy:manage` is its own permission and an owner
+  // may have granted it to a rank. ⚠️ Never the boundary - the endpoints refuse
+  // server-side, and a hidden button refuses nothing.
+  const canDeploy = can("deploy:manage");
   // Derived from the estate's TYPE through the module the server reads too, so
   // the button and the gate cannot disagree about what this copy can run.
   const runnable = acceptedRuntimes(instance.estate?.type ?? "cloudflare");
@@ -125,7 +128,7 @@ const AppDeploy = () => {
       <AppDeployRuns
         projectId={project.id}
         instanceId={instance.id}
-        canWrite={isOwner}
+        canWrite={canDeploy}
         reloadToken={reload}
         onChanged={() => setReload((it) => it + 1)}
       />
@@ -137,7 +140,7 @@ const AppDeploy = () => {
           const usable = group.variants.some((variant) =>
             runnable.includes(variant.runtime),
           );
-          if (!isOwner) {
+          if (!canDeploy) {
             return null;
           }
           return (

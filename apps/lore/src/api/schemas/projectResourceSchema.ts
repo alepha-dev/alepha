@@ -55,6 +55,21 @@ export type ProjectResource = Infer<typeof projectResourceSchema>;
 export const projectOverviewResourceSchema = projectResourceSchema.extend({
   areaCount: z.integer(),
   /**
+   * Whether the caller holds the `owner` rank here.
+   *
+   * ⚠️ A boolean and not a rank name, deliberately. Outside a project there
+   * is no rank to read, and rank NAMES are per-project user data: two projects
+   * can both have an "Admin" meaning different things, so a chip on twenty
+   * rows would be noise rather than information. Ownership is the one fact
+   * that compares across projects, and it is one click from the matrix that
+   * explains the rest.
+   *
+   * Derived from `members.rank`, never from `projects.createdBy`: the creator
+   * column stopped being an authorization input in epic #E39, and after an
+   * ownership transfer the two disagree.
+   */
+  owner: z.boolean(),
+  /**
    * Open quests, as `OpenQuestScope` defines them.
    *
    * The dashboard rail shows this beside the Active Quests tile, so the two

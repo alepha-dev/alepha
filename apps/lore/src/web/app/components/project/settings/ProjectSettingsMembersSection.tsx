@@ -1,3 +1,4 @@
+import { Control } from "@alepha/ui/components/control/control";
 import { settingsCardEdge } from "@alepha/ui/components/settings/settings-card-edge.ts";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
@@ -18,8 +19,10 @@ import {
 import { Input } from "@alepha/ui/components/ui/input";
 import { Label } from "@alepha/ui/components/ui/label";
 import { cn } from "@alepha/ui/lib/utils";
+import { z } from "alepha";
 import type { InvitationEntity } from "alepha/api/invitations";
 import { useAuth } from "alepha/react/auth";
+import { useForm, useFormValues } from "alepha/react/form";
 import { Localize, useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { Mail, MoreHorizontal, Plus, Users } from "lucide-react";
@@ -31,10 +34,22 @@ import type { User } from "@/api/entities/users.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { MemberIdentity } from "@/web/app/components/shared/MemberIdentity.tsx";
 import { useInviteMember } from "@/web/app/components/shared/useInviteMember.ts";
+import { useProjectRanks } from "@/web/app/components/shared/useProjectRanks.ts";
+import { useRank } from "@/web/app/components/shared/useRank.ts";
 import { useRemoveMember } from "@/web/app/components/shared/useRemoveMember.ts";
 import { useRevokeInvitation } from "@/web/app/components/shared/useRevokeInvitation.ts";
 import { displayName } from "@/web/app/services/displayName.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
+
+import ProjectMemberRankPicker from "./ProjectMemberRankPicker.tsx";
+import ProjectTransferOwnershipDialog from "./ProjectTransferOwnershipDialog.tsx";
+
+/**
+ * The invite dialog's rank field. Required, so `Control` does not make it
+ * deselectable: an invitation always lands the person on a rank, and `member`
+ * is the floor.
+ */
+const inviteRankFieldSchema = z.object({ rank: z.text() });
 
 export interface ProjectSettingsMembersSectionProps {
   project: Project;
@@ -45,19 +60,47 @@ export interface ProjectSettingsMembersSectionProps {
 const ProjectSettingsMembersSection = (
   props: ProjectSettingsMembersSectionProps,
 ) => {
+  const { can } = useRank();
   const router = useRouter<AppRouter>();
   const inviteMember = useInviteMember();
   const revokeInvitation = useRevokeInvitation();
   const removeMember = useRemoveMember();
-  const auth = useAuth();
   const { tr } = useI18n<I18n, "en">();
 
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
+  /**
+   * The rank the invitee lands on. `member` by default, which is what every
+   * invitation sent before epic #E39 resolves to.
+   *
+   * A one-field form rather than `useState`, so the picker is a `Control`
+   * like every other one in the app (feedback #P2121). Nothing saves on
+   * change: the value is read when the Invite button is pressed.
+   */
+  const inviteForm = useForm({
+    schema: inviteRankFieldSchema,
+    initialValues: { rank: "member" },
+    handler: () => {},
+  });
+  const inviteRank = String(useFormValues(inviteForm).rank ?? "member");
+  const [transferTo, setTransferTo] = useState<
+    { userId: string; name: string } | undefined
+  >();
+  const auth = useAuth();
+  const projectRanks = useProjectRanks();
 
   const members = props.members;
   const pendingInvitations = props.pendingInvitations ?? [];
-  const isOwner = props.project.createdBy === auth.user?.id;
+  const isOwner = can("member:manage");
+  /**
+   * Whether the CALLER is the owner, which is a different question from
+   * `member:manage` and the only one transfer answers to: an Admin rank can
+   * invite, remove and rank members without being able to give the project
+   * away.
+   */
+  const amOwner = props.members.some(
+    (it) => it.userId === auth.user?.id && it.rank === "owner",
+  );
 
   /**
    * What the confirmation dialog calls the person: the same label the card
@@ -68,8 +111,11 @@ const ProjectSettingsMembersSection = (
     displayName(member.user);
 
   const handleInvite = async () => {
-    if (!(await inviteMember.invite(props.project.id, email))) return;
+    if (!(await inviteMember.invite(props.project.id, email, inviteRank))) {
+      return;
+    }
     setEmail("");
+    inviteForm.input.rank.set("member");
     setOpen(false);
     // Re-run the loader for the new pending row; a hard reload threw the
     // whole app state away for one list.
@@ -124,12 +170,37 @@ const ProjectSettingsMembersSection = (
                 />
               </div>
             </div>
+            {/* The rank they land on. Validated when the invitation is
+                WRITTEN, not when it is accepted: an invitation can sit
+                unanswered for days, and the subset rule has to hold against
+                the person who offered the rank. */}
+            {projectRanks.ranks.length > 0 && (
+              <Control
+                select
+                input={inviteForm.input.rank}
+                label={String(tr("project.settings.members.invite.rank"))}
+                items={projectRanks.ranks
+                  // `owner` is not an assignment target, so it is not an
+                  // invitation target either.
+                  .filter((it) => it.key !== "owner")
+                  .map((rank) => ({ value: rank.key, label: rank.name }))}
+                inputProps={{
+                  "data-testid": "invite-rank",
+                  "aria-label": String(
+                    tr("project.settings.members.invite.rank"),
+                  ),
+                }}
+              />
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
               {tr("project.settings.members.invite.cancel")}
             </Button>
-            <Button onClick={handleInvite} disabled={inviteMember.loading}>
+            <Button
+              onClick={handleInvite}
+              disabled={inviteMember.loading || !inviteMember.can}
+            >
               {tr("project.settings.members.invite.submit")}
             </Button>
           </DialogFooter>
@@ -146,7 +217,11 @@ const ProjectSettingsMembersSection = (
               {members.length + pendingInvitations.length}
             </Badge>
           </div>
-          {props.project.createdBy === auth.user?.id && (
+          {/* The hook's own answer, not `member:manage`: inviting is
+              `invitation:create` server-side, and the two are separable in
+              the matrix. Reading the action's requirement is what keeps a
+              permission string out of this file. */}
+          {inviteMember.can && (
             <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
               <Plus className="size-3.5" />
               {tr("project.settings.members.invite.action")}
@@ -159,7 +234,14 @@ const ProjectSettingsMembersSection = (
             <Card key={member.id} className={cn(settingsCardEdge, "py-3")}>
               <CardContent className="flex items-center gap-4 px-3">
                 <div className="flex flex-1 items-center gap-3">
-                  <MemberIdentity member={member} variant="card" />
+                  <MemberIdentity
+                    member={member}
+                    variant="card"
+                    rankName={
+                      projectRanks.ranks.find((it) => it.key === member.rank)
+                        ?.name
+                    }
+                  />
                   <span className="text-muted-foreground text-xs">
                     {member.user.email}
                   </span>
@@ -169,11 +251,26 @@ const ProjectSettingsMembersSection = (
                   <Localize value={member.createdAt} date="fromNow" />
                 </span>
 
-                {/* Owner-only, and never on the owner's own row: a project
-                    with no owner has nobody who can delete it, rename it or
-                    let anybody back in. The endpoint refuses both cases
-                    anyway - this only stops the UI promising a 403. */}
-                {isOwner && member.userId !== props.project.createdBy && (
+                <ProjectMemberRankPicker
+                  projectId={props.project.id}
+                  userId={member.userId}
+                  rank={member.rank}
+                  ranks={projectRanks.ranks}
+                  self={member.userId === auth.user?.id}
+                  canAssign={isOwner}
+                  onAssigned={() =>
+                    router.push(router.pathname, { force: true })
+                  }
+                />
+
+                {/* Needs `member:manage`, and never on the OWNER's row: a
+                    project with no owner has nobody who can delete it, rename
+                    it or let anybody back in. Off `member.rank`, not
+                    `project.createdBy` - the creator column stopped being an
+                    authorization input in epic #E39, and after an ownership
+                    transfer the two disagree. The endpoint refuses both cases
+                    anyway; this only stops the UI promising a 403. */}
+                {isOwner && member.rank !== "owner" && (
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
@@ -193,6 +290,23 @@ const ProjectSettingsMembersSection = (
                       <MoreHorizontal className="size-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {/* Only the owner may hand the project on, and only to
+                          somebody else. Not a permission and never will be:
+                          a rank that could be GRANTED the right to take
+                          ownership away would make ownership grantable. */}
+                      {amOwner && (
+                        <DropdownMenuItem
+                          data-testid="transfer-ownership"
+                          onClick={() =>
+                            setTransferTo({
+                              userId: member.userId,
+                              name: nameOf(member),
+                            })
+                          }
+                        >
+                          {tr("project.settings.members.transfer.action")}
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         variant="destructive"
                         data-testid="remove-member"
@@ -239,7 +353,7 @@ const ProjectSettingsMembersSection = (
                     than the inline × it used to be: two card kinds sitting in
                     one list should not offer their one destructive action in
                     two different shapes. */}
-                {isOwner && (
+                {revokeInvitation.can && (
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
@@ -287,6 +401,20 @@ const ProjectSettingsMembersSection = (
           )}
         </div>
       </div>
+
+      <ProjectTransferOwnershipDialog
+        projectId={props.project.id}
+        target={transferTo}
+        ranks={projectRanks.ranks}
+        onOpenChange={(next) => !next && setTransferTo(undefined)}
+        onTransferred={async () => {
+          setTransferTo(undefined);
+          // The whole page changes: the caller stops being the owner, so the
+          // rank pickers, the transfer entry and the remove entries all read
+          // differently. Re-running the loader is what refills them.
+          await router.push(router.pathname, { force: true });
+        }}
+      />
     </>
   );
 };

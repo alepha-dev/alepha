@@ -81,6 +81,18 @@ test.describe("Quest", () => {
       });
     });
 
+    /**
+     * Feedback #P2117: every mount truncates the header title, so the full
+     * text has to be reachable on hover. Asserted on the ATTRIBUTE rather
+     * than by hovering: a native tooltip is drawn by the browser chrome and
+     * is not in the DOM to be read.
+     */
+    await test.step("the truncated title carries its full text", async () => {
+      await expect(
+        page.locator(`[title="#Q${shortId} - ${questTitle}"]`).first(),
+      ).toBeVisible({ timeout: 10_000 });
+    });
+
     await test.step("the estimate is hidden until the project opts in", async () => {
       // `questEstimate` is off by default — estimation is a methodology, not
       // a default. The quest above was seeded WITH `estimateMinutes: 30`, so
@@ -898,11 +910,24 @@ test.describe("Quest", () => {
       ).toBeVisible({ timeout: 5_000 });
       await page.getByRole("button", { name: /shelve quest/i }).click();
 
-      // The header picks up a muted "Shelved" badge, and the footer flips
-      // to the reverse action.
+      // The footer flips to the reverse action.
       await expect(
         page.getByRole("button", { name: /^unshelve$/i }),
       ).toBeVisible({ timeout: 10_000 });
+
+      // ⚠️ The chips row says it, the sticky header does not (feedback
+      // #P2117). Both used to, three centimetres apart on one screen. The
+      // chip is the one that stayed: it renders in every mount, outside
+      // every `context` branch, where the header badge was one line the
+      // reader wants pinned carrying a word already on screen.
+      //
+      // The rail's Status field says it a third time, and that is left
+      // alone: a labelled field in a column of labelled fields reads as the
+      // quest's data, not as a second announcement.
+      await expect(
+        page.getByTestId("quest-header").getByText(/^Shelved$/),
+      ).toHaveCount(0);
+      await expect(page.getByText(/^Shelved$/).first()).toBeVisible();
     });
 
     await test.step("shelved quest is gone from the default board", async () => {
@@ -1052,6 +1077,46 @@ test.describe("Quest", () => {
 
     await page.goto(`/${projectSlug}/quests`);
     await openQuestForm();
+
+    /**
+     * Feedback #P2118: the Preview toggle floats over the corner the format
+     * toolbar reserves for it (`pr-10`), and the two used to disagree by 3px
+     * because they are different heights positioned from different origins.
+     *
+     * Asserted as an EQUALITY between the two centres, never as pixel
+     * coordinates: what must hold is that they share a row, and a font or a
+     * padding change moves both together.
+     */
+    await test.step("the Preview toggle sits level with the toolbar", async () => {
+      // ⚠️ The toolbar mounts only once CodeMirror hands back its view - it
+      // has no selection to act on before that - so the toggle is on screen
+      // for a moment while the row it must line up with is not.
+      await page.getByTestId("markdown-format-toolbar").first().waitFor();
+
+      const centres = await page.evaluate(() => {
+        const centre = (el: Element | null) => {
+          if (!el) return null;
+          const box = el.getBoundingClientRect();
+          return box.top + box.height / 2;
+        };
+        return {
+          toggle: centre(
+            document.querySelector('[data-testid="markdown-mode-toggle"]'),
+          ),
+          button: centre(
+            document.querySelector(
+              '[data-testid="markdown-format-toolbar"] button',
+            ),
+          ),
+        };
+      });
+
+      expect(centres.toggle).not.toBeNull();
+      expect(centres.button).not.toBeNull();
+      expect(Math.abs(centres.toggle! - centres.button!)).toBeLessThanOrEqual(
+        0.5,
+      );
+    });
 
     await test.step("Enter creates the typed area", async () => {
       await areaCombobox.click();
@@ -2328,6 +2393,103 @@ test.describe("quest table columns", () => {
       // The whole point of persisting it: a preference that is forgotten on
       // navigation is not a preference.
       expect(await headers()).toEqual(moved);
+    });
+  });
+});
+
+test.describe("Quest hold", () => {
+  test("hold with a reason, then lift it", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `hold${t}@example.com`;
+    const password = "HoldTest123!";
+    const projectTitle = `HD${t}`.slice(0, 20);
+    const questTitle = `Held${t}`;
+
+    await registerAndVerify(page, email, password);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+
+    const { shortId } = await apiPost<{ id: number; shortId: number }>(
+      page,
+      "createQuest",
+      {
+        projectId,
+        title: questTitle,
+        description: "Seeded quest for the hold e2e",
+        area: "Main",
+        priority: "medium",
+        objectives: [],
+        attachments: [],
+      },
+    );
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(questTitle).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await test.step("a hold needs a reason before it will submit", async () => {
+      await page.getByRole("button", { name: /put on hold/i }).click();
+
+      const submit = page
+        .getByRole("button", { name: /^put on hold$/i })
+        .last();
+      await expect(submit).toBeVisible({ timeout: 10_000 });
+      // Submitting empty is refused inline by the prompt's own validator, so
+      // the dialog is still open afterwards rather than having held the quest
+      // with no reason.
+      await submit.click();
+      await expect(page.locator("#alepha-dialog-prompt-input")).toBeVisible();
+
+      await page
+        .locator("#alepha-dialog-prompt-input")
+        .fill("Waiting on the vendor API key");
+      await submit.click();
+    });
+
+    await test.step("the quest reads as Held and cannot be accepted", async () => {
+      // The status badge replaces New, rather than sitting beside it.
+      await expect(page.getByText(/on hold/i).first()).toBeVisible({
+        timeout: 10_000,
+      });
+      // The lifecycle slot offers the way out instead of a button the server
+      // would refuse.
+      await expect(page.getByRole("button", { name: /accept/i })).toHaveCount(
+        0,
+      );
+      await expect(
+        page.getByRole("button", { name: /lift hold/i }).first(),
+      ).toBeVisible();
+    });
+
+    await test.step("the reason is in the discussion", async () => {
+      await expect(
+        page.getByText("Waiting on the vendor API key").first(),
+      ).toBeVisible({ timeout: 10_000 });
+    });
+
+    await test.step("lifting the hold gives the quest back", async () => {
+      await page
+        .getByRole("button", { name: /lift hold/i })
+        .first()
+        .click();
+      await page
+        .getByRole("button", { name: /^lift hold$/i })
+        .last()
+        .click();
+
+      await expect(
+        page.getByRole("button", { name: /accept/i }).first(),
+      ).toBeVisible({ timeout: 10_000 });
+      // The reason survives the unhold: it was a comment, not a field.
+      await expect(
+        page.getByText("Waiting on the vendor API key").first(),
+      ).toBeVisible();
     });
   });
 });

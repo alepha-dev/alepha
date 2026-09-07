@@ -84,6 +84,22 @@ export const useQuestMutations = (): QuestMutations => {
   const settle = settleBulk;
 
   return {
+    // ⚠️ One `can` per transition, off the ACTION rather than a permission
+    // string, so no surface repeats what `$ownsProject({ requires })` already
+    // says. Three surfaces run these transitions - the table, the detail view
+    // and the board - and each used to decide for itself what to offer; a
+    // Viewer is only read-only if all three agree.
+    can: {
+      accept: questApi.acceptQuest.can(),
+      unassign: questApi.abandonQuest.can(),
+      complete: questApi.completeQuest.can(),
+      shelve: questApi.shelveQuest.can(),
+      unshelve: questApi.unshelveQuest.can(),
+      hold: questApi.holdQuest.can(),
+      unhold: questApi.unholdQuest.can(),
+      remove: questApi.deleteQuest.can(),
+      update: questApi.updateQuestById.can(),
+    },
     accept: async (id) => {
       const quest = await questApi.acceptQuest({ params: { id } });
       addToAssigned(quest);
@@ -112,6 +128,16 @@ export const useQuestMutations = (): QuestMutations => {
       const quest = await questApi.unshelveQuest({ params: { id } });
       await refreshCount();
       return quest;
+    },
+    // Neither hold nor unhold touches `currentAssignedQuestsAtom` or the open
+    // count, and that is the point rather than an omission: a hold suspends
+    // work without unassigning it, and `OpenQuestScope` counts a quest that is
+    // neither completed nor shelved - which a held one still is not.
+    hold: async (id, reason) => {
+      return await questApi.holdQuest({ params: { id }, body: { reason } });
+    },
+    unhold: async (id) => {
+      return await questApi.unholdQuest({ params: { id } });
     },
     remove: async (id) => {
       await questApi.deleteQuest({ params: { id } });
@@ -156,11 +182,39 @@ export const useQuestMutations = (): QuestMutations => {
 };
 
 export interface QuestMutations {
+  /**
+   * Whether the viewer's rank allows each transition, one flag per verb.
+   *
+   * Read off each action's own `can()`, which since epic #E39 answers for the
+   * project currently open rather than for the application - so a Viewer gets
+   * `false` everywhere and a Contributor gets `true` on the work.
+   *
+   * ⚠️ Not enforcement. The server's gate answers the real request; this only
+   * stops a surface offering an action it knows will be refused.
+   */
+  can: {
+    accept: boolean;
+    unassign: boolean;
+    complete: boolean;
+    shelve: boolean;
+    unshelve: boolean;
+    hold: boolean;
+    unhold: boolean;
+    remove: boolean;
+    update: boolean;
+  };
   accept: (id: number) => Promise<QuestResource>;
   unassign: (id: number) => Promise<QuestResource>;
   complete: (id: number, body: CompleteQuestBody) => Promise<QuestResource>;
   shelve: (id: number) => Promise<QuestResource>;
   unshelve: (id: number) => Promise<QuestResource>;
+  /**
+   * Block a quest on something outside itself. `reason` is required by the
+   * server, and it is posted as a comment on the quest rather than stored on
+   * a field, so an `@handle` in it reaches that person's inbox.
+   */
+  hold: (id: number, reason: string) => Promise<QuestResource>;
+  unhold: (id: number) => Promise<QuestResource>;
   remove: (id: number) => Promise<void>;
   /**
    * The bulk forms of shelve, unshelve and delete: one call per id, all at

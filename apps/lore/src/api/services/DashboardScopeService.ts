@@ -40,6 +40,12 @@ export interface ResolvedDashboardScope {
  * the project, so a client-supplied id is proved against the caller's own set
  * first, and an id from outside it is a **404 rather than an empty answer** —
  * the two are different answers and "no such project here" is the true one.
+ *
+ * ⚠️ **ranks: imperative.** This file names `assertMember` and calls neither
+ * it nor `assertOwner`: the proof is a set intersection, because a card scoped
+ * to several projects has no single project to gate on. `$ownsProject` cannot
+ * express that shape, so when a rank narrows what a card may count, it narrows
+ * here, per id, and not in a `use:` entry.
  */
 export class DashboardScopeService {
   protected readonly projects = $repository(projects);

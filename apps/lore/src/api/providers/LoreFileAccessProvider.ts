@@ -1,5 +1,6 @@
 import { $inject } from "alepha";
 import { FileAccessProvider, type FileEntity } from "alepha/api/files";
+import { RankService } from "alepha/api/ranks";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { ForbiddenError } from "alepha/server";
@@ -10,7 +11,6 @@ import { projects } from "../entities/projects.ts";
 import { quests } from "../entities/quests.ts";
 import { attachmentLookupSchema } from "../schemas/attachmentLookupSchema.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 /**
  * Per-bucket file access policy for Lore.
@@ -22,7 +22,7 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  * creator-only — this widens it for the well-known buckets.
  */
 export class LoreFileAccessProvider extends FileAccessProvider {
-  protected readonly security = $inject(ProjectSecurityService);
+  protected readonly ranks = $inject(RankService);
   protected readonly database = $inject(DatabaseProvider);
   protected readonly projects = $repository(projects);
   protected readonly feedback = $repository(feedback);
@@ -42,6 +42,13 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   // `FOLIO_ATTACHMENT_BUCKET` in `FolioAttachmentService.ts`.
   protected static readonly FOLIO_ATTACHMENT_BUCKET = "archive-blobs";
 
+  /**
+   * ⚠️ **ranks: imperative.** This is a `$secure` guard on a file route, and
+   * which project it asks about is decided per BUCKET, several branches into
+   * the function. No `use:` entry can express that, so these four calls ask
+   * the ranks module directly - each naming the permission its bucket needs,
+   * which is more than the membership check they replaced could say.
+   */
   async assertReadable(
     file: FileEntity,
     user: UserAccountToken | undefined,
@@ -72,7 +79,12 @@ export class LoreFileAccessProvider extends FileAccessProvider {
         where: { icon: { eq: file.id } },
       });
       if (project) {
-        await this.security.assertMember(project.id, user);
+        await this.ranks.assert(
+          "project",
+          String(project.id),
+          "project:read",
+          user,
+        );
         return;
       }
       // Orphan icon (uploaded but never assigned) stays creator-only.
@@ -84,7 +96,12 @@ export class LoreFileAccessProvider extends FileAccessProvider {
     if (file.bucket === FeedbackRateLimiter.ATTACHMENT_BUCKET) {
       const feedback = await this.findFeedbackByAttachment(file.id);
       if (feedback) {
-        await this.security.assertOwner(feedback.projectId, user);
+        await this.ranks.assert(
+          "project",
+          String(feedback.projectId),
+          "feedback:triage",
+          user,
+        );
         return;
       }
       throw new ForbiddenError("File access denied");
@@ -98,7 +115,12 @@ export class LoreFileAccessProvider extends FileAccessProvider {
         where: { fileId: { eq: file.id } },
       });
       if (attachment) {
-        await this.security.assertMember(attachment.projectId, user);
+        await this.ranks.assert(
+          "project",
+          String(attachment.projectId),
+          "folio:read",
+          user,
+        );
         return;
       }
       throw new ForbiddenError("File access denied");
@@ -108,7 +130,12 @@ export class LoreFileAccessProvider extends FileAccessProvider {
     if (file.bucket === LoreFileAccessProvider.QUEST_ATTACHMENT_BUCKET) {
       const quest = await this.findQuestByAttachment(file.id);
       if (quest) {
-        await this.security.assertMember(quest.projectId, user);
+        await this.ranks.assert(
+          "project",
+          String(quest.projectId),
+          "quest:read",
+          user,
+        );
         return;
       }
       throw new ForbiddenError("File access denied");

@@ -433,6 +433,18 @@ export class SecurityProvider {
     );
 
     if (existing) {
+      // ⚠️ Enrich, never replace and never ignore.
+      //
+      // `$secure({ permissions: ["folio:write"] })` registers a BARE entry -
+      // a group and a name, nothing else - and it does so at class-field
+      // initialisation time. A `$permission({ group: "folio", name: "write",
+      // label })` declared in another class may initialise before or after
+      // it, and class initialisation order is not something anyone should
+      // have to reason about. Returning the existing entry untouched, which
+      // is what this did, silently dropped the label whenever the gate won
+      // the race - so a permission matrix showed a raw string for half its
+      // rows depending on which file the container instantiated first.
+      this.enrichPermission(existing, permission, asString);
       return existing;
     }
 
@@ -441,6 +453,89 @@ export class SecurityProvider {
     this.permissions.push(permission);
 
     return permission;
+  }
+
+  /**
+   * Fold a second declaration of the same permission into the first.
+   *
+   * Absent fields fill in; a field declared twice with two different values is
+   * refused, because the two call sites disagree about what this permission IS
+   * and picking either one would make the answer depend on load order.
+   */
+  protected enrichPermission(
+    existing: Permission,
+    incoming: Permission,
+    asString: string,
+  ): void {
+    for (const key of [
+      "description",
+      "label",
+      "groupLabel",
+      "groupOrder",
+    ] as const) {
+      const value = incoming[key];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      const held = existing[key];
+
+      if (held !== undefined && held !== value) {
+        throw new AlephaError(
+          `Permission '${asString}' is declared twice with a different ${key}: '${String(held)}' and '${String(value)}'. ` +
+            "Two declarations of one permission must agree, since which of them lands first is load order.",
+        );
+      }
+
+      (existing as Record<string, unknown>)[key] = value;
+    }
+  }
+
+  /**
+   * The permission registry, read as the grouped, ordered catalogue a
+   * permission matrix renders.
+   *
+   * Everything `$secure()` and `$permission()` ever named is in here: the
+   * former registers a bare entry for every string it is given, the latter
+   * adds the labels. That is what makes this the single vocabulary of an
+   * application, and what lets a consumer enforce "a grant can only name a
+   * registered permission" against something real rather than against a
+   * parallel array somebody has to remember to update.
+   *
+   * Groups are ordered by their declared `groupOrder`, then alphabetically;
+   * a group nobody ordered sorts after every group somebody did, so a
+   * catalogue that declares no order at all still reads as a stable list.
+   * Permissions inside a group are alphabetical.
+   */
+  public permissionCatalogue(): PermissionGroup[] {
+    const groups = new Map<string, PermissionGroup>();
+
+    for (const permission of this.permissions) {
+      const name = permission.group ?? "";
+      let group = groups.get(name);
+
+      if (!group) {
+        group = { name, permissions: [] };
+        groups.set(name, group);
+      }
+
+      group.label ??= permission.groupLabel;
+      group.order ??= permission.groupOrder;
+      group.permissions.push(permission);
+    }
+
+    for (const group of groups.values()) {
+      group.permissions.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return [...groups.values()].sort((a, b) => {
+      // `Infinity` rather than a large constant: an unordered group belongs
+      // after every ordered one whatever numbers the application picked.
+      const left = a.order ?? Number.POSITIVE_INFINITY;
+      const right = b.order ?? Number.POSITIVE_INFINITY;
+      return left === right ? a.name.localeCompare(b.name) : left - right;
+    });
   }
 
   public createRealm(realm: Realm) {
@@ -1404,4 +1499,35 @@ interface RoleReference {
   realm: string;
   role: string;
   resolved?: boolean;
+}
+
+/**
+ * One section of {@link SecurityProvider.permissionCatalogue}.
+ *
+ * A group has no declaration of its own - it exists because permissions name
+ * it - so its label and its order are folded up from the permissions inside
+ * it, and every permission in one group has to agree about them.
+ */
+export interface PermissionGroup {
+  /**
+   * The group segment of `group:name`. Empty for a permission declared with
+   * no group at all.
+   */
+  name: string;
+
+  /**
+   * Translation key for the group's human-readable name, when any permission
+   * inside it declared one.
+   */
+  label?: string;
+
+  /**
+   * Declared position, when any permission inside it declared one.
+   */
+  order?: number;
+
+  /**
+   * The group's permissions, alphabetically by name.
+   */
+  permissions: Permission[];
 }

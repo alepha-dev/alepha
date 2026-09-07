@@ -1,5 +1,5 @@
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
-import { fireEvent, render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -7,7 +7,7 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
-import { describe, it } from "vitest";
+import { beforeAll, describe, it } from "vitest";
 
 import type { AppInstanceResource } from "@/api/schemas/appInstanceResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
@@ -97,6 +97,16 @@ const confirmDialog = async () => {
 };
 
 describe("the instance Settings tab", () => {
+  // Base UI measures its popup before opening one, and jsdom ships no
+  // ResizeObserver. Needed since the estate row became a `Control`.
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as never;
+  });
+
   const mount = async (
     instance: AppInstanceResource,
     responses: Record<string, unknown> = {},
@@ -115,7 +125,20 @@ describe("the instance Settings tab", () => {
     alepha.inject(Routes);
     await alepha.start();
 
-    alepha.store.set(currentProjectAtom, aProject as never);
+    // ⚠️ "A plain member" is a PERMISSION SET now, not a boolean on the
+    // membership row: every write control in the project UI asks
+    // `useRank().can(...)`, which reads the effective set the server computed.
+    alepha.store.set(
+      currentProjectAtom,
+      (owner
+        ? aProject
+        : projectFixture({
+            title: "Alepha",
+            slug: "alepha",
+            permissions: ["project:read", "app:read"],
+            rank: { key: "member", name: "Member" },
+          })) as never,
+    );
     alepha.store.set(currentProjectMemberAtom, {
       id: 1,
       createdAt: "2026-08-26T10:00:00.000Z",
@@ -210,7 +233,9 @@ describe("the instance Settings tab", () => {
   });
 
   it("offers only the estates the project was lent", async ({ expect }) => {
-    const { view } = await mount(anInstance(), {
+    // No `view`: the trigger is found by role on `screen`, and the popup it
+    // opens is portalled to the body rather than into the container.
+    await mount(anInstance(), {
       listProjectEstates: {
         items: [
           {
@@ -227,14 +252,15 @@ describe("the instance Settings tab", () => {
       },
     });
 
-    const trigger = await waitFor(() => {
-      const found = view.container.querySelector<HTMLElement>(
-        "[data-slot=select-trigger]",
-      );
-      if (!found) throw new Error("the estate select did not render");
-      return found;
-    });
-    fireEvent.click(trigger);
+    // ⚠️ By ROLE and accessible name, not by `[data-slot=select-trigger]`.
+    // The row moved from the raw `Select` onto `Control` (feedback #P2121),
+    // which renders a Base UI combobox trigger and carries no such slot - and
+    // a query naming an implementation detail of the primitive is exactly
+    // what a migration to another one has to break.
+    const trigger = await waitFor(() =>
+      screen.getByRole("combobox", { name: "Deploys to" }),
+    );
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
 
     await waitFor(() => expect(document.body.textContent).toContain("ovh-1"));
     // The clear row is there too: pointing nowhere is a real state.
@@ -256,9 +282,7 @@ describe("the instance Settings tab", () => {
         'a[href="/alepha/settings/estates"]',
       ),
     ).toBeTruthy();
-    expect(
-      view.container.querySelector("[data-slot=select-trigger]"),
-    ).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Deploys to" })).toBeNull();
   });
 
   it("hides every mutation from a member", async ({ expect }) => {

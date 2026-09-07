@@ -6,7 +6,7 @@ import {
 } from "@alepha/ui/components/ui/tooltip";
 import type { EditorView } from "@codemirror/view";
 import { useI18n } from "alepha/react/i18n";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { I18n } from "@/web/app/services/I18n.ts";
 
@@ -27,6 +27,19 @@ interface ToolbarPosition {
 }
 
 /**
+ * How long after the pointer comes up the bar appears.
+ *
+ * The reporter asked for a delay by name (feedback #P2116) rather than for
+ * the bar merely to stop chasing the cursor: a control that materialises
+ * under the finger the instant it lifts is its own kind of startling. It
+ * also lets the selection settle - a drag that ends on a word boundary
+ * emits a last `selectionchange` after the `pointerup`.
+ *
+ * Short enough that a double-click still reads as instant.
+ */
+const SHOW_AFTER_POINTER_UP_MS = 150;
+
+/**
  * A small floating bar over the current selection — select a word, format
  * it without leaving the text.
  *
@@ -42,13 +55,38 @@ interface ToolbarPosition {
  * document is the same signal one level up, and it also fires for the
  * drag-select and double-click paths that are the whole point of this
  * control.
+ *
+ * ⚠️ It fires on every mousemove of a drag, though, which is why the bar is
+ * suppressed between `pointerdown` and `pointerup` - see `dragging` below.
+ * Keyboard selection touches no pointer event and is therefore never gated:
+ * shift+arrows and cmd+A show the bar on the `selectionchange` itself.
  */
 const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [position, setPosition] = useState<ToolbarPosition | null>(null);
+  /**
+   * Whether a pointer is currently down on the editor.
+   *
+   * A ref rather than state: it is read inside `sync`, which every listener
+   * calls, and re-rendering on a flag that only ever suppresses a render
+   * would be a render per mousemove of the drag it exists to quieten.
+   */
+  const dragging = useRef(false);
+  const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sync = useCallback(() => {
     const view = props.view;
+    // ⚠️ `selectionchange` fires on every mousemove of a drag-select, so
+    // without this the bar appeared the moment the selection was one
+    // character wide and then chased the anchor for the whole gesture -
+    // floating over the very text the reader was still selecting
+    // (feedback #P2116).
+    //
+    // Suppressed here rather than by unsubscribing, so the scroll and
+    // resize listeners keep running: they call the same `sync`, and a
+    // handler that has to know why it was called is a handler that will
+    // eventually get it wrong.
+    if (dragging.current) return setPosition(null);
     const range = view.state.selection.main;
     // Nothing selected, or the caret is merely sitting somewhere — a
     // toolbar over an empty selection has nothing to format.
@@ -67,11 +105,46 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
   }, [props.view]);
 
   useEffect(() => {
+    /**
+     * A press that starts INSIDE the editor begins a selection gesture.
+     *
+     * ⚠️ The containment check is what keeps the bar's own buttons working:
+     * a press on one of them is a pointerdown too, and hiding the bar under
+     * the finger about to release on it would make every command
+     * unreachable. They live outside `view.dom`, so they never match.
+     */
+    const onPointerDown = (event: PointerEvent) => {
+      if (!props.view.dom.contains(event.target as Node)) return;
+      dragging.current = true;
+      if (showTimer.current) clearTimeout(showTimer.current);
+      setPosition(null);
+    };
+
+    /**
+     * ⚠️ On the DOCUMENT, not the editor: a drag that starts in the text
+     * and ends in the margin, or outside the window entirely, releases
+     * there. Listening on `view.dom` would leave the flag set and the bar
+     * gone until the next press.
+     *
+     * `pointercancel` too, for the touch gesture the browser takes over.
+     */
+    const onPointerRelease = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      if (showTimer.current) clearTimeout(showTimer.current);
+      showTimer.current = setTimeout(sync, SHOW_AFTER_POINTER_UP_MS);
+    };
+
     // Reads CodeMirror's selection geometry, which only exists once the editor
     // has been committed to the DOM.
     // oxlint-disable-next-line react/set-state-in-effect
     sync();
     document.addEventListener("selectionchange", sync);
+    // Capture, so a handler that stops propagation on its way up cannot
+    // strand the flag.
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("pointerup", onPointerRelease, true);
+    document.addEventListener("pointercancel", onPointerRelease, true);
     // Scrolling moves the text out from under a `fixed` element, so the bar
     // has to follow it or it ends up pointing at the wrong words. `true`
     // captures scrolls on the pane, not just the window.
@@ -79,8 +152,12 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
     window.addEventListener("resize", sync);
     return () => {
       document.removeEventListener("selectionchange", sync);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("pointerup", onPointerRelease, true);
+      document.removeEventListener("pointercancel", onPointerRelease, true);
       window.removeEventListener("scroll", sync, true);
       window.removeEventListener("resize", sync);
+      if (showTimer.current) clearTimeout(showTimer.current);
     };
   }, [props.view, sync]);
 

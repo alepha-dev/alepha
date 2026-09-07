@@ -7,6 +7,7 @@ import { useState } from "react";
 import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { PaletteColor } from "@/api/schemas/paletteColorSchema.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
+import { setCurrentProject } from "@/web/app/services/currentProjectWrite.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 /**
@@ -58,7 +59,7 @@ export const useKanbanColumnOps = (
       const result = await fn();
       const project = alepha.store.get(currentProjectAtom);
       if (project) {
-        alepha.store.set(currentProjectAtom, apply(result, project));
+        setCurrentProject(alepha, apply(result, project));
       }
       onColumnsChanged?.();
       return true;
@@ -84,6 +85,11 @@ export const useKanbanColumnOps = (
 
   return {
     pending,
+
+    // The four verbs are one permission server-side, so one flag - and it
+    // comes off the action rather than a string, which is what stops the
+    // board and Settings from asking two different questions.
+    can: projectApi.addKanbanColumn.can(),
 
     add: (name: string) =>
       run(
@@ -182,6 +188,11 @@ export interface KanbanColumnOps {
    * spinner does not disable the whole board.
    */
   pending: string | null;
+  /**
+   * Whether this reader's rank may edit columns at all. Every caller should
+   * gate its own affordances on this rather than on a permission string.
+   */
+  can: boolean;
   add: (name: string) => Promise<boolean>;
   rename: (oldName: string, newName: string) => Promise<boolean>;
   /**

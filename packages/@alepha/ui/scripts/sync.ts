@@ -218,6 +218,22 @@ const KEEP_LOCAL = new Map([
  */
 const LOCAL_PATCHES = [
   [
+    "ui/select.tsx",
+    // ⚠️ No trailing semicolon: a patch is applied to the RAW registry
+    // content and oxfmt runs afterwards, so the anchor is upstream's text
+    // rather than the formatted local file's.
+    "const Select = SelectPrimitive.Root",
+    `/**
+ * @deprecated Reach for \`Control\` (or \`ControlSelect\`) instead. This is the
+ * raw Base UI primitive: it renders the raw VALUE on its trigger, carries no
+ * label, no description, no error slot and no form binding, and every surface
+ * that used it grew the same three workarounds by hand. It is kept only until
+ * the last call site is gone (feedback #P2121).
+ */
+const Select = SelectPrimitive.Root`,
+    "the deprecation notice. A comment added by hand to this directory is overwritten wholesale on the next sync, silently, so the tag has to be re-applied here to survive one",
+  ],
+  [
     "ui/dropdown-menu.tsx",
     "w-(--anchor-width) min-w-32",
     "w-auto max-w-(--available-width) min-w-32",

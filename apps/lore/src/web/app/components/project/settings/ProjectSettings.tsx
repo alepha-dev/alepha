@@ -13,6 +13,7 @@ import {
   type LucideIcon,
   MapPin,
   Server,
+  ShieldCheck,
   Stamp,
   Swords,
   Users,
@@ -24,10 +25,12 @@ import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
+import { canInProject } from "@/web/app/services/projectRank.ts";
 
 type RouteName =
   | "projectSettingsBanner"
   | "projectSettingsMembers"
+  | "projectSettingsRanks"
   | "projectSettingsAreas"
   | "projectSettingsWork"
   | "projectSettingsKnowledge"
@@ -38,12 +41,16 @@ type RouteName =
 type NavLabelKey =
   | "project.settings.nav.banner"
   | "project.settings.nav.members"
+  | "project.settings.nav.ranks"
   | "project.settings.nav.areas"
   | "project.settings.nav.estates"
-  | "project.capability.work.label"
-  | "project.capability.knowledge.label"
-  | "project.capability.apps.label"
-  | "project.capability.support.label";
+  // ⚠️ `.short`, the nav's own one-word name, never `.label`. The union is
+  // what makes that a compile error rather than a rail that reads as four
+  // sentences again - see the comment on the entries below.
+  | "project.capability.work.short"
+  | "project.capability.knowledge.short"
+  | "project.capability.apps.short"
+  | "project.capability.support.short";
 
 type NavGroupLabelKey = "project.settings.nav.group.capabilities";
 
@@ -60,6 +67,16 @@ interface NavItem {
    * is a capability you cannot turn back on.
    */
   needs?: CapabilityKey;
+
+  /**
+   * Hidden when the reader's rank does not grant this.
+   *
+   * Only Ranks has one, and it is not a route guard: the page is reachable by
+   * a link somebody already holds, and the module refuses every write from a
+   * rank that may not edit. This is the affordance - offering a matrix a
+   * reader can look at and not save is worse than not offering it.
+   */
+  requires?: string;
 }
 
 interface NavGroup {
@@ -87,6 +104,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Users,
       },
       {
+        route: "projectSettingsRanks",
+        labelKey: "project.settings.nav.ranks",
+        icon: ShieldCheck,
+        requires: "rank:manage",
+      },
+      {
         // ⚠️ Its own entry, outside the four, and it stays that way. An
         // estate is owned by a user and LENT to a project, so this page lists
         // what it holds and says so when empty. Folding it under Apps would
@@ -102,25 +125,37 @@ const NAV_GROUPS: NavGroup[] = [
     // Was "Features", which named the storage rather than the thing. Nine
     // pages, four of them a single switch.
     labelKey: "project.settings.nav.group.capabilities",
+    // ⚠️ `.short`, not `.label`. These pointed at the capability's
+    // descriptive name, so the rail read as four verb phrases - "Plan and
+    // track work", "Write and keep knowledge" - each wrapping beside its
+    // icon next to a permission matrix that is already dense (feedback
+    // #P2123). The sentence stays where it explains something: the creation
+    // wizard, the section headings, and the refusal messages.
     items: [
       {
         route: "projectSettingsWork",
-        labelKey: "project.capability.work.label",
+        labelKey: "project.capability.work.short",
         icon: Swords,
       },
       {
         route: "projectSettingsKnowledge",
-        labelKey: "project.capability.knowledge.label",
+        labelKey: "project.capability.knowledge.short",
         icon: BookOpen,
       },
       {
+        // ⚠️ The nav says Deploy; the capability is called `apps`
+        // everywhere else - the key, the route, the vocabulary folio and
+        // the capabilities spec. Filed that way by the report, and it is
+        // the one surface that disagrees. If Deploy is the better name the
+        // honest change is to rename the capability everywhere; if it is
+        // not, this entry should say Apps.
         route: "projectSettingsApps",
-        labelKey: "project.capability.apps.label",
+        labelKey: "project.capability.apps.short",
         icon: Stamp,
       },
       {
         route: "projectSettingsSupport",
-        labelKey: "project.capability.support.label",
+        labelKey: "project.capability.support.short",
         icon: Inbox,
       },
     ],
@@ -149,7 +184,9 @@ const ProjectSettings = () => {
         ? NAV_GROUPS.flatMap((group) =>
             group.items
               .filter(
-                (item) => !item.needs || hasCapability(project, item.needs),
+                (item) =>
+                  (!item.needs || hasCapability(project, item.needs)) &&
+                  (!item.requires || canInProject(project, item.requires)),
               )
               .map((item) => ({
                 name: item.route,

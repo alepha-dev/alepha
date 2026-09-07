@@ -6,6 +6,7 @@ import { $repository } from "alepha/orm";
 
 import { notificationPayloadSchema } from "../schemas/notificationPayloadSchema.ts";
 import { NotificationDeliveryService } from "../services/NotificationDeliveryService.ts";
+import { NotificationInboxService } from "../services/NotificationInboxService.ts";
 import { NotificationSenderService } from "../services/NotificationSenderService.ts";
 import { NotificationSettings } from "../services/NotificationSettings.ts";
 
@@ -20,9 +21,11 @@ import { NotificationSettings } from "../services/NotificationSettings.ts";
  *   (`record: "all"`, `keep: { ok: 0, error: 0 }` disables the ring-buffer
  *   trim) so the audit trail survives even under heavy volume.
  * - `purgeOldNotifications` - hourly sweep that deletes expired delivery
- *   receipts and then expired notification execution rows. Two clocks, on
- *   purpose: the outbox is short (7 days) and the receipts are long (90),
- *   because a complaint can arrive after the outbox row is gone.
+ *   receipts, then read inbox messages, then expired notification execution
+ *   rows. Three clocks, on purpose: the outbox is short (7 days) and the
+ *   receipts are long (90), because a complaint can arrive after the outbox
+ *   row is gone; the inbox has its own because a read message is one the
+ *   reader has already dealt with, and an unread one is never swept at all.
  *
  * Cron expression note: the purge cron is declared statically (`0 * * * *`)
  * because some runtimes (Cloudflare Workers) freeze cron triggers at deploy
@@ -37,6 +40,7 @@ export class NotificationJobs {
   );
   protected readonly executions = $repository(jobExecutionEntity);
   protected readonly deliveries = $inject(NotificationDeliveryService);
+  protected readonly inbox = $inject(NotificationInboxService);
 
   /**
    * Runtime-editable config, declared in {@link NotificationSettings} so the
@@ -71,7 +75,8 @@ export class NotificationJobs {
       "Hourly sweep that deletes notification execution rows older than the configured retention window.",
     cron: "0 * * * *",
     handler: async ({ now }) => {
-      const { retentionDays, receiptRetentionDays } = this.settings.current;
+      const { retentionDays, receiptRetentionDays, inboxRetentionDays } =
+        this.settings.current;
 
       // Receipts have their own, longer clock: a complaint can arrive weeks
       // after the send, by which time the outbox row is long gone.
@@ -81,6 +86,17 @@ export class NotificationJobs {
       if (purged > 0) {
         this.log.info(
           `Notification purge: deleted ${purged} receipt(s) older than ${receiptRetentionDays} days`,
+        );
+      }
+
+      // A third clock, and the only one that looks at read state. An unread
+      // message is never swept: it waited for you, which is the feature.
+      const staleInbox = await this.inbox.purge(
+        now.subtract(inboxRetentionDays, "day").toISOString(),
+      );
+      if (staleInbox > 0) {
+        this.log.info(
+          `Notification purge: deleted ${staleInbox} read inbox message(s) older than ${inboxRetentionDays} days`,
         );
       }
 

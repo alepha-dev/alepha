@@ -1,7 +1,8 @@
-import { z } from "alepha";
+import { $inject, z } from "alepha";
 import { $notification } from "alepha/api/notifications";
 
 import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
+import { NotificationHtmlEscaper } from "./NotificationHtmlEscaper.ts";
 
 /**
  * Email templates for the Quest module. Currently just the per-quest
@@ -9,20 +10,7 @@ import { formatReference } from "../../web/app/components/shared/element/typedRe
  * quest row itself; this class only defines the rendering.
  */
 export class QuestNotifications {
-  /**
-   * Escape user-controlled strings before they land inside the HTML email
-   * body. Mail clients block JS, but unescaped quest/project titles can
-   * still inject anchors, images, and styling — turning a DKIM-signed
-   * reminder into a high-trust phishing surface.
-   */
-  protected escapeHtml(value: string): string {
-    return value
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
+  protected readonly html = $inject(NotificationHtmlEscaper);
 
   public readonly questReminder = $notification({
     category: "tasks",
@@ -31,9 +19,9 @@ export class QuestNotifications {
     email: {
       subject: "Quest reminder",
       body: (it) => {
-        const projectTitle = this.escapeHtml(it.projectTitle);
-        const recipientName = this.escapeHtml(it.recipientName);
-        const questTitle = this.escapeHtml(it.questTitle);
+        const projectTitle = this.html.escape(it.projectTitle);
+        const recipientName = this.html.escape(it.recipientName);
+        const questTitle = this.html.escape(it.questTitle);
         const questUrl = encodeURI(it.questUrl);
         return `
         <h1>${projectTitle} — Quest reminder</h1>

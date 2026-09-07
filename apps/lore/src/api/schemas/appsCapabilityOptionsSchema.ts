@@ -31,7 +31,7 @@ import { type Infer, z } from "alepha";
  * hiding a planned surface means the "I deploy elsewhere" reader never learns
  * Lore will do it. Epic #1 shipped the surface, deleted the badge, and carried
  * the backfill for every project already lent an estate
- * (`20260907122807_backfill_apps_deploy`). It is still not preselected in the
+ * (`20260907130028_backfill_apps_deploy`). It is still not preselected in the
  * wizard: deploying through Lore means deploying into somebody's cloud account,
  * which is a thing to opt into on purpose.
  *
