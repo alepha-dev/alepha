@@ -8,6 +8,7 @@ import { EpicRefService } from "./services/EpicRefService.ts";
 import { AppInstanceTools } from "./tools/AppInstanceTools.ts";
 import { ArtifactTools } from "./tools/ArtifactTools.ts";
 import { BlightTools } from "./tools/BlightTools.ts";
+import { DeployTools } from "./tools/DeployTools.ts";
 import { EpicTools } from "./tools/EpicTools.ts";
 import { FeedbackTools } from "./tools/FeedbackTools.ts";
 import { FolioTools } from "./tools/FolioTools.ts";
@@ -30,6 +31,7 @@ export const LoreMcp = $module({
     FolioTools,
     FeedbackTools,
     AppInstanceTools,
+    DeployTools,
     SigilTools,
     InsightsTools,
     ProjectResources,
