@@ -199,16 +199,20 @@ export class CloudflareDeployClient {
   /**
    * The whole deploy, in order.
    */
-  public async deploy(plan: CloudflareDeployPlan): Promise<void> {
+  public async deploy(
+    plan: CloudflareDeployPlan,
+  ): Promise<{ versionId?: string }> {
     const assets = plan.assets
       ? await this.uploadAssets(plan.scriptName, plan.assets)
       : undefined;
 
-    await this.putScript(plan, assets);
+    const versionId = await this.putScript(plan, assets);
     await this.putSchedules(plan);
     await this.putDomain(plan);
     await this.putSubdomain(plan);
     await this.putQueueConsumers(plan);
+
+    return { versionId };
   }
 
   /**
@@ -276,10 +280,20 @@ export class CloudflareDeployClient {
   /**
    * The script, its modules and its bindings.
    */
+  /**
+   * @returns the version this upload produced, when Cloudflare names one.
+   *
+   * ⚠️ **What makes a fast rollback possible.** Cloudflare keeps every uploaded
+   * version server-side, so pointing at an older `version_id` is a rollback in
+   * seconds with no artifact and no upload - working even under `latest`-only
+   * retention. `undefined` when the response does not carry one, which a
+   * rollback has to treat as "this run cannot be rolled back to" rather than as
+   * an error here.
+   */
   public async putScript(
     plan: CloudflareDeployPlan,
     assets?: { jwt: string },
-  ): Promise<void> {
+  ): Promise<string | undefined> {
     const bindings = [
       ...(plan.bindings ?? []),
       ...Object.entries(plan.secrets ?? {}).map(([name, text]) => ({
@@ -289,7 +303,7 @@ export class CloudflareDeployClient {
       })),
     ];
 
-    await this.client.workers.scripts.update(plan.scriptName, {
+    const answer = (await this.client.workers.scripts.update(plan.scriptName, {
       account_id: this.accountId,
       // ⚠️ An unresolvable `inherit` binding fails the upload instead of
       // silently blanking a secret, which is the failure mode the old
@@ -321,7 +335,11 @@ export class CloudflareDeployClient {
             type: module.type ?? "application/javascript+module",
           }),
       ) as never,
-    });
+    })) as { id?: string; version_id?: string } | undefined;
+
+    // Two spellings, because the script endpoint and the versions endpoint
+    // name it differently and which one answers depends on the upload mode.
+    return answer?.version_id ?? answer?.id;
   }
 
   /**

@@ -289,6 +289,15 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * ⚠️ Reads the config `build` just wrote, and the config only. The packed
    * one is scratch; this one carries the bindings.
    */
+  /**
+   * The version the last upload produced, for the runner to record.
+   *
+   * ⚠️ On the instance rather than in the return value, because
+   * `PlatformAdapter.deploy` answers a URL and widening that signature would
+   * touch every adapter for one caller's benefit.
+   */
+  public deployedVersionId?: string;
+
   async deploy(
     ctx: PlatformContext,
     run: RunnerMethod,
@@ -302,7 +311,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     await run({
       name: `deploy worker (${worker})`,
       handler: async () => {
-        await this.deployer().deploy({
+        const answer = await this.deployer().deploy({
           scriptName: worker,
           mainModule: config.main ?? "index.js",
           modules: await this.modules(distDir, config),
@@ -322,6 +331,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
             : undefined,
           workersDev: config.workers_dev,
         });
+        this.deployedVersionId = answer?.versionId;
       },
     });
 

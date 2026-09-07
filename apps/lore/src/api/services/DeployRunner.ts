@@ -147,7 +147,9 @@ export class DeployRunner {
       alepha
         .inject(PlatformAdapterRegistry)
         .set("cloudflare", WorkerCloudflareAdapter);
-      alepha.inject(WorkerCloudflareAdapter).use(request.credential);
+      const adapter = alepha
+        .inject(WorkerCloudflareAdapter)
+        .use(request.credential);
 
       const result = await alepha.inject(PlatformOrchestrator).up({
         root: DeployRunner.ROOT,
@@ -160,7 +162,14 @@ export class DeployRunner {
         run: this.runner(deployment) as never,
       });
 
-      await this.registry.succeeded(deployment, result.urls[0]);
+      await this.registry.succeeded(deployment, {
+        url: result.urls[0],
+        // ⚠️ Read off the adapter rather than returned by `up()`, which answers
+        // a URL. It is what makes #1519's fast rollback possible: Cloudflare
+        // keeps every uploaded version, so pointing at an older one needs no
+        // artifact at all.
+        versionId: adapter.deployedVersionId,
+      });
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
