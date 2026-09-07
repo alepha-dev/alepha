@@ -1816,6 +1816,7 @@ export default {
   "agentPrompts.menu": "Invites pour agents",
   "agentPrompts.review": "Relire",
   "agentPrompts.activate": "Activer",
+  "agentPrompts.workOnIt": "S’en charger",
   "agentPrompts.copied":
     "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
   "agentPrompts.settings.title": "Invites pour agents",

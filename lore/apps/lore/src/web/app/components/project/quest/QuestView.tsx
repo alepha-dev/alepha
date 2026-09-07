@@ -30,6 +30,9 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import CollapsibleBlock from "../../shared/CollapsibleBlock.tsx";
 import { formatReference } from "../../shared/element/typedReference.ts";
+import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
+import { questAgentGate } from "../prompts/questAgentGate.ts";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
 import { QUEST_STATUS_TONE } from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
@@ -128,6 +131,7 @@ const QuestView = (props: QuestViewProps) => {
 
   const [project] = useStore(currentProjectAtom);
   const [epics] = useStore(currentEpicsAtom);
+  const promptSubject = useAgentPromptSubject();
 
   // The epic phase gate (epic #31): a quest can be accepted only while its
   // epic is active, and this page reaches a planned epic's quest by direct
@@ -138,11 +142,16 @@ const QuestView = (props: QuestViewProps) => {
     quest.epicId != null
       ? epics?.find((e) => e.id === quest.epicId)
       : undefined;
+  // ⚠️ The condition itself lives in `questAgentGate`, shared with the two
+  // quest tables, and it answers a CODE rather than a sentence: a pure
+  // helper cannot call `tr`, and duplicating the key mapping is exactly the
+  // drift the extraction prevents. The mapping stays here, once.
+  const withheldReason = questAgentGate(quest, epics);
   const acceptWithheld =
-    questEpic && questEpic.status !== "active"
+    withheldReason && questEpic
       ? String(
           tr(
-            questEpic.status === "planned"
+            withheldReason === "epicPlanned"
               ? "quest.view.accept.epicPlanned"
               : "quest.view.accept.epicDone",
             { args: [String(questEpic.number)] },
@@ -493,6 +502,31 @@ const QuestView = (props: QuestViewProps) => {
                 once it is done. */}
             {!quest.completedAt && project && (
               <div className="flex shrink-0 items-center gap-1">
+                {/* ⚠️ Page context only, and for the same reason the
+                    lifecycle verb is: the dialog withholds a decision that
+                    wants the quest in front of you, and handing it to an
+                    agent is that kind of decision.
+
+                    The completed half of the gate is met by placement, this
+                    whole block being inside `!quest.completedAt`; only the
+                    epic phase has to be asserted, and `withheldReason` is
+                    the shared helper's answer. The menu renders nothing on
+                    an empty list, so a withheld quest shows no button. */}
+                {context === "page" && (
+                  <AgentPromptsMenu
+                    items={
+                      withheldReason
+                        ? []
+                        : [
+                            {
+                              kind: "questWork" as const,
+                              label: String(tr("agentPrompts.workOnIt")),
+                              subject: promptSubject.forQuest(quest),
+                            },
+                          ]
+                    }
+                  />
+                )}
                 <QuestViewEditButton
                   quest={quest}
                   onUpdate={(it) => {
