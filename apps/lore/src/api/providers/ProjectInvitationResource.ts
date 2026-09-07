@@ -37,6 +37,10 @@ export class ProjectInvitationResource {
 
     // Owning the project is the whole gate, exactly as it was before the
     // extraction: `InvitationService.create` called `assertOwner` directly.
+    // ⚠️ ranks: imperative. This is a closure handed to
+    // `alepha/api/invitations`, not an action's `use:` entry, so there is no
+    // middleware chain to put a gate in. It moves to the ranks module's
+    // imperative check, never to `$ownsProject`.
     assertCanInvite: async (resourceId, inviter) => {
       // `assertOwner` returns the rows it read; the seam wants only the
       // refusal, so the return value is dropped here rather than widened

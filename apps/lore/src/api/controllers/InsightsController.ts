@@ -29,9 +29,9 @@ import {
   type VitalsPathsResource,
   vitalsPathsResourceSchema,
 } from "../schemas/vitalsPathsResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { DailyVisitorsService } from "../services/DailyVisitorsService.ts";
 import { LoreAnalyticsStore } from "../services/LoreAnalyticsStore.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import type { AnalyticsVitalHistograms } from "../vitalsPercentile.ts";
 import { summariseVitals } from "../vitalsPercentile.ts";
 
@@ -223,7 +223,6 @@ export class InsightsController {
 
   protected analytics = $inject(LoreAnalyticsStore);
   protected datasets = $inject(LoreAnalytics);
-  protected security = $inject(ProjectSecurityService);
   protected dateTime = $inject(DateTimeProvider);
   /**
    * Injected for one method: `percentChange`. The rule for when a delta may
@@ -235,7 +234,10 @@ export class InsightsController {
   protected errorGroups = $repository(sigilErrorGroups);
 
   getInsights = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     method: "GET",
     path: "/projects/:projectId/insights",
     schema: {
@@ -307,8 +309,6 @@ export class InsightsController {
       response: insightsResourceSchema,
     },
     handler: async ({ params, query, user }): Promise<InsightsResource> => {
-      await this.security.assertMember(params.projectId, user);
-
       const range = query.range ?? "7d";
       // Resolved once, then echoed back on the payload: the page renders the
       // filter from what it received, not from what it asked for.
@@ -715,7 +715,10 @@ export class InsightsController {
   });
 
   getInsightsDimension = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     method: "GET",
     path: "/projects/:projectId/insights/dimensions/:dimension",
     schema: {
@@ -755,8 +758,6 @@ export class InsightsController {
       query,
       user,
     }): Promise<InsightsDimensionResource> => {
-      await this.security.assertMember(params.projectId, user);
-
       const plan = this.DIMENSION_PLAN[params.dimension];
       const range = query.range ?? "7d";
       const traffic = query.traffic ?? "all";
@@ -855,7 +856,10 @@ export class InsightsController {
   });
 
   getVitalsPaths = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     method: "GET",
     path: "/projects/:projectId/insights/vitals-paths",
     schema: {
@@ -875,8 +879,6 @@ export class InsightsController {
       response: vitalsPathsResourceSchema,
     },
     handler: async ({ params, query, user }): Promise<VitalsPathsResource> => {
-      await this.security.assertMember(params.projectId, user);
-
       const range = query.range ?? "7d";
       const { since, until } = this.resolveWindow(range, query.until);
       const boundaries = Object.fromEntries(

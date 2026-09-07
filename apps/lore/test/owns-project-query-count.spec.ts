@@ -1,18 +1,20 @@
-import { Alepha } from "alepha";
+import { $inject, Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaOrm } from "alepha/orm";
 import {
+  $secure,
   AlephaSecurity,
   JwtProvider,
   SecurityProvider,
   type UserAccountToken,
 } from "alepha/security";
-import { AlephaServer, ServerProvider } from "alepha/server";
+import { $action, AlephaServer, ServerProvider } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import type { Project } from "../src/api/entities/projects.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { ProjectSecurityService } from "../src/api/services/ProjectSecurityService.ts";
 import {
   createTestMember,
   createTestProject,
@@ -62,6 +64,7 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaApiUsers);
   alepha.with(LoreApi);
   alepha.with(ReadCounter);
+  alepha.with(InHandlerGateControl);
 
   const repos = alepha.inject(TestEntityRepositories);
   const counter = alepha.inject(ReadCounter);
@@ -136,17 +139,54 @@ const PORTED = [
 ];
 
 /**
- * Seven endpoints still gating inside their handler, kept as the control.
- * `getReports*` take `params.id` rather than `params.projectId`.
+ * The control, and it has to be synthetic now.
+ *
+ * This list used to name seven real endpoints that still called
+ * `assertMember` in their handlers - Areas, the board, Blights, Reports. #Q1955
+ * ported the last of them, so there is no in-handler gate left in the
+ * application to measure against, and the before-figure would have gone with
+ * it. Seven actions declared here reproduce exactly the shape that was
+ * removed: same permission, same param, same `assertMember` as the first
+ * statement of the handler.
+ *
+ * Keeping the comparison synthetic is the point. The claim this spec makes is
+ * about two MECHANISMS, not about two lists of endpoints, and a claim whose
+ * control has been deleted is a number nobody can check.
  */
-const UNPORTED: Array<{ action: string; key: "projectId" | "id" }> = [
-  { action: "getAreas", key: "projectId" },
-  { action: "getBoard", key: "projectId" },
-  { action: "listBlights", key: "projectId" },
-  { action: "countOpenBlights", key: "projectId" },
-  { action: "getReportsOverview", key: "id" },
-  { action: "getReportsQuests", key: "id" },
-  { action: "getReportsMembers", key: "id" },
+class InHandlerGateControl {
+  protected readonly security = $inject(ProjectSecurityService);
+
+  protected gated() {
+    return $action({
+      use: [$secure({ permissions: ["project:read"] })],
+      schema: {
+        params: z.object({ projectId: z.integer() }),
+        response: z.object({ ok: z.boolean() }),
+      },
+      handler: async ({ params, user }) => {
+        await this.security.assertMember(params.projectId, user);
+        return { ok: true };
+      },
+    });
+  }
+
+  controlOne = this.gated();
+  controlTwo = this.gated();
+  controlThree = this.gated();
+  controlFour = this.gated();
+  controlFive = this.gated();
+  controlSix = this.gated();
+  controlSeven = this.gated();
+}
+
+const UNPORTED = [
+  "controlOne",
+  "controlTwo",
+  "controlThree",
+  "controlFour",
+  "controlFive",
+  "controlSix",
+  "controlSeven",
 ];
 
 describe("$ownsProject, measured", () => {
@@ -204,9 +244,9 @@ describe("$ownsProject, measured", () => {
     const results = await batch(
       ctx,
       token,
-      UNPORTED.map(({ action, key }) => ({
+      UNPORTED.map((action) => ({
         action,
-        params: { [key]: project.id },
+        params: { projectId: project.id },
         query: {},
       })),
     );

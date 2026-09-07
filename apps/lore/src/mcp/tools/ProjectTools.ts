@@ -93,6 +93,9 @@ export class ProjectTools {
       // non-member can learn, so both refusals collapse into the message
       // this resolver has always returned. Anything else is a real failure
       // and propagates untouched.
+      // ⚠️ ranks: imperative. MCP has no middleware chain of its own here,
+      // and this resolver deliberately turns the gate's 403 into a 404 - see
+      // below. It moves to the ranks module's imperative check.
       const me = this.alepha.store.get(currentUserAtom);
       if (!me) {
         throw new NotFoundError(`Project with ID ${project} not found`);

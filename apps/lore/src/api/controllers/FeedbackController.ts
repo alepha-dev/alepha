@@ -940,6 +940,10 @@ export class FeedbackController {
     },
   });
 
+  // ⚠️ ranks: imperative. The two helpers below are called from inside
+  // handlers, on a project resolved from a feedback row rather than from a
+  // param, so no `use:` entry can express them. They move to the ranks
+  // module's imperative check, never to `$ownsProject`.
   /**
    * Owner guard. Delegates to `ProjectSecurityService.assertOwner` and returns
    * the resolved project for handlers that need it.

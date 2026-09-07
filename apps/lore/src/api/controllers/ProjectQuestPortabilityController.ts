@@ -10,8 +10,8 @@ import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 import { relations } from "../relations.ts";
 import { importResultSchema } from "../schemas/questImportRow.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestCsvFormatter } from "../services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "../services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "../services/QuestImportFormatProvider.ts";
@@ -32,7 +32,6 @@ export class ProjectQuestPortabilityController {
    */
   protected readonly membersWith = $repository(relations, "members");
   protected readonly releases = $repository(releases);
-  protected readonly security = $inject(ProjectSecurityService);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly formatter = $inject(QuestCsvFormatter);
@@ -44,7 +43,10 @@ export class ProjectQuestPortabilityController {
   exportQuests = $action({
     // A permission, so the token carries a computed `ownership` for the
     // membership gate below (a bare `$secure()` leaves it undefined).
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [
+      $secure({ permissions: ["quest:read"] }),
+      $ownsProject({ param: "id" }),
+    ],
     method: "GET",
     path: "/projects/:id/quests/export",
     schema: {
@@ -52,8 +54,6 @@ export class ProjectQuestPortabilityController {
       response: z.file(),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.id, user);
-
       const project = await this.projects.getOne({
         where: { id: { eq: params.id } },
       });
@@ -117,7 +117,10 @@ export class ProjectQuestPortabilityController {
   });
 
   importQuests = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [
+      $secure({ permissions: ["project:update"] }),
+      $ownsProject({ param: "id", owner: true }),
+    ],
     method: "POST",
     path: "/projects/:id/quests/import",
     schema: {
@@ -126,8 +129,6 @@ export class ProjectQuestPortabilityController {
       response: importResultSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.id, user);
-
       const text = await body.file.text();
       const rows = this.parser.parse(text);
       if (rows.length === 0) {
