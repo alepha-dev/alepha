@@ -59,9 +59,13 @@ describe("Lore's inbox notifications", () => {
   }) => {
     const { alepha, recipients, rows } = await setup();
 
+    // ⚠️ Stored MIXED CASE, deliberately. `users.email` is not normalized on
+    // the way in - `AdminUserController` stores what it was given - so a
+    // lower-cased argument compared against the stored spelling matches
+    // nothing, and every such account reads as "belongs to nobody".
     const user = await rows.users.create({
       username: "nfo",
-      email: "member@example.com",
+      email: "Member@Example.com",
     } as never);
 
     expect(await recipients.resolve("member@example.com")).toEqual({
@@ -101,7 +105,7 @@ describe("Lore's inbox notifications", () => {
 
     await rows.users.create({
       username: "nfo",
-      email: "member@example.com",
+      email: "Member@Example.com",
     } as never);
 
     await templates.inboxMention.push({
@@ -147,7 +151,7 @@ describe("Lore's inbox notifications", () => {
 
     await rows.users.create({
       username: "nfo",
-      email: "member@example.com",
+      email: "Member@Example.com",
     } as never);
 
     await templates.inboxReleasePublished.push({

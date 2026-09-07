@@ -87,6 +87,7 @@ import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
+import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
@@ -189,6 +190,9 @@ export const LoreApi = $module({
     // notification classes share.
     LoreInboxNotifications,
     NotificationHtmlEscaper,
+    // Turns `@name` in a comment into a message. Injected by the quest and
+    // feedback comment controllers.
+    MentionNotifier,
     // Substituted for the framework's `NotificationInboxRecipientProvider`
     // in `main.server.ts`. Listed here only so DI scanning sees the class,
     // the same arrangement `LoreFileAccessProvider` has.

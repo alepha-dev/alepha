@@ -11,11 +11,17 @@ import { users } from "../entities/users.ts";
  * Lore's half of that seam, substituted for the framework's default in
  * `main.server.ts`, which resolves nobody.
  *
- * ⚠️ **Normalize, and normalize both sides.** The channel lower-cases the
+ * ⚠️ **Both sides, not just the argument.** The channel lower-cases the
  * contact before asking, because the sender hands it `payload.contact` raw.
- * `users.email` is not guaranteed to be normalized either, so the comparison
- * is done on a lower-cased column rather than on the stored spelling: an
- * address typed with a capital letter must still find its owner.
+ * `users.email` is **not** normalized on the way in: `AdminUserController`
+ * stores whatever it was given, so a real account can hold
+ * `Pauline@Example.com`. A lower-cased argument compared against the stored
+ * spelling therefore matches nothing, and the whole feature reads as "this
+ * address belongs to nobody" for every such account.
+ *
+ * `eqInsensitive` is `LOWER(column) = LOWER(value)`, which is the comparison
+ * this needs. Not `ilike`, which is a pattern match: a raw address carries
+ * `_` and `%` as wildcards, and on an identity lookup that is wrong.
  *
  * Returning null is not an error. It is how Lore says this address belongs
  * to nobody it knows, which is ordinary for a message addressed to somebody
@@ -31,7 +37,9 @@ export class LoreInboxRecipientProvider extends NotificationInboxRecipientProvid
     const email = contact.trim().toLowerCase();
     if (!email) return null;
 
-    const user = await this.users.findOne({ where: { email: { eq: email } } });
+    const user = await this.users.findOne({
+      where: { email: { eqInsensitive: email } },
+    });
     return user ? { userId: user.id } : null;
   }
 }

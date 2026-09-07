@@ -4,6 +4,7 @@ import { $repository } from "alepha/orm";
 import { OwnedResourceProvider, $secure } from "alepha/security";
 import { $action, ForbiddenError, okSchema } from "alepha/server";
 
+import { formatReference } from "../../web/app/components/shared/element/typedReference.ts";
 import type { Project } from "../entities/projects.ts";
 import { type QuestComment, questComments } from "../entities/questComments.ts";
 import { type Quest, quests } from "../entities/quests.ts";
@@ -11,6 +12,7 @@ import { questCommentResourceSchema } from "../schemas/questCommentResourceSchem
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { MentionNotifier } from "../services/MentionNotifier.ts";
 
 /**
  * The Discussion half of a quest: human comments, which the quest page
@@ -38,6 +40,7 @@ export class QuestCommentController {
   dt = $inject(DateTimeProvider);
   audits = $inject(LoreAudits);
   owned = $inject(OwnedResourceProvider);
+  mentions = $inject(MentionNotifier);
 
   /**
    * Member gate on the project the quest named by `params.id` belongs to.
@@ -203,9 +206,43 @@ export class QuestCommentController {
         metadata: { commentId: comment.id, source: body.source },
       });
 
+      // ⚠️ Here rather than at the HTTP layer, because
+      // `QuestTools.quest_comment_add` calls this method directly: a hook one
+      // level out would miss every comment an agent writes, which is most of
+      // them. Over MCP the session user IS the caller's own account, so
+      // "never ping the author" already does the right thing when an agent
+      // mentions the owner.
+      await this.mentions.notify({
+        subject: this.mentionSubject(quest),
+        authorId: user.id,
+        body: body.body,
+      });
+
       return comment;
     },
   });
+
+  /**
+   * Where a mention on this quest points, and what it is called.
+   *
+   * `projectTitle` becomes the inbox chip's label: without it the bell reads
+   * `project:65`. The reference goes through `formatReference`, the one
+   * implementation of that grammar.
+   */
+  protected mentionSubject(quest: Quest) {
+    const project = this.owned.authority<Project>();
+    // `project-<id>` is the documented fallback when a title derives no
+    // slug, and it is what `ProjectSlugService` writes; a link built without
+    // it would read `/undefined/quests/402`.
+    const slug = project.slug || `project-${project.id}`;
+    return {
+      projectId: quest.projectId,
+      projectTitle: project.title,
+      reference: formatReference("quest", quest.shortId),
+      title: quest.title,
+      href: `/${slug}/quests/${quest.shortId}`,
+    };
+  }
 
   updateQuestComment = $action({
     use: [
@@ -229,10 +266,31 @@ export class QuestCommentController {
         throw new ForbiddenError("Only the author can edit this comment");
       }
 
-      return await this.comments.updateById(params.id, {
+      const updated = await this.comments.updateById(params.id, {
         body: body.body,
         editedAt: this.dt.nowISOString(),
       });
+
+      // Only the handles that were not there before. Fixing a typo elsewhere
+      // in the body must not re-ping everyone, which is why the edit path
+      // diffs rather than repeating the create path.
+      //
+      // The quest is read here rather than taken from the gate: `ownsComment`
+      // resolves the COMMENT and its authority is the project, so the hop in
+      // between is not exposed. One read, and only on a body that changed.
+      if (comment.body !== body.body) {
+        const quest = await this.quests.findById(comment.questId);
+        if (quest) {
+          await this.mentions.notify({
+            subject: this.mentionSubject(quest),
+            authorId: user.id,
+            body: body.body,
+            previousBody: comment.body,
+          });
+        }
+      }
+
+      return updated;
     },
   });
 
