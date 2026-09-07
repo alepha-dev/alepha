@@ -5958,6 +5958,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"deploy-smoke@workspace:apps/examples/deploy-smoke":
+  version: 0.0.0-use.local
+  resolution: "deploy-smoke@workspace:apps/examples/deploy-smoke"
+  dependencies:
+    "@alepha/lore": "workspace:*"
+    alepha: "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "deps-regex@npm:^0.2.0":
   version: 0.2.0
   resolution: "deps-regex@npm:0.2.0"
