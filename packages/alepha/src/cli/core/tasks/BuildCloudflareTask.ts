@@ -1,5 +1,3 @@
-import { basename } from "node:path";
-
 import { $inject, AlephaError } from "alepha";
 import { KV_DEFAULT_BINDING } from "alepha/cache";
 import { SEND_EMAIL_DEFAULT_BINDING } from "alepha/email/cloudflare";
@@ -116,6 +114,22 @@ export class BuildCloudflareTask extends BuildTask {
     });
   }
 
+  /**
+   * The last non-empty segment of a path, on either separator.
+   *
+   * ⚠️ Hand-rolled rather than `node:path`'s `basename`, and the reason is not
+   * taste: this task is the one build step a Cloudflare deploy runs from
+   * inside a Worker (epic #1), and `workerd-entry-graph.spec.ts` refuses any
+   * `node:` builtin reaching the workerd entry. Every other path operation
+   * here already goes through `FileSystemProvider`, which has no `basename` to
+   * offer; adding one would mean three implementations for a caller that
+   * splits a string.
+   */
+  protected basename(path: string): string {
+    const segments = path.split(/[\\/]+/).filter(Boolean);
+    return segments.at(-1) ?? "";
+  }
+
   protected async generateCloudflare(
     ctx: BuildTaskContext,
     distDir: string,
@@ -137,7 +151,7 @@ export class BuildCloudflareTask extends BuildTask {
     // `wrangler tail my-app-production`. The file cannot carry a comment
     // saying so — example-ssr's build-artifacts spec pins it as strict
     // JSON-parseable.
-    const name = basename(root)
+    const name = this.basename(root)
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, "-")
       .replace(/^-+|-+$/g, "")

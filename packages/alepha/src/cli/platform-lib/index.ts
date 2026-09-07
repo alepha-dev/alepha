@@ -7,6 +7,7 @@ import { MemorySecretStore } from "./providers/MemorySecretStore.ts";
 import { PlatformCacheProvider } from "./providers/PlatformCacheProvider.ts";
 import { CloudflareApi } from "./services/CloudflareApi.ts";
 import { NamingService } from "./services/NamingService.ts";
+import { PlatformAdapterRegistry } from "./services/PlatformAdapterRegistry.ts";
 import { PlatformInspector } from "./services/PlatformInspector.ts";
 import { PlatformOrchestrator } from "./services/PlatformOrchestrator.ts";
 import { SecretFilterService } from "./services/SecretFilterService.ts";
@@ -30,11 +31,17 @@ import { WranglerApi } from "./services/WranglerApi.ts";
  */
 export const AlephaPlatformLibPlugin = $module({
   name: "alepha.cli.platform-lib",
+  register: (alepha) =>
+    alepha
+      .inject(PlatformAdapterRegistry)
+      .set("cloudflare", CloudflareAdapter)
+      .set("bay", BayAdapter),
   services: [
     BayAdapter,
     CloudflareAdapter,
     CloudflareApi,
     WranglerApi,
+    PlatformAdapterRegistry,
     PlatformCacheProvider,
     GitHubSecretStore,
     MemorySecretStore,
@@ -57,6 +64,7 @@ export * from "./schemas/cloudflare.ts";
 export * from "./schemas/platform.ts";
 export * from "./services/CloudflareApi.ts";
 export * from "./services/NamingService.ts";
+export * from "./services/PlatformAdapterRegistry.ts";
 export * from "./services/PlatformInspector.ts";
 export * from "./services/PlatformOrchestrator.ts";
 export * from "./services/SecretFilterService.ts";
