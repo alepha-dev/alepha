@@ -81,7 +81,24 @@ test.describe("Estates", () => {
 
     await page.goto("/account/estates");
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText("You own no estate yet")).toBeVisible();
+    /*
+     * ⚠️ With no estates the card is STILL there and the create row is its
+     * only row (feedback #P2140). It used to be no card at all and a lone
+     * secondary button floating below where one would have been, which is
+     * what the report was about - so the assertion is that the button sits
+     * inside a card, not merely that it exists.
+     *
+     * The paragraph this replaced told a reader who holds no secret to run
+     * `bay connector set`. The command is not lost: the secret dialog
+     * carries it in full, with its arguments, at the one moment it can be
+     * followed.
+     */
+    await expect(page.getByTestId("my-estate-row")).toHaveCount(0);
+    await expect(
+      page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByTestId("estate-create-open") }),
+    ).toHaveCount(1);
 
     await createEstate(page, "ovh-1");
 
@@ -150,7 +167,12 @@ test.describe("Estates", () => {
     await confirmDialog(page, "Delete");
     await page.waitForURL(/\/account\/estates/, { timeout: 15_000 });
     await expect(page.getByTestId("my-estate-row")).toHaveCount(0);
-    await expect(page.getByText("You own no estate yet")).toBeVisible();
+    // And back to the card holding nothing but its create row.
+    await expect(
+      page
+        .locator('[data-slot="card"]')
+        .filter({ has: page.getByTestId("estate-create-open") }),
+    ).toHaveCount(1);
   });
 
   test("the admin list shows every estate on the instance, and no credential", async ({

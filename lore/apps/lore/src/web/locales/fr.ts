@@ -1734,9 +1734,9 @@ export default {
   "account.estates.title": "Domaines",
   "account.estates.description":
     "Les machines et comptes que vous possédez et prêtez aux projets comme destinations de déploiement. Chacun se connecte avec un secret affiché une seule fois, à la création et à la rotation.",
-  "account.estates.empty":
-    "Vous ne possédez encore aucun domaine. Créez-en un, puis lancez `bay connector set` sur la machine avec le secret affiché.",
   "account.estates.create": "Créer un domaine",
+  "account.estates.create.description":
+    "Son secret est affiché une seule fois, à la création. Il ne peut pas être récupéré ensuite, seulement renouvelé.",
   "account.estates.create.submit": "Créer",
   "account.estates.new": "Nouveau domaine",
   "account.estates.secretPrefix": "secret $1…",
