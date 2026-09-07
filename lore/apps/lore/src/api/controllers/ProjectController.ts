@@ -154,9 +154,13 @@ export class ProjectController {
    * built-ins, which is exactly the state every project created before this
    * epic is in, and its owner can create a rank from a template afterwards.
    *
-   * ⚠️ Existing projects are NOT migrated. They keep zero definition rows and
-   * behave precisely as before; seeding them would invent three ranks nobody
-   * asked for in twenty-five projects at once.
+   * ⚠️ Existing projects ARE swept, since #Q2001. They used to keep zero
+   * definition rows forever, on the reasoning that seeding them would invent
+   * three ranks nobody asked for in twenty-five projects at once; the owner
+   * of one of those projects then opened the members page and asked where
+   * Admin was (feedback #P2122). `ProjectRankJobs.seedMissingPresetRanks`
+   * gives a project holding NO definition rows the same three, nightly, which
+   * also heals a project whose seeding failed here.
    */
   protected async seedPresetRanks(
     projectId: number,
