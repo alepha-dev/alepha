@@ -13,11 +13,13 @@ import { useAlepha, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
+  Bot,
   CircleDot,
   ClipboardCheck,
   Flag,
   Play,
   Plus,
+  Rocket,
   Search,
   Trash2,
 } from "lucide-react";
@@ -535,24 +537,60 @@ const ProjectEpics = () => {
           },
         }}
         rowActions={(epic) => [
-          // Gated on the row's own status, which is why this callback reads
-          // its argument now. Beginning an epic that has already begun is
-          // not a thing to offer.
-          // Two gates, and they are different questions. The row's own
-          // status decides whether reviewing a plan makes sense: after
-          // Begin the quest set is what is being worked, not what is being
-          // written. The `agentPrompts` option decides whether this project
-          // hands work to agents at all, and it is off by default.
-          ...(epic.status === "planned" && agentPrompt.enabled
+          // The submenu that hands this epic to an agent. Two entries under
+          // two different status gates, and the whole group behind the
+          // project's `agentPrompts` option, which is off by default.
+          //
+          // Review is offered while the plan is still open: after Begin the
+          // quest set is what is being worked, not what is being written.
+          // Activate is offered on an active epic too, because a
+          // half-worked epic can be handed over. A `done` epic gets neither,
+          // so the group has no children and `AlephaTable` renders nothing
+          // for it.
+          //
+          // ⚠️ Activate is NOT Begin. Begin is the epic's own lifecycle
+          // action and stays below, untouched; Activate copies a prompt that
+          // tells an agent to begin the epic if it needs beginning. Nothing
+          // here calls `setEpicStatus`.
+          ...(agentPrompt.enabled
             ? [
                 {
-                  icon: ClipboardCheck,
-                  label: tr("agentPrompts.review"),
-                  onClick: (row: EpicResource) =>
-                    agentPrompt.copy("epicReview", promptSubject.forEpic(row)),
+                  icon: Bot,
+                  label: tr("agentPrompts.menu"),
+                  children: [
+                    ...(epic.status === "planned"
+                      ? [
+                          {
+                            icon: ClipboardCheck,
+                            label: tr("agentPrompts.review"),
+                            onClick: (row: EpicResource) =>
+                              agentPrompt.copy(
+                                "epicReview",
+                                promptSubject.forEpic(row),
+                              ),
+                          },
+                        ]
+                      : []),
+                    ...(epic.status === "planned" || epic.status === "active"
+                      ? [
+                          {
+                            icon: Rocket,
+                            label: tr("agentPrompts.activate"),
+                            onClick: (row: EpicResource) =>
+                              agentPrompt.copy(
+                                "epicActivate",
+                                promptSubject.forEpic(row),
+                              ),
+                          },
+                        ]
+                      : []),
+                  ],
                 },
               ]
             : []),
+          // Gated on the row's own status, which is why this callback reads
+          // its argument now. Beginning an epic that has already begun is
+          // not a thing to offer.
           ...(epic.status === "planned"
             ? [
                 {

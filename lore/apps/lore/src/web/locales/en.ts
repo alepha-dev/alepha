@@ -1788,7 +1788,9 @@ export default {
   "epic.progress.open": "$1 open",
   "epic.progress.shelved": "$1 shelved",
   "epic.action.delete": "Delete",
+  "agentPrompts.menu": "Agent Prompts",
   "agentPrompts.review": "Review",
+  "agentPrompts.activate": "Activate",
   "agentPrompts.copied":
     "Prompt for $1 copied. Paste it into Claude Code or Codex.",
   "agentPrompts.copyError": "Could not copy the prompt.",

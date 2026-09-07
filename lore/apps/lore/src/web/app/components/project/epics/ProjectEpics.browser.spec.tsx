@@ -388,28 +388,95 @@ describe("ProjectEpics - the status filter", () => {
       });
     };
 
+    /**
+     * Open the row menu, then its Agent Prompts submenu, and answer the
+     * entries INSIDE it.
+     *
+     * ⚠️ `openRowMenu` reads the top level only, where the group appears as
+     * a single trigger. A case that kept asserting on `Review` against that
+     * list would go red; one rewritten to assert "Agent Prompts" would pass
+     * while proving nothing about the entries.
+     *
+     * The gesture is #Q1959's, measured rather than guessed: a plain
+     * `fireEvent.click` on the trigger opens the submenu under jsdom, the
+     * same gesture as the row menu itself, and the content is portalled so
+     * the children are read off `document`.
+     *
+     * ⚠️ It takes the ALREADY-OPEN item list rather than a row name.
+     * `openRowMenu` clicks the three-dots trigger, and clicking it a second
+     * time toggles the menu shut, so a case that opened the row menu and
+     * then called this with a name found an empty document.
+     */
+    const openAgentPrompts = async (items: Element[]) => {
+      const trigger = items.find((item) =>
+        item.textContent?.includes("Agent Prompts"),
+      );
+      if (!trigger) return [];
+      fireEvent.click(trigger);
+      return await waitFor(() => {
+        const found = [...document.querySelectorAll('[role="menuitem"]')];
+        const children = found.filter(
+          (item) => !item.textContent?.includes("Agent Prompts"),
+        );
+        if (children.length === 0) throw new Error("submenu not open yet");
+        return children;
+      });
+    };
+
     it("is offered on a planned epic, beside Begin", async () => {
       await mount();
 
-      const items = (await openRowMenu("#E1 - Planned epic")).map(
+      // The top level carries the group and Begin. Review is one level in,
+      // which is what the submenu changed.
+      //
+      // ⚠️ The row menu is opened ONCE and the list reused: the three-dots
+      // trigger toggles, so opening it again to read the submenu closes it.
+      const opened = await openRowMenu("#E1 - Planned epic");
+      const top = opened.map((item) => item.textContent);
+      expect(top.join(" ")).toContain("Agent Prompts");
+      expect(top.join(" ")).toContain("Begin");
+      expect(top.join(" ")).not.toContain("Review");
+
+      const inside = (await openAgentPrompts(opened)).map(
         (item) => item.textContent,
       );
-
-      expect(items.join(" ")).toContain("Review");
-      expect(items.join(" ")).toContain("Begin");
+      expect(inside.join(" ")).toContain("Review");
+      expect(inside.join(" ")).toContain("Activate");
     });
 
-    it("is not offered once the epic has begun", async () => {
+    it("drops Review once the epic has begun but keeps Activate", async () => {
       await mount();
 
       // Reviewing a plan is a thing you do while the plan is still open;
-      // after Begin the quest set is what is being worked.
-      const items = (await openRowMenu("#E2 - Active epic")).map(
+      // after Begin the quest set is what is being worked. Activate stays,
+      // because a half-worked epic can still be handed over, and Begin is
+      // gone because it has already happened.
+      const opened = await openRowMenu("#E2 - Active epic");
+      const top = opened.map((item) => item.textContent);
+      expect(top.join(" ")).toContain("Agent Prompts");
+      expect(top.join(" ")).not.toContain("Begin");
+
+      const inside = (await openAgentPrompts(opened)).map(
         (item) => item.textContent,
       );
+      expect(inside.join(" ")).toContain("Activate");
+      expect(inside.join(" ")).not.toContain("Review");
+    });
 
-      expect(items.join(" ")).not.toContain("Review");
-      expect(items.join(" ")).not.toContain("Begin");
+    /**
+     * ⚠️ The empty-group case. A `done` epic passes neither gate, so the
+     * group has no children, and #Q1959's effective-entry count is what
+     * keeps it from rendering a trigger over an empty menu.
+     */
+    it("offers no group at all on a concluded epic", async () => {
+      await mount();
+
+      const top = (await openRowMenu("#E3 - Done epic")).map(
+        (item) => item.textContent,
+      );
+      expect(top.join(" ")).not.toContain("Agent Prompts");
+      expect(top.join(" ")).not.toContain("Review");
+      expect(top.join(" ")).not.toContain("Activate");
     });
 
     /**
@@ -422,7 +489,9 @@ describe("ProjectEpics - the status filter", () => {
       const written = stubClipboard();
       await mount();
 
-      const items = await openRowMenu("#E1 - Planned epic");
+      const items = await openAgentPrompts(
+        await openRowMenu("#E1 - Planned epic"),
+      );
       const review = items.find((item) => item.textContent?.includes("Review"));
       expect(review).toBeTruthy();
       fireEvent.click(review!);
@@ -454,7 +523,9 @@ describe("ProjectEpics - the status filter", () => {
         slug: "kanban-v2",
       });
 
-      const items = await openRowMenu("#E1 - Planned epic");
+      const items = await openAgentPrompts(
+        await openRowMenu("#E1 - Planned epic"),
+      );
       fireEvent.click(
         items.find((item) => item.textContent?.includes("Review"))!,
       );
@@ -481,6 +552,7 @@ describe("ProjectEpics - the status filter", () => {
       const items = (await openRowMenu("#E1 - Planned epic")).map(
         (item) => item.textContent,
       );
+      expect(items.join(" ")).not.toContain("Agent Prompts");
       expect(items.join(" ")).not.toContain("Review");
       // Begin is untouched: it is the epic's own lifecycle action and has
       // nothing to do with this option.
