@@ -15,6 +15,7 @@ import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
 import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
 import { ProjectSecurityService } from "../../api/services/ProjectSecurityService.ts";
+import { ProjectSlugService } from "../../api/services/ProjectSlugService.ts";
 import {
   projectActivityParamsSchema,
   projectActivityResultSchema,
@@ -60,6 +61,7 @@ export class ProjectTools {
   protected readonly releaseController = $inject(ReleaseController);
   protected readonly areaService = $inject(AreaService);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
+  protected readonly slugs = $inject(ProjectSlugService);
   protected readonly ranks = $inject(RankService);
   protected readonly members = $repository(members);
   protected readonly pinnedFolder = $inject(PinnedFolioFolder);
@@ -121,13 +123,42 @@ export class ProjectTools {
       // reads the list. It is the rarer of the two: an agent that has called
       // any tool once is holding ids.
       const projects = await this.projectController.getMyProjects();
-      const found = projects.find(
-        (p) => p.title.toLowerCase() === projectName.toLowerCase(),
-      );
-      if (!found) {
-        throw new NotFoundError(`Project "${projectName}" not found`);
+      const needle = projectName.toLowerCase();
+      const found = projects.find((p) => p.title.toLowerCase() === needle);
+      if (found) {
+        return found.id;
       }
-      return found.id;
+
+      // The slug is the spelling an agent actually MEETS. It is what the URL
+      // shows (`/:projectSlug/quests/12`), what a pasted link carries, and
+      // what `SIGIL_KEY` encodes as `sg_<projectSlug>_<secret>`. Titles agree
+      // with their slug only when they are one alphanumeric word, so an agent
+      // that read `kanban-v2` off any of those and called a tool with it was
+      // told the project does not exist - which reads as "you are not a
+      // member" rather than "you spelled it the other way".
+      //
+      // Exact title first, above: a project literally titled `kanban-v2`
+      // still wins over one titled `Kanban V2`.
+      //
+      // ⚠️ Derived from the title, never read off `projects.slug`. The stored
+      // slug is disambiguated on collision, so reading it would let this
+      // resolver disagree with what the URL says about the same row; deriving
+      // gives the resolver one source.
+      const bySlug = projects.filter(
+        (p) => this.slugs.slugify(p.title) === needle,
+      );
+      // ⚠️ Ambiguity resolves to NOTHING, not to the first row. Two titles
+      // can slugify alike (`Kanban v2` and `Kanban V2`): a tool that silently
+      // writes into the wrong project is worse than one that says it cannot
+      // tell them apart. The exact-title pass above has the same hazard and
+      // is left as it is - this does not widen it.
+      if (bySlug.length === 1) {
+        return bySlug[0].id;
+      }
+
+      // Unchanged, and deliberately the same string for "no such project" and
+      // "not yours" - see the id branch above.
+      throw new NotFoundError(`Project "${projectName}" not found`);
     }
 
     throw new BadRequestError(

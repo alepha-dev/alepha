@@ -10,6 +10,7 @@ import { describe, it } from "vitest";
 
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { members } from "../../api/entities/members.ts";
+import { projects } from "../../api/entities/projects.ts";
 import { LoreApi } from "../../api/index.ts";
 import { LoreMcp } from "../index.ts";
 import { ProjectTools } from "./ProjectTools.ts";
@@ -21,6 +22,17 @@ import { ProjectTools } from "./ProjectTools.ts";
  */
 class MembersProbe {
   members = $repository(members);
+}
+
+/**
+ * Direct handle onto `projects`, so a spec can put the tree into a state
+ * `createProject` refuses to create: two rows whose TITLES slugify alike.
+ * The endpoint's `assertSlugAvailable` gate stops the second one on the way
+ * in and the stored slugs end up disambiguated - which is exactly why the
+ * resolver derives a slug from the title rather than reading the column.
+ */
+class ProjectsProbe {
+  projects = $repository(projects);
 }
 
 /**
@@ -43,6 +55,7 @@ const setup = async () => {
   alepha.with(LoreMcp);
 
   const membersProbe = alepha.inject(MembersProbe);
+  const projectsProbe = alepha.inject(ProjectsProbe);
   const projectTools = alepha.inject(ProjectTools);
   const projectApi = alepha.inject(ProjectController);
   const users = alepha.inject(UserService);
@@ -75,7 +88,29 @@ const setup = async () => {
     return member.id;
   };
 
-  return { alepha, projectTools, project, call, OWNER, addNonOwnerMember };
+  const createProject = (title: string) =>
+    asUser(OWNER, () =>
+      projectApi.createProject({ body: { title } } as any),
+    ) as Promise<{ id: number }>;
+
+  /**
+   * Resolve a `project_name` the way every tool does, under the owner's
+   * identity - `getMyProjects` reads the caller.
+   */
+  const resolveName = (name: string) =>
+    asUser(OWNER, () => projectTools.resolveProjectId(undefined, name));
+
+  return {
+    alepha,
+    projectTools,
+    project,
+    call,
+    OWNER,
+    addNonOwnerMember,
+    createProject,
+    resolveName,
+    projectsProbe,
+  };
 };
 
 /**
@@ -112,6 +147,81 @@ describe("Lore MCP - projects", () => {
       // Deliberately absent: a set per row is one definitions read per
       // project, and "may I do this" is a question about ONE project.
       expect(row?.permissions).toBeUndefined();
+    });
+  });
+
+  /**
+   * The slug is the spelling an agent actually meets: it is in the URL, in a
+   * pasted link, and in `SIGIL_KEY`. Before this, `resolveProjectId` compared
+   * against titles only, so anything but a one-word title answered "not
+   * found" - which reads as "you are not a member".
+   */
+  describe("project_name", () => {
+    it("resolves a project from its slug and from its title", async ({
+      expect,
+    }) => {
+      const { createProject, resolveName } = await setup();
+      const kanban = await createProject("Kanban v2");
+
+      await expect(resolveName("kanban-v2")).resolves.toBe(kanban.id);
+      await expect(resolveName("Kanban v2")).resolves.toBe(kanban.id);
+    });
+
+    it("resolves an accented title from its folded slug", async ({
+      expect,
+    }) => {
+      const { createProject, resolveName } = await setup();
+      const elan = await createProject("Élan Vital");
+
+      await expect(resolveName("elan-vital")).resolves.toBe(elan.id);
+    });
+
+    it("prefers an exact title over another project's slug", async ({
+      expect,
+    }) => {
+      const { createProject, resolveName, projectsProbe } = await setup();
+      // `Kanban V2` slugifies to `kanban-v2`, so both rows answer the name -
+      // and the one literally called that has to win. The second title is set
+      // through the probe because the slug it would claim is already taken.
+      const spelled = await createProject("Kanban V2");
+      const literal = await createProject("Literally the slug");
+      await projectsProbe.projects.updateById(literal.id, {
+        title: "kanban-v2",
+      });
+
+      await expect(resolveName("kanban-v2")).resolves.toBe(literal.id);
+      expect(literal.id).not.toBe(spelled.id);
+    });
+
+    it("refuses when two titles slugify alike, rather than picking one", async ({
+      expect,
+    }) => {
+      const { createProject, resolveName, projectsProbe } = await setup();
+      const first = await createProject("Kanban v2");
+      const second = await createProject("Kanban v2 bis");
+      // `createProject` would refuse the collision, so it is made here the
+      // way production gets one: a title that moves without its slug.
+      await projectsProbe.projects.updateById(second.id, {
+        title: "Kanban V2",
+      });
+
+      await expect(resolveName("kanban-v2")).rejects.toThrowError(
+        'Project "kanban-v2" not found',
+      );
+      // Not a fluke of an empty tree: both rows really do answer that slug.
+      expect(first.id).not.toBe(second.id);
+    });
+
+    it("refuses an unknown name with the message it has always used", async ({
+      expect,
+    }) => {
+      const { resolveName } = await setup();
+
+      // ⚠️ The same string for "no such project" and "not yours". Nothing
+      // here may make it say more.
+      await expect(resolveName("nope")).rejects.toThrowError(
+        'Project "nope" not found',
+      );
     });
   });
 
