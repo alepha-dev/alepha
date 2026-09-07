@@ -2150,6 +2150,8 @@ export default {
   "project.settings.ranks.title": "What each rank may do",
   "project.settings.ranks.description":
     "Permissions down the left, one column per rank. A permission belonging to a capability this project does not have is not listed at all.",
+  "project.settings.ranks.delay":
+    "A change to what a rank grants can take up to a minute to reach everybody. Removing somebody from the project, or moving them to another rank, takes effect at once.",
   "project.settings.ranks.permission": "Permission",
   "project.settings.ranks.empty":
     "No permission to show for this project's capabilities.",
