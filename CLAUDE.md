@@ -106,18 +106,23 @@ Everything that came from Lore carries a **shortId offset of +1000** (quest `#20
 
 #### The folio tree is organised — file folios, don't dump them at the root
 
-Project `1` has a directory tree (browse it with `directory_list`). **Directories are subjects, not document types.** Put a new folio under the subject it is about and say which kind of document it is in its `summary`; there are no `plans/` or `specs/` directories, because a spec filed away from its subject is unfindable. (Folio tags are gone — the summary is the only taxonomy left.) Pass `directory_shortId` to `folio_create`:
+**⚠️ Run `directory_list` before filing. The table below is a snapshot, not the tree.** It has now been reorganised twice, and a frozen table in a file nobody re-reads is exactly what put folios in directories that no longer existed. Pass `directory_shortId` to `folio_create`.
 
-| Directory   | What goes in it                                                                     |
-| ----------- | ----------------------------------------------------------------------------------- |
-| `framework` | `packages/alepha` — core, ORM, react, security, build, `@alepha/ui`                 |
-| `lore`      | `apps/lore` — the app, its data model, its UI, sigils, MCP                          |
-| `bay`       | `apps/bay` — the Go supervisor, its deployment, the VPS                             |
-| `platform`  | the deploy chain — `alepha platform`, its adapters, Cloudflare, SSH, npm release    |
-| `commerce`  | `@alepha/commerce` and `apps/examples/shop`                                         |
-| `reviews`   | dated audits and security reviews that span everything                              |
-| `archive`   | retired experiments, kept only where a lesson survives (pulse, bay-admin, outposts) |
-| `trash`     | superseded folios awaiting real deletion — see below                                |
+**At the top level, directories are subjects, not document types.** Put a new folio under the subject it is about and say which kind of document it is in its `summary`. (Folio tags are gone — the summary is the only taxonomy left.) A subject may group **inside itself** — `alepha-lore/ideas`, `alepha-commerce/specs` — and that does not break the rule: the reason for it is that a spec filed away from its subject is unfindable, and a subdirectory of that subject is not away from it. What must never appear is a top-level `specs/` or `plans/`.
+
+Snapshot read 2026-09-07:
+
+| Directory         | What goes in it                                                                  |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `alepha`          | `packages/alepha` — core, ORM, react, security, build, `@alepha/ui`              |
+| `alepha-lore`     | `apps/lore` — the app, its data model, its UI, sigils, MCP. Has `ideas/`         |
+| `alepha-bay`      | `apps/bay` — the Go supervisor, its deployment, the VPS                          |
+| `alepha-platform` | the deploy chain — `alepha platform`, its adapters, Cloudflare, SSH, npm release |
+| `alepha-commerce` | `@alepha/commerce` and `apps/examples/shop`. Has `ideas/` and `specs/`           |
+| `reviews`         | dated audits and security reviews that span everything                           |
+| `trash`           | superseded folios awaiting real deletion — see below                             |
+
+⚠️ **The five subjects gained an `alepha-` prefix on 2026-09-06**, and `archive` is **gone** — the retired-experiment folios it held (pulse, bay-admin, outposts) are no longer behind a directory of their own. `reviews` and `trash` kept their names, which is consistent: they are the two that are not subjects. Anything you read in an older folio or memory file naming `framework`, `lore`, `bay`, `platform`, `commerce` or `archive` as a directory predates this; those were not swept, because the words are also the ordinary names of the things themselves and a blind rename would have rewritten prose that was never about a directory.
 
 **Lifecycle.** When work ships, the _outcome_ folio survives and the spec folio moves to `trash`. `trash` is a manual soft-delete: `folio_delete` is immediate and permanent, so nothing is ever deleted outright — it is moved there and left for the user to purge. Do not empty `trash` without being asked.
 
