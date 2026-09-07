@@ -205,7 +205,13 @@ test.describe("The Bay console", () => {
     // Both sides of the reconciliation. The estate is lent to the project
     // first: `AppService.setEstate` refuses a reference the project has no
     // grant for, which is validation of the reference and not of the caller.
-    const project = await createProjectViaWizard(page, "Bay Console");
+    // ⚠️ Apps asked for explicitly. The wizard's own defaults are Work and
+    // Knowledge, and creating an app instance is refused on a project without
+    // the Apps capability - the console's whole subject is one, so the spec
+    // has to say the project does that.
+    const project = await createProjectViaWizard(page, "Bay Console", {
+      capabilities: ["apps"],
+    });
     await apiCall(
       page,
       "attachEstate",
