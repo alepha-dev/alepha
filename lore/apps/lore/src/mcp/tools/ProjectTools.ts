@@ -1,6 +1,7 @@
 import { $inject, Alepha, z } from "alepha";
 import { RankService } from "alepha/api/ranks";
 import { $tool } from "alepha/mcp";
+import { $repository } from "alepha/orm";
 import { currentUserAtom } from "alepha/security";
 import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 
@@ -9,6 +10,7 @@ import { EpicController } from "../../api/controllers/EpicController.ts";
 import { FolioController } from "../../api/controllers/FolioController.ts";
 import { ProjectController } from "../../api/controllers/ProjectController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
+import { members } from "../../api/entities/members.ts";
 import type { CapabilityKey } from "../../api/schemas/capabilityKeySchema.ts";
 import { AreaService } from "../../api/services/AreaService.ts";
 import { PinnedFolioFolder } from "../../api/services/PinnedFolioFolder.ts";
@@ -59,6 +61,7 @@ export class ProjectTools {
   protected readonly areaService = $inject(AreaService);
   protected readonly projectSecurity = $inject(ProjectSecurityService);
   protected readonly ranks = $inject(RankService);
+  protected readonly members = $repository(members);
   protected readonly pinnedFolder = $inject(PinnedFolioFolder);
   protected readonly alepha = $inject(Alepha);
 
@@ -156,7 +159,7 @@ export class ProjectTools {
    */
   project_list = $tool({
     description:
-      "List all projects the user has access to (owned + member-of). Use this to find the project id (required by most other tools) and check the title for project_name lookups. Each entry includes id, title, public (boolean), isOwner (boolean).",
+      "List all projects the user has access to (owned + member-of). Use this to find the project id (required by most other tools) and check the title for project_name lookups. Each entry includes id, title, public (boolean) and `rank` - the caller's rank in that project, as `{ key, name }`. What that rank actually GRANTS is `permissions` on `project_info` / `project_context`, which answer for one project.",
     title: "List projects",
     annotations: {
       readOnlyHint: true,
@@ -168,21 +171,54 @@ export class ProjectTools {
     },
     handler: async () => {
       const projects = await this.projectController.getMyProjects();
-
-      // `createdBy !== undefined` was true for every row, so a plain member
-      // was told it could run owner-only mutations and only found out when
-      // one failed. `getMyProjects` returns project resources, not the
-      // membership row, so ownership is read the way the web app reads it:
-      // the creator is the owner.
       const me = this.alepha.store.get(currentUserAtom);
 
+      // ⚠️ `isOwner` is gone, and it was wrong twice over. It was derived
+      // from `projects.createdBy`, which stopped being an authorization
+      // input in epic #E39 and disagrees with the truth the moment a project
+      // is transferred - and a boolean told an agent nothing it could act on
+      // anyway: it could not know whether `release_create` would work
+      // without trying it and reading the 403.
+      //
+      // The rank rather than the permission set, and that is the whole
+      // reason for the two batched reads below instead of one call per
+      // project: a set per row would be one definitions read per project.
+      // `project_info` and `project_context` carry the set, for the one
+      // project they are about.
+      const ids = projects.map((it) => it.id);
+      const [rows, ranksByScope] = await Promise.all([
+        ids.length === 0 || !me
+          ? Promise.resolve([])
+          : this.members.findMany({
+              where: {
+                projectId: { inArray: ids },
+                userId: { eq: me.id },
+              },
+            }),
+        this.ranks.ranksOfMany(
+          "project",
+          ids.map((it) => String(it)),
+        ),
+      ]);
+
+      const rankOf = new Map(
+        rows.map((row) => [row.projectId, row.rank ?? "member"]),
+      );
+
       return {
-        projects: projects.map((p) => ({
-          id: p.id,
-          title: p.title,
-          public: p.public ?? false,
-          isOwner: me !== undefined && p.createdBy === me.id,
-        })),
+        projects: projects.map((p) => {
+          const key = rankOf.get(p.id);
+          const named = key
+            ? ranksByScope.get(String(p.id))?.find((it) => it.key === key)
+            : undefined;
+
+          return {
+            id: p.id,
+            title: p.title,
+            public: p.public ?? false,
+            ...(key ? { rank: { key, name: named?.name ?? key } } : {}),
+          };
+        }),
       };
     },
   });
@@ -227,7 +263,8 @@ export class ProjectTools {
           area: quest.area,
           priority: quest.priority,
         })),
-        isOwner: result.member?.owner ?? false,
+        ...(result.rank ? { rank: result.rank } : {}),
+        permissions: result.permissions ?? [],
       };
     },
   });
@@ -416,7 +453,8 @@ export class ProjectTools {
               pinnedFoliosTruncated,
             }
           : {}),
-        isOwner: result.member?.owner ?? false,
+        ...(result.rank ? { rank: result.rank } : {}),
+        permissions: result.permissions ?? [],
         preferredLanguage: result.preferredLanguage,
       };
     },

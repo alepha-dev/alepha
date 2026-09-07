@@ -564,12 +564,18 @@ describe("Lore's rank resource", () => {
       }),
     ).rejects.toThrowError("does not have");
 
-    // And when the rank really is the reason, the module's own wording stands.
+    // And when the rank really is the reason, the refusal names the RANK, the
+    // PERMISSION and the FIX. Three layers can refuse a call and the fixes are
+    // different: turn the capability on (Settings), ask the owner for a
+    // better rank, or nothing the owner can do at all. A message that only
+    // said "forbidden" would leave an agent with nowhere to go.
     await expect(
       ctx.ranks.assert("project", String(created.id), "member:manage", {
         id: member.id,
         roles: ["user"],
       }),
-    ).rejects.toThrowError("does not grant");
+    ).rejects.toThrowError(
+      "Your rank (Contributor) does not grant member:manage. Ask the project owner.",
+    );
   });
 });
