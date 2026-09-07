@@ -304,6 +304,14 @@ const ProjectSettingsRanksPage = () => {
           <span className="text-muted-foreground text-xs">
             {tr("project.settings.ranks.description")}
           </span>
+          {/* ⚠️ The 30 second window, disclosed the way the roadmap card
+              discloses its cache. What a rank GRANTS is read through a cache;
+              WHO holds a rank is not, so a demotion and a removal both take
+              effect on the next request. Saying only the first half would
+              read as "revocation is slow", which is the opposite of true. */}
+          <span className="text-muted-foreground text-xs">
+            {tr("project.settings.ranks.delay")}
+          </span>
         </div>
 
         <DropdownMenu>

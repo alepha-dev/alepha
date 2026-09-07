@@ -1,4 +1,5 @@
 import { Alepha, z } from "alepha";
+import { RankService } from "alepha/api/ranks";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -250,10 +251,103 @@ describe("$ownsProject, measured", () => {
     // Exact, never `toBeLessThan`: an upper bound passes just as happily
     // when a later change removes the gate altogether, which is the one
     // failure this epic must never cause.
-    expect({
-      projects: ctx.counter.of("projects"),
-      members: ctx.counter.of("members"),
-    }).toEqual({ projects: 1, members: 1 });
+    // Exact, never `toBeLessThan`: an upper bound passes just as happily
+    // when a later change removes the gate altogether, which is the one
+    // failure this epic must never cause.
+    //
+    // ⚠️ `rank_definitions: 1` is epic #E39's whole added cost, and it was
+    // SEVEN when this line was first written. The TTL cache answers the
+    // second REQUEST inside 30 seconds; it cannot answer the second entry of
+    // a batch already in flight, because all seven miss before any of them
+    // populates it. `RankService.definitionsOf` goes through the request memo
+    // as well now, which stores the in-flight promise - see #Q1934.
+    //
+    // `project_capabilities` is deliberately absent rather than pinned at 0:
+    // the fixture writes those rows itself, so the ORM's 30 s cache is warm
+    // by the time the batch runs and `ReadCounter` fires after the cache
+    // check. Pinning a zero that a fixture produced would be pinning the
+    // fixture.
+    expect(Object.fromEntries(ctx.counter.byTable)).toMatchObject({
+      projects: 1,
+      members: 1,
+      rank_definitions: 1,
+    });
+  });
+
+  it("costs the CREATOR the same, which is the epic's real price", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const creator = { id: project.createdBy, roles: ["user"] };
+    const token = await bearer(ctx, creator);
+
+    ctx.counter.reset();
+    const results = await batch(
+      ctx,
+      token,
+      PORTED.map((action) => ({
+        action,
+        params: { projectId: project.id },
+        query: {},
+      })),
+    );
+
+    expect(results.map((r) => r.status)).toEqual([
+      200, 200, 200, 200, 200, 200, 200,
+    ]);
+
+    // ⚠️ The number this case exists to name. Before epic #E39, `$ownsProject`
+    // carried `owner: "createdBy"` and the creator short-circuited BEFORE the
+    // membership join: they paid `projects` and nothing else. `createdBy` is
+    // not an authorization input any more - it cannot be, once ownership can
+    // be transferred - so the creator pays the same two reads everybody else
+    // does, plus the definitions.
+    //
+    // One read, once per request, for a creator who used to pay none: that is
+    // the cost, stated rather than estimated.
+    expect(Object.fromEntries(ctx.counter.byTable)).toMatchObject({
+      projects: 1,
+      members: 1,
+      rank_definitions: 1,
+    });
+  });
+
+  it("takes a demotion on the very next request", async ({ expect }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = await memberOf(ctx, project);
+    const token = await bearer(ctx, user);
+
+    // `member` grants `quest:read`, so this passes.
+    const before = await batch(ctx, token, [
+      { action: "getQuests", params: { projectId: project.id }, query: {} },
+    ]);
+    expect(before[0].status).toBe(200);
+
+    // A rank that grants only the floor. Written directly, because what is
+    // under test is the READ path's caching, not the write path's rules.
+    const row = await ctx.repos.members.findOne({
+      where: { projectId: { eq: project.id }, userId: { eq: user.id } },
+    });
+    await ctx.alepha
+      .inject(RankService)
+      .save(
+        "project",
+        String(project.id),
+        { key: "walled", name: "Walled", permissions: ["project:read"] },
+        { id: project.createdBy, roles: ["user"] },
+      );
+    await ctx.repos.members.updateById(row!.id, { rank: "walled" });
+
+    // ⚠️ No `travel()`, no waiting out a window. The ASSIGNMENT is never
+    // cached - it rides the membership row, which `$owns` reads uncached
+    // precisely so a removal takes effect at once - and the DEFINITIONS cache
+    // is keyed per scope and invalidated by the write above. A 30 second
+    // window on revocation would be the one property this epic must not
+    // introduce.
+    const after = await batch(ctx, token, [
+      { action: "getQuests", params: { projectId: project.id }, query: {} },
+    ]);
+    expect(after[0].status).toBe(403);
   });
 
   it("still resolves it once per entry where the handler gates itself", async ({

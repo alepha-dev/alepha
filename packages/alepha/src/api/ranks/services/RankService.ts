@@ -768,11 +768,24 @@ export class RankService {
    * The stored definitions of a scope, cached.
    */
   protected async definitionsOf(type: string, scopeId: string) {
-    return await this.definitions.findMany(
-      {
-        where: { type: { eq: type }, scopeId: { eq: scopeId } },
-      },
-      { cache: { ttl: RankService.DEFINITIONS_CACHE_TTL_MS } },
+    // ⚠️ The request memo AS WELL AS the TTL cache, and the pair is not
+    // redundant. The cache answers the second REQUEST inside 30 seconds; it
+    // cannot answer the second entry of a batch that is already in flight,
+    // because all of them miss before any of them populates it. One project
+    // navigation is one `POST /api/_batch` of seven actions, and this read
+    // cost seven - measured, not assumed (#Q1934).
+    //
+    // The memo stores the in-flight promise, which is exactly what makes six
+    // of those seven await the first one's query instead of issuing their own.
+    return await this.memo.resolve(
+      `ranks:definitions:${type}:${scopeId}`,
+      async () =>
+        await this.definitions.findMany(
+          {
+            where: { type: { eq: type }, scopeId: { eq: scopeId } },
+          },
+          { cache: { ttl: RankService.DEFINITIONS_CACHE_TTL_MS } },
+        ),
     );
   }
 

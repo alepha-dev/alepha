@@ -2184,6 +2184,8 @@ export default {
   "project.settings.ranks.title": "Ce que chaque rang peut faire",
   "project.settings.ranks.description":
     "Les permissions \u00e0 gauche, une colonne par rang. Une permission qui appartient \u00e0 une capacit\u00e9 que ce projet n'a pas n'est pas list\u00e9e du tout.",
+  "project.settings.ranks.delay":
+    "Une modification de ce qu'un rang accorde peut mettre jusqu'\u00e0 une minute \u00e0 atteindre tout le monde. Retirer quelqu'un du projet, ou le changer de rang, prend effet imm\u00e9diatement.",
   "project.settings.ranks.permission": "Permission",
   "project.settings.ranks.empty":
     "Aucune permission à afficher pour les capacités de ce projet.",
