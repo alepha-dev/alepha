@@ -90,6 +90,14 @@ class ProjectRanks {
     builtins: [
       { key: "owner", name: "Owner", permissions: ["*"] },
       { key: "member", name: "Member", permissions: ["project:read"] },
+      // The other kind of built-in: a DEFAULT rather than a rule. Both are
+      // non-removable; only this one accepts a rewrite.
+      {
+        key: "guest",
+        name: "Guest",
+        permissions: ["project:read"],
+        configurable: true,
+      },
     ],
     ownerOnly: ["project:delete"],
     floor: ["project:read"],
@@ -261,7 +269,7 @@ describe("alepha/api/ranks", () => {
 
     // A scope nobody has customised stores zero definitions.
     const ranks = await ctx.ranks.ranksOf("project", "p1");
-    expect(ranks.map((it) => it.key)).toEqual(["owner", "member"]);
+    expect(ranks.map((it) => it.key)).toEqual(["owner", "member", "guest"]);
     expect(ranks.every((it) => it.builtin)).toBe(true);
 
     await expect(
@@ -464,6 +472,65 @@ describe("alepha/api/ranks", () => {
     ).rejects.toThrowError("built-in rank cannot be deleted");
   });
 
+  it("accepts a rewrite of a configurable built-in, and reads it back", async ({
+    expect,
+  }) => {
+    ctx = await setup();
+    const root: UserAccountToken = {
+      id: "root",
+      realm: "default",
+      ownership: false,
+    };
+
+    await ctx.ranks.save(
+      "project",
+      "p1",
+      {
+        key: "guest",
+        name: "Visiteur",
+        permissions: ["project:read", "quest:create"],
+      },
+      root,
+    );
+
+    const guest = (await ctx.ranks.ranksOf("project", "p1")).find(
+      (it) => it.key === "guest",
+    );
+
+    // Read back from the ROW, not from the declaration. Without that half,
+    // the edit is accepted and then silently reset on the next boot, which is
+    // exactly what the refusal on a plain built-in exists to prevent.
+    expect(guest?.name).toBe("Visiteur");
+    expect(guest?.permissions).toContain("quest:create");
+    // Still built-in, so still non-removable, and still editable - the two
+    // are not opposites, which is the whole reason `editable` exists.
+    expect(guest?.builtin).toBe(true);
+    expect(guest?.editable).toBe(true);
+  });
+
+  it("still refuses to delete a configurable built-in", async ({ expect }) => {
+    ctx = await setup();
+    const root: UserAccountToken = {
+      id: "root",
+      realm: "default",
+      ownership: false,
+    };
+
+    await ctx.ranks.save(
+      "project",
+      "p1",
+      { key: "guest", name: "Visiteur", permissions: ["project:read"] },
+      root,
+    );
+
+    // Editing one wrote a row, and a row is what `remove` deletes. The
+    // built-in half has to survive that, or "configurable" would quietly mean
+    // "removable once touched".
+    await expect(
+      ctx.ranks.remove("project", "p1", "guest", root),
+    ).rejects.toThrowError("built-in rank cannot be deleted");
+  });
+
   it("refuses deleting a rank somebody still holds", async ({ expect }) => {
     ctx = await setup();
     const root: UserAccountToken = {
@@ -543,7 +610,11 @@ describe("alepha/api/ranks", () => {
       { params: { type: "project", scopeId: "p1" } },
       { user: root },
     );
-    expect(listed.items.map((it) => it.key)).toEqual(["owner", "member"]);
+    expect(listed.items.map((it) => it.key)).toEqual([
+      "owner",
+      "member",
+      "guest",
+    ]);
   });
 
   it("writes, assigns and deletes through the module's own endpoints", async ({

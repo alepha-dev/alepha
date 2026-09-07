@@ -22,6 +22,11 @@ export const rankResourceSchema = z.object({
     .describe(
       "Declared in code or marked permanent: non-removable, and refusing edits rather than being reset from code later.",
     ),
+  editable: z
+    .boolean()
+    .describe(
+      "Whether a rewrite will be accepted. ⚠️ Not the negation of `builtin`: a built-in declared `configurable` is both, which is the shape of a default rank an administrator is expected to tune.",
+    ),
 });
 
 export type RankResource = Infer<typeof rankResourceSchema>;

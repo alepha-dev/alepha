@@ -73,6 +73,7 @@ export class RankService {
         name: builtin.name,
         permissions: builtin.permissions,
         builtin: true,
+        editable: builtin.configurable === true,
       });
     }
 
@@ -83,6 +84,11 @@ export class RankService {
         name: row.name,
         permissions: row.permissions,
         builtin: row.builtin || declared?.builtin === true,
+        // A row over a declaration keeps the declaration's answer: the row
+        // exists BECAUSE the built-in was configurable, and a row that is
+        // `builtin` for another reason (the application marked it permanent)
+        // is not editable at all.
+        editable: declared ? declared.editable : !row.builtin,
       });
     }
 
@@ -300,16 +306,23 @@ export class RankService {
     );
     const existing = await this.definitionOf(type, scopeId, input.key);
 
-    if (declared) {
+    if (declared && !declared.configurable) {
       // A declared built-in is refused rather than accepted and then reset
       // from code on the next boot. Silently discarding somebody's edit is
       // the failure this rule exists to prevent.
+      //
+      // ⚠️ `configurable` is the exception, and it is not a loophole: the row
+      // this write creates is one {@link ranksOf} already prefers over the
+      // declaration, so the edit is read back rather than reset. That is what
+      // lets an application declare a DEFAULT `member` - a starting point an
+      // administrator is expected to tune - without also declaring a rank
+      // that must never move.
       throw new BadRequestError(
         `"${declared.name}" is a built-in rank and cannot be edited. Create a rank of your own instead.`,
       );
     }
 
-    if (existing?.builtin) {
+    if (existing?.builtin && !declared?.configurable) {
       throw new BadRequestError(`"${existing.name}" cannot be edited.`);
     }
 
@@ -334,7 +347,8 @@ export class RankService {
       key: input.key,
       name: input.name,
       permissions: input.permissions,
-      builtin: false,
+      builtin: declared !== undefined,
+      editable: true,
     };
   }
 
@@ -646,6 +660,17 @@ export interface Rank {
    * reset from code later.
    */
   builtin: boolean;
+  /**
+   * Whether {@link RankService.save} will accept a rewrite of this rank.
+   *
+   * ⚠️ Not the negation of {@link builtin}. A built-in declared
+   * {@link RankBuiltin.configurable} is both - non-removable AND editable -
+   * which is the shape of a default `member` that an administrator is
+   * expected to tune. An editor that derived this from `builtin` would offer
+   * no way to edit that rank, and there would be nothing on screen to say
+   * why.
+   */
+  editable: boolean;
 }
 
 export interface ResolvedRank {

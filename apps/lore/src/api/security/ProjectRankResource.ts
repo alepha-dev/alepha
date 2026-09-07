@@ -99,6 +99,14 @@ export class ProjectRankResource {
         key: ProjectRankResource.DEFAULT_KEY,
         name: "Member",
         permissions: LorePermissions.MEMBER_DEFAULT,
+        // ⚠️ Editable, unlike `owner`. This one is a DEFAULT rather than a
+        // rule: it is what a NULL `members.rank` column reads as, and it is
+        // the rank an owner will actually want to tune ("members may create
+        // quests but not delete them"). Editing it writes a row that
+        // `ranksOf` prefers over this declaration, so the edit survives a
+        // deploy; it stays non-removable, because every project needs
+        // something for an unranked member to be.
+        configurable: true,
       },
     ],
 

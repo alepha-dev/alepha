@@ -62,7 +62,15 @@ export class RankController {
         ...(group.label === undefined ? {} : { label: group.label }),
         ...(group.order === undefined ? {} : { order: group.order }),
         permissions: group.permissions.map((permission) => ({
-          name: permission.name,
+          // ⚠️ The FULL `group:name`, not the registry's bare `name`.
+          // This is the string a rank definition stores and the string the
+          // write path validates, so a matrix built from a bare `read` sends
+          // back a permission nothing recognises - and every cell in it reads
+          // as one nobody may grant, which is what it looked like the first
+          // time this shipped.
+          name: permission.group
+            ? `${permission.group}:${permission.name}`
+            : permission.name,
           ...(permission.label === undefined
             ? {}
             : { label: permission.label }),

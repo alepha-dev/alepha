@@ -8,6 +8,7 @@ import { AlephaServer } from "alepha/server";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
+import { ProjectRankController } from "../src/api/controllers/ProjectRankController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LorePermissions } from "../src/api/security/LorePermissions.ts";
 import { ProjectRankPresets } from "../src/api/security/ProjectRankPresets.ts";
@@ -221,6 +222,86 @@ describe("Lore's rank resource", () => {
     const old = await createTestProject(ctx.alepha);
     const oldRanks = await ctx.ranks.ranksOf("project", String(old.id));
     expect(oldRanks.map((it) => it.key)).toEqual(["owner", "member"]);
+  });
+
+  it("lets an owner tune the built-in member rank, and reads it back", async ({
+    expect,
+  }) => {
+    const account = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: account.id, roles: ["user"] };
+    const created = await ctx.projects.createProject(
+      { body: { title: "Tuned" } },
+      { user },
+    );
+
+    // ⚠️ The one built-in an owner is expected to change. `member` is what a
+    // NULL `members.rank` column reads as, so "members may read but not
+    // create quests" is a change to this rank and nothing else - and before
+    // it was `configurable`, the module refused the write and the matrix had
+    // a column nobody could edit with nothing on screen to say why.
+    await ctx.ranks.save(
+      "project",
+      String(created.id),
+      {
+        key: "member",
+        name: "Member",
+        permissions: ["project:read", "quest:read"],
+      },
+      user,
+    );
+
+    const ranks = await ctx.ranks.ranksOf("project", String(created.id));
+    const member = ranks.find((it) => it.key === "member");
+
+    expect(member?.permissions).toEqual(["project:read", "quest:read"]);
+    // Non-removable and editable at once, which is what `editable` exists to
+    // express: an editor deriving it from `builtin` would offer no way in.
+    expect(member?.builtin).toBe(true);
+    expect(member?.editable).toBe(true);
+
+    // Owner is the other kind, and stays refused.
+    await expect(
+      ctx.ranks.save(
+        "project",
+        String(created.id),
+        { key: "owner", name: "Boss", permissions: ["project:read"] },
+        user,
+      ),
+    ).rejects.toThrowError("built-in rank and cannot be edited");
+  });
+
+  it("answers the editor's presets from the project's own capabilities", async ({
+    expect,
+  }) => {
+    const account = await ctx.repos.users.create({});
+    const user: UserAccountToken = { id: account.id, roles: ["user"] };
+    const created = await ctx.projects.createProject(
+      {
+        body: { title: "Knowledge only", capabilities: [{ key: "knowledge" }] },
+      },
+      { user },
+    );
+
+    const rankApi = ctx.alepha.inject(ProjectRankController);
+    const { items } = await rankApi.getRankPresets(
+      { params: { projectId: created.id } },
+      { user },
+    );
+
+    expect(items.map((it) => it.key)).toEqual([
+      "admin",
+      "contributor",
+      "viewer",
+    ]);
+
+    // The endpoint exists because neither the module nor the browser can work
+    // this out: a Contributor of a Knowledge-only project carries folio
+    // writes and no quest permission at all.
+    const contributor = items.find((it) => it.key === "contributor")!;
+    expect(contributor.permissions).toContain("folio:write");
+    expect(contributor.permissions).not.toContain("quest:create");
+    // The floor survives every narrowing.
+    expect(contributor.permissions).toContain("project:read");
   });
 
   it("names a seeded rank in the creator's language", ({ expect }) => {

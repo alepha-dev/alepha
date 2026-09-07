@@ -190,6 +190,24 @@ export interface RankBuiltin {
    * a new one is declared.
    */
   permissions: string[];
+
+  /**
+   * Whether an editor may rewrite this built-in's name and permission set.
+   *
+   * Off by default, which is what "built-in" means for the rank an
+   * application never wants touched: the owner, whose `["*"]` is the whole
+   * point of it, and any rank whose set the application will keep changing in
+   * code later.
+   *
+   * On for the rank the application declares as a **starting point** rather
+   * than as a rule - a default `member`, whose set is exactly the thing an
+   * administrator will want to tune. Editing one writes a row that
+   * {@link RankService.ranksOf} already prefers over the declaration, so the
+   * edit is not silently reset from code on the next boot; the rank stays
+   * non-removable either way, because that is the other half of being
+   * built-in.
+   */
+  configurable?: boolean;
 }
 
 export interface RankRefusal {

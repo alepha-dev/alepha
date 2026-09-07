@@ -1610,6 +1610,7 @@ export class AppRouter {
     children: () => [
       this.projectSettingsBanner,
       this.projectSettingsMembers,
+      this.projectSettingsRanks,
       this.projectSettingsAreas,
       this.projectSettingsArea,
       this.projectSettingsWork,
@@ -1670,6 +1671,29 @@ export class AppRouter {
       ]);
       return { members, pendingInvitations };
     },
+  });
+
+  /**
+   * What each rank in this project may do (epic #E39).
+   *
+   * No loader: the page fetches four things that belong to it alone - the
+   * permission catalogue, the ranks, the members holding them and the presets
+   * - and none of them is read anywhere else, so putting them in the layout's
+   * loader would make every other settings page pay for this one.
+   *
+   * ⚠️ Unguarded, like every other settings route. Who may EDIT ranks is
+   * `rank:manage`, which hides the nav entry and which the module re-checks on
+   * every write; a route guard would only turn a link somebody already holds
+   * into a 404, and the page reads nothing a member may not read.
+   */
+  projectSettingsRanks = $page({
+    name: "projectSettingsRanks",
+    path: "/ranks",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Ranks`,
+    }),
+    lazy: () =>
+      import("./components/project/settings/ProjectSettingsRanksPage.tsx"),
   });
 
   /**

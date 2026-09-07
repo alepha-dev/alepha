@@ -7,6 +7,11 @@ import { $module } from "alepha";
 // but a client rendering a rank matrix needs the shape it is rendering.
 export * from "./schemas/rankResourceSchema.ts";
 
+// The controller's TYPE, so `useClient<RankController>()` in a browser knows
+// what it is calling. `export type` is erased, so nothing in that file - the
+// permission registry, the service, the repository - reaches the bundle.
+export type { RankController } from "./controllers/RankController.ts";
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 export const AlephaApiRanks = $module({
