@@ -165,6 +165,38 @@ describe("ProjectArtifacts", () => {
   });
 
   /**
+   * ⚠️ The defect #P2130 reported, and the reason the page stopped painting
+   * its own panel: the two states are DIFFERENT, and the page-level
+   * `rows.length === 0` branch could not tell them apart. A reader whose
+   * filter excluded everything was told the project had no artifacts and
+   * handed the command to push their first - which is both wrong and
+   * unhelpful, since the fix is to clear the filter.
+   *
+   * `AlephaTable` chooses on `activeFilterCount`, which is state only it
+   * holds. See [[#F1216]].
+   */
+  it("says no match when a filter empties the list, not nothing pushed", async ({
+    expect,
+  }) => {
+    const { findByText, queryByText, getByLabelText } = await show(
+      listing([group({ tag: "1.0.0" })]),
+    );
+
+    await findByText("1.0.0");
+
+    fireEvent.change(getByLabelText("Search a tag or a commit"), {
+      target: { value: "nothing-matches-this" },
+    });
+
+    await waitFor(() => expect(queryByText("1.0.0")).toBeNull(), {
+      timeout: 5_000,
+    });
+    expect(queryByText(/No artifact matches these filters/)).toBeTruthy();
+    // And emphatically NOT the other state's copy.
+    expect(queryByText(/Nothing has been pushed yet/)).toBeNull();
+  });
+
+  /**
    * The one that fails silently if forgotten. `limit` caps the rows read
    * BEFORE grouping and the endpoint answers `truncated` instead of a second
    * page, so a client-side table that swallows the flag shows a subset while

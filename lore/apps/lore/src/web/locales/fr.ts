@@ -258,11 +258,14 @@ export default {
   "project.menu.reports": "Rapports",
   "project.menu.artifacts": "Artefacts",
   "artifacts.list.empty": "Aucun artefact ne correspond à ces filtres.",
+  "artifacts.noMatch": "Aucun résultat",
+  "artifacts.empty.title": "Aucun artefact pour l\u2019instant",
   "artifacts.truncated":
     "Cette liste est coupée à la limite de lecture : ce n'est pas la totalité des artefacts du projet. Filtrez par application ou par tag pour voir le reste.",
   "artifacts.empty.description":
     "Rien n'a encore été publié. Les artefacts viennent de la CI, donc cette page reste vide tant qu'aucun build n'est publié :",
-  "artifacts.filter.search": "Rechercher un tag ou un commit",
+  "artifacts.filter.search": "Rechercher",
+  "artifacts.filter.searchLabel": "Rechercher un tag ou un commit",
   "artifacts.filter.app": "Application",
   "artifacts.filter.allApps": "Toutes les applications",
   "artifacts.filter.appCount": "$1 applications",
