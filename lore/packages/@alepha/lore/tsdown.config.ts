@@ -50,6 +50,21 @@ export default defineConfig([
     dts: true,
     deps,
   },
+  // The programmatic client. ⚠️ `platform: "neutral"`, not `"node"`: it holds
+  // no filesystem, no token store and no `node:` import, so a Cloudflare
+  // Worker can import it - which is where an app that provisions a copy per
+  // tenant is most likely to run. Building it for node would let the first
+  // node-only import in slip past this config into somebody's Worker bundle.
+  {
+    entry: "src/client/index.ts",
+    format: ["esm"],
+    platform: "neutral",
+    sourcemap: true,
+    fixedExtension: false,
+    outDir: "dist/client",
+    dts: true,
+    deps,
+  },
   // The `lore` binary. `dts: false` is load-bearing rather than an
   // optimisation: a bin has no consumers, so its types are dead weight, and
   // emitting them hands `scripts/check-dts.ts` a new `.d.ts` to walk for the
