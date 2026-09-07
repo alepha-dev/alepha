@@ -10,7 +10,9 @@ import {
   AppWindow,
   Cloud,
   GitCommitHorizontal,
+  Package,
   Search,
+  SearchX,
   Server,
   TriangleAlert,
 } from "lucide-react";
@@ -90,7 +92,11 @@ const ProjectArtifacts = () => {
   const [project] = useStore(currentProjectAtom);
   const [releases] = useStore(currentReleasesAtom);
 
-  const { data, loading, error } = useQuery(
+  // ⚠️ No `loading`. It existed to keep the page-level empty panel off screen
+  // while the first read was in flight; the table owns the empty state now
+  // and has its own loading pass, so reading it here would be a second
+  // opinion about the same moment.
+  const { data, error } = useQuery(
     {
       enabled: Boolean(project),
       key: ["project-artifacts", project?.id],
@@ -158,16 +164,23 @@ const ProjectArtifacts = () => {
       className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4"
     >
       {/*
-        Three states, and the empty one is not the error one - the same split
-        `AppArtifactsList` makes, for the same reason: folding them together
-        is how "nothing pushed yet" comes to read as "something is broken".
+        The error state is still the page's own, and the empty one is not it -
+        the same split `AppArtifactsList` makes, for the same reason: folding
+        them together is how "nothing pushed yet" comes to read as "something
+        is broken".
+
+        ⚠️ The EMPTY state is the table's now (feedback #P2130). The page used
+        to paint its own panel whenever `rows.length === 0`, which collapsed
+        `AlephaTable`'s two states into one: a reader whose filters excluded
+        everything was told the project had no artifacts, and offered the
+        command to push their first. See [[#F1216]] - the table chooses
+        between them on `activeFilterCount`, which a page-level branch cannot
+        see.
       */}
       {error ? (
         <p className="text-muted-foreground text-sm">
           {tr("app.artifacts.error")}
         </p>
-      ) : !loading && rows.length === 0 ? (
-        <ProjectArtifactsEmpty projectSlug={project.slug} />
       ) : (
         <>
           {data?.truncated && (
@@ -188,7 +201,26 @@ const ProjectArtifacts = () => {
             data={rows}
             rowKey={(row) => row.key}
             defaultSort={{ field: "pushedAt", direction: "desc" }}
-            emptyMessage={tr("artifacts.list.empty")}
+            /*
+             * ⚠️ Two states, never `emptyMessage`. That prop is the one-line
+             * escape hatch: it replaces the title in BOTH states and
+             * suppresses the description, which is precisely the collapse
+             * this quest undid. `AlephaTable` picks between these on
+             * `activeFilterCount`.
+             */
+            emptyState={{
+              icon: Package,
+              title: String(tr("artifacts.empty.title")),
+              // The whole nothing-pushed-yet panel, command included: it is
+              // the answer to "there is nothing here", which is what an
+              // empty state's description is for.
+              description: <ProjectArtifactsEmpty projectSlug={project.slug} />,
+            }}
+            noMatchState={{
+              icon: SearchX,
+              title: String(tr("artifacts.noMatch")),
+              description: String(tr("artifacts.list.empty")),
+            }}
             filters={{
               schema: filtersSchema,
               render: (form) => (
@@ -200,7 +232,11 @@ const ProjectArtifacts = () => {
                       icon={Search}
                       placeholder={tr("artifacts.filter.search")}
                       inputProps={{
-                        "aria-label": tr("artifacts.filter.search"),
+                        // ⚠️ A different key from the placeholder, which now
+                        // says plain "Search" like every filter bar
+                        // (#Q1750). "Search" alone is thin for a screen
+                        // reader on a bar carrying three controls.
+                        "aria-label": tr("artifacts.filter.searchLabel"),
                       }}
                     />
                   </FilterSlot>

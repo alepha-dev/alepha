@@ -316,12 +316,19 @@ export default {
   "project.menu.kanban": "Kanban",
   "project.menu.reports": "Reports",
   "project.menu.artifacts": "Artifacts",
+  // ⚠️ The two empty states are distinct, and collapsing them is the defect
+  // #P2130 reported: a reader with a stale filter was told they had no
+  // artifacts at all. `artifacts.list.empty` is the NO-MATCH one; the
+  // nothing-here-yet one is `artifacts.empty.*` below.
   "artifacts.list.empty": "No artifact matches these filters.",
+  "artifacts.noMatch": "No match",
+  "artifacts.empty.title": "No artifact yet",
   "artifacts.truncated":
     "This list is cut at the read limit, so it is not every artifact this project holds. Narrow it by app or by tag to see the rest.",
   "artifacts.empty.description":
     "Nothing has been pushed yet. Artifacts arrive from CI, so this page stays empty until a build is published:",
-  "artifacts.filter.search": "Search a tag or a commit",
+  "artifacts.filter.search": "Search",
+  "artifacts.filter.searchLabel": "Search a tag or a commit",
   "artifacts.filter.app": "App",
   "artifacts.filter.allApps": "All apps",
   "artifacts.filter.appCount": "$1 apps",
