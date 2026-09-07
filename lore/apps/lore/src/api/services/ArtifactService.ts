@@ -106,6 +106,7 @@ export class ArtifactService {
           size: bytes.length,
           commitSha: input.commitSha,
           file: input.file,
+          maps: input.maps,
         }),
         stored: true,
       };
@@ -115,6 +116,12 @@ export class ArtifactService {
       bucket: ArtifactService.BUCKET,
       tags: [`project:${input.projectId}`, `app:${app}`, `tag:${tag}`],
     });
+    const storedMaps = await this.uploadMaps(
+      input.maps,
+      input.projectId,
+      app,
+      tag,
+    );
 
     // The row goes in last. The reverse order leaves, on a failure in between,
     // a row pointing at bytes that were never stored - which every reader
@@ -128,13 +135,40 @@ export class ArtifactService {
         sha256,
         size: bytes.length,
         fileId: stored.id,
+        mapsFileId: storedMaps?.id,
         commitSha: input.commitSha,
       });
       return { artifact, stored: true };
     } catch (error) {
       await this.files.deleteFile(stored.id);
+      if (storedMaps) {
+        await this.files.deleteFile(storedMaps.id);
+      }
       throw error;
     }
+  }
+
+  /**
+   * The sibling source-map object, when the push carried one.
+   *
+   * Same bucket and the same tags as the artifact itself, so a bucket listing
+   * groups the pair. It has no row of its own: `artifacts.mapsFileId` is the
+   * only reference, which is what makes "written and deleted with the
+   * artifact" true by construction rather than by a sweep.
+   */
+  protected async uploadMaps(
+    maps: FileLike | undefined,
+    projectId: number,
+    app: string,
+    tag: string,
+  ): Promise<{ id: string } | undefined> {
+    if (!maps) {
+      return undefined;
+    }
+    return await this.files.uploadFile(maps, {
+      bucket: ArtifactService.BUCKET,
+      tags: [`project:${projectId}`, `app:${app}`, `tag:${tag}`, "maps"],
+    });
   }
 
   /**
@@ -162,12 +196,19 @@ export class ArtifactService {
       size: number;
       commitSha?: string;
       file: FileLike;
+      maps?: FileLike;
     },
   ): Promise<Artifact> {
     const stored = await this.files.uploadFile(next.file, {
       bucket: ArtifactService.BUCKET,
       tags: [`project:${next.projectId}`, `app:${next.app}`, `tag:${next.tag}`],
     });
+    const storedMaps = await this.uploadMaps(
+      next.maps,
+      next.projectId,
+      next.app,
+      next.tag,
+    );
 
     let updated: Artifact;
     try {
@@ -175,6 +216,10 @@ export class ArtifactService {
         sha256: next.sha256,
         size: next.size,
         fileId: stored.id,
+        // ⚠️ `sql\`NULL\`` for the same reason `commitSha` uses it below: a
+        // replace whose build produced no maps must stop naming the PREVIOUS
+        // build's maps, and an explicit `undefined` reads as an absent key.
+        mapsFileId: storedMaps?.id ?? sql`NULL`,
         // ⚠️ `sql\`NULL\``, not `undefined`. The ORM reads an explicit
         // `undefined` as an absent key and leaves the column alone, so a
         // replace pushed without a commit would leave the row still naming the
@@ -184,10 +229,20 @@ export class ArtifactService {
       });
     } catch (error) {
       await this.files.deleteFile(stored.id);
+      if (storedMaps) {
+        await this.files.deleteFile(storedMaps.id);
+      }
       throw error;
     }
 
-    await this.files.deleteFiles([existing.fileId]);
+    // Both, and in one call: replacing `latest` IS the retention policy, so a
+    // maps object that outlived its artifact would be storage nothing can ever
+    // reach or name.
+    await this.files.deleteFiles(
+      [existing.fileId, existing.mapsFileId].filter((id): id is string =>
+        Boolean(id),
+      ),
+    );
     return updated;
   }
 
@@ -284,6 +339,23 @@ export class ArtifactService {
   }
 
   /**
+   * One artifact by its id, scoped to the project that may read it.
+   *
+   * ⚠️ The `projectId` filter is the cross-project guard, not decoration: an
+   * artifact id is a uuid a caller supplies, and without the filter a member of
+   * one project could name another project's build and the gate on the path
+   * param would already have passed.
+   */
+  public async findById(
+    projectId: number,
+    id: string,
+  ): Promise<Artifact | undefined> {
+    return this.rows.findOne({
+      where: { projectId: { eq: projectId }, id: { eq: id } },
+    });
+  }
+
+  /**
    * Drop an artifact and the bytes behind it.
    *
    * The row goes first, for the reason `FolioAttachmentService.delete` writes down:
@@ -292,7 +364,11 @@ export class ArtifactService {
    */
   public async delete(artifact: Artifact): Promise<void> {
     await this.rows.deleteById(artifact.id);
-    await this.files.deleteFiles([artifact.fileId]);
+    await this.files.deleteFiles(
+      [artifact.fileId, artifact.mapsFileId].filter((id): id is string =>
+        Boolean(id),
+      ),
+    );
   }
 
   /**
@@ -422,6 +498,15 @@ export interface ArtifactPushInput {
    */
   force?: boolean;
   file: FileLike;
+  /**
+   * This build's source maps, as a sibling archive.
+   *
+   * Optional in both directions: a build may produce none, and a CLI older
+   * than #1515 sends none because its maps are still inside the tarball. The
+   * object is written and deleted with the artifact row, `latest` replacement
+   * included, so it needs no lifecycle of its own.
+   */
+  maps?: FileLike;
 }
 
 export interface ArtifactPushResult {

@@ -107,6 +107,21 @@ export const artifacts = $entity({
      * laptop has no commit to name and an artifact is not a git object.
      */
     commitSha: z.string().max(40).optional(),
+    /**
+     * The `files` row holding this build's source maps, when it shipped any.
+     *
+     * ⚠️ **A sibling object, not a second artifact.** `*.map` is excluded from
+     * the tarball since #1515 - 266 of 267 server files in a Lore build had
+     * one, and they were roughly 5 MB of a 6.4 MB gzipped archive that no
+     * runtime reads. They are kept rather than discarded, because they are
+     * what makes an error report readable, and they hang off the artifact row
+     * so they need no identity, no key and no retention rule of their own:
+     * written and deleted with it, `latest` replacement included.
+     *
+     * Optional because a build may produce none, and because every artifact
+     * pushed before #1515 has its maps inside the tarball instead.
+     */
+    mapsFileId: z.uuid().optional(),
   }),
   indexes: [
     // The push target, and what makes a re-push resolvable to one row.
