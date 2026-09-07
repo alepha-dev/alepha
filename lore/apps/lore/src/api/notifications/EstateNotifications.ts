@@ -1,5 +1,7 @@
-import { z } from "alepha";
+import { $inject, z } from "alepha";
 import { $notification } from "alepha/api/notifications";
+
+import { NotificationHtmlEscaper } from "./NotificationHtmlEscaper.ts";
 
 /**
  * Email templates for estates. One, so far: the nightly check found a
@@ -10,20 +12,7 @@ import { $notification } from "alepha/api/notifications";
  * deploy credential died, and one category cannot express both.
  */
 export class EstateNotifications {
-  /**
-   * Escape the estate's own strings before they land inside the HTML body.
-   * The slug is the owner's, but the failure sentence carries an account id
-   * that came off a form, and a DKIM-signed email is a high-trust surface to
-   * inject an anchor into.
-   */
-  protected escapeHtml(value: string): string {
-    return value
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
+  protected readonly html = $inject(NotificationHtmlEscaper);
 
   /**
    * Sent **once, on the flip**: when a row that passed its previous check
@@ -38,8 +27,8 @@ export class EstateNotifications {
     email: {
       subject: "A deploy credential stopped working",
       body: (it) => {
-        const slug = this.escapeHtml(it.estateSlug);
-        const reason = this.escapeHtml(it.reason);
+        const slug = this.html.escape(it.estateSlug);
+        const reason = this.html.escape(it.reason);
         const estatesUrl = encodeURI(it.estatesUrl);
         return `
         <h1>${slug} — the Cloudflare token stopped working</h1>

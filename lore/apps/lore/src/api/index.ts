@@ -51,9 +51,12 @@ import { QuestJobs } from "./jobs/QuestJobs.ts";
 import { SigilJobs } from "./jobs/SigilJobs.ts";
 import { EstateNotifications } from "./notifications/EstateNotifications.ts";
 import { InvitationNotifications } from "./notifications/InvitationNotifications.ts";
+import { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
+import { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
 import { QuestNotifications } from "./notifications/QuestNotifications.ts";
 import { AppSecurityProvider } from "./providers/AppSecurityProvider.ts";
 import { LoreFileAccessProvider } from "./providers/LoreFileAccessProvider.ts";
+import { LoreInboxRecipientProvider } from "./providers/LoreInboxRecipientProvider.ts";
 import { ProjectInvitationResource } from "./providers/ProjectInvitationResource.ts";
 import { ActiveQuestsMetric } from "./services/ActiveQuestsMetric.ts";
 import { AppService } from "./services/AppService.ts";
@@ -182,6 +185,14 @@ export const LoreApi = $module({
     QuestNotifications,
     EstateNotifications,
     InvitationNotifications,
+    // The inbox half: two templates, and the one HTML escaper the four
+    // notification classes share.
+    LoreInboxNotifications,
+    NotificationHtmlEscaper,
+    // Substituted for the framework's `NotificationInboxRecipientProvider`
+    // in `main.server.ts`. Listed here only so DI scanning sees the class,
+    // the same arrangement `LoreFileAccessProvider` has.
+    LoreInboxRecipientProvider,
     FeedbackRateLimiter,
     QuestCsvParser,
     QuestCsvFormatter,
