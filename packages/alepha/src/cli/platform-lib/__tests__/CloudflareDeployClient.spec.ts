@@ -40,7 +40,9 @@ describe("the Cloudflare deploy client", () => {
           },
           schedules: { update: record("schedules.update") as never },
           versions: {
-            list: record("versions.list", { result: versions }) as never,
+            list: record("versions.list", {
+              result: { items: versions },
+            }) as never,
           },
           deployments: {
             create: record("deployments.create") as never,
