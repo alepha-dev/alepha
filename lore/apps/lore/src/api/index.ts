@@ -4,6 +4,7 @@ import {
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
 import { AlephaApiInvitations } from "alepha/api/invitations";
+import { AlephaServerRateLimit } from "alepha/server/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
 
 import { AdminEstateController } from "./controllers/AdminEstateController.ts";
@@ -129,6 +130,11 @@ export const LoreApi = $module({
     // migration from the `$websocket` below, and the `workerd` export
     // condition picks the Durable Object provider over the Node one.
     AlephaWebSocket,
+    // `$rateLimit` on `EstateController.refreshEstate`. Imported rather than
+    // left to the middleware: it injects `ServerRateLimitProvider` at request
+    // time, when the container is already locked, so an unregistered module
+    // is a 500 on the first click rather than a boot failure.
+    AlephaServerRateLimit,
   ],
   services: [
     // Declares the `$realm`. Nothing injects it — it must be listed here

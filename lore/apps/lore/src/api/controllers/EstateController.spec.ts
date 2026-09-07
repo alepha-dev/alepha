@@ -22,9 +22,11 @@ import { estateProjects } from "../entities/estateProjects.ts";
 import { type Estate, estates } from "../entities/estates.ts";
 import { LoreApi } from "../index.ts";
 import { createEstateBodySchema } from "../schemas/createEstateBodySchema.ts";
+import type { EstateServerFrame } from "../schemas/estateServerFrameSchema.ts";
 import { CloudflareProbeService } from "../services/CloudflareProbeService.ts";
 import { CredentialSealService } from "../services/CredentialSealService.ts";
 import { EstateCommandService } from "../services/EstateCommandService.ts";
+import { EstateCommandTransport } from "../services/EstateCommandTransport.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { EstateTokenService } from "../services/EstateTokenService.ts";
 import { EstateController } from "./EstateController.ts";
@@ -56,7 +58,9 @@ interface TestContext {
  * Pinned, like every other lore spec: the ROOT vitest config sets
  * `DATABASE_URL` to a Postgres URL, which this app's SQLite provider rejects.
  */
-const setup = async (): Promise<TestContext> => {
+const setup = async (
+  substitute?: (alepha: Alepha) => void,
+): Promise<TestContext> => {
   const alepha = Alepha.create({
     // `APP_SECRET` because `CredentialSealService` refuses the published
     // default in every environment, tests included (#1631).
@@ -66,6 +70,7 @@ const setup = async (): Promise<TestContext> => {
       APP_SECRET: "estate-controller-spec-secret",
     },
   });
+  substitute?.(alepha);
 
   // Substituted BEFORE the module that registers the real one: a
   // substitution declared after the service is in use is refused.
@@ -551,6 +556,9 @@ describe("EstateController, ownership and switches", () => {
     await expect(
       ctx.controller.deleteEstate({ params }, { user: grace }),
     ).rejects.toThrow(NotFoundError);
+    await expect(
+      ctx.controller.getEstateInventory({ params }, { user: grace }),
+    ).rejects.toThrow(NotFoundError);
 
     const theirs = await ctx.controller.listMyEstates({}, { user: grace });
     expect(theirs.items).toEqual([]);
@@ -558,6 +566,25 @@ describe("EstateController, ownership and switches", () => {
     // Nothing above changed the row.
     const stillMine = await ctx.controller.getEstate({ params }, { user: ada });
     expect(stillMine.deployAllowed).toBe(false);
+  });
+
+  /**
+   * A machine that never connected is not a missing estate. The 404 belongs
+   * to the estate, through `loadOwned`; a null inventory belongs to the
+   * machine, and the page renders it as "nothing reported yet".
+   */
+  it("answers the owner a null inventory for a machine that never reported", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const minted = await createEstate(ctx, user, "ovh-inv");
+
+    const result = await ctx.controller.getEstateInventory(
+      { params: { estateId: minted.id } },
+      { user },
+    );
+    expect(result.inventory).toBeNull();
+    expect(result.expected).toEqual([]);
   });
 
   it("starts with every switch off and lets the owner flip them", async ({
@@ -735,5 +762,99 @@ describe("EstateController, the owner's list", () => {
     for (const item of items) {
       expect(Object.keys(item)).not.toContain("secretHash");
     }
+  });
+});
+
+/**
+ * A counting transport: the refresh path is about whether a frame goes out,
+ * so the spec substitutes the seam the queue already has rather than opening
+ * a socket.
+ */
+class CountingTransport extends EstateCommandTransport {
+  public pushed: EstateServerFrame[] = [];
+
+  override async push(
+    estate: Estate,
+    frame: EstateServerFrame,
+  ): Promise<boolean> {
+    void estate;
+    this.pushed.push(frame);
+    return true;
+  }
+}
+
+describe("EstateController, refresh", () => {
+  let ctx: TestContext;
+  let transport: CountingTransport;
+
+  beforeEach(async () => {
+    ctx = await setup((alepha) =>
+      alepha.with({
+        provide: EstateCommandTransport,
+        use: CountingTransport,
+      }),
+    );
+    transport = ctx.alepha.inject(CountingTransport);
+  });
+
+  afterEach(async () => {
+    await ctx.alepha.stop();
+  });
+
+  /**
+   * A transient frame pushed into nothing would report success for something
+   * that will never happen, so an offline machine is a refusal rather than a
+   * quiet no-op.
+   */
+  it("refuses while the machine is offline, and pushes nothing", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const minted = await createEstate(ctx, user, "ovh-refresh-off");
+
+    await expect(
+      ctx.controller.refreshEstate(
+        { params: { estateId: minted.id } },
+        { user },
+      ),
+    ).rejects.toThrow(BadRequestError);
+    expect(transport.pushed).toEqual([]);
+  });
+
+  it("pushes exactly one query frame while the machine is connected", async ({
+    expect,
+  }) => {
+    const user = await createUser(ctx);
+    const minted = await createEstate(ctx, user, "ovh-refresh-on");
+    const now = new Date().toISOString();
+    await ctx.repos.estates.updateById(minted.id, {
+      connectedAt: now,
+      lastSeenAt: now,
+    });
+
+    const result = await ctx.controller.refreshEstate(
+      { params: { estateId: minted.id } },
+      { user },
+    );
+
+    expect(result).toEqual({ asked: true });
+    // No row, no queue, no ack: the frame is the whole mechanism.
+    expect(transport.pushed).toEqual([{ type: "query" }]);
+  });
+
+  it("answers a non-owner as if the estate did not exist", async ({
+    expect,
+  }) => {
+    const ada = await createUser(ctx);
+    const grace = await createUser(ctx);
+    const minted = await createEstate(ctx, ada, "ovh-refresh-mine");
+
+    await expect(
+      ctx.controller.refreshEstate(
+        { params: { estateId: minted.id } },
+        { user: grace },
+      ),
+    ).rejects.toThrow(NotFoundError);
+    expect(transport.pushed).toEqual([]);
   });
 });

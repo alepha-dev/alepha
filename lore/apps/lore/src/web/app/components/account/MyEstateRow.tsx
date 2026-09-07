@@ -72,6 +72,25 @@ const MyEstateRow = (props: MyEstateRowProps) => {
                   args: [String(l(estate.lastSeenAt, { date: "lll" }))],
                 })
               : tr("estates.neverSeen")}
+          {/* Only a `bay` estate reports an inventory, so only one says so.
+              From the denormalised count on the inventory row, which is why
+              this costs no JSON parsing and wakes no machine. Absent is
+              "nothing reported", never "0 apps". */}
+          {estate.type === "bay" && (
+            <>
+              {" · "}
+              {estate.inventory
+                ? tr("account.estates.inventory", {
+                    args: [
+                      String(estate.inventory.appCount),
+                      String(
+                        l(estate.inventory.reportedAt, { date: "fromNow" }),
+                      ),
+                    ],
+                  })
+                : tr("account.estates.inventory.none")}
+            </>
+          )}
         </span>
       </span>
       {/* A cloudflare account never connects, so `online` is always false

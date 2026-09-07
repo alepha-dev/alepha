@@ -9,13 +9,18 @@ import {
 
 /**
  * Estates, end to end, from the owner's account page (#1838): create one and
- * see its secret exactly once, flip a switch and watch the row follow the
- * server's answer, queue a restart that waits for a machine that is not
- * there, and delete it through a dialog that says what deleting does not do.
- * Then the admin backstop: every estate on the instance, and no credential.
+ * see its secret exactly once, open the console the row leads to, flip a
+ * switch and watch the account page follow the server's answer, and delete it
+ * through a dialog that says what deleting does not do. Then the admin
+ * backstop: every estate on the instance, and no credential.
  *
- * No machine ever connects here. The connector's side is #1624's container
- * test and #1628's end-to-end; this file is the page.
+ * ⚠️ This file is the ACCOUNT page and the estate's lifecycle. What the
+ * console draws once a machine has reported is `bay-console.spec.ts`, which
+ * plays a machine over the real socket; nothing connects here, which is why
+ * the console shows its never-connected state.
+ *
+ * The connector's own side is #1624's container test and #1628's
+ * end-to-end.
  *
  * Every `$action` call the SPA makes goes through `POST /api/_batch`, so
  * nothing here waits on a named response: the assertions are on rendered
@@ -67,7 +72,7 @@ const createEstate = async (page: Page, slug: string): Promise<void> => {
 };
 
 test.describe("Estates", () => {
-  test("an owner creates an estate, flips a switch, queues a restart, and deletes it", async ({
+  test("an owner creates an estate, opens its console, flips a switch, and deletes it", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -81,7 +86,7 @@ test.describe("Estates", () => {
     await createEstate(page, "ovh-1");
 
     // The ROW carries the four facts worth a glance since #1862; everything
-    // else moved into the drawer it opens.
+    // else is behind it.
     const row = page.getByTestId("my-estate-row");
     await expect(row).toHaveCount(1);
     await expect(row.getByTestId("my-estate-slug")).toHaveText("ovh-1");
@@ -90,50 +95,60 @@ test.describe("Estates", () => {
     // The masked prefix names the credential; the credential itself is gone.
     await expect(row.getByText(/secret est_/)).toBeVisible();
 
+    /*
+     * ⚠️ A `bay` row opens its CONSOLE, not the drawer (#E37). The switches,
+     * the loans, the commands and both destructive actions moved to
+     * `/bay/:estateId/settings` when the machine got pages of its own, and
+     * the restart form that used to sit in the drawer went with them: a verb
+     * belongs on the instance it names, not on a free-text pair of fields.
+     *
+     * `MyEstateDrawer` still exists and is still the `cloudflare` path, which
+     * `MyEstates.browser.spec.tsx` covers - `createEstate` refuses any type
+     * but `bay`, so there is no such estate to make here.
+     */
     await row.click();
-    const drawer = page.getByTestId("my-estate-drawer");
-    await expect(drawer).toBeVisible();
-    await expect(drawer.getByText("Not lent to any project.")).toBeVisible();
-    // Truncated in the drawer too: a panel is not a reason to print a
-    // credential that cannot be shown again anyway.
-    await expect(drawer.getByText(/secret est_/)).toBeVisible();
-
-    // The badge follows the server's answer, not the click, and survives a
-    // reload because the row was written.
-    await drawer.getByTestId("my-estate-deploys").click();
+    await page.waitForURL(/\/bay\/[0-9a-f-]{36}/, { timeout: 15_000 });
+    await expect(page.getByTestId("my-estate-drawer")).toHaveCount(0);
+    await expect(page.getByText("ovh-1").first()).toBeVisible();
+    // Nothing has ever connected, so the console says so rather than drawing
+    // empty gauges.
     await expect(
-      row.getByText("deploys allowed", { exact: true }),
-    ).toBeVisible();
+      page.getByText("this machine has never connected"),
+    ).toBeVisible({ timeout: 15_000 });
 
-    // A restart queues as pending: no machine holds this estate's socket, so
-    // the command waits for its next hello rather than failing.
-    await drawer.getByTestId("my-estate-restart-app").fill("lore");
-    await drawer
-      .getByTestId("my-estate-restart-environment")
-      .fill("production");
-    await drawer.getByTestId("my-estate-restart").click();
-    const command = drawer.getByTestId("my-estate-command");
-    await expect(command).toHaveCount(1);
-    await expect(command.first()).toContainText("pending");
-    await expect(command.first()).toContainText("lore/production");
+    // The switch follows the server's answer, not the click.
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await page.waitForURL(/\/bay\/[0-9a-f-]{36}\/settings/, {
+      timeout: 15_000,
+    });
+    await page.getByTestId("bay-settings-deploys").click();
+    await expect(page.getByTestId("bay-settings-deploys")).toHaveAttribute(
+      "aria-checked",
+      "true",
+      { timeout: 15_000 },
+    );
 
-    // Reopened from scratch, the switch still reads what the server stored.
-    await page.reload();
+    // Read back from the account page, which re-fetches: the badge there is
+    // the stored row rather than this page's optimistic copy.
+    await page.goto("/account/estates");
     await page.waitForLoadState("networkidle");
     const reloadedRow = page.getByTestId("my-estate-row");
     await expect(
       reloadedRow.getByText("deploys allowed", { exact: true }),
     ).toBeVisible();
-    await reloadedRow.click();
-    const reopened = page.getByTestId("my-estate-drawer");
-    await expect(reopened).toBeVisible();
 
-    // Delete says what it does NOT do, then takes the row with it.
-    await reopened.getByTestId("my-estate-delete").click();
+    // Delete says what it does NOT do, then takes the row with it and lands
+    // back here, because the console cannot stay open over an estate that no
+    // longer exists.
+    await reloadedRow.click();
+    await page.waitForURL(/\/bay\/[0-9a-f-]{36}/, { timeout: 15_000 });
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await page.getByTestId("bay-settings-delete").click();
     const dialog = page.locator('[role="alertdialog"], [role="dialog"]').last();
     await expect(dialog).toContainText("Nothing is undeployed");
     await expect(dialog).toContainText("not revoked at Cloudflare");
     await confirmDialog(page, "Delete");
+    await page.waitForURL(/\/account\/estates/, { timeout: 15_000 });
     await expect(page.getByTestId("my-estate-row")).toHaveCount(0);
     await expect(page.getByText("You own no estate yet")).toBeVisible();
   });

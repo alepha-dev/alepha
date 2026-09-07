@@ -28,6 +28,7 @@ import {
 import type { OwnedEstateResource } from "../schemas/ownedEstateResourceSchema.ts";
 import { CredentialSealService } from "./CredentialSealService.ts";
 import { EstateCloudflareService } from "./EstateCloudflareService.ts";
+import { EstateInventoryService } from "./EstateInventoryService.ts";
 import { EstateTokenService } from "./EstateTokenService.ts";
 import { LoreAudits } from "./LoreAudits.ts";
 
@@ -47,6 +48,7 @@ export class EstateService {
   protected readonly grants = $repository(estateProjects);
   protected readonly projects = $repository(projects);
   protected readonly tokens = $inject(EstateTokenService);
+  protected readonly inventories = $inject(EstateInventoryService);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly audits = $inject(LoreAudits);
@@ -440,10 +442,14 @@ export class EstateService {
     if (owned.length === 0) {
       return [];
     }
+    const estateIds = owned.map((estate) => estate.id);
     const grants = await this.grants.findMany({
-      where: { estateId: { inArray: owned.map((estate) => estate.id) } },
+      where: { estateId: { inArray: estateIds } },
       orderBy: [{ column: "createdAt", direction: "asc" }],
     });
+    // One more query for the whole list, never one per row: the denormalised
+    // `appCount` exists so this costs no JSON parsing either.
+    const summaries = await this.inventories.summariesFor(estateIds);
     const projectIds = [...new Set(grants.map((grant) => grant.projectId))];
     const rows = projectIds.length
       ? await this.projects.findMany({
@@ -455,6 +461,9 @@ export class EstateService {
 
     return owned.map((estate) => ({
       ...this.toResource(estate),
+      ...(summaries.has(estate.id)
+        ? { inventory: summaries.get(estate.id) }
+        : {}),
       projects: grants
         .filter((grant) => grant.estateId === estate.id)
         .flatMap((grant) => {
