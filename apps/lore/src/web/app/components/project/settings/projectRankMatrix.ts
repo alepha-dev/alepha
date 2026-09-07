@@ -73,6 +73,23 @@ export class ProjectRankMatrix {
         // locked but absent: a locked row invites the question "who CAN do
         // this here", and the answer is that it does not happen here at all.
         .filter((it) => !LoreRankBounds.OUT_OF_SCOPE.includes(it.name))
+        // ⚠️ The CEILING, dropped for a different reason than the line above
+        // and by the same mechanism deliberately (feedback #P2124). These are
+        // ungrantable structurally, so their row is a permanently grey,
+        // permanently unchecked box in every column: a choice that does not
+        // exist, drawn once per rank.
+        //
+        // ⚠️ ONLY the ceiling. `lockOf` returns `"off"` for two other
+        // reasons, and one of them must stay on screen: a permission the
+        // EDITOR does not personally hold is locked too, and hiding that
+        // would give the matrix a different shape for every reader - an
+        // Admin comparing notes with the Owner would see fewer rows with
+        // nothing saying why. That lock is informative; this one is not.
+        //
+        // The FLOOR stays as well. `project:read` is pinned `"on"` and is
+        // just as unclickable, but it says something true and useful: every
+        // rank can open the project.
+        .filter((it) => !LoreRankBounds.OWNER_ONLY.includes(it.name))
         .map((permission) => ({
           name: permission.name,
           label: input.label(permission.label ?? "", permission.name),
@@ -99,6 +116,12 @@ export class ProjectRankMatrix {
    * because "you cannot grant this" is the same answer whether the reason is
    * structural or personal. The tooltip that would tell the two apart is not
    * worth a second lock state.
+   *
+   * ⚠️ The ceiling branch is unreachable from {@link rows}, which now drops
+   * those permissions before asking (feedback #P2124). Kept rather than
+   * deleted: this function is the answer to "may this be checked", the filter
+   * is the answer to "is this worth a row", and collapsing the two would mean
+   * a caller that skips the filter renders a checkable `capability:manage`.
    */
   protected static lockOf(
     permission: string,

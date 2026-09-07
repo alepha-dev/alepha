@@ -115,6 +115,59 @@ const accept = async (page: Page, projectTitle: string): Promise<void> => {
 };
 
 test.describe("Ranks", () => {
+  /**
+   * Feedback #P2124. The two owner-only permissions used to draw a
+   * permanently grey, permanently unchecked box in every rank column - a
+   * choice that does not exist, once per rank - and `capability:manage` is
+   * the only permission its group has, so the header had to leave with it.
+   *
+   * In a browser rather than only in `projectRankMatrix.spec.ts`: the unit
+   * spec proves the rows are filtered, and what had to be confirmed is that
+   * the section drops rather than rendering an empty heading.
+   */
+  test("the matrix lists no permission a rank can never hold", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    await registerAndVerify(
+      page,
+      `matrix-${Date.now()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const title = `Mx${Date.now()}`.slice(0, 20);
+    const { slug } = await createProjectViaWizard(page, title);
+
+    await page.goto(`/${slug}/settings/ranks`);
+    await page.waitForLoadState("networkidle");
+
+    // ⚠️ Scoped to the matrix table. The settings rail carries a
+    // "Capabilities" group header of its own, so a page-wide assertion on
+    // that word is answered by the nav and says nothing about this page.
+    const matrix = page.locator("table");
+
+    // The matrix rendered, so the absences below mean something.
+    await expect(
+      matrix.getByText("Create quests", { exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
+    // The floor stays, unclickable and worth saying: every rank opens the
+    // project.
+    await expect(
+      matrix.getByText("Open the project", { exact: true }),
+    ).toHaveCount(1);
+
+    await expect(
+      matrix.getByText("Delete the project", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      matrix.getByText("Turn capabilities on and off", { exact: true }),
+    ).toHaveCount(0);
+    // The group header goes with its only row.
+    await expect(matrix.getByText("Capabilities", { exact: true })).toHaveCount(
+      0,
+    );
+  });
+
   test("a contributor writes the work and cannot touch the configuration", async ({
     page,
     browser,
