@@ -10,9 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@alepha/lore": "workspace:*",
     "alepha": "workspace:*"
-  },
-  "devDependencies": {
-    "@alepha/lore": "workspace:*"
   }
 }
