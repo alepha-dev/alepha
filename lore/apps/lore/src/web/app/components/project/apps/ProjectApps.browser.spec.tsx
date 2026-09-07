@@ -352,6 +352,76 @@ describe("the Apps list", () => {
     });
   });
 
+  /**
+   * Feedback #P2131: three columns on a 1920px screen while the row carries
+   * more. The split is by what this list is FOR - it answers "what do we run
+   * and where" - so identity and liveness are on and provenance is a click
+   * away.
+   */
+  describe("the hidden columns", () => {
+    const HIDDEN = ["Last seen", "Deploys to", "Created"];
+
+    const headers = (view: { container: HTMLElement }) =>
+      [...view.container.querySelectorAll("thead th")].map(
+        (cell) => cell.textContent?.trim() ?? "",
+      );
+
+    it("starts on identity and liveness, with provenance off", async ({
+      expect,
+    }) => {
+      const { view } = await mount([anInstance("api", "production")]);
+
+      await waitFor(() => expect(rowText(view)).toHaveLength(1));
+      const shown = headers(view);
+      expect(shown).toEqual(
+        expect.arrayContaining(["App", "Env", "Version", "Address"]),
+      );
+      for (const label of HIDDEN) {
+        expect(shown).not.toContain(label);
+      }
+    });
+
+    it("offers each of them in the column picker, and shows the value", async ({
+      expect,
+    }) => {
+      // ⚠️ The value BEHIND the status dot, which is why it earns a column at
+      // all: the dot says whether, this says when. There is deliberately no
+      // Status column - that would render one fact twice.
+      const { view } = await mount([
+        anInstance("api", "production", withSigil(agoHours(1))),
+      ]);
+      await waitFor(() => expect(rowText(view)).toHaveLength(1));
+
+      fireEvent.click(screen.getByRole("button", { name: "Toggle columns" }));
+      for (const label of HIDDEN) {
+        fireEvent.click(
+          await screen.findByRole("menuitemcheckbox", { name: label }),
+        );
+      }
+
+      await waitFor(() =>
+        expect(headers(view)).toEqual(expect.arrayContaining(HIDDEN)),
+      );
+    });
+
+    it("keeps a copy with no sigil out of the Last seen column, blank rather than dashed", async ({
+      expect,
+    }) => {
+      // No sigil means it never reports, so there is no last time rather than
+      // an unknown one.
+      const { view } = await mount([anInstance("api", "production")]);
+      await waitFor(() => expect(rowText(view)).toHaveLength(1));
+
+      fireEvent.click(screen.getByRole("button", { name: "Toggle columns" }));
+      fireEvent.click(
+        await screen.findByRole("menuitemcheckbox", { name: "Last seen" }),
+      );
+
+      await waitFor(() => expect(headers(view)).toContain("Last seen"));
+      expect(rowText(view)[0]).not.toContain("-");
+    });
+  });
+
   it("tells a failed read apart from an empty project", async ({ expect }) => {
     // ⚠️ They must not collapse into one falsy check: an empty state on a
     // transient failure claims a project has no apps. This page owns the
