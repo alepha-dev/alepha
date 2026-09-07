@@ -214,6 +214,17 @@ test.describe("Inbox", () => {
     // And on a phone, where the rail collapses and the header is all there is.
     await page.setViewportSize({ width: 375, height: 812 });
     await expect(bell).toBeVisible({ timeout: 10_000 });
+
+    // ⚠️ The crumb is the only thing naming where the reader is now that the
+    // rail entry is gone, and the page had none at all (feedback #P2128):
+    // `projectInbox` was missing from `SECTION_LABEL_KEYS`, so the header
+    // read the project title and stopped.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`/${slug}/inbox`);
+    await page.waitForLoadState("networkidle");
+    const crumbs = page.getByRole("navigation", { name: /breadcrumb/i });
+    await expect(crumbs).toContainText(title, { timeout: 15_000 });
+    await expect(crumbs).toContainText("Notifications");
   });
 
   /**
