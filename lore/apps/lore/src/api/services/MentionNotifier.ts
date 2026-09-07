@@ -148,11 +148,10 @@ export class MentionNotifier {
 
     await this.templates.inboxMention.push({
       contact: recipient.email,
-      // ⚠️ Explicit, never inferred. `$notification` resolves the language
-      // from the current request, which belongs to the AUTHOR, and `users`
-      // carries no language column - so a French author would mail an
-      // English colleague in French. See the templates' own docstring.
-      lang: "en",
+      // ⚠️ Explicit, never inferred, and from the one constant: see
+      // `LoreInboxNotifications.lang` for why, and for what changes the day
+      // an account carries a language.
+      lang: this.templates.lang,
       variables: {
         reference: subject.reference,
         subjectTitle: subject.title,
