@@ -33,10 +33,32 @@ export class DeployController {
    * a field initializer, so a gate declared below its first use is `undefined`
    * at construction time.
    */
+  /**
+   * ⚠️ **One call carrying both halves**, so Ranks (#E39) has one place to add
+   * `requires:` and a page and an endpoint cannot disagree about which gates
+   * apply.
+   *
+   * `owner: true` because deploying into somebody's cloud account is the most
+   * powerful action in Lore; widening it later is one line. The capability
+   * option because a project that does not deploy through Lore should not have
+   * the endpoint at all.
+   */
+  protected deployGate = () =>
+    $ownsProject({
+      param: "projectId",
+      owner: true,
+      capability: { key: "apps", option: "deploy" },
+    });
+
+  /**
+   * ⚠️ Reads do NOT take the capability. Disabling a capability hides it and
+   * never deletes anything, so a project that turns `deploy` off must get an
+   * empty tab rather than an error on the history it already has.
+   */
   protected ownsProject = () => $ownsProject({ param: "projectId" });
 
   startDeploy = $action({
-    use: [$secure(), this.ownsProject()],
+    use: [$secure(), this.deployGate()],
     method: "POST",
     path: "/projects/:projectId/apps/:instanceId/deployments",
     description: "Deploy a stored build onto one deployed copy.",
