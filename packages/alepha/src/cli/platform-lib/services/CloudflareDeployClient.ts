@@ -303,7 +303,7 @@ export class CloudflareDeployClient {
       })),
     ];
 
-    const answer = (await this.uploadScript(plan, {
+    await this.uploadScript(plan, {
       main_module: plan.mainModule,
       compatibility_date: plan.compatibilityDate,
       compatibility_flags: plan.compatibilityFlags,
@@ -322,11 +322,46 @@ export class CloudflareDeployClient {
             keep_assets: assets ? undefined : true,
           }
         : undefined,
-    })) as { id?: string; version_id?: string } | undefined;
+    });
 
-    // Two spellings, because the script endpoint and the versions endpoint
-    // name it differently and which one answers depends on the upload mode.
-    return answer?.version_id ?? answer?.id;
+    return await this.newestVersion(plan.scriptName);
+  }
+
+  /**
+   * The version this upload just produced, read back from Cloudflare.
+   *
+   * ## ⚠️ The upload response cannot answer this, and its `id` is a trap
+   *
+   * `PUT /workers/scripts/{name}` answers `{ startup_time_ms, id, ... }` where
+   * `id` is **the script name**. There is no `version_id` in that shape at
+   * all, so a `version_id ?? id` read stored `my-app-production` as the
+   * version of every successful deploy - a value `RollbackService` then
+   * compares against the real version list, never matches, and quietly falls
+   * back to redeploying the artifact. Fast rollback could not work, and
+   * nothing said so.
+   *
+   * ## ⚠️ A failure here must not fail the deploy
+   *
+   * The script is already live by the time this runs. `undefined` is a value
+   * the caller already understands - "this run cannot be rolled back to" - and
+   * it is much better than throwing away a Worker that deployed fine because a
+   * bookkeeping read timed out.
+   */
+  protected async newestVersion(
+    scriptName: string,
+  ): Promise<string | undefined> {
+    try {
+      const versions = await this.listVersions(scriptName);
+      // Cloudflare answers newest-first, but the sort makes that an assumption
+      // this file states rather than one it inherits. `created_on` is optional;
+      // when it is absent everywhere the comparison is a no-op and the API's
+      // own order stands.
+      return [...versions].sort((a, b) =>
+        (b.created_on ?? "").localeCompare(a.created_on ?? ""),
+      )[0]?.id;
+    } catch {
+      return undefined;
+    }
   }
 
   /**

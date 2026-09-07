@@ -165,7 +165,7 @@ const create = (
 };
 
 /**
- * A workspace the build can run in, with a `dist/` for `collect` to move.
+ * A workspace the build can run in, with a `dist/` the build writes into.
  */
 const aWorkspace = async (fs: MemoryFileSystemProvider) => {
   await fs.writeFile("/project/package.json", JSON.stringify({ name: "docs" }));
@@ -209,12 +209,17 @@ describe("lore apps build", () => {
     );
   });
 
-  it("writes each target to its own directory, named locally", async () => {
-    // ⚠️ `<app>_<target>_<tag>` is an output DIRECTORY and never an artifact
-    // identity. Epic #18 rejected `my-app_1.2.3_cloudflare.tar.gz` explicitly:
-    // it makes two builds of one release look like two releases. The identity
-    // is `(projectId, app, tag, runtime)`, and the server reads `runtime` out
-    // of the artifact's own manifest at push time, never from a filename.
+  it("leaves the build in dist/ and puts nothing else there", async () => {
+    // ⚠️ It used to copy `dist/` into `dist/<app>_<target>_<tag>`, which Node
+    // refuses outright (`EINVAL: cannot copy to a subdirectory of self`), so
+    // `lore apps build` failed on every real filesystem. The spec passed
+    // because `MemoryFileSystemProvider.cp` allows a destination inside its
+    // own source.
+    //
+    // Relocating that copy would not have been enough either. Nothing ever
+    // read it - `lore artifacts push` packs `root/dist` and takes no other
+    // directory - and `WorkspacePacker` tars the whole of `dist/`, so a copy
+    // left in there rode inside the next artifact and doubled it.
     const { fs, cli, command } = create();
     await aWorkspace(fs);
 
@@ -223,7 +228,8 @@ describe("lore apps build", () => {
       argv: "--target cloudflare --tag 0.28.0",
     });
 
-    expect(await fs.exists("/project/dist/docs_cloudflare_0.28.0")).toBe(true);
+    expect(await fs.exists("/project/dist/index.js")).toBe(true);
+    expect(await fs.exists("/project/dist/docs_cloudflare_0.28.0")).toBe(false);
   });
 
   describe("--env", () => {
@@ -413,10 +419,15 @@ describe("lore apps deploy", () => {
       argv: "--env production",
     });
 
+    // ⚠️ The whole surface, so `--estate` cannot be added without this
+    // failing. `--sigil` is here because it names a credential Lore mints for
+    // this copy; an estate is somebody's cloud account, which is the thing a
+    // client must never get to choose.
     expect(Object.keys(command.deploy.flags?.shape ?? {}).sort()).toEqual([
       "app",
       "env",
       "project",
+      "sigil",
       "tag",
     ]);
     // The whole body, so an estate id cannot be added without this failing.

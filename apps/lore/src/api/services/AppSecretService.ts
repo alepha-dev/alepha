@@ -219,6 +219,18 @@ export class AppSecretService {
   }
 
   /**
+   * Whether this copy carries a variable under that name.
+   *
+   * ⚠️ Deliberately not `open`. The caller wants to know a value EXISTS, and
+   * answering that question by decrypting one would put a plaintext on a path
+   * that has no business holding it - the separation the rest of this class
+   * is built on.
+   */
+  public async has(instanceId: string, key: string): Promise<boolean> {
+    return !!(await this.find(instanceId, key.trim().toUpperCase()));
+  }
+
+  /**
    * The set as the app will read it.
    *
    * ⚠️ **The only method that decrypts**, and its only caller is the deploy. It

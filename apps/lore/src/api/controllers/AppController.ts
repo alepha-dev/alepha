@@ -154,6 +154,15 @@ export class AppController {
          * address is normally the host the app reports from.
          */
         url: z.string().max(2048).optional(),
+        /**
+         * Mint this copy's sigil and put its key straight into the copy's
+         * environment, so a deploy that follows reports without anybody
+         * pasting a credential.
+         *
+         * ⚠️ Only meaningful HERE. `sigils` keeps a hash, so the key can be
+         * stored at the moment it is minted and never afterwards.
+         */
+        sigil: z.boolean().optional(),
       }),
       response: appInstanceResourceSchema,
     },
@@ -165,6 +174,10 @@ export class AppController {
         ...(body.url === undefined ? {} : { url: body.url }),
         createdBy: user.id,
       });
+
+      if (body.sigil) {
+        await this.service.provisionSigil(instance, { createdBy: user.id });
+      }
 
       await this.audits.app.logSuccess("create", {
         ...this.audits.actor(user),
@@ -277,6 +290,63 @@ export class AppController {
    * a deployed copy, not the copy. Refusing is not this endpoint's job either
    * - the confirmation dialog is the UI's.
    */
+  /**
+   * Give an existing copy a sigil and store its key, idempotently.
+   *
+   * The same operation `createApp`'s `sigil` flag runs, reachable for a copy
+   * that already exists - which is what `lore apps deploy --sigil` needs,
+   * since that command deliberately never creates a copy.
+   *
+   * ⚠️ Answers `minted: false` for a copy already carrying its key rather than
+   * refusing, so a `--sigil` left in a CI command does not fail every run
+   * after the first. A copy whose sigil exists with no stored key IS refused:
+   * see `AppService.provisionSigil` for why that one cannot be repaired.
+   */
+  ensureAppSigil = $action({
+    use: [
+      $ownsProject({
+        requires: "sigil:manage",
+        param: "projectId",
+        capability: { key: "apps", action: "mint a sigil" },
+      }),
+    ],
+    method: "POST",
+    path: "/projects/:projectId/apps/:app/:env/sigil",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        app: appNameSchema,
+        env: appNameSchema,
+      }),
+      response: z.object({ minted: z.boolean() }),
+    },
+    handler: async ({ params, user }) => {
+      const instance = await this.service.load(
+        params.projectId,
+        params.app,
+        params.env,
+      );
+
+      const result = await this.service.provisionSigil(instance, {
+        createdBy: user.id,
+      });
+
+      if (result.minted) {
+        // A sigil is a credential, so its whole life is audited and kept
+        // longer than the rest.
+        await this.audits.sigil.logSuccess("create", {
+          ...this.audits.actor(user),
+          ...this.audits.scope(params.projectId),
+          resourceType: "sigil",
+          resourceId: instance.id,
+          description: `${instance.app}/${instance.env}`,
+        });
+      }
+
+      return result;
+    },
+  });
+
   deleteApp = $action({
     use: [
       $ownsProject({

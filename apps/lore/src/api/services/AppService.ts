@@ -1,15 +1,16 @@
-import { $inject } from "alepha";
+import { $inject, Alepha } from "alepha";
 import { $repository, DbConflictError } from "alepha/orm";
 import { BadRequestError, ConflictError, NotFoundError } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
-import { type Sigil, sigils } from "../entities/sigils.ts";
+import { SIGIL_KINDS, sigils, type Sigil } from "../entities/sigils.ts";
 import {
   APP_NAME_PATTERN,
   SIGIL_NAME_PAIR_MAX_LENGTH,
 } from "../schemas/appNameSchema.ts";
 import { defaultAppInstance } from "../schemas/defaultAppInstance.ts";
+import { AppSecretService } from "./AppSecretService.ts";
 import { SigilTokenService } from "./SigilTokenService.ts";
 
 /**
@@ -33,6 +34,8 @@ export class AppService {
   protected readonly sigils = $repository(sigils);
   protected readonly grants = $repository(estateProjects);
   protected readonly tokens = $inject(SigilTokenService);
+  protected readonly secrets = $inject(AppSecretService);
+  protected readonly alepha = $inject(Alepha);
 
   /**
    * Normalises one half of the pair, then checks it.
@@ -246,6 +249,86 @@ export class AppService {
     }
 
     return { sigil: created, token: minted.token };
+  }
+
+  /**
+   * The variable an app reports with, and the sink it reports to.
+   *
+   * `SIGIL_KEY` is the only required one; `SIGIL_SINK` defaults to the public
+   * Lore inside the reporting package, so it is written only when THIS Lore is
+   * somewhere else - which is exactly the self-hosted case that would
+   * otherwise send a self-hosted app's telemetry to lore.alepha.dev.
+   */
+  public static readonly SIGIL_KEY = "SIGIL_KEY";
+  public static readonly SIGIL_SINK = "SIGIL_SINK";
+  public static readonly PUBLIC_SINK = "https://lore.alepha.dev";
+
+  /**
+   * Give a copy a sigil and put its key straight into that copy's environment.
+   *
+   * ## ⚠️ This is the only moment the key can ever be stored
+   *
+   * `sigils` keeps a `tokenHash` and a `tokenPrefix`, never the token. Lore
+   * holds the plaintext for the length of {@link createSigil} and then cannot
+   * produce it again for anybody, itself included. So "mint it and write it
+   * into the environment" has to be one operation: there is no later call that
+   * could finish the job.
+   *
+   * That is also why a copy which already has a sigil and no stored key is
+   * **refused rather than repaired**. The only way to put a key in that
+   * copy's environment is to mint a new one, and rotating silently would stop
+   * an app that is reporting happily with the key its operator pasted.
+   *
+   * ## The token never crosses the wire
+   *
+   * Minting and storing happen here, so no response carries it and no client
+   * ever holds it. `createSigil` on its own still answers the token once,
+   * which is the flow for an operator who wants to paste it somewhere Lore
+   * does not manage.
+   */
+  async provisionSigil(
+    instance: AppInstance,
+    input: { kinds?: string[]; createdBy?: string } = {},
+  ): Promise<{ minted: boolean }> {
+    const stored = await this.secrets.has(instance.id, AppService.SIGIL_KEY);
+
+    if (instance.sigilId) {
+      if (stored) {
+        // Already reporting, with a key this copy carries. Nothing to do, and
+        // saying so beats minting a second credential that splits its history.
+        return { minted: false };
+      }
+      throw new ConflictError(
+        `"${instance.app}/${instance.env}" already has a sigil, and Lore cannot put its key into this copy's environment: only a hash is kept. Rotate the sigil to mint a key that can be stored, or set ${AppService.SIGIL_KEY} yourself.`,
+      );
+    }
+
+    const { token } = await this.createSigil(instance, {
+      kinds: input.kinds ?? [...SIGIL_KINDS],
+      ...(input.createdBy ? { createdBy: input.createdBy } : {}),
+    });
+
+    await this.secrets.set({
+      instanceId: instance.id,
+      key: AppService.SIGIL_KEY,
+      value: token,
+      ...(input.createdBy ? { updatedBy: input.createdBy } : {}),
+    });
+
+    // Only when this Lore is not the one the reporting package already
+    // defaults to. Writing it always would pin every copy to a URL that is
+    // right today and wrong after a rename.
+    const sink = String(this.alepha.env.PUBLIC_URL ?? "").replace(/\/+$/, "");
+    if (sink && sink !== AppService.PUBLIC_SINK) {
+      await this.secrets.set({
+        instanceId: instance.id,
+        key: AppService.SIGIL_SINK,
+        value: sink,
+        ...(input.createdBy ? { updatedBy: input.createdBy } : {}),
+      });
+    }
+
+    return { minted: true };
   }
 
   /**
