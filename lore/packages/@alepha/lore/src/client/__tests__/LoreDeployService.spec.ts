@@ -228,10 +228,12 @@ describe("deploying from another server", () => {
       expect(patch?.body).toEqual({ estateId: "est-old" });
     });
 
-    it("carries the address onto the new copy, which is what returns a URL", async () => {
-      // ⚠️ `DeployRunner` reads the domain off `app_instances.url`, and the
-      // adapter answers a URL only when it put one into effect. A copy created
-      // with no address deploys fine and answers nothing to link to.
+    it("stores the domain as an origin, which is what returns a URL", async () => {
+      // ⚠️ The same `domain` `alepha.config.ts` declares per environment.
+      // `app_instances.url` is what the Apps table renders as an `href`, so it
+      // is stored as an origin and `DeployService` takes the host back off it.
+      // A copy created with no domain deploys fine and answers nothing to link
+      // to.
       const { api, service } = setup({
         "GET /api/projects/1/estates": () => ({
           items: [{ id: "est-1", slug: "only" }],
@@ -255,7 +257,67 @@ describe("deploying from another server", () => {
       await service.deploy({
         app: "club",
         env: "wassup",
+        domain: "wassup.club.example",
+      });
+
+      const created = api.calls.find(
+        (it) => it.path === "/api/projects/1/apps" && it.method === "POST",
+      );
+      expect(created?.body).toEqual({
+        app: "club",
+        env: "wassup",
         url: "https://wassup.club.example",
+      });
+    });
+
+    it.each([
+      "https://wassup.club.example",
+      "wassup.club.example/app",
+      "wassup.club.example:8080",
+      "wassup",
+      "",
+    ])("refuses %o, which is not a hostname", async (bad) => {
+      // ⚠️ Before anything is written. A malformed host reaching the row would
+      // create a copy whose deploy then fails on Cloudflare's own error,
+      // leaving the copy behind for somebody to find.
+      const { api, service } = setup({
+        "GET /api/projects/1/estates": () => ({
+          items: [{ id: "est-1", slug: "only" }],
+        }),
+      });
+
+      await expect(
+        service.deploy({ app: "club", env: "wassup", domain: bad }),
+      ).rejects.toThrow(/is not a hostname/);
+      expect(
+        api.calls.filter((it) => it.path === "/api/projects/1/apps"),
+      ).toEqual([]);
+    });
+
+    it("lowercases the host rather than storing what was typed", async () => {
+      const { api, service } = setup({
+        "GET /api/projects/1/estates": () => ({
+          items: [{ id: "est-1", slug: "only" }],
+        }),
+        "POST /api/projects/1/apps": () => anInstance(),
+        "PATCH /api/projects/1/apps/club/wassup": () => anInstance(),
+        "POST /api/projects/1/apps/inst-1/deployments": () => ({
+          id: "dep-1",
+          status: "queued",
+        }),
+        "GET /api/projects/1/deployments/dep-1": () => ({
+          id: "dep-1",
+          app: "club",
+          tag: "latest",
+          status: "succeeded",
+          log: [],
+        }),
+      });
+
+      await service.deploy({
+        app: "club",
+        env: "wassup",
+        domain: "  Wassup.Club.Example  ",
       });
 
       const created = api.calls.find(
@@ -297,6 +359,28 @@ describe("deploying from another server", () => {
       ).rejects.toThrow(/No estate is lent to this project/);
       expect(
         api.calls.filter((it) => it.path === "/api/projects/1/apps"),
+      ).toEqual([]);
+    });
+  });
+
+  describe("an existing copy keeps its address", () => {
+    it("does not re-point a live copy at a domain passed on every call", async () => {
+      // ⚠️ Re-pointing a tenant is a config change, not a deploy. A client
+      // that did it silently would move an address somebody set by hand on the
+      // Settings tab, on a call whose subject is shipping bytes.
+      const { api, service } = setup(shipped());
+
+      await service.deploy({
+        app: "club",
+        env: "wassup",
+        domain: "somewhere-else.example",
+      });
+
+      expect(api.calls.filter((it) => it.method === "PATCH")).toEqual([]);
+      expect(
+        api.calls.filter(
+          (it) => it.path === "/api/projects/1/apps" && it.method === "POST",
+        ),
       ).toEqual([]);
     });
   });
