@@ -4,6 +4,7 @@ import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
+import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { describe, it } from "vitest";
 
@@ -13,12 +14,23 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { projectNavAtom } from "../../atoms/projectNavAtom.ts";
+import { I18n } from "../../services/I18n.ts";
 import ProjectViewNavPublisher from "./ProjectViewNavPublisher.tsx";
 
 class Routes {
   app = $page({
     name: "app",
     path: "/:projectSlug/apps/:app/:env",
+    component: () => null,
+  });
+  /**
+   * Needed since the Notifications entry left the rail (feedback #P2127) and
+   * this publisher started appending it from its own source: the palette
+   * would otherwise lose the page that the sidebar no longer offers.
+   */
+  projectInbox = $page({
+    name: "projectInbox",
+    path: "/:projectSlug/inbox",
     component: () => null,
   });
 }
@@ -55,9 +67,12 @@ describe("what the palette is offered", () => {
       .with(AlephaLogger)
       .with(AlephaDateTime)
       .with(AlephaReact)
-      .with(AlephaReactRouter);
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n);
     alepha.inject(Routes);
+    alepha.inject(I18n);
     await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
 
     alepha.store.set(currentProjectAtom, aProject as never);
     alepha.store.set(currentInstancesAtom, instances as never);
@@ -90,6 +105,10 @@ describe("what the palette is offered", () => {
       expect(alepha.store.get(projectNavAtom)).toEqual([
         { label: "Quests", href: "/alepha/quests", kind: "page" },
         { label: "Apps", href: "/alepha/apps", kind: "page" },
+        // Not in the `nav` this spec passes, and that is the point: it comes
+        // from the publisher's own third source, because the rail no longer
+        // carries it.
+        { label: "Notifications", href: "/alepha/inbox", kind: "page" },
         {
           label: "club / production",
           href: "/alepha/apps/club/production",
@@ -119,6 +138,23 @@ describe("what the palette is offered", () => {
         .map((entry) => entry.label);
       expect(labels).toEqual(["club / production", "club / staging"]);
     });
+  });
+
+  it("keeps Notifications, which the sidebar no longer offers", async ({
+    expect,
+  }) => {
+    // ⚠️ The same regression as the instances above, one epic later: the rail
+    // entry went (feedback #P2127), the bell is not a search result, and
+    // without this append ⌘K would have lost the page in the same commit.
+    const alepha = await mount([]);
+
+    await waitFor(() =>
+      expect(alepha.store.get(projectNavAtom)).toContainEqual({
+        label: "Notifications",
+        href: "/alepha/inbox",
+        kind: "page",
+      }),
+    );
   });
 
   it("offers pages only when the list could not be read", async ({

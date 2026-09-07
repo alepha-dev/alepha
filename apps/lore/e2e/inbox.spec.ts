@@ -36,7 +36,7 @@ import {
  * here hard-codes one.
  */
 test.describe("Inbox", () => {
-  test("a mention reaches the bell, the rail, and the quest behind it", async ({
+  test("a mention reaches the bell, and the quest behind it", async ({
     page,
     browser,
     baseURL,
@@ -89,19 +89,16 @@ test.describe("Inbox", () => {
       }).toPass({ timeout: 60_000 });
 
       /*
-        ⚠️ The rail's badge is a DIFFERENT number from the bell's: the bell is
-        cross-project, the rail is this project's. A spec reading only the bell
-        would pass with the rail wired to the wrong atom.
+        ⚠️ There is no rail badge to check any more, and this used to check
+        one (feedback #P2127). The rail entry carried a SECOND count - this
+        project's, where the bell's is cross-project - and the pair was worth
+        asserting together precisely because they were different numbers. The
+        entry is gone, the bell is the only door, and the assertion above is
+        the whole claim.
 
-        ⚠️ And the badge is a SIBLING of the link, not inside it:
-        `SidebarMenuItem` renders the button and then `SidebarMenuBadge`
-        beside it. Asserting on the link matches "Notifications" and nothing
-        else, which is a green test of the wrong element.
+        `e2e/inbox.spec.ts`'s "the bell is the only door" case pins the
+        absence, so removing the assertion here does not remove the coverage.
       */
-      const railItem = member.page.locator("li").filter({
-        has: member.page.getByRole("link", { name: /notifications/i }),
-      });
-      await expect(railItem).toContainText("1");
 
       // The email half. `since` is not optional: the member registered
       // moments ago and their verification mail is in the same directory, so
@@ -166,6 +163,96 @@ test.describe("Inbox", () => {
     await expect(
       page.getByRole("button", { name: /notifications/i }),
     ).toHaveCount(0);
+  });
+
+  /**
+   * Feedback #P2127: the rail entry is gone, so the header bell is the only
+   * door. That makes two things load-bearing that were merely true before.
+   *
+   * The bell has to be there at EVERY width - a header control hidden on a
+   * phone would strand the page - and the palette has to keep offering
+   * Notifications, since removing the sidebar entry removes it from the list
+   * ⌘K searches. `ProjectViewNavPublisher` appends it from its own source for
+   * exactly that, the way it already appends app instances.
+   */
+  test("the bell is the only door, and it works on a phone", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    await registerAndVerify(
+      page,
+      `bell-${Date.now()}@example.com`,
+      "GoodPassw0rd",
+    );
+    const title = `Bl${Date.now()}`.slice(0, 20);
+    const { slug } = await createProjectViaWizard(page, title);
+
+    await page.goto(`/${slug}/quests`);
+    await page.waitForLoadState("networkidle");
+
+    const bell = page.getByRole("button", { name: /notifications/i });
+    await expect(bell).toBeVisible({ timeout: 15_000 });
+    // Gone from the rail: one page, one control. By href rather than by
+    // label, the way the other rail assertions do it - a label is localized
+    // and a heading is ambiguous, while an href is what the entry is.
+    await expect(page.locator(`a[href="/${slug}/inbox"]`)).toHaveCount(0);
+
+    // ⌘K still reaches it, which is what the third publisher source is for.
+    await page.keyboard.press("ControlOrMeta+k");
+    // ⚠️ Scoped to the dialog: the page header carries a search trigger of
+    // its own, so an unscoped placeholder match is a strict-mode violation.
+    await page
+      .getByRole("dialog")
+      .getByPlaceholder(/search/i)
+      .fill("notif");
+    await expect(
+      page.getByRole("option", { name: /notifications/i }).first(),
+    ).toBeVisible({ timeout: 10_000 });
+    await page.keyboard.press("Escape");
+
+    // And on a phone, where the rail collapses and the header is all there is.
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(bell).toBeVisible({ timeout: 10_000 });
+
+    // ⚠️ The crumb is the only thing naming where the reader is now that the
+    // rail entry is gone, and the page had none at all (feedback #P2128):
+    // `projectInbox` was missing from `SECTION_LABEL_KEYS`, so the header
+    // read the project title and stopped.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`/${slug}/inbox`);
+    await page.waitForLoadState("networkidle");
+    const crumbs = page.getByRole("navigation", { name: /breadcrumb/i });
+    await expect(crumbs).toContainText(title, { timeout: 15_000 });
+    await expect(crumbs).toContainText("Notifications");
+
+    /*
+     * ⚠️ The table fills the content area (feedback #P2129). `projectInbox`
+     * was missing from `ROUTES_FULL_WIDTH`, so the shell capped it at
+     * `max-w-5xl` and the messages sat in a ~1024px column with the project
+     * background down both sides, truncating while the space was there.
+     *
+     * ⚠️ At 1920, and the width matters: `max-w-5xl` IS 1024px, so at the
+     * 1280 viewport above a capped table and an uncapped one measure the
+     * same and the assertion passes either way. The report was at 1920 for
+     * this reason. Asserted as a share of the viewport rather than in pixels
+     * so the sidebar's own width is not baked in.
+     */
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const share = await page.evaluate(() => {
+      const table = document.querySelector('[data-testid="inbox-table"]');
+      return (table?.getBoundingClientRect().width ?? 0) / window.innerWidth;
+    });
+    expect(share).toBeGreaterThan(0.6);
+
+    // And it survives a narrow viewport, where the cap never applied and the
+    // risk is the opposite one: a floor that overflows the page.
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.getByTestId("inbox-table")).toBeVisible();
+    const overflows = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth + 1,
+    );
+    expect(overflows).toBe(false);
   });
 
   /**

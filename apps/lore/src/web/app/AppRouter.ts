@@ -42,7 +42,6 @@ import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
 import { currentFolioPathAtom } from "./atoms/currentFolioPathAtom.ts";
-import { currentInboxCountAtom } from "./atoms/currentInboxCountAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -627,7 +626,6 @@ export class AppRouter {
         openBlights,
         areas,
         unreadEverywhere,
-        unreadHere,
         prompts,
       ] = await Promise.all([
         this.releaseApi.getReleases({
@@ -728,26 +726,21 @@ export class AppRouter {
           .getAreas({ params: { projectId: project.id } })
           .catch(() => undefined),
 
-        // ⚠️ TWO inbox counts, and they are different numbers.
+        // ⚠️ ONE inbox count, and it is deliberately the cross-project one.
+        // Alepha and Odzala are open in the same session and a ping in one
+        // must not be invisible from the other, so this passes NO scope. It
+        // seeds `inboxUnreadAtom` before the first paint, which is what the
+        // bell's own mount-fetch then does not have to do.
         //
-        // The bell is cross-project: Alepha and Odzala are open in the same
-        // session and a ping in one must not be invisible from the other, so
-        // this one passes NO scope. It seeds `inboxUnreadAtom` before the
-        // first paint, which is what the bell's own mount-fetch then does not
-        // have to do.
+        // A second, `scope: project:<id>` call sat here for the rail's own
+        // badge until the rail entry was removed (feedback #P2127). It was
+        // one request per project navigation for a number nothing reads.
         //
         // A `count` action, never `list().items.length`: that is the bug
         // #1744 was, where a paged list capped the Feedback badge at 10 over
         // an inbox of 106.
         this.inboxApi
           .countInbox({ query: {} })
-          .then((r) => r.unread)
-          .catch(() => 0),
-
-        // The rail's badge, filtered to this project. `scope` is the opaque
-        // string the pusher wrote, compared for equality and never parsed.
-        this.inboxApi
-          .countInbox({ query: { scope: `project:${project.id}` } })
           .then((r) => r.unread)
           .catch(() => 0),
 
@@ -796,7 +789,6 @@ export class AppRouter {
       this.alepha.store.set(currentInstancesAtom, instances);
       this.alepha.store.set(currentAreasAtom, areas);
       this.alepha.store.set(inboxUnreadAtom, { count: unreadEverywhere });
-      this.alepha.store.set(currentInboxCountAtom, { count: unreadHere });
       this.alepha.store.set(projectPromptsAtom, prompts);
 
       return {
@@ -815,10 +807,10 @@ export class AppRouter {
       this.alepha.store.set(currentEpicsAtom, undefined);
       this.alepha.store.set(currentInstancesAtom, undefined);
       this.alepha.store.set(currentAreasAtom, undefined);
-      // Only the project-scoped one. `inboxUnreadAtom` counts every project,
-      // so clearing it on leaving one would zero a number that is still
-      // true - and the bell is not on screen off-project anyway.
-      this.alepha.store.set(currentInboxCountAtom, { count: 0 });
+      // ⚠️ `inboxUnreadAtom` is NOT cleared here, and never was: it counts
+      // every project, so zeroing it on leaving one would erase a number
+      // that is still true. The project-scoped atom that was cleared here
+      // went with the rail's badge (feedback #P2127).
       this.alepha.store.set(projectPromptsAtom, undefined);
     },
     errorHandler: (error) => {
