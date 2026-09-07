@@ -65,23 +65,24 @@ want to.
 Then open that copy's **Settings** tab and choose the estate it deploys to.
 Doing so is what makes its **Deploy** and **Environment** tabs appear.
 
-### Giving it a sigil at the same time
+### Telemetry wires itself
 
-A copy can be created with its telemetry already wired:
+If your app bundles the reporting module, you do not have to do anything: the
+build says so in its manifest, and a deploy mints the copy's sigil and writes
+`SIGIL_KEY` straight into that copy's environment. The token is never in your
+terminal and never in a response.
 
 ```bash
-lore apps deploy --env production --sigil
+lore apps deploy --env production           # a sigil appears, if the build asks
+lore apps deploy --env production --no-sigil   # it does not
+lore apps deploy --env production --sigil      # it does, even for a silent build
 ```
 
-Lore mints the sigil and writes `SIGIL_KEY` straight into that copy's
-environment, so the app reports without anybody pasting a credential. The token
-is never in your terminal and never in a response.
-
-⚠️ **Only a fresh sigil can be stored this way.** A sigil is kept as a hash, so
-Lore holds the token for the moment it mints it and never again. A copy that
-already has a sigil and no `SIGIL_KEY` cannot be given one: rotate the sigil, or
-set `SIGIL_KEY` yourself. Running `--sigil` on a copy that already reports does
-nothing, so it is safe to leave in a CI command.
+⚠️ **Only a fresh sigil can be stored.** A sigil is kept as a hash, so Lore
+holds the token for the moment it mints it and never again. A copy that already
+has one and no `SIGIL_KEY` cannot be given one: rotate the sigil, or set
+`SIGIL_KEY` yourself. The automatic path leaves such a copy alone and deploys
+anyway; `--sigil` says so instead, because you asked.
 
 ## 4. Set what it runs with
 
