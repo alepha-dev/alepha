@@ -16,8 +16,8 @@ import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { currentProjectMemberAtom } from "../../../atoms/currentProjectMemberAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { useRank } from "../../shared/useRank.ts";
 
 /**
  * The value the select carries for "no default".
@@ -59,11 +59,11 @@ const CLEARED = "__none__";
  */
 const ProjectSettingsDefaultEnv = () => {
   const { tr } = useI18n<I18n, "en">();
+  const { can } = useRank();
   const toaster = useToast();
   const projectApi = useClient<ProjectController>();
 
   const [project, setProject] = useStore(currentProjectAtom);
-  const [member] = useStore(currentProjectMemberAtom);
   const [instances] = useStore(currentInstancesAtom);
   const [busy, setBusy] = useState(false);
 
@@ -71,7 +71,10 @@ const ProjectSettingsDefaultEnv = () => {
     return null;
   }
 
-  const isOwner = member?.owner ?? false;
+  // The permission the write itself takes, not a rank name: `updateProjectById`
+  // is gated on `project:update`, so the control and the endpoint answer the
+  // same question. ⚠️ Never the boundary; the server refuses regardless.
+  const canEdit = can("project:update");
   // Distinct, because one environment usually holds several apps and the
   // default is a property of the project rather than of any one of them.
   const envs = [...new Set((instances ?? []).map((it) => it.env))].sort();
@@ -112,7 +115,7 @@ const ProjectSettingsDefaultEnv = () => {
         {envs.length > 0 && (
           <Select
             value={project.defaultEnv ?? CLEARED}
-            disabled={!isOwner || busy}
+            disabled={!canEdit || busy}
             onValueChange={(value) =>
               void select(value === CLEARED ? undefined : String(value))
             }
