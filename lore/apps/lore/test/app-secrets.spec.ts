@@ -19,6 +19,7 @@ import { estateProjects } from "../src/api/entities/estateProjects.ts";
 import { estates } from "../src/api/entities/estates.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { AppSecretService } from "../src/api/services/AppSecretService.ts";
+import { AppService } from "../src/api/services/AppService.ts";
 import { CredentialSealService } from "../src/api/services/CredentialSealService.ts";
 import { DeployService } from "../src/api/services/DeployService.ts";
 
@@ -378,6 +379,97 @@ describe("a deployed copy's environment", () => {
         .inject(TestRows)
         .secrets.findMany({ where: { key: { eq: "APP_SECRET" } } });
       expect(rows.length).toBe(1);
+    });
+  });
+
+  describe("the sigil a copy is given at creation", () => {
+    /**
+     * ⚠️ The whole reason this is one operation. `sigils` keeps a `tokenHash`
+     * and a `tokenPrefix`, never the token, so Lore holds the plaintext for
+     * the length of the mint and cannot produce it for anybody afterwards -
+     * itself included. Minting and storing therefore cannot be two calls.
+     */
+    it("mints one and seals its key into the copy's environment", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const apps = alepha.inject(AppService);
+
+      const result = await apps.provisionSigil(w.instance as never, {
+        createdBy: w.user.id,
+      });
+
+      expect(result.minted).toBe(true);
+      const stored = await alepha.inject(AppSecretService).open(w.instance.id);
+      expect(stored.SIGIL_KEY).toMatch(/^sg_/);
+    });
+
+    it("never puts the token in a response", async ({ expect }) => {
+      // The value exists, and no read path answers it - the property the whole
+      // of this file is about, held for a credential Lore minted itself. The
+      // four-character prefix is the same mask every variable gets, and it is
+      // what `sigils.tokenPrefix` already shows so a page can name a key.
+      const w = await world();
+      await alepha
+        .inject(AppService)
+        .provisionSigil(w.instance as never, { createdBy: w.user.id });
+
+      const rows = (await list(w)).items;
+      const row = rows.find(
+        (it: { key: string }) => it.key === "SIGIL_KEY",
+      ) as Record<string, unknown>;
+      expect(row).toBeDefined();
+      expect(row.value).toBeUndefined();
+      expect(String(row.valuePrefix).length).toBe(
+        AppSecretService.PREFIX_LENGTH,
+      );
+
+      const full = (await alepha.inject(AppSecretService).open(w.instance.id))
+        .SIGIL_KEY as string;
+      expect(JSON.stringify(row)).not.toContain(full);
+    });
+
+    /**
+     * ⚠️ A `--sigil` left in a CI command must not fail every run after the
+     * first, so a copy already carrying its key is answered rather than
+     * refused - and no second credential is minted, which would split its
+     * analytics history in two.
+     */
+    it("is a no-op for a copy already carrying its key", async ({ expect }) => {
+      const w = await world();
+      const apps = alepha.inject(AppService);
+      await apps.provisionSigil(w.instance as never, { createdBy: w.user.id });
+      const first = (await alepha.inject(AppSecretService).open(w.instance.id))
+        .SIGIL_KEY;
+
+      const again = await apps.provisionSigil(
+        { ...w.instance, sigilId: "set" } as never,
+        { createdBy: w.user.id },
+      );
+
+      expect(again.minted).toBe(false);
+      expect(
+        (await alepha.inject(AppSecretService).open(w.instance.id)).SIGIL_KEY,
+      ).toBe(first);
+    });
+
+    /**
+     * ⚠️ The case that cannot be repaired, and must say so rather than
+     * silently rotating: an app reporting happily with a key its operator
+     * pasted would stop the moment a new one was minted underneath it.
+     */
+    it("refuses a copy whose sigil exists with no stored key", async ({
+      expect,
+    }) => {
+      const w = await world();
+
+      await expect(
+        alepha
+          .inject(AppService)
+          .provisionSigil({ ...w.instance, sigilId: "already" } as never, {
+            createdBy: w.user.id,
+          }),
+      ).rejects.toThrowError(/only a hash is kept/);
     });
   });
 

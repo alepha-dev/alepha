@@ -84,6 +84,19 @@ export interface LoreDeployInput {
    * rather than applied - this client does not re-point a live tenant.
    */
   domain?: string;
+
+  /**
+   * Mint this copy's sigil as it is created, and store the key in the copy's
+   * own environment, so the tenant reports to Lore with nothing pasted.
+   *
+   * ⚠️ **Read only when the call CREATES the copy**, like {@link domain}, and
+   * for a harder reason than that one: `sigils` keeps a `tokenHash` and never
+   * the token, so the key can be stored at the instant it is minted and at no
+   * later instant. An existing copy without one needs `lore apps deploy
+   * --sigil`, which mints a fresh sigil rather than recovering a key nobody
+   * kept.
+   */
+  sigil?: boolean;
   /**
    * Which estate a newly created copy deploys to, **by slug**.
    *
@@ -281,6 +294,10 @@ export class LoreDeployService {
         // table renders as an `href`; `DeployService` takes the host back off
         // it for the adapter.
         ...(domain === undefined ? {} : { url: `https://${domain}` }),
+        // ⚠️ Sent on the CREATE and nowhere else, because that is the only
+        // moment the key can be stored: `sigils` keeps a hash, so Lore holds
+        // the token for the length of the mint and never again.
+        ...(input.sigil ? { sigil: true } : {}),
       },
     );
 
