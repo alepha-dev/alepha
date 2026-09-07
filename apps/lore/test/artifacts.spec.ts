@@ -1,4 +1,4 @@
-import { Alepha, z } from "alepha";
+import { Alepha, type FileLike, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
@@ -122,6 +122,7 @@ describe("artifacts", () => {
       commitSha?: string;
       force?: boolean;
       file: File;
+      maps?: File;
     },
   ) =>
     ctx.artifactController.pushArtifact.fetch(
@@ -133,10 +134,24 @@ describe("artifacts", () => {
           commitSha: body.commitSha,
           force: body.force,
           file: body.file,
+          maps: body.maps,
         },
       },
       { user },
     );
+
+  /**
+   * A stand-in for the `.maps.tar.gz` the packer writes beside an artifact.
+   *
+   * Its contents do not matter: unlike the artifact it is never read for a
+   * manifest, never digested and never validated. What matters is that it is a
+   * distinct object with distinct bytes, so a test can tell which one a row
+   * points at.
+   */
+  const mapsArchive = (marker = "one") =>
+    new File([`source-maps-${marker}`], "app-1.2.3.maps.tar.gz", {
+      type: "application/gzip",
+    });
 
   /**
    * The status a refusal came back with, so the specs below assert 400 or 409
@@ -687,6 +702,153 @@ describe("artifacts", () => {
       const stranger = await createTestUser(ctx);
 
       expect(await statusOf(list(projectId, stranger))).toBe(403);
+    });
+  });
+
+  /**
+   * #1515: `*.map` left the tarball, so the maps have to arrive and leave
+   * beside it.
+   *
+   * ⚠️ The exclusion is only safe because they are STILL RETRIEVABLE. A
+   * sibling object with no way to read it is a deletion with extra storage,
+   * and a source map that cannot be fetched is a stack trace nobody can read.
+   */
+  describe("the source maps beside a build", () => {
+    it("stores them as a sibling object and hands them back", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, {
+        file: await packedArtifact(),
+        maps: mapsArchive(),
+      });
+
+      const [row] = await ctx.rows.artifacts.findMany({});
+      expect(row.mapsFileId).toBeDefined();
+      expect(row.mapsFileId).not.toBe(row.fileId);
+
+      // Through the endpoint rather than the bucket, because "retrievable"
+      // means an operator can reach them.
+      const answer = await ctx.artifactController.getArtifactMaps.fetch(
+        { params: { projectId, artifactId: row.id } },
+        { user: owner },
+      );
+      expect(await (answer.data as unknown as FileLike).text()).toBe(
+        "source-maps-one",
+      );
+    });
+
+    it("is optional, so an older CLI still pushes", async ({ expect }) => {
+      // Its maps are inside the tarball, and refusing that push would turn
+      // every unupgraded pipeline red for a size optimisation.
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, { file: await packedArtifact() });
+
+      const [row] = await ctx.rows.artifacts.findMany({});
+      expect(row.mapsFileId).toBeUndefined();
+    });
+
+    it("says which fact it has when there is nothing to fetch", async ({
+      expect,
+    }) => {
+      // "no maps" and "no such artifact" are different facts, and an operator
+      // holding an unreadable stack trace needs to know which one.
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, { file: await packedArtifact() });
+      const [row] = await ctx.rows.artifacts.findMany({});
+
+      await expect(
+        ctx.artifactController.getArtifactMaps.fetch(
+          { params: { projectId, artifactId: row.id } },
+          { user: owner },
+        ),
+      ).rejects.toThrowError(/no stored source maps/);
+
+      await expect(
+        ctx.artifactController.getArtifactMaps.fetch(
+          { params: { projectId, artifactId: crypto.randomUUID() } },
+          { user: owner },
+        ),
+      ).rejects.toThrowError(/No such artifact/);
+    });
+
+    /**
+     * Replacing `latest` IS the retention policy, so the maps have to move
+     * with it. A sibling that outlived its artifact would be storage nothing
+     * can ever reach or name, and one that did not move would hand back the
+     * PREVIOUS build's maps for the current bytes - worse than none at all,
+     * because it symbolicates into the wrong source.
+     */
+    it("moves with a latest replacement, and takes the old object with it", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact(),
+        maps: mapsArchive("one"),
+      });
+      const [first] = await ctx.rows.artifacts.findMany({});
+      const firstMapsId = first.mapsFileId as string;
+
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact({ filler: "changed" }),
+        maps: mapsArchive("two"),
+      });
+
+      const [second] = await ctx.rows.artifacts.findMany({});
+      expect(second.id).toBe(first.id);
+      expect(second.mapsFileId).not.toBe(firstMapsId);
+
+      const answer = await ctx.artifactController.getArtifactMaps.fetch(
+        { params: { projectId, artifactId: second.id } },
+        { user: owner },
+      );
+      expect(await (answer.data as unknown as FileLike).text()).toBe(
+        "source-maps-two",
+      );
+      await expect(
+        ctx.artifactController.artifactBucket.get(firstMapsId),
+      ).rejects.toThrow();
+    });
+
+    it("stops naming the previous build's maps when the new one has none", async ({
+      expect,
+    }) => {
+      // ⚠️ The `sql`NULL`` case. An explicit `undefined` reads as an absent key
+      // to the ORM, so the row would keep pointing at maps that describe bytes
+      // it no longer holds.
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact(),
+        maps: mapsArchive(),
+      });
+
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact({ filler: "changed" }),
+      });
+
+      const [row] = await ctx.rows.artifacts.findMany({});
+      expect(row.mapsFileId).toBeUndefined();
+    });
+
+    it("goes when the artifact goes", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+      await push(projectId, owner, {
+        file: await packedArtifact(),
+        maps: mapsArchive(),
+      });
+      const [row] = await ctx.rows.artifacts.findMany({});
+      const mapsId = row.mapsFileId as string;
+
+      await ctx.artifactService.delete(row);
+
+      await expect(
+        ctx.artifactController.artifactBucket.get(mapsId),
+      ).rejects.toThrow();
     });
   });
 

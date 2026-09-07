@@ -140,7 +140,7 @@ export class ArtifactCommand {
         // so the filename is derived ONCE. Deriving it a second time here is
         // exactly what let `pack` write one file while `BayAdapter` looked for
         // another.
-        await this.packer.pack({
+        const packed = await this.packer.pack({
           root,
           name: app,
           tag,
@@ -156,6 +156,11 @@ export class ArtifactCommand {
           force: flags.force,
           archivePath,
           filename,
+          // The sibling source-map archive, when the build produced one
+          // (#1515). Absent is normal, not an error: the maps are excluded
+          // from the artifact and stored beside it, so nothing is discarded.
+          mapsPath: packed.maps?.outputPath,
+          mapsFilename: packed.maps?.filename,
         });
 
         const { artifact } = result;
@@ -172,8 +177,13 @@ export class ArtifactCommand {
         await this.publishOutput(artifact.sha256);
       } finally {
         // A tarball left in `node_modules` is invisible until it is stale.
-        // `alepha pack` is what to run when the file itself is wanted.
+        // `alepha pack` is what to run when the file itself is wanted. The
+        // maps archive is removed by name rather than from `packed`, which is
+        // out of scope in a `finally` that also runs when `pack` threw.
         await this.fs.rm(archivePath, { force: true });
+        await this.fs.rm(this.fs.join(workDir, `${app}-${tag}.maps.tar.gz`), {
+          force: true,
+        });
       }
     },
   });
