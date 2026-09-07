@@ -13,6 +13,7 @@ import { $role } from "./primitives/$role.ts";
 import { JwtProvider } from "./providers/JwtProvider.ts";
 import { OwnedResourceProvider } from "./providers/OwnedResourceProvider.ts";
 import { ResourceGateMemoProvider } from "./providers/ResourceGateMemoProvider.ts";
+import { ResourceGrantsProvider } from "./providers/ResourceGrantsProvider.ts";
 import { SecurityProvider } from "./providers/SecurityProvider.ts";
 import { ServerSecurityProvider } from "./providers/ServerSecurityProvider.ts";
 import type { UserAccount } from "./schemas/userAccountInfoSchema.ts";
@@ -41,6 +42,7 @@ export * from "./providers/JwtProvider.ts";
 export * from "./providers/OwnedResourceProvider.ts";
 export * from "./providers/PermissionRegistryProvider.ts";
 export * from "./providers/ResourceGateMemoProvider.ts";
+export * from "./providers/ResourceGrantsProvider.ts";
 export * from "./providers/SecurityProvider.ts";
 export * from "./providers/ServerSecurityProvider.ts";
 export * from "./schemas/permissionSchema.ts";
@@ -137,5 +139,6 @@ export const AlephaSecurity = $module({
     ServerSecurityProvider,
     OwnedResourceProvider,
     ResourceGateMemoProvider,
+    ResourceGrantsProvider,
   ],
 });
