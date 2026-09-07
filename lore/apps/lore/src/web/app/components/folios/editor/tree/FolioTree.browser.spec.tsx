@@ -24,17 +24,51 @@ const DIR_A = "11111111-1111-4111-8111-111111111111";
 const DIR_B = "22222222-2222-4222-8222-222222222222";
 
 /**
+ * Every action the tree calls, in order, so a case can assert what was SENT
+ * and not only what was clicked. Reset per case by the `afterEach` below.
+ */
+const calls: Array<{ name: string; input: any }> = [];
+
+/**
  * `FolioTree` renders from the two atoms; the fallback query only runs while
  * both are empty, so seeding them keeps this spec off the network entirely.
+ *
+ * The reply carries `id` / `shortId` as well as the list shape, because a
+ * create reads them back out: it opens the new row in rename mode and
+ * navigates to it.
  */
 class FakeLinkProvider extends LinkProvider {
   override client(): any {
-    const action = <T extends (...args: any[]) => Promise<unknown>>(fn: T) =>
-      Object.assign(fn, { can: () => true });
+    const action = (name: string) =>
+      Object.assign(
+        async (input: any) => {
+          calls.push({ name, input });
+          return Object.assign([], {
+            content: [],
+            items: [],
+            id: "55555555-5555-4555-8555-555555555555",
+            shortId: 5,
+          });
+        },
+        { can: () => true },
+      );
     return new Proxy({} as Record<string, unknown>, {
+      get: (target, prop: string) => target[prop] ?? action(prop),
+    });
+  }
+}
+
+/**
+ * The same fake with every action's `can()` answering false, which is what a
+ * Viewer's client looks like: `canWrite` is `folioApi.create.can()` and
+ * nothing else.
+ */
+class ReadOnlyLinkProvider extends FakeLinkProvider {
+  override client(): any {
+    const client = super.client();
+    return new Proxy(client, {
       get: (target, prop: string) =>
-        target[prop] ??
-        action(async () => Object.assign([], { content: [], items: [] })),
+        Object.assign((target as any)[prop], { can: () => false }),
     });
   }
 }
@@ -85,6 +119,7 @@ describe("FolioTree", () => {
   afterEach(async () => {
     await alepha?.stop();
     alepha = undefined;
+    calls.length = 0;
   });
 
   const folioOf = (id: string, title: string, directoryId?: string) => ({
@@ -127,11 +162,17 @@ describe("FolioTree", () => {
       </AlephaContext.Provider>,
     );
 
-  const mount = async (props: Partial<FolioTreeProps> = {}) => {
+  const mount = async (
+    props: Partial<FolioTreeProps> = {},
+    readOnly = false,
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
-      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with({
+        provide: LinkProvider,
+        use: readOnly ? ReadOnlyLinkProvider : FakeLinkProvider,
+      })
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
@@ -227,6 +268,123 @@ describe("FolioTree", () => {
     expect(document.activeElement).toBe(input);
     expect(input.selectionStart).toBe(0);
     expect(input.selectionEnd).toBe(input.value.length);
+  });
+
+  /**
+   * Feedback #P2134: the empty space under the last row is the largest
+   * target in the pane, and it answered a right-click with the browser's own
+   * menu.
+   *
+   * ⚠️ These prove the WIRING, in the same sense the note in `TreeView`'s
+   * own rename spec means it: `fireEvent.contextMenu` reaches Base UI's
+   * trigger and the portal's items are findable by text, but jsdom lays none
+   * of it out, so nothing here says the two menus do not overlap on screen
+   * or that the filler is where a pointer would land. The gesture over real
+   * geometry is `folio-workspace.spec.ts`.
+   */
+  describe("the empty space below the rows", () => {
+    const emptyArea = (view: { container: HTMLElement }): Element => {
+      const area = view.container.querySelector(
+        '[data-slot="folio-tree-root-area"]',
+      );
+      expect(area).not.toBeNull();
+      return area!;
+    };
+
+    it("offers a folio at the ROOT, not under whatever was selected", async () => {
+      // A folio inside Framework is open, so `selectedId` is set and the
+      // directory is expanded: the state a menu that inherited a selection
+      // would file the new folio into.
+      const view = await mount({
+        currentFolioId: "33333333-3333-4333-8333-333333333333",
+      });
+
+      await act(async () => {
+        fireEvent.contextMenu(emptyArea(view));
+      });
+      await act(async () => {
+        fireEvent.click(await screen.findByText("New folio"));
+      });
+
+      await waitFor(() =>
+        expect(calls.find((c) => c.name === "create")).toBeTruthy(),
+      );
+      // ⚠️ The assertion is on what was SENT. An omitted `directoryId` is
+      // the project root - see `FolioTreeRootContextMenu`'s doc - and the
+      // open folio's own directory is what it must not be.
+      expect(
+        calls.find((c) => c.name === "create")!.input.body.directoryId,
+      ).toBeUndefined();
+    });
+
+    it("offers a directory at the root the same way", async () => {
+      const view = await mount({
+        currentFolioId: "33333333-3333-4333-8333-333333333333",
+      });
+
+      await act(async () => {
+        fireEvent.contextMenu(emptyArea(view));
+      });
+      await act(async () => {
+        fireEvent.click(await screen.findByText("New directory"));
+      });
+
+      await waitFor(() =>
+        expect(calls.find((c) => c.name === "createDirectory")).toBeTruthy(),
+      );
+      expect(
+        calls.find((c) => c.name === "createDirectory")!.input.body.parentId,
+      ).toBeUndefined();
+    });
+
+    it("holds two items, and none that need a row", async () => {
+      const view = await mount();
+
+      await act(async () => {
+        fireEvent.contextMenu(emptyArea(view));
+      });
+
+      expect(await screen.findByText("New folio")).toBeTruthy();
+      expect(screen.getByText("New directory")).toBeTruthy();
+      // Open, rename and delete are all questions about a row, and there is
+      // no row here.
+      expect(screen.queryByText("Rename")).toBeNull();
+      expect(screen.queryByText("Delete")).toBeNull();
+    });
+
+    it("leaves a right-click on a ROW to the row's own menu", async () => {
+      // Asserted on a FOLIO row, which is the only row whose menu offers no
+      // create at all. On a directory both menus carry the same two verbs,
+      // so opening both would look exactly like opening the right one.
+      //
+      // ⚠️ And it does NOT prove the sibling filler was necessary: rebuilt
+      // as a wrapper around the whole tree, with the rows inside the
+      // trigger, this case still passes - jsdom shows one menu either way.
+      // The filler is a structural argument, not one this file can make.
+      const view = await mount();
+      expect(
+        view.container.querySelector('[data-slot="folio-tree-root-area"]'),
+      ).not.toBeNull();
+
+      await act(async () => {
+        fireEvent.contextMenu(rowFor("At the root"));
+      });
+
+      expect(await screen.findByText("Rename")).toBeTruthy();
+      expect(screen.queryByText("New directory")).toBeNull();
+      expect(screen.queryByText("New folio")).toBeNull();
+    });
+
+    it("is not there at all for a reader who may not write", async () => {
+      // The rule the header's create buttons already follow: every door to a
+      // write asks the same permission, and a menu whose items all answer
+      // 403 is worse than the browser's own.
+      const view = await mount({}, true);
+
+      expect(
+        view.container.querySelector('[data-slot="folio-tree-root-area"]'),
+      ).toBeNull();
+    });
   });
 
   /**

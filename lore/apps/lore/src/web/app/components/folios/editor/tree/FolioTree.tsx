@@ -15,6 +15,7 @@ import type { I18n } from "../../../../services/I18n.ts";
 import { asFolioNode, type FolioTreeData } from "./folioTree.ts";
 import FolioTreeContextMenu from "./FolioTreeContextMenu.tsx";
 import FolioTreeDirectoryIcon from "./FolioTreeDirectoryIcon.tsx";
+import FolioTreeRootContextMenu from "./FolioTreeRootContextMenu.tsx";
 import { useFolioTreeModel } from "./useFolioTreeModel.ts";
 
 export interface FolioTreeProps {
@@ -172,7 +173,11 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
         </Button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto py-1">
+      {/* `flex flex-col` for the filler below, which takes the space the
+          rows leave and is the right-click target for the root. Rows are
+          unaffected: a flex item's `min-height` is `auto`, so the tree
+          keeps its content height and the container still scrolls. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-1">
         {!tree.loading && tree.rows.length === 0 && (
           <p className="text-muted-foreground px-3 py-4 text-center text-xs italic">
             {tr("folios.editor.tree.empty")}
@@ -231,6 +236,12 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
           onCommitRename={commands.commitRename}
           onCancelRename={commands.cancelRename}
         />
+        {/* The empty space below the last row, and its own menu (feedback
+            #P2134). A SIBLING of the tree rather than a wrapper around it,
+            so a right-click on a row still gets the row's own menu - see
+            this component's doc. Behind the same `canWrite` as the header's
+            create buttons. */}
+        {canWrite && <FolioTreeRootContextMenu commands={commands} />}
       </div>
     </div>
   );
