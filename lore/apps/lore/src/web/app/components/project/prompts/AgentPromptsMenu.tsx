@@ -17,7 +17,17 @@ import { useAgentPrompt } from "./useAgentPrompt.ts";
 export interface AgentPromptsMenuItem {
   kind: AgentPromptKind;
   label: string;
-  subject: AgentPromptSubject;
+  /**
+   * ⚠️ A thunk, not a value, and called only when the entry is clicked.
+   *
+   * Building a subject reaches for the router, so an eager one costs a
+   * `router.path` on every render of every surface that MIGHT show this
+   * menu, including the ones where it renders nothing - which is the
+   * default state, the option being off. It also made mounting those
+   * components require the full route table even with the menu hidden,
+   * which broke four unrelated specs before this was a thunk.
+   */
+  subject: () => AgentPromptSubject;
 }
 
 export interface AgentPromptsMenuProps {
@@ -61,7 +71,7 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
         {props.items.map((item) => (
           <DropdownMenuItem
             key={item.kind}
-            onClick={() => agentPrompt.copy(item.kind, item.subject)}
+            onClick={() => agentPrompt.copy(item.kind, item.subject())}
           >
             {item.label}
           </DropdownMenuItem>

@@ -8,6 +8,7 @@ import { setupJsdomMocks } from "alepha/react/testing";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
+import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 
@@ -22,6 +23,11 @@ class Routes {
   epic = $page({
     name: "projectEpic",
     path: "/epics/:epicNumber",
+    component: () => null,
+  });
+  feedback = $page({
+    name: "projectFeedback",
+    path: "/feedback",
     component: () => null,
   });
 }
@@ -46,7 +52,7 @@ describe("useAgentPromptSubject", () => {
     alepha = undefined;
   });
 
-  const subjectFor = async (epic: unknown, project?: unknown) => {
+  const handleFor = async (project?: unknown) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
     alepha.inject(Routes);
     await alepha.start();
@@ -62,8 +68,11 @@ describe("useAgentPromptSubject", () => {
         </AlephaContext.Provider>
       ),
     });
-    return result.current.forEpic(epic as EpicResource);
+    return result.current;
   };
+
+  const subjectFor = async (epic: unknown, project?: unknown) =>
+    (await handleFor(project)).forEpic(epic as EpicResource);
 
   const epic = {
     id: 67,
@@ -123,5 +132,65 @@ describe("useAgentPromptSubject", () => {
     expect(subject.project).toBe("Kanban v2");
     expect(subject.slug).toBe("kanban-v2");
     expect(subject.url).toContain("/epics/41");
+  });
+
+  /**
+   * ⚠️ The surface where this rule earns its keep, asserted HERE rather
+   * than on the rendered prompt.
+   *
+   * The renderer only substitutes seven known names, so an extra field on
+   * the subject never reaches the output and a spec that only reads the
+   * copied text would pass with the whole resource spread in. This reads
+   * the subject itself, which is the object the rule is about.
+   */
+  it("builds a feedback subject of seven fields and nothing else", async () => {
+    const handle = await handleFor();
+    const subject = handle.forFeedback({
+      id: 3110,
+      shortId: 2087,
+      title: "add new action",
+      description: "internal notes",
+      status: "pending",
+      context: {
+        path: "/secret-admin-page",
+        userAgent: "Mozilla/5.0 (reporter's machine)",
+      },
+      reporter: { name: "Ada Lovelace", email: "ada@example.com" },
+      attachmentUrls: [{ name: "screenshot.png" }],
+    } as unknown as FeedbackResource);
+
+    expect(Object.keys(subject).sort()).toEqual([
+      "id",
+      "number",
+      "project",
+      "reference",
+      "slug",
+      "title",
+      "url",
+    ]);
+    const serialized = JSON.stringify(subject);
+    expect(serialized).not.toContain("ada@example.com");
+    expect(serialized).not.toContain("Ada Lovelace");
+    expect(serialized).not.toContain("secret-admin-page");
+    expect(serialized).not.toContain("Mozilla/5.0");
+    expect(serialized).not.toContain("screenshot.png");
+    expect(serialized).not.toContain("internal notes");
+  });
+
+  it("gives feedback the P letter and the inbox URL", async () => {
+    const handle = await handleFor();
+    const subject = handle.forFeedback({
+      id: 3110,
+      shortId: 2087,
+      title: "add new action",
+    } as unknown as FeedbackResource);
+
+    // ⚠️ `P`, never `F`: `F` is the folio's letter and feedback kept `P`
+    // from Petitions.
+    expect(subject.reference).toBe("#P2087");
+    // The inbox: no URL opens one report.
+    expect(subject.url).toContain("/feedback");
+    expect(subject.number).toBe(2087);
+    expect(subject.id).toBe(3110);
   });
 });

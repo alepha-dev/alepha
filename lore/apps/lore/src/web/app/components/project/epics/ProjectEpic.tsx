@@ -307,7 +307,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
                     {
                       kind: "epicReview" as const,
                       label: String(tr("agentPrompts.review")),
-                      subject: promptSubject.forEpic(epic),
+                      subject: () => promptSubject.forEpic(epic),
                     },
                   ]
                 : []),
@@ -316,7 +316,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
                     {
                       kind: "epicActivate" as const,
                       label: String(tr("agentPrompts.activate")),
-                      subject: promptSubject.forEpic(epic),
+                      subject: () => promptSubject.forEpic(epic),
                     },
                   ]
                 : []),

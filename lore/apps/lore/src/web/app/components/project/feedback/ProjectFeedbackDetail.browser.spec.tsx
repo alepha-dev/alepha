@@ -1,11 +1,11 @@
 import { DialogProvider } from "@alepha/ui/components/use-dialog/use-dialog";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
-import { AlephaReactI18n } from "alepha/react/i18n";
-import { AlephaReactRouter } from "alepha/react/router";
+import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
+import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { beforeAll, describe, it } from "vitest";
 
@@ -13,6 +13,7 @@ import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import { projectFixture } from "@/testing/projectFixture.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { I18n } from "../../../services/I18n.ts";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
 
 /**
@@ -238,5 +239,226 @@ describe("ProjectFeedbackDetail - attachment previews", () => {
         '[data-testid="feedback-attachment-preview"]',
       ),
     ).toBeNull();
+  });
+});
+
+/**
+ * The third Agent Prompts surface. Not a table row action here: the panel
+ * has no row menu, so this is `AgentPromptsMenu` behind a button in the
+ * footer.
+ *
+ * ⚠️ This is the surface where "build the subject field by field" earns its
+ * keep. A feedback resource carries the reporter's identity, the `context`
+ * they reported from and their attachments, and the only thing keeping any
+ * of it off a clipboard is that seven named fields are copied rather than a
+ * resource spread.
+ */
+describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
+  beforeAll(() => {
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as never;
+  });
+
+  class Routes {
+    feedback = $page({
+      name: "projectFeedback",
+      path: "/feedback",
+      component: () => null,
+    });
+  }
+
+  const mount = async (
+    feedback: FeedbackResource,
+    project: unknown = projectFixture(),
+  ) => {
+    const alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: FakeLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactI18n)
+      .with(AlephaReactRouter);
+    alepha.inject(Routes);
+    alepha.inject(I18n);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, project as never);
+
+    const view = render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectFeedbackDetail feedback={feedback} onChanged={() => {}} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    return { alepha, view };
+  };
+
+  const acceptedFeedback: FeedbackResource = {
+    ...pendingFeedback,
+    status: "accepted",
+  };
+
+  const stubClipboard = () => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (text: string) => {
+          written.push(text);
+        },
+      },
+    });
+    return written;
+  };
+
+  // `screen`, not the render result: the menu's content is portalled onto
+  // `document.body`, outside the container `view` queries.
+  const trigger = () =>
+    screen.queryByRole("button", { name: /agent prompts/i });
+
+  it("is offered on a pending report", async ({ expect }) => {
+    await mount(pendingFeedback);
+    await waitFor(() => expect(trigger()).not.toBeNull());
+    // Leftmost, so the primary verb keeps the right-hand slot.
+    const footer = trigger()!.closest("div")!;
+    const labels = [...footer.querySelectorAll("button")].map(
+      (it) => it.textContent ?? "",
+    );
+    expect(labels[0]).toContain("Agent Prompts");
+    expect(labels.join(" ")).toContain("Delete");
+  });
+
+  it("is offered on an accepted report", async ({ expect }) => {
+    await mount(acceptedFeedback);
+    await waitFor(() => expect(trigger()).not.toBeNull());
+  });
+
+  /**
+   * Not on `rejected`: the prompt's first step accepts the item, and a
+   * rejected report is a decision already taken.
+   */
+  it("is absent on a rejected report", async ({ expect }) => {
+    await mount({
+      ...pendingFeedback,
+      status: "rejected",
+    } as FeedbackResource);
+    await waitFor(() => expect(screen.queryByText("Delete")).not.toBeNull());
+    expect(trigger()).toBeNull();
+  });
+
+  /**
+   * ⚠️ `projectFixture()` turns every declared option ON, so the presence
+   * cases above need no argument and these two are the ones that say so.
+   */
+  it("is absent when agent prompts are off", async ({ expect }) => {
+    await mount(
+      pendingFeedback,
+      projectFixture({ options: { work: { agentPrompts: false } } }),
+    );
+    await waitFor(() => expect(screen.queryByText("Delete")).not.toBeNull());
+    expect(trigger()).toBeNull();
+  });
+
+  /**
+   * The prompt ends in `quest_create`, which needs Work, and the panel
+   * itself exists only under Support. A capability reads another's state to
+   * narrow what it offers, never to widen it.
+   */
+  it("is absent when Support is off", async ({ expect }) => {
+    await mount(
+      pendingFeedback,
+      projectFixture({ capabilities: ["work", "knowledge", "apps"] }),
+    );
+    await waitFor(() => expect(screen.queryByText("Delete")).not.toBeNull());
+    expect(trigger()).toBeNull();
+  });
+
+  it("copies a prompt referencing #P, never #F", async ({ expect }) => {
+    const written = stubClipboard();
+    await mount(pendingFeedback);
+    await waitFor(() => expect(trigger()).not.toBeNull());
+
+    fireEvent.click(trigger()!);
+    const item = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (it) => it.textContent?.includes("Work on it"),
+      );
+      if (!found) throw new Error("not open yet");
+      return found;
+    });
+    fireEvent.click(item);
+
+    await waitFor(() => expect(written).toHaveLength(1));
+    // ⚠️ `P` is feedback's letter; `F` is the folio's. A prompt saying
+    // #F1 sends the agent to a folio.
+    expect(written[0]).toContain("#P1");
+    expect(written[0]).not.toContain("#F1");
+    // The inbox, because no URL opens one report.
+    expect(written[0]).toContain("The inbox:");
+    expect(written[0]).toContain("/feedback");
+  });
+
+  /**
+   * The end-to-end half of the no-secrets rule: the reporter's identity,
+   * the page and user agent in `context`, and the attachments are all on
+   * the resource, and none of them may reach a clipboard.
+   *
+   * ⚠️ Two independent things keep them off, and this case only proves the
+   * outer one. `renderPromptTemplate` substitutes seven known names, so an
+   * extra field on the subject never reaches the text and this case passes
+   * even with the whole resource spread into the subject. The inner
+   * guarantee, that the subject itself carries seven fields, is asserted in
+   * `useAgentPromptSubject.browser.spec.tsx`, where deleting it goes red.
+   */
+  it("carries no reporter data, no context and no attachments", async ({
+    expect,
+  }) => {
+    const written = stubClipboard();
+    await mount({
+      ...pendingFeedback,
+      description: "Clicking Save is a no-op.",
+      context: {
+        path: "/secret-admin-page",
+        userAgent: "Mozilla/5.0 (reporter's machine)",
+      },
+      reporter: {
+        id: "00000000-0000-4000-8000-00000000000c",
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+      },
+      attachmentUrls: [
+        {
+          id: "00000000-0000-4000-8000-00000000000a",
+          name: "screenshot.png",
+          url: "/api/files/00000000-0000-4000-8000-00000000000a",
+          mimeType: "image/png",
+          size: 20480,
+        },
+      ],
+    } as unknown as FeedbackResource);
+    await waitFor(() => expect(trigger()).not.toBeNull());
+
+    fireEvent.click(trigger()!);
+    const item = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (it) => it.textContent?.includes("Work on it"),
+      );
+      if (!found) throw new Error("not open yet");
+      return found;
+    });
+    fireEvent.click(item);
+
+    await waitFor(() => expect(written).toHaveLength(1));
+    expect(written[0]).not.toContain("ada@example.com");
+    expect(written[0]).not.toContain("Ada Lovelace");
+    expect(written[0]).not.toContain("/secret-admin-page");
+    expect(written[0]).not.toContain("Mozilla/5.0");
+    expect(written[0]).not.toContain("screenshot.png");
+    // And the title, which is the one field it is allowed to carry.
+    expect(written[0]).toContain("The button does nothing");
   });
 });
