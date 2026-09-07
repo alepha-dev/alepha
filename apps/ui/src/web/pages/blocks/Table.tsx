@@ -7,7 +7,7 @@ import { cn } from "@alepha/ui/lib/utils";
 import { z } from "alepha";
 import type { Page } from "alepha";
 import { useClient } from "alepha/react";
-import { Search, UserPlus } from "lucide-react";
+import { Bot, Search, Trash2, UserPlus } from "lucide-react";
 import { useCallback } from "react";
 
 import type { ShowcaseMember } from "@/showcase/ShowcaseMembers.ts";
@@ -205,6 +205,31 @@ const Table = () => {
                 }
               : undefined
           }
+          // A row action may be a group, one level deep, rendered as a
+          // submenu. The showcase carries one because a submenu is the one
+          // shape a jsdom spec cannot prove lays out.
+          rowActions={(m) => [
+            {
+              label: "Agent Prompts",
+              icon: Bot,
+              children: [
+                {
+                  label: "Copy invite prompt",
+                  onClick: () => toast.success(`Prompt copied for ${m.name}`),
+                },
+                {
+                  label: "Copy review prompt",
+                  onClick: () => toast.success(`Review copied for ${m.name}`),
+                },
+              ],
+            },
+            {
+              label: "Remove member",
+              icon: Trash2,
+              destructive: true,
+              onClick: () => toast.success(`${m.name} removed`),
+            },
+          ]}
           bulkActions={
             v.selectable
               ? [
