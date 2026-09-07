@@ -78,6 +78,16 @@ export class DeployController {
          * matching `ArtifactService.MUTABLE_TAG`.
          */
         tag: releaseTagSchema.default("latest"),
+        /**
+         * Whether this copy should be given a sigil before it ships.
+         *
+         * ⚠️ Three states, and **absent is the one to expect**: it means "do
+         * what the build declares", which is how a copy of an app that bundles
+         * the reporting module starts reporting without anybody asking twice.
+         * `true` mints one even for a build that does not declare it, and may
+         * refuse the deploy when it cannot. `false` mints none.
+         */
+        sigil: z.boolean().optional(),
       }),
       response: z.object({
         id: z.uuid(),
@@ -90,6 +100,7 @@ export class DeployController {
         instanceId: params.instanceId,
         tag: body.tag,
         createdBy: user?.id,
+        ...(body.sigil === undefined ? {} : { sigil: body.sigil }),
       });
 
       // ⚠️ Pushed rather than awaited. A deploy takes tens of seconds and this

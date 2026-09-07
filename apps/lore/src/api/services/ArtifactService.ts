@@ -8,6 +8,7 @@ import {
   APP_NAME_MAX_LENGTH,
   APP_NAME_PATTERN,
 } from "../schemas/appNameSchema.ts";
+import type { ArtifactManifest } from "../schemas/artifactManifestSchema.ts";
 import {
   RELEASE_TAG_MAX_LENGTH,
   RELEASE_TAG_PATTERN,
@@ -107,6 +108,7 @@ export class ArtifactService {
           commitSha: input.commitSha,
           file: input.file,
           maps: input.maps,
+          manifest,
         }),
         stored: true,
       };
@@ -137,6 +139,7 @@ export class ArtifactService {
         fileId: stored.id,
         mapsFileId: storedMaps?.id,
         commitSha: input.commitSha,
+        manifest: this.serialise(manifest),
       });
       return { artifact, stored: true };
     } catch (error) {
@@ -197,6 +200,7 @@ export class ArtifactService {
       commitSha?: string;
       file: FileLike;
       maps?: FileLike;
+      manifest: ArtifactManifest;
     },
   ): Promise<Artifact> {
     const stored = await this.files.uploadFile(next.file, {
@@ -226,6 +230,10 @@ export class ArtifactService {
         // commit that produced the PREVIOUS bytes - a claim nothing else in
         // the system could contradict.
         commitSha: next.commitSha ?? sql`NULL`,
+        // ⚠️ Rewritten with the bytes. A `--force` swaps what this tag points
+        // at, and a row still describing the PREVIOUS build is worse than one
+        // describing none: every reader would trust it.
+        manifest: this.serialise(next.manifest) ?? sql`NULL`,
       });
     } catch (error) {
       await this.files.deleteFile(stored.id);
@@ -245,6 +253,26 @@ export class ArtifactService {
     );
     return updated;
   }
+
+  /**
+   * The manifest as the column holds it, or nothing when it will not fit.
+   *
+   * ⚠️ A manifest past the column's ceiling is dropped rather than truncated
+   * or refused. Truncating stores JSON that no reader can parse; refusing
+   * would fail a push over a field nothing needs yet. Absent already means
+   * "unknown" to every reader, which is exactly what an unstorable manifest
+   * is.
+   */
+  protected serialise(manifest: ArtifactManifest): string | undefined {
+    const json = JSON.stringify(manifest);
+    return json.length > ArtifactService.MAX_MANIFEST_BYTES ? undefined : json;
+  }
+
+  /**
+   * Matches the column's own `max`, and is the reason {@link serialise} can
+   * drop rather than let the insert fail.
+   */
+  public static readonly MAX_MANIFEST_BYTES = 65_536;
 
   /**
    * Every artifact of one project, newest first, optionally narrowed to one

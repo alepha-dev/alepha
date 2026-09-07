@@ -122,6 +122,36 @@ export const artifacts = $entity({
      * pushed before #1515 has its maps inside the tarball instead.
      */
     mapsFileId: z.uuid().optional(),
+    /**
+     * `dist/manifest.json`, as the server read it out of the tarball.
+     *
+     * ⚠️ **Derived here, never accepted from the pusher.** The push could
+     * carry this as a field and save a scan, and then the registry would
+     * describe whatever the client said - with `runtime` being a quarter of
+     * this table's unique key, a `workerd` build could be filed as `node` and
+     * the deploy would be where anybody found out. The bytes are already
+     * resident for the sha256, so reading it from them costs nothing and is
+     * the whole difference between a registry and a bucket with a table
+     * beside it. See `ArtifactTarReader`.
+     *
+     * ⚠️ **Absent means UNKNOWN, never "declares nothing".** Every artifact
+     * pushed before this column existed has none, so a reader that treats
+     * absence as an empty manifest would conclude those builds want no
+     * database, no bucket and no variables. `DeployService` reads it only to
+     * ADD behaviour (minting a sigil the build asks for), so a null degrades
+     * to the previous behaviour rather than to a wrong one.
+     *
+     * ⚠️ **`ArtifactService.replace()` must rewrite it.** A `--force` re-push
+     * swaps the bytes under a tag, and a row still describing the old ones is
+     * worse than a row describing none.
+     *
+     * Stored as text rather than a column per field: it is the build's own
+     * document, it is `.loose()` on the way in because a newer build carries
+     * fields this Lore has never heard of, and a column per field would have
+     * to be migrated every time the manifest grows. Roughly 3 KB for Lore
+     * itself, 1 KB for a small app.
+     */
+    manifest: z.string().max(65_536).optional(),
   }),
   indexes: [
     // The push target, and what makes a re-push resolvable to one row.
