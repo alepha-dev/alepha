@@ -13,8 +13,8 @@ import { $action, BadRequestError, okSchema } from "alepha/server";
 import { projects } from "../entities/projects.ts";
 import { invitationInboxItemSchema } from "../schemas/invitationInboxItemSchema.ts";
 import { invitationTokenPreviewSchema } from "../schemas/invitationTokenPreviewSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export class InvitationController {
   protected readonly url = "/invitations";
@@ -22,7 +22,6 @@ export class InvitationController {
   protected readonly invitationService = $inject(InvitationService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly invitationTokens = $inject(InvitationTokenService);
-  protected readonly security = $inject(ProjectSecurityService);
   protected readonly users = $repository(users);
   protected readonly projects = $repository(projects);
 
@@ -49,14 +48,16 @@ export class InvitationController {
   public readonly listProjectInvitations = $action({
     path: `${this.url}/project/:projectId`,
     group: this.group,
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $ownsProject({ param: "projectId", owner: true }),
+    ],
     description: "List pending invitations for a project the caller owns",
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.array(invitationResourceSchema),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user);
       return this.invitationService.findByResource(
         "project",
         String(params.projectId),
@@ -109,7 +110,7 @@ export class InvitationController {
     method: "POST",
     path: `${this.url}/project/:projectId/:id/revoke`,
     group: this.group,
-    use: [$secure()],
+    use: [$secure(), $ownsProject({ param: "projectId", owner: true })],
     description: "Revoke a pending invitation for a project the caller owns",
     schema: {
       params: z.object({ projectId: z.integer(), id: z.uuid() }),
@@ -119,7 +120,6 @@ export class InvitationController {
       // Ownership is asserted on the project named in the PATH, so this
       // runs first: it is what makes the assertion below meaningful rather
       // than a check against whatever project the row happens to name.
-      await this.security.assertOwner(params.projectId, user);
       const invitation = await this.invitationService.getById(params.id);
       // `resourceType` before `Number(resourceId)`, so a future non-project
       // invitation is never gated against a project that shares its numeric

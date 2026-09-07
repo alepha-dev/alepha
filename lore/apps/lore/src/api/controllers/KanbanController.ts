@@ -1,13 +1,14 @@
 import { $inject, z } from "alepha";
 import { $repository, $transactional } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { $secure, OwnedResourceProvider } from "alepha/security";
 import { $action } from "alepha/server";
 
-import { projects } from "../entities/projects.ts";
+import { type Project, projects } from "../entities/projects.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { projectResourceSchema } from "../schemas/projectResourceSchema.ts";
 import { byPriorityDesc } from "../schemas/questPriority.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoardRank } from "../services/BoardRank.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
@@ -22,13 +23,17 @@ export class KanbanController {
   protected questMapper = $inject(QuestResourceMapper);
   protected projectMapper = $inject(ProjectResourceMapper);
   protected rank = $inject(BoardRank);
+  protected owned = $inject(OwnedResourceProvider);
 
   /**
    * Get all quests for a project, grouped for kanban display. Members
    * only — Lore projects are private, there is no public-share path.
    */
   getBoard = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [
+      $secure({ permissions: ["quest:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     method: "GET",
     path: "/kanban/:projectId",
     schema: {
@@ -41,10 +46,8 @@ export class KanbanController {
       }),
     },
     handler: async ({ params, user }) => {
-      const { project } = await this.security.assertMember(
-        params.projectId,
-        user,
-      );
+      // The row the gate already read, rather than a second lookup of it.
+      const project = this.owned.get<Project>();
 
       const where = this.quests.createQueryWhere();
       where.projectId = { eq: params.projectId };
@@ -97,7 +100,13 @@ export class KanbanController {
    * Omit `beforeQuestId` to drop at the head, `afterQuestId` for the tail.
    */
   moveQuestOnBoard = $action({
-    use: [$secure({ permissions: ["quest:update"] }), $transactional()],
+    // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`. The
+    // quest it reads is the row this handler then re-ranks and saves.
+    use: [
+      $secure({ permissions: ["quest:update"] }),
+      $transactional(),
+      $ownsProject({ repository: () => this.quests, param: "id" }),
+    ],
     schema: {
       params: z.object({
         id: z.integer(),
@@ -109,10 +118,7 @@ export class KanbanController {
       response: questResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const quest = await this.quests.getOne({
-        where: { id: { eq: params.id } },
-      });
-      await this.security.assertMember(quest.projectId, user);
+      const quest = this.owned.get<Quest>();
 
       // The column as the board shows it, which is what the neighbours the
       // client sent were picked from.

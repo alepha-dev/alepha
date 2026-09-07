@@ -205,6 +205,11 @@ export class EstateCommandController {
         );
       }
 
+      // ⚠️ ranks: imperative. Membership here is on the ARTIFACT's project,
+      // named indirectly by the body and only on the `deploy` branch of a
+      // discriminated union - while the action's own gate is the estate's
+      // owner. A middleware cannot serve a conditional check on a second
+      // scope, so this stays on `ProjectSecurityService`.
       const artifact = await this.artifacts.findOne({
         where: { id: { eq: body.artifactId } },
       });

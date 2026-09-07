@@ -435,15 +435,28 @@ page useless for the one question it exists to answer. The safeguard is the
 confirmation naming that outcome before the switch applies, not a filter in
 the endpoint - a filter there would silently contradict the members page.
 
-**Two mechanisms, and the declarative one is the default for anything new.**
+**One mechanism now, and six documented exceptions.**
 `$ownsProject` (below) is middleware in a `use:` array; it cannot be
 forgotten the way a missing line in a handler can, it runs before the
 handler on every transport including MCP, and it hands the rows it read to
-the handler. `ProjectSecurityService.assertMember` / `assertOwner` are the
-older in-handler form, still used by the controllers not yet ported -
-Area, Kanban, Reports, Feedback, Blight, Insights, Search, Sigil, Quest
-portability. Ported as of 2026-08-29: Quest, QuestComment, Epic, Release,
-Folio, Directory, FolioAttachment.
+the handler. Every project-scoped **action** is on it as of 2026-09-07,
+including `ProjectController`'s own seven, which used to build `$owns` by
+hand and restate the rule.
+
+`ProjectSecurityService.assertMember` / `assertOwner` survive at exactly six
+call sites, each carrying a `ranks: imperative` marker saying why a `use:`
+entry cannot serve it. Grep for that marker before adding a seventh:
+
+- `LoreFileAccessProvider.assertReadable` - a `$secure` guard on a file route, deciding which project to ask about per bucket.
+- `ProjectInvitationResource.assertCanInvite` - a closure handed to `alepha/api/invitations`, with no middleware chain to sit in.
+- `FeedbackController`'s `ensureOwner` / `ensureMember` - called from handlers, on a project resolved from a feedback row.
+- `ProjectTools`'s project resolver - MCP, and it turns the gate's 403 into a 404 on purpose.
+- `ProjectController.getProjectBySlug` - `$owns` keys on a primary key, and a slug is not one.
+- `EstateCommandController`'s deploy branch - membership on the artifact's project, conditional, while the action's own gate is the estate's owner.
+
+`DashboardScopeService` names `assertMember` and calls neither: a card scoped
+to several projects has no single project to gate on, so it proves each id
+against the caller's own membership set instead.
 
 `isMember` / `isMemberById` are not going anywhere: they answer questions
 that are not gates (branching on membership, or asking about somebody other

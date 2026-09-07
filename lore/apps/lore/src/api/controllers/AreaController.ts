@@ -1,15 +1,16 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
-import { $secure } from "alepha/security";
+import { $secure, OwnedResourceProvider } from "alepha/security";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
-import { areas } from "../entities/areas.ts";
+import { type Area, areas } from "../entities/areas.ts";
 import { quests } from "../entities/quests.ts";
 import {
   type AreaResource,
   areaDetailSchema,
   areaResourceSchema,
 } from "../schemas/areaResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
@@ -19,7 +20,8 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  *
  * Same `$secure` permission strings as `EpicController`: `quest:read` to
  * read, `quest:create` to mutate, `quest:delete` on `deleteArea`. Same
- * `assertMember` (read) / `assertOwner` (mutate) split.
+ * member (read) / owner (mutate) split, stated as `$ownsProject` rather than
+ * checked in the handlers.
  *
  * The merge algorithm is NOT here — `renameArea` and `mergeAreas` are two
  * doors onto `AreaService.merge`, so the "rename onto an existing name
@@ -27,32 +29,42 @@ import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
  */
 export class AreaController {
   areas = $repository(areas);
+  owned = $inject(OwnedResourceProvider);
+
+  /**
+   * The area gate. The param names an area, so the walk is area -> project;
+   * the area itself lands on `this.owned.get<Area>()`, which is why no
+   * handler below reads it again.
+   */
+  protected ownsArea = (owner?: boolean) =>
+    $ownsProject({ repository: () => this.areas, param: "id", owner });
   quests = $repository(quests);
   service = $inject(AreaService);
   security = $inject(ProjectSecurityService);
 
   getAreas = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [
+      $secure({ permissions: ["quest:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.array(areaResourceSchema),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
       return await this.service.listWithStats(params.projectId);
     },
   });
 
   getArea = $action({
-    use: [$secure({ permissions: ["quest:read"] })],
+    use: [$secure({ permissions: ["quest:read"] }), this.ownsArea()],
     path: "/areas/:id",
     schema: {
       params: z.object({ id: z.integer() }),
       response: areaDetailSchema,
     },
     handler: async ({ params, user }) => {
-      const area = await this.areas.getById(params.id);
-      await this.security.assertMember(area.projectId, user);
+      const area = this.owned.get<Area>();
 
       const resource = await this.resource(area.projectId, area.id);
 
@@ -77,7 +89,7 @@ export class AreaController {
   });
 
   updateArea = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsArea(true)],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({
@@ -103,8 +115,7 @@ export class AreaController {
       response: areaResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const area = await this.areas.getById(params.id);
-      await this.security.assertOwner(area.projectId, user);
+      const area = this.owned.get<Area>();
       // Areas belong to Work: a quest carries one, and a blight forwards into one.
       await this.security.assertCapability(area.projectId, "work", {
         action: "update an area",
@@ -131,7 +142,7 @@ export class AreaController {
    * navigates to it.
    */
   renameArea = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [$secure({ permissions: ["quest:create"] }), this.ownsArea(true)],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ name: z.string().min(1).max(48) }),
@@ -143,8 +154,7 @@ export class AreaController {
       }),
     },
     handler: async ({ params, body, user }) => {
-      const area = await this.areas.getById(params.id);
-      await this.security.assertOwner(area.projectId, user);
+      const area = this.owned.get<Area>();
       // Areas belong to Work: a quest carries one, and a blight forwards into one.
       await this.security.assertCapability(area.projectId, "work", {
         action: "rename an area",
@@ -162,7 +172,10 @@ export class AreaController {
   });
 
   mergeAreas = $action({
-    use: [$secure({ permissions: ["quest:create"] })],
+    use: [
+      $secure({ permissions: ["quest:create"] }),
+      $ownsProject({ param: "projectId", owner: true }),
+    ],
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: z.object({
@@ -172,7 +185,6 @@ export class AreaController {
       response: z.object({ ok: z.boolean(), movedQuests: z.integer() }),
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
       // Areas belong to Work: a quest carries one, and a blight forwards into one.
       await this.security.assertCapability(params.projectId, "work", {
         action: "merge areas",
@@ -195,14 +207,13 @@ export class AreaController {
    * (its component delete forces a reassignment).
    */
   deleteArea = $action({
-    use: [$secure({ permissions: ["quest:delete"] })],
+    use: [$secure({ permissions: ["quest:delete"] }), this.ownsArea(true)],
     schema: {
       params: z.object({ id: z.integer() }),
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const area = await this.areas.getById(params.id);
-      await this.security.assertOwner(area.projectId, user);
+      const area = this.owned.get<Area>();
       // Areas belong to Work: a quest carries one, and a blight forwards into one.
       await this.security.assertCapability(area.projectId, "work", {
         action: "delete an area",

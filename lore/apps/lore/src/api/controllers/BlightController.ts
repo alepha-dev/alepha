@@ -24,6 +24,7 @@ import {
   blightRuleResourceSchema,
 } from "../schemas/blightRuleResourceSchema.ts";
 import { blightSigilSchema } from "../schemas/blightSigilSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { BlightRuleService } from "../services/BlightRuleService.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestService } from "../services/QuestService.ts";
@@ -65,7 +66,10 @@ export class BlightController {
    * `quest:*` rows. Owner-only.
    */
   listBlights = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     method: "GET",
     path: "/projects/:projectId/blights",
     schema: {
@@ -80,8 +84,6 @@ export class BlightController {
       }),
     },
     handler: async ({ params, query, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
       const all = (
         await this.currentBlights.findMany({
           where: { projectId: { eq: params.projectId } },
@@ -123,7 +125,10 @@ export class BlightController {
    * Readable by any project member.
    */
   countOpenBlights = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     method: "GET",
     path: "/projects/:projectId/blights/count",
     schema: {
@@ -131,8 +136,6 @@ export class BlightController {
       response: z.object({ count: z.integer() }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
       // One read of the live table, matching the inbox. The two-hop count
       // through sigils would now return zero for every project, because
       // nothing has written to that table since Lore stopped ingesting — the
@@ -154,7 +157,14 @@ export class BlightController {
    * default inbox view hides it. Owner-only.
    */
   resolveBlight = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [
+      $secure({ permissions: ["project:update"] }),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "resolve a blight" },
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/blights/:blightId/resolve",
     schema: {
@@ -165,11 +175,6 @@ export class BlightController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "resolve a blight",
-      });
       const blight = await this.loadBlight(params.projectId, params.blightId);
       await this.currentBlights.updateById(blight.id, { status: "resolved" });
       return { ok: true };
@@ -184,7 +189,15 @@ export class BlightController {
    * `status = "quest:<id>"`. Owner-only.
    */
   forwardBlightToQuest = $action({
-    use: [$secure({ permissions: ["quest:create"] }), $transactional()],
+    use: [
+      $secure({ permissions: ["quest:create"] }),
+      $transactional(),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "forward a blight" },
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/blights/:blightId/forward",
     schema: {
@@ -195,11 +208,6 @@ export class BlightController {
       response: z.object({ questId: z.integer(), questShortId: z.integer() }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "forward a blight",
-      });
       // ⚠️ The one cross-capability write in the app, and the rule it follows
       // is the epic's: a capability may read another's state to NARROW what it
       // does, never to widen it. Forwarding creates a quest, so it needs Work
@@ -268,7 +276,14 @@ export class BlightController {
    * Hard-delete a blight row. Owner-only.
    */
   deleteBlight = $action({
-    use: [$secure({ permissions: ["project:delete"] })],
+    use: [
+      $secure({ permissions: ["project:delete"] }),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "delete a blight" },
+      }),
+    ],
     method: "DELETE",
     path: "/projects/:projectId/blights/:blightId",
     schema: {
@@ -279,11 +294,6 @@ export class BlightController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "delete a blight",
-      });
       const blight = await this.loadBlight(params.projectId, params.blightId);
       await this.currentBlights.deleteById(blight.id);
       return { ok: true };
@@ -297,7 +307,14 @@ export class BlightController {
    * Owner-only. Returns how many rows were actually removed.
    */
   deleteBlights = $action({
-    use: [$secure({ permissions: ["project:delete"] })],
+    use: [
+      $secure({ permissions: ["project:delete"] }),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "delete blights" },
+      }),
+    ],
     method: "DELETE",
     path: "/projects/:projectId/blights",
     schema: {
@@ -308,11 +325,6 @@ export class BlightController {
       response: z.object({ deleted: z.integer() }),
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "delete blights",
-      });
       // Scoped by `projectId`, not by the project's sigil ids: a blight whose
       // sigil was deleted keeps `projectId` and loses `sigilId`, and the
       // sigil-list version silently refused to delete exactly those rows.
@@ -335,7 +347,10 @@ export class BlightController {
    * inbox surfaces them in the rules dialog); mutations stay owner-only.
    */
   listBlightRules = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     method: "GET",
     path: "/projects/:projectId/blights/rules",
     schema: {
@@ -343,7 +358,6 @@ export class BlightController {
       response: z.object({ items: z.array(blightRuleResourceSchema) }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
       const rules = await this.ruleService.listForProject(params.projectId);
       return { items: rules.map((r) => this.toRuleResource(r)) };
     },
@@ -356,7 +370,14 @@ export class BlightController {
    * to clear them). Owner-only.
    */
   createBlightRule = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [
+      $secure({ permissions: ["project:update"] }),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "create a blight rule" },
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/blights/rules",
     schema: {
@@ -367,11 +388,6 @@ export class BlightController {
       response: blightRuleResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "create a blight rule",
-      });
       const pattern = body.pattern.trim();
       if (pattern.length === 0) {
         throw new BadRequestError("Pattern must not be empty");
@@ -389,7 +405,14 @@ export class BlightController {
    * Delete a blight ignore rule. Owner-only.
    */
   deleteBlightRule = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [
+      $secure({ permissions: ["project:update"] }),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "delete a blight rule" },
+      }),
+    ],
     method: "DELETE",
     path: "/projects/:projectId/blights/rules/:ruleId",
     schema: {
@@ -400,11 +423,6 @@ export class BlightController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "delete a blight rule",
-      });
       const ok = await this.ruleService.deleteForProject(
         params.projectId,
         params.ruleId,

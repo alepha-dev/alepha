@@ -21,10 +21,10 @@ import {
   type MintedLentEstate,
   mintedLentEstateSchema,
 } from "../schemas/lentEstateResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { EstateCloudflareService } from "../services/EstateCloudflareService.ts";
 import { EstateService } from "../services/EstateService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
-import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
 export type { LentEstateResource, MintedLentEstate };
 
@@ -63,7 +63,6 @@ export class ProjectEstateController {
   protected readonly grants = $repository(estateProjects);
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
-  protected readonly security = $inject(ProjectSecurityService);
   protected readonly service = $inject(EstateService);
   protected readonly cloudflare = $inject(EstateCloudflareService);
   protected readonly audits = $inject(LoreAudits);
@@ -74,7 +73,10 @@ export class ProjectEstateController {
    * ask, and nothing in the answer belongs to the owner alone.
    */
   listProjectEstates = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     method: "GET",
     path: "/projects/:projectId/estates",
     schema: {
@@ -82,7 +84,6 @@ export class ProjectEstateController {
       response: z.object({ items: z.array(lentEstateResourceSchema) }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
       return { items: await this.lentTo(params.projectId) };
     },
   });
@@ -91,7 +92,10 @@ export class ProjectEstateController {
    * Lend one of the caller's own estates to this project.
    */
   attachEstate = $action({
-    use: [$secure({ permissions: ["estate:lend"] })],
+    use: [
+      $secure({ permissions: ["estate:lend"] }),
+      $ownsProject({ param: "projectId", owner: true }),
+    ],
     method: "POST",
     path: "/projects/:projectId/estates",
     schema: {
@@ -100,7 +104,6 @@ export class ProjectEstateController {
       response: lentEstateResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
       // 404 for an estate the caller does not own, like every other read of
       // somebody else's estate: the id alone must not confirm it exists.
       const estate = await this.service.loadOwned(body.estateId, user);
@@ -116,7 +119,10 @@ export class ProjectEstateController {
    * nothing because the owner already holds the token.
    */
   createProjectEstate = $action({
-    use: [$secure({ permissions: ["estate:lend"] })],
+    use: [
+      $secure({ permissions: ["estate:lend"] }),
+      $ownsProject({ param: "projectId", owner: true }),
+    ],
     method: "POST",
     path: "/projects/:projectId/estates/new",
     schema: {
@@ -125,7 +131,6 @@ export class ProjectEstateController {
       response: mintedLentEstateSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
       if (body.type === "cloudflare") {
         const { estate } = await this.service.createCloudflare(user, body);
         return this.lend(params.projectId, estate, user);

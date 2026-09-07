@@ -5,7 +5,6 @@ import { users } from "alepha/api/users";
 import { $logger } from "alepha/logger";
 import { $repository, $transactional, db, pageQuerySchema } from "alepha/orm";
 import {
-  $owns,
   $secure,
   OwnedResourceProvider,
   type UserAccountToken,
@@ -50,6 +49,7 @@ import {
 import { projectTitleSchema } from "../schemas/projectTitleSchema.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { CapabilityRegistry } from "../services/CapabilityRegistry.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
@@ -95,33 +95,22 @@ export class ProjectController {
   /**
    * Project-member gate: the project creator, or any user holding a
    * membership in it. Privileged identities bypass both.
+   *
+   * These two used to build `$owns` by hand, which meant this file restated
+   * `owner: "createdBy"`, the `members` join and both denial messages - the
+   * one rule this application has, written a second time. They go through
+   * {@link $ownsProject} like every other gate now, so a change to the rule
+   * cannot reach fifteen call sites and miss these seven. The only thing that
+   * varies is the param name: here the project is `:id`, elsewhere
+   * `:projectId`.
    */
-  protected ownsAsMember = () =>
-    $owns({
-      repository: () => this.projects,
-      param: "id",
-      owner: "createdBy",
-      cast: Number,
-      via: {
-        repository: () => this.members,
-        resource: "projectId",
-        user: "userId",
-      },
-      message: "Not a member of this project",
-    });
+  protected ownsAsMember = () => $ownsProject({ param: "id" });
 
   /**
    * Project-owner gate: the creator only. Used for destructive and
    * configuration endpoints.
    */
-  protected ownsAsOwner = () =>
-    $owns({
-      repository: () => this.projects,
-      param: "id",
-      owner: "createdBy",
-      cast: Number,
-      message: "Only the project owner can perform this action",
-    });
+  protected ownsAsOwner = () => $ownsProject({ param: "id", owner: true });
   questMapper = $inject(QuestResourceMapper);
   projectMapper = $inject(ProjectResourceMapper);
   limits = $inject(ProjectLimits);
@@ -899,12 +888,13 @@ export class ProjectController {
    * takes an integer `projectId`, read off that atom. That is what keeps slug
    * routing out of the rest of the API surface.
    *
-   * `$owns` cannot gate this one — it looks a resource up by primary key from
-   * a path param, and this param is not the key. The membership check is
-   * therefore explicit, through the same `ProjectSecurityService.assertMember`
-   * every other project-scoped read uses. A slug is guessable in a way an id
-   * is not, so this gate is the only thing standing between a typed URL and
-   * another tenant's project.
+   * ⚠️ **ranks: imperative.** `$owns` cannot gate this one — it looks a
+   * resource up by primary key from a path param, and this param is not the
+   * key. The membership check is therefore explicit, through the same
+   * `ProjectSecurityService.assertMember` every other project-scoped read
+   * uses, and it moves to the ranks module's imperative check rather than to
+   * `$ownsProject`. A slug is guessable in a way an id is not, so this gate is
+   * the only thing standing between a typed URL and another tenant's project.
    */
   getProjectBySlug = $action({
     use: [$secure({ permissions: ["project:read"] })],

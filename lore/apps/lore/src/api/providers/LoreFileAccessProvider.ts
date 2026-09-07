@@ -42,6 +42,13 @@ export class LoreFileAccessProvider extends FileAccessProvider {
   // `FOLIO_ATTACHMENT_BUCKET` in `FolioAttachmentService.ts`.
   protected static readonly FOLIO_ATTACHMENT_BUCKET = "archive-blobs";
 
+  /**
+   * ⚠️ **ranks: imperative.** This is a `$secure` guard on a file route, and
+   * which project it asks about is decided per BUCKET, several branches into
+   * the function. No `use:` entry can express that, so these four calls stay
+   * on {@link ProjectSecurityService} and move to the ranks module's
+   * imperative check when it exists, never to `$ownsProject`.
+   */
   async assertReadable(
     file: FileEntity,
     user: UserAccountToken | undefined,

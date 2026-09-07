@@ -11,6 +11,7 @@ import {
   type SigilResource,
   sigilResourceSchema,
 } from "../schemas/sigilResourceSchema.ts";
+import { $ownsProject } from "../security/$ownsProject.ts";
 import { AppService } from "../services/AppService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
@@ -56,7 +57,14 @@ export class SigilController {
    * replacing one is {@link rotateSigil}.
    */
   createSigil = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [
+      $secure({ permissions: ["project:update"] }),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "mint a sigil" },
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/sigils",
     schema: {
@@ -82,12 +90,6 @@ export class SigilController {
       response: mintedSigilSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "mint a sigil",
-      });
-
       const instance = await this.apps.load(
         params.projectId,
         this.apps.normalize(body.app, "app"),
@@ -133,7 +135,10 @@ export class SigilController {
    * insights page mean, and neither of those is owner-only.
    */
   listSigils = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    use: [
+      $secure({ permissions: ["project:read"] }),
+      $ownsProject({ param: "projectId" }),
+    ],
     method: "GET",
     path: "/projects/:projectId/sigils",
     schema: {
@@ -141,8 +146,6 @@ export class SigilController {
       response: z.object({ items: z.array(sigilResourceSchema) }),
     },
     handler: async ({ params, user }) => {
-      await this.security.assertMember(params.projectId, user);
-
       const items = await this.sigils.findMany({
         where: { projectId: { eq: params.projectId } },
         orderBy: [{ column: "createdAt", direction: "desc" }],
@@ -163,7 +166,14 @@ export class SigilController {
    * `SigilTokenService.verify` looks a sigil up *by* its hash.
    */
   rotateSigil = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [
+      $secure({ permissions: ["project:update"] }),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "rotate a sigil" },
+      }),
+    ],
     method: "POST",
     path: "/projects/:projectId/sigils/:sigilId/rotate",
     schema: {
@@ -171,11 +181,6 @@ export class SigilController {
       response: mintedSigilSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "rotate a sigil",
-      });
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
       const minted = await this.tokens.mint(params.projectId);
@@ -228,7 +233,14 @@ export class SigilController {
    * not re-arm it.
    */
   updateSigil = $action({
-    use: [$secure({ permissions: ["project:update"] })],
+    use: [
+      $secure({ permissions: ["project:update"] }),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "update a sigil" },
+      }),
+    ],
     method: "PATCH",
     path: "/projects/:projectId/sigils/:sigilId",
     schema: {
@@ -242,11 +254,6 @@ export class SigilController {
       response: sigilResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "update a sigil",
-      });
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
       // Still shaped as an optional field, so an omitted key means "leave it
@@ -272,7 +279,14 @@ export class SigilController {
    * surfaced it.
    */
   deleteSigil = $action({
-    use: [$secure({ permissions: ["project:delete"] })],
+    use: [
+      $secure({ permissions: ["project:delete"] }),
+      $ownsProject({
+        param: "projectId",
+        owner: true,
+        capability: { key: "apps", action: "delete a sigil" },
+      }),
+    ],
     method: "DELETE",
     path: "/projects/:projectId/sigils/:sigilId",
     schema: {
@@ -280,11 +294,6 @@ export class SigilController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      await this.security.assertOwner(params.projectId, user);
-      // Gated by hand: this controller still checks membership in its handlers.
-      await this.security.assertCapability(params.projectId, "apps", {
-        action: "delete a sigil",
-      });
       const sigil = await this.loadSigil(params.projectId, params.sigilId);
 
       await this.sigils.deleteById(sigil.id);
