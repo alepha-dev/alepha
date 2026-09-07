@@ -336,10 +336,26 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     await run({
       name: `deploy worker (${worker})`,
       handler: async () => {
+        const modules = await this.modules(distDir, config);
+        const mainModule = this.moduleName(config.main ?? "index.js");
+
+        // ⚠️ A `main_module` naming no uploaded part is not a validation
+        // error at Cloudflare. It answers `Uncaught SyntaxError: Invalid or
+        // unexpected token at worker.js:1:2`, which names a file nobody
+        // wrote and says nothing about the real mistake. Refusing here keeps
+        // the failure legible and local.
+        if (!modules.some((it) => it.name === mainModule)) {
+          throw new AlephaError(
+            `The deploy config names \`${mainModule}\` as its entry, but the upload carries ${modules
+              .map((it) => `\`${it.name}\``)
+              .join(", ")}. The entry must be one of the modules.`,
+          );
+        }
+
         const answer = await this.deployer().deploy({
           scriptName: worker,
-          mainModule: config.main ?? "index.js",
-          modules: await this.modules(distDir, config),
+          mainModule,
+          modules,
           compatibilityDate: config.compatibility_date,
           compatibilityFlags: config.compatibility_flags,
           bindings: this.bindings(config),
@@ -376,6 +392,19 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * config sets `rules: [{ type: "ESModule", globs: ["index.js", "server/*.js"] }]`,
    * so the upload set is a directory listing.
    */
+  /**
+   * The name a module is uploaded under, from a path a config wrote relative.
+   *
+   * ⚠️ A generated `wrangler.jsonc` writes `main: "./main.cloudflare.js"`,
+   * and {@link modules} names every part from a directory listing, so the
+   * parts carry no `./`. The two spellings have to be reconciled somewhere,
+   * and it is here rather than in the build, because the upload set is what
+   * defines the namespace the entry has to live in.
+   */
+  protected moduleName(path: string): string {
+    return path.replace(/^\.?\//, "");
+  }
+
   protected async modules(
     distDir: string,
     config: WranglerConfig,
