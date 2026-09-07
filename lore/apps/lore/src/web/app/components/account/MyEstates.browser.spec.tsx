@@ -274,6 +274,36 @@ describe("MyEstates", () => {
     expect(queryByTestId("my-estate-secret-dialog")).toBeNull();
   });
 
+  it("links the token guide at the docs origin, not at Lore's", async ({
+    expect,
+  }) => {
+    /*
+     * Feedback #P2142. Written `/lore/docs/...` the href resolved against
+     * the PAGE's origin - Lore - which serves no such route, so the one
+     * link a stuck reader clicks answered 404. The docs are a different
+     * site on a different host.
+     *
+     * ⚠️ Asserted as an ABSOLUTE string rather than with `toContain`: a
+     * root-relative href would satisfy any substring check against the
+     * path, which is exactly the bug.
+     */
+    const { getByTestId, findByTestId } = await show({
+      listMyEstates: { items: [] },
+    });
+
+    fireEvent.click(getByTestId("estate-create-open"));
+    fireEvent.click(getByTestId("estate-type-cloudflare"));
+
+    const guide = await findByTestId("estate-create-guide");
+    expect(guide.getAttribute("href")).toBe(
+      "https://alepha.dev/lore/docs/guides-cloudflare-token",
+    );
+    // It leaves the app mid-form, so it must not take the half-filled
+    // dialog with it.
+    expect(guide.getAttribute("target")).toBe("_blank");
+    expect(guide.getAttribute("rel")).toBe("noreferrer");
+  });
+
   it("keeps the create dialog open and names the field a refusal concerns", async ({
     expect,
   }) => {
