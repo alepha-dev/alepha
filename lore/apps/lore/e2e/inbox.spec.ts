@@ -5,6 +5,7 @@ import {
   findLatestEmail,
   newUserContext,
   registerAndVerify,
+  signInAsAdmin,
 } from "./_helpers.ts";
 
 /**
@@ -144,6 +145,24 @@ test.describe("Inbox", () => {
     } finally {
       await member.ctx.close();
     }
+  });
+
+  /**
+   * The third shell. Cheap because `signInAsAdmin` already exists, and worth
+   * having beside the `/account` assertion: the refactor that would break the
+   * ruling breaks both at once, and a spec covering one of the two reads as
+   * if the other had been considered.
+   */
+  test("the bell is absent from the admin shell", async ({ page }) => {
+    test.setTimeout(90_000);
+
+    await signInAsAdmin(page);
+    await page.goto("/admin");
+    await page.waitForLoadState("domcontentloaded");
+
+    await expect(
+      page.getByRole("button", { name: /notifications/i }),
+    ).toHaveCount(0);
   });
 
   /**
