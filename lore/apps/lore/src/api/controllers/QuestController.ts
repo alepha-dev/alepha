@@ -23,6 +23,7 @@ import { blights, QUEST_STATUS_PREFIX } from "../entities/blights.ts";
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
 import type { Project } from "../entities/projects.ts";
+import { questComments } from "../entities/questComments.ts";
 import {
   normalizeQuestTags,
   type Quest,
@@ -50,6 +51,7 @@ import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
+import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
@@ -127,7 +129,20 @@ export class QuestController {
    */
   epics = $repository(epics);
   releases = $repository(releases);
+  /**
+   * Write-only here, and for one act: `holdQuest` posts its reason into the
+   * Discussion instead of into a `heldReason` column, so that `@mentions`
+   * reach people through the notifier the thread already uses.
+   *
+   * Deliberately NOT `$inject(QuestCommentController)`. That controller's
+   * create action reads its own gate's `owned` resource and stamps an audit
+   * row of type `comment`; a hold is one act with one audit row
+   * (`logQuest("hold", …)`), and reaching through another controller to get
+   * a row inserted would couple the two for the sake of eight lines.
+   */
+  comments = $repository(questComments);
   protected readonly ranks = $inject(RankService);
+  mentions = $inject(MentionNotifier);
   dt = $inject(DateTimeProvider);
   audits = $inject(LoreAudits);
   owned = $inject(OwnedResourceProvider);
@@ -338,6 +353,16 @@ export class QuestController {
 
     const status = this.questMapper.questStatus(quest);
     if (!allowed.includes(status)) {
+      // A hold gets its own sentence because the generic one is unhelpful
+      // exactly where it is read most: `expected "accepted"` does not tell
+      // an agent that the quest IS accepted underneath and that one call
+      // fixes it. Naming the fix here rather than in accept / complete /
+      // shelve keeps it true for every verb added later.
+      if (status === "held") {
+        throw new BadRequestError(
+          `Cannot ${action} quest ${formatReference("quest", quest.shortId)}: it is on hold. Lift the hold first, then ${action} it.`,
+        );
+      }
       const expected = allowed.map((s) => `"${s}"`).join(" or ");
       throw new BadRequestError(
         `Cannot ${action} quest ${formatReference("quest", quest.shortId)}: it is "${status}", expected ${expected}.`,
@@ -434,9 +459,17 @@ export class QuestController {
    * What one status means as a set of column conditions.
    *
    * Extracted because a status is not a column: each is a combination of
-   * three nullable timestamps, so a multi-status filter has to OR whole
+   * four nullable timestamps, so a multi-status filter has to OR whole
    * condition objects rather than values, and the single-status branch and
    * the OR branch must not be allowed to drift apart.
+   *
+   * ⚠️ **`held` is EXCLUSIVE with `new` and `accepted`, and it has to be.**
+   * A held quest still has its `acceptedAt` (or its absence) underneath, so
+   * without the `heldAt: isNull` conjunct below, filtering "New" would
+   * return rows the table renders with a **Held** badge — a filter
+   * disagreeing with the label on its own results. This mirrors the
+   * precedence in `QuestResourceMapper.questStatus`: whatever that returns
+   * for a row is the one bucket the filter puts it in.
    */
   protected statusConditions(status: QuestStatus): Record<string, any> {
     switch (status) {
@@ -445,10 +478,21 @@ export class QuestController {
           acceptedAt: { isNull: true },
           completedAt: { isNull: true },
           shelvedAt: { isNull: true },
+          heldAt: { isNull: true },
         };
       case "accepted":
         return {
           acceptedAt: { isNotNull: true },
+          completedAt: { isNull: true },
+          heldAt: { isNull: true },
+        };
+      case "held":
+        // `completedAt IS NULL` restates the precedence rather than trusting
+        // it: `completeQuest` refuses a held quest, so the pair cannot arise
+        // legitimately, and a row that carries both reads as completed
+        // everywhere else.
+        return {
+          heldAt: { isNotNull: true },
           completedAt: { isNull: true },
         };
       case "completed":
@@ -879,7 +923,13 @@ export class QuestController {
         // alternative is numbers pasted into prose. The quest BODY stays
         // frozen (`updateQuestById` still refuses), which is what the audit
         // record is actually protecting.
-        ["new", "accepted", "shelved", "completed"],
+        //
+        // Held included on the same argument from the other end: a hold
+        // stops work, and the screenshot of whatever is blocking it is
+        // evidence about the hold. Refusing it would mean the one moment
+        // somebody has a picture of the problem is the one moment they
+        // cannot attach it.
+        ["new", "accepted", "held", "shelved", "completed"],
       );
 
       if (quest.attachments.includes(body.fileId)) {
@@ -1084,7 +1134,9 @@ export class QuestController {
     handler: async ({ params, user }) => {
       const { quest } = this.getQuestForTransition(
         "remove an attachment from",
-        ["new", "accepted", "shelved"],
+        // Held mirrors the attach side above: a hold must not turn a file
+        // somebody just attached by mistake into one they cannot take back.
+        ["new", "accepted", "held", "shelved"],
       );
 
       // Only an id this quest lists can be removed through it. The handler
@@ -1245,7 +1297,12 @@ export class QuestController {
         // quests are deliberately out of scope, so they only ever surface
         // through the explicit `shelved` filter. An empty list and an absent
         // filter are the same question: selecting nothing cannot mean
-        // "show nothing", and selecting all four means the same as neither.
+        // "show nothing", and selecting all five means the same as neither.
+        //
+        // ⚠️ HELD quests are NOT excluded here, and the asymmetry with
+        // shelved is the point. Shelved means out of scope; held means
+        // blocked and still wanted, so hiding it by default would hide
+        // exactly the rows somebody needs to unblock.
         where.shelvedAt = { isNull: true };
       } else if (statuses.length === 1) {
         Object.assign(where, this.statusConditions(statuses[0]));
@@ -1253,6 +1310,7 @@ export class QuestController {
         // there is no single date the list is about, so `-updatedAt` stands.
         if (statuses[0] === "completed") query.sort ??= "-completedAt";
         if (statuses[0] === "shelved") query.sort ??= "-shelvedAt";
+        if (statuses[0] === "held") query.sort ??= "-heldAt";
       } else {
         groups.push({
           or: statuses.map((status) => this.statusConditions(status)),
@@ -1584,7 +1642,28 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
-      const { quest } = this.getQuestForTransition("abandon", ["accepted"]);
+      // `held` is allowed, and it is the one verb where it is. A held quest
+      // keeps its assignee, so handing it back is a real thing to want, and
+      // abandoning does not touch `heldAt`: the quest stays blocked and
+      // becomes unassigned, which is exactly what happened. Shelving, by
+      // contrast, WOULD have to clear the hold - a quest that is out of
+      // scope is not waiting for anything - so it refuses instead of doing
+      // that silently.
+      const { quest } = this.getQuestForTransition("abandon", [
+        "accepted",
+        "held",
+      ]);
+
+      // A held quest reads as "held" whether or not it was ever accepted,
+      // so the status alone cannot stand in for the assignment the way it
+      // does for every other verb here. Without this, abandoning a held
+      // `new` quest would clear four fields that are already empty and
+      // write an "unassigned" event that never happened.
+      if (!quest.acceptedAt) {
+        throw new BadRequestError(
+          `Cannot abandon quest ${formatReference("quest", quest.shortId)}: nobody has accepted it.`,
+        );
+      }
 
       quest.acceptedAt = undefined;
       quest.acceptedBy = undefined;
@@ -1682,6 +1761,166 @@ export class QuestController {
       return this.mapQuestToResource(quest);
     },
   });
+
+  /**
+   * Block a quest on something outside itself, with a reason.
+   *
+   * `dependsOn` already covers "waiting on another quest" and nothing else.
+   * This covers the rest of what actually stalls work: an unanswered
+   * question, a credential somebody else holds, a decision, a deploy window.
+   *
+   * **Reachable from `new` and from `accepted`**, and neither is a special
+   * case: `heldAt` sits above `acceptedAt` in the derived status, so a held
+   * quest keeps its assignee, its kanban column, its timer and its reminder,
+   * and `unholdQuest` gives all of them back by clearing two columns.
+   * Nothing records where the hold came from because nothing needs to.
+   *
+   * **The reason is required, and it is posted as a comment** rather than
+   * stored on the quest. That is the feature, not plumbing: the Discussion is
+   * where the conversation already is, and routing through it means an
+   * `@handle` in the reason reaches that person's inbox through
+   * `MentionNotifier` with no notification code of its own. A `heldReason`
+   * column would be a second copy of the same sentence, drifting from the
+   * thread the moment anyone replies.
+   *
+   * ⚠️ **The assignee is not notified.** Holding somebody's quest is not by
+   * itself a message to them; mention them in the reason if it is. Adding a
+   * second, implicit notification path here would make the explicit one
+   * unreadable.
+   *
+   * Deliberately NOT behind the epic phase gate, for the reason
+   * `shelveQuest` and `abandonQuest` are not: a hold moves a quest away from
+   * work. `unholdQuest` IS gated, because it moves one back toward it.
+   */
+  holdQuest = $action({
+    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      body: z.object({
+        /**
+         * Why this quest is blocked, and what would unblock it. Posted to
+         * the quest's Discussion as a comment authored by whoever held it,
+         * so `@handle` works here exactly as it does in the composer.
+         */
+        reason: z.string().min(1).meta({ size: "rich" }),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ body, user }) => {
+      // "held" is allowed through the generic guard so the refusal below is
+      // the one that fires. Without it `getQuestForTransition` answers with
+      // its own hold-specific message, which reads "Lift the hold first,
+      // then hold it." for this verb and only this verb. Same shape as
+      // `shelveQuest` allowing "shelved" so its own branch can answer.
+      const { quest, project } = this.getQuestForTransition("hold", [
+        "new",
+        "accepted",
+        "held",
+      ]);
+
+      // Not idempotent, unlike `shelveQuest`, and the difference is the
+      // argument. Shelving takes none, so a second shelve can return the
+      // row unchanged and lose nothing. Holding carries a reason somebody
+      // just typed, and silently discarding it is worse than a refusal that
+      // says what to do. Changing why a quest is held is a comment on the
+      // thread, or an unhold and a fresh hold.
+      if (quest.heldAt) {
+        throw new BadRequestError(
+          `Quest ${formatReference("quest", quest.shortId)} is already on hold. Lift the hold first, or add a comment to the discussion.`,
+        );
+      }
+
+      const at = this.dt.nowISOString();
+      quest.heldAt = at;
+      quest.heldBy = user.id;
+      quest.history.push({
+        at,
+        by: user.id,
+        action: "held",
+      });
+
+      await this.quests.save(quest);
+
+      // No `source`: that column's semantic is "a machine wrote this", and
+      // whoever clicked Hold did not. Over MCP the same is true — the
+      // session user IS the account holding the key, and `quest_hold` is a
+      // hold, not a comment posted by an agent in its own voice.
+      await this.comments.create({
+        questId: quest.id,
+        authorId: user.id,
+        body: body.reason,
+      });
+
+      await this.mentions.notify({
+        subject: this.questMentionSubject(quest, project),
+        authorId: user.id,
+        body: body.reason,
+      });
+
+      await this.logQuest("hold", quest, user);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  /**
+   * Lift a hold. No reason, no conditions: whatever the quest was waiting
+   * for either arrived or stopped mattering, and making somebody justify
+   * that is how holds stop being lifted.
+   *
+   * Behind the epic phase gate, like `unshelveQuest` and for the same
+   * reason: this returns a quest to workable.
+   */
+  unholdQuest = $action({
+    use: [$transactional(), this.ownsQuestForWork("quest:update")],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ params, user }) => {
+      const { quest } = this.getQuestForTransition("unhold", ["held"]);
+      await this.epicWorkflow.assertQuestWorkable(quest, "unhold");
+
+      quest.heldAt = undefined;
+      quest.heldBy = undefined;
+      quest.history.push({
+        at: this.dt.nowISOString(),
+        by: user.id,
+        action: "unheld",
+      });
+
+      await this.quests.save(quest);
+      await this.logQuest("unhold", quest, user);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  /**
+   * Where a mention posted from this controller points, and what it is
+   * called.
+   *
+   * The same shape `QuestCommentController.mentionSubject` builds, and
+   * deliberately a second small implementation rather than a shared one:
+   * both are four lines over rows each already holds, and the alternative
+   * is a service whose whole job is reading two fields off a project.
+   *
+   * `project-<id>` is the documented fallback when a title derives no slug,
+   * and it is what `ProjectSlugService` writes; a link built without it
+   * would read `/undefined/quests/402`.
+   */
+  protected questMentionSubject(quest: Quest, project: Project) {
+    const slug = project.slug || `project-${project.id}`;
+    return {
+      projectId: quest.projectId,
+      projectTitle: project.title,
+      reference: formatReference("quest", quest.shortId),
+      title: quest.title,
+      href: `/${slug}/quests/${quest.shortId}`,
+    };
+  }
 
   acceptQuest = $action({
     use: [$transactional(), this.ownsQuestForWork("quest:update")],
@@ -2593,7 +2832,12 @@ export class QuestController {
     handler: async ({ params, body, user }) => {
       const { quest, project } = this.getQuestForTransition(
         "edit the objectives of",
-        ["new", "accepted", "shelved"],
+        // Held is allowed: rewriting what a quest is FOR is planning, and a
+        // blocked quest is a normal thing to re-plan. Ticking one is not,
+        // and `toggleQuestObjective` still requires `accepted` - a tick is
+        // a claim that work happened, which is exactly what a hold says is
+        // not happening.
+        ["new", "accepted", "held", "shelved"],
       );
 
       if (quest.createdBy !== user.id && project.createdBy !== user.id) {
@@ -2745,8 +2989,16 @@ export class QuestController {
       response: questResourceSchema,
     },
     handler: async ({ params, user }) => {
+      // ⚠️ `held` is allowed here and NOT on `startQuestTimer`, and the
+      // asymmetry is the whole point. `holdQuest` deliberately touches
+      // nothing else on the quest, so a quest held with its timer running
+      // still has it running. If stopping required `accepted`, that timer
+      // would keep accruing until somebody lifted the hold - the hold would
+      // silently bill the blocker to the assignee. Starting one on a held
+      // quest is a different claim, and stays refused.
       const { quest } = this.getQuestForTransition("stop a timer on", [
         "accepted",
+        "held",
       ]);
 
       // Find the running timer session

@@ -14,6 +14,8 @@ import {
   Inbox,
   ListChecks,
   Paperclip,
+  PauseCircle,
+  PlayCircle,
   Signature,
   Swords,
 } from "lucide-react";
@@ -166,6 +168,7 @@ const QuestView = (props: QuestViewProps) => {
   const statusLabel = {
     new: tr("quest.status.new"),
     accepted: tr("quest.status.accepted"),
+    held: tr("quest.status.held"),
     completed: tr("quest.status.completed"),
     shelved: tr("quest.status.shelved"),
   }[quest.metadata.status];
@@ -317,6 +320,52 @@ const QuestView = (props: QuestViewProps) => {
     },
   };
 
+  const holdQuest = {
+    disabled: !questApi.holdQuest.can(),
+    onClick: async () => {
+      // A prompt rather than the markdown composer the discussion uses. The
+      // reason IS a comment, so the composer would be the consistent choice,
+      // but a hold reason is one sentence and `validate` is what makes the
+      // requirement visible before the request rather than as a 400 after
+      // it. Mentions are unaffected: nothing in Lore autocompletes a handle
+      // anywhere, the composer included - `MentionNotifier` matches `@name`
+      // out of whatever text it is given.
+      const reason = await dialog.prompt({
+        title: tr("quest.view.hold.title"),
+        description: tr("quest.view.hold.description"),
+        placeholder: String(tr("quest.view.hold.placeholder")),
+        confirmLabel: tr("quest.view.hold.submit"),
+        cancelLabel: tr("common.cancel"),
+        validate: (value) =>
+          value.trim() ? null : String(tr("quest.view.hold.reasonRequired")),
+      });
+      // `null` is cancel; the validator has already refused empty text, so
+      // this cannot be an accidental hold with no reason.
+      if (!reason?.trim()) return;
+
+      const updatedQuest = await questMutations.hold(quest.id, reason.trim());
+      updateQuest(updatedQuest);
+      alepha.store.set(currentQuestAtom, updatedQuest);
+    },
+  };
+
+  const unholdQuest = {
+    disabled: !questApi.unholdQuest.can(),
+    onClick: async () => {
+      const ok = await dialog.confirm({
+        title: tr("quest.view.unhold.title"),
+        description: tr("quest.view.unhold.confirm"),
+        confirmLabel: tr("quest.view.unhold.confirmButton"),
+        cancelLabel: tr("common.cancel"),
+      });
+      if (!ok) return;
+
+      const updatedQuest = await questMutations.unhold(quest.id);
+      updateQuest(updatedQuest);
+      alepha.store.set(currentQuestAtom, updatedQuest);
+    },
+  };
+
   // Hoisted so the two mounts can place the same rail differently: the page
   // stands it up as a full-height column beside the scrolling body, the card
   // stacks it underneath.
@@ -329,9 +378,13 @@ const QuestView = (props: QuestViewProps) => {
       }}
       onShelve={shelveQuest.onClick}
       onUnshelve={unshelveQuest.onClick}
+      onHold={holdQuest.onClick}
+      onUnhold={unholdQuest.onClick}
       onUnassign={unassignQuest.onClick}
       shelveDisabled={shelveQuest.disabled}
       unshelveDisabled={unshelveQuest.disabled}
+      holdDisabled={holdQuest.disabled}
+      unholdDisabled={unholdQuest.disabled}
       unassignDisabled={unassignQuest.disabled}
     />
   );
@@ -483,6 +536,17 @@ const QuestView = (props: QuestViewProps) => {
               )}
             </div>
 
+            {quest.heldAt && (
+              <Badge
+                variant="destructive"
+                className="shrink-0"
+                title={String(tr("quest.view.held.hint"))}
+              >
+                <PauseCircle className="size-3" />
+                {tr("quest.status.held")}
+              </Badge>
+            )}
+
             {quest.shelvedAt && (
               <Badge
                 variant="secondary"
@@ -542,7 +606,24 @@ const QuestView = (props: QuestViewProps) => {
                     which would have read as "this quest cannot be taken"
                     rather than "not from here". Both verbs are one click
                     away through the title. */}
-                {context === "dialog" ? null : quest.acceptedAt ? (
+                {context === "dialog" ? null : quest.heldAt ? (
+                  // ⚠️ Not "Accept, disabled". Both Accept and Complete are
+                  // refused server-side while a quest is held, and a greyed
+                  // primary with a tooltip would say the quest is stuck
+                  // without offering the one click that unsticks it. The
+                  // slot is state-dependent already; held is a state.
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={unholdQuest.disabled}
+                    onClick={unholdQuest.onClick}
+                  >
+                    <PlayCircle className="size-4" />
+                    <span className="hidden sm:inline">
+                      {tr("quest.view.actions.unhold")}
+                    </span>
+                  </Button>
+                ) : quest.acceptedAt ? (
                   <Button
                     type="button"
                     className="bg-green-600 text-white hover:bg-green-700"

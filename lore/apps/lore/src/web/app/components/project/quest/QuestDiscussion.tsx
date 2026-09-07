@@ -55,7 +55,13 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
     return () => {
       alive = false;
     };
-  }, [props.quest.id]);
+    // ⚠️ `updatedAt`, not just `id`. A quest write can ADD a comment without
+    // the reader touching the composer: `holdQuest` posts its reason into
+    // this thread in the same transaction. Keyed on the id alone, the reason
+    // the user just typed never appeared until a full page load - the one
+    // place it is meant to be read. Every quest mutation now costs one small
+    // list call, which is what keeps the thread honest after any of them.
+  }, [props.quest.id, props.quest.updatedAt]);
 
   const shown = buildQuestDiscussionEntries(props.quest, comments);
 

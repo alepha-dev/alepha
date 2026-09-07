@@ -103,6 +103,35 @@ export const quests = $entity({
       onDelete: "set null",
     }),
     /**
+     * Set when the quest is put on hold: blocked on something outside
+     * itself, with a reason, until somebody lifts it. `dependsOn` covers
+     * "waiting on another quest" and nothing else; this covers waiting on
+     * an answer, a credential, a decision, a deploy window.
+     *
+     * Reachable from `new` and from `accepted`, and that is why the status
+     * derived from it works at all: `acceptedAt` is left untouched
+     * underneath, so `unholdQuest` restores the previous status by clearing
+     * two columns and needs no record of where the hold came from. See
+     * `QuestResourceMapper.questStatus` for the precedence.
+     *
+     * ⚠️ There is no `heldReason` column. The reason is a comment on the
+     * quest, posted by `holdQuest` in the same transaction, so that
+     * `@mentions` reach people through `MentionNotifier` and the reason
+     * lands in the Discussion feed where the conversation already is. A
+     * column would be a second copy to keep in sync with the thread.
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a table
+     * rebuild, and on D1 `DROP TABLE quests` fires `dependsOn`'s SET NULL
+     * against the copied rows AND cascades `quest_comments`, wiping every
+     * questline link and every discussion. See `apps/lore/CLAUDE.md` →
+     * "Migration safety on D1". Same reasoning as `epicId` and `commits`.
+     */
+    heldAt: z.datetime().optional(),
+    heldBy: db.ref(z.uuid().optional(), () => users.cols.id, {
+      onDelete: "set null",
+    }),
+    /**
      * Free-form summary set when the quest closes — what was actually
      * done. Editable post-completion via `updateQuest` (project memory
      * is meant to be curated). Surfaced to humans in the quest view +
@@ -193,6 +222,8 @@ export const quests = $entity({
             "reminder_sent",
             "shelved",
             "unshelved",
+            "held",
+            "unheld",
             "reopened",
             "moved",
           ]),
