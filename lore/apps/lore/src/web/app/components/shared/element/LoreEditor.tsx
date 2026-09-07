@@ -22,6 +22,17 @@ export interface LoreEditorProps {
   variant?: "document" | "field";
   minHeight?: number;
   /**
+   * Handles the `@` picker offers, as display names.
+   *
+   * ⚠️ **Present only where a mention MEANS something**: the comment
+   * surfaces, where `expandCommentReferences` turns a handle into a link and
+   * `MentionNotifier` pings its owner. Absent everywhere else, so a folio
+   * body or a description never offers a completion that would resolve
+   * nowhere from either end.
+   */
+  mentionSuggestions?: string[];
+
+  /**
    * Freeze the text while a save is in flight.
    *
    * ⚠️ It reaches CodeMirror's own `readOnly`, which is why it exists as a
@@ -148,6 +159,12 @@ const LoreEditor = (props: LoreEditorProps) => {
         // stored text, which is what makes the round-trip lossless.
         viewContent={rendered}
         wikiLinkSuggestions={suggestions}
+        // ⚠️ Passed straight through and NEVER derived here. `LoreEditor`
+        // serves the folio body and the two description fields as well, and
+        // a mention on any of those links nowhere - so the decision of
+        // whether `@` is offered belongs to the caller that knows it is a
+        // comment.
+        mentionSuggestions={props.mentionSuggestions}
         imageUploadHandler={imageUploadHandler}
         // EXPLORATION (2026-08-28): off everywhere.
         //
