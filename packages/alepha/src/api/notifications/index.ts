@@ -17,6 +17,7 @@ import type { NotificationDeliveryEvent } from "./schemas/notificationDeliveryEv
 import { NotificationAttachmentService } from "./services/NotificationAttachmentService.ts";
 import { NotificationChannelService } from "./services/NotificationChannelService.ts";
 import { NotificationDeliveryService } from "./services/NotificationDeliveryService.ts";
+import { NotificationInboxService } from "./services/NotificationInboxService.ts";
 import { NotificationIngestService } from "./services/NotificationIngestService.ts";
 import { NotificationSenderService } from "./services/NotificationSenderService.ts";
 import { NotificationSettings } from "./services/NotificationSettings.ts";
@@ -57,6 +58,7 @@ export * from "./schemas/notificationTemplateResourceSchema.ts";
 export * from "./services/NotificationAttachmentService.ts";
 export * from "./services/NotificationChannelService.ts";
 export * from "./services/NotificationDeliveryService.ts";
+export * from "./services/NotificationInboxService.ts";
 export * from "./services/NotificationIngestService.ts";
 export * from "./services/NotificationSenderService.ts";
 export * from "./services/NotificationSettings.ts";
@@ -148,6 +150,22 @@ declare module "alepha" {
  * Direct mode is the recommended default for small / cheap deployments
  * (Cloudflare Workers, single-instance Node) - no queue infrastructure required.
  *
+ * ## ⚠️ An app that uses the inbox owns its deletion cleanup
+ *
+ * `notification_inbox.userId` is a bare uuid with **no foreign key**: this
+ * module imports nothing from `alepha/api/users`, so there is no table to
+ * point at and nothing cascades. Deleting an account therefore leaves its
+ * messages behind unless the app removes them.
+ *
+ * The seam is `user:delete:before`, and the call is
+ * `NotificationInboxService.deleteForUser(userId)`. Put it in the handler
+ * the app already has there, **after** whatever refusal that handler
+ * performs: a separate handler can run first and wipe the inbox of an
+ * account whose deletion is then refused.
+ *
+ * The hourly purge covers the other half, expiry, and only ever removes
+ * messages that have been READ.
+ *
  * @module alepha.api.notifications
  */
 export const AlephaApiNotifications = $module({
@@ -168,6 +186,7 @@ export const AlephaApiNotifications = $module({
     NotificationSuppressionService,
     NotificationDeliveryService,
     NotificationAttachmentService,
+    NotificationInboxService,
     NotificationIngestService,
     NotificationUnsubscribeService,
     NotificationPreferenceProvider,

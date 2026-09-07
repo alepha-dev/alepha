@@ -15,8 +15,20 @@ import { $entity, db } from "alepha/orm";
  * The same reason `notification_deliveries.organizationId` is: the writer
  * runs inside a tenant-less job, and this module deliberately imports
  * nothing from `alepha/api/users`, so there is no table here to point at.
- * The cost is orphan rows when an account is deleted, paid by the retention
- * sweep plus whatever hook the app already runs on deletion.
+ * The cost is orphan rows when an account is deleted, and the app pays it:
+ * `NotificationInboxService.deleteForUser()` from the app's own
+ * `user:delete:before` handler. Nothing here cascades, so a module that
+ * "fixes" this into a real foreign key has coupled two modules that share
+ * nothing.
+ *
+ * ## An unread message is kept forever
+ *
+ * The hourly sweep removes READ messages past `inboxRetentionDays` and
+ * leaves unread ones alone at any age. That is the correct behaviour - a
+ * message that waited for you is the feature - and it does mean the table is
+ * unbounded for an account that never opens its inbox. If that ever matters,
+ * the answer is a second and much longer window for unread rows, never a
+ * shorter one for read.
  *
  * ## `scope` and `scopeLabel` are opaque, and stay that way
  *
