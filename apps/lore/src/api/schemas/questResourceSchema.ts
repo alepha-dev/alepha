@@ -3,11 +3,16 @@ import { type Infer, z } from "alepha";
 import { quests } from "../entities/quests.ts";
 
 /**
- * Quest status derived from acceptedAt / completedAt / shelvedAt.
+ * Quest status derived from completedAt / heldAt / acceptedAt / shelvedAt.
+ *
+ * `held` is derived like the rest, which is the whole reason it can be a
+ * status at all: nothing stores "held from where", because `acceptedAt`
+ * stays set underneath a hold and reappears the moment it is lifted.
  */
 export const questStatusSchema = z.enum([
   "new",
   "accepted",
+  "held",
   "completed",
   "shelved",
 ]);

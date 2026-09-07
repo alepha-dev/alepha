@@ -17,18 +17,29 @@ export class QuestResourceMapper {
    * to the precedence cannot leave one caller disagreeing with another.
    */
   questStatus(
-    quest: Pick<Quest, "acceptedAt" | "completedAt" | "shelvedAt">,
+    quest: Pick<Quest, "acceptedAt" | "completedAt" | "shelvedAt" | "heldAt">,
   ): QuestStatus {
     // Shelving is only reachable from "new", so `shelvedAt` never
     // coexists with the other two. The precedence is defensive:
     // a real accept/complete always wins over a stale shelf.
+    //
+    // `heldAt` sits BELOW `completedAt` and ABOVE `acceptedAt`, and both
+    // placements are decisions. Above `acceptedAt`, because a hold is
+    // what the reader needs to see: the assignee is still recorded and
+    // comes back untouched when the hold lifts, which is what makes
+    // "held" derivable at all. Below `completedAt`, because `holdQuest`
+    // refuses a completed quest and `completeQuest` refuses a held one,
+    // so the two cannot legitimately coexist — and if a row ever carries
+    // both, the completion is the one that actually happened.
     return quest.completedAt
       ? "completed"
-      : quest.acceptedAt
-        ? "accepted"
-        : quest.shelvedAt
-          ? "shelved"
-          : "new";
+      : quest.heldAt
+        ? "held"
+        : quest.acceptedAt
+          ? "accepted"
+          : quest.shelvedAt
+            ? "shelved"
+            : "new";
   }
 
   mapQuestToResource(quest: Quest): QuestResource {

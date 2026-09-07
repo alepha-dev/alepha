@@ -7,7 +7,9 @@ import {
   BellRing,
   CheckSquare,
   type LucideIcon,
+  PauseCircle,
   Pencil,
+  PlayCircle,
   Signature,
   SquareSlash,
   Sunrise,
@@ -253,6 +255,8 @@ const ICONS: Record<string, LucideIcon> = {
   reminder_sent: BellRing,
   shelved: Archive,
   unshelved: ArchiveRestore,
+  held: PauseCircle,
+  unheld: PlayCircle,
   updated: Pencil,
 };
 
@@ -266,6 +270,8 @@ const PREDICATE_KEYS: Record<
   | "quest.event.reminderSent"
   | "quest.event.shelved"
   | "quest.event.unshelved"
+  | "quest.event.held"
+  | "quest.event.unheld"
   | "quest.event.updated"
 > = {
   created: "quest.event.created",
@@ -276,6 +282,11 @@ const PREDICATE_KEYS: Record<
   reminder_sent: "quest.event.reminderSent",
   shelved: "quest.event.shelved",
   unshelved: "quest.event.unshelved",
+  // The hold REASON is not here. It is a comment posted in the same
+  // transaction, so it renders as the discussion entry immediately after
+  // this event rather than as text on it.
+  held: "quest.event.held",
+  unheld: "quest.event.unheld",
   updated: "quest.event.updated",
 };
 
