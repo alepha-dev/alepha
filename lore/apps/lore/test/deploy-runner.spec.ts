@@ -115,6 +115,9 @@ describe("deploying an artifact from inside the Worker", () => {
         calls.push(`deploy:${plan.scriptName}`);
         uploaded = plan;
       },
+      // A copy with no domain answers on workers.dev (#Q2132), and the
+      // adapter reads the account's subdomain to compose that address.
+      getSubdomain: async () => "acme",
     };
 
     const runner = alepha.inject(DeployRunner);
@@ -265,6 +268,7 @@ describe("deploying an artifact from inside the Worker", () => {
           calls.push(`deploy:${plan.scriptName}`);
           return { versionId: "v1" };
         },
+        getSubdomain: async () => "acme",
       };
 
       const runner = alepha.inject(DeployRunner);
