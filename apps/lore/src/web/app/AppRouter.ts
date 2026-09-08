@@ -41,7 +41,6 @@ import { currentEpicsAtom } from "./atoms/currentEpicsAtom.ts";
 import { currentEstateAtom } from "./atoms/currentEstateAtom.ts";
 import { currentFeedbackCountAtom } from "./atoms/currentFeedbackCountAtom.ts";
 import { currentFolioAttachmentsAtom } from "./atoms/currentFolioAttachmentsAtom.ts";
-import { currentHeldQuestCountAtom } from "./atoms/currentHeldQuestCountAtom.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "./atoms/currentProjectAtom.ts";
@@ -654,8 +653,8 @@ export class AppRouter {
         // (badge just hides).
         this.questApi
           .countOpenQuests({ params: { projectId: project.id } })
-          .then((r) => ({ open: r.count, held: r.held }))
-          .catch(() => ({ open: 0, held: 0 })),
+          .then((r) => r.count)
+          .catch(() => 0),
 
         // Every epic as a ref, which serves two readers at once: the sidebar's
         // planned-epic badge, counted locally below, and the quests table's
@@ -777,12 +776,7 @@ export class AppRouter {
         count: pendingFeedback,
       });
       this.alepha.store.set(currentBlightCountAtom, { count: openBlights });
-      this.alepha.store.set(currentQuestCountAtom, { count: openQuests.open });
-      // The held subset, from the same read. See `currentHeldQuestCountAtom`
-      // for why the two numbers deliberately overlap.
-      this.alepha.store.set(currentHeldQuestCountAtom, {
-        count: openQuests.held,
-      });
+      this.alepha.store.set(currentQuestCountAtom, { count: openQuests });
       this.alepha.store.set(currentEpicsAtom, epicRefs);
       // Counted here rather than server-side, the same way `ProjectEpics`
       // counts it off the list it already holds. `undefined` means the read
@@ -808,7 +802,6 @@ export class AppRouter {
       this.alepha.store.set(currentFeedbackCountAtom, { count: 0 });
       this.alepha.store.set(currentBlightCountAtom, { count: 0 });
       this.alepha.store.set(currentQuestCountAtom, { count: 0 });
-      this.alepha.store.set(currentHeldQuestCountAtom, { count: 0 });
       this.alepha.store.set(currentEpicCountAtom, { count: 0 });
       this.alepha.store.set(currentEpicsAtom, undefined);
       this.alepha.store.set(currentInstancesAtom, undefined);

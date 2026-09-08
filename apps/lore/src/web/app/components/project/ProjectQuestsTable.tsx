@@ -102,9 +102,10 @@ const boardFiltersSchema = z.object({
    * dropdown offered five: `held` reached the control and was refused here,
    * so `?status=held` decoded to nothing and was DROPPED - `queryToFilters`
    * degrades a value the schema refuses to the unfiltered list rather than
-   * to an error, which is right and is why nobody saw it. The On hold
-   * sidebar entry is the first link that points at one of these, and it
-   * landed on every quest in the project.
+   * to an error, which is right and is why nobody saw it: nothing linked to
+   * one of these filters. The filter control itself does, through
+   * `fromQuery`, so a held view that is bookmarked or reloaded is the case
+   * this keeps working.
    *
    * The item list below stays hand-written on purpose; see the ⚠️ on it. The
    * two drifted in opposite directions, and only this half can be derived.
