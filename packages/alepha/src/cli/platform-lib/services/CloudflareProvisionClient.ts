@@ -368,30 +368,29 @@ export class CloudflareProvisionClient {
   /**
    * Delete a Worker script.
    *
-   * ## ⚠️ `force` decides whether Durable Object storage dies with it
+   * ## ⚠️ `force`, always - and the reason is what a websocket DO actually holds
    *
-   * Cloudflare refuses to delete a script something still references - a
-   * service binding from another Worker, or **a Durable Object namespace that
-   * still holds data**. `force=true` deletes it anyway, and the DO storage with
-   * it: an app using `$websocket` on Cloudflare gets an
-   * `AlephaWebSocketDurableObject` namespace, and that namespace is data in the
-   * same sense a D1 database is.
+   * Cloudflare refuses to delete a script something still references: a service
+   * binding from another Worker, or a Durable Object namespace. An app using
+   * `$websocket` or `$room` always has one, so an unforced delete would leave
+   * every realtime app permanently undestroyable.
    *
-   * So it is passed only for an EPHEMERAL copy, on the same reasoning as
-   * `deleteD1` and `deleteR2`. For every other copy the delete is unforced and
-   * a refusal is the right outcome rather than an obstacle - the caller reports
-   * that the Worker is still standing, and why.
+   * That is safe here because `AlephaWebSocketDurableObject` **persists
+   * nothing**. Its `ctx.storage` is used for exactly one thing - arming the
+   * tick-loop watchdog alarm - and there is no `put`, no `get` and no SQL
+   * anywhere in `alepha/websocket`. What the namespace holds is live
+   * connections, under the hibernation API, and deleting the Worker drops
+   * those regardless. There is no data to lose, so this is not the same
+   * question as a D1 database.
    *
-   * ⚠️ It also detaches service bindings other Workers hold, which is a second
-   * reason not to reach for it by default.
+   * ⚠️ It also detaches service bindings other Workers hold, which is the real
+   * cost of forcing and is why it is stated here rather than assumed.
+   * `CloudflareApi.deleteWorker` has always forced, on the same reasoning.
    */
-  public async deleteWorker(
-    name: string,
-    options: { force?: boolean } = {},
-  ): Promise<void> {
+  public async deleteWorker(name: string): Promise<void> {
     await this.fetch(`/accounts/${this.accountId}/workers/scripts/${name}`, {
       method: "DELETE",
-      ...(options.force ? { query: { force: "true" } } : {}),
+      query: { force: "true" },
     });
   }
 

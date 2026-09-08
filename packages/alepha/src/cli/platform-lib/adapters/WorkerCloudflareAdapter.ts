@@ -558,8 +558,12 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   /**
    * Remove what a redeploy can put back, and keep what it cannot.
    *
-   * ## ⚠️ The database, the bucket and any Durable Object storage are KEPT,
-   * unless the copy is ephemeral
+   * ## ⚠️ The database and the bucket are KEPT, unless the copy is ephemeral
+   *
+   * A Durable Object namespace is NOT in that list, and the difference is
+   * worth stating: `AlephaWebSocketDurableObject` persists nothing - its
+   * storage arms one watchdog alarm - so what it holds is live connections,
+   * which deleting the Worker drops anyway.
    *
    * Not an omission and not a first cut. Lore drives this with a credential
    * lent to it for deploying, so the line is what the next deploy recreates. A
@@ -635,15 +639,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     };
 
     if (record.worker) {
-      // ⚠️ Forced only for an ephemeral copy. `force` is what lets Cloudflare
-      // delete a script something still references - including a Durable
-      // Object namespace that still holds data - so on an ordinary copy an
-      // unforced delete REFUSING is the correct outcome, not an obstacle.
-      await attempt("worker", () =>
-        api.deleteWorker(record.worker as string, {
-          force: options.purgeStores === true,
-        }),
-      );
+      await attempt("worker", () => api.deleteWorker(record.worker as string));
     }
     if (record.queue) {
       await attempt("queue", () => api.deleteQueue(record.queue as string));
@@ -670,10 +666,6 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     const kept = [
       record.d1 ? `d1:${record.d1.name}` : undefined,
       record.r2 ? `r2:${record.r2}` : undefined,
-      // Named like the other two, because it is the same kind of thing: a
-      // Durable Object namespace holds this copy's rooms and connections, and
-      // an operator reading "the Worker is still there" deserves to know why.
-      record.durableObjects ? "durable-objects" : undefined,
     ].filter((it): it is string => !!it);
 
     return { removed, kept, failed };
