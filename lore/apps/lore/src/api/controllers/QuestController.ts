@@ -1363,13 +1363,23 @@ export class QuestController {
   });
 
   /**
-   * Open-quest count for the sidebar badge. "Open" is everything neither
-   * completed nor shelved — the same "still needs attention" meaning the
-   * blight and feedback badges carry, so all three numbers read the same way.
+   * The two sidebar quest numbers, in one answer.
    *
-   * Shelved quests are deliberately out of scope, and the list this badge
-   * links to already hides them, so counting them made the sidebar disagree
-   * with the page it opens.
+   * `count` is open quests: everything neither completed nor shelved — the
+   * same "still needs attention" meaning the blight and feedback badges
+   * carry, so all three numbers read the same way. Shelved quests are
+   * deliberately out of scope, and the list this badge links to already hides
+   * them, so counting them made the sidebar disagree with the page it opens.
+   *
+   * `held` is the subset of those that are on hold. A SUBSET rather than a
+   * separate population: a held quest is blocked, not out of scope, so it is
+   * open and is counted in both numbers. That is the same rule `quest_list`
+   * follows by returning held quests in its default view.
+   *
+   * ⚠️ Two counts on one action rather than a second endpoint, because the
+   * caller is the project route loader and every read it makes is paid by
+   * every reader on every project load. It is one extra `count` over the same
+   * gated where-object, not a second round trip.
    *
    * Readable by any project member.
    */
@@ -1378,7 +1388,7 @@ export class QuestController {
     path: "/projects/:projectId/quests/count",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      response: z.object({ count: z.integer() }),
+      response: z.object({ count: z.integer(), held: z.integer() }),
     },
     handler: async ({ params }) => {
       // `OpenQuestScope` owns what "open" means. This badge links to the
@@ -1388,9 +1398,15 @@ export class QuestController {
       // showed none).
       const where = await this.openQuests.where([params.projectId]);
 
-      const count = await this.quests.count(where);
+      // The same gate, narrowed. Built by spreading rather than by asking
+      // `OpenQuestScope` twice: the second call would re-run the backlog
+      // gate, which reads this project's epics.
+      const [count, held] = await Promise.all([
+        this.quests.count(where),
+        this.quests.count({ ...where, heldAt: { isNotNull: true } }),
+      ]);
 
-      return { count };
+      return { count, held };
     },
   });
 

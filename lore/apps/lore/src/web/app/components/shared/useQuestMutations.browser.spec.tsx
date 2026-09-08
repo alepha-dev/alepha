@@ -37,6 +37,7 @@ class FakeLinkProvider extends LinkProvider {
   protected readonly faker = $inject(FakeProvider);
 
   openCount = 7;
+  heldCount = 0;
   counted = 0;
   calls: string[] = [];
 
@@ -74,7 +75,11 @@ class FakeLinkProvider extends LinkProvider {
       deleteQuest: record("delete"),
       countOpenQuests: async () => {
         this.counted++;
-        return { count: this.openCount };
+        // `held` too, because the real action answers both and the hook
+        // writes both atoms from one read. Returning only `count` made the
+        // held write fail schema validation into the hook's own `.catch`,
+        // which is a badge that silently never moves.
+        return { count: this.openCount, held: this.heldCount };
       },
     };
 

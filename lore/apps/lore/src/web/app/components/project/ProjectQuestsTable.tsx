@@ -46,7 +46,10 @@ import type { ProjectController } from "@/api/controllers/ProjectController.ts";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { User } from "@/api/entities/users.ts";
 import { QUEST_RELEASE_NONE } from "@/api/schemas/questReleaseFilter.ts";
-import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
+import {
+  type QuestResource,
+  questStatusSchema,
+} from "@/api/schemas/questResourceSchema.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
@@ -93,9 +96,20 @@ import { formatQuestSize } from "./quest/questSize.ts";
  */
 const boardFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z
-    .array(z.enum(["new", "accepted", "completed", "shelved"]))
-    .optional(),
+  /**
+   * ⚠️ `questStatusSchema` rather than a hand-written enum, and that is a
+   * fix rather than tidying. This listed four values while the filter's own
+   * dropdown offered five: `held` reached the control and was refused here,
+   * so `?status=held` decoded to nothing and was DROPPED - `queryToFilters`
+   * degrades a value the schema refuses to the unfiltered list rather than
+   * to an error, which is right and is why nobody saw it. The On hold
+   * sidebar entry is the first link that points at one of these, and it
+   * landed on every quest in the project.
+   *
+   * The item list below stays hand-written on purpose; see the ⚠️ on it. The
+   * two drifted in opposite directions, and only this half can be derived.
+   */
+  status: z.array(questStatusSchema).optional(),
   area: z.array(z.string()).optional(),
   tag: z.array(z.string()).optional(),
   // The releases' numeric ids, carried as strings because that is what a
