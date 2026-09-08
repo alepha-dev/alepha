@@ -51,8 +51,11 @@ describe("the Cloudflare deploy client", () => {
         },
         assets: {
           upload: {
-            create: ((params: unknown) => {
-              calls.push({ name: "assets.upload", args: [params] });
+            // ⚠️ Records the OPTIONS argument too, which the other fakes do
+            // not need: this is the one call whose credential differs from the
+            // client's own. See the test below.
+            create: ((params: unknown, options?: unknown) => {
+              calls.push({ name: "assets.upload", args: [params, options] });
               const jwt = uploadJwts[uploads++];
               return Promise.resolve(jwt ? { jwt } : {});
             }) as never,
@@ -147,6 +150,37 @@ describe("the Cloudflare deploy client", () => {
       // Cloudflare already holds it.
       expect(Object.keys(body)).toEqual(["bbbb"]);
       expect(atob(body.bbbb as string)).toBe("bytes of /app.js");
+    });
+
+    /**
+     * ⚠️ **The one call that does NOT use the account's API token**, and
+     * getting it wrong is a flat `401 Unauthorized` from Cloudflare with
+     * nothing naming the credential.
+     *
+     * The upload session answers a JWT scoped to that session, and the batch
+     * endpoint authenticates with it. The client is constructed with the
+     * estate's API token and sends it on every other call, so without an
+     * override this batch goes out under the wrong credential entirely.
+     *
+     * It survived because nothing ever called `uploadAssets` against the real
+     * API - `WorkerCloudflareAdapter` never set `plan.assets` - so this
+     * function's only exercise was a fake that accepts whatever it is handed.
+     * Measured on `ui.alepha.dev`, 2026-09-08.
+     */
+    it("authenticates each batch with the session token, not the account token", async ({
+      expect,
+    }) => {
+      const { client, of } = fake({ jwt: "session", buckets: [["bbbb"]] }, [
+        "completion",
+      ]);
+
+      await client.uploadAssets("my-app-staging", { manifest, read });
+
+      const [upload] = of("assets.upload");
+      const options = upload.args[1] as
+        | { headers?: Record<string, string> }
+        | undefined;
+      expect(options?.headers?.authorization).toBe("Bearer session");
     });
 
     it("uploads nothing when the set is unchanged", async ({ expect }) => {

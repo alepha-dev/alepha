@@ -8,7 +8,14 @@ import type { RunnerMethod } from "alepha/command";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
-import { CloudflareDeployClient } from "../services/CloudflareDeployClient.ts";
+import {
+  type CloudflareAssetEntry,
+  CloudflareAssetManifest,
+} from "../services/CloudflareAssetManifest.ts";
+import {
+  type CloudflareDeployAssets,
+  CloudflareDeployClient,
+} from "../services/CloudflareDeployClient.ts";
 import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
 import { D1MigrationsService } from "../services/D1MigrationsService.ts";
 import {
@@ -69,6 +76,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly buildTask = $inject(BuildCloudflareTask);
   protected readonly migrations = $inject(D1MigrationsService);
+  protected readonly assetManifest = $inject(CloudflareAssetManifest);
 
   /**
    * The credential for the deploy currently running.
@@ -416,6 +424,12 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           placement: config.placement,
           limits: config.limits,
           crons: config.triggers?.crons ?? [],
+          // ⚠️ Without this the deploy ships the script and NOTHING under
+          // `public/`, and it does not look like a failure: the asset store
+          // misses, the request falls through to the Worker, and `/` still
+          // answers 200 because the app renders it server-side. Only the
+          // hashed assets 404, so the site is up and unstyled.
+          assets: await this.assets(distDir, config),
           domain: config.routes?.find((it) => it.custom_domain)
             ? {
                 hostname: config.routes.find((it) => it.custom_domain)
@@ -471,6 +485,89 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    */
   protected moduleName(path: string): string {
     return path.replace(/^\.?\//, "");
+  }
+
+  /**
+   * `dist/public`, as the manifest a deploy is negotiated with plus a reader.
+   *
+   * ⚠️ **`undefined` here is a site that serves nothing but SSR.** The client
+   * runs its whole asset pipeline behind `plan.assets ? …`, so an adapter that
+   * does not answer this silently opts out of it, and the deploy still reports
+   * success. That is what shipped until 2026-09-08.
+   *
+   * ## ⚠️ The manifest is built one file at a time
+   *
+   * {@link CloudflareAssetManifest.build} takes every file's bytes at once,
+   * which is the convenient call and the wrong one here: this runs inside
+   * Lore's 128 MB Worker, and holding the whole tree a second time is the
+   * memory the batching in `CloudflareDeployClient` exists to avoid. Hashing
+   * per entry and reading again through {@link CloudflareDeployAssets.read}
+   * costs a second read of the files Cloudflare actually asks for, which is
+   * usually none of them.
+   *
+   * ## ⚠️ `directory` and `binding` do not go to the API
+   *
+   * They are how wrangler finds the files on a disk Cloudflare never sees.
+   * What must reach it is behaviour - `not_found_handling` and
+   * `run_worker_first` - because those decide whether a miss is a real 404 or
+   * the app's NotFound component served under a 200, which crawlers index.
+   */
+  protected async assets(
+    distDir: string,
+    config: WranglerConfig,
+  ): Promise<CloudflareDeployAssets | undefined> {
+    if (!config.assets) {
+      return undefined;
+    }
+    const root = this.fs.join(distDir, "public");
+    if (!(await this.fs.exists(root))) {
+      return undefined;
+    }
+
+    const manifest: Record<string, CloudflareAssetEntry> = {};
+    const paths = new Map<string, string>();
+    for (const entry of await this.fs.ls(root, { recursive: true })) {
+      const path = this.fs.join(root, entry);
+      // ⚠️ A recursive listing names directories too on the node provider,
+      // and reading one is an error rather than an empty file.
+      if (!(await this.fs.stat(path)).isFile) {
+        continue;
+      }
+      const bytes = new Uint8Array(await this.fs.readFile(path));
+      const key = this.assetManifest.key(entry);
+      manifest[key] = {
+        hash: this.assetManifest.hash(bytes, entry),
+        size: bytes.length,
+      };
+      paths.set(key, path);
+    }
+
+    // An `assets` block over an empty directory would open an upload session
+    // for nothing, which Cloudflare answers by asking for nothing - harmless,
+    // and still a request per deploy that says something untrue.
+    if (paths.size === 0) {
+      return undefined;
+    }
+
+    const assetConfig: Record<string, unknown> = { ...config.assets };
+    delete assetConfig.directory;
+    delete assetConfig.binding;
+
+    return {
+      manifest,
+      read: async (key) => {
+        const path = paths.get(key);
+        if (!path) {
+          throw new AlephaError(
+            `Cloudflare asked for the asset \`${key}\`, which is not one this deploy sent. Refusing to guess which file it meant.`,
+          );
+        }
+        return new Uint8Array(await this.fs.readFile(path));
+      },
+      ...(Object.keys(assetConfig).length > 0
+        ? { config: assetConfig }
+        : undefined),
+    };
   }
 
   protected async modules(
@@ -538,6 +635,12 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     }
     for (const [name, text] of Object.entries(config.vars ?? {})) {
       bindings.push({ type: "plain_text", name, text: String(text) });
+    }
+    // ⚠️ A separate fact from uploading the files. `not_found_handling`
+    // governs `env.ASSETS.fetch()` from inside the Worker, so an app that
+    // calls it against a missing binding fails at runtime rather than here.
+    if (config.assets?.binding) {
+      bindings.push({ type: "assets", name: config.assets.binding });
     }
     return bindings;
   }
@@ -699,6 +802,11 @@ interface WranglerConfig {
   vars?: Record<string, unknown>;
   triggers?: { crons?: string[] };
   routes?: Array<{ pattern?: string; custom_domain?: boolean }>;
+  /**
+   * `directory` and `binding` are wrangler's own; every other key is asset
+   * behaviour and travels to the API. See {@link WorkerCloudflareAdapter.assets}.
+   */
+  assets?: { directory?: string; binding?: string } & Record<string, unknown>;
   d1_databases?: Array<{ binding: string; database_id: string }>;
   r2_buckets?: Array<{ binding: string; bucket_name: string }>;
   kv_namespaces?: Array<{ binding: string; id: string }>;

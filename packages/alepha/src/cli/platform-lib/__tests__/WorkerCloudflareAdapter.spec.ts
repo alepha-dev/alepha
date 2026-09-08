@@ -263,6 +263,146 @@ describe("the worker-side Cloudflare adapter", () => {
       /names `nope.js` as its entry/,
     );
   });
+
+  /**
+   * ⚠️ **The regression guard for a deploy that reports success and serves a
+   * broken site.** `CloudflareDeployClient` has carried the whole asset
+   * pipeline - the manifest, the hash-bucket batching, the completion jwt,
+   * `keep_assets` - from the start, behind `plan.assets ? …`. This adapter
+   * never set `plan.assets`, so the branch never ran and every deploy shipped
+   * the Worker script alone.
+   *
+   * It does not look like a failure from outside, which is why it survived:
+   * `/` still answers 200 because the asset store misses and the request falls
+   * through to the Worker, which renders the page server-side. Only the hashed
+   * assets 404, so the site is up, unstyled, with no client JavaScript - and
+   * the deploy that did it took three seconds for seven hundred files.
+   * Measured on `ui.alepha.dev`, 2026-09-08.
+   */
+  describe("the static assets", () => {
+    const withAssets = async (fs: MemoryFileSystemProvider) => {
+      await fs.writeFile(
+        "/deploy/dist/wrangler.jsonc",
+        JSON.stringify({
+          name: "my-app",
+          main: "./main.cloudflare.js",
+          compatibility_date: "2025-11-17",
+          rules: [{ type: "ESModule", globs: ["index.js"] }],
+          assets: {
+            directory: "./public",
+            binding: "ASSETS",
+            not_found_handling: "404-page",
+            run_worker_first: ["/api/*"],
+          },
+        }),
+      );
+      await fs.writeFile(
+        "/deploy/dist/main.cloudflare.js",
+        "export default {};",
+      );
+      await fs.writeFile("/deploy/dist/index.js", "export const a = 1;");
+      await fs.writeFile(
+        "/deploy/dist/public/asset.abc.css",
+        "body{color:red}",
+      );
+      await fs.writeFile("/deploy/dist/public/nested/logo.svg", "<svg/>");
+    };
+
+    it("sends every file under public/, keyed by the path it is served at", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await withAssets(fs);
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      const assets = calls[0]!.assets;
+      // Keys are served paths with a leading slash, and a nested file keeps
+      // its directories: `/nested/logo.svg` is where the browser asks for it.
+      expect(Object.keys(assets.manifest).sort()).toEqual([
+        "/asset.abc.css",
+        "/nested/logo.svg",
+      ]);
+      // The manifest is a negotiation, so each entry carries the hash
+      // Cloudflare compares against and the size it expects.
+      expect(assets.manifest["/asset.abc.css"]).toEqual({
+        hash: expect.stringMatching(/^[0-9a-f]{32}$/),
+        size: 15,
+      });
+    });
+
+    it("reads a file back by its manifest key, rather than holding the set", async ({
+      expect,
+    }) => {
+      // ⚠️ `read` is a callback for a reason `CloudflareDeployAssets` states
+      // itself: batching exists so the whole asset set is never resident, and
+      // a map here would put it back.
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await withAssets(fs);
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      const bytes = await calls[0]!.assets.read("/nested/logo.svg");
+      expect(new TextDecoder().decode(bytes)).toBe("<svg/>");
+    });
+
+    it("carries the app's own asset config, and not wrangler's local keys", async ({
+      expect,
+    }) => {
+      // `directory` and `binding` are how wrangler finds the files on a disk
+      // that the API never sees; `not_found_handling` and `run_worker_first`
+      // are behaviour and have to reach Cloudflare, or every miss becomes a
+      // soft 404 carrying the app's NotFound component under a 200.
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await withAssets(fs);
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.assets.config).toEqual({
+        not_found_handling: "404-page",
+        run_worker_first: ["/api/*"],
+      });
+    });
+
+    it("binds ASSETS, so env.ASSETS.fetch() exists at runtime", async ({
+      expect,
+    }) => {
+      // The binding is a separate fact from the upload: `not_found_handling`
+      // governs `env.ASSETS.fetch()` from inside the Worker, and an app that
+      // calls it against a missing binding throws at runtime rather than at
+      // deploy time.
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await withAssets(fs);
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.bindings).toContainEqual({
+        type: "assets",
+        name: "ASSETS",
+      });
+    });
+
+    it("sends no assets for an app that has none", async ({ expect }) => {
+      // An API-only Worker has no `public/` and no `assets` block, and must
+      // not open an upload session for an empty manifest.
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployable(fs, "./main.cloudflare.js");
+      const calls = recordingDeployer(adapter);
+
+      await adapter.deploy(context(naming), run);
+
+      expect(calls[0]!.assets).toBeUndefined();
+    });
+  });
   describe("what the copy's address implies", () => {
     /**
      * ⚠️ `CloudflareAdapter` has derived `PUBLIC_URL` from the configured
