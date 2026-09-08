@@ -294,7 +294,8 @@ export class ReleaseTools {
   release_attach = $tool({
     description:
       "Put an epic or a quest in a release. Pass `epic_number` for an epic or `quest_shortId` for loose work; each is named by its own per-project number, only the release is named by tag. " +
-      "An epic belongs to at most one release, so attaching it here takes it out of whichever release it was in. Refused when the release has been published.",
+      "An epic belongs to at most one release, so attaching it here takes it out of whichever release it was in. Refused when the release has been published. " +
+      "⚠️ An epic carries its QUESTS with it: every quest in the epic that has no release of its own, or that was in the epic's previous one, is put in this release, and a quest filed into the epic later inherits it too. A quest that NAMES a different release keeps it - a quest may deliberately ship later than its epic - and the result counts those under `kept` so the disagreement is visible.",
     title: "Attach to release",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -310,7 +311,8 @@ export class ReleaseTools {
 
   release_detach = $tool({
     description:
-      "Take an epic or a quest out of a release, leaving it in no release at all. Refused when the release has been published: a published release's contents are its record, and removing something would quietly edit what it shipped.",
+      "Take an epic or a quest out of a release, leaving it in no release at all. Refused when the release has been published: a published release's contents are its record, and removing something would quietly edit what it shipped. " +
+      "⚠️ Detaching an EPIC takes its quests out with it, the same way attaching puts them in: a cascade that only ever added would leave the epic and its quests disagreeing one release later. Only the quests that were following it - a quest naming a different release keeps it.",
     title: "Detach from release",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {

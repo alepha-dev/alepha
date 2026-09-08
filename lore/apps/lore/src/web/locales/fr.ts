@@ -840,6 +840,11 @@ export default {
   "release.detail.editTargetDate": "Date visée",
   "release.contents.title": "Contenu",
   "release.contents.remove": "Retirer",
+  "release.cascade.moved.one": "1 quête a suivi l'épopée.",
+  "release.cascade.moved.many": "$1 quêtes ont suivi l'épopée.",
+  "release.cascade.kept": "$1 gardent leur propre version.",
+  "release.cascade.refused":
+    "$1 n'ont pas pu suivre et restent où elles étaient, dans une version publiée : $2",
   "release.contents.uncategorized": "Non classé",
   "release.contents.empty":
     "Cette version est vide. Une version se remplit depuis le travail : rattachez-y une épopée ou une quête depuis l'épopée ou la quête.",

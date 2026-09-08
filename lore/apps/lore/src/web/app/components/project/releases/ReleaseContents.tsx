@@ -29,6 +29,7 @@ import {
 import ReleaseQuestRow from "./ReleaseQuestRow.tsx";
 import ReleaseTickBar from "./ReleaseTickBar.tsx";
 import { useCountLabel } from "./useCountLabel.ts";
+import { useReleaseCascadeToast } from "./useReleaseCascadeToast.ts";
 
 export interface ReleaseContentsProps {
   releaseId: number;
@@ -96,6 +97,9 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
   const [areas] = useStore(currentAreasAtom);
   const count = useCountLabel();
   const epicApi = useClient<EpicController>();
+  // Detaching an epic takes its quests out of the release with it
+  // (#Q2111), which is a lot of rows to move without a word.
+  const reportCascade = useReleaseCascadeToast();
 
   // A published release is frozen for everyone, and a rank that cannot update
   // an epic is read-only on an open one - so both collapse into the flag the
@@ -114,11 +118,12 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
 
   const detachEpic = async (epicId: number) => {
     try {
-      await epicApi.updateEpic({
+      const updated = await epicApi.updateEpic({
         params: { id: epicId },
         body: { releaseId: null },
       });
       props.onChanged();
+      reportCascade(updated.releaseCascade);
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     }
