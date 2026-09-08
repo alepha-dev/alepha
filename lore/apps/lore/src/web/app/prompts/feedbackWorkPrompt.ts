@@ -18,6 +18,12 @@
  * creates one, linked to the feedback item, and ends by telling the
  * reporter what shipped.
  *
+ * ⚠️ **Step 1's "and stop" carries the reply clause**, for the reason
+ * {@link questWorkPromptDefault} does: one blocking point, so a clause
+ * rather than a section. The two audiences are genuinely different here,
+ * which is why the sentence names both - the comment is addressed to the
+ * reporter, the reply to whoever sent the agent.
+ *
  * See {@link epicReviewPromptDefault} for why this text is English and
  * carries no secrets.
  */
@@ -32,7 +38,7 @@ The report: {{url}}
 
 ## The job
 
-1. Reproduce, or find the code that would produce, what the reporter describes, and decide what the change is. If the report is unclear or you disagree with it, ask in its discussion (\`feedback_comment_add\`) and stop.
+1. Reproduce, or find the code that would produce, what the reporter describes, and decide what the change is. If the report is unclear or you disagree with it, ask in its discussion (\`feedback_comment_add\`) and stop. Put the question in your reply as well: what the report asks, what you found in the code, and what you would do about it. The comment reaches the reporter; your reply reaches the person who sent you here.
 2. Accept it if it is still pending (\`feedback_accept\`), then \`quest_create\` with \`feedback_shortId\` {{number}} and \`accept: true\`: a title, a description of what will change, an area from \`project_context\`, and the objectives.
 3. Work in a git worktree of your own, on a branch named after the quest. Never on main.
 4. Do the work. Tick objectives with \`quest_objective_set\`. Run the project's verification commands (its CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
