@@ -259,11 +259,20 @@ export class CloudflareDeployClient {
         body[hash] = this.manifest.base64(await assets.read(key));
       }
 
-      const answer = await this.client.workers.assets.upload.create({
-        account_id: this.accountId,
-        base64: true,
-        body,
-      });
+      // ⚠️ **The session's JWT, not the estate's API token.** This is the one
+      // call in the whole deploy whose credential is not the client's own: the
+      // upload session answers a token scoped to itself, and this endpoint
+      // authenticates with that. Sending the API token instead is answered
+      // with a flat `401 Unauthorized` that names nothing, and the client was
+      // built with the API token, so without this override that is what goes.
+      const answer = await this.client.workers.assets.upload.create(
+        {
+          account_id: this.accountId,
+          base64: true,
+          body,
+        },
+        { headers: { authorization: `Bearer ${completion}` } },
+      );
       // Only the LAST response carries the completion token; the others answer
       // an empty result, so keeping the newest non-empty one is the rule.
       completion = answer.jwt ?? completion;
@@ -655,11 +664,19 @@ export interface CloudflareDeployApi {
     };
     assets: {
       upload: {
-        create: (params: {
-          account_id: string;
-          base64: true;
-          body: Record<string, string>;
-        }) => Promise<{ jwt?: string }>;
+        create: (
+          params: {
+            account_id: string;
+            base64: true;
+            body: Record<string, string>;
+          },
+          /**
+           * ⚠️ Carries the session JWT, because this endpoint does not accept
+           * the account's API token. Every other call in this interface takes
+           * no options for exactly that reason.
+           */
+          options?: { headers: Record<string, string> },
+        ) => Promise<{ jwt?: string }>;
       };
     };
     domains: {

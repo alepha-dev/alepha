@@ -339,6 +339,17 @@ jobs:
   # The cutover was a Worker *Route* (`alepha.dev/*`), not a Custom Domain, so
   # the apex DNS records were never touched - see the `platform()` block in
   # `apps/docs/alepha.config.ts` for why, and for how to roll back.
+  #
+  # ⚠️ **This job did NOT move to `lore apps deploy` with the ui job beside it,
+  # and the reason is a hard limit rather than a preference.** Lore's deploy
+  # runner unpacks the artifact into memory inside Lore's own Worker, and this
+  # site is 60 MB inflated across 1629 files - the 8.9 MB tarball is well
+  # inside the 20 MB upload cap, and the INFLATED tree is what does not fit.
+  # A real attempt on 2026-09-08 died with `Worker exceeded memory limit` in
+  # `lore-production`'s logs, and the deployment row is still reading
+  # "Unpacking" because the isolate went before it could write its own failure.
+  # Moving this job needs an incremental unpack-and-upload in `DeployRunner`,
+  # not a flag here.
   # ---------------------------------------------------------------------------
   deploy-docs-production:
     # Doesn't require e2e - only that the codebase is lint/typecheck-clean and
@@ -399,15 +410,25 @@ jobs:
         run: yarn alepha platform up --env production --prebuilt
 
   # ---------------------------------------------------------------------------
-  # Cloudflare Workers deploy of the component showcase at `ui.alepha.dev`.
+  # The component showcase at `ui.alepha.dev`, deployed THROUGH Lore.
   #
-  # A Custom Domain rather than a Worker Route, which is the opposite of the
-  # docs job above. Docs needs a Route because the apex still holds the GitHub
-  # Pages A and AAAA records and a Custom Domain owns its DNS record, so
-  # Cloudflare would refuse to create one without deleting those first.
-  # `ui.alepha.dev` is a fresh subdomain with nothing to preserve, so the simpler
-  # form applies and Cloudflare manages the record and the certificate. That
-  # choice lives in `apps/ui/alepha.config.ts` as the ABSENCE of a `zone`.
+  # ⚠️ **No Cloudflare credentials, and that is the point of the migration.**
+  # The account is an estate lent to the `alepha` project, and the copy's own
+  # row says which one - so a runner that is compromised holds a Lore key
+  # scoped to this project rather than a token that can reach every Worker on
+  # the account. `LORE_API_KEY` is the only secret this job has.
+  #
+  # ⚠️ `SIGIL_KEY` is gone from here too. It lives in the copy's Lore
+  # environment now, uploaded with the script rather than pushed after it, so
+  # there is no window in which the new build runs against the old secret set.
+  #
+  # One step, unlike the docs job above: `lore apps deploy` with no `--tag`
+  # builds, pushes and deploys in that order, and nothing writes into this
+  # app's output after its build.
+  #
+  # The Worker is `alepha-ui-production` - Lore composes `<project>-<app>-<env>`
+  # where `alepha platform` composed `<app>-<env>`. `ui.alepha.dev` is a Custom
+  # Domain that Lore attaches on every deploy.
   #
   # Gated on `verify` only, like docs and unlike Lore: the showcase has no
   # database, no auth and no migrations, so an e2e failure elsewhere in the
@@ -421,21 +442,6 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Scopes the app's own secrets to this job. Without it `secrets.SIGIL_*`
-    # resolve to empty and the deploy pushes nothing - the worker keeps whatever
-    # it had, so the failure is a site that silently stops reporting rather than
-    # anything that goes red.
-    environment: ui-production
-
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      # The key is the whole enrolment: it authorises the reporting and names
-      # the project, so nothing has to be kept in sync with it. Absent, the
-      # sigil module goes inert rather than failing, so a missing one here costs
-      # telemetry and nothing else.
-      SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
-      SIGIL_CONFIG: ${{ secrets.SIGIL_CONFIG }}
 
     steps:
       - name: Git Checkout
@@ -453,13 +459,15 @@ jobs:
       - name: Prepare
         run: yarn copy
 
-      # Built and deployed in one step, unlike the docs job. That one splits
-      # them because `gen:llms` writes into `dist/public` after the bundle and
-      # `platform up` cleans `dist/` before building; nothing writes into this
-      # app's output after its build, so there is nothing to protect.
+      # Run inside the app, because `lore apps deploy` reads the name from the
+      # `package.json` of the directory it runs in - which is also how it finds
+      # the copy to place the build on. The project comes from the
+      # workflow-level `LORE_PROJECT` at the top of this file.
       - name: Deploy
         working-directory: apps/ui
-        run: yarn alepha platform up --env production
+        run: yarn lore apps deploy --env production
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
   # ---------------------------------------------------------------------------
   # shop: the artifact only, and the job name says where this is going.

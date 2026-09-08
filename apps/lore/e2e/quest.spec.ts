@@ -2538,32 +2538,28 @@ test.describe("Quest hold", () => {
   });
 
   /**
-   * #Q2082, reported as "I want one place listing what is waiting on a
-   * decision from my side, so a blocked thread is not something I have to
-   * remember to go looking for".
+   * ⚠️ The status filter is the ONLY way to a held quest. #Q2082 gave them a
+   * sidebar entry too and it was removed the same day: a row that reads
+   * nothing on a project with nothing held spends a permanent nav slot on a
+   * state most projects are never in, and the filter already answers it.
    *
-   * Everything about a hold shipped the day before it was asked for. What
-   * was missing was the way to find them: nothing counted held quests and
-   * nothing linked to them, so the only route in was the quests table plus a
-   * status filter the reporter never found.
-   *
-   * ⚠️ The label is "On hold" rather than "Waiting on you", because a hold
-   * has no direction: "blocked on a decision" and "blocked on a deploy
-   * window" are the same status, and the reason lives in the Discussion as a
-   * comment. Naming a person the data cannot name would be a promise the
-   * badge does not keep.
+   * So `?status=held` has to survive a load, which it did not until that
+   * quest. `boardFiltersSchema.status` listed four values while the filter's
+   * own dropdown offered five, and `queryToFilters` degrades a value the
+   * schema refuses to the unfiltered list rather than to an error - silently
+   * and correctly, showing every quest in the project. Nothing linked to one
+   * of those filters back then, so nobody saw it; the filter control writes
+   * that same URL, so a reload is now the way in.
    */
-  test("a held quest gets a sidebar entry, a count, and a filtered list", async ({
-    page,
-  }) => {
+  test("the quests list filters to held, from the URL", async ({ page }) => {
     test.setTimeout(90_000);
 
     const t = Date.now();
-    const projectTitle = `HN${t}`.slice(0, 20);
+    const projectTitle = `HF${t}`.slice(0, 20);
     const heldTitle = `Stuck${t}`;
     const openTitle = `Running${t}`;
 
-    await registerAndVerify(page, `heldnav${t}@example.com`, "HeldNav123!");
+    await registerAndVerify(page, `heldfilter${t}@example.com`, "HeldFil123!");
     const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
       page,
       projectTitle,
@@ -2573,7 +2569,7 @@ test.describe("Quest hold", () => {
       await apiPost(page, "createQuest", {
         projectId,
         title,
-        description: "Seeded for the On hold entry",
+        description: "Seeded for the held filter",
         area: "Main",
         priority: "medium",
         objectives: [],
@@ -2581,30 +2577,13 @@ test.describe("Quest hold", () => {
       });
     }
 
-    const entry = page.locator(`a[href="/${projectSlug}/quests?status=held"]`);
-    /*
-     * ⚠️ The badge is a SIBLING of the link, not inside it: `app-shell`
-     * renders `<SidebarMenuItem>{row}{badge}</SidebarMenuItem>`. Asserting
-     * the count on the anchor is a check that passes while there is no badge
-     * and keeps passing once there is one, which is how this test first went
-     * green on a feature that did not work.
-     */
-    const row = page.locator(
-      `li:has(> a[href="/${projectSlug}/quests?status=held"])`,
-    );
-
     await page.goto(`/${projectSlug}/quests`);
     await expect(page.getByText(openTitle).first()).toBeVisible({
       timeout: 15_000,
     });
 
-    // The entry is there before anything is held. It exists to BE zero: an
-    // entry that appears only when something is stuck is a page you have to
-    // discover, which is the thing that was reported.
-    await expect(entry).toHaveCount(1);
-    await expect(row).not.toContainText("1");
-
-    // Hold one, through the UI the reporter uses.
+    // Held through the UI the reporter uses, not through the API, so the
+    // status the filter reads is the one a hold actually writes.
     await page.getByText(heldTitle).first().click();
     await page.getByRole("button", { name: /put on hold/i }).click();
     await page
@@ -2615,19 +2594,19 @@ test.describe("Quest hold", () => {
       .last()
       .click();
 
-    // The badge moves without a reload: `useQuestMutations.refreshCount`
-    // rereads both numbers after every transition.
-    await expect(row).toContainText("1", { timeout: 15_000 });
+    // The hold has landed once the lifecycle slot offers the way out of it.
+    // Navigating straight off the click outruns the save, and the filtered
+    // list then correctly shows nothing.
+    await expect(
+      page.getByRole("button", { name: /lift hold/i }).first(),
+    ).toBeVisible({ timeout: 15_000 });
 
-    await test.step("the entry opens the list filtered to held", async () => {
-      await entry.click();
-      await page.waitForURL(/\?status=held/, { timeout: 15_000 });
+    await page.goto(`/${projectSlug}/quests?status=held`);
 
-      await expect(page.getByText(heldTitle).first()).toBeVisible({
-        timeout: 15_000,
-      });
-      // Filtered, not merely navigated: the quest that is not held is gone.
-      await expect(page.getByText(openTitle)).toHaveCount(0);
+    await expect(page.getByText(heldTitle).first()).toBeVisible({
+      timeout: 15_000,
     });
+    // Filtered, not merely navigated: the quest that is not held is gone.
+    await expect(page.getByText(openTitle)).toHaveCount(0);
   });
 });

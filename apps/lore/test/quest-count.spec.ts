@@ -116,53 +116,6 @@ describe("QuestController.countOpenQuests", () => {
     expect(res.data.count).toBe(1);
   });
 
-  /**
-   * The `held` number the On hold sidebar entry badges (#Q2082).
-   *
-   * ⚠️ A SUBSET of `count`, not a separate population. A held quest is
-   * blocked rather than out of scope, so it stays open and both numbers count
-   * it - the same rule `quest_list` follows by returning held quests in its
-   * default view. The two badges sit next to each other and are meant to
-   * overlap: Quests 2, On hold 1 reads as "one of the two is stuck".
-   */
-  it("counts a held quest in both numbers, and drops it from held on unhold", async ({
-    expect,
-  }) => {
-    const user = await createUser(ctx);
-    const projectId = await createProject(ctx, user);
-
-    await createQuest(ctx, user, projectId, "running");
-    const stuck = await createQuest(ctx, user, projectId, "stuck");
-
-    const before = await ctx.quests.countOpenQuests.fetch(
-      { params: { projectId } },
-      { user },
-    );
-    expect(before.data.count).toBe(2);
-    expect(before.data.held).toBe(0);
-
-    await ctx.quests.holdQuest.fetch(
-      { params: { id: stuck.id }, body: { reason: "waiting on a decision" } },
-      { user },
-    );
-
-    const afterHold = await ctx.quests.countOpenQuests.fetch(
-      { params: { projectId } },
-      { user },
-    );
-    expect(afterHold.data.count).toBe(2);
-    expect(afterHold.data.held).toBe(1);
-
-    await ctx.quests.unholdQuest.fetch({ params: { id: stuck.id } }, { user });
-
-    const afterUnhold = await ctx.quests.countOpenQuests.fetch(
-      { params: { projectId } },
-      { user },
-    );
-    expect(afterUnhold.data.count).toBe(2);
-    expect(afterUnhold.data.held).toBe(0);
-  });
-
   it("counts accepted quests as open", async ({ expect }) => {
     const user = await createUser(ctx);
     const projectId = await createProject(ctx, user);
