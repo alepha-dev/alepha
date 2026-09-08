@@ -51,6 +51,70 @@ describe("unpacking an artifact", () => {
     );
   });
 
+  /**
+   * ⚠️ **The reason this option exists is a 128 MB isolate, not tidiness.**
+   *
+   * Writing every entry meant a site's whole `dist/public` was resident before
+   * the build read a byte: `apps/docs` is 49 MB across 1629 files, and the
+   * deploy died with `Worker exceeded memory limit` while unpacking. A skipped
+   * entry is still walked and still offered, so a caller can hash it and let
+   * it go.
+   */
+  describe("an entry the caller does not want stored", () => {
+    it("is offered with its bytes and never written", async ({ expect }) => {
+      const { fs, reader } = setup();
+      const seen: Array<{ path: string; text: string }> = [];
+
+      const result = await reader.extract(
+        await archive({
+          "dist/index.js": "console.log(1);",
+          "dist/public/app.css": "body{color:red}",
+          "dist/public/nested/logo.svg": "<svg/>",
+        }),
+        fs,
+        "/deploy",
+        {
+          skip: (path) => path.startsWith("/deploy/dist/public/"),
+          onSkipped: (path, body) => {
+            seen.push({ path, text: new TextDecoder().decode(body) });
+          },
+        },
+      );
+
+      expect(seen).toEqual([
+        { path: "/deploy/dist/public/app.css", text: "body{color:red}" },
+        { path: "/deploy/dist/public/nested/logo.svg", text: "<svg/>" },
+      ]);
+      expect(result.skipped).toBe(2);
+      // Still counted as walked, so a caller reading `files` sees the archive.
+      expect(result.files).toBe(3);
+      // And the one entry that was wanted is the only one on disk.
+      expect(await fs.exists("/deploy/dist/index.js")).toBe(true);
+      expect(await fs.exists("/deploy/dist/public/app.css")).toBe(false);
+    });
+
+    it("does not spend the extraction budget on what it never keeps", async ({
+      expect,
+    }) => {
+      // `bytes` is what a deploy is holding, and it is the number
+      // MAX_EXTRACTED_BYTES bounds. Counting streamed assets against it would
+      // refuse exactly the artifacts this option exists to make deployable.
+      const { fs, reader } = setup();
+
+      const result = await reader.extract(
+        await archive({
+          "dist/index.js": "abc",
+          "dist/public/big.txt": "x".repeat(5000),
+        }),
+        fs,
+        "/deploy",
+        { skip: (path) => path.includes("/dist/public/") },
+      );
+
+      expect(result.bytes).toBe(3);
+    });
+  });
+
   it("keeps a zero-length file, which is not the same as an absent one", async ({
     expect,
   }) => {
