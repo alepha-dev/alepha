@@ -95,6 +95,7 @@ async function createTestQuest(
     title: string;
     area: string;
     priority: "optional" | "low" | "medium" | "high";
+    tags: string[];
   }> = {},
 ) {
   const response = await ctx.questController.createQuest.fetch(
@@ -104,6 +105,7 @@ async function createTestQuest(
         description: "<p>Test description</p>",
         area: overrides.area ?? "core",
         priority: overrides.priority ?? "medium",
+        tags: overrides.tags ?? [],
         projectId,
         objectives: [],
       },
@@ -200,6 +202,73 @@ describe("ProjectReportsController", () => {
       ).toBeGreaterThanOrEqual(3);
       expect(Array.isArray(res.data.byArea)).toBe(true);
       expect(Array.isArray(res.data.aging)).toBe(true);
+    });
+
+    /**
+     * The tag breakdown (#Q2083), and the property that separates it from
+     * every other breakdown on the page.
+     *
+     * ⚠️ A quest carries SEVERAL tags, so it is counted once per tag and the
+     * rows do not sum to the project's quest count. `byArea` and
+     * `byPriority` partition the project; this one deliberately does not,
+     * which is why the section says so under its heading.
+     */
+    it("getReportsQuests counts a quest under each of its tags", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+
+      const both = await createTestQuest(ctx, owner, project.id, {
+        title: "Tagged twice",
+        area: "core",
+        tags: ["bug", "regression"],
+      });
+      await ctx.questController.acceptQuest.fetch(
+        { params: { id: both.id } },
+        { user: owner },
+      );
+      await ctx.questController.completeQuest.fetch(
+        { params: { id: both.id }, body: {} },
+        { user: owner },
+      );
+
+      await createTestQuest(ctx, owner, project.id, {
+        title: "Still open",
+        area: "core",
+        tags: ["bug"],
+      });
+
+      // No tags at all: it must not become an "Unassigned" bar the way an
+      // area does. A quest with no tag belongs to no tag.
+      await createTestQuest(ctx, owner, project.id, {
+        title: "Untagged",
+        area: "core",
+      });
+
+      const res = await ctx.reportsController.getReportsQuests.fetch(
+        { params: { id: project.id } },
+        { user: owner },
+      );
+
+      const byTag = Object.fromEntries(
+        res.data.byTag.map((row) => [row.tag, row]),
+      );
+
+      // The completed quest is counted under BOTH of its tags.
+      expect(byTag.bug).toEqual({ tag: "bug", completed: 1, remaining: 1 });
+      expect(byTag.regression).toEqual({
+        tag: "regression",
+        completed: 1,
+        remaining: 0,
+      });
+      // Three quests, four tag-counts: the overlap this axis is for.
+      expect(res.data.byTag).toHaveLength(2);
+      const counted = res.data.byTag.reduce(
+        (sum, row) => sum + row.completed + row.remaining,
+        0,
+      );
+      expect(counted).toBe(3);
     });
 
     it("getReportsMembers returns the leaderboard and contribution series", async ({
