@@ -1,22 +1,16 @@
-import { Control } from "@alepha/ui/components/control/control";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
-import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
-import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { Lock, Plus, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Lock, X } from "lucide-react";
+import { useMemo } from "react";
 
 import type { EpicController } from "@/api/controllers/EpicController.ts";
-import type { QuestController } from "@/api/controllers/QuestController.ts";
-import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import type { ReleaseContentQuest } from "@/api/schemas/releaseContentQuestSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentAreasAtom } from "@/web/app/atoms/currentAreasAtom.ts";
-import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { AreaDotColor } from "../../shared/areaColor.ts";
@@ -35,15 +29,6 @@ import {
 import ReleaseQuestRow from "./ReleaseQuestRow.tsx";
 import ReleaseTickBar from "./ReleaseTickBar.tsx";
 import { useCountLabel } from "./useCountLabel.ts";
-
-/**
- * The attach picker's one-field form. It holds an id and is emptied again the
- * moment the attach lands, so it is a gesture rather than a value: the field
- * is reset every time the picker opens.
- */
-const attachFormSchema = z.object({
-  target: z.number().optional(),
-});
 
 export interface ReleaseContentsProps {
   releaseId: number;
@@ -66,8 +51,9 @@ export interface ReleaseContentsProps {
    */
   contents: ReleaseContentsData | null;
   /**
-   * Fires after an attach or a detach, so the shell refetches the contents,
-   * the release rollup and the changelog together.
+   * Fires after a detach, so the shell refetches the contents, the release
+   * rollup and the changelog together. Attaching used to fire it too; it now
+   * happens on the work's own surfaces, which this page never sees.
    */
   onChanged: () => void;
 }
@@ -107,117 +93,24 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const router = useRouter<AppRouter>();
-  const [project] = useStore(currentProjectAtom);
   const [areas] = useStore(currentAreasAtom);
   const count = useCountLabel();
   const epicApi = useClient<EpicController>();
-  const questApi = useClient<QuestController>();
 
-  // A published release is frozen for everyone, and a rank that holds neither
-  // write is read-only on an open one - so both collapse into the flag the
-  // three attach/detach blocks below already read.
-  const readOnly =
-    props.readOnly ||
-    !(epicApi.updateEpic.can() && questApi.updateQuestById.can());
+  // A published release is frozen for everyone, and a rank that cannot update
+  // an epic is read-only on an open one - so both collapse into the flag the
+  // detach button below reads.
+  //
+  // ⚠️ `updateQuestById` is deliberately NOT part of this any more. It was,
+  // while the header offered Add quest; with that gone the only write left
+  // here is detaching an EPIC, and folding a quest permission into it hid
+  // Remove from a rank holding `epic:write` without `quest:update`.
+  const readOnly = props.readOnly || !epicApi.updateEpic.can();
 
   const epics = props.contents?.epics ?? [];
   const looseQuests = props.contents?.looseQuests ?? [];
-  const [attachableEpics, setAttachableEpics] = useState<EpicResource[]>([]);
-  const [attachableQuests, setAttachableQuests] = useState<
-    Array<{ id: number; shortId: number; title: string }>
-  >([]);
-  const [adding, setAdding] = useState<"epic" | "quest" | null>(null);
 
   const areaColor = useMemo(() => new AreaDotColor(areas), [areas]);
-
-  const attachForm = useForm({
-    schema: attachFormSchema,
-    keepDirty: false,
-    handler: async () => {},
-    onChange: (_key, value) => {
-      const id = value as number | undefined;
-      if (id == null) return;
-      void (adding === "epic" ? attachEpic(id) : attachQuest(id));
-    },
-  });
-
-  // The picker is one control serving two lists, and it outlives both: the
-  // form lives on this component while the `<Control>` only renders while
-  // `adding` is set. Without this it reopens still showing the last thing
-  // attached.
-  const resetAttachForm = () => {
-    attachForm.setInitialValues({ target: undefined }, { keepDirty: false });
-  };
-
-  const openAddEpic = async () => {
-    if (!project) return;
-    resetAttachForm();
-    setAdding("epic");
-    try {
-      const all = await epicApi.getEpics({ params: { projectId: project.id } });
-      // Only epics that are in NO release: an epic belongs to at most one, so
-      // offering one that is already placed would silently move it out of
-      // wherever it was.
-      setAttachableEpics(all.filter((epic) => epic.releaseId == null));
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-      setAdding(null);
-    }
-  };
-
-  const openAddQuest = async () => {
-    if (!project) return;
-    resetAttachForm();
-    setAdding("quest");
-    try {
-      // Open quests only, and only ones not already in a release. A completed
-      // quest can be attached from its own page, but offering it here would
-      // suggest a release is a place to file finished work.
-      const page = await questApi.getQuests({
-        params: { projectId: project.id },
-        query: { status: "new", size: 50 } as never,
-      });
-      setAttachableQuests(
-        (
-          page.content as never as Array<{
-            id: number;
-            shortId: number;
-            title: string;
-            releaseId?: number;
-          }>
-        ).filter((quest) => quest.releaseId == null),
-      );
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-      setAdding(null);
-    }
-  };
-
-  const attachQuest = async (questId: number) => {
-    try {
-      await questApi.updateQuestById({
-        params: { id: questId },
-        body: { releaseId: props.releaseId },
-      });
-      setAdding(null);
-      props.onChanged();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
-
-  const attachEpic = async (epicId: number) => {
-    try {
-      await epicApi.updateEpic({
-        params: { id: epicId },
-        body: { releaseId: props.releaseId },
-      });
-      setAdding(null);
-      props.onChanged();
-    } catch (error) {
-      toaster.error(error instanceof Error ? error.message : String(error));
-    }
-  };
 
   const detachEpic = async (epicId: number) => {
     try {
@@ -261,10 +154,15 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
         </span>
         <div className="flex-1" />
 
-        {/* Published: say what happened, rather than hiding two buttons and
-            leaving the reader to notice their absence. `props.readOnly`, not
-            the folded flag below: this line says the release is frozen, which
-            is not what a rank without the writes means. */}
+        {/* Published: say what happened, rather than dropping the Remove
+            button from every card below and leaving the reader to notice its
+            absence. It earned this line when it hid the two Add buttons that
+            used to sit here; those are gone, and the per-card Remove is what
+            it now explains.
+
+            `props.readOnly`, not the folded flag below: this line says the
+            release is frozen, which is not what a rank without the write
+            means. */}
         {props.readOnly && (
           <span className="text-muted-foreground flex items-center gap-1.5 text-[11.5px]">
             <Lock className="size-3.5" aria-hidden />
@@ -272,68 +170,14 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
           </span>
         )}
 
-        {/* Attaching from the release side. The write path is the same one
-            the epic page and the quest rail use; this is a second door to
-            it, not a second path. */}
-        {!readOnly && adding === null && (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void openAddEpic()}
-            >
-              <Plus className="size-3.5" />
-              {tr("release.contents.addEpic")}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void openAddQuest()}
-            >
-              <Plus className="size-3.5" />
-              {tr("release.contents.addQuest")}
-            </Button>
-          </>
-        )}
-        {!readOnly && adding !== null && (
-          <div className="flex items-center gap-2">
-            <Control
-              input={attachForm.input.target}
-              label=""
-              placeholder={String(
-                tr(
-                  adding === "epic"
-                    ? "release.contents.pickEpic"
-                    : "release.contents.pickQuest",
-                ),
-              )}
-              inputProps={{
-                "aria-label": String(
-                  tr(
-                    adding === "epic"
-                      ? "release.contents.addEpic"
-                      : "release.contents.addQuest",
-                  ),
-                ),
-              }}
-              triggerClassName="h-8 w-56"
-              items={
-                adding === "epic"
-                  ? attachableEpics.map((epic) => ({
-                      value: String(epic.id),
-                      label: `${formatReference("epic", epic.number)} ${epic.title}`,
-                    }))
-                  : attachableQuests.map((quest) => ({
-                      value: String(quest.id),
-                      label: `${formatReference("quest", quest.shortId)} ${quest.title}`,
-                    }))
-              }
-            />
-            <Button variant="ghost" size="sm" onClick={() => setAdding(null)}>
-              {tr("common.cancel")}
-            </Button>
-          </div>
-        )}
+        {/* Adding from the release side is gone (#Q2113). A release is
+            filled from the work: the epic page and the quest rail carry the
+            control, and both tables carry it in the row menu (#Q2098). This
+            header used to hold a second door to the same write path, which
+            made the release read as the place a release is assembled.
+
+            Removing (below, per card) stays: detaching from the release side
+            is the one direction that has nowhere else to live. */}
       </div>
 
       {props.contents && epics.length === 0 && looseQuests.length === 0 && (
