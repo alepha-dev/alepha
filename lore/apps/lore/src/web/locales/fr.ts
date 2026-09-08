@@ -2300,7 +2300,10 @@ export default {
   "activity.resource.folio": "Folio",
   "activity.resource.feedback": "Retour",
   "activity.resource.member": "Membre",
-  "activity.resource.sigil": "Application",
+  "activity.resource.app": "Application",
+  "activity.resource.sigil": "Sigil",
+  // "Domaine", the word the rest of the French estate UI already uses.
+  "activity.resource.estate": "Domaine",
   "activity.resource.project": "Projet",
   "activity.fields": "a modifié $1",
   "activity.capability.enabled": "a activé $1",
