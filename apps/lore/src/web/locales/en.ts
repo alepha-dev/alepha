@@ -331,8 +331,13 @@ export default {
   "artifacts.empty.title": "No artifact yet",
   "artifacts.truncated":
     "This list is cut at the read limit, so it is not every artifact this project holds. Narrow it by app or by tag to see the rest.",
+  // ⚠️ A full sentence, ending in a full stop. It introduced a command block
+  // until feedback #P2154 moved the instructions into the docs, and a
+  // description trailing off in a colon in front of a link reads as a broken
+  // page.
   "artifacts.empty.description":
-    "Nothing has been pushed yet. Artifacts arrive from CI, so this page stays empty until a build is published:",
+    "Nothing has been pushed yet. Artifacts arrive from CI, so this page stays empty until a build is published.",
+  "artifacts.empty.docs": "How to push a build",
   "artifacts.filter.search": "Search",
   "artifacts.filter.searchLabel": "Search a tag or a commit",
   "artifacts.filter.app": "App",
@@ -1275,8 +1280,6 @@ export default {
   "app.artifacts.commit": "Built from commit $1",
   "app.artifacts.empty.description":
     "No artifacts pushed yet. Everything else on this page comes from the app itself; artifacts come from CI, so an app with no pipeline wired up shows none.",
-  "app.artifacts.empty.credential":
-    "Needs LORE_API_KEY in the environment that runs it. `latest` may be replaced; any other tag is written once.",
   "insights.errors.title": "Error budget",
   "insights.errors.note": "Distinct failures still happening in this app",
   "insights.errors.empty": "No failures reported in this window.",

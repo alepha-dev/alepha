@@ -934,165 +934,203 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         on the row beside the one each column body already has.
       */}
       <DndContext id={dndId} sensors={sensors} onDragEnd={handleDragEnd}>
-        {laneGroups.map(({ lane, grouped: laneGrouped }, laneIndex) => {
-          const laneCollapsed = collapsedLanes.has(lane.key);
-          return (
-            <div
-              key={lane.key || "all"}
-              data-testid={laneMode === "none" ? undefined : "kanban-lane"}
-              data-lane={lane.key}
-              className={
-                laneMode === "none"
-                  ? "flex min-h-0 flex-1 flex-col"
-                  : "flex min-h-0 shrink-0 flex-col"
-              }
-            >
-              {laneMode !== "none" && (
-                <button
-                  type="button"
-                  data-testid="kanban-lane-header"
-                  aria-expanded={!laneCollapsed}
-                  onClick={() =>
-                    setCollapsedLanes((prev) => {
-                      const next = new Set(prev);
-                      if (!next.delete(lane.key)) next.add(lane.key);
-                      return next;
-                    })
-                  }
-                  className="border-border hover:bg-muted flex w-full shrink-0 items-center gap-2 border-b px-3 py-1.5 text-left transition-colors"
-                >
-                  <ChevronDown
-                    className={`text-muted-foreground size-3.5 shrink-0 transition-transform ${
-                      laneCollapsed ? "-rotate-90" : ""
-                    }`}
-                  />
-                  {/* The same area token the questline map and the card
-                      dot render, so one area is one colour everywhere. */}
-                  {lane.areaName && (
-                    <span
-                      className={`size-2 shrink-0 rounded-full ${areaColor.dotClass(lane.areaName)}`}
-                    />
-                  )}
-                  <span className="truncate text-sm font-semibold">
-                    {lane.label}
-                  </span>
-                  <span className="text-muted-foreground text-xs">
-                    {lane.quests.length}
-                  </span>
-                </button>
-              )}
+        {/*
+          ⚠️ The lane stack scrolls, and ONLY when there are lanes.
 
-              {!laneCollapsed && (
-                <div
-                  data-testid="kanban-columns"
-                  className="flex flex-1 overflow-x-auto overflow-y-hidden"
-                >
-                  {columns.map((descriptor, idx) => {
-                    // Lane-scoped identity: the droppable id has to be
-                    // unique across the whole board, but `kind` and
-                    // `subColumn` stay untouched so the drag handler's
-                    // lifecycle logic does not learn about lanes at all.
-                    const scoped = lane.key
-                      ? { ...descriptor, key: `${lane.key}|${descriptor.key}` }
-                      : descriptor;
-                    return (
-                      <KanbanColumn
-                        draggable={canMoveCards}
-                        key={scoped.key}
-                        descriptor={scoped}
-                        quests={laneGrouped[descriptor.key] ?? []}
-                        onSelect={openCard}
-                        areaDotClass={(area) => areaColor.dotClass(area)}
-                        tagColors={project.tagColors}
-                        blockedIds={blockedIds}
-                        agingOf={(q) => aging.levelOf(q, dt)}
-                        collapsed={collapsed.has(scoped.key)}
-                        onToggleCollapsed={() =>
-                          setCollapsed((prev) => {
-                            const next = new Set(prev);
-                            if (!next.delete(scoped.key)) next.add(scoped.key);
-                            return next;
-                          })
-                        }
-                        onCompose={
-                          descriptor.kind === "completed"
-                            ? undefined
-                            : (title, position) =>
-                                handleCompose(descriptor, title, position)
-                        }
-                        assigneeOf={(q) =>
-                          q.acceptedBy
-                            ? membersById.get(q.acceptedBy)
-                            : undefined
-                        }
-                        busy={
-                          columnOps.pending?.endsWith(`:${descriptor.label}`) ??
-                          false
-                        }
-                        onRename={
-                          canManageColumns
-                            ? (name) =>
-                                void columnOps.rename(descriptor.label, name)
-                            : undefined
-                        }
-                        onColor={
-                          canManageColumns
-                            ? (color) =>
-                                void columnOps.setColor(descriptor.label, color)
-                            : undefined
-                        }
-                        onDelete={
-                          canManageColumns
-                            ? () => void columnOps.remove(descriptor.label)
-                            : undefined
-                        }
-                        last={idx === columns.length - 1}
+          `DndContext` renders no DOM node, so before this the lanes were
+          direct children of the board root, which is `overflow-hidden`. A
+          grouped lane is `shrink-0` and takes its tallest column's height,
+          so lanes stacked past the viewport inside a container that clips
+          them, with nothing between to scroll and no scrollbar to say
+          anything was missing. Grouping by epic on a real project produces
+          23 lanes: the feature was not degraded, it was unusable.
+
+          The column body's own `overflow-y-auto` cannot help there. It caps
+          nothing in an auto-height parent, which is exactly why flat mode
+          worked by accident: its single lane is `flex-1`, so the ROOT caps
+          it and each column scrolls inside that.
+
+          Hence the branch. In flat mode this stays a transparent flex level
+          passing the cap through, because a y-scroll here would put a second
+          scrollbar on the board beside the one each column already has -
+          the trap the columns row below documents for the x axis.
+        */}
+        <div
+          data-testid="kanban-lane-stack"
+          className={
+            laneMode === "none"
+              ? "flex min-h-0 flex-1 flex-col"
+              : "flex min-h-0 flex-1 flex-col overflow-y-auto"
+          }
+        >
+          {laneGroups.map(({ lane, grouped: laneGrouped }, laneIndex) => {
+            const laneCollapsed = collapsedLanes.has(lane.key);
+            return (
+              <div
+                key={lane.key || "all"}
+                data-testid={laneMode === "none" ? undefined : "kanban-lane"}
+                data-lane={lane.key}
+                className={
+                  laneMode === "none"
+                    ? "flex min-h-0 flex-1 flex-col"
+                    : "flex min-h-0 shrink-0 flex-col"
+                }
+              >
+                {laneMode !== "none" && (
+                  <button
+                    type="button"
+                    data-testid="kanban-lane-header"
+                    aria-expanded={!laneCollapsed}
+                    onClick={() =>
+                      setCollapsedLanes((prev) => {
+                        const next = new Set(prev);
+                        if (!next.delete(lane.key)) next.add(lane.key);
+                        return next;
+                      })
+                    }
+                    className="border-border hover:bg-muted flex w-full shrink-0 items-center gap-2 border-b px-3 py-1.5 text-left transition-colors"
+                  >
+                    <ChevronDown
+                      className={`text-muted-foreground size-3.5 shrink-0 transition-transform ${
+                        laneCollapsed ? "-rotate-90" : ""
+                      }`}
+                    />
+                    {/* The same area token the questline map and the card
+                      dot render, so one area is one colour everywhere. */}
+                    {lane.areaName && (
+                      <span
+                        className={`size-2 shrink-0 rounded-full ${areaColor.dotClass(lane.areaName)}`}
                       />
-                    );
-                  })}
-                  {/* After the last column, and only on the first lane: the
+                    )}
+                    <span className="truncate text-sm font-semibold">
+                      {lane.label}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {lane.quests.length}
+                    </span>
+                  </button>
+                )}
+
+                {!laneCollapsed && (
+                  <div
+                    data-testid="kanban-columns"
+                    className="flex flex-1 overflow-x-auto overflow-y-hidden"
+                  >
+                    {columns.map((descriptor, idx) => {
+                      // Lane-scoped identity: the droppable id has to be
+                      // unique across the whole board, but `kind` and
+                      // `subColumn` stay untouched so the drag handler's
+                      // lifecycle logic does not learn about lanes at all.
+                      const scoped = lane.key
+                        ? {
+                            ...descriptor,
+                            key: `${lane.key}|${descriptor.key}`,
+                          }
+                        : descriptor;
+                      return (
+                        <KanbanColumn
+                          draggable={canMoveCards}
+                          key={scoped.key}
+                          descriptor={scoped}
+                          quests={laneGrouped[descriptor.key] ?? []}
+                          onSelect={openCard}
+                          areaDotClass={(area) => areaColor.dotClass(area)}
+                          tagColors={project.tagColors}
+                          blockedIds={blockedIds}
+                          agingOf={(q) => aging.levelOf(q, dt)}
+                          collapsed={collapsed.has(scoped.key)}
+                          onToggleCollapsed={() =>
+                            setCollapsed((prev) => {
+                              const next = new Set(prev);
+                              if (!next.delete(scoped.key))
+                                next.add(scoped.key);
+                              return next;
+                            })
+                          }
+                          onCompose={
+                            descriptor.kind === "completed"
+                              ? undefined
+                              : (title, position) =>
+                                  handleCompose(descriptor, title, position)
+                          }
+                          assigneeOf={(q) =>
+                            q.acceptedBy
+                              ? membersById.get(q.acceptedBy)
+                              : undefined
+                          }
+                          busy={
+                            columnOps.pending?.endsWith(
+                              `:${descriptor.label}`,
+                            ) ?? false
+                          }
+                          onRename={
+                            canManageColumns
+                              ? (name) =>
+                                  void columnOps.rename(descriptor.label, name)
+                              : undefined
+                          }
+                          onColor={
+                            canManageColumns
+                              ? (color) =>
+                                  void columnOps.setColor(
+                                    descriptor.label,
+                                    color,
+                                  )
+                              : undefined
+                          }
+                          onDelete={
+                            canManageColumns
+                              ? () => void columnOps.remove(descriptor.label)
+                              : undefined
+                          }
+                          last={idx === columns.length - 1}
+                        />
+                      );
+                    })}
+                    {/* After the last column, and only on the first lane: the
                       board repeats its columns per swimlane, so one control
                       per lane would offer the same single action several
                       times over. Adding is capped at five by the server, and
                       the control simply goes away at the cap rather than
                       offering a refusal. */}
-                  {canManageColumns &&
-                    laneIndex === 0 &&
-                    columns.filter((c) => c.editable).length < 5 && (
-                      <button
-                        type="button"
-                        data-testid="kanban-column-add"
-                        disabled={columnOps.pending === "add"}
-                        onClick={() =>
-                          void columnOps.add(
-                            String(
-                              tr("kanban.column.addDefault", {
-                                args: [
-                                  String(
-                                    columns.filter((c) => c.editable).length +
-                                      1,
-                                  ),
-                                ],
-                              }),
-                            ),
-                          )
-                        }
-                        className="text-muted-foreground hover:text-foreground hover:bg-muted/50 border-border flex w-10 shrink-0 flex-col items-center gap-2 border-l py-2 text-xs transition-colors disabled:opacity-50"
-                      >
-                        <Plus className="size-4" />
-                        <span
-                          className="truncate font-medium"
-                          style={{ writingMode: "vertical-rl" }}
+                    {canManageColumns &&
+                      laneIndex === 0 &&
+                      columns.filter((c) => c.editable).length < 5 && (
+                        <button
+                          type="button"
+                          data-testid="kanban-column-add"
+                          disabled={columnOps.pending === "add"}
+                          onClick={() =>
+                            void columnOps.add(
+                              String(
+                                tr("kanban.column.addDefault", {
+                                  args: [
+                                    String(
+                                      columns.filter((c) => c.editable).length +
+                                        1,
+                                    ),
+                                  ],
+                                }),
+                              ),
+                            )
+                          }
+                          className="text-muted-foreground hover:text-foreground hover:bg-muted/50 border-border flex w-10 shrink-0 flex-col items-center gap-2 border-l py-2 text-xs transition-colors disabled:opacity-50"
                         >
-                          {tr("kanban.column.add")}
-                        </span>
-                      </button>
-                    )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                          <Plus className="size-4" />
+                          <span
+                            className="truncate font-medium"
+                            style={{ writingMode: "vertical-rl" }}
+                          >
+                            {tr("kanban.column.add")}
+                          </span>
+                        </button>
+                      )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </DndContext>
 
       {/*
