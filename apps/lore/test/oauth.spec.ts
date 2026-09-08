@@ -342,6 +342,69 @@ describe("OAuth 2.1 authorization server", () => {
     expect(connections.data).toHaveLength(1);
     expect(connections.data[0].clientId).toBe(clientId);
     expect(connections.data[0].clientName).toBe("Claude");
+    // ⚠️ The entry is addressed by the CLIENT now, not by the session, and
+    // `id` is what the revoke endpoint takes.
+    expect(connections.data[0].id).toBe(clientId);
+    expect(connections.data[0].sessionCount).toBe(1);
+  });
+
+  /**
+   * ⚠️ The whole point of #Q2074. On production one account listed four
+   * live-looking "Claude" rows of which one was live: claude.ai registers a
+   * fresh client on every connect, nothing tells Lore when somebody
+   * disconnects on the client side, and each abandoned session ran its full
+   * 180-day term.
+   *
+   * Two things have to hold here, and they are different claims. DCR
+   * dedupe means the second registration returns the SAME client id, and
+   * grouping means two sessions of that client are one connection.
+   */
+  it("lists one connection for an app authorized twice", async ({ expect }) => {
+    const redirectUri = "https://claude.ai/cb";
+    const first = await registerClient(ctx.baseUrl, redirectUri);
+    const second = await registerClient(ctx.baseUrl, redirectUri);
+    // Dedupe: the same name and the same redirect_uri is the same client.
+    expect(second).toBe(first);
+
+    const user = await createTestUser(ctx);
+    const apiKey = await createApiKey(ctx, user);
+
+    for (const _ of [1, 2]) {
+      const { verifier, challenge } = pkce();
+      const code = await authorize(ctx.baseUrl, apiKey, {
+        clientId: first,
+        redirectUri,
+        challenge,
+      });
+      const token = await exchange(ctx.baseUrl, {
+        grant_type: "authorization_code",
+        code,
+        client_id: first,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+      });
+      expect(token.status).toBe(200);
+    }
+
+    const connectionsApi = ctx.alepha.inject(MyConnectionController);
+    const connections = await connectionsApi.listMyConnections.fetch(
+      {},
+      { user },
+    );
+
+    expect(connections.data).toHaveLength(1);
+    expect(connections.data[0].sessionCount).toBe(2);
+
+    // And revoking addresses the app: both sessions go, so the confirm
+    // dialog's "it loses access immediately" is finally true.
+    const revoked = await connectionsApi.revokeMyConnection.fetch(
+      { params: { id: first } },
+      { user },
+    );
+    expect(revoked.data).toEqual({ ok: true, revoked: 2 });
+
+    const after = await connectionsApi.listMyConnections.fetch({}, { user });
+    expect(after.data).toHaveLength(0);
   });
 
   it("refreshes an access token via the refresh_token grant", async ({

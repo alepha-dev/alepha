@@ -804,6 +804,7 @@ export const uiFr: Record<string, string> = {
     "Les applications que vous autorisez apparaîtront ici.",
   "account.connections.lastUsedAt": " · dernière utilisation $1",
   "account.connections.neverUsed": " · jamais utilisée",
+  "account.connections.sessionCount": " · $1 sessions",
   "account.connections.revoke": "Déconnecter",
   "account.connections.revokeDescription":
     "Elle perd l'accès immédiatement et devra être autorisée à nouveau pour revenir.",

@@ -3,6 +3,7 @@ import { AlephaApiKeys, ApiKeyService } from "alepha/api/keys";
 import {
   AlephaOAuth,
   OAuthClientService,
+  OAuthJobs,
   oauthOptions,
 } from "alepha/api/oauth";
 import { $parameter, AlephaApiParameters } from "alepha/api/parameters";
@@ -271,6 +272,31 @@ export const $realm = (options: RealmOptions = {}): RealmPrimitive => {
     };
 
     oauthService.registerIssuer(name, realm, loadUser);
+
+    /*
+      The other half of the same seam. `OAuthJobs.purgeAbandonedClients`
+      deletes registrations nobody ever authorized, and "nobody authorized
+      it" is a question about `sessions` - which is this module's table, not
+      the OAuth module's. `api/users` already depends on `api/oauth`, so the
+      dependency runs the way it already runs and the probe is handed over
+      rather than imported back.
+    */
+    oauthService.registerSessionProbe(async (clientIds) => {
+      const rows = await realmProvider.sessionRepository(name).findMany({
+        where: { clientId: { inArray: clientIds } },
+        columns: ["clientId"],
+      });
+      return new Set(
+        rows
+          .map((row) => row.clientId)
+          .filter((id): id is string => typeof id === "string"),
+      );
+    });
+
+    // The cleanup itself. A module variant, like `UserJobs`: a job that
+    // mounted itself would run in every application that merely imports the
+    // OAuth module.
+    alepha.with(OAuthJobs);
 
     // Tell the MCP Streamable HTTP transport to challenge unauthenticated
     // requests with an RFC 9728 401 (`WWW-Authenticate`), so MCP clients

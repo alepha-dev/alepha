@@ -107,6 +107,44 @@ export class OAuthClientService {
   >();
 
   /**
+   * Answers which of the given client ids still have a session.
+   *
+   * ⚠️ **Registered by `$realm`, exactly like {@link registerIssuer}, and
+   * for the same reason.** `sessions` is `api/users`' table, `api/users`
+   * already depends on this module, and the reverse edge is a crash rather
+   * than a lint warning. So the dependency runs the way it already runs and
+   * this module is handed a function.
+   *
+   * Absent, {@link clientIdsWithSessions} answers "all of them", so the
+   * prune job deletes nothing. That is the right default for a probe whose
+   * absence means "cannot tell": the failure of a cleanup is leaving rows,
+   * never removing a client somebody is using.
+   */
+  protected sessionProbe?: (clientIds: string[]) => Promise<Set<string>>;
+
+  public registerSessionProbe(
+    probe: (clientIds: string[]) => Promise<Set<string>>,
+  ): void {
+    this.sessionProbe = probe;
+  }
+
+  /**
+   * Of the given client ids, those a session still references.
+   *
+   * ⚠️ With no probe registered this returns every id it was given, so a
+   * caller pruning "the ones nobody uses" prunes nothing. Fail closed: this
+   * answer decides deletions.
+   */
+  public async clientIdsWithSessions(
+    clientIds: string[],
+  ): Promise<Set<string>> {
+    if (!this.sessionProbe) {
+      return new Set(clientIds);
+    }
+    return this.sessionProbe(clientIds);
+  }
+
+  /**
    * Register a realm issuer and a user loader. Called by `$realm` so the
    * OAuth token endpoint can mint access tokens for that realm.
    */
@@ -255,6 +293,18 @@ export class OAuthClientService {
       throw new AlephaError("A confidential client requires a secret");
     }
 
+    const reusable = await this.findReusableClient(options, type);
+    if (reusable) {
+      // Deliberately a DIFFERENT line from "OAuth client registered", so
+      // the production logs show the dedupe working rather than looking
+      // like a registration that never happened.
+      this.log.info("OAuth client reused", {
+        clientId: reusable.clientId,
+        clientName: reusable.clientName,
+      });
+      return reusable;
+    }
+
     const clientId =
       options.clientId ?? `mcp_${randomUUID().replace(/-/g, "")}`;
     const clientSecretHash = options.secret
@@ -280,6 +330,123 @@ export class OAuthClientService {
       source: client.source,
     });
     return client;
+  }
+
+  /**
+   * Stamp a client as used, on every successful token grant.
+   *
+   * ⚠️ **The column existed and nothing wrote it**: all 44 production rows
+   * held NULL, so "registered, used once, then abandoned" was
+   * indistinguishable from "registered and never used". Writing it is what
+   * lets that distinction exist at all, and it costs one UPDATE per
+   * fifteen-minute refresh.
+   *
+   * Best effort by design: a token has already been minted by the time this
+   * runs, and failing the grant because a bookkeeping write failed would
+   * turn a cosmetic problem into an outage.
+   */
+  public async markClientUsed(clientId: string): Promise<void> {
+    if (!clientId) {
+      return;
+    }
+    try {
+      const client = await this.findByClientId(clientId);
+      if (!client) {
+        return;
+      }
+      await this.repo.updateById(client.id, {
+        lastUsedAt: this.dateTime.nowISOString(),
+      });
+    } catch (error) {
+      this.log.warn("Could not stamp OAuth client as used", {
+        clientId,
+        error,
+      });
+    }
+  }
+
+  /**
+   * An already-registered client this registration may be handed back
+   * instead of minting a new one.
+   *
+   * ## Why this exists
+   *
+   * claude.ai never reuses its client registration: every connect runs
+   * RFC 7591 Dynamic Client Registration, and this method used to insert
+   * unconditionally. Production accumulated **39 rows named "Claude", of
+   * which 7 ever got a session** - and, worse, one account's Connected apps
+   * page listed four live-looking "Claude" entries, because four sessions
+   * carried four different `client_id`s and nothing could tell they were the
+   * same application.
+   *
+   * Reuse is what lets the connections list group by client at all.
+   *
+   * ## ⚠️ Every guard below is load-bearing
+   *
+   * - **`options.clientId` given** means somebody registered a specific
+   *   client on purpose (Platform's OIDC seeder). Never dedupe those: the
+   *   id is the contract.
+   * - **Confidential clients never dedupe.** The caller would receive a
+   *   `client_id` whose secret it does not hold, and every token request
+   *   would then 401.
+   * - **A revoked client is never resurrected.** Revocation is a deliberate
+   *   act; handing the same id back defeats it.
+   * - **Realm** scopes every other read in this service, and a client is a
+   *   row in one realm.
+   * - **`redirectUris` compare as a SET**, not as an ordered list: two
+   *   registrations naming the same URIs in a different order are the same
+   *   client, and one naming a URI the other does not is not.
+   *
+   * Sharing one `client_id` between two installs of the same public client
+   * is safe, and is the same reasoning that lets `token_endpoint_auth_method:
+   * "none"` work at all: for a public client the id is not a secret, PKCE
+   * binds the code to the verifier, and the redirect_uri is matched exactly.
+   *
+   * ⚠️ **No index for this, on purpose.** The table holds tens of rows and
+   * DCR is rate limited to ten per IP per fifteen minutes, so the scan is
+   * cheaper than the migration an index would need. Measure before
+   * disagreeing.
+   */
+  protected async findReusableClient(
+    options: RegisterClientOptions,
+    type: "public" | "confidential",
+  ): Promise<OAuthClientEntity | undefined> {
+    if (options.clientId || type !== "public" || options.secret) {
+      return undefined;
+    }
+    const source = options.source ?? "dcr";
+    if (source !== "dcr") {
+      return undefined;
+    }
+
+    const candidates = await this.repo.findMany({
+      where: {
+        realm: { eq: options.realm },
+        clientName: { eq: options.clientName || "OAuth Client" },
+        source: { eq: "dcr" },
+        type: { eq: "public" },
+      },
+    });
+
+    // The set comparison happens here rather than in the query:
+    // `FilterOperators` has no set equality, and the column is JSON on both
+    // sqlite and postgres.
+    const wanted = this.redirectUriKey(options.redirectUris);
+    return candidates.find(
+      (candidate) =>
+        !candidate.revokedAt &&
+        !candidate.clientSecretHash &&
+        this.redirectUriKey(candidate.redirectUris) === wanted,
+    );
+  }
+
+  /**
+   * Order-insensitive, duplicate-insensitive identity of a redirect_uri
+   * list, so two registrations naming the same set match however they
+   * spelled the order.
+   */
+  protected redirectUriKey(uris: string[]): string {
+    return [...new Set(uris)].sort().join("\n");
   }
 
   /**

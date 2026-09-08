@@ -15,11 +15,26 @@ OAuth 2.1 authorization server module for MCP.
 **Features:**
 
 - OAuth 2.1 authorization code flow with PKCE (RFC 7636)
-- Dynamic Client Registration (RFC 7591)
+- Dynamic Client Registration (RFC 7591), deduplicated
 - Authorization server metadata discovery (RFC 8414)
 - Stateless authorization codes (short-lived signed JWTs)
 - Single-use code enforcement
 - Refresh tokens bound to the client they were issued to
+
+**Registration is deduplicated, and that is what makes a "connected app"
+a thing.** A client that registers again with the same name, the same
+redirect_uris and no secret is handed the row it already has instead of a
+new one. Some clients - claude.ai among them - run DCR on every connect
+and never reuse an id, which grew a table of near-identical rows and, worse,
+made one application look like four to anything grouping by `client_id`.
+Reuse is refused for a confidential client, a revoked one, another realm,
+a different redirect_uri set, and for any registration that named its own
+`client_id` - see `OAuthClientService.register`.
+
+`oauth_clients.lastUsedAt` is written on every successful grant, and
+`OAuthJobs.purgeAbandonedClients` collects DCR rows older than a day that
+no session references. Register it the way `$realm` does; a job that
+mounted itself would run in every application that imports this module.
 
 **The `refresh_token` grant requires `client_id`.** The client is looked up
 and - when confidential - must present its secret, exactly as on the

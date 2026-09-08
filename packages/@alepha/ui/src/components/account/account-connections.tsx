@@ -128,7 +128,20 @@ const AccountConnections = (props: AccountConnectionsProps) => {
                 })
               : tr("account.connections.neverUsed", {
                   default: " · never used",
-                }))
+                })) +
+            /*
+              ⚠️ Said out loud, not hidden. Since the list groups by client
+              one row can stand for several authorizations, and a reader
+              deciding whether to disconnect should know how many go with
+              it. Omitted at one, which is every ordinary case - "1 session"
+              on every row would be noise.
+            */
+            (connection.sessionCount > 1
+              ? tr("account.connections.sessionCount", {
+                  default: " · $1 sessions",
+                  args: [String(connection.sessionCount)],
+                })
+              : "")
           }
         >
           <Button variant="ghost" size="sm" onClick={() => revoke(connection)}>

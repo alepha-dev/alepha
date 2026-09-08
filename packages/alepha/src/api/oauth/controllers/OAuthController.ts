@@ -578,6 +578,11 @@ export class OAuthController {
             this.options.realm,
             { ...grant, clientId: body.client_id ?? "" },
           );
+          // ⚠️ Here rather than in the service, so the device-code grant
+          // below gets it too - and every successful grant, which is what
+          // makes `oauth_clients.lastUsedAt` mean anything. It was NULL on
+          // every production row because nothing wrote it.
+          await this.clients.markClientUsed(body.client_id ?? "");
           const response: Record<string, unknown> = {
             access_token: tokens.access_token,
             token_type: "Bearer",
@@ -628,6 +633,7 @@ export class OAuthController {
               clientId: body.client_id,
             },
           );
+          await this.clients.markClientUsed(body.client_id ?? "");
           reply.body = JSON.stringify({
             access_token: tokens.access_token,
             token_type: "Bearer",
@@ -679,6 +685,11 @@ export class OAuthController {
             return;
           }
 
+          // The refresh grant stamps it too, which is what makes the
+          // column useful: a live MCP client refreshes every fifteen
+          // minutes, so `lastUsedAt` tracks the app rather than only its
+          // first authorization.
+          await this.clients.markClientUsed(client.clientId);
           const response: Record<string, unknown> = {
             access_token: tokens.access_token,
             token_type: "Bearer",
