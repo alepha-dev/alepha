@@ -729,6 +729,10 @@ export default {
   "reports.quests.status.completed": "Terminées",
   "reports.quests.status.empty": "Aucune quête pour le moment",
   "reports.quests.byArea.title": "Par domaine",
+  "reports.quests.byTag.title": "Par étiquette",
+  "reports.quests.byTag.description":
+    "Une quête apparaît sous chacune de ses étiquettes : ces barres se recoupent.",
+  "reports.quests.byTag.empty": "Aucune quête n'a encore d'étiquette",
   "reports.quests.byPriority.title": "Par priorité",
   "reports.quests.cycleTime.title": "Temps de cycle par priorité",
   "reports.quests.cycleTime.avgHours": "Heures moy.",

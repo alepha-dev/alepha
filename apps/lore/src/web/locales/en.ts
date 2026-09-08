@@ -745,6 +745,13 @@ export default {
   "reports.quests.status.completed": "Completed",
   "reports.quests.status.empty": "No quests yet",
   "reports.quests.byArea.title": "By area",
+  "reports.quests.byTag.title": "By tag",
+  // ⚠️ Said out loud because every other breakdown on this page
+  // partitions the project. A reader who assumes this one does too will
+  // add the bars up and find more quests than exist.
+  "reports.quests.byTag.description":
+    "A quest appears under each of its tags, so these bars overlap.",
+  "reports.quests.byTag.empty": "No quest carries a tag yet",
   "reports.quests.byPriority.title": "By priority",
   "reports.quests.cycleTime.title": "Cycle time by priority",
   "reports.quests.cycleTime.avgHours": "Avg hours",

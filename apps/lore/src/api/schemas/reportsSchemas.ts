@@ -52,6 +52,23 @@ export const reportsQuestsSchema = z.object({
       remaining: z.integer(),
     }),
   ),
+  /**
+   * Completed vs remaining per TAG, top 8 by volume.
+   *
+   * ⚠️ A quest carries several tags, so a quest is counted once per tag it
+   * holds and these rows do NOT sum to the project's quest count - unlike
+   * `byArea` and `byPriority`, where every quest lands in exactly one row.
+   * That is the axis working as intended (a `bug` that is also a
+   * `regression` belongs to both), and it is why this cannot be read as a
+   * share of the whole.
+   */
+  byTag: z.array(
+    z.object({
+      tag: z.string(),
+      completed: z.integer(),
+      remaining: z.integer(),
+    }),
+  ),
   cycleTimeByPriority: z.array(
     z.object({ priority: z.string(), avgHours: z.number() }),
   ),

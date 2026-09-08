@@ -31,7 +31,7 @@ export interface ReportsQuestsProps {
 const ReportsQuests = (props: ReportsQuestsProps) => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
-  const { funnel, byArea, byPriority, cycleTimeByPriority, aging } =
+  const { funnel, byArea, byTag, byPriority, cycleTimeByPriority, aging } =
     props.quests;
 
   // Stacked completed/remaining series — shared by the by-area and by-priority
@@ -144,6 +144,56 @@ const ReportsQuests = (props: ReportsQuestsProps) => {
         ) : (
           <p className="text-muted-foreground py-6 text-center text-sm">
             {tr("reports.quests.empty")}
+          </p>
+        )}
+      </ReportsSection>
+
+      {/*
+        By tag, after area and before priority: `tags` label the NATURE of
+        the work and `area` labels the module, so the two read as a pair and
+        priority is a different question.
+
+        ⚠️ The description says out loud that a quest with two tags is in two
+        bars. Every other breakdown on this page partitions the project, and
+        a reader who assumes this one does too will add the bars up and find
+        more quests than exist.
+      */}
+      <ReportsSection title={tr("reports.quests.byTag.title")}>
+        {byTag.length > 0 ? (
+          <>
+            <p className="text-muted-foreground text-xs">
+              {tr("reports.quests.byTag.description")}
+            </p>
+            <ChartContainer
+              config={breakdownChartConfig}
+              className="aspect-auto h-[240px] w-full"
+            >
+              <BarChart data={byTag}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="tag"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
+                <YAxis tickLine={false} axisLine={false} width={32} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar
+                  dataKey="completed"
+                  stackId="a"
+                  fill="var(--color-completed)"
+                />
+                <Bar
+                  dataKey="remaining"
+                  stackId="a"
+                  fill="var(--color-remaining)"
+                />
+              </BarChart>
+            </ChartContainer>
+          </>
+        ) : (
+          <p className="text-muted-foreground py-6 text-center text-sm">
+            {tr("reports.quests.byTag.empty")}
           </p>
         )}
       </ReportsSection>

@@ -74,6 +74,34 @@ export class ProjectReportsController {
    * `EpicVisibilityService.plannedEpicSqlPredicate`, which returns
    * `undefined` when there is no planned epic so no clause is emitted.
    */
+  /**
+   * `quests.tags` as an array, whatever the driver handed back.
+   *
+   * ⚠️ Defensive on purpose rather than by habit. This reads the column
+   * through raw SQL, so nothing decodes it on the way out: SQLite answers
+   * the serialized JSON string it stores, and a Postgres driver may answer
+   * either that string or a parsed array depending on how the column landed.
+   * The tests and production do not run the same engine, so branching on one
+   * of them would be a fold that works in exactly one place.
+   */
+  protected parseTags(raw: unknown): string[] {
+    const value =
+      typeof raw === "string" && raw.length > 0 ? this.safeJson(raw) : raw;
+    return Array.isArray(value)
+      ? value.filter((tag): tag is string => typeof tag === "string")
+      : [];
+  }
+
+  protected safeJson(raw: string): unknown {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      // A column that is not the JSON it should be counts as no tags rather
+      // than failing the whole report.
+      return undefined;
+    }
+  }
+
   protected questInScope(plannedEpicIds: number[]) {
     const outsidePlannedEpic =
       this.epicVisibility.plannedEpicSqlPredicate(plannedEpicIds);
@@ -422,6 +450,56 @@ export class ProjectReportsController {
         remaining: Number(row.remaining) || 0,
       }));
 
+      /*
+       * Completed vs remaining per tag.
+       *
+       * ⚠️ Folded in memory, and there is no SQL alternative to reach for.
+       * `quests.tags` is a JSON array in a text column - the entity says so,
+       * and every filter over it is a `like '%"value"%'` on the serialized
+       * blob - so no `GROUP BY` reaches inside it on D1 or anywhere else.
+       * `listQuestTags` reads the same two-column shape for the same reason.
+       *
+       * Two narrow columns over the project's in-scope quests, which is a
+       * few hundred rows on the largest project this runs against, and it
+       * rides the same loader rather than adding a round trip.
+       *
+       * ⚠️ A quest is counted once per tag it holds, so these rows do not sum
+       * to the project's quest count. See `reportsQuestsSchema`.
+       */
+      const tagRows = await this.database.run(
+        sql`
+					SELECT
+						${this.quests.table.tags} as tags,
+						${this.quests.table.completedAt} as completed_at
+					FROM ${this.quests.table}
+					WHERE ${this.quests.table.projectId} = ${params.id}
+						AND ${inScope}
+				`,
+        z.object({ tags: z.any(), completed_at: z.any() }),
+      );
+
+      const tally = new Map<string, { completed: number; remaining: number }>();
+      for (const row of tagRows) {
+        const done = row.completed_at != null;
+        for (const tag of this.parseTags(row.tags)) {
+          const entry = tally.get(tag) ?? { completed: 0, remaining: 0 };
+          if (done) entry.completed += 1;
+          else entry.remaining += 1;
+          tally.set(tag, entry);
+        }
+      }
+
+      // Top 8 by volume, like `byArea`: a project with forty tags would
+      // otherwise draw a chart nobody can read.
+      const byTag = [...tally.entries()]
+        .map(([tag, counts]) => ({ tag, ...counts }))
+        .sort(
+          (a, b) =>
+            b.completed + b.remaining - (a.completed + a.remaining) ||
+            a.tag.localeCompare(b.tag),
+        )
+        .slice(0, 8);
+
       // Average cycle time per priority — only quests with both timestamps.
       const cycleTimeQuery = await this.database.run(
         sql`
@@ -493,6 +571,7 @@ export class ProjectReportsController {
       return {
         funnel,
         byArea,
+        byTag,
         byPriority,
         cycleTimeByPriority,
         aging,
