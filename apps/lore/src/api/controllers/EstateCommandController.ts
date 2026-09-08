@@ -14,6 +14,7 @@ import {
 import { artifacts } from "../entities/artifacts.ts";
 import { estateCommands } from "../entities/estateCommands.ts";
 import { estateProjects } from "../entities/estateProjects.ts";
+import { projects } from "../entities/projects.ts";
 import {
   type EstateCommandListItem,
   type EstateCommandResource,
@@ -52,6 +53,7 @@ export class EstateCommandController {
   protected readonly commands = $inject(EstateCommandService);
   protected readonly ranks = $inject(RankService);
   protected readonly artifacts = $repository(artifacts);
+  protected readonly projects = $repository(projects);
   protected readonly grants = $repository(estateProjects);
   protected readonly rows = $repository(estateCommands);
   protected readonly files = $inject(FileService);
@@ -222,6 +224,7 @@ export class EstateCommandController {
         "artifact:read",
         user,
       );
+      const project = await this.projects.findById(artifact.projectId);
       const lent = await this.grants.findOne({
         where: {
           estateId: { eq: estate.id },
@@ -241,6 +244,11 @@ export class EstateCommandController {
           payload: {
             app: artifact.app,
             environment: body.environment,
+            // ⚠️ Resolved from the ARTIFACT's project, which is the one the
+            // lending was just checked against - not from anything the caller
+            // sent. A client that could name its own project segment could
+            // land a copy on another project's directory.
+            ...(project?.slug ? { project: project.slug } : {}),
             artifact: {
               id: artifact.id,
               sha256: artifact.sha256,
