@@ -216,8 +216,13 @@ const ProjectActivityPage = () => {
                     )
                   }
                   triggerClassName="w-full"
+                  // The label is capitalized, the value is not: this filter
+                  // sits beside the resource one, whose entries are all
+                  // labels, and `create` between `Epic` and `Quest` reads as
+                  // a leaked column value. `value` stays the stored verb,
+                  // which is what the query filters on.
                   items={options.actions.map((action) => ({
-                    label: action,
+                    label: capitalize(action),
                     value: action,
                   }))}
                 />
@@ -364,13 +369,33 @@ export default ProjectActivityPage;
  *
  * The fallback is load-bearing rather than defensive: a new `$audit` type
  * reaches this page the moment it is declared, before anybody has written its
- * label, and printing `sigil` beats printing a missing translation key.
+ * label, and printing `Sigil` beats printing a missing translation key.
+ *
+ * It is CAPITALIZED, because the fallback sits in a list of labels and has to
+ * read as one. An unlabelled kind used to print `app` between `Epic` and
+ * `Feedback`, which read as a database value that had leaked into the UI
+ * rather than as the one entry nobody had translated yet (feedback #P2151).
  */
 const resourceLabel = (
   tr: (key: any, options?: any) => string | number,
   type: string,
 ): string =>
-  String(tr(`activity.resource.${type}` as never, { default: type }));
+  String(
+    tr(`activity.resource.${type}` as never, { default: capitalize(type) }),
+  );
+
+/**
+ * The first letter uppercased, for values that are displayed as labels but
+ * stored as verbs.
+ *
+ * `$audit` actions are an open set - every declaration names its own - so a
+ * locale key per verb is the wrong shape: it would need a translation before
+ * a new verb could be shown at all, and the filter's job is to list what the
+ * table actually holds. Capitalizing at the point of display leaves the stored
+ * verb, the query parameter and the filter's value untouched.
+ */
+const capitalize = (value: string): string =>
+  value.charAt(0).toUpperCase() + value.slice(1);
 
 /**
  * The shape `AlephaTable` expects when there is nothing to fetch yet.

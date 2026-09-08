@@ -342,13 +342,21 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
       </div>
 
       {feedback.status === "pending" && (
-        <div className="border-border flex flex-wrap justify-end gap-2 border-t p-3">
-          {/* ⚠️ Ordered by importance, left to right, with the weight
-              falling off as it goes: filled, outlined, bare, icon
-              (feedback #P2150). It ran the other way, primary last, which
-              put the most important control under the floating feedback
-              bubble in the bottom-right corner - "Promote to Q…" was
-              clipped by it.
+        <div className="border-border flex flex-wrap justify-start gap-2 border-t p-3">
+          {/* ⚠️ Anchored LEFT, and ordered by importance from there, with
+              the weight falling off as it goes: filled, outlined, bare,
+              icon. Both halves exist for the same reason and neither is
+              cosmetic.
+
+              The floating feedback bubble sits in the bottom-right corner
+              of the viewport, on top of whatever this row ends with. The
+              order came first (feedback #P2150): the row ran primary-last,
+              so "Promote to Q…" was the control the bubble clipped. That
+              moved the primary out of the corner and left the icon button
+              in it (feedback #P2153). Anchoring the row to the left takes
+              every control out at once, whatever the last one happens to
+              be, which is why `justify-end` must not come back here or on
+              the two footers below.
 
               Delete is the quietest control here and it is the most
               destructive, which is deliberate and safe only because it is
@@ -393,7 +401,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
       )}
 
       {feedback.status === "accepted" && (
-        <div className="border-border flex flex-wrap justify-end gap-2 border-t p-3">
+        <div className="border-border flex flex-wrap justify-start gap-2 border-t p-3">
           {/* Same order as the pending footer above, minus Reject: an
               accepted item has nothing to reject. */}
           <Button onClick={handlePromote} disabled={busy}>
@@ -420,7 +428,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
       )}
 
       {feedback.status === "rejected" && (
-        <div className="border-border flex justify-end gap-2 border-t p-3">
+        <div className="border-border flex justify-start gap-2 border-t p-3">
           <Button variant="ghost" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
