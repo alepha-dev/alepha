@@ -23,7 +23,7 @@ export interface RecordedResources {
 }
 
 /**
- * Removing the Worker a copy runs, and keeping everything that holds data.
+ * Removing what a redeploy can put back, and keeping the database and bucket.
  *
  * ## ⚠️ Only what Lore can show it made
  *

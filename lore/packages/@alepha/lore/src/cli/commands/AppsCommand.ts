@@ -244,7 +244,8 @@ export class AppsCommand {
 
   public readonly destroy = $command({
     name: "destroy",
-    description: "Delete the Worker this copy runs; its data is kept",
+    description:
+      "Delete the Worker, queue and cache; the database and bucket are kept",
     flags: z.object({
       project: z
         .text({
@@ -285,7 +286,7 @@ export class AppsCommand {
       // and a destructive default is worse than an extra flag.
       if (!flags.yes) {
         throw new AlephaError(
-          `This deletes the Worker ${app}/${env} runs. Its database and bucket are KEPT - Lore never deletes those. Pass --yes to confirm.`,
+          `This deletes the Worker, the queue and the cache namespace ${app}/${env} uses. Its database and bucket are KEPT - Lore never deletes those. Pass --yes to confirm.`,
         );
       }
 
