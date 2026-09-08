@@ -102,9 +102,9 @@ declare module "alepha" {
  * | Cron Triggers per **account** | 5 free, 250 paid |
  *
  * The last one is per account rather than per Worker, so two Alepha apps can
- * exceed it between them. The build warns past five and names the
- * expressions; the fix is to give jobs that do not need their own cadence a
- * shared one.
+ * exceed it between them. The build cannot see the account, so it does not
+ * count for you; the fix is to give jobs that do not need their own cadence a
+ * shared expression.
  *
  * **Runtime support for cron triggers**
  *

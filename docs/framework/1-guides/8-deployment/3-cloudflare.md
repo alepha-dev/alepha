@@ -171,8 +171,7 @@ use over introducing a sixth one.
 
 ⚠️ **Cron Triggers are capped per ACCOUNT, not per Worker**: 5 on the free plan,
 250 on paid. Two Alepha apps on one free account can exceed it between them
-before either declares a `$job` of its own. The build warns past five and names
-the expressions it emitted.
+before either declares a `$job` of its own.
 
 A cron's CPU budget also depends on its interval: **30 seconds under an hourly
 interval, 15 minutes at or above.** Wall clock is 15 minutes either way. The

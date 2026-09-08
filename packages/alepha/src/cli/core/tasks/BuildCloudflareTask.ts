@@ -61,17 +61,6 @@ export class BuildCloudflareTask extends BuildTask {
    */
   protected readonly waitUntilBudgetMs = 30_000;
 
-  /**
-   * Cron Triggers allowed per ACCOUNT on the free plan (250 on paid).
-   *
-   * Per account, not per Worker: a free-tier user with two Alepha apps can be
-   * over the cap before writing a `$job` of their own. `InvitationJobs`
-   * already carries a hand-written comment about two jobs sharing one slot to
-   * keep this count down; that knowledge belongs in a build warning, not in a
-   * comment somebody has to stumble on.
-   */
-  protected readonly freeCronTriggers = 5;
-
   protected readonly warningComment =
     "// This file was automatically generated. DO NOT MODIFY.\n" +
     "// Changes to this file will be lost when the code is regenerated.\n";
@@ -347,11 +336,6 @@ export class BuildCloudflareTask extends BuildTask {
       : this.discoverCrons(ctx);
     if (cronExpressions.length === 0) {
       return;
-    }
-    if (cronExpressions.length > this.freeCronTriggers) {
-      this.warn(
-        `This app emits ${cronExpressions.length} Cron Triggers, over the free plan's limit of ${this.freeCronTriggers} per ACCOUNT (250 on paid). The cap is shared with every other Worker on the account, so two Alepha apps can exceed it between them. Give jobs that do not need their own cadence a shared expression: ${cronExpressions.join(", ")}`,
-      );
     }
     wrangler.triggers ??= {};
     wrangler.triggers.crons = cronExpressions;

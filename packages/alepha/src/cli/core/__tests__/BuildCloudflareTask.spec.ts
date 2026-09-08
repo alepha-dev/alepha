@@ -872,7 +872,7 @@ describe("BuildCloudflareTask", () => {
         ...over,
       }) as any;
 
-    it("warns when the emitted cron trigger count exceeds the free-plan cap", () => {
+    it("emits every cron expression and warns at no count", () => {
       const task = createTask();
       const wrangler: any = {};
 
@@ -892,31 +892,11 @@ describe("BuildCloudflareTask", () => {
         wrangler,
       );
 
-      expect(task.warnings).toHaveLength(1);
-      // The cap is per ACCOUNT, which is the part that surprises people: two
-      // Alepha apps can exceed it between them.
-      expect(task.warnings[0]).toMatch(/ACCOUNT/);
-      expect(task.warnings[0]).toMatch(/6 Cron Triggers/);
-      // Warned, not refused: the triggers are still emitted.
       expect(wrangler.triggers.crons).toHaveLength(6);
-    });
-
-    it("stays quiet at the cap", () => {
-      const task = createTask();
-      task.testEnhanceCron(
-        {
-          manifest: manifest({
-            crons: [
-              "*/15 * * * *",
-              "0 * * * *",
-              "0 0 * * *",
-              "0 3 * * *",
-              "0 4 * * *",
-            ],
-          }),
-        } as any,
-        {} as any,
-      );
+      // The build cannot know the account's plan, and the cap it used to
+      // guard is per ACCOUNT rather than per Worker, so no count is a
+      // warning here. This case is what keeps that warning from creeping
+      // back.
       expect(task.warnings).toHaveLength(0);
     });
 
