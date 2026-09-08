@@ -336,4 +336,25 @@ describe("ProjectArtifacts", () => {
     const plain = await withoutRelease.findByText("1.0.0");
     expect(plain.closest("a")).toBeNull();
   });
+  /**
+   * ⚠️ The App cell is TEXT, and the point is what it stopped doing.
+   *
+   * It was a link to `projectAppRedirect`, whose whole job is to resolve an
+   * app name to its DEFAULT instance - `production` if it exists, else the
+   * first env by name. An artifact is keyed by the app and says nothing about
+   * which copy runs it, so clicking a row about `1.0.0` on `node` opened a
+   * copy chosen by a rule with nothing to do with that artifact, possibly
+   * running something else entirely (#P2162).
+   *
+   * Pinned beside the Tag case above because the two look alike and are not:
+   * a tag link is a real relationship, an app link was a resolved guess.
+   */
+  it("does not link the app to a copy the artifact says nothing about", async ({
+    expect,
+  }) => {
+    const view = await show(listing([group()]));
+
+    const app = await view.findByText("docs");
+    expect(app.closest("a")).toBeNull();
+  });
 });
