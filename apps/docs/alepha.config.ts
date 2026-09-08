@@ -80,28 +80,22 @@ export default defineConfig({
       environments: {
         production: {
           domain: "alepha.dev",
-          // `zone` is what makes this a Worker *Route* (`alepha.dev/*`) rather
-          // than a Custom Domain, and that distinction is the whole migration
-          // off GitHub Pages.
+          // ⚠️ A Custom Domain, and the ABSENCE of `zone` is what makes it
+          // one. This used to set `zone: "alepha.dev"` to get a Worker Route
+          // instead, because the apex still held the four GitHub Pages A
+          // records and their AAAA counterparts: a Custom Domain owns its DNS
+          // record, so Cloudflare would have refused to create one while they
+          // were there.
           //
-          // A Custom Domain owns the DNS record, so Cloudflare would refuse to
-          // create one while the apex still holds the four GitHub Pages A
-          // records and their AAAA counterparts - the switch would mean
-          // deleting those first, leaving the apex resolving to nothing until
-          // the deploy landed, with no way back but re-typing eight records
-          // from memory. It would also ask Cloudflare to issue a fresh
-          // certificate, which the zone's `CAA 0 issue "letsencrypt.org"` may
-          // refuse depending on which CA it reaches for.
+          // Those eight records were deleted when docs moved onto
+          // `lore apps deploy`, which only ever attaches a Custom Domain - a
+          // Lore deploy emits no route, deliberately, since a route is
+          // zone-scoped and no estate can be probed for a zone it does not
+          // know. Cloudflare owns the apex record and its certificate now.
           //
-          // A Route needs none of that. The Pages records stay exactly where
-          // they are and stay proxied, so traffic still arrives at Cloudflare's
-          // edge; the route matches before the origin fetch, and the Worker
-          // answers instead. GitHub is simply never contacted. The existing
-          // Universal SSL certificate keeps serving, so no CA is involved.
-          //
-          // Rollback is deleting the route: DNS was never touched, so Pages is
-          // serving again the moment it goes.
-          zone: "alepha.dev",
+          // Rolling back means re-creating those eight records by hand before
+          // anything can serve the apex again, so it is no longer the free
+          // undo it was while they existed.
           adapter: "cloudflare",
         },
       },
