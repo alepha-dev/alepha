@@ -415,6 +415,7 @@ export default {
   "quest.discussion.waived": 'Passé "$1" :',
   "quest.event.created": "a créé la quête",
   "quest.event.createdFromFeedback": "a créé la quête depuis un retour",
+  "quest.event.createdFromFeedbackRef": "a créé la quête depuis $1",
   "quest.event.assigned": "a pris la quête",
   "quest.event.unassigned": "s'est désassigné de la quête",
   "quest.event.completed": "a terminé la quête",
@@ -510,6 +511,7 @@ export default {
   "quest.view.objectivesProgress": "$1 sur $2",
   "quest.view.updated": "modifié $1",
   "quest.view.fromFeedback": "issu d'un retour",
+  "quest.view.fromFeedbackRef": "issu de $1",
   "quest.view.due": "Échéance $1 · $2",
   "quest.view.attach": "Joindre",
   "quest.view.attachHint":

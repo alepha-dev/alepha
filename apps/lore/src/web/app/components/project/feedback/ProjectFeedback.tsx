@@ -2,6 +2,7 @@ import { Segmented } from "@alepha/ui/components/ui/segmented";
 import { cn } from "@alepha/ui/lib/utils";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useRouter, useRouterState } from "alepha/react/router";
 import {
   Circle,
   CircleCheck,
@@ -14,6 +15,7 @@ import { useEffect, useState } from "react";
 import type { FeedbackController } from "@/api/controllers/FeedbackController.ts";
 import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 
+import type { AppRouter } from "../../../AppRouter.ts";
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
@@ -38,6 +40,8 @@ export interface ProjectFeedbackProps {
 
 const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const router = useRouter<AppRouter>();
+  const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
   const [, setFeedbackCount] = useStore(currentFeedbackCountAtom);
   const feedbackApi = useClient<FeedbackController>();
@@ -49,6 +53,41 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const [activeId, setActiveId] = useState<number | null>(
     props.items?.[0]?.id ?? null,
   );
+
+  /**
+   * The item the URL names, by the `#P` number a reader knows.
+   *
+   * `?feedback=<shortId>` rather than a path segment, because it is already
+   * the address of a feedback item everywhere else in Lore: it is what
+   * `createFolioWikiLinkResolver` emits for `[[#P120]]` and what
+   * `WikiLinkHoverProvider` matches to draw the hover card. Those links have
+   * pointed here since typed references landed and the inbox ignored the
+   * query, so every one of them opened the inbox on whatever happened to be
+   * first. Honouring it fixes them and the quest badge at once.
+   *
+   * A path child (`/feedback/:number`) was the other shape, and it costs
+   * more than it gives: the detail would have to become a nested view, and
+   * the master-detail list beside it remounts every time that swaps - which
+   * is exactly the trap `FoliosLayout` documents and paid for twice.
+   */
+  const addressed = Number(routerState.query?.feedback);
+  const hasAddress = Number.isInteger(addressed) && addressed > 0;
+
+  /**
+   * The addressed item when it is NOT in the list beside it, which is the
+   * case the address exists for: a promoted item is `accepted` and the inbox
+   * opens on `pending`, so a link from a quest names something this page has
+   * not loaded and would not load on its own.
+   *
+   * It is a handoff, not a second source of truth. The effect below switches
+   * the filter to the item's own status, the list reloads carrying it, and
+   * the derivation below prefers the listed row from then on. Nothing clears
+   * this: a value left over from an address that has changed simply stops
+   * matching.
+   */
+  const [addressedItem, setAddressedItem] = useState<
+    FeedbackResource | undefined
+  >(undefined);
 
   /**
    * The badge counts the whole pending set, never the page.
@@ -79,7 +118,20 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
     });
     setItems(res.items);
     setHasMore(res.hasMore);
-    setActiveId(res.items[0]?.id ?? null);
+    // Keep the open item when the reloaded list still holds it, and fall back
+    // to the first row when it does not.
+    //
+    // It used to select the first row unconditionally, which was the same
+    // thing while every reload was a status switch or a triage action - both
+    // move the item OUT of the list being loaded. An addressed item is the
+    // case that broke it: opening `?feedback=120` on an accepted item
+    // switches the filter to `accepted`, and this reload would have thrown
+    // the selection away the moment the list carrying it arrived.
+    setActiveId((current) =>
+      current != null && res.items.some((item) => item.id === current)
+        ? current
+        : (res.items[0]?.id ?? null),
+    );
     refreshCount();
   };
 
@@ -129,9 +181,80 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
     void reload(status);
   }, [status]);
 
-  const active = items.find((p) => p.id === activeId) ?? null;
+  /**
+   * Fetch the addressed item, and only when the list cannot answer for it.
+   *
+   * Runs on `items` too, not only on the number: the list arriving is what
+   * completes the handoff. A number already in the list costs nothing, so
+   * clicking through the inbox is free beyond the URL it writes.
+   *
+   * ⚠️ Nothing here sets state synchronously, deliberately. Which item is
+   * open is DERIVED below rather than pushed into `activeId` from here: an
+   * effect that selects on sight is a second writer of the selection, racing
+   * the reload it triggers. Only the fetch's own continuation writes, which
+   * is the "synchronize with an external system" case.
+   */
+  useEffect(() => {
+    if (!hasAddress || !project) return;
+    if (items.some((item) => item.shortId === addressed)) return;
+    let cancelled = false;
+    void feedbackApi
+      .getFeedbackByShortId({
+        params: { projectId: project.id, shortId: addressed },
+      })
+      .then((row) => {
+        if (cancelled) return;
+        setAddressedItem(row);
+        // The filter follows the item, so the list beside it holds the row
+        // the reader came for and highlights it. Without this a link to an
+        // accepted item opens a detail pane whose row is nowhere on screen.
+        if (row.status !== status) {
+          setStatus(row.status);
+        }
+      })
+      .catch(() => {
+        // A number that names nothing this reader can open: a deleted item,
+        // a typo, or an inbox their rank does not reach. The page stays on
+        // whatever it had rather than growing an error state for a URL
+        // nobody typed on purpose.
+        if (!cancelled) setAddressedItem(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [addressed, hasAddress, items]);
+
+  /**
+   * The open item: what the URL names if it names anything, else what was
+   * last clicked or auto-selected.
+   *
+   * The address wins over `activeId` while it is set, which is what makes a
+   * link authoritative, and it means the fetched item needs no place in
+   * `activeId` at all - a stale `addressedItem` from an address that has
+   * since changed simply stops matching.
+   */
+  const addressedActive = hasAddress
+    ? (items.find((p) => p.shortId === addressed) ??
+      (addressedItem?.shortId === addressed ? addressedItem : undefined))
+    : undefined;
+  const active =
+    addressedActive ?? items.find((p) => p.id === activeId) ?? null;
+
+  /**
+   * Write the selection into the URL, so the pane can be linked to, and comes
+   * back on a refresh. `undefined` clears it, which is what Back and every
+   * triage action want: the item they were showing has left this list.
+   */
+  const address = (shortId?: number) => {
+    if (!project) return;
+    void router.push("projectFeedback", {
+      params: { projectSlug: project.slug },
+      query: shortId != null ? { feedback: String(shortId) } : undefined,
+    });
+  };
 
   const onChanged = () => {
+    address(undefined);
     void reload(status);
   };
 
@@ -149,7 +272,13 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
           <div className="border-border flex items-center gap-2 border-b p-2">
             <Segmented
               value={status}
-              onChange={(v) => setStatus(v as StatusFilter)}
+              // The address goes with it: the open item belongs to the
+              // filter being left, so keeping the query would drag the
+              // reader straight back to it.
+              onChange={(v) => {
+                address(undefined);
+                setStatus(v as StatusFilter);
+              }}
               options={FILTERS.map((value) => {
                 const Icon = FILTER_ICONS[value];
                 return {
@@ -192,8 +321,11 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
                   <ProjectFeedbackCard
                     key={feedback.id}
                     feedback={feedback}
-                    selected={feedback.id === activeId}
-                    onClick={() => setActiveId(feedback.id)}
+                    selected={feedback.id === active?.id}
+                    onClick={() => {
+                      setActiveId(feedback.id);
+                      address(feedback.shortId);
+                    }}
                   />
                 ))}
                 {hasMore && (
@@ -226,7 +358,10 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
             <ProjectFeedbackDetail
               feedback={active}
               onChanged={onChanged}
-              onBack={() => setActiveId(null)}
+              onBack={() => {
+                setActiveId(null);
+                address(undefined);
+              }}
             />
           ) : (
             <ProjectFeedbackEmptyState
