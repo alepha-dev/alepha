@@ -13,7 +13,10 @@ import { $client } from "alepha/server/links";
 import { KeyRound, Plug, RadioTower, ShieldCheck, User } from "lucide-react";
 import { createElement } from "react";
 
-import { accountRouterOptionsAtom } from "./account-router-options.tsx";
+import {
+  type AccountPage,
+  accountRouterOptionsAtom,
+} from "./account-router-options.tsx";
 
 /**
  * The whole `/account` surface — five pages and their shell — mounted and
@@ -117,6 +120,18 @@ import { accountRouterOptionsAtom } from "./account-router-options.tsx";
 export class AccountRouter {
   protected readonly options = $store(accountRouterOptionsAtom);
 
+  /**
+   * Whether the application has declared it does not offer this page.
+   *
+   * ANDed into each page's `can`, never replacing it: whether the action
+   * exists stays the registry's question. See
+   * `AccountRouterOptions.hide` for the page this exists for and why `can`
+   * alone cannot answer it.
+   */
+  protected hidden(page: AccountPage): boolean {
+    return this.options.hide?.includes(page) ?? false;
+  }
+
   protected readonly profileApi = $client<MyProfileController>();
   protected readonly realmApi = $client<RealmController>();
   protected readonly identityApi = $client<MyIdentityController>();
@@ -149,7 +164,7 @@ export class AccountRouter {
     path: "/",
     name: "accountProfile",
     head: { title: "Profile" },
-    can: () => this.profileApi.getMyProfile.can(),
+    can: () => !this.hidden("profile") && this.profileApi.getMyProfile.can(),
     nav: {
       label: "Profile",
       labelKey: "account.nav.profile",
@@ -185,7 +200,8 @@ export class AccountRouter {
     path: "/security",
     name: "accountSecurity",
     head: { title: "Security" },
-    can: () => this.identityApi.listMyIdentities.can(),
+    can: () =>
+      !this.hidden("security") && this.identityApi.listMyIdentities.can(),
     nav: {
       label: "Security",
       labelKey: "account.nav.security",
@@ -217,7 +233,7 @@ export class AccountRouter {
     path: "/sessions",
     name: "accountSessions",
     head: { title: "Sessions" },
-    can: () => this.sessionApi.listMySessions.can(),
+    can: () => !this.hidden("sessions") && this.sessionApi.listMySessions.can(),
     nav: {
       label: "Sessions",
       labelKey: "account.nav.sessions",
@@ -237,7 +253,7 @@ export class AccountRouter {
     path: "/keys",
     name: "accountKeys",
     head: { title: "API keys" },
-    can: () => this.apiKeyApi.listApiKeys.can(),
+    can: () => !this.hidden("keys") && this.apiKeyApi.listApiKeys.can(),
     nav: {
       label: "API keys",
       labelKey: "account.nav.keys",
@@ -257,7 +273,8 @@ export class AccountRouter {
     path: "/connections",
     name: "accountConnections",
     head: { title: "Connected apps" },
-    can: () => this.connectionApi.listMyConnections.can(),
+    can: () =>
+      !this.hidden("connections") && this.connectionApi.listMyConnections.can(),
     nav: {
       label: "Connected apps",
       labelKey: "account.nav.connections",
