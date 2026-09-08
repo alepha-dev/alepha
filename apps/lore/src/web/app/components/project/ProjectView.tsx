@@ -14,6 +14,7 @@ import { currentBlightCountAtom } from "../../atoms/currentBlightCountAtom.ts";
 import { currentEpicAtom } from "../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../atoms/currentEpicCountAtom.ts";
 import { currentFeedbackCountAtom } from "../../atoms/currentFeedbackCountAtom.ts";
+import { currentHeldQuestCountAtom } from "../../atoms/currentHeldQuestCountAtom.ts";
 import { currentInstanceAtom } from "../../atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "../../atoms/currentInstancesAtom.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
@@ -63,6 +64,7 @@ const ProjectView = () => {
 
   const [project] = useStore(currentProjectAtom);
   const [questCount] = useStore(currentQuestCountAtom);
+  const [heldQuestCount] = useStore(currentHeldQuestCountAtom);
   const [feedbackCount] = useStore(currentFeedbackCountAtom);
   const [blightCount] = useStore(currentBlightCountAtom);
   const [instances] = useStore(currentInstancesAtom);
@@ -119,7 +121,9 @@ const ProjectView = () => {
   );
   const navContext: CapabilityNavContext = {
     routeName: name,
+    routeQuery: routerState.query,
     questCount: questCount?.count,
+    heldQuestCount: heldQuestCount?.count,
     epicCount: epicCount?.count,
     feedbackCount: feedbackCount?.count,
     blightCount: blightCount?.count,
@@ -129,8 +133,18 @@ const ProjectView = () => {
   const toItem = (entry: CapabilityNavEntry): NavGroup["items"][number] => ({
     label: tr(entry.labelKey as never),
     icon: entry.icon,
-    href: router.path(entry.route as never, { params: { projectSlug } }),
-    active: entry.activeOn ? entry.activeOn(name) : name === entry.route,
+    href: router.path(entry.route as never, {
+      params: { projectSlug },
+      query: entry.query,
+    }),
+    // An entry carrying a query is a filtered view of another entry's page,
+    // so being on that page is not enough to light it up - see `query` on
+    // `CapabilityNavEntry` for why both it and its parent do.
+    active:
+      (entry.activeOn ? entry.activeOn(name) : name === entry.route) &&
+      Object.entries(entry.query ?? {}).every(
+        ([key, value]) => navContext.routeQuery?.[key] === value,
+      ),
     badge: entry.badge?.(navContext),
   });
 

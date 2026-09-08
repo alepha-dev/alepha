@@ -164,12 +164,84 @@ describe("the sidebar, derived from capabilities", () => {
   it("declares every entry under exactly one capability", ({ expect }) => {
     // Two capabilities claiming one route means whichever is declared first
     // decides, and the other's gate never runs.
+    //
+    // ⚠️ Keyed on the CAPABILITY per route, not on the route alone. Sharing a
+    // route inside one capability is legal and deliberate: On hold is
+    // `projectQuests?status=held`, a filtered view of the Quests page under
+    // the same `work` gate, so there is no second gate to be skipped. The
+    // destinations themselves are checked below.
+    const owners = new Map<string, string>();
+    for (const key of Object.keys(CAPABILITY_NAV) as CapabilityKey[]) {
+      for (const entry of CAPABILITY_NAV[key]) {
+        const existing = owners.get(entry.route);
+        expect(
+          existing === undefined || existing === key,
+          `${entry.route} is claimed by both ${existing} and ${key}`,
+        ).toBe(true);
+        owners.set(entry.route, key);
+      }
+    }
+
+    for (const entry of CORE_NAV) {
+      expect(
+        owners.has(entry.route),
+        `${entry.route} is in CORE_NAV and under a capability`,
+      ).toBe(false);
+    }
+  });
+
+  /**
+   * The On hold entry, reported as "one place listing what is blocked".
+   *
+   * It is a filtered view of the Quests page rather than a page of its own,
+   * which makes it the first entry to share a route with another. The three
+   * things that follow from that are what break if somebody tidies it into a
+   * plain entry.
+   */
+  describe("the On hold entry", () => {
+    const held = () =>
+      CAPABILITY_NAV.work.find(
+        (entry) => entry.labelKey === "project.menu.held",
+      );
+
+    it("addresses the quests list filtered on held", ({ expect }) => {
+      // `?status=held` rather than a route: `ProjectQuestsTable` declares
+      // `fromQuery`, so every one of its filters is already linkable.
+      expect(held()?.route).toBe("projectQuests");
+      expect(held()?.query).toEqual({ status: "held" });
+    });
+
+    it("badges the held count and hides a zero", ({ expect }) => {
+      // The entry stays; only the number comes and goes. An entry that reads
+      // nothing most of the time and turns into a number when somebody is
+      // waiting is the signal that was asked for.
+      expect(held()?.badge?.({ ...CONTEXT, heldQuestCount: 3 })).toBe(3);
+      expect(
+        held()?.badge?.({ ...CONTEXT, heldQuestCount: 0 }),
+      ).toBeUndefined();
+    });
+
+    it("goes with the Work capability, like the page it filters", ({
+      expect,
+    }) => {
+      expect(offered(projectFixture())).toContain("projectQuests");
+      const noWork = offered(
+        projectFixture({ capabilities: ["knowledge"] }) as never,
+      );
+      expect(noWork).not.toContain("projectQuests");
+    });
+  });
+
+  it("offers each destination once", ({ expect }) => {
+    // A destination is a route AND the query it carries, since an entry can
+    // address a filtered view of another entry's page. Two entries pointing
+    // at the same one is a duplicate row in the sidebar.
     const all = [
       ...CORE_NAV,
       ...(Object.keys(CAPABILITY_NAV) as CapabilityKey[]).flatMap(
         (key) => CAPABILITY_NAV[key],
       ),
-    ].map((entry) => entry.route);
+    ].map((entry) => `${entry.route}?${JSON.stringify(entry.query ?? {})}`);
 
     expect(new Set(all).size).toBe(all.length);
   });

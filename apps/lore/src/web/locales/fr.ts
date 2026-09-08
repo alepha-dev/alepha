@@ -260,6 +260,7 @@ export default {
   "project.menu.create": "Créer",
   "project.menu.activity": "Activité",
   "project.menu.quests": "Quêtes",
+  "project.menu.held": "En attente",
   "project.menu.kanban": "Kanban",
   "project.menu.reports": "Rapports",
   "project.menu.artifacts": "Artefacts",
