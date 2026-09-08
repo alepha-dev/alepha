@@ -146,6 +146,22 @@ export interface RowAction<T> {
   onClick: (item: T, ctx: RowActionContext) => void | Promise<void>;
   destructive?: boolean;
   disabled?: (item: T) => boolean;
+  /**
+   * Whether this entry is the row's current value, for a group that picks
+   * one of several - which release the row ships in, which area it sits in.
+   * Declaring it renders the entry as a checkbox item, so the check mark and
+   * the `aria-checked` both come from the primitive rather than from a
+   * marker glued into the label.
+   *
+   * ⚠️ Omitting it is not the same as returning false. An entry with no
+   * `checked` stays an ordinary `menuitem`; one that returns false is a
+   * `menuitemcheckbox` that happens to be unchecked, which is what a query
+   * by role has to account for.
+   *
+   * `destructive` is ignored on a checked entry: nothing that picks a value
+   * out of a list is also a delete.
+   */
+  checked?: (item: T) => boolean;
 }
 
 /**
@@ -2512,25 +2528,18 @@ function RowActionsMenu<T>(props: {
                   {action.label}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  {action.children.map((child) => {
-                    const ChildIcon = child.icon;
-                    return (
-                      <DropdownMenuItem
-                        key={child.label}
-                        disabled={child.disabled?.(props.item)}
-                        onClick={() => child.onClick(props.item, props.ctx)}
-                        variant={child.destructive ? "destructive" : undefined}
-                      >
-                        {ChildIcon && <ChildIcon className="mr-2 size-4" />}
-                        {child.label}
-                      </DropdownMenuItem>
-                    );
-                  })}
+                  {action.children.map((child) => (
+                    <RowActionItem
+                      key={child.label}
+                      action={child}
+                      item={props.item}
+                      ctx={props.ctx}
+                    />
+                  ))}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             );
           }
-          const disabled = action.disabled?.(props.item);
           // A group is never destructive, so the previous entry being one
           // reads as falsy here and the separator rule needs no case for it.
           const previous = effective[idx - 1];
@@ -2541,18 +2550,57 @@ function RowActionsMenu<T>(props: {
           return (
             <span key={action.label}>
               {sep && <DropdownMenuSeparator />}
-              <DropdownMenuItem
-                disabled={disabled}
-                onClick={() => action.onClick(props.item, props.ctx)}
-                variant={action.destructive ? "destructive" : undefined}
-              >
-                {Icon && <Icon className="mr-2 size-4" />}
-                {action.label}
-              </DropdownMenuItem>
+              <RowActionItem
+                action={action}
+                item={props.item}
+                ctx={props.ctx}
+              />
             </span>
           );
         })}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * One menu entry, wherever it sits: at the top level of the row menu or
+ * inside a group's submenu. Both render the same way, which is what keeps a
+ * `checked` entry from behaving differently depending on where it was put.
+ */
+function RowActionItem<T>(props: {
+  action: RowAction<T>;
+  item: T;
+  ctx: RowActionContext;
+}) {
+  const { action, item, ctx } = props;
+  const Icon = action.icon;
+  const disabled = action.disabled?.(item);
+  if (action.checked) {
+    return (
+      <DropdownMenuCheckboxItem
+        // Controlled with no `onCheckedChange`: the write is `onClick`, and
+        // the state comes back from the row on the next render. Letting the
+        // primitive toggle itself would show a check for a write that has
+        // not landed, and would uncheck the current value when it is picked
+        // again.
+        checked={action.checked(item)}
+        disabled={disabled}
+        onClick={() => action.onClick(item, ctx)}
+      >
+        {Icon && <Icon className="mr-2 size-4" />}
+        {action.label}
+      </DropdownMenuCheckboxItem>
+    );
+  }
+  return (
+    <DropdownMenuItem
+      disabled={disabled}
+      onClick={() => action.onClick(item, ctx)}
+      variant={action.destructive ? "destructive" : undefined}
+    >
+      {Icon && <Icon className="mr-2 size-4" />}
+      {action.label}
+    </DropdownMenuItem>
   );
 }

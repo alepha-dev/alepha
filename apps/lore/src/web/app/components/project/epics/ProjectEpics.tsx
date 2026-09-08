@@ -17,6 +17,7 @@ import {
   CircleDot,
   ClipboardCheck,
   Flag,
+  FlagOff,
   Play,
   Plus,
   Rocket,
@@ -42,6 +43,7 @@ import FilterSlot from "../../shared/FilterSlot.tsx";
 import { useBulkReport } from "../../shared/useBulkReport.ts";
 import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
+import { releaseRowMenu } from "../releaseRowMenu.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import {
   epicBlockedBy,
@@ -145,6 +147,30 @@ const ProjectEpics = () => {
   // Bumped after a create, which happens outside the table and so has no
   // `ctx.refresh()` of its own to call.
   const [reload, setReload] = useState(0);
+
+  /**
+   * The same write `EpicReleaseControl` makes on the epic's own page, from
+   * the row menu instead. `null` detaches; an absent key would leave the
+   * attachment alone, which is why the caller passes one or the other and
+   * never `undefined`.
+   */
+  const setRelease = async (
+    epic: EpicResource,
+    releaseId: number | null,
+    refresh: () => void,
+  ) => {
+    try {
+      await epicApi.updateEpic({
+        params: { id: epic.id },
+        body: { releaseId },
+      });
+      // The Release column is drawn from the row, so it repaints only once
+      // the fetch comes back with the new value.
+      refresh();
+    } catch (error) {
+      toaster.error(error instanceof Error ? error.message : String(error));
+    }
+  };
 
   if (!project) {
     return null;
@@ -584,6 +610,56 @@ const ProjectEpics = () => {
                           },
                         ]
                       : []),
+                  ],
+                },
+              ]
+            : []),
+          // Where this epic ships, set from the list. The Release column
+          // beside it could be read and not changed, which cost a page load
+          // and a trip back for a field that is one click of an already-open
+          // menu (#Q2098).
+          //
+          // ⚠️ The rules are `EpicReleaseControl`'s, read out of
+          // `releaseRowMenu` rather than restated: only open releases, plus
+          // this epic's own current one so a published attachment shows
+          // itself instead of reading as lost, and `locked` disabling every
+          // entry when that current one is published - the same condition
+          // that disables the control's trigger. The server refuses it too.
+          //
+          // No options means no children, which renders nothing at all: a
+          // project with no open release needs no case of its own.
+          ...(epicApi.updateEpic.can() &&
+          releaseRowMenu(releases, epic.releaseId).options.length > 0
+            ? [
+                {
+                  icon: Flag,
+                  label: tr("epic.action.setRelease"),
+                  children: [
+                    ...releaseRowMenu(releases, epic.releaseId).options.map(
+                      (release) => ({
+                        icon: Flag,
+                        label: release.tag ?? release.title,
+                        checked: (row: EpicResource) =>
+                          row.releaseId === release.id,
+                        disabled: () =>
+                          releaseRowMenu(releases, epic.releaseId).locked,
+                        onClick: (
+                          row: EpicResource,
+                          { refresh }: { refresh: () => void },
+                        ) => setRelease(row, release.id, refresh),
+                      }),
+                    ),
+                    {
+                      icon: FlagOff,
+                      label: tr("epic.aside.release.none"),
+                      checked: (row: EpicResource) => row.releaseId == null,
+                      disabled: () =>
+                        releaseRowMenu(releases, epic.releaseId).locked,
+                      onClick: (
+                        row: EpicResource,
+                        { refresh }: { refresh: () => void },
+                      ) => setRelease(row, null, refresh),
+                    },
                   ],
                 },
               ]
