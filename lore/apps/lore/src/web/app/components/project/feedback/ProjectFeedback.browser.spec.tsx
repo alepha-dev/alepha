@@ -5,7 +5,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
-import { AlephaReactRouter } from "alepha/react/router";
+import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, it } from "vitest";
 
@@ -36,6 +36,14 @@ const feedbackOf = (id: number): FeedbackResource =>
 const ALL = Array.from({ length: TOTAL }, (_, i) => feedbackOf(TOTAL - i));
 
 /**
+ * A promoted item: `accepted`, so it is on no page of the inbox's default
+ * `pending` list however far you press Show more. This is the row a link
+ * from a quest names, and the reason the address has to resolve an item the
+ * page has not loaded rather than look one up among the rows it has.
+ */
+const ACCEPTED = { ...feedbackOf(99), status: "accepted" } as FeedbackResource;
+
+/**
  * Serves the paged list the real endpoint serves, so the page boundary this
  * spec is about is computed here rather than asserted against a constant.
  * Same substitution seam as `ProjectFeedbackDetail.browser.spec.tsx`
@@ -43,6 +51,7 @@ const ALL = Array.from({ length: TOTAL }, (_, i) => feedbackOf(TOTAL - i));
  */
 class FakeLinkProvider extends LinkProvider {
   listCalls: Array<{ status?: string; limit?: number; offset?: number }> = [];
+  byShortIdCalls: number[] = [];
   countCalls = 0;
 
   // matches the real client's own loose virtual-action shape
@@ -54,13 +63,25 @@ class FakeLinkProvider extends LinkProvider {
         }) => {
           const query = config.query ?? {};
           this.listCalls.push(query);
-          const rows = query.status === "pending" ? ALL : [];
+          const rows =
+            query.status === "pending"
+              ? ALL
+              : query.status === "accepted"
+                ? [ACCEPTED]
+                : [];
           const offset = query.offset ?? 0;
           const limit = query.limit ?? 10;
           return {
             items: rows.slice(offset, offset + limit),
             hasMore: rows.length > offset + limit,
           };
+        },
+        getFeedbackByShortId: async (config: {
+          params?: { shortId?: number };
+        }) => {
+          this.byShortIdCalls.push(config.params?.shortId ?? 0);
+          if (config.params?.shortId === ACCEPTED.shortId) return ACCEPTED;
+          throw new Error("Feedback not found");
         },
         // The whole set, never the page - which is the point of it being a
         // separate endpoint at all.
@@ -108,7 +129,25 @@ describe("ProjectFeedback - Show more", () => {
 
   afterEach(() => {
     cleanup();
+    // jsdom shares one `location` across the whole file, and the page writes
+    // the open item into the URL now, so a card clicked in one test would
+    // still be the addressed item when the next one mounts.
+    window.history.replaceState({}, "", "/");
   });
+
+  /**
+   * The one route this page navigates to. It writes the open item into the
+   * URL as `?feedback=<shortId>` (#Q2077), and `router.push` resolves a name
+   * against the registered pages - an unregistered one falls through to the
+   * plain-path overload and navigates somewhere meaningless.
+   */
+  class Routes {
+    feedback = $page({
+      name: "projectFeedback",
+      path: "/:projectSlug/feedback",
+      component: () => null,
+    });
+  }
 
   const mount = async () => {
     const alepha = Alepha.create()
@@ -121,6 +160,7 @@ describe("ProjectFeedback - Show more", () => {
       .with(AlephaReact)
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
+    alepha.inject(Routes);
     await alepha.start();
     // The atom validates against `projectResourceSchema`, so this is the
     // whole required shape, not a convenient subset.
@@ -195,6 +235,57 @@ describe("ProjectFeedback - Show more", () => {
       expect(rendered.queryByTestId("feedback-show-more")).toBeNull(),
     );
     expect(rendered.container.textContent).toContain("body 20");
+  });
+
+  /**
+   * The address, and the case it exists for.
+   *
+   * A quest promoted from feedback links to `?feedback=<shortId>`, and the
+   * item it names is `accepted` by definition while the inbox opens on
+   * `pending` - so the number can never be found among the rows on screen.
+   * The page has to fetch it, show it, and move the filter to where it
+   * lives, or the reader lands on a detail pane whose row is nowhere.
+   */
+  it("opens an addressed item that is on no page of the current filter", async ({
+    expect,
+  }) => {
+    const alepha = await mount();
+    const rendered = view(alepha);
+    const router = alepha.inject(ReactRouter);
+
+    await waitFor(() =>
+      expect(rendered.container.textContent).toContain(`body ${TOTAL}`),
+    );
+
+    await router.push("projectFeedback", {
+      params: { projectSlug: "lore" },
+      query: { feedback: String(ACCEPTED.shortId) },
+    });
+
+    // The item itself, fetched rather than found.
+    await waitFor(() =>
+      expect(rendered.container.textContent).toContain(
+        `body ${ACCEPTED.shortId}`,
+      ),
+    );
+    expect(alepha.inject(FakeLinkProvider).byShortIdCalls).toContain(
+      ACCEPTED.shortId,
+    );
+
+    // And the filter followed it, so the row it came for is in the list
+    // beside the pane rather than nowhere on screen.
+    await waitFor(() =>
+      expect(
+        alepha
+          .inject(FakeLinkProvider)
+          .listCalls.some((call) => call.status === "accepted"),
+      ).toBe(true),
+    );
+    await waitFor(() =>
+      expect(titles(rendered.container as HTMLElement)).toEqual([
+        `Report number ${ACCEPTED.shortId}`,
+      ]),
+    );
   });
 
   it("counts the whole pending set for the badge, not the page", async ({

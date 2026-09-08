@@ -24,6 +24,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import LoreViewer from "../../shared/element/LoreViewer.tsx";
 import type { ProjectUser } from "../../shared/useProjectUsers.ts";
 import type { QuestDiscussionEntry } from "./questDiscussionEntries.ts";
+import { useFeedbackReference } from "./useFeedbackReference.ts";
 
 export interface QuestDiscussionEventProps {
   entry: Extract<QuestDiscussionEntry, { kind: "event" }>;
@@ -50,6 +51,10 @@ const QuestDiscussionEvent = (props: QuestDiscussionEventProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
   const [project] = useStore(currentProjectAtom);
+  // Keyed on the feedback id, so this and the badge on the quest above it
+  // pay for one read between them. Disabled for the events that carry no
+  // feedback id, which is all of them but one.
+  const { reference } = useFeedbackReference(entry.feedbackId);
 
   const user = entry.by
     ? props.users.find((u) => u.id === entry.by)
@@ -74,7 +79,7 @@ const QuestDiscussionEvent = (props: QuestDiscussionEventProps) => {
           <span className="min-w-0 truncate">
             <span className="font-medium">{actor}</span>{" "}
             <span className="text-muted-foreground">
-              {predicate(tr, entry)}
+              {predicate(tr, entry, reference)}
             </span>
           </span>
           <span className="text-muted-foreground ml-auto shrink-0 text-xs">
@@ -158,11 +163,25 @@ type Tr = ReturnType<typeof useI18n<I18n, "en">>["tr"];
 const predicate = (
   tr: Tr,
   entry: Extract<QuestDiscussionEntry, { kind: "event" }>,
+  feedbackReference?: string,
 ): string => {
-  // `feedbackId` is the feedback row's database id, not the `#P` number a
-  // reader knows, so the line names no number (epic #32).
   if (entry.action === "created" && entry.feedbackId != null) {
-    return String(tr("quest.event.createdFromFeedback"));
+    // `feedbackId` is the feedback row's DATABASE id, so the number a reader
+    // knows has to be resolved (epic #32). Until it is - and if it never is,
+    // because the item is gone or the reader's rank does not open the inbox -
+    // the line says what it always said.
+    //
+    // The reference is plain text here while the badge above carries the
+    // link, and that is a decision: making it clickable means splitting a
+    // translated sentence around an anchor, and a fragment ending mid-phrase
+    // is a worse trade than a number the reader can already click one line up.
+    return String(
+      feedbackReference
+        ? tr("quest.event.createdFromFeedbackRef", {
+            args: [feedbackReference],
+          })
+        : tr("quest.event.createdFromFeedback"),
+    );
   }
   if (entry.action === "objective_completed" && entry.subject) {
     return String(

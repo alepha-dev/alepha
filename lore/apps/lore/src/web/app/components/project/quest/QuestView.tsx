@@ -10,7 +10,6 @@ import {
   CalendarClock,
   CircleDot,
   FileText,
-  Inbox,
   ListChecks,
   Paperclip,
   PlayCircle,
@@ -41,6 +40,7 @@ import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
 import { QuestDueDate } from "./questDueDate.ts";
 import QuestViewEditButton from "./QuestViewEditButton.tsx";
+import QuestViewFeedbackBadge from "./QuestViewFeedbackBadge.tsx";
 import QuestViewObjectives from "./QuestViewObjectives.tsx";
 import QuestViewQuestline from "./QuestViewQuestline.tsx";
 import QuestViewRail from "./QuestViewRail.tsx";
@@ -468,13 +468,8 @@ const QuestView = (props: QuestViewProps) => {
               {statusLabel}
             </Badge>
 
-            {/* `feedbackId` is the feedback row's database id, not its `#P`
-                number, so the badge names no number (epic #32). */}
             {quest.feedbackId != null && (
-              <Badge variant="secondary" className="text-muted-foreground">
-                <Inbox className="size-3" />
-                {tr("quest.view.fromFeedback")}
-              </Badge>
+              <QuestViewFeedbackBadge feedbackId={quest.feedbackId} />
             )}
 
             {dueChip}

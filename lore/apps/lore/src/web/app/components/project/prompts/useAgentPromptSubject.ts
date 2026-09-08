@@ -84,11 +84,16 @@ export const useAgentPromptSubject = () => {
       // from Petitions. Never build this string by hand.
       reference: formatReference("feedback", feedback.shortId),
       title: feedback.title,
-      // ⚠️ The INBOX, not the item. `projectFeedback` is `path:
-      // "/feedback"` with no parameter and the selection is React state, so
-      // no URL opens one report. The prompt says "The inbox:" and the agent
-      // reaches the item by its reference.
-      url: absolute(router.path("projectFeedback")),
+      // The ITEM, since #Q2077: `projectFeedback` honours
+      // `?feedback=<shortId>` and opens that report whatever its status,
+      // which is the case that matters here - a promoted item is `accepted`
+      // and the inbox opens on `pending`. It was the bare inbox before, and
+      // the prompt said so, because the selection was React state alone.
+      url: absolute(
+        router.path("projectFeedback", {
+          query: { feedback: String(feedback.shortId) },
+        }),
+      ),
     }),
   };
 };

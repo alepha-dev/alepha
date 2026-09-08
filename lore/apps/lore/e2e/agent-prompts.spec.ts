@@ -313,8 +313,11 @@ test.describe("agent prompts", () => {
       // The title is there too, so the reference above belongs to THIS
       // report rather than to whatever the panel happened to have open.
       expect(copied).toContain(`AgentFeedback${t}`);
-      // The inbox, because no URL opens one report.
-      expect(copied).toContain("The inbox:");
+      // The item itself: the inbox honours `?feedback=<shortId>` since
+      // #Q2077, so the link is the report rather than the queue it sits in.
+      // Asserted on the query, because that is the whole of the change - a
+      // URL that lost its parameter would still satisfy the sentence.
+      expect(copied).toMatch(/The report: \S+\/feedback\?feedback=\d+/);
       expect(feedback.id).toBeGreaterThan(0);
     });
   });

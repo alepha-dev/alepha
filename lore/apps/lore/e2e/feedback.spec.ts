@@ -115,13 +115,16 @@ test.describe("Feedback", () => {
       const data = (await r.json()) as {
         content: Array<{
           id: number;
+          shortId: number;
           source?: { hostUrl?: string; userAgent?: string; timezone?: string };
         }>;
       };
       return data.content[0] ?? null;
     });
     const feedbackId = latest?.id ?? 0;
+    const feedbackShortId = latest?.shortId ?? 0;
     expect(feedbackId).toBeGreaterThan(0);
+    expect(feedbackShortId).toBeGreaterThan(0);
 
     // The sigil/proxy query params must be captured as the feedback `source`
     // provenance the owner sees in the inbox.
@@ -149,6 +152,21 @@ test.describe("Feedback", () => {
       await page.waitForLoadState("networkidle");
       const row = page.getByRole("row").filter({ hasText: feedbackTitle });
       await expect(row).toContainText(/accepted/i, { timeout: 10_000 });
+    });
+
+    /**
+     * The address, at the moment it is hardest: the item is `accepted` and
+     * the inbox opens on `pending`, so it is on no page of the list the
+     * owner lands with. A quest promoted from feedback links here, and this
+     * is the state that link always points at.
+     */
+    await test.step("a URL opens the item whatever its status", async () => {
+      await page.goto(`/${projectSlug}/feedback?feedback=${feedbackShortId}`);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByTestId("feedback-detail")).toContainText(
+        feedbackTitle,
+        { timeout: 15_000 },
+      );
     });
   });
 

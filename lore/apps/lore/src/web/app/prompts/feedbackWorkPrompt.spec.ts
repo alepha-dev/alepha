@@ -15,7 +15,7 @@ const subject: AgentPromptSubject = {
   // Petitions. Built by `formatReference("feedback", n)`, never by hand.
   reference: "#P2087",
   title: "add new action",
-  url: "https://lore.alepha.dev/alepha/feedback",
+  url: "https://lore.alepha.dev/alepha/feedback?feedback=2087",
 };
 
 describe("feedbackWorkPromptDefault", () => {
@@ -28,17 +28,20 @@ describe("feedbackWorkPromptDefault", () => {
   });
 
   /**
-   * ⚠️ `projectFeedback` is `path: "/feedback"` with no parameter and the
-   * selection is React state, so no URL opens one item. The line has to
-   * say inbox, or an agent follows a link that lands on someone else's
-   * report.
+   * ⚠️ The line said "The inbox:" until #Q2077, because `projectFeedback`
+   * ignored its query and no URL could open one item - an agent following
+   * the link landed on someone else's report. The page honours
+   * `?feedback=<shortId>` now, so the link is the item and the line says so.
+   *
+   * The assertion is on the QUERY rather than on the sentence: naming the
+   * item is the whole change, and a URL that lost its parameter would still
+   * satisfy a check for the words.
    */
-  it("calls the URL the inbox, because no URL opens one item", () => {
+  it("links the item itself, by its number", () => {
     expect(prompt).toContain(
-      "The inbox: https://lore.alepha.dev/alepha/feedback",
+      "The report: https://lore.alepha.dev/alepha/feedback?feedback=2087",
     );
-    expect(prompt).not.toContain("The feedback: ");
-    expect(prompt).toContain("open the inbox above and find it there");
+    expect(prompt).toContain("open the link above and read it there");
   });
 
   it("reads the item and its attachments by reference", () => {
