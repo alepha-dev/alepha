@@ -153,6 +153,15 @@ export class DeployRunner {
    */
   protected static readonly ASSETS = "/deploy/dist/public/";
 
+  /**
+   * How often the asset upload says where it has got to.
+   *
+   * The log is a row every project member can read and is capped, so this is
+   * a compromise between saying nothing for minutes and filling that cap with
+   * progress on a site of a few hundred files.
+   */
+  protected static readonly PROGRESS_EVERY = 250;
+
   public async run(request: DeployRequest): Promise<{
     urls: string[];
     domain?: string;
@@ -213,7 +222,7 @@ export class DeployRunner {
         .inject(WorkerCloudflareAdapter)
         .use(request.credential)
         .withSecrets(request.secrets ?? {});
-      const assets = this.assetsOf(manifest, bytes);
+      const assets = this.assetsOf(manifest, bytes, deployment);
       if (assets) {
         adapter.useAssets(assets);
       }
@@ -328,6 +337,7 @@ export class DeployRunner {
   protected assetsOf(
     manifest: Record<string, CloudflareAssetEntry>,
     bytes: Uint8Array,
+    deployment?: string,
   ): CloudflareDeployAssets | undefined {
     if (Object.keys(manifest).length === 0) {
       return undefined;
@@ -344,6 +354,13 @@ export class DeployRunner {
         mkdir: async () => {},
         writeFile: async () => {},
       };
+      // ⚠️ Progress is reported from HERE rather than from the client, and it
+      // is not decoration: an upload of thousands of files is the one step
+      // that can outlive a run, and a log that jumps from "deploy worker" to
+      // silence cannot say whether it was abandoned at its own deadline or
+      // killed under it. One line per PROGRESS_EVERY files answers that from
+      // the timestamps alone.
+      let sent = 0;
       await this.reader.extract(bytes, nowhere, DeployRunner.ROOT, {
         skip: () => true,
         onSkipped: async (path, body) => {
@@ -355,9 +372,18 @@ export class DeployRunner {
           );
           if (keys.has(key)) {
             await onFile(key, body);
+            if (++sent % DeployRunner.PROGRESS_EVERY === 0) {
+              await this.registry.line(
+                deployment,
+                `Uploaded ${sent}/${keys.size} assets`,
+              );
+            }
           }
         },
       });
+      if (sent > 0) {
+        await this.registry.line(deployment, `Uploaded ${sent} assets`);
+      }
     };
 
     return {
