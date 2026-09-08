@@ -1,9 +1,11 @@
 import { $inject, z } from "alepha";
 import { $job } from "alepha/api/jobs";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { deployments } from "../entities/deployments.ts";
+import { DeployLimits } from "../services/DeployLimits.ts";
 import { DeployRegistry } from "../services/DeployRegistry.ts";
 import { DeployService } from "../services/DeployService.ts";
 
@@ -49,6 +51,8 @@ export class DeployJobs {
   protected readonly log = $logger();
   protected readonly deploys = $inject(DeployService);
   protected readonly registry = $inject(DeployRegistry);
+  protected readonly limits = $inject(DeployLimits);
+  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly rows = $repository(deployments);
 
   /**
@@ -57,6 +61,22 @@ export class DeployJobs {
   public static key(deploymentId: string): string {
     return `deploy:${deploymentId}`;
   }
+
+  /**
+   * How long past its own budget a run may go before the sweep calls it dead.
+   *
+   * ⚠️ **The margin is the whole safety of {@link sweepAbandoned}.** A run
+   * inside its budget is bounded by its own timer and will write its own
+   * failure; a run past its budget by less than this is one whose timer is
+   * about to fire. Sweeping either would mark a live deploy failed while the
+   * upload it started carries on at Cloudflare, which is a worse lie than the
+   * stuck row this exists to clear.
+   *
+   * Five minutes: long enough that only a run with nothing left alive to
+   * report is caught, short enough that the operator is not left following a
+   * dead row for an afternoon.
+   */
+  public static readonly SWEEP_GRACE_MS = 5 * 60 * 1000;
 
   public readonly runDeploy = $job({
     name: "lore.deploy.run",
@@ -93,6 +113,75 @@ export class DeployJobs {
       }
 
       await this.deploys.run(row);
+    },
+  });
+
+  /**
+   * Rows whose run stopped existing, closed.
+   *
+   * ## ⚠️ Why the in-isolate timer is not enough
+   *
+   * `DeployService` races every run against a timer, and that timer runs in
+   * the same isolate as the run. It covers a deploy that HANGS. It cannot
+   * cover a deploy whose isolate DIES - the timer dies with it, no status is
+   * written, and the row reads `running` for ever while the UI follows it and
+   * the operator cannot retry.
+   *
+   * That is not hypothetical: a `docs` deploy on 2026-09-08 exhausted the
+   * Worker's 128 MB unpacking a 60 MB artifact, and its row was still reading
+   * `["Fetching…", "Unpacking"]` an hour later.
+   *
+   * ## ⚠️ It says "stopped reporting", not "failed"
+   *
+   * The sweep knows one thing - that nothing has been heard - and must not
+   * claim more. The Worker upload may well have reached Cloudflare before the
+   * isolate went, so the message sends the operator to look rather than
+   * asserting that nothing shipped.
+   *
+   * ## The age is `startedAt`, falling back to `createdAt`
+   *
+   * A row that never started has no `startedAt`, and that is exactly the row
+   * stuck before any work happened - the one kind the sweep would otherwise
+   * be blind to. The SQL filter is on `createdAt` because it is never later
+   * than `startedAt`, so it can only over-select, and the check that decides
+   * is done per row.
+   */
+  public readonly sweepAbandoned = $job({
+    name: "lore.deploy.sweep",
+    // ⚠️ Cron-only, so no `schema`: a job may declare one or the other and a
+    // job carrying both is refused at boot. There is nothing to say anyway -
+    // the sweep reads the rows and takes no payload.
+    cron: "*/5 * * * *",
+    handler: async () => {
+      const nowMs = this.dateTime.nowMillis();
+      const budgetMs =
+        (await this.limits.timeoutMs()) + DeployJobs.SWEEP_GRACE_MS;
+      const cutoff = new Date(nowMs - budgetMs).toISOString();
+
+      const rows = await this.rows.findMany({
+        where: {
+          status: { inArray: ["queued", "running"] },
+          createdAt: { lt: cutoff },
+        },
+      });
+
+      for (const row of rows) {
+        const since = row.startedAt ?? row.createdAt;
+        if (!since || new Date(since).getTime() > nowMs - budgetMs) {
+          // Queued a long time and started recently: alive, and its own timer
+          // owns it.
+          continue;
+        }
+        this.log.warn("Deploy stopped reporting; marking it failed", {
+          deploymentId: row.id,
+          status: row.status,
+          since,
+        });
+        await this.registry.failed(
+          row.id,
+          `This deploy stopped reporting after ${Math.round(budgetMs / 60_000)} minutes and was abandoned. The run holding it is gone - a large artifact can exhaust the Worker's memory while unpacking - so it never got to write its own result. It may still have reached Cloudflare; check the Worker before retrying.`,
+        );
+      }
     },
   });
 }
