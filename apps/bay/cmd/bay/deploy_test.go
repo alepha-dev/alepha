@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/alepha/bay/internal/health"
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/runner"
 	"github.com/alepha/bay/internal/state"
 )
@@ -185,7 +186,7 @@ func (f *deployFixture) deploy(artifact string) (*deployOutcome, *deployFailure)
 func (f *deployFixture) currentRelease(t *testing.T) string {
 	t.Helper()
 	resolved, err := filepath.EvalSymlinks(
-		filepath.Join(f.root, "apps", "demo", "production", "current"))
+		filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "current"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -489,7 +490,7 @@ func TestOnlyTheServingReleaseAndItsPredecessorAreKept(t *testing.T) {
 		releases = append(releases, out.Result.Release)
 	}
 
-	entries, err := os.ReadDir(filepath.Join(f.root, "apps", "demo", "production", "releases"))
+	entries, err := os.ReadDir(filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "releases"))
 	if err != nil {
 		t.Fatal(err)
 	}

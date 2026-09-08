@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/schedule"
 	"github.com/alepha/bay/internal/state"
 )
@@ -82,7 +83,7 @@ func newBackupFixture(t *testing.T) *deployFixture {
 
 	// The database the app would have written. Its contents are irrelevant — the
 	// stand-in copies bytes rather than reading SQL.
-	dataDir := filepath.Join(f.root, "apps", "demo", "production", "data")
+	dataDir := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "data")
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +193,7 @@ func TestFailedManualBackupDoesNotAdvanceLastBackupAt(t *testing.T) {
 	f := newBackupFixture(t)
 
 	// No database to snapshot: the failure lands in `mgr.Backup`, before upload.
-	if err := os.Remove(filepath.Join(f.root, "apps", "demo", "production", "data", "app.db")); err != nil {
+	if err := os.Remove(filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "data", "app.db")); err != nil {
 		t.Fatal(err)
 	}
 

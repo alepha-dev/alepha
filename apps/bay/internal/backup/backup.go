@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/alepha/bay/internal/s3"
+
+	"github.com/alepha/bay/internal/naming"
 )
 
 // timeLayout sorts lexically in chronological order, which is what makes
@@ -50,7 +52,7 @@ type Result struct {
 }
 
 func dbPrefix(app, env string) string {
-	return fmt.Sprintf("apps/%s/%s/db/", app, env)
+	return "apps/" + naming.Instance(app, env) + "/db/"
 }
 
 // Backup snapshots the live database, verifies it, compresses it and uploads it.

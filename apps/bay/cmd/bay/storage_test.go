@@ -14,6 +14,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/runner"
 	"github.com/alepha/bay/internal/state"
 )
@@ -243,7 +244,7 @@ func localBackedBackupFixture(t *testing.T, puts *[]string) *deployFixture {
 	snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
 
 	// Real uploads on disk, so "nothing was archived" cannot pass by accident.
-	uploads := filepath.Join(f.root, "apps", "demo", "production", "storage", "avatars")
+	uploads := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "storage", "avatars")
 	if err := os.MkdirAll(uploads, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +252,7 @@ func localBackedBackupFixture(t *testing.T, puts *[]string) *deployFixture {
 		t.Fatal(err)
 	}
 
-	dataDir := filepath.Join(f.root, "apps", "demo", "production", "data")
+	dataDir := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "data")
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -320,7 +321,7 @@ func s3BackedBackupFixture(t *testing.T, puts *[]string) *deployFixture {
 	//
 	// Realistic, too: this is what an app looks like the day after it moved to
 	// the bucket, before anyone cleaned the old directory up.
-	leftovers := filepath.Join(f.root, "apps", "demo", "production", "storage", "avatars")
+	leftovers := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "storage", "avatars")
 	if err := os.MkdirAll(leftovers, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +329,7 @@ func s3BackedBackupFixture(t *testing.T, puts *[]string) *deployFixture {
 		t.Fatal(err)
 	}
 
-	dataDir := filepath.Join(f.root, "apps", "demo", "production", "data")
+	dataDir := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "data")
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -437,7 +438,7 @@ func localAppWithUploads(t *testing.T) *deployFixture {
 	}); failure != nil {
 		t.Fatalf("deploy failed: %v", failure)
 	}
-	storageDir := filepath.Join(f.root, "apps", "demo", "production", "storage")
+	storageDir := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "storage")
 	for _, rel := range []string{"avatars/a.png", "avatars/b.png", "invoices/2026/x.pdf"} {
 		full := filepath.Join(storageDir, filepath.FromSlash(rel))
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -481,9 +482,9 @@ func TestMigrateCopiesEveryFileUnderTheAppPrefix(t *testing.T) {
 	// `<prefix>/<tenantId?>/<container>/<fileId>` — the same shape, so
 	// preserving the relative path is the whole mapping.
 	for _, want := range []string{
-		"/bay-blobs/apps/demo/production/blobs/avatars/a.png",
-		"/bay-blobs/apps/demo/production/blobs/avatars/b.png",
-		"/bay-blobs/apps/demo/production/blobs/invoices/2026/x.pdf",
+		"/bay-blobs/apps/demo-production/blobs/avatars/a.png",
+		"/bay-blobs/apps/demo-production/blobs/avatars/b.png",
+		"/bay-blobs/apps/demo-production/blobs/invoices/2026/x.pdf",
 	} {
 		found := false
 		for _, got := range puts {
@@ -519,12 +520,12 @@ func TestMigrateSwitchesTheAppOver(t *testing.T) {
 	// Through the reader, not the raw bytes: the file is quoted for systemd's
 	// EnvironmentFile grammar, and this test is about WHERE the blobs go.
 	env, err := runner.LoadEnvFile(
-		filepath.Join(f.root, "apps", "demo", "production", ".env"),
+		filepath.Join(f.root, "apps", naming.Instance("demo", "production"), ".env"),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if env["S3_KEY_PREFIX"] != "apps/demo/production/blobs" {
+	if env["S3_KEY_PREFIX"] != "apps/demo-production/blobs" {
 		t.Fatalf("the app was not repointed at the bucket:\n%v", env)
 	}
 	if _, ok := env["STORAGE_PATH"]; ok {
@@ -549,7 +550,7 @@ func TestMigrateLeavesTheLocalFilesAlone(t *testing.T) {
 		t.Fatalf("migrate failed: %s", rec.Body)
 	}
 
-	original := filepath.Join(f.root, "apps", "demo", "production", "storage", "avatars", "a.png")
+	original := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "storage", "avatars", "a.png")
 	if _, err := os.Stat(original); err != nil {
 		t.Fatalf("the local copy must survive the migration: %v", err)
 	}

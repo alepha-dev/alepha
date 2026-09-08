@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/state"
 )
 
@@ -49,7 +50,7 @@ func TestFailedRestoreRestartsTheApp(t *testing.T) {
 		t.Fatal(derr)
 	}
 	snapshotCapableNode(t, filepath.Join(f.root, "runtimes", "node-24", "bin", "node"))
-	dataDir := filepath.Join(f.root, "apps", "demo", "production", "data")
+	dataDir := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), "data")
 	if err := os.WriteFile(filepath.Join(dataDir, "app.db"), []byte("SQLite format 3\x00"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +58,7 @@ func TestFailedRestoreRestartsTheApp(t *testing.T) {
 	gz := gzip.NewWriter(&packed)
 	_, _ = gz.Write([]byte("SQLite format 3\x00restored"))
 	_ = gz.Close()
-	key := "apps/demo/production/db/20260101T000000Z.sqlite.gz"
+	key := "apps/demo-production/db/20260101T000000Z.sqlite.gz"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet && r.URL.Query().Get("list-type") == "2" {
 			w.Header().Set("Content-Type", "application/xml")

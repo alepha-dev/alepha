@@ -33,6 +33,7 @@ import (
 	"github.com/alepha/bay/internal/deploy"
 	"github.com/alepha/bay/internal/health"
 	"github.com/alepha/bay/internal/manifest"
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/proxy"
 	"github.com/alepha/bay/internal/runner"
 	"github.com/alepha/bay/internal/runtimes"
@@ -720,7 +721,7 @@ func (s *server) holdDuring(key string) func() {
 // instanceDir is where an app instance's durable state lives — its .env, its
 // database, its storage and its releases.
 func (s *server) instanceDir(app state.App) string {
-	return filepath.Join(s.root, "apps", app.Name, app.Env)
+	return filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
 }
 
 /*
@@ -859,7 +860,7 @@ func (s *server) start(app state.App) error {
 		return nil
 	}
 
-	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
+	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
 	env, err := runner.LoadEnvFile(filepath.Join(instance, ".env"))
 	if err != nil {
 		return err
@@ -1550,7 +1551,7 @@ func (s *server) handleRemove(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("stop failed while removing", "app", key, "err", err)
 	}
 
-	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
+	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
 	purged := false
 	if r.URL.Query().Get("purge") == "yes" {
 		if err := os.RemoveAll(instance); err != nil {

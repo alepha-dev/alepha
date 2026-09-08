@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alepha/bay/internal/deploy"
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/s3"
 	"github.com/alepha/bay/internal/state"
 )
@@ -131,7 +132,7 @@ func (s *server) handleMigrateStorage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
+	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
 	storageDir := filepath.Join(instance, "storage")
 
 	// Stopped for the length of the copy. An app still accepting uploads while

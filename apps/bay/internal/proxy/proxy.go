@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/state"
 )
 
@@ -174,7 +175,7 @@ func (p *Proxy) findStatic(app state.App, urlPath string) (string, bool) {
 		names = append(names, clean+".html", filepath.Join(clean, "index.html"))
 	}
 
-	instance := filepath.Join(p.root, "apps", app.Name, app.Env)
+	instance := filepath.Join(p.root, "apps", naming.Instance(app.Name, app.Env))
 	for _, release := range p.releases(instance, app.Release) {
 		// The Alepha build emits client assets at dist/public — served from
 		// there directly rather than hoisted into the archive root, which would
