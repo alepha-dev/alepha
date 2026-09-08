@@ -67,6 +67,18 @@ describe("feedbackWorkPromptDefault", () => {
     expect(prompt).toContain("and stop");
   });
 
+  /**
+   * The two audiences are different here and the sentence names both: the
+   * comment is addressed to the reporter, the reply to whoever sent the
+   * agent. Answering only the first leaves the second with "asked and
+   * stopped" and nothing to decide on.
+   */
+  it("puts the blocking question in the reply as well as the discussion", () => {
+    expect(prompt).toContain("Put the question in your reply as well");
+    expect(prompt).toContain("what you found in the code");
+    expect(prompt).toContain("The comment reaches the reporter");
+  });
+
   it("accepts, then creates the quest linked to the item", () => {
     expect(prompt).toContain("feedback_accept");
     expect(prompt).toContain("quest_create");
