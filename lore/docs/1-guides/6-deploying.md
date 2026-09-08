@@ -182,8 +182,15 @@ command, because destroying a database is not something to infer from a
 tidy-up:
 
 ```bash
-lore apps destroy --env staging --yes
+lore apps destroy --env staging --confirm my-app/staging
 ```
+
+⚠️ **Both flags are required and neither has a default.** `--env` does not fall
+back to `LORE_ENV` or to the project's default environment the way every other
+command does: on a command that deletes things, a forgotten flag would mean
+destroying production without the word appearing anywhere. And the confirmation
+is typed rather than composed, so naming the wrong environment fails the check
+instead of confirming itself. There is no `--yes`.
 
 ### Copies that are meant to be thrown away
 
