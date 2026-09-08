@@ -196,6 +196,17 @@ use: [$cache({ ttl: [1, "hour"] })];
 > **Note.** **`$secure` on a page is a real guard.** An anonymous visitor is refused at the router: with a `login` route declared, the result is a redirect to `/login?redirect=<path>`, and the loader's data never reaches the HTML; with no login route, the server answers 401. The two `$secure` variants refuse differently under the hood (the browser returns, the server throws), and the router normalises both into the redirect - which also means a page's own `errorHandler` cannot catch the refusal, because on the server the middleware chain wraps the render.
 >
 > Keep `$secure` on the endpoints underneath as well. Defense in depth: the API answers 401 whatever the interface does.
+>
+> **Two sign-in pages.** Exactly one route can be called `login`, so an application serving two realms - a back office whose agents sign in with an identifier, a password and a realm, beside a public side asking for an email and a password - cannot say which door a denied page belongs to, and every refusal lands on whichever page holds the name. Set `loginRoutesAtom` to map a path prefix to a route name, first match wins:
+>
+> ```typescript
+> alepha.store.set(loginRoutesAtom, [
+>   { prefix: "/admin", route: "agent" },
+>   { prefix: "/", route: "signIn" },
+> ]);
+> ```
+>
+> A prefix list rather than a resolver function, so the value is data: it validates, it serialises into the store, and it is set the same way on the server and in the browser. Unset - or set to a list nothing matches, or one naming a route that does not exist - the router resolves `login` exactly as it always did, so a single-realm application never touches this.
 
 When `static: true` is set, the framework automatically applies `$cache({ provider: "memory", ttl: [1, "week"] })` to the page.
 

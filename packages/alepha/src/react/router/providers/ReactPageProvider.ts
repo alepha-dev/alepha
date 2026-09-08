@@ -19,6 +19,7 @@ import type { Head } from "alepha/react/head";
 import { currentUserAtom } from "alepha/security";
 import { createElement, type ReactNode, StrictMode } from "react";
 
+import { loginRoutesAtom } from "../atoms/loginRoutesAtom.ts";
 import ErrorViewer from "../components/ErrorViewer.tsx";
 import NestedView from "../components/NestedView.tsx";
 import NotFoundPage from "../components/NotFound.tsx";
@@ -740,6 +741,14 @@ export class ReactPageProvider {
    *  - authenticated but not allowed (403) → a forbidden error; redirecting a
    *    logged-in user to login would just loop.
    *
+   * ⚠️ **`login` is the fallback, not the only answer.** One route can carry
+   * that name, so an application serving two realms could not say which of
+   * its doors a denied page belongs to, and every denial landed on whichever
+   * page held the name — an expired back-office session sending an agent to
+   * the citizen's sign-in form. {@link loginRoutesAtom} maps a path prefix to
+   * a route name for those applications; unset, this resolves exactly as it
+   * always did.
+   *
    * Throws when there is no usable `login` route to send an anonymous visitor
    * to — a page that cannot be entered and cannot redirect is an error, not a
    * blank render.
@@ -748,7 +757,7 @@ export class ReactPageProvider {
     const user = this.alepha.store.get(currentUserAtom);
 
     if (!user) {
-      const login = this.findRoute("login");
+      const login = this.findLoginRoute(url);
       if (login?.match && !/[:*]/.test(login.match)) {
         const back = encodeURIComponent(url.pathname + url.search);
         return { redirect: `${login.match}?redirect=${back}` };
@@ -762,6 +771,31 @@ export class ReactPageProvider {
     );
     (denied as { status?: number }).status = user ? 403 : 401;
     throw denied;
+  }
+
+  /**
+   * The sign-in page a denied URL belongs to.
+   *
+   * {@link loginRoutesAtom} first, by longest-committed-first order rather
+   * than by longest match: the list is the application's own, and reading it
+   * top to bottom is what lets `{ prefix: "/", route: "signIn" }` sit at the
+   * end as a catch-all beside a `/admin` entry above it.
+   *
+   * Falls back to the conventional `login` name on every miss — an unset
+   * atom, a URL under no declared prefix, and a prefix naming a route that
+   * does not exist. That last one matters: a typo in the list degrades to the
+   * behaviour of an application that never set it, instead of to a redirect
+   * pointing nowhere.
+   */
+  protected findLoginRoute(url: URL): PageRoute | undefined {
+    const doors = this.alepha.store.get(loginRoutesAtom);
+    const named = doors?.find((door) =>
+      url.pathname.startsWith(door.prefix),
+    )?.route;
+
+    return (
+      (named ? this.findRoute(named) : undefined) ?? this.findRoute("login")
+    );
   }
 
   /**
