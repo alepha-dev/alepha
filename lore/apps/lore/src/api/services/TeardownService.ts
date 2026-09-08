@@ -1,5 +1,8 @@
-import { $inject } from "alepha";
-import { WorkerCloudflareAdapter } from "alepha/cli/platform-lib";
+import { $inject, Alepha } from "alepha";
+import {
+  AlephaPlatformLibPlugin,
+  WorkerCloudflareAdapter,
+} from "alepha/cli/platform-lib";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
@@ -49,7 +52,6 @@ export class TeardownService {
   protected readonly instances = $repository(appInstances);
   protected readonly gate = $inject(DeployGate);
   protected readonly seal = $inject(CredentialSealService);
-  protected readonly adapter = $inject(WorkerCloudflareAdapter);
 
   /**
    * What this copy still holds, or nothing when it was never recorded.
@@ -110,7 +112,7 @@ export class TeardownService {
       );
     }
 
-    const result = await this.adapter
+    const result = await this.adapter()
       .use({
         apiToken: this.seal.open(
           estate.credential,
@@ -122,6 +124,29 @@ export class TeardownService {
 
     await this.strike(instance.id, record, result.removed);
     return result;
+  }
+
+  /**
+   * The Cloudflare adapter, out of a container of its own.
+   *
+   * ## ⚠️ NOT `$inject`ed from Lore's container, and that is not a style choice
+   *
+   * `WorkerCloudflareAdapter` resolves only where `AlephaPlatformLibPlugin` has
+   * been registered, and Lore's own container never registers it - the deploy
+   * path builds a fresh container for the same reason (`DeployRunner.container`).
+   *
+   * Injecting it directly works in node and fails under **workerd**, which is
+   * the only runtime that matters here: injection is lazy, so nothing breaks at
+   * boot and nothing breaks in a test. It breaks the first time the service is
+   * constructed, which is the first time anybody calls destroy - a 500 with no
+   * message, on the one endpoint that had never been run.
+   *
+   * A container per call is cheap: no server, no database, no routes.
+   */
+  protected adapter(): WorkerCloudflareAdapter {
+    return Alepha.create({ env: { LOG_LEVEL: "error" } })
+      .with(AlephaPlatformLibPlugin)
+      .inject(WorkerCloudflareAdapter);
   }
 
   /**
