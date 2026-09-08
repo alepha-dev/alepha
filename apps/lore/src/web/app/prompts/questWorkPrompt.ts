@@ -7,8 +7,12 @@
  * branch, one commit, and anything discovered beyond it is a comment rather
  * than extra scope.
  *
- * See {@link epicReviewPromptDefault} for why this text is English and
- * carries no secrets.
+ * ⚠️ **Step 7's "and stop" carries the reply clause**, rather than the
+ * template growing a report section of its own. There is exactly one
+ * blocking point here, and what shipped is answered by the diff; the epic
+ * templates need a section because they have many. See
+ * {@link epicReviewPromptDefault} for the defect all three are avoiding,
+ * and for why this text is English and carries no secrets.
  */
 export const questWorkPromptDefault = `Work on quest {{reference}} "{{title}}" of the Lore project "{{project}}".
 
@@ -29,4 +33,4 @@ The quest: {{url}}
 6. Merge the branch into main and push.
 7. \`quest_complete\` with a short note: what shipped, and what was left out and why.
 
-If the quest cannot be done as written, say so in a comment and stop. Do not guess at a decision that is the owner's to make.`;
+If the quest cannot be done as written, say so in a comment and stop. Do not guess at a decision that is the owner's to make, and put the question in your reply as well: what the quest asks, what stopped you, and the two or three ways forward with the one you would take. The comment is the record; your reply is what the person who sent you here reads.`;

@@ -77,6 +77,22 @@ describe("epicActivatePromptDefault", () => {
     );
   });
 
+  /**
+   * The folio is the record a later session reads; the reply is what the
+   * person who started the run reads now. A twelve-quest epic can leave
+   * several blocked quests behind, each a decision that is the owner's, and
+   * a comment on one of them is not where they are looking.
+   */
+  it("reports what shipped and every blocked quest in the reply", () => {
+    expect(prompt).toContain("Then report in your reply");
+    expect(prompt).toContain("**What shipped**");
+    expect(prompt).toContain("**Every quest you could not do as written**");
+    // The line that stops the reply being a link to a comment.
+    expect(prompt).toContain(
+      "The decision is the owner's, and they are reading here",
+    );
+  });
+
   it("carries nothing but the fields it was given", () => {
     const withSecrets = renderPromptTemplate(epicActivatePromptDefault, {
       ...subject,

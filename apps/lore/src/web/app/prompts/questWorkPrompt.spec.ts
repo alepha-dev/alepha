@@ -71,6 +71,19 @@ describe("questWorkPromptDefault", () => {
     );
   });
 
+  /**
+   * One quest has one blocking point, so this is a clause on "and stop"
+   * rather than a section of its own - but the clause has to be there. A
+   * comment on the quest is not read by the person waiting on the answer.
+   */
+  it("puts the blocking question in the reply, not only in the comment", () => {
+    expect(prompt).toContain("put the question in your reply as well");
+    expect(prompt).toContain("the two or three ways forward");
+    expect(prompt).toContain(
+      "your reply is what the person who sent you here reads",
+    );
+  });
+
   it("carries nothing but the fields it was given", () => {
     const withSecrets = renderPromptTemplate(questWorkPromptDefault, {
       ...subject,
