@@ -156,12 +156,15 @@ export class ReactServerProvider {
         );
 
         const rawHandler = this.createHandler(page, cacheMiddleware);
-        const handler = serverMiddleware.length
-          ? this.withGuardDenial(
-              page,
-              new PipelineHandler(rawHandler, serverMiddleware),
-            )
-          : rawHandler;
+        const handler = this.withStaticFileSkip(
+          page,
+          serverMiddleware.length
+            ? this.withGuardDenial(
+                page,
+                new PipelineHandler(rawHandler, serverMiddleware),
+              )
+            : rawHandler,
+        );
 
         // Canonical (default-locale) route, served unprefixed.
         this.serverRouterProvider.createRoute(
@@ -377,6 +380,58 @@ export class ReactServerProvider {
   }
 
   /**
+   * Refuse a file-like URL on a route that swallows arbitrary paths, before
+   * anything else on that route gets to answer it.
+   *
+   * Bots probe `/wp-login.php` and `/.env`, and a browser holding a previous
+   * build asks for `/chunk.OLD.js` after every deploy. Neither is a page, and
+   * rendering React for them is waste at best.
+   *
+   * ## ⚠️ Two things this used to get wrong
+   *
+   * **It only guarded the catch-all.** A **root-level param** swallows exactly
+   * as much: `/:slug` matches every unclaimed root segment, so an application
+   * that routes projects or profiles at the root took every orphaned asset and
+   * every probe into that page. On lore.alepha.dev, whose `/:projectSlug`
+   * carries `$secure()`, `/chunk.OLD.js` was therefore answered as an
+   * authorization question - a login redirect for a visitor, and a 403
+   * "Access denied" page for a signed-in one, several times a day after a
+   * run of deploys.
+   *
+   * **It sat inside the render**, which is inside the middleware chain. A
+   * guard that has already run has already given the wrong answer, so the
+   * check has to wrap the whole handler rather than live at the end of it.
+   *
+   * A deeper param (`/docs/:slug`) is left alone deliberately: it is scoped
+   * under a segment the application owns, so a dot in it is far likelier to be
+   * meant. `staticFilePattern: ""` disables the whole thing.
+   */
+  protected withStaticFileSkip(
+    route: PageRoute,
+    handler: ServerHandler,
+  ): ServerHandler {
+    // `/*`, or a single root-level param. Both match anything at the root.
+    const swallowsAnyPath =
+      route.match === "/*" || /^\/[:{][^/]+$/.test(route.match);
+
+    const pattern = swallowsAnyPath ? this.resolveStaticFilePattern() : false;
+    if (!pattern) {
+      return handler;
+    }
+
+    return async (serverRequest) => {
+      if (!pattern.test(serverRequest.url.pathname)) {
+        return handler(serverRequest);
+      }
+
+      const { reply } = serverRequest;
+      reply.status = 404;
+      reply.headers["content-type"] = "text/plain";
+      return "Not Found";
+    };
+  }
+
+  /**
    * Collect middleware from the entire parent chain + the page itself.
    * Parent middleware runs first (outermost → innermost → page).
    */
@@ -508,23 +563,14 @@ export class ReactServerProvider {
      * has already flushed the head by then. See `$page`'s `stream` option.
      */
     const buffered = cacheMiddleware.length > 0 || route.stream === false;
-    const isCatchAll = route.match === "/*";
-    const staticFilePattern = isCatchAll
-      ? this.resolveStaticFilePattern()
-      : false;
 
     return async (serverRequest) => {
       const { url, reply, query, params } = serverRequest;
 
-      // Skip SSR for file-like URLs hitting the catch-all wildcard.
-      // Bots and crawlers often probe paths like /hello.txt, /wp-login.php, etc.
-      // Rendering a full React page for these is wasteful — return a plain 404 instead.
-      // staticFilePattern is `false | RegExp`; optional chaining doesn't narrow `false`
-      if (staticFilePattern && staticFilePattern.test(url.pathname)) {
-        reply.status = 404;
-        reply.headers["content-type"] = "text/plain";
-        return "Not Found";
-      }
+      // The file-like URL skip that used to live here is now
+      // `withStaticFileSkip`, wrapped around the whole handler: here it sat
+      // inside the middleware chain, so a page guard answered a probe before
+      // this line was ever reached.
 
       this.log.trace("Rendering page", { name: route.name });
 

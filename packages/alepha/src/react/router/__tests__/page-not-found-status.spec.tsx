@@ -1,5 +1,5 @@
-import { Alepha } from "alepha";
-import { ServerProvider } from "alepha/server";
+import { Alepha, createMiddleware } from "alepha";
+import { ServerProvider, UnauthorizedError } from "alepha/server";
 import { describe, it } from "vitest";
 
 import { AlephaReactRouter } from "../index.ts";
@@ -74,6 +74,74 @@ describe("$page not-found status", () => {
     const res = await request("/some/slug");
 
     expect(res.status).toBe(200);
+  });
+
+  /**
+   * A file-like URL is refused before any page guard runs.
+   *
+   * Skipping SSR for `/wp-login.php` and friends was gated on the catch-all,
+   * and a **root-level param** swallows exactly as much: `/:slug` matches
+   * every unclaimed root segment, orphaned build assets included. Every deploy
+   * renames those, so a browser holding the previous build asks for
+   * `/chunk.OLD.js`, that lands on `/:slug`, and the page's `$secure()`
+   * answers it as an authorization question: a login redirect for a visitor,
+   * and on lore.alepha.dev a 403 "Access denied" for a signed-in one.
+   *
+   * The check therefore belongs OUTSIDE the middleware chain, not inside the
+   * render it used to sit in: a guard that has already run has already given
+   * the wrong answer.
+   */
+  it("answers a file-like URL before a root param page's guard runs", async ({
+    expect,
+  }) => {
+    let guarded = 0;
+
+    class App {
+      // Stands in for `$secure()`: it refuses everyone, so any response other
+      // than a plain 404 proves the guard was reached.
+      deny = createMiddleware({
+        name: "deny",
+        handler: () =>
+          (async () => {
+            guarded++;
+            throw new UnauthorizedError("nope");
+          }) as any,
+      });
+
+      home = $page({ path: "/", component: () => "home" });
+      slug = $page({
+        path: "/:slug",
+        use: [this.deny],
+        component: () => "project",
+      });
+      notFound = $page({ path: "/*", component: () => "custom not found" });
+    }
+
+    const request = await start(App);
+
+    const asset = await request("/chunk.CBi8gfGt.js");
+    expect(asset.status).toBe(404);
+    expect(asset.headers.get("content-type")).toContain("text/plain");
+    expect(guarded).toBe(0);
+
+    // A real slug is untouched: it has no extension, so the guard still owns it.
+    const page = await request("/my-project");
+    expect(guarded).toBe(1);
+    expect(page.status).not.toBe(404);
+  });
+
+  it("still skips a file-like URL on the catch-all", async ({ expect }) => {
+    class App {
+      home = $page({ path: "/", component: () => "home" });
+      notFound = $page({ path: "/*", component: () => "custom not found" });
+    }
+
+    const request = await start(App);
+    const res = await request("/wp-login.php");
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toContain("text/plain");
+    expect(await res.text()).not.toContain("custom not found");
   });
 
   it("leaves a matched page alone", async ({ expect }) => {

@@ -46,8 +46,15 @@ export const reactPageOptions = $atom({
     strictMode: z.boolean().default(true),
     /**
      * RegExp pattern (as string) to detect file-like URLs (e.g. /hello.txt, /wp-login.php).
-     * When a request hits the catch-all wildcard route and matches this pattern,
-     * SSR is skipped and a plain 404 response is returned instead.
+     * When a request hits a route that swallows arbitrary paths and matches
+     * this pattern, a plain 404 is returned before the route answers at all.
+     *
+     * Two routes swallow arbitrary paths: the catch-all `/*`, and a
+     * **root-level param** such as `/:slug`, which matches every unclaimed
+     * root segment. The second matters as much as the first: an orphaned build
+     * asset (`/chunk.OLD.js`, which every deploy creates) lands on it, and if
+     * that page is guarded the probe is answered as an authorization question
+     * rather than as the 404 it is.
      *
      * Set to empty string to disable this behavior.
      *

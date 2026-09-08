@@ -68,8 +68,29 @@ export class ServerLoggerProvider {
       // 5xx and anything without a status stay at `error`.
       const status = HttpError.is(error) ? error.status : undefined;
       if (status && status >= 400 && status < 500) {
-        this.log.debug("Request rejected", {
+        // ⚠️ A 403 is the one refusal whose reason exists nowhere else.
+        //
+        // The client is handed a `requestId` and an "Access denied" page, and
+        // that id is the only handle it has: the whole point of printing it is
+        // that a developer can look up which rule fired. At `debug` this line
+        // does not leave a production deployment, so the id led to a single
+        // `Request completed` carrying a status and nothing else. A false
+        // denial was therefore undiagnosable after the fact: the guard that
+        // refused, and what it wanted, were never written down anywhere.
+        //
+        // So it rises to `warn`, which production ships, while staying off the
+        // `error` channel for the reason above. The volume is bounded in a way
+        // the other 4xx are not: a 403 requires a resolved identity, so
+        // anonymous traffic cannot produce one. A 401 and a 404 can, and both
+        // say all they have to say in the status itself, so they stay quiet.
+        const level = status === 403 ? "warn" : "debug";
+
+        this.log[level]("Request rejected", {
           status,
+          // The class name, not just the message: `ForbiddenError` and
+          // `SecurityError` are raised by different layers and read alike once
+          // flattened to a string.
+          error: error.name,
           message: error.message,
         });
         return;
