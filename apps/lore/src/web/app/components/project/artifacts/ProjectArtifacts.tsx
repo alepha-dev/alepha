@@ -322,22 +322,24 @@ const ProjectArtifacts = () => {
               app: {
                 label: tr("artifacts.table.app"),
                 sortable: true,
-                // `/apps/:app` rather than a full instance route, and that
-                // is the right target: an artifact is keyed by the APP and
-                // says nothing about which copy runs it. The redirect
-                // resolves to that app's default instance.
+                // ⚠️ Plain text, and it must stay plain text (#P2162).
+                //
+                // This was a `Link` to `projectAppRedirect`, defended on the
+                // grounds that an artifact is keyed by the APP and says
+                // nothing about which copy runs it, so the app is the best
+                // target available. That reasoning is right and still leads
+                // somewhere unhelpful: the redirect resolves to the app's
+                // DEFAULT instance - `production` if it exists, else the
+                // first env by name - so clicking a row about `0.28.0` on
+                // `node` opened a copy chosen by a rule with nothing to do
+                // with the artifact clicked, and possibly running something
+                // else entirely.
+                //
+                // The Tag column below keeps its link, because that one is a
+                // real relationship rather than a resolved guess: it points
+                // at a release only when a release actually carries the tag.
                 cell: (row) => (
-                  <Link
-                    href={router.path("projectAppRedirect", {
-                      params: {
-                        projectSlug: project.slug,
-                        app: row.app,
-                      },
-                    })}
-                    className="block truncate font-medium"
-                  >
-                    {row.app}
-                  </Link>
+                  <span className="block truncate font-medium">{row.app}</span>
                 ),
               },
               tag: {
