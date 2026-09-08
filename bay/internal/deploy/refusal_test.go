@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/runner"
 	"github.com/alepha/bay/internal/state"
 )
@@ -48,7 +49,7 @@ func TestRefusedDeployLeavesNoOrphanRelease(t *testing.T) {
 	if _, err := deployBucketApp(t, root, store, nil); err != nil {
 		t.Fatal(err)
 	}
-	instance := filepath.Join(root, "apps", "demo", "production")
+	instance := filepath.Join(root, "apps", naming.Instance("demo", "production"))
 	storageDir := filepath.Join(instance, "storage")
 	if err := os.MkdirAll(filepath.Join(storageDir, "avatars"), 0o755); err != nil {
 		t.Fatal(err)
@@ -106,7 +107,7 @@ func TestStaticToProcessRedeployAllocatesAPort(t *testing.T) {
 	if res.App.Port == 0 {
 		t.Fatal("the process app must get a real port, not the static record's 0")
 	}
-	env, err := runner.LoadEnvFile(filepath.Join(root, "apps", "docs", "production", ".env"))
+	env, err := runner.LoadEnvFile(filepath.Join(root, "apps", naming.Instance("docs", "production"), ".env"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,5 +185,56 @@ func TestDeployRefusesAUnixUserAnotherInstanceHolds(t *testing.T) {
 		BaseDomain: "bay.test",
 	}, store); err != nil {
 		t.Fatalf("an instance must be allowed to redeploy over itself: %v", err)
+	}
+}
+
+// ⚠️ The migration's safety net. An instance stored under the pre-fold layout
+// is invisible to a Bay that reads the new one, so a deploy would create an
+// empty instance beside it and the app would boot healthy having lost every
+// row - with the real database intact one directory away and nothing pointing
+// at it.
+func TestDeployRefusesAnInstanceLeftOnTheOldLayout(t *testing.T) {
+	root := t.TempDir()
+	legacy := filepath.Join(root, "apps", "demo", "production", "data")
+	if err := os.MkdirAll(legacy, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacy, "app.db"),
+		[]byte("SQLite format 3\x00"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := refuseToStrandOldLayout(root, "demo", "production",
+		filepath.Join(root, "apps", "demo-production"))
+	if err == nil {
+		t.Fatal("expected the old-layout refusal")
+	}
+	if !strings.Contains(err.Error(), "mv ") {
+		t.Fatalf("the refusal must name the move, got: %v", err)
+	}
+}
+
+// A first deploy has neither directory and must not be refused.
+func TestDeployIsNotRefusedWhenThereIsNoOldInstance(t *testing.T) {
+	root := t.TempDir()
+	if err := refuseToStrandOldLayout(root, "demo", "production",
+		filepath.Join(root, "apps", "demo-production")); err != nil {
+		t.Fatalf("a first deploy must not be refused: %v", err)
+	}
+}
+
+// Already migrated: the new path exists, so a stale old directory beside it is
+// not this deploy's business.
+func TestDeployIsNotRefusedOnceMigrated(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "apps", "demo", "production"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	instance := filepath.Join(root, "apps", "demo-production")
+	if err := os.MkdirAll(instance, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := refuseToStrandOldLayout(root, "demo", "production", instance); err != nil {
+		t.Fatalf("a migrated instance must not be refused: %v", err)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/state"
 )
 
@@ -39,7 +40,9 @@ func staticSite(t *testing.T, files map[string]string) *Proxy {
 		t.Fatal(err)
 	}
 
-	base := filepath.Join(root, "apps", "docs", "production", "releases", "r1", "dist", "public")
+	// ⚠️ ONE segment. The instance directory is `apps/<name>-<env>/`, not
+	// `apps/<name>/<env>/` - see internal/naming for why the pair is folded.
+	base := filepath.Join(root, "apps", naming.Instance("docs", "production"), "releases", "r1", "dist", "public")
 	for name, body := range files {
 		path := filepath.Join(base, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

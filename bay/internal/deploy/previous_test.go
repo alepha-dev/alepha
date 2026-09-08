@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/state"
 )
 
@@ -154,7 +155,7 @@ func TestDeployedAppsRunInProductionMode(t *testing.T) {
 
 	runDeploy(t, root, store, "demo")
 
-	envPath := filepath.Join(root, "apps", "demo", "production", ".env")
+	envPath := filepath.Join(root, "apps", naming.Instance("demo", "production"), ".env")
 	raw := flatEnv(t, envPath)
 	if !strings.Contains(raw, "NODE_ENV=production") {
 		t.Fatalf("a deployed app must run in production mode, .env was:\n%s", raw)
@@ -174,7 +175,7 @@ func TestBayReclaimsNodeEnvFromAnAppThatOverrodeIt(t *testing.T) {
 
 	runDeploy(t, root, store, "demo")
 
-	envPath := filepath.Join(root, "apps", "demo", "production", ".env")
+	envPath := filepath.Join(root, "apps", naming.Instance("demo", "production"), ".env")
 	if err := os.WriteFile(envPath,
 		[]byte("NODE_ENV=development\nSTRIPE_KEY=sk_live_keepme\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -206,7 +207,7 @@ func TestBayReclaimsNodeEnvFromAnAppThatOverrodeIt(t *testing.T) {
 // does not come back around.
 func TestAPrunedReleaseNameIsNotReused(t *testing.T) {
 	root, store := newRoot(t)
-	instance := filepath.Join(root, "apps", "demo", "production")
+	instance := filepath.Join(root, "apps", naming.Instance("demo", "production"))
 
 	deployOnce := func() string {
 		t.Helper()

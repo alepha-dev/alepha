@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/alepha/bay/internal/naming"
 )
 
 // setEnv drives the control API's handler the way `bay env set` does.
@@ -109,7 +111,7 @@ func TestEnvSetRefusesToOverwriteAppSecret(t *testing.T) {
 	// Bay generates APP_SECRET once per instance and never regenerates it: a
 	// new value signs every user out, and the one it replaced is gone.
 	f := deployedApp(t)
-	envPath := filepath.Join(f.root, "apps", "demo", "production", ".env")
+	envPath := filepath.Join(f.root, "apps", naming.Instance("demo", "production"), ".env")
 	before, err := os.ReadFile(envPath)
 	if err != nil {
 		t.Fatal(err)

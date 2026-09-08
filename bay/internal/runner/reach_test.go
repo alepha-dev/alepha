@@ -83,7 +83,7 @@ func TestBlockedAncestorToleratesAPathThatDoesNotExist(t *testing.T) {
 func TestAssertReachableRefusesAHomeDirectoryRoot(t *testing.T) {
 	// `./bay-data` under the deploying user's home is the documented default,
 	// and ProtectHome=yes makes it invisible to every unit whatever its mode.
-	err := AssertReachable("bay-demo-production", "/home/ubuntu/bay-data/apps/demo/production/current")
+	err := AssertReachable("bay-demo-production", "/home/ubuntu/bay-data/apps/demo-production/current")
 	if err == nil {
 		t.Fatal("expected a home-directory root to be refused")
 	}
@@ -93,7 +93,7 @@ func TestAssertReachableRefusesAHomeDirectoryRoot(t *testing.T) {
 }
 
 func TestProtectedHomeOnlyMatchesWholeComponents(t *testing.T) {
-	if got := protectedHome("/opt/bay/data/apps/demo/production/current"); got != "" {
+	if got := protectedHome("/opt/bay/data/apps/demo-production/current"); got != "" {
 		t.Fatalf("/opt is not protected, got %q", got)
 	}
 	if got := protectedHome("/home/ubuntu/bay-data"); got != "/home" {
