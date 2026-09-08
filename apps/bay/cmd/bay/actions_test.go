@@ -400,3 +400,23 @@ func TestDeployWithoutAnArtifactIsRefused(t *testing.T) {
 		t.Fatalf("got %+v", rec.last())
 	}
 }
+
+// ⚠️ The project segment is what keeps two Lore projects off each other's
+// instance. It drives the instance key, the directory under `apps/` and the
+// default subdomain at once, so a project that each call an app `api` and
+// deploy `production` to one machine no longer meet anywhere.
+func TestInstanceNameFoldsInTheProject(t *testing.T) {
+	for _, c := range []struct {
+		project, app, want string
+	}{
+		// `alepha platform` sends no project and keeps its old identity.
+		{"", "club", "club"},
+		{"alepha", "club", "alepha-club"},
+		{"acme", "api", "acme-api"},
+	} {
+		got := instanceName(connector.Command{Project: c.project, App: c.app})
+		if got != c.want {
+			t.Errorf("instanceName(%q, %q) = %q, want %q", c.project, c.app, got, c.want)
+		}
+	}
+}

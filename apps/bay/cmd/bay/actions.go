@@ -347,6 +347,22 @@ each begins, then the terminal outcome. Secrets reach the instance env the way
 `bay deploy --secrets-file` delivers them and nowhere else: never a log line,
 never an ack.
 */
+// instanceName is what a pushed deploy registers the copy under.
+//
+// ⚠️ It drives THREE things at once: the instance key `bay list` prints, the
+// directory under `apps/`, and the default subdomain. Folding the project in
+// therefore separates two Lore projects everywhere it matters - and would
+// silently MOVE an existing copy if the caller started sending a project for
+// one already deployed without it.
+//
+// `alepha platform` sends none, and keeps `<app>-<env>` exactly as before.
+func instanceName(cmd connector.Command) string {
+	if cmd.Project == "" {
+		return cmd.App
+	}
+	return cmd.Project + "-" + cmd.App
+}
+
 func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(connector.Ack) error) (status, step, reason string) {
 	if !a.latestWelcome().DeployAllowed {
 		return "failed", "", "this estate does not accept deploys: its owner has not allowed them, and the welcome frame said so"
@@ -387,7 +403,8 @@ func (a *actions) deploy(ctx context.Context, cmd connector.Command, send func(c
 		return "failed", "deploying", err.Error()
 	}
 	out, derr := a.s.deployArtifact(ctx, deployArtifactOptions{
-		Artifact: dest, Name: cmd.App, Env: cmd.Environment, SecretsFile: secretsFile,
+		Artifact: dest, Name: instanceName(cmd), Env: cmd.Environment,
+		SecretsFile: secretsFile,
 	})
 	if derr != nil {
 		return "failed", "deploying", derr.Error()
