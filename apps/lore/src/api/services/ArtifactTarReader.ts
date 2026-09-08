@@ -146,10 +146,12 @@ export class ArtifactTarReader {
     bytes: Uint8Array,
     fs: ArtifactTarSink,
     root: string,
-  ): Promise<{ files: number; bytes: number }> {
+    options: ArtifactTarExtractOptions = {},
+  ): Promise<{ files: number; bytes: number; skipped: number }> {
     const { MAX_ENTRIES, MAX_EXTRACTED_BYTES } = ArtifactTarReader;
     let files = 0;
     let written = 0;
+    let skipped = 0;
 
     for await (const entry of this.entries(bytes)) {
       if (++files > MAX_ENTRIES) {
@@ -189,6 +191,18 @@ export class ArtifactTarReader {
         );
       }
 
+      // ⚠️ Offered to the caller and then DROPPED, without ever reaching the
+      // filesystem. This is what lets a deploy walk a 49 MB asset tree inside
+      // a 128 MB isolate: the bytes exist for the length of one callback.
+      // They are deliberately not counted against MAX_EXTRACTED_BYTES, which
+      // bounds what is KEPT; the walk itself is bounded by
+      // MAX_INFLATED_BYTES, as it is for `readManifest`.
+      if (options.skip?.(path)) {
+        skipped++;
+        await options.onSkipped?.(path, entry.body);
+        continue;
+      }
+
       written += entry.body.length;
       if (written > MAX_EXTRACTED_BYTES) {
         throw new BadRequestError(
@@ -203,7 +217,7 @@ export class ArtifactTarReader {
       await fs.writeFile(path, entry.body);
     }
 
-    return { files, bytes: written };
+    return { files, bytes: written, skipped };
   }
 
   /**
@@ -499,6 +513,37 @@ export interface ArtifactTarEntry {
  * spec, and so it is obvious that unpacking creates directories and writes
  * files and does nothing else.
  */
+/**
+ * What an extraction may leave out.
+ *
+ * ⚠️ **The reason this exists is memory, not taste.** `extract` writes every
+ * entry into a `MemoryFileSystemProvider`, so a site whose `dist/public` is
+ * 49 MB is 49 MB of isolate before the build has read a byte, and `apps/docs`
+ * died exactly there with `Worker exceeded memory limit`. A deploy does not
+ * need those files in a filesystem: it needs their hashes now and their bytes
+ * later, one upload batch at a time.
+ *
+ * So a skipped entry is still WALKED and still handed to {@link onSkipped} -
+ * it is only never stored.
+ */
+export interface ArtifactTarExtractOptions {
+  /**
+   * Answer true for an entry that must not be written. It is called with the
+   * resolved path, so a caller matches on where the entry landed rather than
+   * on what the archive called it.
+   */
+  skip?: (path: string) => boolean;
+
+  /**
+   * Each skipped entry, with bytes that are valid only until this resolves.
+   *
+   * ⚠️ Keeping a reference defeats the whole point: the body is a view into a
+   * buffer the walk is about to move past, and holding every one of them is
+   * the memory this option exists to avoid.
+   */
+  onSkipped?: (path: string, body: Uint8Array) => Promise<void> | void;
+}
+
 export interface ArtifactTarSink {
   mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
   writeFile(path: string, bytes: Uint8Array): Promise<unknown>;

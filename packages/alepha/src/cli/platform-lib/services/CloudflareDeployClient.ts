@@ -93,6 +93,35 @@ export interface CloudflareDeployAssets {
    * 128 MB isolate.
    */
   read: (key: string) => Promise<Uint8Array>;
+
+  /**
+   * Every wanted asset, pushed rather than pulled, so the caller decides how
+   * the bytes are produced and never has to hold them all.
+   *
+   * ## ⚠️ Why a second reading shape exists
+   *
+   * {@link read} is a PULL, and a pull needs the bytes to be addressable one
+   * key at a time - which means they are sitting somewhere. For a deploy
+   * running inside Lore's Worker that somewhere was a `MemoryFileSystemProvider`
+   * holding the whole unpacked tree, and `apps/docs` is 49 MB of assets inside
+   * a 128 MB isolate. It died with `Worker exceeded memory limit` before the
+   * upload began.
+   *
+   * A push lets the source be a single walk of the archive: each file exists
+   * for the length of one call, joins the batch being filled, and is gone. The
+   * memory is one batch, whatever the site's size.
+   *
+   * ⚠️ **`bytes` is valid only until the callback resolves.** The caller is
+   * free to hand out a view into a buffer it is about to move past.
+   *
+   * Optional, because a deploy from a laptop has the files on a disk and
+   * {@link read} is the simpler thing there.
+   */
+  readAll?: (
+    keys: Set<string>,
+    onFile: (key: string, bytes: Uint8Array) => Promise<void>,
+  ) => Promise<void>;
+
   config?: Record<string, unknown>;
 }
 
@@ -247,6 +276,58 @@ export class CloudflareDeployClient {
     }
 
     let completion = session.jwt;
+
+    // ⚠️ The streaming path, when the caller can push. It uploads a batch the
+    // moment that batch is full rather than reading files one at a time, so
+    // the bytes resident at any point are one batch instead of a site. See
+    // `CloudflareDeployAssets.readAll`.
+    if (assets.readAll) {
+      let body: Record<string, File> = {};
+      let bytes = 0;
+      const flush = async () => {
+        if (bytes === 0) return;
+        const answer = await this.postAssets(body, completion);
+        completion = answer.jwt ?? completion;
+        body = {};
+        bytes = 0;
+      };
+
+      const keys = new Set<string>();
+      for (const hash of wanted) {
+        const key = byHash.get(hash);
+        if (!key) {
+          throw new AlephaError(
+            `Cloudflare asked for an asset hash (${hash}) that is not in the manifest we sent. Refusing to guess which file it meant.`,
+          );
+        }
+        keys.add(key);
+      }
+
+      await assets.readAll(keys, async (key, raw) => {
+        const hash = assets.manifest[key]?.hash;
+        if (!hash) return;
+        const encoded = this.manifest.base64(raw);
+        body[hash] = new File([encoded], hash, {
+          type: this.manifest.contentType(key),
+        });
+        bytes += encoded.length;
+        if (
+          bytes >= CloudflareDeployClient.BATCH_BYTES ||
+          Object.keys(body).length >= CloudflareDeployClient.BATCH_FILES
+        ) {
+          await flush();
+        }
+      });
+      await flush();
+
+      if (!completion) {
+        throw new AlephaError(
+          "Cloudflare accepted every asset upload but returned no completion token, so the script upload has nothing to reference.",
+        );
+      }
+      return { jwt: completion };
+    }
+
     for (const batch of this.batches(wanted, assets.manifest, byHash)) {
       const body: Record<string, File> = {};
       for (const hash of batch) {
@@ -270,20 +351,7 @@ export class CloudflareDeployClient {
         );
       }
 
-      // ⚠️ **The session's JWT, not the estate's API token.** This is the one
-      // call in the whole deploy whose credential is not the client's own: the
-      // upload session answers a token scoped to itself, and this endpoint
-      // authenticates with that. Sending the API token instead is answered
-      // with a flat `401 Unauthorized` that names nothing, and the client was
-      // built with the API token, so without this override that is what goes.
-      const answer = await this.client.workers.assets.upload.create(
-        {
-          account_id: this.accountId,
-          base64: true,
-          body,
-        },
-        { headers: { authorization: `Bearer ${completion}` } },
-      );
+      const answer = await this.postAssets(body, completion);
       // Only the LAST response carries the completion token; the others answer
       // an empty result, so keeping the newest non-empty one is the rule.
       completion = answer.jwt ?? completion;
@@ -295,6 +363,30 @@ export class CloudflareDeployClient {
       );
     }
     return { jwt: completion };
+  }
+
+  /**
+   * One batch of assets, under the session's own credential.
+   *
+   * ⚠️ **The session's JWT, not the estate's API token.** This is the one call
+   * in the whole deploy whose credential is not the client's own: the upload
+   * session answers a token scoped to itself, and this endpoint authenticates
+   * with that. Sending the API token instead is answered with a flat
+   * `401 Unauthorized` that names nothing, and the client is built with the
+   * API token, so without this override that is what goes.
+   */
+  protected async postAssets(
+    body: Record<string, File>,
+    jwt: string | undefined,
+  ): Promise<{ jwt?: string }> {
+    return await this.client.workers.assets.upload.create(
+      {
+        account_id: this.accountId,
+        base64: true,
+        body,
+      },
+      { headers: { authorization: `Bearer ${jwt}` } },
+    );
   }
 
   /**

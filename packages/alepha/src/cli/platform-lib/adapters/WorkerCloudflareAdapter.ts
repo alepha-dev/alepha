@@ -519,6 +519,12 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     if (!config.assets) {
       return undefined;
     }
+    // ⚠️ When the runner has them, they never touched a filesystem: it walks
+    // the archive instead, because materialising a 49 MB asset tree inside a
+    // 128 MB isolate is what killed `apps/docs`. See {@link useAssets}.
+    if (this.injectedAssets) {
+      return { ...this.injectedAssets, config: this.assetConfig(config) };
+    }
     const root = this.fs.join(distDir, "public");
     if (!(await this.fs.exists(root))) {
       return undefined;
@@ -549,10 +555,6 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       return undefined;
     }
 
-    const assetConfig: Record<string, unknown> = { ...config.assets };
-    delete assetConfig.directory;
-    delete assetConfig.binding;
-
     return {
       manifest,
       read: async (key) => {
@@ -564,11 +566,46 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
         }
         return new Uint8Array(await this.fs.readFile(path));
       },
-      ...(Object.keys(assetConfig).length > 0
-        ? { config: assetConfig }
+      ...(this.assetConfig(config)
+        ? { config: this.assetConfig(config) }
         : undefined),
     };
   }
+
+  /**
+   * The asset behaviour that travels to the API, and nothing wrangler-local.
+   *
+   * `directory` and `binding` say how wrangler finds the files on a disk
+   * Cloudflare never sees. `not_found_handling` and `run_worker_first` decide
+   * whether a miss is a real 404 or the app's NotFound component under a 200,
+   * which crawlers index, so those have to arrive.
+   */
+  protected assetConfig(
+    config: WranglerConfig,
+  ): Record<string, unknown> | undefined {
+    const assetConfig: Record<string, unknown> = { ...config.assets };
+    delete assetConfig.directory;
+    delete assetConfig.binding;
+    return Object.keys(assetConfig).length > 0 ? assetConfig : undefined;
+  }
+
+  /**
+   * The assets this deploy ships, supplied by the caller rather than read off
+   * a filesystem.
+   *
+   * ⚠️ **This is how a large site deploys at all.** `DeployRunner` unpacks an
+   * artifact into a `MemoryFileSystemProvider`, and `apps/docs` is 49 MB of
+   * `dist/public` inside a 128 MB isolate - so it never gets as far as being
+   * read. The runner instead walks the archive twice: once to hash, once to
+   * feed the upload, and neither pass keeps a file. Set before `up()`, in the
+   * same place the credential and the secrets are.
+   */
+  public useAssets(assets: CloudflareDeployAssets): this {
+    this.injectedAssets = assets;
+    return this;
+  }
+
+  protected injectedAssets?: CloudflareDeployAssets;
 
   protected async modules(
     distDir: string,

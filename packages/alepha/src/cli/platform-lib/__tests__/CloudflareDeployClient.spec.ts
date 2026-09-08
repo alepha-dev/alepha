@@ -181,6 +181,62 @@ describe("the Cloudflare deploy client", () => {
     });
 
     /**
+     * ⚠️ **The path that lets a big site deploy at all.**
+     *
+     * `read` is a pull, and a pull needs every byte to be addressable, which
+     * inside Lore's Worker meant the whole unpacked tree sitting in a
+     * `MemoryFileSystemProvider`: `apps/docs` is 49 MB of assets against a
+     * 128 MB isolate, and it died with `Worker exceeded memory limit` before
+     * the upload started.
+     *
+     * Pushed instead, each file exists for one callback, joins the batch being
+     * filled and is gone - so what is resident is one batch rather than a
+     * site, whatever the site's size.
+     */
+    it("uploads as it is fed, so a batch is all that is ever resident", async ({
+      expect,
+    }) => {
+      const many: Record<string, CloudflareAssetEntry> = {};
+      for (let i = 0; i < 260; i++) {
+        many[`/f${i}.js`] = { hash: `h${i}`, size: 4 };
+      }
+      const { client, of } = fake(
+        { jwt: "session", buckets: [Object.values(many).map((it) => it.hash)] },
+        [undefined, "completion"],
+      );
+
+      let live = 0;
+      let peak = 0;
+      const answer = await client.uploadAssets("my-app-staging", {
+        manifest: many,
+        read: async () => bytes("unused"),
+        readAll: async (keys, onFile) => {
+          for (const key of keys) {
+            live++;
+            peak = Math.max(peak, live);
+            await onFile(key, bytes("abcd"));
+            // The client copied what it needed; the source is free to drop it.
+            live--;
+          }
+        },
+      });
+
+      expect(answer).toEqual({ jwt: "completion" });
+      // 260 files against a 200-file cap is two batches, so the cap is what
+      // bounds a batch rather than the byte budget these tiny files never
+      // reach.
+      expect(of("assets.upload")).toHaveLength(2);
+      // One file is handed over at a time: the source never has to hold two.
+      expect(peak).toBe(1);
+      const [first] = of("assets.upload");
+      const body = (first.args[0] as { body: Record<string, File> }).body;
+      expect(Object.keys(body)).toHaveLength(200);
+      expect(Object.values(body)[0]?.type).toBe(
+        "text/javascript; charset=utf-8",
+      );
+    });
+
+    /**
      * ⚠️ **The one call that does NOT use the account's API token**, and
      * getting it wrong is a flat `401 Unauthorized` from Cloudflare with
      * nothing naming the credential.

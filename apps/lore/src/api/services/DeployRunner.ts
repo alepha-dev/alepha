@@ -2,6 +2,9 @@ import { $inject, Alepha } from "alepha";
 import { FileService } from "alepha/api/files";
 import {
   AlephaPlatformLibPlugin,
+  type CloudflareAssetEntry,
+  CloudflareAssetManifest,
+  type CloudflareDeployAssets,
   PlatformAdapterRegistry,
   PlatformOrchestrator,
   platformOptions,
@@ -133,6 +136,7 @@ export class DeployRunner {
   protected readonly files = $inject(FileService);
   protected readonly reader = $inject(ArtifactTarReader);
   protected readonly registry = $inject(DeployRegistry);
+  protected readonly assetManifest = $inject(CloudflareAssetManifest);
 
   /**
    * Where the artifact is unpacked inside the in-memory filesystem.
@@ -142,6 +146,12 @@ export class DeployRunner {
    * deployment id would only make the log harder to read.
    */
   protected static readonly ROOT = "/deploy";
+
+  /**
+   * Where an artifact's static assets live, and the one directory this runner
+   * refuses to put in a filesystem.
+   */
+  protected static readonly ASSETS = "/deploy/dist/public/";
 
   public async run(request: DeployRequest): Promise<{
     urls: string[];
@@ -162,10 +172,23 @@ export class DeployRunner {
       const bytes = await this.artifactBytes(request.artifact);
 
       await this.registry.line(deployment, "Unpacking");
-      const unpacked = await this.reader.extract(bytes, fs, DeployRunner.ROOT);
+      // ⚠️ `dist/public` is walked and hashed, never stored. See `assetsOf`.
+      const manifest: Record<string, CloudflareAssetEntry> = {};
+      const unpacked = await this.reader.extract(bytes, fs, DeployRunner.ROOT, {
+        skip: (path) => path.startsWith(DeployRunner.ASSETS),
+        onSkipped: (path, body) => {
+          const key = this.assetManifest.key(
+            path.slice(DeployRunner.ASSETS.length),
+          );
+          manifest[key] = {
+            hash: this.assetManifest.hash(body, key),
+            size: body.length,
+          };
+        },
+      });
       await this.registry.line(
         deployment,
-        `Unpacked ${unpacked.files} files (${Math.round(unpacked.bytes / 1024)} KB)`,
+        `Unpacked ${unpacked.files} files (${Math.round(unpacked.bytes / 1024)} KB), ${unpacked.skipped} assets streamed`,
       );
 
       // ⚠️ Before the orchestrator resolves anything. The environment is a
@@ -190,6 +213,10 @@ export class DeployRunner {
         .inject(WorkerCloudflareAdapter)
         .use(request.credential)
         .withSecrets(request.secrets ?? {});
+      const assets = this.assetsOf(manifest, bytes);
+      if (assets) {
+        adapter.useAssets(assets);
+      }
 
       const result = await alepha.inject(PlatformOrchestrator).up({
         root: DeployRunner.ROOT,
@@ -272,6 +299,84 @@ export class DeployRunner {
       hasQueue: false,
       hasCron: false,
       ...manifest.resources,
+    };
+  }
+
+  /**
+   * The app's static assets, as a manifest already computed plus a way to read
+   * the bytes back - without either of them ever being held.
+   *
+   * ## ⚠️ Why the assets never reach the filesystem
+   *
+   * `extract` used to write every entry into the `MemoryFileSystemProvider`,
+   * so a site's whole `dist/public` was resident before the build read a byte.
+   * `apps/docs` is 49 MB of assets across 1629 files inside a 128 MB isolate,
+   * and it died with `Worker exceeded memory limit` while unpacking - leaving
+   * a row reading `running` for ever, because the timer meant to abandon it
+   * died with the isolate.
+   *
+   * So the archive is walked TWICE and nothing is kept either time. The first
+   * pass hashes each asset as it goes past, which is all the upload session
+   * needs. The second feeds `CloudflareDeployClient` file by file, and it
+   * uploads each batch as that batch fills, so what is resident is one batch.
+   *
+   * ⚠️ The cost is a second inflate of the archive, paid only for the assets
+   * Cloudflare actually asks for - a redeploy of unchanged bytes asks for
+   * none, and the walk never happens. That is the right way round: the pass is
+   * cheap and predictable, and the memory it replaces was neither.
+   */
+  protected assetsOf(
+    manifest: Record<string, CloudflareAssetEntry>,
+    bytes: Uint8Array,
+  ): CloudflareDeployAssets | undefined {
+    if (Object.keys(manifest).length === 0) {
+      return undefined;
+    }
+
+    const readAll = async (
+      keys: Set<string>,
+      onFile: (key: string, body: Uint8Array) => Promise<void>,
+    ) => {
+      // ⚠️ A sink that writes nothing, because this pass exists only for its
+      // `onSkipped`. Storing here would put back exactly what the first pass
+      // went out of its way not to store.
+      const nowhere = {
+        mkdir: async () => {},
+        writeFile: async () => {},
+      };
+      await this.reader.extract(bytes, nowhere, DeployRunner.ROOT, {
+        skip: () => true,
+        onSkipped: async (path, body) => {
+          if (!path.startsWith(DeployRunner.ASSETS)) {
+            return;
+          }
+          const key = this.assetManifest.key(
+            path.slice(DeployRunner.ASSETS.length),
+          );
+          if (keys.has(key)) {
+            await onFile(key, body);
+          }
+        },
+      });
+    };
+
+    return {
+      manifest,
+      readAll,
+      // Never called while `readAll` is present, and present because the
+      // interface is the same one a laptop deploy satisfies off a disk.
+      read: async (key) => {
+        let found: Uint8Array | undefined;
+        await readAll(new Set([key]), async (_, body) => {
+          found = body;
+        });
+        if (!found) {
+          throw new BadRequestError(
+            `This artifact no longer carries the asset \`${key}\` the manifest named.`,
+          );
+        }
+        return found;
+      },
     };
   }
 
