@@ -55,10 +55,35 @@ const ArtifactsEmpty = (props: ArtifactsEmptyProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
-    <div className="flex flex-col items-start gap-2 py-2 text-left">
-      <p className="text-muted-foreground max-w-prose text-sm">
-        {props.description}
-      </p>
+    /*
+     * ⚠️ No alignment of its own, deliberately. It carried `items-start` and
+     * `text-left`, and the comment that justified them was on the `pre` this
+     * replaced: the shared empty state is centred, and a command wrapped over
+     * three centred lines is harder to read than the scrolling one it came
+     * from. That was true of a command block. It is not true of one sentence
+     * and a link, and the classes outlived the reason exactly the way the two
+     * components this merged did (feedback #P2156).
+     *
+     * The two callers are framed differently and both are right:
+     * `ProjectArtifacts` hands this to `AlephaTable`'s empty state, which is
+     * `items-center text-center`; `AppArtifactsList` renders it in a card
+     * under a left-aligned header, beside left-aligned loading and error
+     * lines. So this declares neither and inherits both.
+     *
+     * `items-start` had to go with `text-left` rather than instead of it: a
+     * flex column left-packs its children whatever the text alignment, which
+     * would have left the link hard left under a centred sentence.
+     */
+    <div className="flex flex-col gap-2 py-2">
+      {/*
+        ⚠️ No `max-w-prose`. It is a width, not an alignment, and inside the
+        centred frame it is the one that breaks: a block with a max-width in a
+        flex column packs to the START, so the sentence would have been
+        centred inside a box sitting off to the left. The table's own empty
+        state already caps its description at `max-w-xs`, and the card on the
+        app tab is the width it should be.
+      */}
+      <p className="text-muted-foreground text-sm">{props.description}</p>
 
       <a
         // ⚠️ Absolute, through `loreDocsUrl`. Written root-relative it
