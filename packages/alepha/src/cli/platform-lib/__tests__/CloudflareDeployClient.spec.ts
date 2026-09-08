@@ -145,11 +145,39 @@ describe("the Cloudflare deploy client", () => {
 
       expect(answer).toEqual({ jwt: "completion" });
       const [upload] = of("assets.upload");
-      const body = (upload.args[0] as { body: Record<string, string> }).body;
+      const body = (upload.args[0] as { body: Record<string, File> }).body;
       // Keyed by hash, base64 of the bytes, and `aaaa` is absent because
       // Cloudflare already holds it.
       expect(Object.keys(body)).toEqual(["bbbb"]);
-      expect(atob(body.bbbb as string)).toBe("bytes of /app.js");
+      expect(atob(await body.bbbb!.text())).toBe("bytes of /app.js");
+    });
+
+    /**
+     * ⚠️ **The part's own `Content-Type` is what Cloudflare serves the asset
+     * with**, and the SDK writes one only for a `Blob`: a plain string is
+     * appended with none, so every asset comes back with an EMPTY content
+     * type. The browser then refuses each module script and each stylesheet
+     * under strict MIME checking.
+     *
+     * What makes it expensive to spot is that a prerendered site still looks
+     * finished - the HTML is a file on disk, so the page paints and only the
+     * JavaScript is missing. Measured on `ui.alepha.dev`, where it read as a
+     * successful deploy until the console was opened.
+     */
+    it("types each part, so the browser will execute what it gets", async ({
+      expect,
+    }) => {
+      const { client, of } = fake(
+        { jwt: "session", buckets: [["aaaa", "bbbb"]] },
+        ["completion"],
+      );
+
+      await client.uploadAssets("my-app-staging", { manifest, read });
+
+      const [upload] = of("assets.upload");
+      const body = (upload.args[0] as { body: Record<string, File> }).body;
+      expect(body.aaaa?.type).toBe("text/html; charset=utf-8");
+      expect(body.bbbb?.type).toBe("text/javascript; charset=utf-8");
     });
 
     /**

@@ -89,6 +89,69 @@ export class CloudflareAssetManifest {
   }
 
   /**
+   * The MIME type Cloudflare should serve this asset as.
+   *
+   * ## ⚠️ Without it the browser refuses the file, and the page still renders
+   *
+   * The upload is `multipart/form-data`, and Cloudflare stores each part's
+   * `Content-Type` as the one it serves the asset with. A part built from a
+   * plain string carries none, so every asset comes back with an EMPTY
+   * content type - and a module script with an empty MIME type is refused by
+   * the browser under strict MIME checking, while the stylesheet beside it is
+   * refused too.
+   *
+   * A prerendered site still looks correct at that point: the HTML is a file
+   * on disk, so the page paints and only the JavaScript is missing. Measured
+   * on `ui.alepha.dev`, where it read as "the deploy worked" for an hour.
+   *
+   * ⚠️ The table is small on purpose. It covers what a built web app ships
+   * and answers `application/octet-stream` for anything else, which is what
+   * an unknown download should be. A missing entry costs one asset its type;
+   * pulling in a full MIME database costs every deploy its bundle size, in a
+   * Worker.
+   */
+  public contentType(path: string): string {
+    return (
+      CloudflareAssetManifest.CONTENT_TYPES[
+        this.extension(path).toLowerCase()
+      ] ?? "application/octet-stream"
+    );
+  }
+
+  protected static readonly CONTENT_TYPES: Record<string, string> = {
+    html: "text/html; charset=utf-8",
+    htm: "text/html; charset=utf-8",
+    js: "text/javascript; charset=utf-8",
+    mjs: "text/javascript; charset=utf-8",
+    css: "text/css; charset=utf-8",
+    json: "application/json; charset=utf-8",
+    webmanifest: "application/manifest+json",
+    map: "application/json; charset=utf-8",
+    txt: "text/plain; charset=utf-8",
+    md: "text/markdown; charset=utf-8",
+    xml: "application/xml; charset=utf-8",
+    svg: "image/svg+xml",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    avif: "image/avif",
+    ico: "image/x-icon",
+    woff: "font/woff",
+    woff2: "font/woff2",
+    ttf: "font/ttf",
+    otf: "font/otf",
+    eot: "application/vnd.ms-fontobject",
+    wasm: "application/wasm",
+    pdf: "application/pdf",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mp3: "audio/mpeg",
+    zip: "application/zip",
+  };
+
+  /**
    * The extension with no dot, and an empty string when there is none.
    *
    * ⚠️ Only a dot in the LAST segment counts, and only when it is not the
