@@ -39,12 +39,23 @@ const Protocol = 1
 // Bay already has, and nothing here is a path, a shell command or an argument
 // list. The executor (#1621) is where an unknown kind is refused.
 type Command struct {
-	ID          string    `json:"id"`
-	Kind        string    `json:"kind"`
-	App         string    `json:"app"`
-	Environment string    `json:"environment"`
-	Artifact    *Artifact `json:"artifact,omitempty"`
-	Logs        *LogsAsk  `json:"logs,omitempty"`
+	ID          string `json:"id"`
+	Kind        string `json:"kind"`
+	App         string `json:"app"`
+	Environment string `json:"environment"`
+	// Project is the Lore project this copy belongs to, and it is what keeps
+	// two projects off each other's instance.
+	//
+	// ⚠️ Empty for `alepha platform`, which has no project and keeps composing
+	// `<app>-<env>`. Present for a Lore deploy, where two projects that each
+	// call an app `api` and deploy `production` onto one machine would
+	// otherwise share a directory, a subdomain and a set of backups.
+	//
+	// Empty is also what an older Lore sends, so it degrades to the previous
+	// behaviour rather than to a wrong one.
+	Project  string    `json:"project,omitempty"`
+	Artifact *Artifact `json:"artifact,omitempty"`
+	Logs     *LogsAsk  `json:"logs,omitempty"`
 }
 
 // LogsAsk is how much of a journal a `logs` command wants.
@@ -130,6 +141,7 @@ type serverFrame struct {
 	Kind        string    `json:"kind,omitempty"`
 	App         string    `json:"app,omitempty"`
 	Environment string    `json:"environment,omitempty"`
+	Project     string    `json:"project,omitempty"`
 	Artifact    *Artifact `json:"artifact,omitempty"`
 	Logs        *LogsAsk  `json:"logs,omitempty"`
 }
@@ -490,6 +502,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 		}
 	case "command":
 		cmd := Command{ID: frame.ID, Kind: frame.Kind, App: frame.App,
+			Project:     frame.Project,
 			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
