@@ -138,10 +138,16 @@ const ProjectSettingsRanksPage = () => {
     // rather than asked to work it out. It is also the only column whose
     // stored set is `["*"]`, which no checkbox can express.
     readOnly: !rank.editable,
+    // The count the matrix prints beside its own coverage ratio. A string, not
+    // a node: it shares a line with "8/11" and has to wrap with it.
+    description: String(
+      tr("project.settings.ranks.holders", {
+        args: [String(holdersOf(rank.key))],
+      }),
+    ),
     label: (
       <ProjectRankColumnHeader
         name={rank.name}
-        holders={holdersOf(rank.key)}
         builtin={rank.builtin}
         onRename={rank.editable ? () => void rename(rank) : undefined}
         onDelete={

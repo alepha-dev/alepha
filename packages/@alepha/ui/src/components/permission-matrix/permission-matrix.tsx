@@ -1,3 +1,4 @@
+import type { IconComponent } from "@alepha/ui/components/control-base/icon-hint";
 import {
   Table,
   TableBody,
@@ -8,7 +9,10 @@ import {
 import { cn } from "@alepha/ui/lib/utils";
 import type { ReactNode } from "react";
 
-import { PermissionMatrixGroupRows } from "./permission-matrix-group-rows.tsx";
+import {
+  PermissionMatrixGroupRows,
+  permissionChecked,
+} from "./permission-matrix-group-rows.tsx";
 
 export interface PermissionMatrixProps {
   /**
@@ -135,24 +139,67 @@ export const PermissionMatrix = (props: PermissionMatrixProps) => {
     );
   }
 
+  // Every row in the table, in order, so a column's coverage is counted over
+  // the same set the reader can see. Filtering is the caller's job, so a group
+  // that is switched off is not in `groups` and correctly does not count
+  // against the ratio.
+  const rows = props.groups.flatMap((group) => group.permissions);
+
+  const coverageOf = (column: PermissionMatrixColumn): number =>
+    rows.filter((row) => permissionChecked(column, row, granted)).length;
+
   return (
     <div className={cn("w-full overflow-x-auto", props.className)}>
       <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="min-w-56">{props.header}</TableHead>
-            {props.columns.map((column) => (
-              <TableHead key={column.key} className="text-center">
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="font-medium">{column.label}</span>
-                  {column.description ? (
+        {/* The chrome surface, sticky, so a long matrix keeps its rank names
+            while it scrolls. `bg-muted` fully opaque and the two inset lines
+            are the same pair `AlephaTable`'s header wears, and for the same
+            reasons: a translucent header lets rows scroll through the labels,
+            and a border on a sticky `<thead>` is dropped by the collapsed
+            border model. */}
+        <TableHeader className="bg-muted sticky top-0 z-10 shadow-[inset_0_1px_0_0_var(--bevel),inset_0_-1px_0_0_var(--border)]">
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="min-w-56 align-bottom">
+              {props.header}
+            </TableHead>
+            {props.columns.map((column) => {
+              const held = coverageOf(column);
+
+              return (
+                <TableHead
+                  key={column.key}
+                  className="border-border/60 h-auto min-w-36 border-l py-2 text-center align-bottom"
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="font-medium">{column.label}</span>
+                    {/* The caller's own line and the ratio share one row.
+                        The ratio is a count, not copy, which is what lets this
+                        component print it while still shipping no strings:
+                        `description` carries whatever the application wants
+                        said ("1 membre"), and the separator is punctuation. */}
                     <span className="text-muted-foreground text-xs font-normal">
-                      {column.description}
+                      {column.description ? <>{column.description} · </> : null}
+                      {held}/{rows.length}
                     </span>
-                  ) : null}
-                </div>
-              </TableHead>
-            ))}
+                    {/* Decorative, and `aria-hidden` for it: the ratio above
+                        is the same fact in text, and four `role="progressbar"`
+                        elements announcing a number already read out is noise,
+                        not access. */}
+                    <div
+                      aria-hidden
+                      className="bg-foreground/10 h-1 w-16 overflow-hidden rounded-full"
+                    >
+                      <div
+                        className="bg-primary h-full rounded-full transition-[width]"
+                        style={{
+                          width: `${rows.length === 0 ? 0 : (held / rows.length) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -180,6 +227,17 @@ export interface PermissionMatrixGroup {
 
   label: ReactNode;
 
+  /**
+   * Shown before the label on the heading row. A subject is quicker to find
+   * again by its mark than by re-reading four uppercase words, and the heading
+   * row is the only thing a reader scans past on the way down a long matrix.
+   *
+   * Optional, and a group without one simply starts at its label - the heading
+   * does not reserve the space, so a matrix that gives icons to none of its
+   * groups looks deliberate rather than short of something.
+   */
+  icon?: IconComponent;
+
   permissions: PermissionMatrixRow[];
 }
 
@@ -192,6 +250,12 @@ export interface PermissionMatrixRow {
 
   label: ReactNode;
 
+  /**
+   * Supplementary prose, shown as a tooltip on the label rather than as a
+   * line of its own: the line under the label is the permission's stored name,
+   * which every row has, and a third line would loosen the whole table for the
+   * few rows that carry one.
+   */
   description?: ReactNode;
 
   /**
