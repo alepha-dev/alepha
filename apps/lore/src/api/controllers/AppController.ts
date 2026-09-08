@@ -1,4 +1,5 @@
 import { $inject, z } from "alepha";
+import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { $action, BadRequestError, okSchema } from "alepha/server";
 
@@ -48,6 +49,7 @@ export class AppController {
   protected security = $inject(ProjectSecurityService);
   protected service = $inject(AppService);
   protected readonly teardown = $inject(TeardownService);
+  protected readonly log = $logger();
   protected audits = $inject(LoreAudits);
 
   /**
@@ -413,14 +415,29 @@ export class AppController {
 
       const result = await this.teardown.destroy(instance);
 
-      await this.audits.app.logSuccess("destroy", {
-        ...this.audits.actor(user),
-        ...this.audits.scope(params.projectId),
-        severity: "warning",
-        resourceType: "app",
-        resourceId: instance.id,
-        description: `${expected}: removed ${result.removed.join(", ") || "nothing"}`,
-      });
+      // ⚠️ Nothing after the destruction may fail the request. The resources
+      // are already gone by this line, so an error here does not undo them -
+      // it reports "500" for work that succeeded, which is how an operator
+      // retries a destroy that already ran and how a partial teardown becomes
+      // invisible. This exact call shipped naming an action the audit did not
+      // declare, and the 500 it raised hid a Worker and a database that had
+      // just been deleted.
+      try {
+        await this.audits.app.logSuccess("destroy", {
+          ...this.audits.actor(user),
+          ...this.audits.scope(params.projectId),
+          severity: "warning",
+          resourceType: "app",
+          resourceId: instance.id,
+          description: `${expected}: removed ${result.removed.join(", ") || "nothing"}, kept ${result.kept.join(", ") || "nothing"}`,
+        });
+      } catch (error) {
+        this.log.error("Could not audit a destroy that already happened", {
+          instanceId: instance.id,
+          removed: result.removed,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
 
       return result;
     },

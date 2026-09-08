@@ -233,7 +233,11 @@ export class LoreAudits {
   readonly app = $audit({
     type: "app",
     description: "App instances and their deploy targets",
-    actions: ["create", "update", "delete"],
+    // ⚠️ `destroy` is not `delete`. `delete` removes the Lore row and touches
+    // nothing in anybody's cloud account; `destroy` removes the Worker, the
+    // queue and the cache namespace that copy's deploys created. Somebody
+    // reading this log later needs those to be two different sentences.
+    actions: ["create", "update", "delete", "destroy"],
     coalesce: { actions: ["update"], window: "5m" },
   });
 

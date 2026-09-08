@@ -15,6 +15,7 @@ import { estateProjects } from "../src/api/entities/estateProjects.ts";
 import { estates } from "../src/api/entities/estates.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { CredentialSealService } from "../src/api/services/CredentialSealService.ts";
+import { LoreAudits } from "../src/api/services/LoreAudits.ts";
 import { TeardownService } from "../src/api/services/TeardownService.ts";
 
 /**
@@ -291,6 +292,64 @@ describe("tearing a copy's resources down", () => {
       );
 
       expect(await w.rows.instances.findById(w.instance.id)).toBeUndefined();
+    });
+  });
+
+  describe("the endpoint, end to end", () => {
+    /**
+     * ⚠️ The case that shipped broken. Every other test here drives the
+     * SERVICE; nothing drove the controller with a valid confirmation and a
+     * real record, so the handler's audit call was never executed - and it
+     * named an action the audit did not declare.
+     *
+     * It threw AFTER the teardown had run, so the endpoint answered 500 for
+     * work that had succeeded: a Worker and a database were already gone, and
+     * the caller was told the request failed.
+     */
+    it("answers the result rather than failing on its own bookkeeping", async ({
+      expect,
+    }) => {
+      const w = await world({ worker: "w", d1: { name: "d", id: "i" } });
+
+      const res = await alepha.inject(AppController).destroyAppResources.fetch(
+        {
+          params: {
+            projectId: w.project.id,
+            app: "my-app",
+            env: "production",
+          },
+          body: { confirm: "my-app/production" },
+        },
+        { user: w.user },
+      );
+
+      // The account is invented so the worker delete cannot succeed - the
+      // point is that the ENDPOINT answered instead of raising.
+      expect(res.data.kept).toEqual(["d1:d"]);
+      expect(
+        res.data.failed.map((it: { resource: string }) => it.resource),
+      ).toEqual(["worker"]);
+    });
+
+    /**
+     * ⚠️ Separate from the case above, and it has to be. The handler no longer
+     * lets a bookkeeping failure fail the request, so an undeclared action is
+     * now swallowed rather than raised - right for the caller, and it would
+     * leave the endpoint test green while nothing was recorded. This asserts
+     * the declaration itself.
+     *
+     * `destroy` is deliberately not `delete`: one removes a Lore row and
+     * touches nobody's cloud account, the other removes a Worker.
+     */
+    it("declares `destroy` as an auditable action", async ({ expect }) => {
+      const actions = (
+        alepha.inject(LoreAudits).app as unknown as {
+          options: { actions: string[] };
+        }
+      ).options.actions;
+
+      expect(actions).toContain("destroy");
+      expect(actions).toContain("delete");
     });
   });
 
