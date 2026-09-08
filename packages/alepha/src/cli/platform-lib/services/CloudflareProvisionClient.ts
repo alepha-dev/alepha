@@ -270,54 +270,27 @@ export class CloudflareProvisionClient {
   // -------------------------------------------------------------------------
 
   /**
-   * Delete a D1 database, by the id recorded when it was created.
+   * ⚠️ **There is deliberately no `deleteD1` and no `deleteR2` here, and
+   * adding one is a decision, not a gap.**
    *
-   * ⚠️ **By id, never by name.** A name is derived from `(project, env)` and so
-   * is reproducible by anything; the uuid is what proves this is the database
-   * that deploy made. It also survives a rename, which a name-based delete
-   * would follow into somebody else's database.
+   * Lore drives this client with a credential lent to it for deploying, so the
+   * line is what a redeploy can put back. A Worker is a build. A KV namespace
+   * backs the cache primitive and a queue holds messages in flight - both are
+   * recreated empty by the next deploy, and losing them costs a cold cache and
+   * whatever had not been consumed.
    *
-   * ⚠️ There is no backup and no undo. Cloudflare's own time-travel is the only
-   * recovery, and it is scoped to the database that no longer exists.
+   * A **database** and a **bucket** are the things the build was serving.
+   * Cloudflare offers no rename and no archive to soften that (`d1.update`
+   * takes only `read_replication`, `r2.edit` only a storage class), so there
+   * is no careful version of deleting one - it is gone.
+   *
+   * Keeping those two is also what makes destroy-then-recreate work:
+   * `ensureD1` and `ensureR2` look up by NAME, so a copy rebuilt under the
+   * same name finds its database again with its rows intact.
+   *
+   * `alepha platform down` deletes them, and is the right place for it: it
+   * runs on the operator's own machine against their own account.
    */
-  public async deleteD1(databaseId: string): Promise<void> {
-    await this.fetch(`/accounts/${this.accountId}/d1/database/${databaseId}`, {
-      method: "DELETE",
-    });
-  }
-
-  /**
-   * Empty a bucket and then delete it.
-   *
-   * ⚠️ **Cloudflare refuses to delete a bucket that still holds objects**, so
-   * the wipe is not a courtesy - it is the precondition. It pages because a
-   * list answers at most 1000 keys, and it stops on a page that deletes
-   * nothing rather than looping forever on a bucket that keeps answering.
-   *
-   * ⚠️ A wipe that fails leaves the bucket ALONE. Deleting data this could not
-   * confirm it removed is the one thing a teardown must not do quietly; the
-   * caller reports the bucket as still standing instead.
-   */
-  public async deleteR2(name: string): Promise<void> {
-    for (let page = 0; page < 1_000; page++) {
-      const listed = await this.fetch<{ objects?: Array<{ key: string }> }>(
-        `/accounts/${this.accountId}/r2/buckets/${name}/objects`,
-        { query: { per_page: "1000" } },
-      );
-      const keys = (listed.objects ?? []).map((it) => it.key);
-      if (keys.length === 0) {
-        break;
-      }
-      await this.fetch(
-        `/accounts/${this.accountId}/r2/buckets/${name}/objects/delete`,
-        { method: "POST", body: { objects: keys.map((key) => ({ key })) } },
-      );
-    }
-
-    await this.fetch(`/accounts/${this.accountId}/r2/buckets/${name}`, {
-      method: "DELETE",
-    });
-  }
 
   public async deleteKV(namespaceId: string): Promise<void> {
     await this.fetch(

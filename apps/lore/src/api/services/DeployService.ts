@@ -7,6 +7,7 @@ import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
 import { type Deployment, deployments } from "../entities/deployments.ts";
 import { estates } from "../entities/estates.ts";
+import { projects } from "../entities/projects.ts";
 import { AppSecretService } from "./AppSecretService.ts";
 import { AppService } from "./AppService.ts";
 import { ArtifactService } from "./ArtifactService.ts";
@@ -30,6 +31,7 @@ export class DeployService {
   protected readonly instances = $repository(appInstances);
   protected readonly artifacts = $repository(artifacts);
   protected readonly estates = $repository(estates);
+  protected readonly projects = $repository(projects);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly secrets = $inject(AppSecretService);
   protected readonly apps = $inject(AppService);
@@ -227,6 +229,7 @@ export class DeployService {
         row,
         this.runner.run({
           artifact,
+          project: await this.projectSegmentOf(instance),
           env: instance.env,
           domain: instance.url ? new URL(instance.url).host : undefined,
           deploymentId: row.id,
@@ -293,6 +296,84 @@ export class DeployService {
    * guarantees is that the ROW reaches a terminal state, which is what stops
    * the UI following a deploy forever.
    */
+  /**
+   * The project segment of every resource name this copy provisions.
+   *
+   * Just the slug: the runner joins it to the app and `NamingService` joins
+   * that to the environment, so the whole is `<project>-<app>-<env>`.
+   *
+   * ## ⚠️ Why the project is in the name at all
+   *
+   * `NamingService` composes `<name>-<env>`. With the app alone as the name,
+   * two Lore projects that each call an app `api` and deploy `production` onto
+   * one estate compute a single `api-production` - one Worker, one database,
+   * one bucket, silently shared, each deploy overwriting the other and either
+   * project's teardown taking the other's Worker down.
+   *
+   * ## ⚠️ A rename must never move a copy's infrastructure
+   *
+   * The slug moves when a project is renamed, and Cloudflare has no rename -
+   * so a deploy under a new prefix would CREATE an empty database and leave
+   * the old one behind, with the app coming up blank and nothing saying why.
+   *
+   * So the recorded Worker name wins whenever there is one: it IS the prefix
+   * this copy was built under, and a deploy that would target a different one
+   * is refused rather than silently re-pointed. The refusal names both, which
+   * is the only way an operator can tell a rename from a bug.
+   */
+  protected async projectSegmentOf(instance: AppInstance): Promise<string> {
+    const project = await this.projects.findById(instance.projectId);
+    // `slug` is optional on the column; the id is the stable fallback the rest
+    // of the app already uses when a title produces nothing sluggable.
+    const slug = project?.slug || `project-${instance.projectId}`;
+
+    const recorded = this.recordedWorker(instance);
+    if (!recorded) {
+      return slug;
+    }
+
+    // ⚠️ The full name the runner and `NamingService` will compose between
+    // them: the runner joins this segment to the app, and `NamingService`
+    // joins that to the env. Restated here so the comparison is against what
+    // will actually be created, not against a piece of it.
+    const wanted = this.slugify(`${slug}-${instance.app}-${instance.env}`);
+    if (recorded !== wanted) {
+      throw new BadRequestError(
+        `${instance.app}/${instance.env} was deployed as \`${recorded}\` and this deploy would target \`${wanted}\`. Cloudflare cannot rename, so deploying would create empty resources beside the ones this copy is using. Rename the project back, or destroy this copy and deploy it again to move it deliberately.`,
+      );
+    }
+    return slug;
+  }
+
+  /**
+   * The Worker name a previous deploy recorded, when there was one.
+   */
+  protected recordedWorker(instance: AppInstance): string | undefined {
+    if (!instance.resources) {
+      return undefined;
+    }
+    try {
+      const parsed = JSON.parse(instance.resources) as { worker?: string };
+      return parsed.worker;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * ⚠️ Must match `NamingService.slugify`, which is what actually names the
+   * resources. It lives in `alepha/cli/platform-lib` beside a class that pulls
+   * a Cloudflare client in, so it is restated rather than imported - and the
+   * 63-character slice is part of the contract, not a detail.
+   */
+  protected slugify(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 63);
+  }
+
   /**
    * Remember what the estate now holds for this copy.
    *

@@ -149,6 +149,10 @@ describe("deploying an artifact from inside the Worker", () => {
       fileId: "file-1",
     },
     env: "b14-preview",
+    // ⚠️ The project is the FIRST segment of every resource name, which is what
+    // keeps two Lore projects that both call an app `my-app` off each other's
+    // database. `DeployService.prefixOf` composes it; here it is given.
+    project: "acme",
     credential: { apiToken: "estate-token", accountId: "estate-account" },
     ...over,
   });
@@ -161,9 +165,9 @@ describe("deploying an artifact from inside the Worker", () => {
     await runner.run(request() as never);
 
     expect(calls).toEqual([
-      "provision:d1:my-app-b14-preview",
+      "provision:d1:acme-my-app-b14-preview",
       "migrate:CREATE TABLE t (id i",
-      "deploy:my-app-b14-preview",
+      "deploy:acme-my-app-b14-preview",
     ]);
   });
 
@@ -190,7 +194,7 @@ describe("deploying an artifact from inside the Worker", () => {
     await runner.run(request() as never);
 
     expect(calls.filter((it) => it.startsWith("provision:"))).toEqual([
-      "provision:r2:my-app-b14-preview",
+      "provision:r2:acme-my-app-b14-preview",
     ]);
     // No database means no migration either.
     expect(calls.some((it) => it.startsWith("migrate:"))).toBe(false);
@@ -207,7 +211,7 @@ describe("deploying an artifact from inside the Worker", () => {
 
     await runner.run(request({ env: "pr-482" }) as never);
 
-    expect(calls).toContain("deploy:my-app-pr-482");
+    expect(calls).toContain("deploy:acme-my-app-pr-482");
   });
 
   it("runs with no deployment row at all", async ({ expect }) => {
@@ -217,7 +221,7 @@ describe("deploying an artifact from inside the Worker", () => {
 
     await runner.run(request() as never);
 
-    expect(calls).toContain("deploy:my-app-b14-preview");
+    expect(calls).toContain("deploy:acme-my-app-b14-preview");
   });
   /**
    * ⚠️ A retried or replayed job execution REPLAYS the whole run, so every

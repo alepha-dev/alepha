@@ -545,30 +545,41 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   }
 
   /**
-   * Remove exactly the resources a deploy recorded, and say what went.
+   * Remove what a redeploy can put back, and keep what it cannot.
+   *
+   * ## ⚠️ The database and the bucket are KEPT
+   *
+   * Not an omission and not a first cut. Lore drives this with a credential
+   * lent to it for deploying, so the line is what the next deploy recreates. A
+   * Worker is a build. A KV namespace backs the cache and a queue holds
+   * messages in flight - both come back empty, costing a cold cache and
+   * whatever had not been consumed.
+   *
+   * A database and a bucket are what the build was serving. Cloudflare offers
+   * no rename and no archive to soften that (`d1.update` takes only
+   * `read_replication`, `r2.edit` only a storage class), so "delete it
+   * carefully" has no careful version.
+   *
+   * Keeping them is also what makes this reversible: `ensureD1` and `ensureR2`
+   * resolve by NAME, so a copy destroyed and recreated under the same name
+   * reattaches its own database with every row still in it.
+   *
+   * ## The order is the safety property
+   *
+   * Worker first, so nothing is serving against a queue or a cache that is
+   * about to go, then the queue, then the namespace.
    *
    * ## ⚠️ It takes a RECORD, not a context
    *
    * Every other method here derives names from `ctx.naming`. This one refuses
-   * to: an estate is LENT, so the account holds resources Lore never created
-   * and one may legitimately bear the name a copy would compute. What may be
-   * deleted is what a deploy wrote down when it made it - the D1 by uuid,
-   * which survives a rename that a name-based delete would follow into
-   * somebody else's database.
-   *
-   * ## The order is the safety property
-   *
-   * Worker first, so nothing is serving traffic against storage that is about
-   * to go. Then the queue consumer and its queue, then KV, then the bucket,
-   * and **D1 last** because it is the one with no undo: everything cheap to
-   * lose is proven gone before the irreversible step is attempted.
+   * to: an estate is LENT, so the account holds resources Lore never created,
+   * and what may be deleted is what a deploy wrote down when it made it.
    *
    * ## ⚠️ Every failure is reported, never thrown
    *
-   * A teardown that stopped on the first error would leave the caller unable
-   * to say what it had already removed - and the caller's whole job is to
-   * strike what went from the record so a retry resumes instead of restarting.
-   * `removed` and `failed` are that answer.
+   * The caller's job is to strike what went from the record, so a retry
+   * resumes instead of restarting. A throw would leave it unable to say what
+   * had already gone.
    */
   public async teardownRecorded(record: {
     worker?: string;
@@ -578,6 +589,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     queue?: string;
   }): Promise<{
     removed: string[];
+    kept: string[];
     failed: Array<{ resource: string; message: string }>;
   }> {
     const api = this.provisioner();
@@ -605,16 +617,15 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     if (record.kv) {
       await attempt("kv", () => api.deleteKV(record.kv!.id));
     }
-    if (record.r2) {
-      // Empties the bucket first, because Cloudflare refuses to delete one
-      // that still holds objects. A wipe that fails leaves it standing.
-      await attempt("r2", () => api.deleteR2(record.r2 as string));
-    }
-    if (record.d1) {
-      await attempt("d1", () => api.deleteD1(record.d1!.id));
-    }
 
-    return { removed, failed };
+    // Named so the caller can say the data is still there, rather than leaving
+    // an operator to assume it either way.
+    const kept = [
+      record.d1 ? `d1:${record.d1.name}` : undefined,
+      record.r2 ? `r2:${record.r2}` : undefined,
+    ].filter((it): it is string => !!it);
+
+    return { removed, kept, failed };
   }
 
   /**
