@@ -18,6 +18,24 @@ import { type Infer, z } from "alepha";
 export const estateCommandPayloadSchema = z.object({
   app: z.string().min(1).max(100),
   environment: z.string().min(1).max(100),
+  /**
+   * The project slug, sent on a `deploy` so the machine can tell two projects
+   * apart.
+   *
+   * ⚠️ **Beside `app`, never folded into it.** `EstatePullController` resolves
+   * this copy's secret set from the estate plus `(app, environment)`, so
+   * composing the pair here would break the lookup that hands an app its own
+   * variables.
+   *
+   * On the machine it becomes the first segment of the instance name, which
+   * drives the directory, the backup keys and the default subdomain at once -
+   * so without it two projects that each call an app `api` and deploy
+   * `production` to one Bay share all three.
+   *
+   * Optional because `alepha platform` sends none and because an older Lore
+   * sent none: absent degrades to `<app>-<env>`, the previous behaviour.
+   */
+  project: z.string().min(1).max(100).optional(),
   artifact: z
     .object({
       id: z.uuid(),
