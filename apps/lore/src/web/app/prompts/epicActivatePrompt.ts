@@ -17,6 +17,14 @@
  * is editable, and the prompt already says to stop and comment rather than
  * guess.
  *
+ * ⚠️ **The closing section is about the REPLY, and it is not the outcome
+ * folio.** The folio is the record a later session reads; the reply is what
+ * the person who started the run reads now. A long run accumulates blocked
+ * quests, each one a decision that is the owner's to make, and a comment
+ * left on a quest somewhere inside a twelve-quest epic is not where they
+ * are looking. Same defect the epic-review template had, from the other
+ * end: there the questions were filed, here they would be scattered.
+ *
  * See {@link epicReviewPromptDefault} for why this text is English and
  * carries no secrets.
  */
@@ -48,4 +56,13 @@ Do not start the next quest while the current one is red.
 3. Conclude the epic: \`epic_set_status\` "done".
 4. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left.
 
-When a quest cannot be done as written, say so in a comment on it and move on to one that can. Do not guess at a decision that is the owner's to make.`;
+When a quest cannot be done as written, say so in a comment on it and move on to one that can. Do not guess at a decision that is the owner's to make.
+
+## Then report in your reply
+
+The outcome folio is the record; your reply is what the person who started this run reads. End it with:
+
+- **What shipped**, in a few lines: the quests completed, the branch, and whether it is merged.
+- **Every quest you could not do as written**, numbered, one block each: what it asked, what stopped you, and the two or three ways forward with the one you would take. A pointer to the comment you left on that quest is not this. The decision is the owner's, and they are reading here.
+
+If nothing was blocked, say so in one line rather than padding the list.`;
