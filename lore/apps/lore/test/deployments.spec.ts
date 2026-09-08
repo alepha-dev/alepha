@@ -1,6 +1,7 @@
 import { Alepha, z } from "alepha";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { CloudflareDeployClient } from "alepha/cli/platform-lib";
+import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -539,6 +540,112 @@ describe("a deployment", () => {
             { inline: true },
           ),
       ).resolves.toBeDefined();
+    });
+  });
+
+  /**
+   * ⚠️ **The one exit that escapes "every exit is terminal".**
+   *
+   * `DeployService` bounds a run with a `Promise.race` against a timer, and
+   * that timer lives in the same isolate as the run. When the isolate itself
+   * goes - a big artifact exhausting the Worker's 128 MB while unpacking is
+   * the way it happens - the timer goes with it, nothing writes a status, and
+   * the row reads `running` forever. The UI follows it, and the operator
+   * cannot retry.
+   *
+   * Observed in production on 2026-09-08: a `docs` deploy left `running` with
+   * a log of `["Fetching…", "Unpacking"]`, while `lore-production`'s own logs
+   * carried `Worker exceeded memory limit` for the same minute.
+   *
+   * A sweep is the only thing that can close it, because by definition
+   * whatever was supposed to write the failure is already dead.
+   */
+  describe("a run that never reported back", () => {
+    const abandoned = async (
+      status: "queued" | "running",
+      ageMs: number,
+    ): Promise<string> => {
+      const { project, instance } = await world();
+      const rows = alepha.inject(TestRows).deployments;
+      const startedAt = new Date(
+        alepha.inject(DateTimeProvider).nowMillis() - ageMs,
+      ).toISOString();
+      const row = await rows.create({
+        projectId: project.id,
+        instanceId: instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "a".repeat(64),
+        status,
+        createdAt: startedAt,
+        ...(status === "running" ? { startedAt } : {}),
+      } as never);
+      return row.id;
+    };
+
+    it("fails a run whose isolate died, and says what most likely killed it", async ({
+      expect,
+    }) => {
+      const id = await abandoned("running", 60 * 60 * 1000);
+
+      await alepha.inject(DeployJobs).sweepAbandoned.trigger();
+
+      const after = await alepha.inject(TestRows).deployments.findById(id);
+      expect(after?.status).toBe("failed");
+      expect(after?.finishedAt).toBeDefined();
+      // The message has to carry the operator somewhere, because the run left
+      // no log line of its own to explain itself.
+      expect(after?.error).toMatch(/stopped reporting/i);
+    });
+
+    it("leaves a run that is still inside its budget alone", async ({
+      expect,
+    }) => {
+      // ⚠️ The sweep must never race a live deploy. A run at nine minutes is
+      // slow, not dead, and failing it would mark a deploy that is about to
+      // succeed - while the Worker upload it started carries on regardless.
+      const id = await abandoned("running", 60 * 1000);
+
+      await alepha.inject(DeployJobs).sweepAbandoned.trigger();
+
+      expect(
+        (await alepha.inject(TestRows).deployments.findById(id))?.status,
+      ).toBe("running");
+    });
+
+    it("fails a queued run nothing ever picked up", async ({ expect }) => {
+      // A row that never started has no `startedAt`, so the age has to fall
+      // back to when it was queued - otherwise the one kind of row that is
+      // stuck before any work happened is the one kind the sweep cannot see.
+      const id = await abandoned("queued", 60 * 60 * 1000);
+
+      await alepha.inject(DeployJobs).sweepAbandoned.trigger();
+
+      expect(
+        (await alepha.inject(TestRows).deployments.findById(id))?.status,
+      ).toBe("failed");
+    });
+
+    it("does not touch a run that already reached a terminal state", async ({
+      expect,
+    }) => {
+      const { project, instance } = await world();
+      const rows = alepha.inject(TestRows).deployments;
+      const row = await rows.create({
+        projectId: project.id,
+        instanceId: instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "a".repeat(64),
+        status: "succeeded",
+        createdAt: new Date(
+          alepha.inject(DateTimeProvider).nowMillis() - 60 * 60 * 1000,
+        ).toISOString(),
+      } as never);
+
+      await alepha.inject(DeployJobs).sweepAbandoned.trigger();
+
+      expect((await rows.findById(row.id))?.status).toBe("succeeded");
     });
   });
 
