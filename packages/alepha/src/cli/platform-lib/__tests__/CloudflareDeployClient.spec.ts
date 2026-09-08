@@ -24,6 +24,11 @@ describe("the Cloudflare deploy client", () => {
     // `undefined` explicitly to a parameter with a default gets the default,
     // which made the no-subdomain case silently assert the happy path.
     accountSubdomain: string | null = "acme",
+    /**
+     * Called before each batch answers, so a test can make one fail or make
+     * several overlap. The upload is the only call worth driving that way.
+     */
+    beforeUpload?: (index: number) => Promise<void>,
   ) => {
     const calls: Array<{ name: string; args: unknown[] }> = [];
     const record =
@@ -58,10 +63,12 @@ describe("the Cloudflare deploy client", () => {
             // ⚠️ Records the OPTIONS argument too, which the other fakes do
             // not need: this is the one call whose credential differs from the
             // client's own. See the test below.
-            create: ((params: unknown, options?: unknown) => {
+            create: (async (params: unknown, options?: unknown) => {
               calls.push({ name: "assets.upload", args: [params, options] });
-              const jwt = uploadJwts[uploads++];
-              return Promise.resolve(jwt ? { jwt } : {});
+              const index = uploads++;
+              await beforeUpload?.(index);
+              const jwt = uploadJwts[index];
+              return jwt ? { jwt } : {};
             }) as never,
           },
         },
@@ -79,6 +86,9 @@ describe("the Cloudflare deploy client", () => {
       apiToken: "estate-token",
       accountId: "estate-account",
       client: api,
+      // A fixed clock, so the session-deadline case is a decision rather than
+      // a race with the wall.
+      now: () => 1_000_000,
     });
 
     return {
@@ -243,6 +253,166 @@ describe("the Cloudflare deploy client", () => {
       expect(Object.values(body)[0]?.type).toBe(
         "text/javascript; charset=utf-8",
       );
+    });
+
+    it("sends the server's buckets as its own, never merged", async ({
+      expect,
+    }) => {
+      // Cloudflare answers a grouping; wrangler uploads it unchanged. Merging
+      // two buckets into one request replaces the server's answer with a
+      // guess, which is what this used to do.
+      const three: Record<string, CloudflareAssetEntry> = {
+        "/a.js": { hash: "aa", size: 4 },
+        "/b.js": { hash: "bb", size: 4 },
+        "/c.js": { hash: "cc", size: 4 },
+      };
+      const { client, of } = fake(
+        { jwt: "session", buckets: [["aa", "bb"], ["cc"]] },
+        [undefined, "completion"],
+      );
+
+      await client.uploadAssets("my-app-staging", {
+        manifest: three,
+        read,
+      });
+
+      const sent = of("assets.upload").map((call) =>
+        Object.keys((call.args[0] as { body: Record<string, File> }).body),
+      );
+      // Two requests, matching the two buckets - not one request of three.
+      expect(sent).toEqual([["aa", "bb"], ["cc"]]);
+    });
+
+    it("retries a batch that fails, rather than losing the deploy", async ({
+      expect,
+    }) => {
+      // wrangler's ladder, and its numbers: five attempts with an exponential
+      // wait. An asset upload that fails once is ordinary, and a deploy that
+      // gives up on the first one turns a blip into a red run.
+      let failures = 0;
+      const { client, of } = fake(
+        { jwt: "session", buckets: [["bbbb"]] },
+        [undefined, "completion"],
+        [],
+        "acme",
+        async () => {
+          if (failures++ === 0) {
+            throw new Error("503 from the edge");
+          }
+        },
+      );
+
+      const answer = await client.uploadAssets("my-app-staging", {
+        manifest,
+        read,
+      });
+
+      expect(answer).toEqual({ jwt: "completion" });
+      expect(of("assets.upload")).toHaveLength(2);
+    });
+
+    it("keeps several batches in flight, up to wrangler's limit", async ({
+      expect,
+    }) => {
+      // Sequential uploads make a thousand-file site a thousand round trips
+      // end to end. Three at a time is `BULK_UPLOAD_CONCURRENCY`, taken
+      // rather than invented.
+      const many: Record<string, CloudflareAssetEntry> = {};
+      for (let i = 0; i < 1000; i++) {
+        many[`/f${i}.js`] = { hash: `h${i}`, size: 4 };
+      }
+      let live = 0;
+      let peak = 0;
+      const { client, of } = fake(
+        { jwt: "session", buckets: [Object.values(many).map((it) => it.hash)] },
+        [undefined, undefined, undefined, undefined, "completion"],
+        [],
+        "acme",
+        async () => {
+          live++;
+          peak = Math.max(peak, live);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          live--;
+        },
+      );
+
+      await client.uploadAssets("my-app-staging", {
+        manifest: many,
+        read,
+        readAll: async (keys, onFile) => {
+          for (const key of keys) await onFile(key, bytes("abcd"));
+        },
+      });
+
+      // 1000 files against the 200-file cap is five batches.
+      expect(of("assets.upload")).toHaveLength(5);
+      expect(peak).toBeGreaterThan(1);
+      expect(peak).toBeLessThanOrEqual(3);
+    });
+
+    /**
+     * ⚠️ **The upload token is a real JWT and it carries instructions.**
+     * Undocumented, and wrangler reads both of them: `exp` is a hard deadline
+     * on the whole upload, and `wrangler_single_asset_uploads` asks for a
+     * different transport entirely.
+     */
+    describe("what the session token says", () => {
+      const token = (payload: Record<string, unknown>) =>
+        `x.${btoa(JSON.stringify(payload)).replace(/=+$/, "")}.y`;
+
+      it("refuses a session that wants single-asset uploads", async ({
+        expect,
+      }) => {
+        // That mode is one request per file against a different path, with
+        // the bytes raw and the type as a request header. Sending it
+        // multipart anyway is a wrong protocol failing namelessly, which is
+        // the exact shape this file keeps paying for.
+        const { client } = fake(
+          {
+            jwt: token({ wrangler_single_asset_uploads: true }),
+            buckets: [["bbbb"]],
+          },
+          ["completion"],
+        );
+
+        await expect(
+          client.uploadAssets("my-app-staging", { manifest, read }),
+        ).rejects.toThrowError(/single-asset uploads/);
+      });
+
+      it("says an expired session kept what it already took", async ({
+        expect,
+      }) => {
+        // The difference between "start again" and "run it again, it will be
+        // quick" - Cloudflare holds every accepted upload, so the next
+        // session asks only for what is still missing.
+        // `exp` is in seconds, and the fake clock reads 1_000_000 ms, so a
+        // token expiring at second 1 is long past.
+        const { client } = fake(
+          { jwt: token({ exp: 1 }), buckets: [["bbbb"]] },
+          ["completion"],
+        );
+
+        await expect(
+          client.uploadAssets("my-app-staging", { manifest, read }),
+        ).rejects.toThrowError(/keeps what was already uploaded/);
+      });
+
+      it("uploads normally when the token says nothing it understands", async ({
+        expect,
+      }) => {
+        // A token this cannot parse is still one the API may accept, so an
+        // unreadable payload costs the deadline and the mode, never the
+        // deploy.
+        const { client, of } = fake({ jwt: "not-a-jwt", buckets: [["bbbb"]] }, [
+          "completion",
+        ]);
+
+        await expect(
+          client.uploadAssets("my-app-staging", { manifest, read }),
+        ).resolves.toEqual({ jwt: "completion" });
+        expect(of("assets.upload")).toHaveLength(1);
+      });
     });
 
     /**

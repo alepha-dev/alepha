@@ -194,9 +194,31 @@ export class CloudflareDeployClient {
    */
   protected static readonly BATCH_FILES = 200;
 
+  /**
+   * How many batches may be in flight, and how often one is retried.
+   *
+   * Both are wrangler's numbers (`BULK_UPLOAD_CONCURRENCY`,
+   * `MAX_UPLOAD_ATTEMPTS`), and taking them rather than inventing our own is
+   * the point: it has been uploading assets against this API for years, and a
+   * number chosen here would be a guess dressed as a decision.
+   */
+  protected static readonly UPLOAD_CONCURRENCY = 3;
+  protected static readonly MAX_UPLOAD_ATTEMPTS = 5;
+
   protected readonly manifest = new CloudflareAssetManifest();
   protected readonly accountId: string;
   protected readonly client: CloudflareDeployApi;
+
+  /**
+   * The clock the session deadline is read against.
+   *
+   * ⚠️ Supplied rather than taken from the platform, because this class is
+   * built with `new` per deploy and has no container to inject one from. A
+   * caller that supplies none gets no deadline check: an absent clock must
+   * cost a diagnostic, never a wrong answer about whether a token is still
+   * valid.
+   */
+  protected readonly now?: () => number;
 
   constructor(options: {
     apiToken: string;
@@ -207,6 +229,7 @@ export class CloudflareDeployClient {
      */
     client?: CloudflareDeployApi;
     baseURL?: string;
+    now?: () => number;
   }) {
     if (!options.apiToken) {
       throw new AlephaError(
@@ -219,6 +242,7 @@ export class CloudflareDeployClient {
       );
     }
     this.accountId = options.accountId;
+    this.now = options.now;
     this.client =
       options.client ??
       (createClient({
@@ -277,6 +301,19 @@ export class CloudflareDeployClient {
       return session.jwt ? { jwt: session.jwt } : undefined;
     }
 
+    // ⚠️ Refused rather than attempted. A session in this mode wants one
+    // request per file against `/workers/assets/upload/{hash}`, with the raw
+    // bytes as the body and the type as a request header - a different
+    // transport, not a different batch size. Sending it multipart anyway is
+    // the shape of failure this whole file has been paying for: something the
+    // API does not accept, failing in a way that names nothing.
+    const { expiresAt, singleAsset } = this.session(session.jwt);
+    if (singleAsset) {
+      throw new AlephaError(
+        "Cloudflare asked for single-asset uploads for this session, which this client does not implement. Deploy this app with `alepha platform up`, which shells out to wrangler and does.",
+      );
+    }
+
     // The manifest is keyed by served path and the buckets by hash, so the
     // upload needs the inverse. Built once rather than searched per file.
     const byHash = new Map<string, string>();
@@ -290,15 +327,39 @@ export class CloudflareDeployClient {
     // moment that batch is full rather than reading files one at a time, so
     // the bytes resident at any point are one batch instead of a site. See
     // `CloudflareDeployAssets.readAll`.
+    //
+    // ⚠️ **This path cannot honour the server's bucketing, and the pull path
+    // above does.** A push arrives in the order the source can produce - for
+    // a deploy that is the order of the archive - while a bucket is an
+    // arbitrary set of hashes. Holding files back until their bucket is
+    // complete would mean holding most of the site, which is the memory this
+    // path exists to avoid. So the grouping is ours here and the server's
+    // there, and that asymmetry is deliberate.
     if (assets.readAll) {
       let body: Record<string, File> = {};
       let bytes = 0;
+      // ⚠️ Up to `UPLOAD_CONCURRENCY` batches are in flight at once, which is
+      // what stops a site of a thousand files being a thousand round trips
+      // end to end. The completion token is whichever answer carries one, in
+      // whatever order they land - the same rule wrangler applies.
+      const inFlight = new Set<Promise<unknown>>();
+      const send = (batch: Record<string, File>) => {
+        const pending = this.postAssetsWithRetry(batch, completion, expiresAt)
+          .then((answer) => {
+            completion = answer.jwt ?? completion;
+            return answer;
+          })
+          .finally(() => inFlight.delete(pending));
+        inFlight.add(pending);
+      };
       const flush = async () => {
         if (bytes === 0) return;
-        const answer = await this.postAssets(body, completion);
-        completion = answer.jwt ?? completion;
+        send(body);
         body = {};
         bytes = 0;
+        if (inFlight.size >= CloudflareDeployClient.UPLOAD_CONCURRENCY) {
+          await Promise.race(inFlight);
+        }
       };
 
       const keys = new Set<string>();
@@ -328,6 +389,7 @@ export class CloudflareDeployClient {
         }
       });
       await flush();
+      await Promise.all(inFlight);
 
       if (!completion) {
         throw new AlephaError(
@@ -337,7 +399,7 @@ export class CloudflareDeployClient {
       return { jwt: completion };
     }
 
-    for (const batch of this.batches(wanted, assets.manifest, byHash)) {
+    for (const batch of this.batches(buckets, assets.manifest, byHash)) {
       const body: Record<string, File> = {};
       for (const hash of batch) {
         const key = byHash.get(hash);
@@ -360,7 +422,11 @@ export class CloudflareDeployClient {
         );
       }
 
-      const answer = await this.postAssets(body, completion);
+      const answer = await this.postAssetsWithRetry(
+        body,
+        completion,
+        expiresAt,
+      );
       // Only the LAST response carries the completion token; the others answer
       // an empty result, so keeping the newest non-empty one is the rule.
       completion = answer.jwt ?? completion;
@@ -372,6 +438,73 @@ export class CloudflareDeployClient {
       );
     }
     return { jwt: completion };
+  }
+
+  /**
+   * What the session's own token says about the session.
+   *
+   * ⚠️ **The upload token is a real JWT and it carries instructions**, which
+   * is not obvious and is not documented: `exp` is a hard deadline on the
+   * whole upload, and `wrangler_single_asset_uploads` asks for a completely
+   * different transport. wrangler reads both. Reading neither is how an
+   * upload stops mid-way with nothing to say for itself.
+   */
+  protected session(jwt: string | undefined): {
+    expiresAt?: number;
+    singleAsset: boolean;
+  } {
+    if (!jwt) {
+      return { singleAsset: false };
+    }
+    try {
+      const part = jwt.split(".")[1] ?? "";
+      const padded = part.replace(/-/g, "+").replace(/_/g, "/");
+      const payload = JSON.parse(
+        atob(padded + "=".repeat((4 - (padded.length % 4)) % 4)),
+      );
+      return {
+        expiresAt:
+          typeof payload.exp === "number" ? payload.exp * 1000 : undefined,
+        singleAsset: payload.wrangler_single_asset_uploads === true,
+      };
+    } catch {
+      // A token this cannot read is still a token the API may accept, so this
+      // is not a refusal: it only costs the deadline and the mode.
+      return { singleAsset: false };
+    }
+  }
+
+  /**
+   * One batch of assets, retried the way wrangler retries.
+   *
+   * ⚠️ **The expiry is checked BEFORE each attempt, not after a failure.**
+   * Uploads already accepted are kept by Cloudflare, so a run that ends here
+   * has not wasted them - the next deploy asks for a fresh session and is
+   * handed back only what is still missing. Saying that in the message is the
+   * difference between "start again" and "run it again and it will be quick".
+   */
+  protected async postAssetsWithRetry(
+    body: Record<string, File>,
+    jwt: string | undefined,
+    expiresAt: number | undefined,
+  ): Promise<{ jwt?: string }> {
+    for (let attempt = 0; ; attempt++) {
+      if (expiresAt !== undefined && (this.now?.() ?? 0) >= expiresAt) {
+        throw new AlephaError(
+          "The asset upload session expired before every file was sent. Cloudflare keeps what was already uploaded, so deploying again resumes from there rather than starting over.",
+        );
+      }
+      try {
+        return await this.postAssets(body, jwt);
+      } catch (error) {
+        if (attempt >= CloudflareDeployClient.MAX_UPLOAD_ATTEMPTS - 1) {
+          throw error;
+        }
+        await new Promise((resolve) =>
+          setTimeout(resolve, 2 ** attempt * 1000),
+        );
+      }
+    }
   }
 
   /**
@@ -710,7 +843,32 @@ export class CloudflareDeployClient {
    * The size is read from the manifest we already sent rather than from the
    * file, so the split is decided before a single byte is read.
    */
+  /**
+   * The server's own buckets, split where one is too big for this isolate.
+   *
+   * ## ⚠️ Cloudflare proposes the grouping, and it is not ours to improve
+   *
+   * The upload session answers `buckets`, already grouped. wrangler uploads
+   * them exactly as handed over; this used to flatten them and re-group by its
+   * own budget, which is a guess replacing an answer.
+   *
+   * What is kept from that budget is the SPLIT and never the merge: a bucket
+   * larger than {@link BATCH_BYTES} is sent as several requests, because
+   * wrangler's own cap is 98 MB and it does not run inside a 128 MB isolate.
+   * Two buckets are never combined, so what reaches the API is always the
+   * server's grouping or a subdivision of it.
+   */
   protected *batches(
+    buckets: string[][],
+    manifest: Record<string, CloudflareAssetEntry>,
+    byHash: Map<string, string>,
+  ): Generator<string[]> {
+    for (const bucket of buckets) {
+      yield* this.split(bucket, manifest, byHash);
+    }
+  }
+
+  protected *split(
     wanted: string[],
     manifest: Record<string, CloudflareAssetEntry>,
     byHash: Map<string, string>,
