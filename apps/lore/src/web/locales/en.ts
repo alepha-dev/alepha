@@ -2275,13 +2275,22 @@ export default {
   "activity.filter.typeCount": "$1 resources",
   "activity.filter.allActions": "All actions",
   "activity.filter.actionCount": "$1 actions",
+  // One per `$audit` type declared in `LoreAudits`, and there are ten of
+  // them. A kind with no key here still renders, capitalized, off the raw
+  // type - see `resourceLabel`.
   "activity.resource.quest": "Quest",
   "activity.resource.epic": "Epic",
   "activity.resource.release": "Release",
   "activity.resource.folio": "Folio",
   "activity.resource.feedback": "Feedback",
   "activity.resource.member": "Member",
-  "activity.resource.sigil": "App",
+  "activity.resource.app": "App",
+  // ⚠️ NOT "App", which is what this said until epic #30 landed. A sigil
+  // WAS the app back then; it is one optional unlock on a deployed copy
+  // now, and the copy is what `activity.resource.app` names. Two kinds
+  // reading "App" in one dropdown told the reader nothing.
+  "activity.resource.sigil": "Sigil",
+  "activity.resource.estate": "Estate",
   "activity.resource.project": "Project",
   "activity.fields": "changed $1",
   "activity.capability.enabled": "turned on $1",
