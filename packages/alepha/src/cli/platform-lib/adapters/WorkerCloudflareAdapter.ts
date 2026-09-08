@@ -88,6 +88,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   public use(credential: WorkerCloudflareCredential): this {
     this.credential = credential;
     this.provisioned = {};
+    this.provisionedResources = {};
     return this;
   }
 
@@ -164,6 +165,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           // rather than two variables because that is what the task reads and
           // what a node deploy sets.
           this.provisioned.DATABASE_URL = `d1://${name}:${database.uuid}`;
+          this.provisionedResources.d1 = { name, id: database.uuid };
         },
       });
     }
@@ -175,6 +177,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
         handler: async () => {
           await api.ensureR2(name);
           this.provisioned.R2_BUCKET_NAME = name;
+          this.provisionedResources.r2 = name;
         },
       });
     }
@@ -187,6 +190,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           const namespace = await api.ensureKV(name);
           this.provisioned.CLOUDFLARE_KV_NAME = name;
           this.provisioned.CLOUDFLARE_KV_ID = namespace.id;
+          this.provisionedResources.kv = { name, id: namespace.id };
         },
       });
     }
@@ -201,6 +205,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           // names one Cloudflare does not have is refused at bind time.
           await api.ensureQueue(`${name}-dlq`);
           this.provisioned.CLOUDFLARE_QUEUE_NAME = name;
+          this.provisionedResources.queue = name;
         },
       });
     }
@@ -323,6 +328,32 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    */
   public deployedVersionId?: string;
 
+  /**
+   * What this deploy actually provisioned, by id where one exists.
+   *
+   * ## ⚠️ Recorded so a teardown can delete what Lore MADE
+   *
+   * The names are derived from `(project, env)` and are therefore
+   * reproducible, which makes "recompute the name and delete it" the obvious
+   * implementation and the wrong one: on a lent estate that deletes whatever
+   * currently bears the name, including a database somebody created before
+   * Lore ever saw the account. `alepha platform down` may do that - it runs on
+   * your own machine against your own account, at your own typing - but Lore
+   * holds a credential lent for deploys, and must only ever remove what it can
+   * show it created.
+   *
+   * A D1 database carries its uuid, which survives a rename and is what makes
+   * the delete unambiguous. The rest are names, because Cloudflare identifies
+   * them by name.
+   */
+  public provisionedResources: {
+    worker?: string;
+    d1?: { name: string; id: string };
+    r2?: string;
+    kv?: { name: string; id: string };
+    queue?: string;
+  } = {};
+
   async deploy(
     ctx: PlatformContext,
     run: RunnerMethod,
@@ -332,6 +363,11 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     const config = JSON.parse(
       await this.fs.readTextFile(this.fs.join(distDir, "wrangler.jsonc")),
     ) as WranglerConfig;
+
+    // Recorded before the upload rather than after: a Worker that half-uploads
+    // still exists at Cloudflare, and a teardown that cannot name it is how an
+    // orphan becomes permanent.
+    this.provisionedResources.worker = worker;
 
     await run({
       name: `deploy worker (${worker})`,

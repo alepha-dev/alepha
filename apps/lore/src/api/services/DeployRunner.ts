@@ -124,9 +124,11 @@ export class DeployRunner {
    */
   protected static readonly ROOT = "/deploy";
 
-  public async run(
-    request: DeployRequest,
-  ): Promise<{ urls: string[]; domain?: string }> {
+  public async run(request: DeployRequest): Promise<{
+    urls: string[];
+    domain?: string;
+    resources?: Record<string, unknown>;
+  }> {
     const deployment = request.deploymentId;
     await this.registry.started(deployment);
 
@@ -187,7 +189,11 @@ export class DeployRunner {
         // artifact at all.
         versionId: adapter.deployedVersionId,
       });
-      return result;
+      // ⚠️ Carried out so the copy can record what Lore created for it. A
+      // teardown that had to recompute these names would delete whatever bears
+      // them on a lent account, which is not the same thing as deleting what
+      // Lore made.
+      return { ...result, resources: adapter.provisionedResources };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await this.registry.failed(deployment, message);

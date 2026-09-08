@@ -158,6 +158,28 @@ export const appInstances = $entity({
     estateId: db.ref(z.uuid().optional(), () => estates.cols.id, {
       onDelete: "set null",
     }),
+    /**
+     * What Lore's last deploy provisioned in the estate, as JSON.
+     *
+     * ## ⚠️ Recorded so a teardown deletes what Lore MADE, never what it can name
+     *
+     * Every name here is derived from `(project, env)` and is therefore
+     * reproducible, which makes "recompute the name and delete it" the obvious
+     * implementation and the wrong one. An estate is LENT: the account holds
+     * resources Lore never created, and one of them may legitimately bear the
+     * name a copy would compute. `alepha platform down` may delete by name -
+     * it runs on your own machine, against your own account, at your own
+     * typing - and Lore may not.
+     *
+     * ⚠️ **Absent means UNKNOWN, never "nothing was provisioned".** Every copy
+     * deployed before this column existed has none, and reading absence as an
+     * empty estate would let a teardown report success having deleted nothing.
+     *
+     * Written after each successful deploy, so it follows what the build
+     * declares: an app that stops using `$storage` stops recording a bucket,
+     * and the one it used to have is then no longer Lore's to remove.
+     */
+    resources: z.string().max(4_096).optional(),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
   }),
   indexes: [

@@ -542,6 +542,104 @@ describe("a deployment", () => {
     });
   });
 
+  describe("what the estate now holds", () => {
+    /**
+     * ⚠️ The ONLY record there will ever be. Every name a deploy provisions is
+     * derived from `(project, env)` and so is reproducible - but an estate is
+     * LENT, its account holds resources Lore never created, and one of them
+     * may legitimately bear the name a copy would compute. A teardown may
+     * remove exactly what Lore can show it made.
+     */
+    it("records what the deploy provisioned, on the copy", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const rows = alepha.inject(TestRows);
+      const estate = await rows.estates.create({
+        ownerUserId: w.user.id,
+        type: "cloudflare",
+        slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
+        deployAllowed: true,
+        credentialStatus: "valid",
+        accountId: "acct",
+        credential: "sealed",
+      } as never);
+      await rows.grants.create({
+        estateId: estate.id,
+        projectId: w.project.id,
+      } as never);
+      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+      const row = await rows.deployments.create({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "a".repeat(64),
+        status: "queued",
+      } as never);
+
+      const service = alepha.inject(DeployService);
+      Object.assign(service as unknown as Record<string, unknown>, {
+        seal: { open: () => "token" },
+        artifacts: {
+          findOne: async () => ({
+            id: "x",
+            sha256: "y",
+            // The estate is Cloudflare, so the gate wants the runtime it runs.
+            runtime: "workerd",
+          }),
+        },
+        secrets: { ensureGenerated: async () => {}, open: async () => ({}) },
+        runner: {
+          run: async () => ({
+            urls: ["https://example.test"],
+            resources: {
+              worker: "my-app-b14-preview",
+              d1: { name: "my-app-b14-preview", id: "db-uuid" },
+              r2: "my-app-b14-preview",
+            },
+          }),
+        },
+      });
+
+      await service.run(row as never);
+
+      const after = await rows.instances.findById(w.instance.id);
+      expect(JSON.parse(after?.resources as string)).toEqual({
+        worker: "my-app-b14-preview",
+        d1: { name: "my-app-b14-preview", id: "db-uuid" },
+        r2: "my-app-b14-preview",
+      });
+    });
+
+    /**
+     * ⚠️ Absent means UNKNOWN, never "nothing was provisioned" - a teardown
+     * reading absence as an empty estate would report success having deleted
+     * nothing. A run that reports none must therefore leave the record alone
+     * rather than blanking it.
+     */
+    it("leaves an existing record alone when a run reports none", async ({
+      expect,
+    }) => {
+      const w = await world();
+      const rows = alepha.inject(TestRows);
+      await rows.instances.updateById(w.instance.id, {
+        resources: JSON.stringify({ worker: "from-an-earlier-deploy" }),
+      });
+
+      await alepha
+        .inject(DeployService)
+        // @ts-expect-error reaching the protected recorder directly: the
+        // alternative is a second full deploy world for one branch.
+        .recordResources(w.instance.id, undefined);
+
+      const after = await rows.instances.findById(w.instance.id);
+      expect(JSON.parse(after?.resources as string)).toEqual({
+        worker: "from-an-earlier-deploy",
+      });
+    });
+  });
+
   describe("the row's shape", () => {
     it("carries the snapshot, not just the artifact id", async ({ expect }) => {
       // ⚠️ Pushing `latest` REPLACES the artifact row, so a deployment carrying

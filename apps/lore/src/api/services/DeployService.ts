@@ -247,7 +247,11 @@ export class DeployService {
         }),
       );
 
-      void result;
+      // ⚠️ After the run and never before it: this records what the estate now
+      // HOLDS, and a deploy that failed halfway may have created some of it.
+      // The write is best-effort for the same reason - a copy that is live must
+      // not be reported as failed because a bookkeeping update did not land.
+      await this.recordResources(instance.id, result.resources);
     } catch (error) {
       // `DeployRunner` already marks its own failures; this catches everything
       // that happens before it starts, and marking twice is harmless because
@@ -289,6 +293,39 @@ export class DeployService {
    * guarantees is that the ROW reaches a terminal state, which is what stops
    * the UI following a deploy forever.
    */
+  /**
+   * Remember what the estate now holds for this copy.
+   *
+   * ⚠️ **This is the only record there will ever be.** The names are derived
+   * from `(project, env)` and so are reproducible, but an estate is LENT: the
+   * account holds resources Lore never created, and a teardown that recomputed
+   * a name would be willing to delete one of them. What Lore may remove is
+   * exactly what it can show it made.
+   *
+   * Best-effort, and deliberately so: the deploy has already succeeded by the
+   * time this runs, and reporting a live copy as failed because a bookkeeping
+   * write did not land would be the worse error. The cost of losing it is that
+   * a later teardown refuses rather than guessing.
+   */
+  protected async recordResources(
+    instanceId: string,
+    resources: Record<string, unknown> | undefined,
+  ): Promise<void> {
+    if (!resources || Object.keys(resources).length === 0) {
+      return;
+    }
+    try {
+      await this.instances.updateById(instanceId, {
+        resources: JSON.stringify(resources),
+      });
+    } catch (error) {
+      this.log.warn("Could not record what this deploy provisioned", {
+        instanceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   /**
    * Give this copy a sigil when the build it is about to run asks for one.
    *
