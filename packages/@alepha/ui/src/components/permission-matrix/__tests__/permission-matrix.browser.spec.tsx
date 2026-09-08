@@ -51,6 +51,13 @@ const isChecked = (cell: HTMLElement) =>
 const isDisabled = (cell: HTMLElement) =>
   cell.hasAttribute("disabled") || cell.getAttribute("data-disabled") !== null;
 
+/**
+ * Whether the cell wears a padlock: a locked crossing that reads unticked, and
+ * so would otherwise invite a click that can never land.
+ */
+const isClosed = (cell: HTMLElement) =>
+  cell.closest("[data-slot='permission-locked']") !== null;
+
 describe("PermissionMatrix", () => {
   const mount = (
     groups: PermissionMatrixGroup[] = [CORE, APPS],
@@ -149,20 +156,82 @@ describe("PermissionMatrix", () => {
   it("carries no copy of its own", () => {
     const { container } = mount();
 
-    // Every string on screen came in as a prop. If this ever fails it is
-    // because a default label was added, and a French-only application would
-    // then render one English word it cannot reach.
+    // Every WORD on screen came in as a prop. If this ever fails it is because
+    // a default label was added, and a French-only application would then
+    // render one English word it cannot reach.
+    //
+    // Strip the caller's own copy and the permission names it supplied - the
+    // component prints those under each label - and what is left has to hold
+    // no letters at all. It does hold characters: the group sizes and each
+    // column's coverage ratio. Those are counts of the caller's own rows,
+    // spelled in digits and punctuation, so they are language-free in every
+    // locale and are the reason this assertion checks for LETTERS rather than
+    // for an empty string. A hardcoded "of" or "granted" would still fail.
     const text = container.textContent ?? "";
     for (const own of ["Permission", "Project", "Apps", "Owner", "Member"]) {
       expect(text).toContain(own);
     }
-    expect(
-      text
-        .replace(
-          /Permission|Project|Apps|Owner|Member|Read|Update|Delete|Manage apps/g,
-          "",
-        )
-        .trim(),
-    ).toBe("");
+
+    // Narrowed rather than coerced: a label is a `ReactNode`, and `String()`
+    // on one would quietly strip "[object Object]" the day a fixture passes a
+    // node. Every fixture above passes a string, so the filter removes nothing
+    // today and turns a future node into a FAILING assertion rather than a
+    // silently weakened one.
+    const callerCopy = [
+      "Permission",
+      ...[CORE, APPS].flatMap((group) => [
+        group.label,
+        ...group.permissions.flatMap((row) => [row.label, row.name]),
+      ]),
+      ...COLUMNS.map((column) => column.label),
+    ].filter((it): it is string => typeof it === "string");
+
+    let rest = text;
+    for (const copy of callerCopy) rest = rest.split(copy).join("");
+
+    expect(rest).not.toMatch(/\p{Letter}/u);
+  });
+
+  it("closes a cell that can never be ticked, and only that cell", () => {
+    // A padlock is laid over the box exactly where a reader would otherwise be
+    // invited to tick something that will never move. The owner column is the
+    // control case in the same row: it is locked too, but it reads all-on, so
+    // it stays an ordinary (disabled) box.
+    const { container } = mount();
+
+    const [owner, member] = cellsFor(container, "project:delete");
+    expect(isClosed(owner)).toBe(false);
+    expect(isChecked(owner)).toBe(true);
+    expect(isClosed(member)).toBe(true);
+
+    // Still a labelled checkbox underneath, not a picture: the padlock is a
+    // rendering, and swapping the control out would take the cell off the
+    // accessibility tree.
+    expect(isDisabled(member)).toBe(true);
+    expect(isChecked(member)).toBe(false);
+
+    // The floor row is locked in the other direction - checked everywhere - so
+    // nothing in it is closed.
+    for (const cell of cellsFor(container, "project:read")) {
+      expect(isClosed(cell)).toBe(false);
+    }
+
+    // And an ordinary unchecked cell stays open, because it CAN be ticked.
+    const [, updatable] = cellsFor(container, "app:manage");
+    expect(isClosed(updatable)).toBe(false);
+    expect(isChecked(updatable)).toBe(false);
+  });
+
+  it("counts each column's coverage over the rows actually shown", () => {
+    // The ratio is the component's own arithmetic, so it is worth pinning in
+    // both directions: a read-only column reads all-on even across the ceiling
+    // row, and a filtered-away group leaves the denominator with it.
+    const { container } = mount();
+    expect(container.textContent).toContain("4/4");
+    expect(container.textContent).toContain("2/4");
+
+    const { container: core } = mount([CORE]);
+    expect(core.textContent).toContain("3/3");
+    expect(core.textContent).toContain("2/3");
   });
 });

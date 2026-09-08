@@ -5,6 +5,7 @@ import {
   buildManifestSchema,
 } from "alepha/cli";
 import type { RunnerMethod } from "alepha/command";
+import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { FileSystemProvider } from "alepha/system";
 
@@ -77,6 +78,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   protected readonly buildTask = $inject(BuildCloudflareTask);
   protected readonly migrations = $inject(D1MigrationsService);
   protected readonly assetManifest = $inject(CloudflareAssetManifest);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
    * The credential for the deploy currently running.
@@ -139,7 +141,12 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   }
 
   protected deployer(): CloudflareDeployClient {
-    return new CloudflareDeployClient(this.estate);
+    // The clock travels in, because the client is a plain `new` with no
+    // container of its own and the asset session carries a real deadline.
+    return new CloudflareDeployClient({
+      ...this.estate,
+      now: () => this.dateTime.nowMillis(),
+    });
   }
 
   /**

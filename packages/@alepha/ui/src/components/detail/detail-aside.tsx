@@ -145,13 +145,29 @@ export const DetailAside = (props: DetailAsideProps) => {
           the rule floating in the gap rather than meeting the rows it
           divides; `py-2.5` inside each row is what carries the rhythm now.
 
-          `overflow-hidden` for the corners: with nothing painting a
-          background today the radius is only on the border, but the first
-          and last rows sit in the rounded corners and anything they gain
-          later (a hover tint, a status band) would square them off. */}
-      <dl className="flex flex-col divide-y overflow-hidden rounded-lg border text-sm">
+          `overflow-hidden` for the corners: the card paints a background, so
+          the first and last rows sit in the rounded corners and would square
+          them off without it.
+
+          That background is the table header's - `bg-muted` under a
+          `--bevel` line - because this panel is the same kind of thing:
+          chrome that frames the page rather than body the reader is in. Two
+          adjacent lines of opposite polarity read as a fold, which is what
+          lifts the surface off the page instead of leaving it drawn onto it.
+          Same pair on `PlateTabBar`.
+
+          The bevel is on each ROW, not once on the card, so every row is its
+          own slab and the stack reads as slabs stacked rather than as one
+          slab ruled into sections. Each row already has the line the bevel
+          folds against: `divide-y` gives rows 2..n a `border-t`, and the
+          card's own border closes the first one, which is why the same class
+          on every row lands the same way on all of them. */}
+      <dl className="bg-muted flex flex-col divide-y overflow-hidden rounded-lg border text-sm">
         {props.rows.map((row) => (
-          <div key={row.label} className="flex flex-col gap-0.5 px-3 py-2.5">
+          <div
+            key={row.label}
+            className="flex flex-col gap-0.5 px-3 py-2.5 shadow-[inset_0_1px_0_0_var(--bevel)]"
+          >
             <dt className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
               {row.label}
             </dt>
@@ -177,6 +193,14 @@ export const DetailAside = (props: DetailAsideProps) => {
                         args: [row.label],
                       }),
                     )}
+                    // No background override, even though `ghost` hovers to
+                    // `bg-muted` and the card is now `bg-muted` too. That
+                    // class does not resolve to the opaque token: `styles.css`
+                    // redirects it to `--state-layer`, a 10% `--foreground`
+                    // wash that DARKENS in light and lifts in dark, so it
+                    // reads over whatever surface it lands on. A literal
+                    // `hover:bg-background` here looked correct in dark and
+                    // went white-on-grey in light.
                     className="text-muted-foreground hover:text-foreground shrink-0"
                   >
                     {copiedLabel === row.label ? (

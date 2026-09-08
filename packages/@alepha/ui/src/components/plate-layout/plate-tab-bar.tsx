@@ -78,7 +78,20 @@ export const PlateTabBar = (props: PlateTabBarProps) => {
     <div
       data-testid={props.testId}
       className={cn(
-        "border-border/60 flex gap-5 px-6",
+        // The table header's surface, and for the same reason: this strip is
+        // chrome, not body. `bg-muted` under a `--bevel` line laid just inside
+        // the top edge - two adjacent lines of opposite polarity read as a
+        // fold - so the band looks raised out of the page rather than painted
+        // onto it. Opaque like the sticky table header, not the base header's
+        // `bg-muted/50`: the plate above is already translucent over the page,
+        // and stacking a second wash on it makes the two bands differ by a
+        // couple of percent instead of reading as one raised object.
+        //
+        // The border above the bevel is whichever line closes the top edge:
+        // the bar's own `border-t` when there is a plate, and the shell
+        // header's bottom border when there is not. Both are `--border`, so
+        // the fold reads the same either way.
+        "bg-muted border-border flex gap-5 px-6 shadow-[inset_0_1px_0_0_var(--bevel)]",
         props.divided !== false && "border-t",
       )}
       role={navigates ? "navigation" : "tablist"}

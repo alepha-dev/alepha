@@ -104,17 +104,23 @@ export class CloudflareAssetManifest {
    * on disk, so the page paints and only the JavaScript is missing. Measured
    * on `ui.alepha.dev`, where it read as "the deploy worked" for an hour.
    *
-   * ⚠️ The table is small on purpose. It covers what a built web app ships
-   * and answers `application/octet-stream` for anything else, which is what
-   * an unknown download should be. A missing entry costs one asset its type;
-   * pulling in a full MIME database costs every deploy its bundle size, in a
-   * Worker.
+   * ⚠️ The table is small on purpose. It covers what a built web app ships,
+   * and a missing entry costs one asset its type; pulling in a full MIME
+   * database costs every deploy its bundle size, inside a Worker.
+   *
+   * ⚠️ **The fallback is `application/null`, and it is not a mistake.** It is
+   * wrangler's, and its own comment explains why: a form-data encoder
+   * replaces a falsy type with `application/octet-stream`, so there is no way
+   * to say "no type" by omission, and the API parses this exact string to
+   * mean send no `Content-Type` at all. Answering `octet-stream` here would
+   * instead pin an extensionless file to a type that makes a browser download
+   * it.
    */
   public contentType(path: string): string {
     return (
       CloudflareAssetManifest.CONTENT_TYPES[
         this.extension(path).toLowerCase()
-      ] ?? "application/octet-stream"
+      ] ?? "application/null"
     );
   }
 
