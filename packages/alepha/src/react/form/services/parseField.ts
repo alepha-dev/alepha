@@ -238,7 +238,10 @@ const inferIconHint = (params: {
   if (format === "email") return "email";
   if (format === "url" || format === "uri") return "url";
   if (format === "tel" || format === "phone") return "phone";
-  if (format === "date" || format === "date-time") return "calendar";
+  // `date-range` joins the calendar line rather than falling through to
+  // `isArray` below, which would give a range of days the list glyph.
+  if (format === "date" || format === "date-time" || format === "date-range")
+    return "calendar";
   if (format === "time") return "clock";
 
   if (name?.toLowerCase().includes("password")) return "password";

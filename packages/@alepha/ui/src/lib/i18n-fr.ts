@@ -360,6 +360,7 @@ export const uiFr: Record<string, string> = {
   "admin.audits.layerScoped": "Par ressource",
   "admin.audits.ok": "OK",
   "admin.audits.statusAll": "Tous les statuts",
+  "admin.audits.dateAll": "Toute date",
   "admin.detail.copyValue": "Copier $1",
   "admin.files.allBuckets": "Tous les buckets",
   "admin.files.bucketPlaceholder": "Bucket",

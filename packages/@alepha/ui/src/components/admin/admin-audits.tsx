@@ -32,6 +32,17 @@ const auditFiltersSchema = z.object({
   status: z.string().optional(),
   action: z.string().optional(),
   layer: z.string().optional(),
+  /**
+   * When, as a closed range of calendar days.
+   *
+   * ⚠️ Deliberately NOT a `dateRange` field on `auditQuerySchema`. That schema
+   * declares `from`, `to` and `after` with documented semantics (`after` is an
+   * exclusive cursor), and two ways to say one thing in a public query schema
+   * is a smell. The mapping happens at the call site below, which is also what
+   * proves a range control can drive an existing from/to endpoint with no API
+   * churn at all.
+   */
+  createdAt: z.dateRange().optional(),
 });
 type AuditFilters = Infer<typeof auditFiltersSchema>;
 
@@ -81,6 +92,17 @@ export const AdminAudits = () => {
           layer:
             f?.layer === "app" || f?.layer === "scoped" ? f.layer : undefined,
           success: f?.status ? f.status === "ok" : undefined,
+          // A day resolved to an instant, in UTC. The reader arguably means
+          // their local day, but the server is not told their offset and UTC
+          // is what makes a shared link select the same rows for everyone. The
+          // end runs to the last millisecond so a one-day range selects that
+          // day rather than nothing.
+          ...(f?.createdAt?.length === 2
+            ? {
+                from: `${f.createdAt[0]}T00:00:00.000Z`,
+                to: `${f.createdAt[1]}T23:59:59.999Z`,
+              }
+            : {}),
         },
       });
     },
@@ -182,6 +204,18 @@ export const AdminAudits = () => {
                     ),
                   },
                 ]}
+              />
+              {/* No `items` and no `icon`: the control selects itself off the
+                  schema's `date-range` format, and `parseField` gives that
+                  format the calendar glyph. */}
+              <Control
+                input={form.input.createdAt}
+                label=""
+                clearable
+                triggerClassName="w-64"
+                placeholder={String(
+                  tr("admin.audits.dateAll", { default: "Any date" }),
+                )}
               />
               <Control
                 input={form.input.status}

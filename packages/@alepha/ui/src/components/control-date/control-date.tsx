@@ -3,6 +3,11 @@ import * as React from "react";
 void React;
 
 import { FormField } from "@alepha/ui/components/control-base/form-field";
+import {
+  DATE_ONLY,
+  formatDateOnly,
+  parseDateOnly,
+} from "@alepha/ui/components/control-date/date-only.ts";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Calendar } from "@alepha/ui/components/ui/calendar";
 import { Input } from "@alepha/ui/components/ui/input";
@@ -182,25 +187,6 @@ interface DatePopoverProps {
   endMonth?: Date;
   onChange: (value: string | undefined) => void;
 }
-
-/**
- * A date-only value (`YYYY-MM-DD`) names a calendar day, so it is parsed
- * and formatted in local parts: `new Date("2026-08-23")` is UTC midnight,
- * which displays as the 22nd west of Greenwich, and `toISOString()` on a
- * local midnight stores the previous day east of it.
- */
-const parseDateOnly = (value: string): Date => {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-};
-
-const formatDateOnly = (date: Date): string => {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-};
-
-const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 const DatePopover = (props: DatePopoverProps) => {
   const [open, setOpen] = useState(false);
