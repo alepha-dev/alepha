@@ -182,8 +182,15 @@ command, because destroying a database is not something to infer from a
 tidy-up:
 
 ```bash
-lore apps destroy --env staging --yes
+lore apps destroy --env staging --confirm my-app/staging
 ```
+
+⚠️ **Both flags are required and neither has a default.** `--env` does not fall
+back to `LORE_ENV` or to the project's default environment the way every other
+command does: on a command that deletes things, a forgotten flag would mean
+destroying production without the word appearing anywhere. And the confirmation
+is typed rather than composed, so naming the wrong environment fails the check
+instead of confirming itself. There is no `--yes`.
 
 ### Copies that are meant to be thrown away
 
@@ -203,10 +210,17 @@ take.
 
 For every other copy:
 
-⚠️ **The database and the bucket are kept.** Lore removes what a redeploy puts
-back - the Worker, the queue, the cache namespace - and never what it cannot: a
-D1 database and an R2 bucket are what the app was serving, and Cloudflare
-offers no rename and no archive to soften deleting one.
+⚠️ **The database, the bucket and any Durable Object storage are kept.** Lore
+removes what a redeploy puts back - the Worker, the queue, the cache namespace -
+and never what it cannot: a D1 database and an R2 bucket are what the app was
+serving, and Cloudflare offers no rename and no archive to soften deleting one.
+
+An app that uses websockets runs a Durable Object namespace holding its rooms
+and connections, which is data in the same sense. Cloudflare will not delete a
+Worker whose namespace still holds anything unless the delete is forced, and
+forcing is what takes the storage - so for an ordinary copy the delete is
+unforced, and Cloudflare refusing it is the right answer. The result says the
+Worker is still there and why.
 
 That is also what makes this reversible. Resources are looked up by name, so a
 copy destroyed and recreated under the same name **reattaches its own database

@@ -59,6 +59,21 @@ describe("epicReviewPromptDefault", () => {
     expect(prompt).toContain("cannot answer alone");
   });
 
+  /**
+   * The load-bearing half of the review, and the one the baseline used to
+   * leave out. It stopped at the write-back, so the questions landed in
+   * Lore and the reply said "filed", which made every use of the prompt
+   * open with the same follow-up asking for context and a recommendation.
+   */
+  it("asks for every open question in the reply, with context and suggestions", () => {
+    expect(prompt).toContain("put every open question in your reply");
+    expect(prompt).toContain("**Context**");
+    expect(prompt).toContain("**Suggestions**");
+    // Filing them is not the report, and the template has to say so: an
+    // agent told only to file them answers with a receipt.
+    expect(prompt).toContain("Filing them is not the report");
+  });
+
   it("names the write-back path", () => {
     expect(prompt).toContain("epic_update");
     expect(prompt).toContain("quest_create");

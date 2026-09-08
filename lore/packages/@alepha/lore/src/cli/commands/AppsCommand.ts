@@ -262,40 +262,48 @@ export class AppsCommand {
       env: z
         .text({
           aliases: ["e"],
-          description: "Which deployed copy to destroy the resources of.",
+          description:
+            "Which deployed copy. ⚠️ Required here, unlike every other command: this one does not fall back to LORE_ENV or the project's default environment.",
         })
         .optional(),
-      yes: z
-        .boolean()
-        .describe(
-          "Confirm without being asked. The copy's `app/env` is sent as the confirmation.",
-        )
+      confirm: z
+        .text({
+          description:
+            "The copy's own `app/env`, typed. A wrong --env then fails this check instead of destroying the wrong copy.",
+        })
         .optional(),
     }),
     handler: async ({ flags, root }) => {
       const project = this.client.resolveProject(flags.project);
       const projectId = await this.projects.resolve(project);
       const app = await this.projects.resolveApp(flags.app, root);
-      const env = this.projects.assertEnv(
-        await this.projects.resolveEnv(flags.env, project),
-        app,
-      );
 
-      // ⚠️ There is no prompt here, and `--yes` is therefore required rather
-      // than convenient. A prompt in a command that may run in CI is a hang,
-      // and a destructive default is worse than an extra flag.
-      if (!flags.yes) {
+      // ⚠️ `flags.env` directly, NEVER `resolveEnv`. Everywhere else an
+      // omitted `--env` falls back to LORE_ENV and then to the project's own
+      // default environment - which is usually `production`. On a command that
+      // deletes things, that turns a forgotten flag into "destroy production",
+      // and the word never appears on screen.
+      const env = flags.env?.trim();
+      if (!env) {
         throw new AlephaError(
-          `This deletes the Worker, the queue and the cache namespace ${app}/${env} uses. Its database and bucket are KEPT - Lore never deletes those. Pass --yes to confirm.`,
+          `Name the copy with --env. This command does not fall back to LORE_ENV or to the project's default environment, because a forgotten flag would mean destroying production without either of us typing the word.`,
+        );
+      }
+
+      // ⚠️ The confirmation is TYPED, not derived. Composing it here would
+      // make the server's check tautological: a wrong `--env` would confirm
+      // itself and destroy a copy the operator never named. Typed, a wrong
+      // `--env` fails the check instead.
+      const expected = `${app}/${env}`;
+      if (flags.confirm?.trim() !== expected) {
+        throw new AlephaError(
+          `Pass --confirm "${expected}" to destroy it.${await this.destroyWarning(projectId, app, env)}`,
         );
       }
 
       const result = await this.apps.destroyAppResources({
         params: { projectId, app, env },
-        // The server asks for the copy's own name so a person has to read
-        // which copy they are emptying; `--yes` is the operator saying they
-        // already did.
-        body: { confirm: `${app}/${env}` },
+        body: { confirm: flags.confirm.trim() },
       });
 
       this.log.info(
@@ -567,6 +575,35 @@ export class AppsCommand {
     throw new AlephaError(
       `${app}/${env} is not a deployed copy of this project, so there is nowhere to deploy it. Create it on the project's Apps page, or with the \`app_instance_create\` MCP tool - naming one here would not make it exist.`,
     );
+  }
+
+  /**
+   * What the operator is about to lose, in the refusal that asks them to
+   * confirm.
+   *
+   * ⚠️ An **ephemeral** copy loses its database and its bucket, and that is the
+   * one fact a person needs before typing the name. It is read rather than
+   * assumed: the flag was set when the copy was created, possibly by somebody
+   * else, possibly months ago.
+   *
+   * Best-effort. A read that fails must not stop somebody destroying a copy -
+   * it just means the warning is the generic one.
+   */
+  protected async destroyWarning(
+    projectId: number,
+    app: string,
+    env: string,
+  ): Promise<string> {
+    try {
+      const instance = await this.apps.getApp({
+        params: { projectId, app, env },
+      });
+      return instance.ephemeral
+        ? `\n\n⚠️  ${app}/${env} is EPHEMERAL: this also deletes its database and its bucket, and there is no backup.`
+        : `\n\nIts database and bucket are kept; the Worker, queue and cache go.`;
+    } catch {
+      return "";
+    }
   }
 
   /**
