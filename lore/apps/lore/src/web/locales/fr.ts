@@ -269,7 +269,8 @@ export default {
   "artifacts.truncated":
     "Cette liste est coupée à la limite de lecture : ce n'est pas la totalité des artefacts du projet. Filtrez par application ou par tag pour voir le reste.",
   "artifacts.empty.description":
-    "Rien n'a encore été publié. Les artefacts viennent de la CI, donc cette page reste vide tant qu'aucun build n'est publié :",
+    "Rien n'a encore été publié. Les artefacts viennent de la CI, donc cette page reste vide tant qu'aucun build n'est publié.",
+  "artifacts.empty.docs": "Comment publier un build",
   "artifacts.filter.search": "Rechercher",
   "artifacts.filter.searchLabel": "Rechercher un tag ou un commit",
   "artifacts.filter.app": "Application",
@@ -1269,8 +1270,6 @@ export default {
   "app.artifacts.commit": "Construit depuis le commit $1",
   "app.artifacts.empty.description":
     "Aucun artefact publié pour l'instant. Tout le reste de cette page vient de l'app elle-même ; les artefacts viennent de la CI, donc une app sans pipeline n'en montre aucun.",
-  "app.artifacts.empty.credential":
-    "Nécessite LORE_API_KEY dans l'environnement qui l'exécute. `latest` peut être remplacé ; tout autre tag est écrit une seule fois.",
   "insights.errors.title": "Budget d'erreurs",
   "insights.errors.note":
     "Défaillances distinctes encore actives dans cette app",

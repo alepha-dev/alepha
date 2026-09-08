@@ -13,7 +13,7 @@ import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
-import AppArtifactsEmpty from "./AppArtifactsEmpty.tsx";
+import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
 import AppArtifactsRow from "./AppArtifactsRow.tsx";
 
 export interface AppArtifactsListProps {
@@ -49,8 +49,10 @@ export interface AppArtifactsListProps {
  * Everything else on this page comes from telemetry the app itself pushes.
  * Artifacts come from CI, which is a second foreign system that can be absent
  * entirely: an enrolled app with no CI integration has telemetry and zero
- * artifacts, forever. So the empty state prints the command rather than an
- * error or an ominous blank - the same answer the Quality tab reached.
+ * artifacts, forever. So the empty state says why and links the guide,
+ * rather than showing an error or an ominous blank - the same answer the
+ * Quality tab reached. It printed the command itself until feedback #P2154;
+ * see `ArtifactsEmpty` for why that moved into the docs.
  *
  * ## Its own query, not the route loader's
  *
@@ -103,9 +105,8 @@ const AppArtifactsList = (props: AppArtifactsListProps) => {
             {tr("app.artifacts.error")}
           </p>
         ) : groups.length === 0 ? (
-          <AppArtifactsEmpty
-            projectSlug={project?.slug ?? ""}
-            appName={props.app}
+          <ArtifactsEmpty
+            description={String(tr("app.artifacts.empty.description"))}
           />
         ) : (
           <div className="flex flex-col divide-y">

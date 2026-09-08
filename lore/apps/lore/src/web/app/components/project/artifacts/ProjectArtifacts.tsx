@@ -24,8 +24,8 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import ArtifactsEmpty from "../../shared/ArtifactsEmpty.tsx";
 import FilterSlot from "../../shared/FilterSlot.tsx";
-import ProjectArtifactsEmpty from "./ProjectArtifactsEmpty.tsx";
 
 /**
  * One artifact, flattened out of the endpoint's groups.
@@ -81,7 +81,7 @@ const filtersSchema = z.object({
  * reader pays a request on every project load to decide one nav row. And it
  * makes the capability undiscoverable: somebody who has never pushed an
  * artifact would never learn that they could. The empty state is where that
- * is learned, which is the same answer `AppArtifactsEmpty` and the Quality
+ * is learned, which is the same answer `ArtifactsEmpty` and the Quality
  * tab already reached. Minting a `features.*` key was the third option and
  * the most expensive: it would owe a settings page in the same commit.
  */
@@ -211,10 +211,14 @@ const ProjectArtifacts = () => {
             emptyState={{
               icon: Package,
               title: String(tr("artifacts.empty.title")),
-              // The whole nothing-pushed-yet panel, command included: it is
-              // the answer to "there is nothing here", which is what an
-              // empty state's description is for.
-              description: <ProjectArtifactsEmpty projectSlug={project.slug} />,
+              // The answer to "there is nothing here", which is what an
+              // empty state's description is for: why the page is empty, and
+              // the one link that says what to do about it.
+              description: (
+                <ArtifactsEmpty
+                  description={String(tr("artifacts.empty.description"))}
+                />
+              ),
             }}
             noMatchState={{
               icon: SearchX,
