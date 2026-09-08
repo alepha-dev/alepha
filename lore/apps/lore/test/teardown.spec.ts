@@ -416,81 +416,30 @@ describe("tearing a copy's resources down", () => {
 
   describe("Durable Objects", () => {
     /**
-     * ⚠️ An app using `$websocket` (or `$room`) on Cloudflare runs an
-     * `AlephaWebSocketDurableObject` namespace, and that namespace holds this
-     * copy's rooms and connections. It is DATA, in the same sense a D1
-     * database is - so an ordinary copy keeps it, and the operator is told.
+     * ⚠️ A websocket DO is NOT a database, and the code says so:
+     * `AlephaWebSocketDurableObject`'s `ctx.storage` interface is
+     * `{ setAlarm }` and nothing else - no `put`, no `get`, no SQL anywhere in
+     * `alepha/websocket`. What the namespace holds is live connections under
+     * the hibernation API, which deleting the Worker drops anyway.
+     *
+     * So it is not among what a destroy keeps, and the Worker delete is
+     * FORCED - without which Cloudflare refuses to delete any script that has
+     * a DO namespace, leaving every realtime app permanently undestroyable.
      */
-    it("names DO storage among what is kept", async ({ expect }) => {
-      const w = await world({ worker: "w", durableObjects: true });
+    it("does not count DO storage as data to keep", async ({ expect }) => {
+      const w = await world({
+        worker: "w",
+        durableObjects: true,
+        d1: { name: "d", id: "i" },
+      });
 
       const result = await alepha
         .inject(TeardownService)
         .destroy(await loaded(w));
 
-      expect(result.kept).toEqual(["durable-objects"]);
-    });
-
-    /**
-     * ⚠️ Cloudflare refuses to delete a script a DO namespace still references
-     * unless the delete is FORCED, and forcing is what takes the storage with
-     * it. So an ordinary copy's worker delete is unforced, and a refusal from
-     * Cloudflare is the correct outcome rather than an obstacle to route
-     * around - which is what `force: true` by default would have been.
-     */
-    it("does not force the worker delete for an ordinary copy", async ({
-      expect,
-    }) => {
-      const w = await world({ worker: "w", durableObjects: true });
-      const calls: Array<{ name: string; force?: boolean }> = [];
-
-      const service = alepha.inject(TeardownService);
-      Object.assign(service as unknown as Record<string, unknown>, {
-        adapter: () => ({
-          use: () => ({
-            teardownRecorded: async (
-              record: { worker?: string },
-              options: { purgeStores?: boolean },
-            ) => {
-              calls.push({
-                name: record.worker as string,
-                force: options.purgeStores,
-              });
-              return { removed: [], kept: [], failed: [] };
-            },
-          }),
-        }),
-      });
-
-      await service.destroy(await loaded(w));
-
-      expect(calls).toEqual([{ name: "w", force: false }]);
-    });
-
-    it("forces it for an ephemeral copy, so the namespace goes too", async ({
-      expect,
-    }) => {
-      const w = await world({ worker: "w", durableObjects: true }, true);
-      const calls: Array<{ force?: boolean }> = [];
-
-      const service = alepha.inject(TeardownService);
-      Object.assign(service as unknown as Record<string, unknown>, {
-        adapter: () => ({
-          use: () => ({
-            teardownRecorded: async (
-              _record: unknown,
-              options: { purgeStores?: boolean },
-            ) => {
-              calls.push({ force: options.purgeStores });
-              return { removed: [], kept: [], failed: [] };
-            },
-          }),
-        }),
-      });
-
-      await service.destroy(await loaded(w));
-
-      expect(calls).toEqual([{ force: true }]);
+      // The database is kept. The namespace is not mentioned, because losing
+      // it costs nothing a redeploy does not restore.
+      expect(result.kept).toEqual(["d1:d"]);
     });
   });
 
