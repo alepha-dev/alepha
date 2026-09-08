@@ -244,8 +244,7 @@ export class AppsCommand {
 
   public readonly destroy = $command({
     name: "destroy",
-    description:
-      "Delete the Worker, database and bucket this copy's deploys created",
+    description: "Delete the Worker this copy runs; its data is kept",
     flags: z.object({
       project: z
         .text({
@@ -286,7 +285,7 @@ export class AppsCommand {
       // and a destructive default is worse than an extra flag.
       if (!flags.yes) {
         throw new AlephaError(
-          `This deletes the Worker, the database and the bucket ${app}/${env} deploys created, and the database has no backup. Pass --yes to confirm.`,
+          `This deletes the Worker ${app}/${env} runs. Its database and bucket are KEPT - Lore never deletes those. Pass --yes to confirm.`,
         );
       }
 
@@ -303,6 +302,12 @@ export class AppsCommand {
           ? `Removed ${result.removed.join(", ")} for ${app}/${env}`
           : `Nothing left to remove for ${app}/${env}`,
       );
+      if (result.kept.length > 0) {
+        // Said out loud on every run: the point of this command is that the
+        // data survives it, and an operator who assumes otherwise will go
+        // looking for a backup that was never needed.
+        this.log.info(`Kept: ${result.kept.join(", ")}`);
+      }
       for (const failure of result.failed) {
         this.log.warn(
           `${failure.resource} was not removed: ${failure.message}`,
