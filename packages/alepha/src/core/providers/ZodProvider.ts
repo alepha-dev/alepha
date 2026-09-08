@@ -350,6 +350,45 @@ export const z = {
    * from its parts — do not mix the two.
    */
   date: () => strFmt(zod.iso.date(), "date"),
+  /**
+   * A closed range of calendar days, `[start, end]`.
+   *
+   * One field, one control, one query param. `z.dateRange().optional()` is
+   * the single way to say "no filter"; there is no such thing as a range
+   * with one end.
+   *
+   * **Both ends are mandatory, and that is the decision the rest follows
+   * from.** It removes open bounds, which is the only thing an array could
+   * not express, and it is what lets `.optional()` carry the whole absent
+   * case. Never `["2026-01-01", ""]`.
+   *
+   * **The format tag sits on the ARRAY, not only on its items.** Without it
+   * nothing can tell a range from an ordinary list of two dates, and
+   * selecting the range picker is the whole point. Every reader keys on the
+   * literal `"date-range"`, never on "array whose items are dates" - which
+   * is what makes a later `date-time-range` one more literal rather than a
+   * rewrite.
+   *
+   * `.length(2)` and not `z.tuple([...])`: a tuple emits `prefixItems`
+   * (JSON Schema 2020-12), which OpenAPI 3.0 consumers do not understand,
+   * and both ends are the same type so the tuple buys nothing.
+   *
+   * ⚠️ Resolving a day to an instant is the CALLER's job, and UTC is the
+   * answer to reach for: `gte = <start>T00:00:00.000Z`,
+   * `lte = <end>T23:59:59.999Z`. A reader filtering "8 Sep" arguably means
+   * their local 8 Sep, but the server is not told their offset, and UTC is
+   * what makes a shared link select the same rows for everyone.
+   */
+  dateRange: () =>
+    meta(
+      zod
+        .array(strFmt(zod.iso.date(), "date"))
+        .length(2)
+        .refine((value: string[]) => (value[1] ?? "") >= (value[0] ?? ""), {
+          message: "The end of a date range cannot be before its start.",
+        }),
+      { format: "date-range" },
+    ) as unknown as zod.ZodArray<zod.ZodString>,
   time: () => strFmt(zod.iso.time(), "time"),
   /**
    * bigint as a validated string (no codec).
@@ -462,6 +501,14 @@ export const z = {
     isText: (s: any) => defType(s) === "string" && !fmt(s),
     isDateTime: (s: any) => fmt(s) === "date-time",
     isDate: (s: any) => fmt(s) === "date",
+    /**
+     * A `z.dateRange()`, keyed on the format literal the ARRAY carries.
+     *
+     * ⚠️ Never "an array whose items are dates". That test cannot tell a
+     * range from an ordinary list of two days, and it is also what would make
+     * a later `date-time-range` a rewrite instead of a second literal.
+     */
+    isDateRange: (s: any) => fmt(s) === "date-range",
     isTime: (s: any) => fmt(s) === "time",
     isBigInt: (s: any) => fmt(s) === "bigint",
     isUuid: (s: any) => fmt(s) === "uuid",

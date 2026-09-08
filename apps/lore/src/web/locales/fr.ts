@@ -2305,6 +2305,7 @@ export default {
   "activity.filter.allResources": "Toutes les ressources",
   "activity.filter.typeCount": "$1 ressources",
   "activity.filter.allActions": "Toutes les actions",
+  "activity.filter.anyDate": "Toute date",
   "activity.filter.actionCount": "$1 actions",
   "activity.resource.quest": "Quête",
   "activity.resource.epic": "Epic",

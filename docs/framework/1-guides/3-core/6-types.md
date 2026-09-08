@@ -217,7 +217,44 @@ z.datetime(); // ISO 8601 date-time, e.g. "2026-01-15T10:30:00Z"
 z.date(); // ISO 8601 date, e.g. "2026-01-15"
 z.time(); // ISO 8601 time, e.g. "10:30:00"
 z.duration(); // string tagged with the ISO 8601 duration format (not runtime-validated)
+z.dateRange(); // a closed pair of days, e.g. ["2026-01-01", "2026-01-31"]
 ```
+
+### Date ranges
+
+`z.dateRange()` is one field for a window of calendar days, and **both ends
+are mandatory**. That is the decision the rest follows from: it removes open
+bounds, which is the only thing an array could not express, so `.optional()`
+is the single way to say "no range" and `["2026-01-01", ""]` is never a state.
+The end may equal the start; a one-day range is a range.
+
+```typescript
+const filters = z.object({
+  createdAt: z.dateRange().optional(),
+});
+```
+
+It emits `{ type: "array", items: { type: "string", format: "date" },
+minItems: 2, maxItems: 2, format: "date-range" }`. The `format` tag sits on
+the **array**, not only on its items, because nothing else can tell a range
+from an ordinary list of two dates - and that is what makes a `Control` bound
+to the field render a range picker rather than a multi-select.
+
+Across a query string it round-trips both ways: `?createdAt=2026-01-01,2026-01-31`
+from a hand-written URL, and the JSON form the framework's own HTTP client
+produces for any object-valued query param.
+
+Resolving a day to an instant is the **caller's** job, and UTC is the answer
+to reach for:
+
+```typescript
+const from = `${range[0]}T00:00:00.000Z`;
+const to = `${range[1]}T23:59:59.999Z`;
+```
+
+A reader filtering "8 Sep" arguably means their local 8 Sep, but the server is
+not told their offset, and UTC is what makes a shared link select the same
+rows for everyone.
 
 ## Enums
 

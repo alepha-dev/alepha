@@ -2296,6 +2296,7 @@ export default {
   "activity.filter.allResources": "All resources",
   "activity.filter.typeCount": "$1 resources",
   "activity.filter.allActions": "All actions",
+  "activity.filter.anyDate": "Any date",
   "activity.filter.actionCount": "$1 actions",
   // One per `$audit` type declared in `LoreAudits`, and there are ten of
   // them. A kind with no key here still renders, capitalized, off the raw

@@ -16,6 +16,7 @@ import {
   type IconComponent,
   iconFor,
 } from "@alepha/ui/components/control-base/icon-hint";
+import { ControlDateRange } from "@alepha/ui/components/control-date-range/control-date-range";
 import {
   ControlDate,
   type ControlDateProps,
@@ -99,6 +100,14 @@ export interface ControlProps {
    * Force a date-time picker.
    */
   datetime?: boolean;
+  /**
+   * Force a date-range picker, regardless of the schema's format.
+   *
+   * Rarely needed: `z.dateRange()` tags the array itself, so the control
+   * selects itself. Here for the same reason `date` and `datetime` are - a
+   * field whose schema is a plain pair of strings can still ask for it.
+   */
+  dateRange?: boolean;
   /**
    * Force a time picker.
    */
@@ -449,6 +458,34 @@ export const Control = (props: ControlProps) => {
         disabled={merged.disabled}
         // oxlint-disable-next-line jsx-a11y/no-autofocus
         autoFocus={merged.autoFocus}
+      />,
+    );
+  }
+
+  // ── Date range ───────────────────────────────────────────────────
+  //
+  // ⚠️ ABOVE the array branch below, and that placement is the whole of it.
+  // `z.dateRange()` IS an array, so the `meta.isArray` test twenty lines down
+  // matches it first and renders a range as a multi-select combobox - which
+  // looks like a deliberate control and is silently the wrong one. Sitting
+  // this beside the date branch further down, where it reads as though it
+  // belongs, is exactly the mistake.
+  //
+  // Keyed on the format LITERAL, never on "array whose items are dates": that
+  // second test cannot tell a range from an ordinary list of two days, and it
+  // is what would make a later `date-time-range` a rewrite rather than one
+  // more literal plus a `withTime` prop.
+  if (merged.dateRange || meta.format === "date-range") {
+    return wrapWithSlots(
+      merged,
+      <ControlDateRange
+        input={props.input}
+        label={merged.label ?? props.label}
+        description={merged.description ?? props.description}
+        disabled={merged.disabled}
+        clearable={merged.clearable}
+        placeholder={merged.placeholder}
+        triggerClassName={merged.triggerClassName}
       />,
     );
   }

@@ -108,6 +108,7 @@ Input types are automatically inferred from the schema:
 | Field named `email`    | `email`          |
 | Field named `url`      | `url`            |
 | `z.date()`             | `date`           |
+| `z.dateRange()`        | range picker     |
 | `z.time()`             | `time`           |
 | `z.datetime()`         | `datetime-local` |
 | `z.binary()`           | `file`           |

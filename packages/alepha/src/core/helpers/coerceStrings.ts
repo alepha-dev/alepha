@@ -22,6 +22,38 @@ export const coerceScalar = (schema: unknown, value: unknown): unknown => {
     return value.map((v) => coerceScalar(element, v));
   }
 
+  // A `z.dateRange()` arriving as `?createdAt=2026-01-01,2026-01-31`.
+  //
+  // ⚠️ Scoped to the format literal, deliberately. `ServerProvider
+  // .parseQueryString` answers `Record<string, string>`, so a query can never
+  // produce an array on its own, and the general question - should EVERY array
+  // query param comma-split? - is left open rather than answered here in
+  // passing. Keying on `date-range` means no existing array field changes
+  // behaviour and a value containing a comma cannot start splitting by
+  // surprise.
+  //
+  // ⚠️ **A range reaches a server in TWO shapes**, and only one of them is the
+  // one this was written for. `HttpClient.queryParams` `JSON.stringify`s any
+  // object-valued query param, so the framework's own client sends
+  // `?createdAt=["2026-01-01","2026-01-31"]`; a hand-written URL, and
+  // `AlephaTable`'s own filter serialisation, send the comma-joined form. A
+  // split that ran on both would cut the JSON in half and hand the schema
+  // `["[\"2026-01-01\"", …]`, which fails as "Invalid ISO date" and names
+  // nothing useful. So a value that opens with `[` is left to the JSON branch
+  // below, which was already going to parse it correctly.
+  //
+  // Otherwise the pair is split and handed on unvalidated: a wrong count or a
+  // non-date half is the schema's rejection to produce, and this file's
+  // contract is that anything it cannot coerce is returned for validation to
+  // refuse by name.
+  if (
+    z.schema.isDateRange(base) &&
+    typeof value === "string" &&
+    value.trimStart()[0] !== "["
+  ) {
+    return value.split(",");
+  }
+
   // Env maps (and other string-only boundaries) may carry already-typed
   // scalars (e.g. `PORT: 3000`, `DEBUG: true`). When the schema declares a
   // string/text field, stringify them so strict validation passes and `$KEY`

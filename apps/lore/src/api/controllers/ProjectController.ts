@@ -657,12 +657,25 @@ export class ProjectController {
          * previous call must not be handed that same event again.
          */
         after: z.datetime().optional(),
+        /**
+         * When, as a closed range of calendar DAYS.
+         *
+         * ⚠️ Mapped onto `AuditService.find`'s own `from` / `to` in the
+         * handler rather than declared as a second pair here. Those two have
+         * documented semantics on `auditQuerySchema` (`after` is an exclusive
+         * cursor beside them), and two ways to say one thing in a public
+         * query schema is a smell. The UI names a range; this endpoint
+         * resolves it.
+         */
+        createdAt: z.dateRange().optional(),
       }),
       response: db.page(projectActivityRowSchema),
     },
     handler: async ({ params, query }) => {
+      const window = this.activityWindow(query.createdAt);
       const page = await this.auditService.find({
         ...query,
+        ...window,
         type: await this.activityTypes(params.id, query.type),
         // Both halves, always: every project-layer index leads on the pair,
         // and a `scopeId` alone would fall off them onto a scan.
@@ -745,6 +758,31 @@ export class ProjectController {
       };
     },
   });
+
+  /**
+   * A range of calendar days as the instant window `AuditService.find` takes.
+   *
+   * ⚠️ **Resolved in UTC, on purpose.** A reader filtering "8 Sep" arguably
+   * means their local 8 Sep, but the server is not told their offset, and UTC
+   * is what makes a shared link select the same rows for everyone. Recorded
+   * as a choice rather than left to happen by accident; a per-request
+   * timezone is a later addition, not a bug against this.
+   *
+   * The end is inclusive to the last millisecond of the day, which is what
+   * makes a one-day range select that day rather than nothing.
+   */
+  protected activityWindow(range?: string[]): { from?: string; to?: string } {
+    // `z.dateRange()` guarantees exactly two ends by the time a request
+    // reaches a handler, but its INFERRED type is `string[]` - `.length(2)` is
+    // a runtime check and TypeScript cannot read it. The guard is for the
+    // compiler and for any caller reaching this outside a validated request.
+    if (!range || range.length !== 2) return {};
+    const [start, end] = range;
+    return {
+      from: `${start}T00:00:00.000Z`,
+      to: `${end}T23:59:59.999Z`,
+    };
+  }
 
   /**
    * The audit `type` filter the Activity feed reads with.
