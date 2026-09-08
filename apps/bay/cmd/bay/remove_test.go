@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/alepha/bay/internal/naming"
 )
 
 /*
@@ -75,7 +77,7 @@ func TestRemoveWithoutPurgeKeepsTheUser(t *testing.T) {
 	if f.runner.removes[0].purge {
 		t.Error("purge was set on a remove that keeps the data")
 	}
-	instance := filepath.Join(f.root, "apps", "demo", "production")
+	instance := filepath.Join(f.root, "apps", naming.Instance("demo", "production"))
 	if _, err := os.Stat(instance); err != nil {
 		t.Errorf("instance data was destroyed by a plain remove: %v", err)
 	}
@@ -101,7 +103,7 @@ func TestRemoveWithPurgeCarriesTheFlagThrough(t *testing.T) {
 	// Ordering, and it is the point: the user is deleted only once the files it
 	// owned are gone, so there is never a moment where a live uid owns nothing
 	// and orphaned files own no user.
-	instance := filepath.Join(f.root, "apps", "demo", "production")
+	instance := filepath.Join(f.root, "apps", naming.Instance("demo", "production"))
 	if _, err := os.Stat(instance); !os.IsNotExist(err) {
 		t.Errorf("purge left the instance directory behind: %v", err)
 	}

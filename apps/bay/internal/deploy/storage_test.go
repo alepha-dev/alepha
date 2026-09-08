@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/state"
 )
 
@@ -50,7 +51,7 @@ func deployBucketApp(t *testing.T, root string, store *state.Store, storage *sta
 
 func envOf(t *testing.T, root string) string {
 	t.Helper()
-	return flatEnv(t, filepath.Join(root, "apps", "demo", "production", ".env"))
+	return flatEnv(t, filepath.Join(root, "apps", naming.Instance("demo", "production"), ".env"))
 }
 
 func newRoot(t *testing.T) (string, *state.Store) {
@@ -100,7 +101,7 @@ func TestConfiguredStorageSendsBlobsToObjectStorage(t *testing.T) {
 		"S3_REGION=auto",
 		// The prefix Bay controls, mirroring the backup key layout so one
 		// bucket can hold `apps/<name>/<env>/{db,storage,blobs}/` coherently.
-		"S3_KEY_PREFIX=apps/demo/production/blobs",
+		"S3_KEY_PREFIX=apps/demo-production/blobs",
 	} {
 		if !strings.Contains(env, want) {
 			t.Errorf("missing %q in .env:\n%s", want, env)
@@ -132,7 +133,7 @@ func TestAppNameCarriesTheEnvironment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	raw := flatEnv(t, filepath.Join(root, "apps", "demo", "staging", ".env"))
+	raw := flatEnv(t, filepath.Join(root, "apps", naming.Instance("demo", "staging"), ".env"))
 	if !strings.Contains(raw, "APP_NAME=demo-staging") {
 		t.Fatalf("expected APP_NAME=demo-staging, .env was:\n%s", raw)
 	}
@@ -147,7 +148,7 @@ func TestAnAppMayBringItsOwnBucket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	envPath := filepath.Join(root, "apps", "demo", "production", ".env")
+	envPath := filepath.Join(root, "apps", naming.Instance("demo", "production"), ".env")
 	if err := os.WriteFile(envPath, []byte(
 		"S3_ENDPOINT=https://minio.example.com\n"+
 			"S3_BUCKET_NAME=mine\n"+
@@ -206,7 +207,7 @@ func TestSwitchingBackendsRefusesToStrandExistingFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	storageDir := filepath.Join(root, "apps", "demo", "production", "storage")
+	storageDir := filepath.Join(root, "apps", naming.Instance("demo", "production"), "storage")
 	if err := os.MkdirAll(filepath.Join(storageDir, "avatars"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +257,7 @@ func TestAnS3BackedAppKeepsItsBucketWhenBayForgetsTheConfig(t *testing.T) {
 	}
 
 	env := envOf(t, root)
-	if !strings.Contains(env, "S3_KEY_PREFIX=apps/demo/production/blobs") {
+	if !strings.Contains(env, "S3_KEY_PREFIX=apps/demo-production/blobs") {
 		t.Fatalf("the app must still point at its bucket:\n%s", env)
 	}
 	if strings.Contains(env, "STORAGE_PATH=") {

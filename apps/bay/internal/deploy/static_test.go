@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/state"
 )
 
@@ -84,7 +85,7 @@ func TestStaticDeployWritesNoEnvFile(t *testing.T) {
 
 	deployStatic(t, root, store, "docs")
 
-	envPath := filepath.Join(root, "apps", "docs", "production", ".env")
+	envPath := filepath.Join(root, "apps", naming.Instance("docs", "production"), ".env")
 	if _, err := os.Stat(envPath); !os.IsNotExist(err) {
 		t.Fatalf("a static app must have no .env, stat gave: %v", err)
 	}
@@ -117,7 +118,7 @@ func TestProcessAppStillGetsAPortAndEnv(t *testing.T) {
 	if res.App.Port == 0 {
 		t.Fatal("a process app still needs a port")
 	}
-	envPath := filepath.Join(root, "apps", "demo", "production", ".env")
+	envPath := filepath.Join(root, "apps", naming.Instance("demo", "production"), ".env")
 	if _, err := os.Stat(envPath); err != nil {
 		t.Fatalf("a process app still needs its .env, got: %v", err)
 	}

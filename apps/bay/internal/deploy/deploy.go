@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/alepha/bay/internal/manifest"
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/runner"
 	"github.com/alepha/bay/internal/state"
 )
@@ -170,7 +171,10 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 		domains = []string{subdomain(opts.Name, opts.Env) + "." + opts.BaseDomain}
 	}
 
-	instance := filepath.Join(opts.Root, "apps", opts.Name, opts.Env)
+	instance := filepath.Join(opts.Root, "apps", naming.Instance(opts.Name, opts.Env))
+	if err := refuseToStrandOldLayout(opts.Root, opts.Name, opts.Env, instance); err != nil {
+		return nil, err
+	}
 	// Millisecond precision, because a release name has to sort chronologically
 	// and a second is not fine enough for CI.
 	//
@@ -548,7 +552,37 @@ func RepointStorage(instance string, name, env string, storage *state.S3Target) 
 func BlobPrefix(name, env string) string { return blobPrefix(name, env) }
 
 func blobPrefix(name, env string) string {
-	return fmt.Sprintf("apps/%s/%s/blobs", name, env)
+	return "apps/" + naming.Instance(name, env) + "/blobs"
+}
+
+// refuseToStrandOldLayout blocks a deploy that would silently abandon an
+// instance stored under the pre-fold layout.
+//
+// ⚠️ The failure it prevents leaves no trace, and is the same shape as
+// [refuseToStrandFiles]. Instances used to live at `apps/<name>/<env>/`; they
+// live at `apps/<name>-<env>/` now. A Bay upgraded without moving them finds
+// nothing at the new path, creates it, provisions an EMPTY database, and the
+// app boots healthy having lost every row - while the real data sits intact one
+// directory away, with nothing pointing at it and nothing logging a word.
+//
+// Refusing is the whole fix. The move is one `mv` and the message says so; a
+// deploy is not the moment to relocate somebody's database on their behalf.
+func refuseToStrandOldLayout(root, name, env, instance string) error {
+	if _, err := os.Stat(instance); err == nil {
+		// Already on the new layout. An old directory left beside it is stale
+		// and not this deploy's business.
+		return nil
+	}
+	legacy := filepath.Join(root, "apps", name, env)
+	if _, err := os.Stat(legacy); err != nil {
+		// No old instance either: an ordinary first deploy.
+		return nil
+	}
+	return fmt.Errorf(
+		"%s/%s is stored under the old layout at %s, and this Bay reads %s. "+
+			"Deploying now would create an empty instance and leave its database behind. "+
+			"Move it first:\n\n    mv %s %s\n",
+		name, env, legacy, instance, legacy, instance)
 }
 
 // refuseToStrandFiles blocks a local -> S3 switch that would orphan uploads.

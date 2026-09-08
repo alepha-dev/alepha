@@ -17,6 +17,7 @@ import (
 	"github.com/alepha/bay/internal/backup"
 	"github.com/alepha/bay/internal/deploy"
 	"github.com/alepha/bay/internal/manifest"
+	"github.com/alepha/bay/internal/naming"
 	"github.com/alepha/bay/internal/runtimes"
 	"github.com/alepha/bay/internal/s3"
 	"github.com/alepha/bay/internal/schedule"
@@ -87,7 +88,7 @@ func notBackedUp(store *state.Store, app state.App) []string {
 
 // appPaths resolves the runtime binary and managed database path for an app.
 func (s *server) appPaths(app state.App) (runtime, dbPath string, err error) {
-	instance := filepath.Join(s.root, "apps", app.Name, app.Env)
+	instance := filepath.Join(s.root, "apps", naming.Instance(app.Name, app.Env))
 	m, err := manifest.LoadFromRelease(filepath.Join(instance, "current"))
 	if err != nil {
 		return "", "", err
