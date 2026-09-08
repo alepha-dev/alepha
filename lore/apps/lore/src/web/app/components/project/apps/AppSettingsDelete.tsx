@@ -77,6 +77,10 @@ const AppSettingsDelete = () => {
           app: instance.app,
           env: instance.env,
         },
+        // ⚠️ Never `forget: true` from here. A copy whose estate still holds a
+        // Worker or a database is refused, and the refusal says to destroy
+        // those first - which is the whole point of the guard.
+        body: {},
       });
       // A new array, not a mutation: the Apps table reads this atom as static
       // data and re-renders on identity.

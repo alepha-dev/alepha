@@ -687,6 +687,7 @@ describe("a deployment", () => {
             app: instance.app,
             env: instance.env,
           },
+          body: {},
         },
         { user },
       );

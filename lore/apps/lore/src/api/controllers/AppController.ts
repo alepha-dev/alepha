@@ -1,6 +1,6 @@
 import { $inject, z } from "alepha";
 import { $repository } from "alepha/orm";
-import { $action, okSchema } from "alepha/server";
+import { $action, BadRequestError, okSchema } from "alepha/server";
 
 import { type AppInstance, appInstances } from "../entities/appInstances.ts";
 import { deployments } from "../entities/deployments.ts";
@@ -15,6 +15,7 @@ import { $ownsProject } from "../security/$ownsProject.ts";
 import { AppService } from "../services/AppService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
+import { TeardownService } from "../services/TeardownService.ts";
 
 export type { AppInstanceResource };
 
@@ -46,6 +47,7 @@ export class AppController {
   protected deployments = $repository(deployments);
   protected security = $inject(ProjectSecurityService);
   protected service = $inject(AppService);
+  protected readonly teardown = $inject(TeardownService);
   protected audits = $inject(LoreAudits);
 
   /**
@@ -347,6 +349,78 @@ export class AppController {
     },
   });
 
+  /**
+   * Remove what this copy's deploys created in the estate.
+   *
+   * ⚠️ **Its own verb, and never a side effect.** Deleting the copy, deleting
+   * the project and withdrawing the estate all leave the cloud resources
+   * alone: destroying somebody's database is not something to infer from a
+   * tidy-up. This is the one action that does it, and it says so.
+   *
+   * ⚠️ The confirmation is the copy's own `app/env`, typed. A checkbox is a
+   * reflex; typing the name is the only confirmation that requires reading
+   * which copy is about to lose its database.
+   */
+  destroyAppResources = $action({
+    use: [
+      $ownsProject({
+        requires: "app:manage",
+        param: "projectId",
+        capability: { key: "apps", action: "destroy an app's resources" },
+      }),
+    ],
+    method: "POST",
+    path: "/projects/:projectId/apps/:app/:env/destroy",
+    description:
+      "Delete the Worker, database and bucket this copy's deploys created.",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        app: appNameSchema,
+        env: appNameSchema,
+      }),
+      body: z.object({
+        /**
+         * The copy's `app/env`, typed by whoever is asking.
+         */
+        confirm: z.string().min(1).max(200),
+      }),
+      response: z.object({
+        removed: z.array(z.string()),
+        failed: z.array(
+          z.object({ resource: z.string(), message: z.string() }),
+        ),
+      }),
+    },
+    handler: async ({ params, body, user }) => {
+      const instance = await this.service.load(
+        params.projectId,
+        params.app,
+        params.env,
+      );
+
+      const expected = `${instance.app}/${instance.env}`;
+      if (body.confirm.trim() !== expected) {
+        throw new BadRequestError(
+          `Type "${expected}" to confirm. This deletes the Worker, the database and the bucket this copy's deploys created, and the database has no backup.`,
+        );
+      }
+
+      const result = await this.teardown.destroy(instance);
+
+      await this.audits.app.logSuccess("destroy", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(params.projectId),
+        severity: "warning",
+        resourceType: "app",
+        resourceId: instance.id,
+        description: `${expected}: removed ${result.removed.join(", ") || "nothing"}`,
+      });
+
+      return result;
+    },
+  });
+
   deleteApp = $action({
     use: [
       $ownsProject({
@@ -363,14 +437,36 @@ export class AppController {
         app: appNameSchema,
         env: appNameSchema,
       }),
+      body: z
+        .object({
+          /**
+           * Delete the copy even though Lore still records resources for it.
+           *
+           * ⚠️ They are not tidied up - they are forgotten, and no screen will
+           * name them again. For a copy whose resources were removed by hand.
+           */
+          forget: z.boolean().optional(),
+        })
+        .optional(),
       response: okSchema,
     },
-    handler: async ({ params, user }) => {
+    handler: async ({ params, body, user }) => {
       const instance = await this.service.load(
         params.projectId,
         params.app,
         params.env,
       );
+
+      // ⚠️ Refused while the estate still holds what this copy's deploys made.
+      // The record lives on this row, so deleting it does not orphan the
+      // resources - it makes them UNREACHABLE, with nothing left anywhere that
+      // knows their names. `forget` is for a copy whose resources somebody
+      // removed by hand, which is a real state and not one Lore can detect.
+      if (!body?.forget && this.teardown.holdsResources(instance)) {
+        throw new BadRequestError(
+          `${instance.app}/${instance.env} still has a Worker, database or bucket that Lore created. Destroy those first, or pass \`forget\` to delete this copy and leave them - after which nothing will know their names.`,
+        );
+      }
 
       await this.service.delete(instance);
 
