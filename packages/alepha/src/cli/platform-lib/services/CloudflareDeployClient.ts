@@ -248,7 +248,7 @@ export class CloudflareDeployClient {
 
     let completion = session.jwt;
     for (const batch of this.batches(wanted, assets.manifest, byHash)) {
-      const body: Record<string, string> = {};
+      const body: Record<string, File> = {};
       for (const hash of batch) {
         const key = byHash.get(hash);
         if (!key) {
@@ -256,7 +256,18 @@ export class CloudflareDeployClient {
             `Cloudflare asked for an asset hash (${hash}) that is not in the manifest we sent. Refusing to guess which file it meant.`,
           );
         }
-        body[hash] = this.manifest.base64(await assets.read(key));
+        // ⚠️ **A `File`, never the base64 string it holds.** Cloudflare stores
+        // each part's `Content-Type` as the one it will serve the asset with,
+        // and the SDK writes a part's type only for a `Blob`: a plain string
+        // is appended with none, so every asset comes back with an EMPTY
+        // content type. The browser then refuses each module script and each
+        // stylesheet under strict MIME checking - and a prerendered site still
+        // paints, so the deploy looks like it worked.
+        body[hash] = new File(
+          [this.manifest.base64(await assets.read(key))],
+          hash,
+          { type: this.manifest.contentType(key) },
+        );
       }
 
       // ⚠️ **The session's JWT, not the estate's API token.** This is the one
@@ -668,7 +679,12 @@ export interface CloudflareDeployApi {
           params: {
             account_id: string;
             base64: true;
-            body: Record<string, string>;
+            /**
+             * ⚠️ `File` rather than `string`: the part's own `Content-Type` is
+             * what Cloudflare serves the asset with, and only a `Blob` carries
+             * one. See the call site.
+             */
+            body: Record<string, File>;
           },
           /**
            * ⚠️ Carries the session JWT, because this endpoint does not accept
