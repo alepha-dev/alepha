@@ -69,7 +69,52 @@ export interface AccountRouterOptions {
     keys?: AccountKeysProps;
     connections?: AccountConnectionsProps;
   };
+
+  /**
+   * Pages this application does not offer at all.
+   *
+   * Each page is already gated on whether the action behind it is mounted,
+   * and that answers most of the question: the API-keys page really does
+   * disappear for an application that never mounts `AlephaApiKeys`.
+   *
+   * ⚠️ **It cannot answer a page whose action is always mounted.**
+   * `MyConnectionController` ships with `$realm` and is `$secure()` with no
+   * permission, so `listMyConnections` exists in every application ever
+   * built on this router - and "Connected apps" was therefore offered to
+   * citizens of a public service that has no OAuth client in the world, over
+   * a list that is empty by construction. Whether the API exists is the
+   * registry's question; whether the application offers it is the
+   * application's, and only the application can answer the second.
+   *
+   * ANDed with the existing gate, never instead of it. A hidden page is
+   * absent from the rail and refused on direct entry, exactly as one whose
+   * action is missing already is.
+   *
+   * ⚠️ A list of exceptions rather than an allowlist, and that is the
+   * difference from the `pages: [...]` this router's own doc block rules
+   * out: an allowlist has to be kept complete, so a page added here would
+   * vanish from every application that had already written one down. Unset
+   * changes nothing, and a new page is offered by default.
+   *
+   * ```ts
+   * alepha.set(accountRouterOptionsAtom, { hide: ["connections"] });
+   * ```
+   */
+  hide?: AccountPage[];
 }
+
+/**
+ * The pages `AccountRouter` mounts, by the field that declares each one.
+ *
+ * Named rather than inlined so {@link AccountRouterOptions.hide} and the
+ * router's own helper cannot drift apart on a rename.
+ */
+export type AccountPage =
+  | "profile"
+  | "security"
+  | "sessions"
+  | "keys"
+  | "connections";
 
 /**
  * Boot-time configuration for `AccountRouter`, following the

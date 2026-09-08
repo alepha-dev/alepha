@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { AdminRouter } from "../../admin/admin-router.tsx";
 import type { NavMeta } from "../../nav-shell/nav-tree-util.ts";
+import { accountRouterOptionsAtom } from "../account-router-options.tsx";
 import { $pageAccount } from "../account-router-page.tsx";
 import { AccountRouter } from "../account-router.tsx";
 
@@ -126,6 +127,100 @@ describe("AccountRouter", () => {
     expect(router.sessions.options.can!({ has: () => true })).toBe(true);
     expect(router.connections.options.can!({ has: () => true })).toBe(true);
     expect(router.keys.options.can!({ has: () => true })).toBe(false);
+  });
+
+  /**
+   * `hide`, for the page `can` cannot answer for.
+   *
+   * The test above names the gap in passing: `MyConnectionController` lives
+   * in `api/users`, so `listMyConnections` ships with `$realm` and the
+   * Connected apps page is offered by every application ever built on this
+   * router - including a public service with no OAuth client in the world,
+   * over a list that is empty by construction.
+   *
+   * ⚠️ These assert on `can`, which is what the rail is built from, and that
+   * is the whole of what hiding does. `can` is a UI-affordance predicate and
+   * NOT a route guard - `ReactBrowserRouterProvider` says so and
+   * deliberately does not block routing on it - so a hidden page is still
+   * reachable by typing its URL. That is not a hole this option opens: it is
+   * exactly what a page whose action is missing already does, which is the
+   * parity the option was asked for.
+   */
+  describe("hide", () => {
+    const mountWith = async (hide?: string[]) => {
+      const alepha = Alepha.create().with(AlephaReactRouter);
+      if (hide) {
+        alepha.store.set(accountRouterOptionsAtom, { hide } as never);
+      }
+      const router = alepha.inject(AccountRouter);
+      await alepha.start();
+      // Every action mounted, so nothing else can be what turns a page off.
+      alepha.store.set("alepha.server.request.apiLinks", {
+        actions: {
+          getMyProfile: { path: "/users/me" },
+          listMyIdentities: { path: "/users/me/identities" },
+          listMySessions: { path: "/users/me/sessions" },
+          listApiKeys: { path: "/api-keys" },
+          listMyConnections: { path: "/users/me/connections" },
+        },
+      });
+      return router;
+    };
+
+    it("drops a named page from the rail while every action is mounted", async () => {
+      const router = await mountWith(["connections"]);
+
+      expect(router.connections.options.can!({ has: () => true })).toBe(false);
+    });
+
+    it("leaves every page it does not name alone", async () => {
+      const router = await mountWith(["connections"]);
+
+      expect(router.profile.options.can!({ has: () => true })).toBe(true);
+      expect(router.security.options.can!({ has: () => true })).toBe(true);
+      expect(router.sessions.options.can!({ has: () => true })).toBe(true);
+      expect(router.keys.options.can!({ has: () => true })).toBe(true);
+    });
+
+    it("changes nothing when it is unset", async () => {
+      // Backwards compatible by construction: every application written
+      // before this option keeps all five pages.
+      const router = await mountWith();
+
+      for (const page of [
+        router.profile,
+        router.security,
+        router.sessions,
+        router.keys,
+        router.connections,
+      ]) {
+        expect(page.options.can!({ has: () => true })).toBe(true);
+      }
+    });
+
+    it("takes several pages, and is ANDed rather than replacing the action gate", async () => {
+      const alepha = Alepha.create().with(AlephaReactRouter);
+      alepha.store.set(accountRouterOptionsAtom, {
+        hide: ["connections", "sessions"],
+      } as never);
+      const router = alepha.inject(AccountRouter);
+      await alepha.start();
+      // Keys is absent from the registry AND unnamed by `hide`: the two
+      // gates answer independently, and either one is enough.
+      alepha.store.set("alepha.server.request.apiLinks", {
+        actions: {
+          getMyProfile: { path: "/users/me" },
+          listMyIdentities: { path: "/users/me/identities" },
+          listMySessions: { path: "/users/me/sessions" },
+          listMyConnections: { path: "/users/me/connections" },
+        },
+      });
+
+      expect(router.connections.options.can!({ has: () => true })).toBe(false);
+      expect(router.sessions.options.can!({ has: () => true })).toBe(false);
+      expect(router.keys.options.can!({ has: () => true })).toBe(false);
+      expect(router.profile.options.can!({ has: () => true })).toBe(true);
+    });
   });
 
   /**
