@@ -34,6 +34,16 @@ const activityFiltersSchema = z.object({
    */
   type: z.array(z.string()).optional(),
   action: z.array(z.string()).optional(),
+  /**
+   * When, as a closed range of calendar days.
+   *
+   * `z.dateRange()` makes both ends mandatory, so `.optional()` is the whole
+   * of "no filter" - there is no half-range to represent and no empty end to
+   * strip on the way out. It round-trips through the URL as
+   * `?createdAt=2026-01-01,2026-01-31`, comma-joined by the client and split
+   * back by `coerceStrings` on the server.
+   */
+  createdAt: z.dateRange().optional(),
 });
 
 /**
@@ -137,6 +147,11 @@ const ProjectActivityPage = () => {
         // condition. A single value still produces the `eq` it always did.
         type: filters?.type?.length ? filters.type.join(",") : undefined,
         action: filters?.action?.length ? filters.action.join(",") : undefined,
+        // Passed as the pair, not as two params: the endpoint resolves the
+        // days to an instant window (`ProjectController.activityWindow`), so
+        // the UI names a range and the server decides what a day means.
+        createdAt:
+          filters?.createdAt?.length === 2 ? filters.createdAt : undefined,
       },
     });
   };
@@ -225,6 +240,17 @@ const ProjectActivityPage = () => {
                     label: capitalize(action),
                     value: action,
                   }))}
+                />
+              </FilterSlot>
+              <FilterSlot>
+                {/* No `items`, no `icon`: the control selects itself off the
+                    schema's `date-range` format, and `parseField` already
+                    gives that format the calendar glyph. */}
+                <Control
+                  input={form.input.createdAt}
+                  label=""
+                  clearable
+                  placeholder={String(tr("activity.filter.anyDate"))}
                 />
               </FilterSlot>
             </div>
