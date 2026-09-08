@@ -7,16 +7,18 @@ import {
   useTreeState,
 } from "@alepha/ui/components/tree-view/use-tree-state.ts";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
+import { CryptoProvider } from "alepha/crypto";
 import {
   useAction,
   useAlepha,
   useClient,
+  useInject,
   useQuery,
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { DirectoryController } from "@/api/controllers/DirectoryController.ts";
 import type { FolioController } from "@/api/controllers/FolioController.ts";
@@ -27,6 +29,10 @@ import { pendingFolioTreeRenameAtom } from "../../../../atoms/pendingFolioTreeRe
 import { projectDirectoriesAtom } from "../../../../atoms/projectDirectoriesAtom.ts";
 import { userFoliosAtom } from "../../../../atoms/userFoliosAtom.ts";
 import type { I18n } from "../../../../services/I18n.ts";
+import {
+  ensureProtectedKeysAutoLock,
+  rememberProtectedKey,
+} from "../../protectedFolioKeys.ts";
 import {
   buildFolioTree,
   type FolioTreeNode,
@@ -76,6 +82,23 @@ export interface FolioTreeVerbs {
   remove: (node: FolioTreeNode) => Promise<void>;
   duplicate: (node: FolioTreeNode) => Promise<void>;
   togglePin: (node: FolioTreeNode) => Promise<void>;
+  /**
+   * Open the passphrase dialog for a folio the reader wants protected.
+   *
+   * A two-step verb, unlike its neighbours, because the crypto needs a
+   * passphrase and this hook renders nothing: it holds which folio was
+   * asked about, `FolioTree` renders `FolioPassphraseDialog` from that, and
+   * {@link confirmEncrypt} does the work when the dialog submits.
+   */
+  beginEncrypt: (node: FolioTreeNode) => void;
+  cancelEncrypt: () => void;
+  /**
+   * Encrypt the folio {@link beginEncrypt} named, under this passphrase.
+   *
+   * Answers `null` on success and a message to show inside the dialog
+   * otherwise, which is `FolioPassphraseDialog`'s contract.
+   */
+  confirmEncrypt: (passphrase: string) => Promise<string | null>;
 }
 
 /**
@@ -100,6 +123,11 @@ export interface FolioTreeState {
   renamingId?: string;
   dragId?: string;
   drop?: { id: string; position: TreeDropPosition };
+  /**
+   * The folio whose passphrase dialog is open, if any. `FolioTree` renders
+   * the dialog from it; nothing else reads it.
+   */
+  encryptingTitle?: string;
   /**
    * Stable for the life of the hook. A row may hold onto it across any
    * number of renders without going stale.
@@ -191,6 +219,7 @@ export const useFolioTreeModel = (
   const router = useRouter<AppRouter>();
   const dialog = useDialog();
   const folioApi = useClient<FolioController>();
+  const cryptoProvider = useInject(CryptoProvider);
   const directoryApi = useClient<DirectoryController>();
 
   const [folios, setFolios] = useStore(userFoliosAtom);
@@ -821,6 +850,108 @@ export const useFolioTreeModel = (
   };
 
   /**
+   * Which folio the passphrase dialog is collecting a passphrase for.
+   *
+   * The id AND the title, because the dialog is rendered from this alone and
+   * the row it was opened from is gone by then: a tree that refetches while
+   * the dialog is open would otherwise lose the node it is about.
+   */
+  const [encrypting, setEncrypting] = useState<
+    { id: string; title: string } | undefined
+  >();
+
+  const beginEncrypt = (node: FolioTreeNode): void => {
+    if (node.data.kind !== "folio") return;
+    setEncrypting({ id: node.id, title: node.name });
+  };
+
+  const cancelEncrypt = (): void => setEncrypting(undefined);
+
+  /**
+   * Encrypt an unprotected folio from the tree.
+   *
+   * ## Why this is possible here and "remove protection" is not
+   *
+   * `FolioTreeContextMenu`'s doc explains at length that the tree cannot
+   * REMOVE protection, and it is easy to read that as a ruling against this.
+   * It is not: the obstacle there is that removing protection has to write
+   * `protected: false` together with the PLAINTEXT, and the tree holds only
+   * ciphertext for an arbitrary node - sending it back as plaintext corrupts
+   * the folio rather than declassifying it.
+   *
+   * Encrypting goes the other way. The source is an unprotected folio, whose
+   * content the server stores in the clear and hands over on request. The
+   * tree fetches it, encrypts it in the browser behind the same passphrase
+   * dialog the editor uses, and writes `protected: true` with the ciphertext.
+   * Nothing has to be recovered from something the tree cannot read.
+   *
+   * ⚠️ **`content` and `protected` go in the SAME body, and must.**
+   * `FolioController.update` refuses `protected` without `content` precisely
+   * to stop this shape of write leaving the flag and the bytes in different
+   * protection domains - see `apps/lore/CLAUDE.md`.
+   *
+   * ⚠️ **The key is remembered**, the way `useFolioActions.confirmEncrypt`
+   * does. The reader has just typed the passphrase; making them type it again
+   * to open the folio they encrypted a second ago is not extra security, it
+   * is the same session already holding the same key.
+   */
+  const encryptAction = useAction<[string], string | null>(
+    {
+      handler: async (passphrase: string) => {
+        const target = encrypting;
+        if (!target) return null;
+        try {
+          const source = await folioApi.get({ params: { id: target.id } });
+          // Already protected: the menu does not offer the item for such a
+          // row, so this is a race rather than a case - another tab, or a
+          // stale tree. Re-encrypting would replace an envelope the reader
+          // cannot read with one they can, which is a downgrade dressed as a
+          // write.
+          if (source.protected) {
+            return tr("folios.protected.already-protected");
+          }
+          const saltHex = cryptoProvider.randomUUID().replace(/-/g, "");
+          const key = await cryptoProvider.deriveKeyFromPassphrase(
+            passphrase,
+            saltHex,
+          );
+          const envelope = await cryptoProvider.encryptWithPassphrase(
+            source.content,
+            key,
+            saltHex,
+          );
+          const updated = await folioApi.update({
+            params: { id: target.id },
+            body: { content: envelope, protected: true },
+          });
+          rememberProtectedKey(updated.id, key);
+          ensureProtectedKeysAutoLock();
+          setFolios(
+            folios.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)),
+          );
+          setEncrypting(undefined);
+          return null;
+        } catch {
+          return tr("folios.protected.encrypt-failed");
+        }
+      },
+      invalidates: [["folioTree", input.projectId]],
+    },
+    [
+      encrypting,
+      folios,
+      setFolios,
+      folioApi,
+      cryptoProvider,
+      input.projectId,
+      tr,
+    ],
+  );
+
+  const confirmEncrypt = (passphrase: string): Promise<string | null> =>
+    encryptAction.run(passphrase).then((result) => result ?? null);
+
+  /**
    * The current implementation of every command, rebuilt on each render
    * because each one closes over `folios`, `directories`, `tree` or
    * `dragId`. Assigned during render, the same way `FolioTree` already
@@ -834,6 +965,9 @@ export const useFolioTreeModel = (
     remove,
     duplicate,
     togglePin,
+    beginEncrypt,
+    cancelEncrypt,
+    confirmEncrypt,
   };
 
   /**
@@ -861,6 +995,10 @@ export const useFolioTreeModel = (
       remove: (node) => implRef.current.remove(node),
       duplicate: (node) => implRef.current.duplicate(node),
       togglePin: (node) => implRef.current.togglePin(node),
+      beginEncrypt: (node) => implRef.current.beginEncrypt(node),
+      cancelEncrypt: () => implRef.current.cancelEncrypt(),
+      confirmEncrypt: (passphrase) =>
+        implRef.current.confirmEncrypt(passphrase),
     }),
     [state.commands],
   );
@@ -875,6 +1013,7 @@ export const useFolioTreeModel = (
     renamingId,
     dragId,
     drop,
+    encryptingTitle: encrypting?.title,
     commands,
     canWrite: folioApi.create.can(),
   };

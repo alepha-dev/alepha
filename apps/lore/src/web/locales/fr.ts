@@ -72,6 +72,8 @@ export default {
   "folios.protected.encrypt-description":
     "Définissez une phrase secrète. Le contenu est chiffré dans votre navigateur : le serveur ne stocke que le texte chiffré, et aucune récupération n'est possible si vous l'oubliez. Le titre, les tags et le résumé restent visibles aux autres membres du projet ; partagez la phrase secrète hors-bande avec qui doit déchiffrer.",
   "folios.protected.encrypt-failed": "Le chiffrement a échoué.",
+  "folios.protected.already-protected":
+    "Ce folio est déjà protégé. Rechargez l'arborescence pour voir son état actuel.",
   "folios.protected.remove-confirm-title":
     "Retirer la protection de ce folio ?",
   "folios.protected.remove-confirm-body":
@@ -211,6 +213,7 @@ export default {
   "folios.editor.tree.open-new-tab": "Ouvrir dans un nouvel onglet",
   "folios.editor.tree.rename": "Renommer",
   "folios.editor.tree.copy-wiki-link": "Copier le lien wiki",
+  "folios.editor.tree.encrypt": "Chiffrer",
   "folios.editor.tree.confirm-delete-directory-title": "Supprimer ce dossier ?",
   "folios.editor.tree.confirm-delete-directory-body":
     "Tout ce qu'il contient, folios compris, est également supprimé. Cette action est irréversible.",
