@@ -290,10 +290,18 @@ func Run(opts Options, store *state.Store) (*Result, error) {
 	}
 
 	// current -> releases/<release>, swapped atomically via rename.
+	//
+	// ⚠️ **Relative, not absolute.** An absolute target does not survive the
+	// instance directory being moved: the link keeps pointing at the old path,
+	// the app carries on serving from the process already running, and every
+	// operation that reads THROUGH `current` - a backup, the next deploy's
+	// manifest read - fails with a missing file naming a directory nobody
+	// mentioned. That is what the one-segment migration produced on the first
+	// host it ran on, and a relative link makes the whole class impossible.
 	current := filepath.Join(instance, "current")
 	tmpLink := current + ".tmp"
 	_ = os.Remove(tmpLink)
-	if err := os.Symlink(releaseDir, tmpLink); err != nil {
+	if err := os.Symlink(filepath.Join("releases", release), tmpLink); err != nil {
 		return nil, fmt.Errorf("link release: %w", err)
 	}
 	if err := os.Rename(tmpLink, current); err != nil {
