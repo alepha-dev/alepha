@@ -177,10 +177,15 @@ describe("AppCreateDialog", () => {
     fireEvent.click(view.getByRole("button", { name: "Create" }));
 
     await waitFor(() => expect(links.calls).toHaveLength(1));
+    // ⚠️ No `ephemeral`, and that is what this dialog does rather than an
+    // omission here. `createApp` takes it as OPTIONAL and this form offers no
+    // control for it: a copy is declared ephemeral over MCP, where the claim
+    // is made by whatever is provisioning the copy. This assertion asked for
+    // `ephemeral: false` from the day the column landed, against a dialog
+    // that has never sent it.
     expect(links.calls[0].body).toEqual({
       app: "club",
       env: "b14-production",
-      ephemeral: false,
     });
   });
 
