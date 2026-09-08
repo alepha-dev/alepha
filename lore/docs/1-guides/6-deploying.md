@@ -210,10 +210,17 @@ take.
 
 For every other copy:
 
-⚠️ **The database and the bucket are kept.** Lore removes what a redeploy puts
-back - the Worker, the queue, the cache namespace - and never what it cannot: a
-D1 database and an R2 bucket are what the app was serving, and Cloudflare
-offers no rename and no archive to soften deleting one.
+⚠️ **The database, the bucket and any Durable Object storage are kept.** Lore
+removes what a redeploy puts back - the Worker, the queue, the cache namespace -
+and never what it cannot: a D1 database and an R2 bucket are what the app was
+serving, and Cloudflare offers no rename and no archive to soften deleting one.
+
+An app that uses websockets runs a Durable Object namespace holding its rooms
+and connections, which is data in the same sense. Cloudflare will not delete a
+Worker whose namespace still holds anything unless the delete is forced, and
+forcing is what takes the storage - so for an ordinary copy the delete is
+unforced, and Cloudflare refusing it is the right answer. The result says the
+Worker is still there and why.
 
 That is also what makes this reversible. Resources are looked up by name, so a
 copy destroyed and recreated under the same name **reattaches its own database
