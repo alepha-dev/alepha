@@ -187,7 +187,12 @@ describe("the worker-side Cloudflare adapter", () => {
     const { adapter } = setup();
 
     await expect(adapter.inspect()).rejects.toThrowError(/does not inspect/);
-    await expect(adapter.teardown()).rejects.toThrowError(/does not tear down/);
+    // ⚠️ It tears down only what a deploy RECORDED, through `teardownRecorded`.
+    // The adapter interface's own `teardown` derives every name from the
+    // context, and on a lent estate that is the delete this class refuses.
+    await expect(adapter.teardown()).rejects.toThrowError(
+      /only what a deploy recorded/,
+    );
   });
   /**
    * ⚠️ The entry is the ONE name that has to agree across two spellings.

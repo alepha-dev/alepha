@@ -461,7 +461,10 @@ describe("AppController", () => {
     await ctx.repos.instances.updateById(created.id, { sigilId: sigil.id });
 
     await ctx.controller.deleteApp(
-      { params: { projectId: project.id, app: "club", env: "production" } },
+      {
+        params: { projectId: project.id, app: "club", env: "production" },
+        body: {},
+      },
       { user },
     );
 

@@ -265,6 +265,99 @@ export class CloudflareProvisionClient {
    * Bounded: a list that never stops growing is a Worker burning its CPU
    * budget on a page cursor that does not advance.
    */
+  // -------------------------------------------------------------------------
+  // Teardown
+  // -------------------------------------------------------------------------
+
+  /**
+   * Delete a D1 database, by the id recorded when it was created.
+   *
+   * ⚠️ **By id, never by name.** A name is derived from `(project, env)` and so
+   * is reproducible by anything; the uuid is what proves this is the database
+   * that deploy made. It also survives a rename, which a name-based delete
+   * would follow into somebody else's database.
+   *
+   * ⚠️ There is no backup and no undo. Cloudflare's own time-travel is the only
+   * recovery, and it is scoped to the database that no longer exists.
+   */
+  public async deleteD1(databaseId: string): Promise<void> {
+    await this.fetch(`/accounts/${this.accountId}/d1/database/${databaseId}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * Empty a bucket and then delete it.
+   *
+   * ⚠️ **Cloudflare refuses to delete a bucket that still holds objects**, so
+   * the wipe is not a courtesy - it is the precondition. It pages because a
+   * list answers at most 1000 keys, and it stops on a page that deletes
+   * nothing rather than looping forever on a bucket that keeps answering.
+   *
+   * ⚠️ A wipe that fails leaves the bucket ALONE. Deleting data this could not
+   * confirm it removed is the one thing a teardown must not do quietly; the
+   * caller reports the bucket as still standing instead.
+   */
+  public async deleteR2(name: string): Promise<void> {
+    for (let page = 0; page < 1_000; page++) {
+      const listed = await this.fetch<{ objects?: Array<{ key: string }> }>(
+        `/accounts/${this.accountId}/r2/buckets/${name}/objects`,
+        { query: { per_page: "1000" } },
+      );
+      const keys = (listed.objects ?? []).map((it) => it.key);
+      if (keys.length === 0) {
+        break;
+      }
+      await this.fetch(
+        `/accounts/${this.accountId}/r2/buckets/${name}/objects/delete`,
+        { method: "POST", body: { objects: keys.map((key) => ({ key })) } },
+      );
+    }
+
+    await this.fetch(`/accounts/${this.accountId}/r2/buckets/${name}`, {
+      method: "DELETE",
+    });
+  }
+
+  public async deleteKV(namespaceId: string): Promise<void> {
+    await this.fetch(
+      `/accounts/${this.accountId}/storage/kv/namespaces/${namespaceId}`,
+      { method: "DELETE" },
+    );
+  }
+
+  /**
+   * Delete a queue, by the id its name resolves to.
+   *
+   * Answers quietly when no queue of that name is left: a teardown that
+   * already removed it, or a queue somebody deleted by hand, is the state this
+   * is trying to reach.
+   */
+  public async deleteQueue(name: string): Promise<void> {
+    const found = (await this.listQueues()).find(
+      (it) => it.queue_name === name,
+    );
+    if (!found) {
+      return;
+    }
+    await this.fetch(`/accounts/${this.accountId}/queues/${found.queue_id}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * Delete a Worker script.
+   *
+   * `force` is deliberately not passed: it detaches a script other Workers
+   * still bind to, which is a decision for whoever owns those, not for a
+   * teardown of one copy.
+   */
+  public async deleteWorker(name: string): Promise<void> {
+    await this.fetch(`/accounts/${this.accountId}/workers/scripts/${name}`, {
+      method: "DELETE",
+    });
+  }
+
   protected async paginate<T>(path: string): Promise<T[]> {
     const all: T[] = [];
     for (let page = 1; page <= 50; page++) {

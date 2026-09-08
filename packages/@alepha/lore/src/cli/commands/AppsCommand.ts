@@ -242,6 +242,80 @@ export class AppsCommand {
     },
   });
 
+  public readonly destroy = $command({
+    name: "destroy",
+    description:
+      "Delete the Worker, database and bucket this copy's deploys created",
+    flags: z.object({
+      project: z
+        .text({
+          aliases: ["p"],
+          description: "Lore project slug, overriding LORE_PROJECT.",
+        })
+        .optional(),
+      app: z
+        .text({
+          description:
+            "App name. Defaults to the slugified `name` from package.json.",
+        })
+        .optional(),
+      env: z
+        .text({
+          aliases: ["e"],
+          description: "Which deployed copy to destroy the resources of.",
+        })
+        .optional(),
+      yes: z
+        .boolean()
+        .describe(
+          "Confirm without being asked. The copy's `app/env` is sent as the confirmation.",
+        )
+        .optional(),
+    }),
+    handler: async ({ flags, root }) => {
+      const project = this.client.resolveProject(flags.project);
+      const projectId = await this.projects.resolve(project);
+      const app = await this.projects.resolveApp(flags.app, root);
+      const env = this.projects.assertEnv(
+        await this.projects.resolveEnv(flags.env, project),
+        app,
+      );
+
+      // ⚠️ There is no prompt here, and `--yes` is therefore required rather
+      // than convenient. A prompt in a command that may run in CI is a hang,
+      // and a destructive default is worse than an extra flag.
+      if (!flags.yes) {
+        throw new AlephaError(
+          `This deletes the Worker, the database and the bucket ${app}/${env} deploys created, and the database has no backup. Pass --yes to confirm.`,
+        );
+      }
+
+      const result = await this.apps.destroyAppResources({
+        params: { projectId, app, env },
+        // The server asks for the copy's own name so a person has to read
+        // which copy they are emptying; `--yes` is the operator saying they
+        // already did.
+        body: { confirm: `${app}/${env}` },
+      });
+
+      this.log.info(
+        result.removed.length > 0
+          ? `Removed ${result.removed.join(", ")} for ${app}/${env}`
+          : `Nothing left to remove for ${app}/${env}`,
+      );
+      for (const failure of result.failed) {
+        this.log.warn(
+          `${failure.resource} was not removed: ${failure.message}`,
+        );
+      }
+      if (result.failed.length > 0) {
+        throw new AlephaError(
+          `${result.failed.length} resource(s) could not be removed. What did go is no longer recorded, so running this again retries only the rest.`,
+        );
+      }
+    },
+  });
+
   public readonly deploy = $command({
     name: "deploy",
     description: "Deploy this app onto one of its environments",
@@ -338,7 +412,7 @@ export class AppsCommand {
   public readonly appsCommand = $command({
     name: "apps",
     description: "Build and deploy this project's apps",
-    children: [this.build, this.deploy],
+    children: [this.build, this.deploy, this.destroy],
     handler: async ({ help }) => {
       help();
     },

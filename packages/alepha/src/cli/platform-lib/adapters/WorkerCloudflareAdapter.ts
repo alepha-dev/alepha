@@ -544,9 +544,88 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     );
   }
 
+  /**
+   * Remove exactly the resources a deploy recorded, and say what went.
+   *
+   * ## ⚠️ It takes a RECORD, not a context
+   *
+   * Every other method here derives names from `ctx.naming`. This one refuses
+   * to: an estate is LENT, so the account holds resources Lore never created
+   * and one may legitimately bear the name a copy would compute. What may be
+   * deleted is what a deploy wrote down when it made it - the D1 by uuid,
+   * which survives a rename that a name-based delete would follow into
+   * somebody else's database.
+   *
+   * ## The order is the safety property
+   *
+   * Worker first, so nothing is serving traffic against storage that is about
+   * to go. Then the queue consumer and its queue, then KV, then the bucket,
+   * and **D1 last** because it is the one with no undo: everything cheap to
+   * lose is proven gone before the irreversible step is attempted.
+   *
+   * ## ⚠️ Every failure is reported, never thrown
+   *
+   * A teardown that stopped on the first error would leave the caller unable
+   * to say what it had already removed - and the caller's whole job is to
+   * strike what went from the record so a retry resumes instead of restarting.
+   * `removed` and `failed` are that answer.
+   */
+  public async teardownRecorded(record: {
+    worker?: string;
+    d1?: { name: string; id: string };
+    r2?: string;
+    kv?: { name: string; id: string };
+    queue?: string;
+  }): Promise<{
+    removed: string[];
+    failed: Array<{ resource: string; message: string }>;
+  }> {
+    const api = this.provisioner();
+    const removed: string[] = [];
+    const failed: Array<{ resource: string; message: string }> = [];
+
+    const attempt = async (resource: string, act: () => Promise<void>) => {
+      try {
+        await act();
+        removed.push(resource);
+      } catch (error) {
+        failed.push({
+          resource,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    };
+
+    if (record.worker) {
+      await attempt("worker", () => api.deleteWorker(record.worker as string));
+    }
+    if (record.queue) {
+      await attempt("queue", () => api.deleteQueue(record.queue as string));
+    }
+    if (record.kv) {
+      await attempt("kv", () => api.deleteKV(record.kv!.id));
+    }
+    if (record.r2) {
+      // Empties the bucket first, because Cloudflare refuses to delete one
+      // that still holds objects. A wipe that fails leaves it standing.
+      await attempt("r2", () => api.deleteR2(record.r2 as string));
+    }
+    if (record.d1) {
+      await attempt("d1", () => api.deleteD1(record.d1!.id));
+    }
+
+    return { removed, failed };
+  }
+
+  /**
+   * ⚠️ The ADAPTER interface's teardown, which this deliberately does not
+   * implement. It derives every name from the context, and on a lent estate
+   * that is the delete this class exists to refuse - see
+   * {@link teardownRecorded}, which takes what a deploy wrote down instead.
+   */
   async teardown(): Promise<void> {
     throw new AlephaError(
-      "The worker-side Cloudflare adapter does not tear down. Run `alepha platform down` locally, where the full adapter is.",
+      "The worker-side Cloudflare adapter tears down only what a deploy recorded, through `teardownRecorded`. `alepha platform down` is the one that derives names, and it runs locally against your own account.",
     );
   }
 }

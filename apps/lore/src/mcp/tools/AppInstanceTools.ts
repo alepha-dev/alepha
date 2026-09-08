@@ -151,6 +151,9 @@ export class AppInstanceTools {
       );
       return await this.apps.deleteApp({
         params: { projectId, app: params.app, env: params.env },
+        // Never `forget`: an agent deleting a copy is told to destroy its
+        // resources first, like every other caller.
+        body: {},
       });
     },
   });
