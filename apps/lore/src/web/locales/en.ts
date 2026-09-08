@@ -418,6 +418,7 @@ export default {
   "quest.discussion.waived": 'Skipped "$1":',
   "quest.event.created": "created the quest",
   "quest.event.createdFromFeedback": "created the quest from feedback",
+  "quest.event.createdFromFeedbackRef": "created the quest from $1",
   "quest.event.assigned": "took the quest",
   "quest.event.unassigned": "unassigned the quest",
   "quest.event.completed": "completed the quest",
@@ -513,6 +514,10 @@ export default {
   "quest.view.objectivesProgress": "$1 of $2",
   "quest.view.updated": "updated $1",
   "quest.view.fromFeedback": "from feedback",
+  // With the number, once it is resolved. `$1` is a whole `#P` reference
+  // (`#P2152`), not a bare integer, so the reference grammar stays in one
+  // place - `formatReference` - rather than being spelled out per locale.
+  "quest.view.fromFeedbackRef": "from $1",
   "quest.view.due": "Due $1 · $2",
   "quest.view.attach": "Attach",
   "quest.view.attachHint":

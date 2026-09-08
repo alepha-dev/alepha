@@ -438,9 +438,11 @@ describe("ProjectFeedbackDetail - the Agent Prompts menu", () => {
     // #F1 sends the agent to a folio.
     expect(written[0]).toContain("#P1");
     expect(written[0]).not.toContain("#F1");
-    // The inbox, because no URL opens one report.
-    expect(written[0]).toContain("The inbox:");
-    expect(written[0]).toContain("/feedback");
+    // The item itself, by its number, since #Q2077 taught the inbox to
+    // honour `?feedback=`. It said "The inbox:" before, because the
+    // selection was React state and no URL opened one report.
+    expect(written[0]).toContain("The report:");
+    expect(written[0]).toContain("/feedback?feedback=1");
   });
 
   /**
