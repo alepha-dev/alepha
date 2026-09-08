@@ -2,6 +2,7 @@ import { Alepha, createMiddleware, type Middleware } from "alepha";
 import { $secure } from "alepha/security";
 import { describe, expect, it } from "vitest";
 
+import { loginRoutesAtom } from "../atoms/loginRoutesAtom.ts";
 import { AlephaReactRouter } from "../index.ts";
 import { $page } from "../primitives/$page.ts";
 
@@ -178,6 +179,142 @@ describe("$page + $secure", () => {
     // Only 401 means "we do not know who you are". Anything else must not be
     // laundered into a login redirect.
     await expect(app.page.render()).rejects.toThrow("upstream exploded");
+  });
+});
+
+/**
+ * An application can serve two realms, and only one route can be called
+ * `login`. Before `loginRoutesAtom` there was no way to say which door a
+ * denied page belonged to, so every denial landed on whichever page held the
+ * name: an expired back-office session sent an agent, who signs in with an
+ * identifier, a password and a realm, to the citizen's email-and-password
+ * form.
+ */
+describe("$page + $secure, two sign-in pages", () => {
+  /**
+   * Both doors, and a guarded page under each. `login` is deliberately absent
+   * from this application: neither door is the conventional one, which is the
+   * whole shape of the report.
+   */
+  class TwoDoors {
+    agent = $page({
+      path: "/admin/sign-in",
+      name: "agent",
+      component: () => null,
+    });
+    signIn = $page({ path: "/sign-in", name: "signIn", component: () => null });
+    backOffice = $page({
+      path: "/admin/reports",
+      use: [$deny()],
+      component: () => null,
+    });
+    account = $page({
+      path: "/account",
+      use: [$deny()],
+      component: () => null,
+    });
+  }
+
+  const doors = [
+    { prefix: "/admin", route: "agent" },
+    { prefix: "/", route: "signIn" },
+  ];
+
+  it("sends a denied back-office page to the back-office door", async () => {
+    const alepha = setup();
+    const app = alepha.inject(TwoDoors);
+    await alepha.start();
+    alepha.store.set(loginRoutesAtom, doors);
+
+    const result = await app.backOffice.render();
+
+    expect(result.redirect).toBe("/admin/sign-in?redirect=%2Fadmin%2Freports");
+  });
+
+  it("sends everything else to the catch-all door beside it", async () => {
+    const alepha = setup();
+    const app = alepha.inject(TwoDoors);
+    await alepha.start();
+    alepha.store.set(loginRoutesAtom, doors);
+
+    const result = await app.account.render();
+
+    // The `/` entry is last, so the specific prefix above it still won the
+    // test before this one: first match wins, it is not longest-match.
+    expect(result.redirect).toBe("/sign-in?redirect=%2Faccount");
+  });
+
+  it("falls back to `login` for a URL under no declared prefix", async () => {
+    const alepha = setup();
+
+    class OneDoorPlusLogin {
+      login = $page({ path: "/login", name: "login", component: () => null });
+      agent = $page({
+        path: "/admin/sign-in",
+        name: "agent",
+        component: () => null,
+      });
+      account = $page({
+        path: "/account",
+        use: [$deny()],
+        component: () => null,
+      });
+    }
+
+    const app = alepha.inject(OneDoorPlusLogin);
+    await alepha.start();
+    // No catch-all entry, so `/account` matches nothing here.
+    alepha.store.set(loginRoutesAtom, [{ prefix: "/admin", route: "agent" }]);
+
+    const result = await app.account.render();
+
+    expect(result.redirect).toBe("/login?redirect=%2Faccount");
+  });
+
+  /**
+   * A typo in the list must degrade to the behaviour of an application that
+   * never set it, rather than to a redirect pointing at nothing. The list is
+   * hand-written data and nothing typechecks a route name.
+   */
+  it("falls back to `login` when a prefix names a route that does not exist", async () => {
+    const alepha = setup();
+
+    class Typo {
+      login = $page({ path: "/login", name: "login", component: () => null });
+      backOffice = $page({
+        path: "/admin/reports",
+        use: [$deny()],
+        component: () => null,
+      });
+    }
+
+    const app = alepha.inject(Typo);
+    await alepha.start();
+    alepha.store.set(loginRoutesAtom, [{ prefix: "/admin", route: "agnet" }]);
+
+    const result = await app.backOffice.render();
+
+    expect(result.redirect).toBe("/login?redirect=%2Fadmin%2Freports");
+  });
+
+  it("still throws 401 when neither the list nor `login` resolves", async () => {
+    const alepha = setup();
+
+    class NoDoor {
+      backOffice = $page({
+        path: "/admin/reports",
+        use: [$deny()],
+        component: () => null,
+      });
+    }
+
+    const app = alepha.inject(NoDoor);
+    await alepha.start();
+    alepha.store.set(loginRoutesAtom, [{ prefix: "/admin", route: "agent" }]);
+
+    await expect(app.backOffice.render()).rejects.toMatchObject({
+      status: 401,
+    });
   });
 });
 

@@ -111,6 +111,18 @@ export interface AdminRouterOptions {
    * that name. This option exists for applications that mount their own auth
    * routes under a different name instead of `AuthRouter`.
    *
+   * ⚠️ **It answers one surface, not the router.** This is the button in the
+   * admin account menu; where the ROUTER sends somebody whose session expired
+   * on a guarded page is `loginRoutesAtom` (`alepha/react/router`), and the
+   * two are set separately on purpose. This option cannot serve both: it says
+   * which route, and the router's question is which route FOR WHICH PART OF
+   * THE APPLICATION - a prefix the admin shell does not know, since it is
+   * mounted at a path the application chose. The framework could not read it
+   * either way round, because it does not import this package.
+   *
+   * An application with two doors sets both, naming the same route here as
+   * its `/admin` prefix names there.
+   *
    * @default "login"
    */
   loginRouteName?: string;
