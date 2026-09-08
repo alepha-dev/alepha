@@ -185,17 +185,21 @@ tidy-up:
 lore apps destroy --env staging --yes
 ```
 
-Order matters and is fixed: the Worker goes first so nothing is still serving,
-then the queue, the KV namespace and the bucket (emptied first, because
-Cloudflare refuses to delete one that is not), and the **database last** - the
-one step with no undo is attempted only once everything else has gone. There is
-no backup.
+⚠️ **The database and the bucket are kept.** Lore removes what a redeploy puts
+back - the Worker, the queue, the cache namespace - and never what it cannot: a
+D1 database and an R2 bucket are what the app was serving, and Cloudflare
+offers no rename and no archive to soften deleting one.
+
+That is also what makes this reversible. Resources are looked up by name, so a
+copy destroyed and recreated under the same name **reattaches its own database
+with every row still in it**. Deleting those two is `alepha platform down`,
+which runs on your machine against your own account.
 
 ⚠️ **Lore deletes only what it recorded creating.** The names are derived from
-the project and the environment, so they are reproducible - and your estate
-holds resources Lore never made, one of which could bear the same name. A copy
-deployed before Lore started recording has nothing to act on and is refused;
-use `alepha platform down` or the Cloudflare dashboard for those.
+the project, the app and the environment, so they are reproducible - and your
+estate holds resources Lore never made, one of which could bear the same name.
+A copy deployed before Lore started recording has nothing to act on and is
+refused.
 
 If a run removes some and fails on others, what went is struck from the record,
 so running it again retries only the rest.

@@ -270,23 +270,53 @@ export class CloudflareProvisionClient {
   // -------------------------------------------------------------------------
 
   /**
-   * ⚠️ **There is deliberately no `deleteD1`, `deleteR2`, `deleteKV` or
-   * `deleteQueue` here, and adding one is a decision, not a gap.**
+   * ⚠️ **There is deliberately no `deleteD1` and no `deleteR2` here, and
+   * adding one is a decision, not a gap.**
    *
-   * Lore drives this client with a credential lent to it for deploying. It may
-   * remove what it can recreate - a Worker is a build, uploaded again by the
-   * next deploy - and it may not remove what it cannot: a database, a bucket,
-   * a namespace and a queue all hold data that no redeploy brings back and
-   * that Cloudflare offers no rename or archive to sidestep (`d1.update` takes
-   * only `read_replication`, `r2.edit` only a storage class).
+   * Lore drives this client with a credential lent to it for deploying, so the
+   * line is what a redeploy can put back. A Worker is a build. A KV namespace
+   * backs the cache primitive and a queue holds messages in flight - both are
+   * recreated empty by the next deploy, and losing them costs a cold cache and
+   * whatever had not been consumed.
    *
-   * Leaving them is also what makes destroy-then-recreate work: `ensureD1` and
-   * `ensureR2` look up by NAME, so a copy rebuilt under the same name finds
-   * its database again with its rows intact.
+   * A **database** and a **bucket** are the things the build was serving.
+   * Cloudflare offers no rename and no archive to soften that (`d1.update`
+   * takes only `read_replication`, `r2.edit` only a storage class), so there
+   * is no careful version of deleting one - it is gone.
+   *
+   * Keeping those two is also what makes destroy-then-recreate work:
+   * `ensureD1` and `ensureR2` look up by NAME, so a copy rebuilt under the
+   * same name finds its database again with its rows intact.
    *
    * `alepha platform down` deletes them, and is the right place for it: it
    * runs on the operator's own machine against their own account.
    */
+
+  public async deleteKV(namespaceId: string): Promise<void> {
+    await this.fetch(
+      `/accounts/${this.accountId}/storage/kv/namespaces/${namespaceId}`,
+      { method: "DELETE" },
+    );
+  }
+
+  /**
+   * Delete a queue, by the id its name resolves to.
+   *
+   * Answers quietly when no queue of that name is left: a teardown that
+   * already removed it, or a queue somebody deleted by hand, is the state this
+   * is trying to reach.
+   */
+  public async deleteQueue(name: string): Promise<void> {
+    const found = (await this.listQueues()).find(
+      (it) => it.queue_name === name,
+    );
+    if (!found) {
+      return;
+    }
+    await this.fetch(`/accounts/${this.accountId}/queues/${found.queue_id}`, {
+      method: "DELETE",
+    });
+  }
 
   /**
    * Delete a Worker script.

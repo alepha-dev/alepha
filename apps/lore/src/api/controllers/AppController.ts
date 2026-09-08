@@ -372,7 +372,7 @@ export class AppController {
     method: "POST",
     path: "/projects/:projectId/apps/:app/:env/destroy",
     description:
-      "Delete the Worker this copy runs. Its database and bucket are kept.",
+      "Delete the Worker, queue and cache this copy uses. Its database and bucket are kept.",
     schema: {
       params: z.object({
         projectId: z.integer(),
@@ -407,7 +407,7 @@ export class AppController {
       const expected = `${instance.app}/${instance.env}`;
       if (body.confirm.trim() !== expected) {
         throw new BadRequestError(
-          `Type "${expected}" to confirm. This deletes the Worker this copy runs; its database and bucket are kept.`,
+          `Type "${expected}" to confirm. This deletes the Worker, the queue and the cache namespace; the database and the bucket are KEPT.`,
         );
       }
 
