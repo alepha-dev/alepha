@@ -37,6 +37,7 @@ import {
   Search,
   Signature,
   Flag,
+  FlagOff,
   Tag,
   Trash,
 } from "lucide-react";
@@ -73,6 +74,7 @@ import {
 } from "./quest/questChips.ts";
 import QuestCreate from "./quest/QuestCreate.tsx";
 import { formatQuestSize } from "./quest/questSize.ts";
+import { releaseRowMenu } from "./releaseRowMenu.ts";
 
 /**
  * Board filter shape. Empty by default → "All statuses", which means
@@ -147,6 +149,33 @@ const ProjectQuestsTable = () => {
   // drawer as the edit one below, with no row in it.
   const [creating, setCreating] = useState(false);
   const [knownTags, setKnownTags] = useState<string[]>([]);
+
+  /**
+   * The same write `QuestReleaseControl` makes on the quest's own rail, from
+   * the row menu instead. `null` detaches; an absent key would leave the
+   * attachment alone, which is why the caller passes one or the other and
+   * never `undefined`.
+   *
+   * Not `questMutations.attachToRelease`: that one is the bulk path, takes a
+   * list, and its `releaseId` is a plain number because bulk never detaches.
+   */
+  const setRelease = async (
+    quest: QuestResource,
+    releaseId: number | null,
+    refresh: () => void,
+  ) => {
+    try {
+      await questApi.updateQuestById({
+        params: { id: quest.id },
+        body: { releaseId },
+      });
+      // The Release column is drawn from the row, so it repaints only once
+      // the fetch comes back with the new value.
+      refresh();
+    } catch (error) {
+      toaster.error(error instanceof Error ? error.message : String(error));
+    }
+  };
 
   /**
    * The slice of the URL the table seeds from, as a remount key.
@@ -865,6 +894,55 @@ const ProjectQuestsTable = () => {
                           "questWork",
                           promptSubject.forQuest(row),
                         ),
+                    },
+                  ],
+                },
+              ]
+            : []),
+          // Where this quest ships, set from the list. The Release column is
+          // hidden by default here, so the menu is often the only place the
+          // field is reachable without opening the quest (#Q2098).
+          //
+          // ⚠️ The rules are `QuestReleaseControl`'s, read out of
+          // `releaseRowMenu` rather than restated: only open releases, plus
+          // this quest's own current one so a published attachment shows
+          // itself instead of reading as lost, and `locked` disabling every
+          // entry when that current one is published - the same condition
+          // that disables the control's trigger. The server refuses it too.
+          //
+          // No options means no children, which renders nothing at all: a
+          // project with no open release needs no case of its own.
+          ...(questApi.updateQuestById.can() &&
+          releaseRowMenu(releases, quest.releaseId).options.length > 0
+            ? [
+                {
+                  icon: Flag,
+                  label: tr("board.action.setRelease"),
+                  children: [
+                    ...releaseRowMenu(releases, quest.releaseId).options.map(
+                      (release) => ({
+                        icon: Flag,
+                        label: release.tag ?? release.title,
+                        checked: (row: QuestResource) =>
+                          row.releaseId === release.id,
+                        disabled: () =>
+                          releaseRowMenu(releases, quest.releaseId).locked,
+                        onClick: (
+                          row: QuestResource,
+                          { refresh }: { refresh: () => void },
+                        ) => setRelease(row, release.id, refresh),
+                      }),
+                    ),
+                    {
+                      icon: FlagOff,
+                      label: tr("board.action.noRelease"),
+                      checked: (row: QuestResource) => row.releaseId == null,
+                      disabled: () =>
+                        releaseRowMenu(releases, quest.releaseId).locked,
+                      onClick: (
+                        row: QuestResource,
+                        { refresh }: { refresh: () => void },
+                      ) => setRelease(row, null, refresh),
                     },
                   ],
                 },

@@ -65,6 +65,13 @@ class FakeLinkProvider extends LinkProvider {
   quests: QuestResource[] = [questOf(1, "Existing quest")];
   created: string[] = [];
   fetches = 0;
+  /**
+   * Every `updateQuestById` body, in order. The release row menu is the one
+   * caller that has to be read rather than watched for a side effect: it
+   * writes `releaseId: null` to detach, and an absent key means something
+   * else entirely, so the assertion is on what was sent.
+   */
+  updates: Array<Record<string, unknown>> = [];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -91,6 +98,17 @@ class FakeLinkProvider extends LinkProvider {
           this.created.push(config.body.title);
           return quest;
         }),
+        updateQuestById: action(
+          async (config: {
+            params: { id: number };
+            body: Record<string, unknown>;
+          }) => {
+            this.updates.push(config.body);
+            const quest = this.quests.find((q) => q.id === config.params.id);
+            if (quest) Object.assign(quest, config.body);
+            return quest ?? this.quests[0];
+          },
+        ),
       } as Record<string, unknown>,
       {
         get: (target, prop: string) =>
@@ -622,6 +640,92 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
       expect(headers).not.toContain("columnFromAnOlderRelease");
       // ...and the column the stored order never mentioned is still here.
       expect(headers.some((label) => label?.includes("Quest"))).toBe(true);
+    });
+  });
+  /**
+   * Setting the release from the row menu (#Q2098). The other half of the
+   * same change lands on the Epics list; the rules both obey live in
+   * `releaseRowMenu` and are pinned by `ProjectEpics.browser.spec.tsx`, so
+   * what is guarded here is this table's wiring: the entry exists, and the
+   * write it makes is the one the quest rail makes.
+   */
+  describe("the release submenu", () => {
+    const openRowMenu = async () => {
+      const row = screen.getByRole("link", { name: /^#Q1 - / }).closest("tr");
+      expect(row).not.toBeNull();
+      fireEvent.click(
+        within(row!).getByRole("button", { name: "Open row actions" }),
+      );
+      return await waitFor(() => {
+        const found = document.querySelectorAll('[role="menuitem"]');
+        if (found.length === 0) throw new Error("not open yet");
+        return [...found];
+      });
+    };
+
+    /**
+     * ⚠️ `menuitemcheckbox`, not `menuitem`: the children declare `checked`,
+     * which is what marks the quest's current release. A query by
+     * `menuitem` finds the group's trigger and nothing inside it.
+     */
+    const openReleases = async (items: Element[]) => {
+      const trigger = items.find((item) =>
+        item.textContent?.includes("Set Release"),
+      );
+      expect(trigger).toBeTruthy();
+      fireEvent.click(trigger!);
+      return await waitFor(() => {
+        const found = [
+          ...document.querySelectorAll('[role="menuitemcheckbox"]'),
+        ];
+        if (found.length === 0) throw new Error("submenu not open yet");
+        return found;
+      });
+    };
+
+    it("offers the project's open releases and No release", async () => {
+      await mount();
+
+      const entries = await openReleases(await openRowMenu());
+      const labels = entries.map((entry) => entry.textContent ?? "").join(" ");
+      expect(labels).toContain("0.28.0");
+      expect(labels).toContain("0.29.0");
+      expect(labels).toContain("No release");
+      // The quest is in none, so that is what is marked.
+      const checked = entries.filter(
+        (entry) => entry.getAttribute("aria-checked") === "true",
+      );
+      expect(checked).toHaveLength(1);
+      expect(checked[0]?.textContent).toContain("No release");
+    });
+
+    it("writes the release the same way the quest rail does", async () => {
+      const { links } = await mount();
+
+      const entries = await openReleases(await openRowMenu());
+      fireEvent.click(
+        entries.find((entry) => entry.textContent?.includes("0.29.0"))!,
+      );
+
+      await waitFor(() => expect(links.updates).toHaveLength(1));
+      expect(links.updates[0]).toEqual({ releaseId: 8 });
+    });
+
+    /**
+     * ⚠️ `null`, never an absent key. The endpoint reads a missing
+     * `releaseId` as "leave the attachment alone", so a detach written as
+     * `undefined` is a no-op that reports success.
+     */
+    it("detaches with an explicit null", async () => {
+      const { links } = await mount();
+
+      const entries = await openReleases(await openRowMenu());
+      fireEvent.click(
+        entries.find((entry) => entry.textContent?.includes("No release"))!,
+      );
+
+      await waitFor(() => expect(links.updates).toHaveLength(1));
+      expect(links.updates[0]).toEqual({ releaseId: null });
     });
   });
 });

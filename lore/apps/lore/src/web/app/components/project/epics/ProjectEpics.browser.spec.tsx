@@ -559,4 +559,153 @@ describe("ProjectEpics - the status filter", () => {
       expect(items.join(" ")).toContain("Begin");
     });
   });
+  /**
+   * Setting the release from the row menu (#Q2098). The list SHOWED which
+   * release an epic ships in and could not change it, so a correction was a
+   * page load and a trip back for one field.
+   *
+   * The rules under test are `EpicReleaseControl`'s, which is the point: the
+   * menu reads them from `releaseRowMenu` rather than restating them, and a
+   * second copy is how the two surfaces end up disagreeing about what may
+   * be picked.
+   */
+  describe("the release submenu", () => {
+    const aRelease = (id: number, tag: string, released?: string) => ({
+      id,
+      projectId: 1,
+      number: id,
+      tag,
+      title: tag,
+      description: "",
+      releasedAt: released,
+      createdAt: "2026-08-26T10:00:00.000Z",
+      updatedAt: "2026-08-26T10:00:00.000Z",
+      progress: { completed: 0, inProgress: 0, shelved: 0, total: 0 },
+    });
+
+    const RELEASES = [
+      aRelease(7, "0.28.0", "2026-09-03T00:00:00.000Z"),
+      aRelease(8, "0.29.0"),
+      aRelease(9, "0.30.0"),
+    ];
+
+    const openRowMenu = async (name: string) => {
+      const row = screen.getByRole("link", { name }).closest("tr");
+      expect(row).not.toBeNull();
+      fireEvent.click(
+        within(row!).getByRole("button", { name: "Open row actions" }),
+      );
+      return await waitFor(() => {
+        const found = document.querySelectorAll('[role="menuitem"]');
+        if (found.length === 0) throw new Error("not open yet");
+        return [...found];
+      });
+    };
+
+    /**
+     * ⚠️ The children are `menuitemcheckbox`, not `menuitem`: they declare
+     * `checked`, which is what marks the row's current release. A query by
+     * `menuitem` finds the group's own trigger and nothing inside it.
+     */
+    const openReleases = async (items: Element[]) => {
+      const trigger = items.find((item) =>
+        item.textContent?.includes("Set Release"),
+      );
+      if (!trigger) return [];
+      fireEvent.click(trigger);
+      return await waitFor(() => {
+        const found = [
+          ...document.querySelectorAll('[role="menuitemcheckbox"]'),
+        ];
+        if (found.length === 0) throw new Error("submenu not open yet");
+        return found;
+      });
+    };
+
+    it("offers the open releases and No release, never a published one", async () => {
+      await mount(RELEASES, [epicOf(1, "Planned epic", "planned")]);
+
+      const entries = await openReleases(
+        await openRowMenu("#E1 - Planned epic"),
+      );
+      const labels = entries.map((entry) => entry.textContent ?? "");
+      expect(labels.join(" ")).toContain("0.29.0");
+      expect(labels.join(" ")).toContain("0.30.0");
+      expect(labels.join(" ")).toContain("No release");
+      // 0.28.0 is published, and this epic is not in it. Attaching would be
+      // refused server-side, so it is never offered.
+      expect(labels.join(" ")).not.toContain("0.28.0");
+    });
+
+    it("marks the release the epic is already in", async () => {
+      await mount(RELEASES, [epicOf(1, "Planned epic", "planned", 9)]);
+
+      const entries = await openReleases(
+        await openRowMenu("#E1 - Planned epic"),
+      );
+      const checked = entries.filter(
+        (entry) => entry.getAttribute("aria-checked") === "true",
+      );
+      expect(checked).toHaveLength(1);
+      expect(checked[0]?.textContent).toContain("0.30.0");
+    });
+
+    it("marks No release when the epic is in none", async () => {
+      await mount(RELEASES, [epicOf(1, "Planned epic", "planned")]);
+
+      const entries = await openReleases(
+        await openRowMenu("#E1 - Planned epic"),
+      );
+      const checked = entries.filter(
+        (entry) => entry.getAttribute("aria-checked") === "true",
+      );
+      expect(checked).toHaveLength(1);
+      expect(checked[0]?.textContent).toContain("No release");
+    });
+
+    /**
+     * The epic's own published release stays in the list so the menu can say
+     * what it is, and every entry is disabled so it cannot be changed - the
+     * same pair the control expresses as "keep it in `options`, disable the
+     * trigger". Dropping it instead would read as though the attachment had
+     * been lost.
+     */
+    it("shows a published attachment and refuses to move it", async () => {
+      await mount(RELEASES, [epicOf(1, "Planned epic", "planned", 7)]);
+
+      const entries = await openReleases(
+        await openRowMenu("#E1 - Planned epic"),
+      );
+      const labels = entries.map((entry) => entry.textContent ?? "");
+      expect(labels.join(" ")).toContain("0.28.0");
+      expect(
+        entries.find((entry) => entry.getAttribute("aria-checked") === "true")
+          ?.textContent,
+      ).toContain("0.28.0");
+      for (const entry of entries) {
+        expect(entry.getAttribute("data-disabled")).not.toBeNull();
+      }
+    });
+
+    /**
+     * An empty group renders nothing and does not create the three-dots
+     * trigger by itself, so a project with no open release needs no case of
+     * its own. Read as intended rather than as a missing feature: there is
+     * nothing to pick, and an entry that could only say "No release" to an
+     * epic that already has none is noise.
+     */
+    it("offers no submenu while the project has no open release", async () => {
+      await mount(
+        [aRelease(7, "0.28.0", "2026-09-03T00:00:00.000Z")],
+        [epicOf(1, "Planned epic", "planned")],
+      );
+
+      const items = (await openRowMenu("#E1 - Planned epic")).map(
+        (item) => item.textContent,
+      );
+      expect(items.join(" ")).not.toContain("Set Release");
+      // The rest of the menu is untouched.
+      expect(items.join(" ")).toContain("Begin");
+    });
+  });
 });
