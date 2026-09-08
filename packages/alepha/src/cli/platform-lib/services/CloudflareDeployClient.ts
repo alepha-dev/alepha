@@ -156,13 +156,19 @@ export interface CloudflareDeployAssets {
  * 6. the workers.dev subdomain
  * 7. queue consumers
  *
+ * An eighth, `getSubdomain`, sits outside this sequence: it is the caller's
+ * read of the account's subdomain to compose the address a domainless deploy
+ * answers on, and it happens after the deploy rather than as part of it.
+ *
  * ⚠️ Step 6 has **no save-time permission probe standing behind it**. The
  * workers.dev probe was dropped from #1630 because
  * `GET /accounts/{id}/workers/subdomain` answers error `10007` for an account
  * that never registered one, which a probe would misread as a missing
  * permission and use to refuse a valid token. "This account has no workers.dev
- * subdomain" is therefore a deploy-time failure named here, not a save-time
- * refusal.
+ * subdomain" is therefore a deploy-time fact, and since step 6 now runs on
+ * every deploy it is REPORTED rather than thrown: by then the script is live,
+ * and a Worker that is serving must not be recorded as a failed deploy over
+ * the host it is additionally reachable at.
  *
  * ⚠️ Step 5 is `workers.domains.update` and never `workers.routes.create`. The
  * first is account-level and covered by the `workers` probe; the second is
@@ -230,7 +236,7 @@ export class CloudflareDeployClient {
    */
   public async deploy(
     plan: CloudflareDeployPlan,
-  ): Promise<{ versionId?: string }> {
+  ): Promise<{ versionId?: string; subdomainError?: string }> {
     const assets = plan.assets
       ? await this.uploadAssets(plan.scriptName, plan.assets)
       : undefined;
@@ -238,10 +244,13 @@ export class CloudflareDeployClient {
     const versionId = await this.putScript(plan, assets);
     await this.putSchedules(plan);
     await this.putDomain(plan);
-    await this.putSubdomain(plan);
+    // Reported, not thrown: see `putSubdomain`. The caller decides what to
+    // say about it, because only the caller knows whether the app had a
+    // custom domain to fall back on.
+    const subdomainError = await this.putSubdomain(plan);
     await this.putQueueConsumers(plan);
 
-    return { versionId };
+    return { versionId, subdomainError };
   }
 
   /**
@@ -576,10 +585,23 @@ export class CloudflareDeployClient {
    * name itself. An account that never registered a workers.dev subdomain
    * answers Cloudflare error `10007`, which is a fact about the account and not
    * about the token.
+   *
+   * ⚠️ **It reports rather than throws, and that is the important part.** By
+   * the time this runs the script is uploaded and its database, buckets and
+   * queues exist. Throwing here turns a Worker that is live and serving into
+   * a deploy reported as failed, over a setting that only decides whether the
+   * app also answers on a `*.workers.dev` host. Since this call now runs on
+   * EVERY deploy - `enhanceDomain` writes the key in both directions - an
+   * account with no subdomain would otherwise fail every deploy it ever made,
+   * after the fact.
+   *
+   * @returns the reason it could not be set, or `undefined` on success.
    */
-  public async putSubdomain(plan: CloudflareDeployPlan): Promise<void> {
+  public async putSubdomain(
+    plan: CloudflareDeployPlan,
+  ): Promise<string | undefined> {
     if (plan.workersDev === undefined) {
-      return;
+      return undefined;
     }
     try {
       await this.client.workers.scripts.subdomain.create(plan.scriptName, {
@@ -587,10 +609,37 @@ export class CloudflareDeployClient {
         enabled: plan.workersDev,
         previews_enabled: false,
       });
+      return undefined;
     } catch (error) {
-      throw new AlephaError(
-        `Could not set the workers.dev subdomain for ${plan.scriptName}. If this account has never registered a workers.dev subdomain, register one or deploy without it - no save-time probe can tell you this, because the probe that would have answers the same error for a valid token. (${error instanceof Error ? error.message : String(error)})`,
-      );
+      return `Could not set the workers.dev subdomain for ${plan.scriptName}. If this account has never registered a workers.dev subdomain, register one or use a custom domain - no save-time probe can tell you this, because the probe that would have answers the same error for a valid token. (${error instanceof Error ? error.message : String(error)})`;
+    }
+  }
+
+  /**
+   * The account's `workers.dev` subdomain, which is the middle label of every
+   * `<script>.<subdomain>.workers.dev` address.
+   *
+   * ⚠️ **No new token permission.** #F1224 finding 2 dropped the workers.dev
+   * probe on the grounds that it proves the same permission group as the
+   * `workers` probe - Workers Scripts - so an estate token that passes the six
+   * probes can already read this. What that finding could not do was run the
+   * call at SAVE time, because `10007` for an account with no subdomain is
+   * indistinguishable from a bad token there. Deploy time is where the same
+   * finding says the question belongs.
+   *
+   * ⚠️ **Never throws.** The address is a convenience read after a successful
+   * upload; a failure here must not retroactively fail a deploy that worked.
+   * `undefined` means "no address to show", whatever the reason, and the
+   * caller says so.
+   */
+  public async getSubdomain(): Promise<string | undefined> {
+    try {
+      const answer = await this.client.workers.subdomains.get({
+        account_id: this.accountId,
+      });
+      return answer?.subdomain || undefined;
+    } catch {
+      return undefined;
     }
   }
 
@@ -795,6 +844,16 @@ export interface CloudflareDeployApi {
         zone_id?: string;
         zone_name?: string;
       }) => Promise<unknown>;
+    };
+    /**
+     * The ACCOUNT's workers.dev subdomain, singular - not to be confused with
+     * `scripts.subdomain`, which turns one script's workers.dev host on and
+     * off. This one answers the middle label every such host is built from.
+     */
+    subdomains: {
+      get: (params: {
+        account_id: string;
+      }) => Promise<{ subdomain?: string } | undefined>;
     };
   };
   queues: {

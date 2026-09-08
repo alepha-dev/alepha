@@ -61,6 +61,24 @@ describe("the worker-side Cloudflare adapter", () => {
     { end: () => {} },
   ) as never;
 
+  /**
+   * A runner that keeps the step NAMES, because in a Lore deploy each one is a
+   * line in the log the user reads (`DeployRunner.runner`). A fact that has to
+   * reach them is a step name, so a test about what they are told asserts on
+   * these.
+   */
+  const namingRun = () => {
+    const steps: string[] = [];
+    const method = Object.assign(
+      (task: { name: string; handler: () => Promise<void> }) => {
+        steps.push(task.name);
+        return task.handler();
+      },
+      { end: () => {} },
+    ) as never;
+    return { run: method, steps };
+  };
+
   const credential = { apiToken: "estate-token", accountId: "estate-account" };
 
   it("refuses to do anything without the estate's credential", async ({
@@ -219,14 +237,19 @@ describe("the worker-side Cloudflare adapter", () => {
     await fs.writeFile("/deploy/dist/index.js", "export const a = 1;");
   };
 
-  const recordingDeployer = (adapter: WorkerCloudflareAdapter) => {
+  const recordingDeployer = (
+    adapter: WorkerCloudflareAdapter,
+    answer: Record<string, unknown> = {},
+    subdomain: string | null = "acme",
+  ) => {
     const calls: Array<Record<string, any>> = [];
     Object.assign(adapter as unknown as Record<string, unknown>, {
       deployer: () => ({
         deploy: async (plan: Record<string, any>) => {
           calls.push(plan);
-          return { versionId: "v1" };
+          return { versionId: "v1", ...answer };
         },
+        getSubdomain: async () => subdomain ?? undefined,
       }),
     });
     return calls;
@@ -455,6 +478,90 @@ describe("the worker-side Cloudflare adapter", () => {
       await adapter.deploy(context(naming), run);
 
       expect(calls[0]!.secrets).toEqual({ OTHER: "kept" });
+    });
+  });
+  /**
+   * A deploy with no domain answers on `workers.dev`, and says where (#Q2132).
+   *
+   * `platformOptions.ts` has documented `domain` as "omit to use the adapter's
+   * default `*.workers.dev` / preview URL" all along, and nothing implemented
+   * it: `up` returned `undefined`, the orchestrator reported `urls: []`,
+   * `DeployRegistry.succeeded` stored no url and skipped its own
+   * `Deployed to ...` line. A user with no domain got a green deploy, a real
+   * Worker, a real database, no link, and nothing saying why.
+   */
+  describe("the address a deploy answers on", () => {
+    it("composes the workers.dev host when there is no domain", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployable(fs, "./main.cloudflare.js");
+      recordingDeployer(adapter);
+
+      const url = await adapter.deploy(context(naming), run);
+
+      // `NamingService.forContext` already builds `<project>-<env>`, so the
+      // script name needed no work - only the middle label was missing.
+      expect(url).toBe("https://my-app-staging.acme.workers.dev");
+    });
+
+    it("keeps returning the custom domain when there is one", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployable(fs, "./main.cloudflare.js");
+      recordingDeployer(adapter);
+
+      const ctx = context(naming);
+      ctx.envConfig.domain = "api.example.com";
+      const url = await adapter.deploy(ctx, run);
+
+      // And the subdomain is never read: there is nothing to compose.
+      expect(url).toBe("https://api.example.com");
+    });
+
+    it("succeeds with no url, and one line saying why, for an account with no subdomain", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployable(fs, "./main.cloudflare.js");
+      recordingDeployer(adapter, {}, null);
+      const { run: naming_run, steps } = namingRun();
+
+      const url = await adapter.deploy(context(naming), naming_run);
+
+      // ⚠️ The Worker and its database already exist by this point. A missing
+      // workers.dev subdomain is a fact about the account, not a failure of
+      // the deploy, so it must not turn a live Worker into a failed deploy.
+      expect(url).toBeUndefined();
+      expect(steps.join("\n")).toMatch(
+        /No workers.dev address: this account has no workers.dev subdomain/,
+      );
+    });
+
+    it("says why when setting the subdomain was refused", async ({
+      expect,
+    }) => {
+      const { adapter, fs, naming } = setup();
+      adapter.use(credential);
+      await deployable(fs, "./main.cloudflare.js");
+      recordingDeployer(adapter, {
+        subdomainError: "Could not set the workers.dev subdomain for x (10007)",
+      });
+      const { run: naming_run, steps } = namingRun();
+
+      const url = await adapter.deploy(context(naming), naming_run);
+
+      expect(url).toBeUndefined();
+      expect(steps.join("\n")).toContain(
+        "No workers.dev address: Could not set",
+      );
+      // Nothing is composed from an account whose subdomain could not even be
+      // enabled: the address would name a host that answers nothing.
+      expect(steps.join("\n")).not.toContain("resolve workers.dev address");
     });
   });
 });

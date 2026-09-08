@@ -276,6 +276,18 @@ export class BuildCloudflareTask extends BuildTask {
     wrangler: WranglerConfig,
   ): void {
     const domain = this.envOf(ctx, "CLOUDFLARE_DOMAIN");
+
+    // ⚠️ Written in BOTH directions, and never left absent. `putSubdomain`
+    // returns early on `workersDev === undefined`, so an omitted key is not a
+    // default - it is the setting never being sent at all, which is what left
+    // a domainless deploy with no address and no way to reach it.
+    //
+    // `false` when a domain IS set, for the same reason the crons array is
+    // sent when empty: an app that has just gained a custom domain must stop
+    // answering on the workers.dev host it used to be reachable at, and
+    // Cloudflare only stops if it is told to.
+    wrangler.workers_dev = !domain;
+
     if (!domain) {
       return;
     }

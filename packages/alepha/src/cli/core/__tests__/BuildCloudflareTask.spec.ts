@@ -18,6 +18,7 @@ class TestBuildCloudflareTask extends BuildCloudflareTask {
   public testWriteWorkerEntryPoint = this.writeWorkerEntryPoint.bind(this);
   public testGenerateCloudflare = this.generateCloudflare.bind(this);
   public testEnhanceCron = this.enhanceCron.bind(this);
+  public testEnhanceDomain = this.enhanceDomain.bind(this);
   public testWarnUnreachableTimeouts = this.warnUnreachableTimeouts.bind(this);
 
   /**
@@ -79,6 +80,8 @@ describe("BuildCloudflareTask", () => {
     "CLOUDFLARE_ANALYTICS_DATASET",
     "CLOUDFLARE_EMAIL_EVENTS_QUEUE",
     "CLOUDFLARE_EMAIL_EVENTS_DLQ_NAME",
+    "CLOUDFLARE_DOMAIN",
+    "CLOUDFLARE_ZONE",
   ] as const;
   const saved: Record<string, string | undefined> = {};
   beforeEach(() => {
@@ -89,6 +92,54 @@ describe("BuildCloudflareTask", () => {
       if (saved[k] === undefined) delete process.env[k];
       else process.env[k] = saved[k];
     }
+  });
+
+  /**
+   * `workers_dev` is what decides whether a Worker answers on
+   * `<script>.<subdomain>.workers.dev`, and `putSubdomain` returns early on
+   * `workersDev === undefined` - so an ABSENT key is not a default, it is the
+   * setting never being sent. That is what left a deploy with no domain
+   * unreachable and unexplained (#Q2132).
+   */
+  describe("enhanceDomain", () => {
+    it("turns the workers.dev host on when there is no domain", () => {
+      delete process.env.CLOUDFLARE_DOMAIN;
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceDomain(ambient(), wrangler);
+
+      expect(wrangler.workers_dev).toBe(true);
+      // No domain means no route of any kind, which is unchanged.
+      expect(wrangler.routes).toBeUndefined();
+    });
+
+    it("turns it off when a domain IS set, rather than leaving it absent", () => {
+      // ⚠️ Sent as `false`, not omitted, for the same reason the crons array
+      // is sent when empty: an app that has just gained a custom domain must
+      // STOP answering on the workers.dev host it used to be reachable at,
+      // and Cloudflare only stops if it is told to.
+      process.env.CLOUDFLARE_DOMAIN = "api.example.com";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceDomain(ambient(), wrangler);
+
+      expect(wrangler.workers_dev).toBe(false);
+      expect(wrangler.routes).toEqual([
+        { pattern: "api.example.com", custom_domain: true },
+      ]);
+    });
+
+    it("turns it off for a wildcard route too", () => {
+      process.env.CLOUDFLARE_DOMAIN = "*.club.alepha.dev";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceDomain(ambient(), wrangler);
+
+      expect(wrangler.workers_dev).toBe(false);
+      expect(wrangler.routes).toEqual([
+        { pattern: "*.club.alepha.dev/*", zone_name: "alepha.dev" },
+      ]);
+    });
   });
 
   describe("enhanceD1", () => {

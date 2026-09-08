@@ -380,6 +380,11 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       await this.fs.readTextFile(this.fs.join(distDir, "wrangler.jsonc")),
     ) as WranglerConfig;
 
+    // Set by the upload step below and read after it, because `run` does not
+    // carry a return value across both of its implementations - the CLI's
+    // runner answers a string and Lore's shim answers the handler's value.
+    let subdomainError: string | undefined;
+
     // Recorded before the upload rather than after: a Worker that half-uploads
     // still exists at Cloudflare, and a teardown that cannot name it is how an
     // orphan becomes permanent.
@@ -439,10 +444,76 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           workersDev: config.workers_dev,
         });
         this.deployedVersionId = answer?.versionId;
+        subdomainError = answer?.subdomainError;
       },
     });
 
-    return ctx.envConfig.domain ? `https://${ctx.envConfig.domain}` : undefined;
+    if (ctx.envConfig.domain) {
+      return `https://${ctx.envConfig.domain}`;
+    }
+
+    return await this.workersDevUrl(worker, subdomainError, run);
+  }
+
+  /**
+   * The address a deploy with no custom domain answers on.
+   *
+   * `platformOptions.ts` has documented `domain` as "omit to use the adapter's
+   * default `*.workers.dev` / preview URL" all along, and nothing implemented
+   * the second half: `up` returned `undefined`, so the orchestrator reported
+   * `urls: []`, `DeployRegistry.succeeded` stored no url and skipped its own
+   * `Deployed to ...` line. A user with no domain got a green deploy, a real
+   * Worker, a real database, no link, and nothing saying why.
+   *
+   * The name needs no work: `NamingService.forContext` already builds
+   * `<project>-<env>` and `DeployRunner` passes `${project}-${app}` as the
+   * project, so the script is already `etihad-api-production`. Only the middle
+   * label was missing.
+   *
+   * ⚠️ **Never written back to `app_instances.url`.** That column is what
+   * DERIVES a deploy's domain (`DeployService`), so storing this there would
+   * make the next deploy try to attach the workers.dev host as a Custom
+   * Domain. The deployment row's own `url` is the right and separate place,
+   * and it is what `PlatformOrchestrator` fills from this return value.
+   *
+   * ⚠️ **A step name, not `this.log`.** The deployment log the user reads is
+   * fed by the runner's task names (`DeployRunner.runner`), so a fact that has
+   * to reach them has to be one. An account with no workers.dev subdomain
+   * would otherwise get a successful deploy with no address and no
+   * explanation, which is the state this quest was written about.
+   */
+  protected async workersDevUrl(
+    worker: string,
+    subdomainError: string | undefined,
+    run: RunnerMethod,
+  ): Promise<string | undefined> {
+    if (subdomainError) {
+      await run({
+        name: `No workers.dev address: ${subdomainError}`,
+        handler: async () => {},
+      });
+      return undefined;
+    }
+
+    let url: string | undefined;
+    await run({
+      name: "resolve workers.dev address",
+      handler: async () => {
+        const subdomain = await this.deployer().getSubdomain();
+        if (subdomain) {
+          url = `https://${worker}.${subdomain}.workers.dev`;
+        }
+      },
+    });
+
+    if (!url) {
+      await run({
+        name: "No workers.dev address: this account has no workers.dev subdomain. Register one, or give this app a domain.",
+        handler: async () => {},
+      });
+    }
+
+    return url;
   }
 
   /**

@@ -20,6 +20,10 @@ describe("the Cloudflare deploy client", () => {
     session: { jwt?: string; buckets?: string[][] } = {},
     uploadJwts: Array<string | undefined> = [],
     versions: Array<{ id: string; created_on?: string }> = [],
+    // ⚠️ `null` and not `undefined` for "this account has none": passing
+    // `undefined` explicitly to a parameter with a default gets the default,
+    // which made the no-subdomain case silently assert the happy path.
+    accountSubdomain: string | null = "acme",
   ) => {
     const calls: Array<{ name: string; args: unknown[] }> = [];
     const record =
@@ -62,6 +66,11 @@ describe("the Cloudflare deploy client", () => {
           },
         },
         domains: { update: record("domains.update") as never },
+        subdomains: {
+          get: record("subdomains.get", {
+            subdomain: accountSubdomain ?? undefined,
+          }) as never,
+        },
       },
       queues: { consumers: { create: record("consumers.create") as never } },
     };
@@ -424,7 +433,7 @@ describe("the Cloudflare deploy client", () => {
       });
     });
 
-    it("names the account when the workers.dev call fails", async ({
+    it("names the account when the workers.dev call fails, without throwing", async ({
       expect,
     }) => {
       // The one call with no save-time probe behind it, so its failure has to
@@ -432,6 +441,12 @@ describe("the Cloudflare deploy client", () => {
       // subdomain answers error 10007, which is a fact about the account and
       // not about the token, and a probe would have misread it as a missing
       // permission on a perfectly valid one.
+      //
+      // ⚠️ REPORTED, never thrown. By the time this runs the script is
+      // uploaded and its resources exist, and since `enhanceDomain` now writes
+      // `workers_dev` in both directions this call happens on every deploy -
+      // so throwing would fail every deploy such an account ever made, after
+      // the Worker was already live.
       const refusing = new CloudflareDeployClient({
         apiToken: "t",
         accountId: "a",
@@ -448,9 +463,65 @@ describe("the Cloudflare deploy client", () => {
         } as unknown as CloudflareDeployApi,
       });
 
-      await expect(
-        refusing.putSubdomain(plan({ workersDev: true }) as never),
-      ).rejects.toThrowError(/never registered a workers.dev subdomain/);
+      const reason = await refusing.putSubdomain(
+        plan({ workersDev: true }) as never,
+      );
+      expect(reason).toMatch(/never registered a workers.dev subdomain/);
+    });
+
+    it("says nothing when the subdomain was set", async ({ expect }) => {
+      const { client, of } = fake();
+
+      expect(
+        await client.putSubdomain(plan({ workersDev: true }) as never),
+      ).toBeUndefined();
+      expect(of("subdomain.create")[0].args[1]).toMatchObject({
+        enabled: true,
+      });
+    });
+
+    describe("the account's own subdomain", () => {
+      it("answers the label a workers.dev address is built from", async ({
+        expect,
+      }) => {
+        const { client, of } = fake();
+
+        expect(await client.getSubdomain()).toBe("acme");
+        expect(of("subdomains.get")[0].args[0]).toMatchObject({
+          account_id: "estate-account",
+        });
+      });
+
+      it("answers undefined for an account that has none", async ({
+        expect,
+      }) => {
+        const { client } = fake({}, [], [], null);
+
+        expect(await client.getSubdomain()).toBeUndefined();
+      });
+
+      it("never throws: the deploy has already succeeded by then", async ({
+        expect,
+      }) => {
+        const refusing = new CloudflareDeployClient({
+          apiToken: "t",
+          accountId: "a",
+          client: {
+            workers: {
+              subdomains: {
+                get: async () => {
+                  throw new Error("workers.dev subdomain not found (10007)");
+                },
+              },
+            },
+          } as unknown as CloudflareDeployApi,
+        });
+
+        // The address is a convenience read after a successful upload. A
+        // failure here must not retroactively fail a deploy that worked, so
+        // `undefined` means "no address to show" whatever the reason.
+        expect(await refusing.getSubdomain()).toBeUndefined();
+      });
     });
 
     it("binds every queue consumer to this script", async ({ expect }) => {

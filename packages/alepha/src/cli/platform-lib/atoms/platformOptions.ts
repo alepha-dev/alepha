@@ -113,7 +113,16 @@ export const platformOptions = $atom({
            * Custom domain for the deployed worker (e.g. "api.example.com").
            *
            * On Cloudflare this is attached as a custom-domain route.
-           * Omit to use the adapter's default `*.workers.dev` / preview URL.
+           *
+           * Omit it and the Worker answers on
+           * `<script>.<subdomain>.workers.dev` instead, where `<subdomain>` is
+           * the one your Cloudflare account registered: the build writes
+           * `workers_dev: true`, the deploy enables it, and the address comes
+           * back as the deploy's URL. Setting a domain writes `workers_dev:
+           * false`, so an app that gains one stops answering on the host it
+           * used to be reachable at. An account that never registered a
+           * workers.dev subdomain still deploys - it simply has no address to
+           * show, and the deploy log says so.
            *
            * Wildcards are supported for multi-tenant SaaS apps:
            * `"*.club.alepha.dev"` routes every subdomain to the worker.
