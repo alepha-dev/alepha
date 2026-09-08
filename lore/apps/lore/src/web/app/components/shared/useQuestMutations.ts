@@ -3,7 +3,6 @@ import { useAlepha, useClient } from "alepha/react";
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
-import { currentHeldQuestCountAtom } from "@/web/app/atoms/currentHeldQuestCountAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts";
 
@@ -74,13 +73,7 @@ export const useQuestMutations = (): QuestMutations => {
     // number, not the action the user just took successfully.
     await questApi
       .countOpenQuests({ params: { projectId } })
-      .then(({ count, held }) => {
-        alepha.store.set(currentQuestCountAtom, { count });
-        // Both, from one read: hold and unhold are transitions like any
-        // other, so the On hold badge has to move with the same call that
-        // moves the Quests one.
-        alepha.store.set(currentHeldQuestCountAtom, { count: held });
-      })
+      .then(({ count }) => alepha.store.set(currentQuestCountAtom, { count }))
       .catch(() => null);
   };
 
@@ -140,24 +133,11 @@ export const useQuestMutations = (): QuestMutations => {
     // count, and that is the point rather than an omission: a hold suspends
     // work without unassigning it, and `OpenQuestScope` counts a quest that is
     // neither completed nor shelved - which a held one still is not.
-    // ⚠️ These two were the only transitions that did not refresh, and the
-    // reason was sound until #Q2082: a held quest is still OPEN, so neither
-    // moves the number the badge showed. They move the held one, so both
-    // refresh now - without this the On hold badge is correct on load and
-    // then stale for as long as the reader stays on the page, which is
-    // exactly the session in which they just held something.
     hold: async (id, reason) => {
-      const quest = await questApi.holdQuest({
-        params: { id },
-        body: { reason },
-      });
-      await refreshCount();
-      return quest;
+      return await questApi.holdQuest({ params: { id }, body: { reason } });
     },
     unhold: async (id) => {
-      const quest = await questApi.unholdQuest({ params: { id } });
-      await refreshCount();
-      return quest;
+      return await questApi.unholdQuest({ params: { id } });
     },
     remove: async (id) => {
       await questApi.deleteQuest({ params: { id } });

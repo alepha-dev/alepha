@@ -10,7 +10,6 @@ import {
   Inbox,
   Layers,
   Package,
-  PauseCircle,
 } from "lucide-react";
 
 import type { CapabilityKey } from "@/api/schemas/capabilityKeySchema.ts";
@@ -23,13 +22,7 @@ export interface CapabilityNavContext {
    * `$page` name of the route currently open.
    */
   routeName: string;
-  /**
-   * The query the open route carries, so an entry addressing a filtered view
-   * of another entry's page can tell whether it is the one being looked at.
-   */
-  routeQuery?: Record<string, string>;
   questCount?: number;
-  heldQuestCount?: number;
   epicCount?: number;
   feedbackCount?: number;
   blightCount?: number;
@@ -57,18 +50,6 @@ export interface CapabilityNavEntry {
    * name a nav array carries and is what turns a rename into a red test.
    */
   route: string;
-  /**
-   * Query the entry's link carries, for a destination that is a FILTERED view
-   * of another entry's page rather than a page of its own.
-   *
-   * ⚠️ It also decides the highlight: an entry with a query lights up only
-   * when the open route carries the same values, or On hold would be
-   * highlighted on every quests page. The entry it shares a route with keeps
-   * lighting up too, and that is right - one is the page, the other is a view
-   * inside it, and a sidebar that dropped the parent would say the reader had
-   * left Quests.
-   */
-  query?: Record<string, string>;
   labelKey: string;
   icon: React.ComponentType<{ className?: string }>;
   /**
@@ -155,34 +136,6 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
         name === "projectQuest" ||
         name === "projectQuestGraph",
       badge: (ctx) => ctx.questCount || undefined,
-    },
-    {
-      /**
-       * The quests waiting on somebody, reported as "one place listing what
-       * is blocked, so I do not have to remember to go looking for it".
-       *
-       * A filtered view of the quests list rather than a page of its own:
-       * `?status=held` is already linkable (`fromQuery` on that table), so
-       * this is a destination that needed no route.
-       *
-       * ⚠️ **The label is "On hold", not "Waiting on you", and that is a
-       * decision rather than a wording choice.** A hold has no direction
-       * today: "blocked on a decision from the owner" and "blocked on a
-       * deploy window" are the same status, and the reason lands in the
-       * quest's Discussion as a comment. Naming a person the data cannot
-       * name would be a promise the badge does not keep. Giving a hold a
-       * direction - a mention, or a `heldFor` member reference - is a
-       * separate change, and this entry is what it would hang off either
-       * way.
-       */
-      route: "projectQuests",
-      query: { status: "held" },
-      permission: "quest:read",
-      labelKey: "project.menu.held",
-      icon: PauseCircle,
-      group: "work",
-      order: 15,
-      badge: (ctx) => ctx.heldQuestCount || undefined,
     },
     {
       // A destination, so it gets an entry of its own. It had one until the
