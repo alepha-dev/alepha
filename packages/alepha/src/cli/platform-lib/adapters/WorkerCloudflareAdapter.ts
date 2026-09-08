@@ -545,30 +545,30 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   }
 
   /**
-   * Remove exactly the resources a deploy recorded, and say what went.
+   * Remove the Worker this copy runs, and nothing that holds data.
    *
-   * ## ⚠️ It takes a RECORD, not a context
+   * ## ⚠️ The database, the bucket, the namespace and the queue are KEPT
    *
-   * Every other method here derives names from `ctx.naming`. This one refuses
-   * to: an estate is LENT, so the account holds resources Lore never created
-   * and one may legitimately bear the name a copy would compute. What may be
-   * deleted is what a deploy wrote down when it made it - the D1 by uuid,
-   * which survives a rename that a name-based delete would follow into
-   * somebody else's database.
+   * Not an omission and not a first cut. Lore drives this with a credential
+   * lent to it for deploying, so it may remove what a redeploy puts back and
+   * may not remove what no redeploy can: a Worker is a build, a database is
+   * the thing the build was serving. Cloudflare offers no rename and no
+   * archive to soften that (`d1.update` takes only `read_replication`,
+   * `r2.edit` only a storage class), so "delete it carefully" has no careful
+   * version - it is gone.
    *
-   * ## The order is the safety property
+   * Keeping them is what makes this reversible: `ensureD1` and `ensureR2`
+   * resolve by NAME, so a copy destroyed and recreated under the same name
+   * reattaches its own database with every row still in it.
    *
-   * Worker first, so nothing is serving traffic against storage that is about
-   * to go. Then the queue consumer and its queue, then KV, then the bucket,
-   * and **D1 last** because it is the one with no undo: everything cheap to
-   * lose is proven gone before the irreversible step is attempted.
+   * `alepha platform down` is where deletion lives, on the operator's own
+   * machine against their own account.
    *
-   * ## ⚠️ Every failure is reported, never thrown
+   * ## It still takes a RECORD, not a context
    *
-   * A teardown that stopped on the first error would leave the caller unable
-   * to say what it had already removed - and the caller's whole job is to
-   * strike what went from the record so a retry resumes instead of restarting.
-   * `removed` and `failed` are that answer.
+   * The Worker's name is derived like everything else, and an estate is LENT -
+   * so what may be deleted is what a deploy wrote down, never a name this
+   * could compute for a script somebody else uploaded.
    */
   public async teardownRecorded(record: {
     worker?: string;
@@ -578,43 +578,35 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     queue?: string;
   }): Promise<{
     removed: string[];
+    kept: string[];
     failed: Array<{ resource: string; message: string }>;
   }> {
     const api = this.provisioner();
     const removed: string[] = [];
     const failed: Array<{ resource: string; message: string }> = [];
 
-    const attempt = async (resource: string, act: () => Promise<void>) => {
+    // Everything that holds data, named so the caller can say it is still
+    // there rather than leaving the operator to assume either way.
+    const kept = [
+      record.d1 ? `d1:${record.d1.name}` : undefined,
+      record.r2 ? `r2:${record.r2}` : undefined,
+      record.kv ? `kv:${record.kv.name}` : undefined,
+      record.queue ? `queue:${record.queue}` : undefined,
+    ].filter((it): it is string => !!it);
+
+    if (record.worker) {
       try {
-        await act();
-        removed.push(resource);
+        await api.deleteWorker(record.worker);
+        removed.push("worker");
       } catch (error) {
         failed.push({
-          resource,
+          resource: "worker",
           message: error instanceof Error ? error.message : String(error),
         });
       }
-    };
-
-    if (record.worker) {
-      await attempt("worker", () => api.deleteWorker(record.worker as string));
-    }
-    if (record.queue) {
-      await attempt("queue", () => api.deleteQueue(record.queue as string));
-    }
-    if (record.kv) {
-      await attempt("kv", () => api.deleteKV(record.kv!.id));
-    }
-    if (record.r2) {
-      // Empties the bucket first, because Cloudflare refuses to delete one
-      // that still holds objects. A wipe that fails leaves it standing.
-      await attempt("r2", () => api.deleteR2(record.r2 as string));
-    }
-    if (record.d1) {
-      await attempt("d1", () => api.deleteD1(record.d1!.id));
     }
 
-    return { removed, failed };
+    return { removed, kept, failed };
   }
 
   /**

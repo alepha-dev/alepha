@@ -29,6 +29,25 @@ export interface DeployRequest {
   artifact: Artifact;
 
   /**
+   * The Lore project's slug, which is the first segment of every resource name
+   * this deploy provisions.
+   *
+   * ⚠️ **This is what keeps two projects off each other's infrastructure.**
+   * `NamingService` composes `<name>-<env>`, and with `name` as the app alone
+   * two Lore projects that each call an app `api` and deploy `production` onto
+   * the same estate compute one `api-production` - one Worker, one database,
+   * one bucket, silently shared and each deploy overwriting the other.
+   *
+   * ⚠️ `alepha platform` does NOT do this and must not: it has no project, it
+   * runs against the operator's own account, and changing its scheme would
+   * point every existing deploy at a database that does not exist yet.
+   * Cloudflare has no rename, so a prefix change is a data migration - which
+   * is exactly why this landed while the only copies deployed through Lore
+   * were throwaway ones.
+   */
+  project: string;
+
+  /**
    * The environment, from the `app_instances` row. ⚠️ Not from the artifact:
    * an environment is a ROW in Lore, which is the whole difference between
    * this and `alepha platform`, where it is a declaration in a config file.
@@ -153,7 +172,9 @@ export class DeployRunner {
       // Lore row, and this atom is how it reaches an engine that otherwise
       // reads a config file the artifact does not carry.
       alepha.set(platformOptions, {
-        name: request.artifact.app,
+        // `<project>-<app>`, so `NamingService` composes
+        // `<project>-<app>-<env>`. See `DeployRequest.project`.
+        name: `${request.project}-${request.artifact.app}`,
         environments: {
           [request.env]: {
             adapter: "cloudflare",
