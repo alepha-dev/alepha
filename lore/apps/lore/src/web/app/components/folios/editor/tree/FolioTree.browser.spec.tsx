@@ -545,4 +545,131 @@ describe("FolioTree", () => {
       expect(screen.getByText("Renamed at the root")).not.toBeNull();
     });
   });
+  /**
+   * Encrypting from the tree (#Q2114). The reader decides a folio should be
+   * secret while looking at the list, and the flow used to mean opening it
+   * and finding Encrypt in the editor's Folio menu.
+   *
+   * ⚠️ These prove the WIRING, in the same sense the note above means it:
+   * `fireEvent.contextMenu` reaches Base UI's trigger and the portal's items
+   * are findable by text, but jsdom lays none of it out.
+   */
+  describe("encrypting from the row menu", () => {
+    const INSIDE_A = "33333333-3333-4333-8333-333333333333";
+    const AT_ROOT = "44444444-4444-4444-8444-444444444444";
+
+    const openMenu = async (title: string) => {
+      await act(async () => {
+        fireEvent.contextMenu(rowFor(title));
+      });
+    };
+
+    it("is offered on an unprotected folio", async () => {
+      await mount();
+      await openMenu("At the root");
+
+      expect(await screen.findByText("Encrypt")).not.toBeNull();
+    });
+
+    it("is not offered on a directory", async () => {
+      await mount();
+      await openMenu("Framework");
+
+      await screen.findByText("Rename");
+      expect(screen.queryByText("Encrypt")).toBeNull();
+    });
+
+    /**
+     * A protected row already shows the lock, and its reverse - removing
+     * protection - is the item that stays absent for the reason in
+     * `FolioTreeContextMenu`'s doc: the tree holds only ciphertext, and
+     * sending it back as plaintext corrupts the folio rather than
+     * declassifying it.
+     */
+    it("is not offered on a folio that is already protected", async () => {
+      alepha = Alepha.create()
+        .with(AlephaLogger)
+        .with(AlephaDateTime)
+        .with({ provide: LinkProvider, use: FakeLinkProvider })
+        .with(AlephaReact)
+        .with(AlephaReactI18n)
+        .with(AlephaReactRouter);
+      alepha.inject(Routes);
+      alepha.inject(I18n);
+      await alepha.start();
+      await alepha.inject(I18nProvider).setLang("en");
+      alepha.store.set(projectDirectoriesAtom, [] as never);
+      alepha.store.set(userFoliosAtom, [
+        { ...folioOf(AT_ROOT, "Already secret"), protected: true },
+      ] as never);
+      renderTree();
+      await screen.findByText("Already secret");
+
+      await openMenu("Already secret");
+
+      await screen.findByText("Rename");
+      expect(screen.queryByText("Encrypt")).toBeNull();
+    });
+
+    /**
+     * ⚠️ **The one that is about data safety rather than tidiness.**
+     *
+     * `useFolioActions` keeps `isProtected` as local state, seeded once and
+     * moved only by its own encrypt calls. A tree-side encrypt does not go
+     * through it, so an editor holding that folio would go on believing it
+     * unprotected and its next `save()` would send `protected: false` with
+     * the plaintext draft - the shape the server accepts as a deliberate
+     * removal. The folio would be declassified seconds after being
+     * encrypted, with its revision history already purged.
+     *
+     * Withholding the item costs nothing: the folio is open, so the Folio
+     * menu's own Encrypt is already on screen.
+     */
+    it("is withheld for the folio open in the editor", async () => {
+      await mount({ currentFolioId: INSIDE_A });
+      await openMenu("Inside A");
+
+      await screen.findByText("Rename");
+      expect(screen.queryByText("Encrypt")).toBeNull();
+
+      // And still offered for every other folio in the same tree, so this is
+      // the open one being excluded rather than the item being gone.
+      await act(async () => {
+        fireEvent.keyDown(document.body, { key: "Escape" });
+      });
+      await openMenu("At the root");
+      expect(await screen.findByText("Encrypt")).not.toBeNull();
+    });
+
+    it("opens the passphrase dialog, with its confirm field", async () => {
+      await mount();
+      await openMenu("At the root");
+
+      await act(async () => {
+        fireEvent.click(await screen.findByText("Encrypt"));
+      });
+
+      // The editor's own dialog, so the strings come with it - including the
+      // warning that there is no recovery, which this flow must not restate
+      // in its own words.
+      await screen.findByText("Encrypt this folio");
+      // `requireConfirm`, which is what tells the set-a-passphrase shape
+      // apart from the unlock one.
+      await waitFor(() =>
+        expect(document.querySelectorAll('input[type="password"]').length).toBe(
+          2,
+        ),
+      );
+    });
+
+    it("is not offered at all to a reader who cannot write", async () => {
+      await mount({}, true);
+      await openMenu("At the root");
+
+      // Every write item goes, not only this one: a menu of affordances that
+      // all fail is worse than a short menu.
+      expect(screen.queryByText("Encrypt")).toBeNull();
+      expect(screen.queryByText("Rename")).toBeNull();
+    });
+  });
 });

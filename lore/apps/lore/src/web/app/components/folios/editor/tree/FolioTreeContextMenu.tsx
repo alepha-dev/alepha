@@ -12,6 +12,7 @@ import {
   FilePlus,
   FolderPlus,
   Link2,
+  Lock,
   Pencil,
   Pin,
   PinOff,
@@ -31,6 +32,12 @@ export interface FolioTreeContextMenuProps {
   node: FolioTreeNode;
   commands: FolioTreeCommands;
   projectSlug: string;
+  /**
+   * The folio open in the document pane, if any. Read for one reason only:
+   * Encrypt is withheld for it - see the file doc's section on the stale
+   * editor.
+   */
+  currentFolioId?: string;
 }
 
 /**
@@ -61,6 +68,36 @@ export interface FolioTreeContextMenuProps {
  * this tree has no access to for an arbitrary right-clicked node. Rather
  * than wire a menu item that either does nothing or does something unsafe,
  * this key is left unused; see the task report for the full reasoning.
+ *
+ * ## Why ENCRYPT is a different case, and IS offered (#Q2114)
+ *
+ * ⚠️ Do not read the section above as a ruling against this one. Its
+ * obstacle is specific and does not apply in this direction: removing
+ * protection needs the plaintext the tree does not have, while encrypting
+ * starts from an unprotected folio whose content the server stores in the
+ * clear and hands over on request. The tree fetches it, encrypts it in the
+ * browser, and writes `protected: true` with the ciphertext. Nothing has to
+ * be recovered from something the tree cannot read.
+ *
+ * ## The one folio it is NOT offered for: the one open in the editor
+ *
+ * `useFolioActions` keeps `isProtected` as LOCAL state, seeded once from
+ * `props.folio` and moved only by its own encrypt calls - deliberately, and
+ * that file's doc says why at length. A tree-side encrypt does not go
+ * through it, so an editor holding that folio would go on believing it is
+ * unprotected, and its next `save()` would send `protected: false` with the
+ * plaintext draft: the exact shape the server accepts as a deliberate
+ * removal. The folio would be silently declassified, seconds after being
+ * encrypted, with its revision history already purged by the encrypt.
+ *
+ * Of the three ways out, this is the cheapest that is certainly correct.
+ * Driving the tree action through `useFolioActions` means reaching a hook
+ * instance the tree does not have; making `isProtected` observe the row
+ * reintroduces exactly the frozen-prop reasoning that file exists to
+ * prevent, in the most security-critical file in the app. Withholding the
+ * item costs nothing, because the folio is open: its own Folio menu
+ * (`folioMenubarModel`) carries Encrypt, so the affordance is on screen
+ * already.
  */
 const FolioTreeContextMenu = (
   props: FolioTreeContextMenuProps,
@@ -164,6 +201,16 @@ const FolioTreeContextMenu = (
               ? tr("folios.editor.action.unpin")
               : tr("folios.editor.action.pin")}
           </ContextMenuItem>
+          {/* Unprotected folios only, and never the one open in the editor -
+              both conditions are the file doc's, and neither is cosmetic. A
+              protected row already shows the lock, and its reverse is the
+              item that stays absent for the reason above. */}
+          {node.data.kind === "folio" && node.id !== props.currentFolioId && (
+            <ContextMenuItem onClick={() => props.commands.beginEncrypt(node)}>
+              <Lock className="size-4" />
+              {tr("folios.editor.tree.encrypt")}
+            </ContextMenuItem>
+          )}
           <ContextMenuSeparator />
           <ContextMenuItem
             variant="destructive"

@@ -79,6 +79,8 @@ export default {
   "folios.protected.encrypt-description":
     "Set a passphrase. The content is encrypted in your browser: the server only ever stores ciphertext, and there is no recovery if you forget it. Title, tags and summary stay visible to other project members; share the passphrase out-of-band with whoever should decrypt.",
   "folios.protected.encrypt-failed": "Encryption failed.",
+  "folios.protected.already-protected":
+    "This folio is already protected. Reload the tree to see its current state.",
   "folios.protected.remove-confirm-title": "Remove protection from this folio?",
   "folios.protected.remove-confirm-body":
     "The content will be re-saved as plain text. Anyone with access to this project will be able to read it.",
@@ -215,6 +217,7 @@ export default {
   "folios.editor.tree.open-new-tab": "Open in new tab",
   "folios.editor.tree.rename": "Rename",
   "folios.editor.tree.copy-wiki-link": "Copy wiki-link",
+  "folios.editor.tree.encrypt": "Encrypt",
   "folios.editor.tree.confirm-delete-directory-title": "Delete this directory?",
   "folios.editor.tree.confirm-delete-directory-body":
     "Everything inside it, folios included, is deleted too. This cannot be undone.",

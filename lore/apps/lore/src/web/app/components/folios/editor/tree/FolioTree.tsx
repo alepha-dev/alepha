@@ -12,6 +12,7 @@ import {
 import { type ReactElement, useEffect } from "react";
 
 import type { I18n } from "../../../../services/I18n.ts";
+import FolioPassphraseDialog from "../../FolioPassphraseDialog.tsx";
 import { asFolioNode, type FolioTreeData } from "./folioTree.ts";
 import FolioTreeContextMenu from "./FolioTreeContextMenu.tsx";
 import FolioTreeDirectoryIcon from "./FolioTreeDirectoryIcon.tsx";
@@ -221,6 +222,7 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
               node={asFolioNode(node)}
               commands={commands}
               projectSlug={props.projectSlug}
+              currentFolioId={props.currentFolioId}
             />
           )}
           // Dragging a row IS a move, so a reader who may not write does not
@@ -243,6 +245,22 @@ const FolioTree = (props: FolioTreeProps): ReactElement => {
             create buttons. */}
         {canWrite && <FolioTreeRootContextMenu commands={commands} />}
       </div>
+
+      {/* The tree's own passphrase dialog, and the SAME component the editor
+          uses (#Q2114). `requireConfirm` and the encrypt strings come with
+          it, including the warning that there is no recovery - which is the
+          one thing this flow must not restate in its own words. */}
+      <FolioPassphraseDialog
+        open={tree.encryptingTitle !== undefined}
+        onOpenChange={(open) => {
+          if (!open) commands.cancelEncrypt();
+        }}
+        title={tr("folios.protected.encrypt-title")}
+        description={tr("folios.protected.encrypt-description")}
+        submitLabel={tr("folios.protected.encrypt")}
+        requireConfirm
+        onSubmit={commands.confirmEncrypt}
+      />
     </div>
   );
 };
