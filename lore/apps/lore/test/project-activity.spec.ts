@@ -440,6 +440,119 @@ describe("Project activity table", () => {
     expect(pairsOf(byAction.content)).toEqual(["quest:accept"]);
   });
 
+  /**
+   * The `createdAt` range filter (#Q2084), which is `z.dateRange()`'s first
+   * server consumer and the one that exercises the whole path: a comma-joined
+   * query string, `coerceStrings` splitting it on the format literal, the
+   * schema validating the pair, and the handler resolving two calendar DAYS
+   * into the instant window `AuditService.find` takes.
+   */
+  describe("the date range filter", () => {
+    /**
+     * ⚠️ Resolved in UTC, which is a decision rather than an accident: the
+     * server is not told the reader's offset, and UTC is what makes a shared
+     * link select the same rows for everyone. The end runs to the last
+     * millisecond of the day, so a ONE-day range selects that day rather than
+     * nothing - which is what an exclusive end would do.
+     */
+    it("selects a day whose start and end are the same", async ({ expect }) => {
+      // `setup()` creates the project without recording an audit against it,
+      // so a case that filters activity has to make some first.
+      const { questTools, projectApi, project, call, asUser, OWNER, MATE } =
+        await setup();
+      await call(
+        questTools.quest_create,
+        {
+          project: project.id,
+          title: "Somewhere in the window",
+          description: "x",
+          area: "core",
+          priority: "medium",
+        },
+        MATE,
+      );
+
+      // ⚠️ The day is read off a ROW, never off the wall clock. The container
+      // owns its own `DateTimeProvider`, so a spec that assumed the process's
+      // today would be asserting about a different day than the one the
+      // fixtures were stamped with.
+      const all = await asUser(OWNER, () =>
+        projectApi.getProjectActivity({
+          params: { id: project.id },
+          query: {},
+        } as any),
+      );
+      const day = String(all.content[0].createdAt).slice(0, 10);
+
+      const page = await asUser(OWNER, () =>
+        projectApi.getProjectActivity({
+          params: { id: project.id },
+          query: { createdAt: [day, day] },
+        } as any),
+      );
+
+      expect(page.content.length).toBeGreaterThan(0);
+      for (const row of page.content) {
+        expect(String(row.createdAt).slice(0, 10)).toBe(day);
+      }
+    });
+
+    it("selects nothing for a window that closed before anything happened", async ({
+      expect,
+    }) => {
+      // `setup()` creates the project without recording an audit against it,
+      // so a case that filters activity has to make some first.
+      const { questTools, projectApi, project, call, asUser, OWNER, MATE } =
+        await setup();
+      await call(
+        questTools.quest_create,
+        {
+          project: project.id,
+          title: "Somewhere in the window",
+          description: "x",
+          area: "core",
+          priority: "medium",
+        },
+        MATE,
+      );
+
+      const page = await asUser(OWNER, () =>
+        projectApi.getProjectActivity({
+          params: { id: project.id },
+          query: { createdAt: ["2020-01-01", "2020-01-02"] },
+        } as any),
+      );
+
+      expect(page.content).toHaveLength(0);
+    });
+
+    /**
+     * ⚠️ The wire shapes are NOT tested here, on purpose. `.fetch` goes over
+     * real HTTP and this file's `asUser` shim injects an identity into the
+     * container rather than a bearer, so a `.fetch` case fails on
+     * authentication and proves nothing about coercion. The boundary itself
+     * is `coerceStrings`, and `packages/alepha/src/core/__tests__/dateRange
+     * .spec.ts` covers both shapes a range arrives in: the comma-joined form
+     * a hand-written URL sends, and the JSON form `HttpClient.queryParams`
+     * produces for any object-valued query param.
+     */
+    it("refuses a range with one end, rather than filtering by half of it", async ({
+      expect,
+    }) => {
+      const { projectApi, project, asUser, OWNER } = await setup();
+      void OWNER;
+
+      await expect(
+        asUser(OWNER, () =>
+          projectApi.getProjectActivity({
+            params: { id: project.id },
+            query: { createdAt: ["2026-01-01"] },
+          } as any),
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
   it("resolves the actor to the same display name the quest page shows", async ({
     expect,
   }) => {
