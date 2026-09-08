@@ -23,7 +23,7 @@ export interface RecordedResources {
 }
 
 /**
- * Removing the cloud resources a copy's deploys created.
+ * Removing what a redeploy can put back, and keeping the database and bucket.
  *
  * ## ⚠️ Only what Lore can show it made
  *
@@ -86,6 +86,7 @@ export class TeardownService {
    */
   public async destroy(instance: AppInstance): Promise<{
     removed: string[];
+    kept: string[];
     failed: Array<{ resource: string; message: string }>;
   }> {
     const record = this.read(instance);
@@ -95,7 +96,7 @@ export class TeardownService {
       );
     }
     if (Object.keys(record).length === 0) {
-      return { removed: [], failed: [] };
+      return { removed: [], kept: [], failed: [] };
     }
 
     // ⚠️ The same gate a deploy applies. Removing what a copy holds is at
