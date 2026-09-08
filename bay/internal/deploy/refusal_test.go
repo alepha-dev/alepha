@@ -238,3 +238,35 @@ func TestDeployIsNotRefusedOnceMigrated(t *testing.T) {
 		t.Fatalf("a migrated instance must not be refused: %v", err)
 	}
 }
+
+// ⚠️ The link must survive the instance directory being MOVED.
+//
+// An absolute target does not: the app carries on serving from the process
+// already running, while every operation that reads through `current` - a
+// backup, the next deploy's manifest read - fails with a missing file naming a
+// directory nobody mentioned. That is exactly what the one-segment migration
+// produced on the first host it ran on.
+func TestCurrentSymlinkSurvivesTheInstanceMoving(t *testing.T) {
+	root := t.TempDir()
+	instance := filepath.Join(root, "apps", "demo-production")
+	release := filepath.Join(instance, "releases", "r1", "dist")
+	if err := os.MkdirAll(release, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(release, "manifest.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The link as `Run` writes it.
+	if err := os.Symlink(filepath.Join("releases", "r1"), filepath.Join(instance, "current")); err != nil {
+		t.Fatal(err)
+	}
+
+	moved := filepath.Join(root, "apps", "acme-demo-production")
+	if err := os.Rename(instance, moved); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(moved, "current", "dist", "manifest.json")); err != nil {
+		t.Fatalf("current must still resolve after the move: %v", err)
+	}
+}
