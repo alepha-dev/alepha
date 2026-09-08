@@ -167,6 +167,16 @@ export class AppController {
          * stored at the moment it is minted and never afterwards.
          */
         sigil: z.boolean().optional(),
+        /**
+         * This copy's data may be deleted with it.
+         *
+         * ⚠️ **Settable here and nowhere else.** `updateApp` has no such field
+         * and must never grow one: a flag that could be flipped later would be
+         * flipped on the copy somebody wants to tidy away, which is exactly
+         * the copy whose database matters. Declared at creation it is a claim
+         * about a copy that holds nothing yet.
+         */
+        ephemeral: z.boolean().optional(),
       }),
       response: appInstanceResourceSchema,
     },
@@ -176,6 +186,7 @@ export class AppController {
         app: body.app,
         env: body.env,
         ...(body.url === undefined ? {} : { url: body.url }),
+        ...(body.ephemeral === undefined ? {} : { ephemeral: body.ephemeral }),
         createdBy: user.id,
       });
 
@@ -599,6 +610,9 @@ export class AppController {
       url: instance.url,
       sigilId: instance.sigilId,
       estateId: instance.estateId,
+      // Exposed on purpose: whether a destroy may take this copy's database is
+      // a property somebody should be able to READ before asking for one.
+      ephemeral: instance.ephemeral,
       ...(sigil
         ? {
             sigil: {

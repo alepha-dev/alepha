@@ -270,27 +270,74 @@ export class CloudflareProvisionClient {
   // -------------------------------------------------------------------------
 
   /**
-   * ⚠️ **There is deliberately no `deleteD1` and no `deleteR2` here, and
-   * adding one is a decision, not a gap.**
+   * ⚠️ **The two stateful deletes below are reachable only for an EPHEMERAL
+   * copy**, and this client cannot tell which is which - the caller decides.
    *
-   * Lore drives this client with a credential lent to it for deploying, so the
-   * line is what a redeploy can put back. A Worker is a build. A KV namespace
-   * backs the cache primitive and a queue holds messages in flight - both are
-   * recreated empty by the next deploy, and losing them costs a cold cache and
-   * whatever had not been consumed.
+   * The line is what a redeploy can put back. A Worker is a build; a KV
+   * namespace backs the cache and a queue holds messages in flight, and both
+   * come back empty. A database and a bucket are what the build was SERVING,
+   * and Cloudflare offers no rename and no archive to soften removing one
+   * (`d1.update` takes only `read_replication`, `r2.edit` only a storage
+   * class) - so there is no careful version, it is gone.
    *
-   * A **database** and a **bucket** are the things the build was serving.
-   * Cloudflare offers no rename and no archive to soften that (`d1.update`
-   * takes only `read_replication`, `r2.edit` only a storage class), so there
-   * is no careful version of deleting one - it is gone.
-   *
-   * Keeping those two is also what makes destroy-then-recreate work:
-   * `ensureD1` and `ensureR2` look up by NAME, so a copy rebuilt under the
-   * same name finds its database again with its rows intact.
-   *
-   * `alepha platform down` deletes them, and is the right place for it: it
-   * runs on the operator's own machine against their own account.
+   * For an ordinary copy, keeping them is also what makes destroy-then-recreate
+   * work: `ensureD1` and `ensureR2` resolve by NAME, so a copy rebuilt under
+   * the same name finds its database again with its rows intact.
    */
+
+  /**
+   * Delete a D1 database, by the id recorded when it was created.
+   *
+   * ⚠️ **Only ever for an EPHEMERAL copy**, and the caller is what enforces
+   * that - a copy that declared at creation, before it held anything, that its
+   * data goes when it does. Nothing here can tell one copy from another, which
+   * is why the flag lives on the instance and not in this file.
+   *
+   * By id and never by name: a name is derived from `(project, app, env)` and
+   * so is reproducible by anything, while the uuid is what proves this is the
+   * database that deploy made. It also survives a rename that a name-based
+   * delete would follow into somebody else's database.
+   *
+   * There is no undo. Cloudflare's own time travel is scoped to a database
+   * that still exists.
+   */
+  public async deleteD1(databaseId: string): Promise<void> {
+    await this.fetch(`/accounts/${this.accountId}/d1/database/${databaseId}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * Empty a bucket and then delete it. ⚠️ Ephemeral copies only, as above.
+   *
+   * Cloudflare refuses to delete a bucket that still holds objects, so the wipe
+   * is the precondition rather than a courtesy. It pages because a list answers
+   * at most 1000 keys, and stops on a page that returns nothing rather than
+   * looping on a bucket that keeps answering.
+   *
+   * ⚠️ A wipe that fails leaves the bucket ALONE - deleting data this could not
+   * confirm it removed is the one thing a teardown must not do quietly.
+   */
+  public async deleteR2(name: string): Promise<void> {
+    for (let page = 0; page < 1_000; page++) {
+      const listed = await this.fetch<{ objects?: Array<{ key: string }> }>(
+        `/accounts/${this.accountId}/r2/buckets/${name}/objects`,
+        { query: { per_page: "1000" } },
+      );
+      const keys = (listed.objects ?? []).map((it) => it.key);
+      if (keys.length === 0) {
+        break;
+      }
+      await this.fetch(
+        `/accounts/${this.accountId}/r2/buckets/${name}/objects/delete`,
+        { method: "POST", body: { objects: keys.map((key) => ({ key })) } },
+      );
+    }
+
+    await this.fetch(`/accounts/${this.accountId}/r2/buckets/${name}`, {
+      method: "DELETE",
+    });
+  }
 
   public async deleteKV(namespaceId: string): Promise<void> {
     await this.fetch(

@@ -547,7 +547,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   /**
    * Remove what a redeploy can put back, and keep what it cannot.
    *
-   * ## ⚠️ The database and the bucket are KEPT
+   * ## ⚠️ The database and the bucket are KEPT, unless the copy is ephemeral
    *
    * Not an omission and not a first cut. Lore drives this with a credential
    * lent to it for deploying, so the line is what the next deploy recreates. A
@@ -581,13 +581,26 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
    * resumes instead of restarting. A throw would leave it unable to say what
    * had already gone.
    */
-  public async teardownRecorded(record: {
-    worker?: string;
-    d1?: { name: string; id: string };
-    r2?: string;
-    kv?: { name: string; id: string };
-    queue?: string;
-  }): Promise<{
+  public async teardownRecorded(
+    record: {
+      worker?: string;
+      d1?: { name: string; id: string };
+      r2?: string;
+      kv?: { name: string; id: string };
+      queue?: string;
+    },
+    options: {
+      /**
+       * Take the database and the bucket as well.
+       *
+       * ⚠️ True only for a copy that declared itself EPHEMERAL when it was
+       * created, before it held anything. This adapter cannot tell one copy
+       * from another and does not try: the claim lives on the instance row,
+       * where it was made once and cannot be revised.
+       */
+      purgeStores?: boolean;
+    } = {},
+  ): Promise<{
     removed: string[];
     kept: string[];
     failed: Array<{ resource: string; message: string }>;
@@ -616,6 +629,19 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     }
     if (record.kv) {
       await attempt("kv", () => api.deleteKV(record.kv!.id));
+    }
+
+    // ⚠️ LAST, and only for an ephemeral copy. Everything above is recreated by
+    // the next deploy; these two are not, so they are attempted only once the
+    // cheap things have already gone.
+    if (options.purgeStores) {
+      if (record.r2) {
+        await attempt("r2", () => api.deleteR2(record.r2 as string));
+      }
+      if (record.d1) {
+        await attempt("d1", () => api.deleteD1(record.d1!.id));
+      }
+      return { removed, kept: [], failed };
     }
 
     // Named so the caller can say the data is still there, rather than leaving

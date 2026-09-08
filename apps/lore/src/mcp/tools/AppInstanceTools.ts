@@ -102,6 +102,9 @@ export class AppInstanceTools {
           app: params.app,
           env: params.env,
           ...(params.url === undefined ? {} : { url: params.url }),
+          ...(params.ephemeral === undefined
+            ? {}
+            : { ephemeral: params.ephemeral }),
         },
       });
     },
