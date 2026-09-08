@@ -13,6 +13,10 @@ import {
   type EpicResource,
   epicResourceSchema,
 } from "../schemas/epicResourceSchema.ts";
+import {
+  type ReleaseCascade,
+  releaseCascadeSchema,
+} from "../schemas/releaseCascadeSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
 import { EpicDependencyService } from "../services/EpicDependencyService.ts";
@@ -20,6 +24,7 @@ import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
+import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
 
 /**
  * CRUD, the status lifecycle, and attach/detach for quests and folios.
@@ -60,6 +65,7 @@ export class EpicController {
   dt = $inject(DateTimeProvider);
   linkService = $inject(FolioLinkService);
   attachment = $inject(ReleaseAttachmentService);
+  cascade = $inject(ReleaseCascadeService);
   dependencies = $inject(EpicDependencyService);
   /**
    * The epic phase gate (epic #31): the quest set can change only while the
@@ -306,7 +312,10 @@ export class EpicController {
          *
          * A field on the one write path rather than a separate
          * attach/detach pair: one write path is easier to keep honest than
-         * two, and both directions need the same refusal anyway.
+         * two, and both directions need the same refusal anyway. That one
+         * path is also what makes the cascade below reach every caller -
+         * the epic page, both tables' row menus, and `release_attach` /
+         * `release_detach` over MCP all arrive here.
          */
         releaseId: z.integer().nullable().optional(),
         /**
@@ -318,7 +327,18 @@ export class EpicController {
          */
         dependsOn: z.integer().nullable().optional(),
       }),
-      response: epicResourceSchema,
+      /**
+       * The epic, plus what its release did to the epic's quests.
+       *
+       * `releaseCascade` is present only when a cascade ran, so a rename
+       * answers exactly what it answered before. It is on this action's
+       * response rather than on `epicResourceSchema` because it describes
+       * one call, not the epic: a later `epic_get` has nothing to say about
+       * a move that already happened.
+       */
+      response: epicResourceSchema.extend({
+        releaseCascade: releaseCascadeSchema.optional(),
+      }),
     },
     handler: async ({ params, body, user }) => {
       const epic = this.owned.get<Epic>();
@@ -351,12 +371,36 @@ export class EpicController {
         // an undefined patch value reads as "leave unchanged".
         ...(dependsOn !== undefined ? { dependsOn } : {}),
       });
+      // The epic's release is its quests' release (#Q2111). Only when it
+      // actually moved: a cascade that ran on every update would read the
+      // epic's whole quest set to rename it.
+      //
+      // AFTER the epic's own write, so a refusal on the epic itself never
+      // leaves quests pointing at a release the epic is not in. The other
+      // order cannot be fixed by catching, because there is no transaction
+      // here to roll back.
+      const cascade =
+        releaseId !== undefined && releaseId !== (epic.releaseId ?? null)
+          ? await this.cascade.toQuests(
+              updated,
+              // The epic's release BEFORE this write, read off the row the
+              // gate loaded: it is what tells a quest that was following
+              // this epic apart from one that named a release of its own.
+              epic.releaseId ?? null,
+              releaseId,
+            )
+          : undefined;
+
       await this.syncEpicLinks(updated);
       await this.logEpic("update", updated, user, {
         fields: Object.keys(body),
+        ...(cascade ? { cascade } : {}),
       });
 
-      return await this.buildEpicResource(updated);
+      return {
+        ...(await this.buildEpicResource(updated)),
+        ...(cascade ? { releaseCascade: cascade } : {}),
+      };
     },
   });
 
@@ -495,12 +539,27 @@ export class EpicController {
     },
   });
 
+  /**
+   * File a quest into this epic.
+   *
+   * ⚠️ **The single choke point for a quest ENTERING an epic**, which is why
+   * the release inheritance below is here and not in three places: the epic
+   * page's picker, `quest_create` with `epic_number` and `quest_update` with
+   * `epic_number` all arrive at this action. `QuestController` has no
+   * `epicId` field on either of its write paths.
+   */
   attachQuest = $action({
     use: [this.ownsEpicForWork("epic:write")],
     schema: {
       params: z.object({ id: z.integer() }),
       body: z.object({ questId: z.integer() }),
-      response: epicResourceSchema,
+      /**
+       * Present only when the quest inherited the epic's release, and shaped
+       * like `updateEpic`'s so one reader serves both.
+       */
+      response: epicResourceSchema.extend({
+        releaseCascade: releaseCascadeSchema.optional(),
+      }),
     },
     handler: async ({ body, user }) => {
       const epic = this.owned.get<Epic>();
@@ -514,6 +573,7 @@ export class EpicController {
         );
       }
 
+      let cascade: ReleaseCascade | undefined;
       if (quest.epicId !== epic.id) {
         // The plan freeze (epic #31). A quest enters an epic only while
         // that epic is planned, and a MOVE has to satisfy both ends: the
@@ -534,12 +594,23 @@ export class EpicController {
         }
 
         await this.quests.updateById(quest.id, { epicId: epic.id });
+
+        // A quest joining an epic that already has a release inherits it
+        // (#Q2111). Without this the drift returns the first time somebody
+        // adds an eleventh quest, which is how the incident that produced
+        // this rule happened in the first place.
+        cascade = await this.cascade.toQuest(epic, quest);
+
         await this.logEpic("attach", epic, user, {
           quest: quest.shortId,
+          ...(cascade ? { cascade } : {}),
         });
       }
 
-      return await this.buildEpicResource(epic);
+      return {
+        ...(await this.buildEpicResource(epic)),
+        ...(cascade ? { releaseCascade: cascade } : {}),
+      };
     },
   });
 

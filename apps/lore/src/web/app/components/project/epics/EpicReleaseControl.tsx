@@ -12,6 +12,8 @@ import type { EpicResource } from "@/api/schemas/epicResourceSchema.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import { useReleaseCascadeToast } from "../releases/useReleaseCascadeToast.ts";
+
 /**
  * One optional number. "No release" is the field being empty, which is what
  * `Control`'s `clearable` row sets it to - the `"none"` string sentinel the
@@ -44,6 +46,9 @@ const EpicReleaseControl = (props: EpicReleaseControlProps) => {
   const epicApi = useClient<EpicController>();
   const [releases] = useStore(currentReleasesAtom);
   const [submitting, setSubmitting] = useState(false);
+  // The write moves the epic's quests too (#Q2111), and a row the
+  // reader did not name must not move without a word.
+  const reportCascade = useReleaseCascadeToast();
 
   // Picking a row IS the write, so a rank that cannot update an epic gets no
   // control at all rather than a select that refuses on change.
@@ -64,6 +69,7 @@ const EpicReleaseControl = (props: EpicReleaseControlProps) => {
         body: { releaseId: value ?? null },
       });
       props.onChange(updated);
+      reportCascade(updated.releaseCascade);
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
       // The write is the only thing that moves this field, so a failed one has

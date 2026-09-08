@@ -401,7 +401,8 @@ export class QuestTools {
    */
   quest_create = $tool({
     description:
-      "Create a new quest in the project. Pass `accept: true` to also accept it (assign it to yourself) in the same call — skips a separate quest_accept round-trip.",
+      "Create a new quest in the project. Pass `accept: true` to also accept it (assign it to yourself) in the same call — skips a separate quest_accept round-trip. " +
+      "⚠️ `epic_number` alone puts the quest in that epic's release. `epic_number` WITH `release_tag` keeps the tag you named: a quest may deliberately ship later than its epic, so an explicit release is never overruled.",
     title: "Create quest",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -1039,7 +1040,7 @@ export class QuestTools {
    */
   quest_update = $tool({
     description:
-      "Update a quest's properties. Non-completed quests accept any field. A COMPLETED quest freezes its BODY - title, description, objectives - as an audit record of what was closed, and accepts everything that is not the body: `completionMessage`, `release_tag`, `feedback_shortId`, `area`, `tags` and `epic_number`. Which feedback the work turned out to resolve, and how it should be classified for reporting, are usually only settled afterwards, so freezing them made the history less accurate rather than more. `epic_number` has one more gate, the epic's own: a quest enters or leaves an epic only while that epic is 'planned', whatever the quest's status. A completed quest cannot be re-filed into an active or concluded epic after the fact; that was allowed until epic #31 and was deliberately closed with the plan freeze. Refused on a completed quest: `priority`, `size`, `estimateMinutes`, `dueAt` and `dependsOn_shortId`, which record what was planned at the time. Omitted fields stay unchanged. " +
+      "Update a quest's properties. Non-completed quests accept any field. A COMPLETED quest freezes its BODY - title, description, objectives - as an audit record of what was closed, and accepts everything that is not the body: `completionMessage`, `release_tag`, `feedback_shortId`, `area`, `tags` and `epic_number`. Which feedback the work turned out to resolve, and how it should be classified for reporting, are usually only settled afterwards, so freezing them made the history less accurate rather than more. `epic_number` has one more gate, the epic's own: a quest enters or leaves an epic only while that epic is 'planned', whatever the quest's status. A completed quest cannot be re-filed into an active or concluded epic after the fact; that was allowed until epic #31 and was deliberately closed with the plan freeze. Filing a quest into an epic also puts it in that epic's release, unless the quest already names one of its own - a quest may deliberately ship later than its epic. Refused on a completed quest: `priority`, `size`, `estimateMinutes`, `dueAt` and `dependsOn_shortId`, which record what was planned at the time. Omitted fields stay unchanged. " +
       "Passing `objectives` REPLACES the entire array, so fetch the quest first and pass back the full list, each surviving item carrying the `id` it already had. That path is for rewording, reordering, adding or removing objectives; to tick or untick one, call `quest_objective_set` instead of resending everything. " +
       "Nothing here stops you overwriting an edit someone made while you were working: pass `expectedUpdatedAt` from your last `quest_get` and a 409 will tell you to re-read instead.",
     title: "Update quest",

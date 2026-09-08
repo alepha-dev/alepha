@@ -44,6 +44,7 @@ import { useBulkReport } from "../../shared/useBulkReport.ts";
 import { useAgentPrompt } from "../prompts/useAgentPrompt.ts";
 import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import { releaseRowMenu } from "../releaseRowMenu.ts";
+import { useReleaseCascadeToast } from "../releases/useReleaseCascadeToast.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import {
   epicBlockedBy,
@@ -142,6 +143,9 @@ const ProjectEpics = () => {
   const agentPrompt = useAgentPrompt();
   const promptSubject = useAgentPromptSubject();
   const alepha = useAlepha();
+  // The write below moves the epic's quests too (#Q2111), and a row the
+  // reader did not name must not move without a word.
+  const reportCascade = useReleaseCascadeToast();
 
   const [createOpen, setCreateOpen] = useState(false);
   // Bumped after a create, which happens outside the table and so has no
@@ -160,13 +164,14 @@ const ProjectEpics = () => {
     refresh: () => void,
   ) => {
     try {
-      await epicApi.updateEpic({
+      const updated = await epicApi.updateEpic({
         params: { id: epic.id },
         body: { releaseId },
       });
       // The Release column is drawn from the row, so it repaints only once
       // the fetch comes back with the new value.
       refresh();
+      reportCascade(updated.releaseCascade);
     } catch (error) {
       toaster.error(error instanceof Error ? error.message : String(error));
     }

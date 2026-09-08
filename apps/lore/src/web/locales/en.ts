@@ -857,6 +857,11 @@ export default {
   "release.detail.editTargetDate": "Target date",
   "release.contents.title": "Contents",
   "release.contents.remove": "Remove",
+  "release.cascade.moved.one": "1 quest followed the epic.",
+  "release.cascade.moved.many": "$1 quests followed the epic.",
+  "release.cascade.kept": "$1 kept a release of their own.",
+  "release.cascade.refused":
+    "$1 could not follow and stayed where they were, in a published release: $2",
   "release.contents.uncategorized": "Uncategorized",
   "release.contents.empty":
     "Nothing in this release yet. A release is filled from the work: put an epic or a quest in it from the epic or the quest.",
