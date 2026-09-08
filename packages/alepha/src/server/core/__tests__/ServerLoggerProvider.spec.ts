@@ -9,6 +9,7 @@ import { beforeEach, describe, it } from "vitest";
 import {
   $action,
   AlephaServer,
+  ForbiddenError,
   HttpError,
   ServerLoggerProvider,
 } from "../index.ts";
@@ -34,6 +35,11 @@ class App {
         message: "Sorry",
         status: 400,
       });
+    },
+  });
+  forbidden = $action({
+    handler: () => {
+      throw new ForbiddenError("Not a member of this project");
     },
   });
   boom = $action({
@@ -105,6 +111,37 @@ describe("ServerLoggerProvider", () => {
     expect(log.logs[0].message).toBe("Incoming request");
     expect(log.logs[1].message).toBe("Request completed");
     expect(log.logs.some((l) => l.level === "ERROR")).toBe(false);
+  });
+
+  /**
+   * A 403 is the one refusal whose reason exists nowhere else.
+   *
+   * The client is handed a `requestId` and an "Access denied" page, and that
+   * id is meant to lead a developer to the rule that fired. At `debug` the
+   * line never leaves a production deployment, so the id led to a single
+   * `Request completed` carrying a status and nothing else: which guard
+   * refused, and why, was simply not recorded. That is a false denial nobody
+   * can diagnose after the fact.
+   *
+   * It stays off the `error` channel for the reason the 400 case above
+   * states, and rises to `warn`, which production ships. Volume is bounded:
+   * a 403 needs a resolved identity, so it cannot be produced by anonymous
+   * traffic the way a 401 or a 404 can.
+   */
+  it("logs a 403 at warn level, naming the error and its reason", async ({
+    expect,
+  }) => {
+    expect(log.logs.length).toBe(0);
+    await app.forbidden.fetch().catch(() => undefined);
+
+    const rejected = log.logs.find((l) => l.message === "Request rejected");
+    expect(rejected).toBeDefined();
+    expect(rejected!.level).toBe("WARN");
+    expect(rejected!.data).toMatchObject({
+      status: 403,
+      error: "ForbiddenError",
+      message: "Not a member of this project",
+    });
   });
 
   it("still logs a 5xx at error level", async ({ expect }) => {
