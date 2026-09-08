@@ -452,4 +452,98 @@ describe("the Apps list", () => {
     );
     expect(asMember.view.container.textContent).not.toContain("New app");
   });
+  /**
+   * The Address cell is the same external link the app's own header renders
+   * (#P2161), which means it carries the same three `rel` tokens for the same
+   * reason: the value is operator-supplied, or detected from a reporting
+   * app's own `Host` header, so it is a third-party destination reached from
+   * inside Lore's session.
+   */
+  describe("the Address cell", () => {
+    const addressOf = (view: { container: HTMLElement }) =>
+      view.container.querySelector(
+        'tbody a[target="_blank"]',
+      ) as HTMLAnchorElement | null;
+
+    it("links the address out, with the opener and follow hints", async ({
+      expect,
+    }) => {
+      const { view } = await mount([
+        anInstance("club", "production", { url: "https://club.example.com" }),
+      ]);
+
+      const link = await waitFor(() => {
+        const found = addressOf(view);
+        expect(found).not.toBeNull();
+        return found!;
+      });
+      expect(link.getAttribute("href")).toBe("https://club.example.com");
+      // ⚠️ All three, and none of them decoration. `noopener` because
+      // `_blank` otherwise hands `window.opener` to a page Lore does not
+      // control; `nofollow` because a deployed copy is not an endorsement
+      // Lore is making.
+      expect(link.getAttribute("rel")).toBe("noopener noreferrer nofollow");
+    });
+
+    /**
+     * ⚠️ A row in this table navigates to the instance page
+     * (`AlephaTable`'s `onRowClick`, which is React's own `onClick` on the
+     * `<tr>`). Without `stopPropagation` one click both opens the app in a
+     * new tab AND moves the page underneath, so the reader comes back to
+     * somewhere they never asked for.
+     *
+     * Written as a DIFFERENTIAL, because "the URL did not change" alone
+     * would pass just as well if the row had stopped navigating entirely:
+     * the second half proves the row still works. A native listener on the
+     * `<tr>` cannot measure this - React delegates at the root, so a native
+     * handler fires during bubbling whatever the synthetic event says.
+     */
+    it("does not navigate the row it sits in, while the row still does", async ({
+      expect,
+    }) => {
+      const { alepha, view } = await mount([
+        anInstance("club", "production", { url: "https://club.example.com" }),
+      ]);
+
+      const link = await waitFor(() => {
+        const found = addressOf(view);
+        expect(found).not.toBeNull();
+        return found!;
+      });
+
+      // The router's live state, off the same store `useRouterState` reads.
+      const routeName = () =>
+        (alepha.store.get("alepha.react.router.state") as { name?: string })
+          ?.name;
+      const settled = () => waitFor(() => expect(routeName()).toBe("app"));
+
+      // ⚠️ `await`ed, and asserted as a REJECTION rather than by reading the
+      // route straight back. `onRowClick` calls `void router.push(...)`,
+      // which is async: a synchronous read after the click sees the old
+      // route whether or not the guard is there, so the first version of
+      // this case passed with `stopPropagation` deleted. Measured, not
+      // assumed - the deletion is what showed it.
+      fireEvent.click(link);
+      await expect(settled()).rejects.toThrow();
+
+      // The same click one cell over DOES move the page, well inside the
+      // window above. So the guard is narrow rather than a row that stopped
+      // responding, and that window is generous rather than lucky.
+      fireEvent.click(view.container.querySelector("tbody td")!);
+      await settled();
+    });
+
+    /**
+     * ⚠️ Text, never a link with no href. A copy with no sigil never posts to
+     * the ingest and neither does a Feedback-only app, so "not known yet" is
+     * a real state rather than a missing value - and an anchor that goes
+     * nowhere says the opposite.
+     */
+    it("leaves an unknown address as plain text", async ({ expect }) => {
+      const { view } = await mount([anInstance("club", "production")]);
+
+      await waitFor(() => expect(rowText(view)).toHaveLength(1));
+      expect(addressOf(view)).toBeNull();
+    });
+  });
 });

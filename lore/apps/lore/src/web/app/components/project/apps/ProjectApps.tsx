@@ -8,6 +8,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
   Boxes,
+  ExternalLink,
   Layers,
   Plus,
   Radio,
@@ -490,10 +491,39 @@ const ProjectApps = () => {
               // That reads as unknown rather than as a broken link.
               const url = appUrl(instance);
               return url ? (
-                <span className="text-muted-foreground truncate text-xs">
-                  {appUrlLabel(url)}
-                </span>
+                <a
+                  href={url}
+                  target="_blank"
+                  // ⚠️ Not decoration, and the same three the app header
+                  // carries. The address is operator-supplied or detected
+                  // from a reporting app's own `Host` header, so it is a
+                  // THIRD-PARTY destination reached from inside Lore's
+                  // session: `noopener` because `_blank` otherwise hands
+                  // `window.opener` to a page Lore does not control, and
+                  // `nofollow` because a deployed copy is not an endorsement
+                  // Lore is making.
+                  rel="noopener noreferrer nofollow"
+                  // ⚠️ The row IS a link to the instance page. Without this
+                  // one click both opens the app in a new tab and navigates
+                  // the page underneath it, so the reader comes back to
+                  // somewhere they did not ask for.
+                  onClick={(event) => event.stopPropagation()}
+                  className="text-muted-foreground hover:text-foreground inline-flex max-w-full items-center gap-1 text-xs transition-colors"
+                >
+                  {/* ⚠️ The TRUNCATION is on the label, not on the anchor.
+                      An anchor that truncates as a whole eats its trailing
+                      icon first, which is the one part that cannot be
+                      guessed from what survives: a clipped host still reads
+                      as a host, a missing icon reads as plain text. The
+                      icon is `shrink-0` for the same reason. */}
+                  <span className="truncate">{appUrlLabel(url)}</span>
+                  <ExternalLink className="size-3 shrink-0" aria-hidden />
+                </a>
               ) : (
+                // ⚠️ Text, never a link with no href. A copy with no sigil
+                // never posts to the ingest and neither does a Feedback-only
+                // app, so this is a real state rather than a missing value,
+                // and an anchor that goes nowhere says the opposite.
                 <span className="text-muted-foreground text-xs">
                   {tr("app.dashboard.address.unknown")}
                 </span>
