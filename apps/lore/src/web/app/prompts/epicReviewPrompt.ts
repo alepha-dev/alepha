@@ -21,6 +21,15 @@
  * actually wants, rather than "set to that epic", which made the agent look
  * it up; and `{{project}}` is the project's TITLE, which is what
  * `project_name` matches.
+ *
+ * ⚠️ **The last section is about the REPLY, not about Lore, and it is the
+ * point of the prompt.** The baseline used to stop at the write-back: the
+ * questions landed on a quest or in the epic's description and the agent
+ * answered "filed", which is a receipt, not a review. Every use of it then
+ * began with the same follow-up asking for the context and a
+ * recommendation on each question. Asking once, here, is what stops that.
+ * A question filed with no context and no candidate answers hands the
+ * whole job back to the reader.
  */
 export const epicReviewPromptDefault = `Review the plan of epic {{reference}} "{{title}}" in the Lore project "{{project}}".
 
@@ -52,4 +61,14 @@ Check the plan against the code as it actually is, not as the spec describes it.
 - \`quest_update\` to sharpen a quest's title, description or objectives, and \`quest_objective_set\` to tick one.
 - A folio, filed under this epic, if the review produces a design note worth keeping.
 
-Leave the open questions somewhere they will be read: a comment on the quest they concern, or a section in the epic's description.`;
+File the open questions where they will be read again: a comment on the quest they concern, or a section in the epic's description.
+
+## Then put every open question in your reply
+
+Filing them is not the report. The person who asked for this review is reading your answer, not the epic, and a bare list of questions hands the whole job straight back to them. End your reply with one numbered block per open question, and for each one:
+
+- **The question**, in a single sentence.
+- **Context**: what the spec says, what the code actually does today, and why the two together do not settle it. Name the files.
+- **Suggestions**: the two or three answers genuinely on the table, what each one costs, and which one you would take and why.
+
+Number them so they can be answered by number. If the review raised no open question at all, say so in one line rather than inventing one.`;

@@ -368,13 +368,30 @@ export class CloudflareProvisionClient {
   /**
    * Delete a Worker script.
    *
-   * `force` is deliberately not passed: it detaches a script other Workers
-   * still bind to, which is a decision for whoever owns those, not for a
-   * teardown of one copy.
+   * ## ⚠️ `force` decides whether Durable Object storage dies with it
+   *
+   * Cloudflare refuses to delete a script something still references - a
+   * service binding from another Worker, or **a Durable Object namespace that
+   * still holds data**. `force=true` deletes it anyway, and the DO storage with
+   * it: an app using `$websocket` on Cloudflare gets an
+   * `AlephaWebSocketDurableObject` namespace, and that namespace is data in the
+   * same sense a D1 database is.
+   *
+   * So it is passed only for an EPHEMERAL copy, on the same reasoning as
+   * `deleteD1` and `deleteR2`. For every other copy the delete is unforced and
+   * a refusal is the right outcome rather than an obstacle - the caller reports
+   * that the Worker is still standing, and why.
+   *
+   * ⚠️ It also detaches service bindings other Workers hold, which is a second
+   * reason not to reach for it by default.
    */
-  public async deleteWorker(name: string): Promise<void> {
+  public async deleteWorker(
+    name: string,
+    options: { force?: boolean } = {},
+  ): Promise<void> {
     await this.fetch(`/accounts/${this.accountId}/workers/scripts/${name}`, {
       method: "DELETE",
+      ...(options.force ? { query: { force: "true" } } : {}),
     });
   }
 
