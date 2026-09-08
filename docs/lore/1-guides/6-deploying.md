@@ -174,7 +174,37 @@ fails, so it works in CI. An agent polls `deploy_status`.
 The log lives on the deployment row rather than in a buffer somewhere, so
 closing the tab does not lose it and neither does a restart.
 
-## 8. Roll back
+## 8. Take it down
+
+Deleting a copy in Lore stops Lore tracking it. It does **not** delete the
+Worker, the database or the bucket its deploys created - that is its own
+command, because destroying a database is not something to infer from a
+tidy-up:
+
+```bash
+lore apps destroy --env staging --yes
+```
+
+Order matters and is fixed: the Worker goes first so nothing is still serving,
+then the queue, the KV namespace and the bucket (emptied first, because
+Cloudflare refuses to delete one that is not), and the **database last** - the
+one step with no undo is attempted only once everything else has gone. There is
+no backup.
+
+⚠️ **Lore deletes only what it recorded creating.** The names are derived from
+the project and the environment, so they are reproducible - and your estate
+holds resources Lore never made, one of which could bear the same name. A copy
+deployed before Lore started recording has nothing to act on and is refused;
+use `alepha platform down` or the Cloudflare dashboard for those.
+
+If a run removes some and fails on others, what went is struck from the record,
+so running it again retries only the rest.
+
+Deleting the copy itself is refused while any of this is still standing, since
+that row is the only place their names are written. Pass `forget` when you have
+already removed them by hand.
+
+## 9. Roll back
 
 Every successful run offers **Roll back**.
 
