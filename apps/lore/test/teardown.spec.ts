@@ -14,6 +14,7 @@ import { appInstances } from "../src/api/entities/appInstances.ts";
 import { estateProjects } from "../src/api/entities/estateProjects.ts";
 import { estates } from "../src/api/entities/estates.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { CredentialSealService } from "../src/api/services/CredentialSealService.ts";
 import { TeardownService } from "../src/api/services/TeardownService.ts";
 
 /**
@@ -107,7 +108,12 @@ describe("tearing a copy's resources down", () => {
       deployAllowed: true,
       credentialStatus: "valid",
       accountId: "acct",
-      credential: "sealed",
+      // ⚠️ Sealed for real. `destroy` OPENS this, so a literal string fails as
+      // "Invalid ciphertext format" - which reads like a teardown bug and is a
+      // fixture bug.
+      credential: alepha
+        .inject(CredentialSealService)
+        .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
     } as never);
     await rows.grants.create({
       estateId: estate.id,
@@ -172,6 +178,38 @@ describe("tearing a copy's resources down", () => {
       expect(
         alepha.inject(TeardownService).holdsResources(await loaded(w)),
       ).toBe(true);
+    });
+  });
+
+  describe("driving the estate", () => {
+    /**
+     * ⚠️ The case every other test in this file misses, and it is why a broken
+     * injection reached production: the refusals return before the adapter is
+     * touched, and an empty record returns before it too. Only a copy with
+     * something recorded constructs the Cloudflare client at all.
+     *
+     * The credential is sealed for real rather than stubbed, because opening it
+     * is on this path and a literal string fails as "Invalid ciphertext format"
+     * - which reads like a teardown bug and is a fixture bug.
+     */
+    it("reaches Cloudflare, keeps the stores, reports the worker", async ({
+      expect,
+    }) => {
+      const w = await world({
+        worker: "w",
+        d1: { name: "d", id: "i" },
+        r2: "r",
+      });
+
+      const result = await alepha
+        .inject(TeardownService)
+        .destroy(await loaded(w));
+
+      // The account is invented, so the delete cannot succeed - what is being
+      // pinned is that it was ATTEMPTED, and that the two stores were not.
+      expect(result.kept.sort()).toEqual(["d1:d", "r2:r"]);
+      expect(result.failed.map((it) => it.resource)).toEqual(["worker"]);
+      expect(result.removed).toEqual([]);
     });
   });
 

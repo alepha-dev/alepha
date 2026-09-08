@@ -1,8 +1,5 @@
 import { $inject } from "alepha";
-import {
-  AlephaPlatformLibPlugin,
-  WorkerCloudflareAdapter,
-} from "alepha/cli/platform-lib";
+import { WorkerCloudflareAdapter } from "alepha/cli/platform-lib";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 import { BadRequestError } from "alepha/server";
@@ -53,7 +50,6 @@ export class TeardownService {
   protected readonly gate = $inject(DeployGate);
   protected readonly seal = $inject(CredentialSealService);
   protected readonly adapter = $inject(WorkerCloudflareAdapter);
-  protected readonly plugin = $inject(AlephaPlatformLibPlugin);
 
   /**
    * What this copy still holds, or nothing when it was never recorded.
