@@ -97,6 +97,20 @@ export interface LoreDeployInput {
    * kept.
    */
   sigil?: boolean;
+
+  /**
+   * This copy's data may be deleted with it.
+   *
+   * ⚠️ Read only when the call CREATES the copy, and there is no way to set it
+   * afterwards - a flag that could be flipped later would be flipped on the
+   * copy somebody wants to tidy away, which is exactly the copy whose database
+   * matters. For a tenant provisioned per branch or per preview, declaring it
+   * here is the honest moment: the copy holds nothing yet.
+   *
+   * Default false, which means a destroy removes the Worker and leaves the
+   * database and the bucket standing.
+   */
+  ephemeral?: boolean;
   /**
    * Which estate a newly created copy deploys to, **by slug**.
    *
@@ -298,6 +312,9 @@ export class LoreDeployService {
         // moment the key can be stored: `sigils` keeps a hash, so Lore holds
         // the token for the length of the mint and never again.
         ...(input.sigil ? { sigil: true } : {}),
+        // Same rule as `sigil` and `domain`: read on the CREATE and nowhere
+        // else, because it cannot be revised once the copy holds data.
+        ...(input.ephemeral ? { ephemeral: true } : {}),
       },
     );
 

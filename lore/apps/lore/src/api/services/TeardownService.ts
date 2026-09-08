@@ -120,7 +120,12 @@ export class TeardownService {
         ),
         accountId: estate.accountId,
       })
-      .teardownRecorded(record);
+      .teardownRecorded(record, {
+        // ⚠️ The instance's own claim, made at creation and never revisable.
+        // A copy that did not declare itself ephemeral keeps its database and
+        // its bucket, whatever anybody asks for now.
+        purgeStores: instance.ephemeral === true,
+      });
 
     await this.strike(instance.id, record, result.removed);
     return result;

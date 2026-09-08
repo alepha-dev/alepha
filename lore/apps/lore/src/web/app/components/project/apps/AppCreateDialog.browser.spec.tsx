@@ -27,6 +27,7 @@ let instanceSeq = 0;
 const anInstance = (app: string, env: string): AppInstanceResource => ({
   id: `00000000-0000-4000-8000-${String(++instanceSeq).padStart(12, "0")}`,
   projectId: 1,
+  ephemeral: false,
   app,
   env,
   createdAt: "2026-08-01T10:00:00.000Z",
@@ -179,6 +180,7 @@ describe("AppCreateDialog", () => {
     expect(links.calls[0].body).toEqual({
       app: "club",
       env: "b14-production",
+      ephemeral: false,
     });
   });
 

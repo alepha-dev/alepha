@@ -185,6 +185,24 @@ tidy-up:
 lore apps destroy --env staging --yes
 ```
 
+### Copies that are meant to be thrown away
+
+A copy created with **ephemeral** set says, before it holds anything, that its
+data goes when it does - so a destroy takes its database and its bucket too.
+That is what a preview per branch or a tenant per test wants.
+
+⚠️ **It is settable only when the copy is created**, in the create dialog, on
+`app_instance_create`, or as `ephemeral: true` from `@alepha/lore/client`.
+There is no way to turn it on later, deliberately: a flag that could be flipped
+would be flipped on the copy somebody wants to tidy away, which is exactly the
+copy whose database matters.
+
+⚠️ It permits, it does not schedule. Nothing sweeps ephemeral copies and none
+of them expires; the flag only says what a destroy you ask for is allowed to
+take.
+
+For every other copy:
+
 ⚠️ **The database and the bucket are kept.** Lore removes what a redeploy puts
 back - the Worker, the queue, the cache namespace - and never what it cannot: a
 D1 database and an R2 bucket are what the app was serving, and Cloudflare

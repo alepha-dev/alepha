@@ -76,6 +76,12 @@ export const appInstanceCreateParamsSchema = projectParamsSchema.extend({
     .describe(
       "Where this copy lives, if you already know. Optional: the address is normally the host the app reports from once it has a sigil.",
     ),
+  ephemeral: z
+    .boolean()
+    .optional()
+    .describe(
+      "This copy's data may be deleted with it. ⚠️ Settable ONLY here: there is no update for it, deliberately, because a flag that could be flipped later would be flipped on the copy somebody wants to tidy away - which is exactly the copy whose database matters. Declared at creation it is a claim about a copy that holds nothing yet. Default false, which means a destroy removes the Worker and never the D1 database or the R2 bucket. It permits, it does not schedule: nothing sweeps ephemeral copies.",
+    ),
 });
 
 export const appInstanceCreateResultSchema = appInstanceSchema;

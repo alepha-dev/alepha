@@ -180,6 +180,35 @@ export const appInstances = $entity({
      * and the one it used to have is then no longer Lore's to remove.
      */
     resources: z.string().max(4_096).optional(),
+    /**
+     * Whether this copy's data may be deleted with it.
+     *
+     * ## ⚠️ Decided at CREATE and never afterwards
+     *
+     * There is no update path, and that is the whole mechanism rather than a
+     * missing feature. A flag that could be flipped later would be flipped on
+     * the copy somebody wants to tidy away - which is exactly the copy whose
+     * database matters - and the decision would be made at the moment of
+     * least patience, about data that already exists.
+     *
+     * Made at creation, it is a claim about a copy that has nothing in it yet:
+     * "this is a preview, a test, a per-branch environment, and when it goes
+     * its database goes with it". That claim is cheap to make honestly and
+     * cannot be revised once it stops being true.
+     *
+     * ## What it actually permits
+     *
+     * `false` (the default, and every copy that predates this column): a
+     * destroy removes the Worker, the queue and the cache namespace, and
+     * **never** the D1 database or the R2 bucket. `true`: those two go as
+     * well.
+     *
+     * ⚠️ It permits, it does not schedule. Nothing sweeps ephemeral copies, no
+     * job expires them, and creating one costs exactly what a normal copy
+     * costs. It only says what `destroy` is allowed to take when somebody asks
+     * for it.
+     */
+    ephemeral: db.default(z.boolean(), false),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id),
   }),
   indexes: [

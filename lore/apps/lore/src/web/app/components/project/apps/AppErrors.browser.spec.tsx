@@ -43,6 +43,7 @@ const INSTANCE: AppInstanceResource = {
   projectId: 1,
   app: "docs",
   env: "production",
+  ephemeral: false,
   createdAt: "2026-08-01T10:00:00.000Z",
   updatedAt: "2026-08-01T10:00:00.000Z",
   sigilId: "00000000-0000-4000-8000-000000000001",

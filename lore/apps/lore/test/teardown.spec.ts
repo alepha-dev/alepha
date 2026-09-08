@@ -67,7 +67,10 @@ describe("tearing a copy's resources down", () => {
     await alepha.stop();
   });
 
-  const world = async (resources?: Record<string, unknown>) => {
+  const world = async (
+    resources?: Record<string, unknown>,
+    ephemeral = false,
+  ) => {
     const fake = alepha.inject(FakeProvider).generate(userDataSchema);
     const created = await alepha
       .inject(AdminUserController)
@@ -95,7 +98,7 @@ describe("tearing a copy's resources down", () => {
       await alepha.inject(AppController).createApp.fetch(
         {
           params: { projectId: project.id },
-          body: { app: "my-app", env: "production" },
+          body: { app: "my-app", env: "production", ephemeral },
         },
         { user },
       )
@@ -350,6 +353,64 @@ describe("tearing a copy's resources down", () => {
 
       expect(actions).toContain("destroy");
       expect(actions).toContain("delete");
+    });
+  });
+
+  describe("ephemeral copies", () => {
+    /**
+     * ⚠️ The whole point of the flag. An ordinary copy keeps its database and
+     * its bucket whatever anybody asks; an ephemeral one declared at creation,
+     * before it held anything, that its data goes when it does.
+     */
+    it("takes the database and the bucket, where an ordinary copy does not", async ({
+      expect,
+    }) => {
+      const w = await world(
+        { worker: "w", d1: { name: "d", id: "i" }, r2: "r" },
+        true,
+      );
+
+      const result = await alepha
+        .inject(TeardownService)
+        .destroy(await loaded(w));
+
+      // Nothing is KEPT: the account is invented so each delete fails, but all
+      // four were attempted, which an ordinary copy never does for the stores.
+      expect(result.kept).toEqual([]);
+      expect(result.failed.map((it) => it.resource).sort()).toEqual([
+        "d1",
+        "r2",
+        "worker",
+      ]);
+    });
+
+    /**
+     * ⚠️ The rule that makes the flag safe: it is settable at CREATE and
+     * nowhere else. A copy that could be marked ephemeral later would be
+     * marked so at the moment somebody wanted it gone - about data that
+     * already exists.
+     */
+    it("cannot be turned on afterwards", async ({ expect }) => {
+      const w = await world();
+      const body = (
+        alepha.inject(AppController).updateApp as unknown as {
+          options: { schema: { body: { shape: Record<string, unknown> } } };
+        }
+      ).options.schema.body.shape;
+
+      expect(Object.keys(body)).not.toContain("ephemeral");
+      expect((await loaded(w)).ephemeral).toBe(false);
+    });
+
+    it("defaults to false, so an existing copy keeps its data", async ({
+      expect,
+    }) => {
+      const w = await world({ worker: "w", d1: { name: "d", id: "i" } });
+
+      expect((await loaded(w)).ephemeral).toBe(false);
+      expect(
+        (await alepha.inject(TeardownService).destroy(await loaded(w))).kept,
+      ).toEqual(["d1:d"]);
     });
   });
 

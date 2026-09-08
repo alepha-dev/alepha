@@ -1,0 +1,1 @@
+ALTER TABLE `app_instances` ADD `ephemeral` integer DEFAULT false NOT NULL;

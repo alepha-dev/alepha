@@ -172,6 +172,12 @@ export class AppService {
     app: string;
     env: string;
     url?: string;
+    /**
+     * ⚠️ Accepted on CREATE only, and there is no setter anywhere else. See
+     * the column's own doc: the claim is made about a copy that holds nothing
+     * yet, and cannot be revised once it stops being true.
+     */
+    ephemeral?: boolean;
     createdBy?: string;
   }): Promise<AppInstance> {
     const app = this.normalize(input.app, "app");
@@ -196,6 +202,9 @@ export class AppService {
         app,
         env,
         ...(url ? { url } : {}),
+        ...(input.ephemeral === undefined
+          ? {}
+          : { ephemeral: input.ephemeral }),
         ...(input.createdBy ? { createdBy: input.createdBy } : {}),
       });
     } catch (error) {
