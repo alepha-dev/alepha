@@ -521,4 +521,166 @@ test.describe("Kanban", () => {
       }
     }
   });
+
+  /**
+   * #Q2081, reported after two weeks of daily use: grouping the board put
+   * every lane past the first out of reach.
+   *
+   * `DndContext` renders no DOM node, so the lanes were direct children of
+   * the board root, which is `overflow-hidden`. A grouped lane is `shrink-0`
+   * and takes its tallest column's height, so they stacked past the viewport
+   * inside a container that clipped them, with nothing between to scroll and
+   * no scrollbar to say anything was missing. Grouping by epic on the
+   * reporter's project produced 23 lanes.
+   *
+   * Flat mode was unaffected, and by accident rather than by design: its
+   * single lane is `flex-1`, so the root caps it and each column body
+   * scrolls inside that. Which is why this asserts BOTH modes - the fix must
+   * not give the flat board a second scrollbar beside the columns' own.
+   */
+  test("grouped lanes scroll, and dragging still works in a scrolled one", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    const projectTitle = `KL${t}`.slice(0, 20);
+
+    await registerAndVerify(page, `kblane${t}@example.com`, "KanbanLane123!");
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+      { options: { work: ["board"] } },
+    );
+
+    // One area per lane. Six is well past a laptop viewport once each lane
+    // carries a header and a column body with a minimum height.
+    const areas = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"];
+    for (const area of areas) {
+      await apiPost(page, "createQuest", {
+        projectId,
+        title: `Card ${area}`,
+        description: "Seeded for the lane stack",
+        area,
+        priority: "low",
+        objectives: [],
+        attachments: [],
+      });
+    }
+
+    // A short viewport, so the stack overflows on any machine rather than
+    // only on the one that wrote the test.
+    await page.setViewportSize({ width: 1280, height: 700 });
+    await page.goto(`/${projectSlug}/kanban`);
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const stack = page.getByTestId("kanban-lane-stack");
+    const metrics = () =>
+      stack.evaluate((el) => ({
+        clientHeight: el.clientHeight,
+        scrollHeight: el.scrollHeight,
+        overflowY: getComputedStyle(el).overflowY,
+      }));
+
+    // Flat first: the board has one scrollbar per column and none here.
+    const flat = await metrics();
+    expect(flat.overflowY).not.toBe("auto");
+    expect(flat.scrollHeight).toBe(flat.clientHeight);
+
+    // Group by area - the first press of a three-state toggle.
+    await page.getByTestId("kanban-lanes").click();
+    const lanes = page.getByTestId("kanban-lane");
+    await expect(lanes).toHaveCount(areas.length, { timeout: 10_000 });
+
+    const grouped = await metrics();
+    expect(grouped.overflowY).toBe("auto");
+    expect(grouped.scrollHeight).toBeGreaterThan(grouped.clientHeight);
+
+    // The last lane is genuinely reachable, which is what the bug denied.
+    // Asserted by its box landing inside the viewport after a scroll, not by
+    // the scroll call returning.
+    const last = lanes.last();
+    await last.scrollIntoViewIfNeeded();
+    const box = await last.boundingBox();
+    expect(box, "the last lane has no box").not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y).toBeLessThan(700);
+
+    /*
+     * And a card in that scrolled lane still drags. This is the half a
+     * layout assertion cannot reach: dnd-kit measures droppables against
+     * their scroll container, so a new one between the lanes and the board
+     * root is exactly the change that puts every rect in the wrong place.
+     *
+     * Same pointer choreography as the column-reorder drag above: the
+     * PointerSensor has an 8px activation distance, so the move needs
+     * intermediate steps or it is treated as a click.
+     */
+    const card = last.getByTestId("kanban-card").first();
+    const movedId = await card.getAttribute("data-quest-short-id");
+    expect(movedId, "the card carries no quest id").toBeTruthy();
+    const target = last.locator('[data-column-key$="column:In Progress"]');
+    await expect(target).toHaveCount(1);
+
+    const from = await card.boundingBox();
+    const to = await target.boundingBox();
+    if (!from || !to) throw new Error("missing bounding boxes");
+
+    /*
+     * ⚠️ Armed BEFORE the drag, and awaited before the reload below.
+     *
+     * The drop paints its destination optimistically and only then calls the
+     * server, so a reload that races the call cancels it in flight - which is
+     * exactly what this test did on its first run: the DOM assertion passed
+     * on the optimistic paint, the reload killed the request, and the board
+     * came back with the card where it started.
+     *
+     * `acceptQuest` is a plain GET on its own URL rather than a `/api/_batch`
+     * entry, so it can be waited on by name. Verified rather than assumed:
+     * the first attempt at this test skipped the wait on the belief that
+     * every mutation is batched.
+     */
+    const accepted = page.waitForResponse(
+      (r) => r.url().includes("/api/acceptQuest") && r.ok(),
+      { timeout: 15_000 },
+    );
+
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
+      steps: 12,
+    });
+    await page.mouse.up();
+
+    await accepted;
+
+    // The card landed in the column it was dropped on, in its own lane.
+    await expect(target.getByTestId("kanban-card")).toHaveCount(1, {
+      timeout: 10_000,
+    });
+
+    /*
+     * ⚠️ And it survives a reload, which is the assertion that means
+     * anything. The drop paints its destination optimistically and only then
+     * calls the server, so the count above is equally true of a drop the
+     * server refused - `handleDragEnd` puts the card back and shows a toast,
+     * both of which land after this would have passed. A reload re-runs the
+     * loader, so what is on screen came from the database.
+     */
+    await page.reload();
+    await expect(page.getByTestId("kanban-board")).toBeVisible({
+      timeout: 15_000,
+    });
+    // Asserted on the CARD's own id rather than on a lane, and in flat mode:
+    // what persisted is the quest's status, and grouping is a view over it.
+    // Naming a lane here would tie the check to how `KanbanLanes` happens to
+    // order them.
+    await expect(
+      page.locator(
+        `[data-column-key$="column:In Progress"] [data-quest-short-id="${movedId}"]`,
+      ),
+    ).toHaveCount(1, { timeout: 15_000 });
+  });
 });
