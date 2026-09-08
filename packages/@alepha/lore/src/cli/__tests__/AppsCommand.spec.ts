@@ -536,3 +536,67 @@ describe("lore apps deploy", () => {
     ).rejects.toThrow(/still running/);
   });
 });
+
+describe("lore apps destroy", () => {
+  const aCloudflareCopy = () =>
+    create({ production: { id: "inst-1", estateId: "cf-1" } }, [
+      { id: "cf-1", acceptedRuntimes: ["workerd"] },
+    ]);
+
+  /**
+   * ⚠️ The accident this exists to prevent. Every other command falls back to
+   * LORE_ENV and then to the project's own default environment - usually
+   * `production` - so on a command that deletes things a forgotten flag would
+   * mean destroying production with the word never appearing on screen.
+   */
+  it("refuses without --env, and does not fall back to a default", async () => {
+    const { fs, cli, command } = aCloudflareCopy();
+    await aWorkspace(fs);
+
+    await expect(
+      cli.run(command.destroy, {
+        root: "/project",
+        argv: "--confirm docs/production",
+      }),
+    ).rejects.toThrowError(/Name the copy with --env/);
+  });
+
+  /**
+   * ⚠️ The confirmation is TYPED, never composed. Deriving it from `--env`
+   * would make the server's check tautological: a wrong `--env` would confirm
+   * itself and destroy a copy nobody named.
+   */
+  it("refuses when the confirmation does not name this copy", async () => {
+    const { fs, cli, command } = aCloudflareCopy();
+    await aWorkspace(fs);
+
+    await expect(
+      cli.run(command.destroy, {
+        root: "/project",
+        argv: "--env production --confirm docs/staging",
+      }),
+    ).rejects.toThrowError(/Pass --confirm "docs\/production"/);
+  });
+
+  it("refuses with no confirmation at all", async () => {
+    const { fs, cli, command } = aCloudflareCopy();
+    await aWorkspace(fs);
+
+    await expect(
+      cli.run(command.destroy, { root: "/project", argv: "--env production" }),
+    ).rejects.toThrowError(/Pass --confirm/);
+  });
+
+  /**
+   * ⚠️ `--yes` is gone on purpose. A flag that means "skip the check" IS the
+   * accident, because it is the flag people leave in a shell history.
+   */
+  it("has no flag that skips the confirmation", async () => {
+    const { command } = aCloudflareCopy();
+    const flags = Object.keys(command.destroy.flags?.shape ?? {}).sort();
+
+    expect(flags).toEqual(["app", "confirm", "env", "project"]);
+    expect(flags).not.toContain("yes");
+    expect(flags).not.toContain("force");
+  });
+});

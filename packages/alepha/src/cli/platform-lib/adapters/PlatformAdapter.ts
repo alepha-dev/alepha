@@ -39,6 +39,19 @@ export interface DetectedResources {
   hasKV: boolean;
   hasQueue: boolean;
   hasCron: boolean;
+  /**
+   * The app opens websockets, which on Cloudflare means a Durable Object.
+   *
+   * ⚠️ The manifest has carried this since websockets shipped and the deploy
+   * chain dropped it here, so no adapter could know a copy runs a DO namespace
+   * - and DO storage is DATA, in the same sense a D1 database is. A teardown
+   * that cannot see it cannot decide whether it is allowed to take it.
+   *
+   * Optional because a manifest written before this field existed has none,
+   * and absent must read as "unknown", never as "no websockets" - the
+   * difference decides whether a script delete may be forced.
+   */
+  hasWebSocket?: boolean;
 }
 
 /**

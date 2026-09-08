@@ -352,6 +352,14 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     r2?: string;
     kv?: { name: string; id: string };
     queue?: string;
+    /**
+     * This copy runs a Durable Object namespace, because it uses `$websocket`.
+     *
+     * ⚠️ Recorded because DO storage is DATA, and a teardown has to know that
+     * before deciding whether it may force the script delete - which is what
+     * takes the namespace with it.
+     */
+    durableObjects?: boolean;
   } = {};
 
   async deploy(
@@ -368,6 +376,9 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     // still exists at Cloudflare, and a teardown that cannot name it is how an
     // orphan becomes permanent.
     this.provisionedResources.worker = worker;
+    if (ctx.resources.hasWebSocket) {
+      this.provisionedResources.durableObjects = true;
+    }
 
     await run({
       name: `deploy worker (${worker})`,
@@ -547,7 +558,8 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   /**
    * Remove what a redeploy can put back, and keep what it cannot.
    *
-   * ## ⚠️ The database and the bucket are KEPT, unless the copy is ephemeral
+   * ## ⚠️ The database, the bucket and any Durable Object storage are KEPT,
+   * unless the copy is ephemeral
    *
    * Not an omission and not a first cut. Lore drives this with a credential
    * lent to it for deploying, so the line is what the next deploy recreates. A
@@ -588,6 +600,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
       r2?: string;
       kv?: { name: string; id: string };
       queue?: string;
+      durableObjects?: boolean;
     },
     options: {
       /**
@@ -622,7 +635,15 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     };
 
     if (record.worker) {
-      await attempt("worker", () => api.deleteWorker(record.worker as string));
+      // ⚠️ Forced only for an ephemeral copy. `force` is what lets Cloudflare
+      // delete a script something still references - including a Durable
+      // Object namespace that still holds data - so on an ordinary copy an
+      // unforced delete REFUSING is the correct outcome, not an obstacle.
+      await attempt("worker", () =>
+        api.deleteWorker(record.worker as string, {
+          force: options.purgeStores === true,
+        }),
+      );
     }
     if (record.queue) {
       await attempt("queue", () => api.deleteQueue(record.queue as string));
@@ -649,6 +670,10 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
     const kept = [
       record.d1 ? `d1:${record.d1.name}` : undefined,
       record.r2 ? `r2:${record.r2}` : undefined,
+      // Named like the other two, because it is the same kind of thing: a
+      // Durable Object namespace holds this copy's rooms and connections, and
+      // an operator reading "the Worker is still there" deserves to know why.
+      record.durableObjects ? "durable-objects" : undefined,
     ].filter((it): it is string => !!it);
 
     return { removed, kept, failed };

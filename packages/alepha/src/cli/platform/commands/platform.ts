@@ -830,6 +830,7 @@ export class PlatformCommand {
           hasKV: false,
           hasQueue: false,
           hasCron: false,
+          hasWebSocket: false,
         },
         naming: namingCtx,
       };
@@ -1058,6 +1059,22 @@ export class PlatformCommand {
       hasCron = cron.getCronJobs().length > 0;
     } catch {}
 
-    return { hasDatabase, hasBucket, hasAnalytics, hasKV, hasQueue, hasCron };
+    // ⚠️ The union of BOTH realtime primitives, matching `BuildManifestTask` -
+    // a `$room` rides the same `AlephaWebSocketDurableObject` as a
+    // `$websocket`, so a rooms-only app has a DO namespace too. The two must
+    // agree or `plan` lies about what `up` creates.
+    const hasWebSocket =
+      alepha.primitives("$websocket").length > 0 ||
+      alepha.primitives("$room").length > 0;
+
+    return {
+      hasDatabase,
+      hasBucket,
+      hasAnalytics,
+      hasKV,
+      hasQueue,
+      hasCron,
+      hasWebSocket,
+    };
   }
 }
