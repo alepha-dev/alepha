@@ -39,6 +39,22 @@ export interface DashboardCardProps {
    */
   presentation?: DashboardPresentation;
   /**
+   * The project this board belongs to, on a project board.
+   *
+   * ⚠️ It exists for ONE rule, and the rule is mechanical rather than a
+   * judgement: a project-board card that points at the project stores
+   * `kind: "projects", projectIds: [thisProject]`, so `scopeNames` answers the
+   * project's own title and every card on the board would wear the same chip.
+   * The chip is suppressed for exactly that scope and kept for an app, an
+   * epic or a release, which genuinely differ from one card to the next.
+   */
+  boardProjectId?: number;
+  /**
+   * Whether the viewer may curate the board. `false` renders no menu and no
+   * drag affordance at all, rather than disabled ones.
+   */
+  canEdit?: boolean;
+  /**
    * Whether a mousedown on this card's header has armed it for dragging.
    *
    * `draggable` is toggled rather than left on: a permanently draggable card
@@ -85,9 +101,20 @@ const DashboardCard = (props: DashboardCardProps) => {
   const router = useRouter<AppRouter>();
   const Icon = dashboardMetricIcon(props.icon);
   const link = props.value?.link;
+  // Defaults to true so home, which has no rank to read, is untouched.
+  const canEdit = props.canEdit ?? true;
 
   const scopeChip = (() => {
     if (props.card.scope.kind === "all") return tr("dashboard.scope.all");
+    if (
+      props.boardProjectId !== undefined &&
+      props.card.scope.kind === "projects" &&
+      (props.card.scope.projectIds ?? []).length === 1 &&
+      props.card.scope.projectIds?.[0] === props.boardProjectId
+    ) {
+      // The board's own project. See `boardProjectId`.
+      return undefined;
+    }
     const names = props.value?.scopeNames ?? [];
     if (names.length === 1) return names[0];
     if (names.length === 0) return undefined;
@@ -114,7 +141,7 @@ const DashboardCard = (props: DashboardCardProps) => {
     <div
       data-testid="dashboard-card"
       data-metric={props.card.metric}
-      draggable={props.armed || undefined}
+      draggable={(canEdit && props.armed) || undefined}
       onDragStart={props.onDragStart}
       onDragOver={props.onDragOver}
       onDrop={props.onDrop}
@@ -129,22 +156,32 @@ const DashboardCard = (props: DashboardCardProps) => {
       {/* A drag affordance, pointer-only by nature; the card it belongs to is reachable and actionable by keyboard on its own. */}
       {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
-        className="flex cursor-grab items-center gap-2 active:cursor-grabbing"
-        onMouseDown={props.onArm}
-        onMouseUp={props.onDisarm}
-        title={tr("dashboard.card.drag")}
+        className={cn(
+          "flex items-center gap-2",
+          canEdit && "cursor-grab active:cursor-grabbing",
+        )}
+        onMouseDown={canEdit ? props.onArm : undefined}
+        onMouseUp={canEdit ? props.onDisarm : undefined}
+        title={canEdit ? tr("dashboard.card.drag") : undefined}
       >
         <Icon className="text-muted-foreground size-3.5 shrink-0" />
         <span className="text-muted-foreground truncate text-[11.5px] font-medium tracking-[0.05em] uppercase">
           {tr(props.labelKey as never)}
         </span>
         <span className="flex-1" />
-        <GripVertical className="text-muted-foreground/45 size-[13px] shrink-0" />
-        <DashboardCardMenu
-          onChangeScope={props.onChangeScope}
-          onDuplicate={props.onDuplicate}
-          onRemove={props.onRemove}
-        />
+        {/* ⚠️ ABSENT without the permission, never disabled. A greyed handle
+            and a greyed kebab advertise a board this reader cannot curate;
+            the empty state says who can, once, instead. */}
+        {canEdit && (
+          <>
+            <GripVertical className="text-muted-foreground/45 size-[13px] shrink-0" />
+            <DashboardCardMenu
+              onChangeScope={props.onChangeScope}
+              onDuplicate={props.onDuplicate}
+              onRemove={props.onRemove}
+            />
+          </>
+        )}
       </div>
       <div className="flex flex-wrap gap-[5px]">
         {scopeChip && (

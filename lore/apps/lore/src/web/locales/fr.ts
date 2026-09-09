@@ -2131,6 +2131,13 @@ export default {
   "epic.quests.column.updated": "Mise à jour",
 
   // -- Tableau de bord (page d'accueil connectee) ---------------------------
+  "project.dashboard.title": "Tableau de bord",
+  "project.dashboard.standfirst": "$1 cartes sur le tableau du projet.",
+  "project.dashboard.standfirst.one": "1 carte sur le tableau du projet.",
+  "project.dashboard.standfirst.empty":
+    "Ce tableau est partage par tous les membres du projet.",
+  "project.dashboard.card.delete.shared":
+    "Le tableau appartient au projet : la carte disparait pour tout le monde.",
   "dashboard.greeting": "Bon retour, $1",
   "dashboard.standfirst": "$1 cartes.",
   "dashboard.standfirst.one": "1 carte.",
