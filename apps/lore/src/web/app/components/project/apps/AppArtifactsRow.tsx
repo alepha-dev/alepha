@@ -51,9 +51,21 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
   const size = (bytes: number) =>
     `${l(bytes / 1_000_000, { number: { maximumFractionDigits: 1 } })} MB`;
 
-  // One number for the tag, not one per variant: a release's weight is what
-  // its heaviest build weighs, since only one of them is ever deployed.
-  const heaviest = Math.max(...group.variants.map((variant) => variant.size));
+  // One number for the tag, not one per variant.
+  //
+  // ⚠️ It used to be `Math.max(...variants.map(v => v.size))` with the reason
+  // "a release's weight is what its heaviest build weighs, since only one of
+  // them is ever deployed". Both halves stopped being true: a variant may
+  // carry no size at all (an image's is best effort), which makes that
+  // `Math.max` return `NaN` and the cell read `NaN MB`; and an image is never
+  // the one deployed, so it is not what the sentence was about either.
+  //
+  // The heaviest of the variants that HAVE a size, and nothing at all when
+  // none does.
+  const sizes = group.variants
+    .map((variant) => variant.size)
+    .filter((it): it is number => it !== undefined);
+  const heaviest = sizes.length ? Math.max(...sizes) : undefined;
   // Same reasoning for the digest: the row names the tag, and the tag's newest
   // variant is what `pushedAt` already describes.
   const [newest] = group.variants;
@@ -84,8 +96,13 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
         {newest.sha256.slice(0, 12)}
       </span>
 
-      <span className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums">
-        {size(heaviest)}
+      <span
+        className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums"
+        title={
+          heaviest === undefined ? undefined : tr("app.artifacts.size.hint")
+        }
+      >
+        {heaviest === undefined ? "N/A" : size(heaviest)}
       </span>
 
       <span className="text-muted-foreground shrink-0 text-xs">

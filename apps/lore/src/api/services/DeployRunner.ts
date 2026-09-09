@@ -275,6 +275,15 @@ export class DeployRunner {
    * streaming unpack would be better and is not what the tar reader does.
    */
   protected async artifactBytes(artifact: Artifact): Promise<Uint8Array> {
+    // ⚠️ An image row stores a registry reference and no bytes at all, so
+    // there is nothing here to unpack. `DeployService` refuses one before a
+    // deployment row is ever created; this is the second wall, and it names
+    // the reason rather than dereferencing an absent `fileId`.
+    if (!artifact.fileId) {
+      throw new BadRequestError(
+        `${artifact.app} ${artifact.tag} is a container image (${artifact.reference ?? "no reference recorded"}), not a packed build: Lore stores its reference and never its bytes, so there is nothing to fetch and unpack.`,
+      );
+    }
     const file = await this.files.streamFile(artifact.fileId, {
       bucket: ArtifactService.BUCKET,
     });

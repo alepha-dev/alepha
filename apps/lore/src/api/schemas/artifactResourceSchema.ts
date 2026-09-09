@@ -25,7 +25,20 @@ export const artifactResourceSchema = z.object({
    * Lowercase hex, 64 characters. The artifact's identity.
    */
   sha256: z.string(),
-  size: z.integer(),
+  /**
+   * ⚠️ **Optional, and every surface has to render "no size".**
+   *
+   * An archive always has one. An image's is best effort: summed from the
+   * child manifest the registry client already held, so it costs no extra
+   * call, and absent whenever that document did not answer it. Where it IS
+   * present for an image it is ONE architecture's compressed total for a tag
+   * that may carry two.
+   *
+   * A sentinel `0` was rejected: this field is read by four surfaces and a
+   * value meaning "ignore me" is how one of them ends up printing `0 MB` as
+   * if it were a fact.
+   */
+  size: z.integer().optional(),
   /**
    * Absent when the pusher named no commit, which a laptop push never does.
    */

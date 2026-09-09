@@ -224,6 +224,188 @@ describe("a deployment", () => {
         }),
       ).rejects.toThrowError(/No such deployed copy/);
     });
+
+    /**
+     * ⚠️ The format dimension, on the path that would otherwise ship it as a
+     * deploy bug. `acceptedRuntimes("bay")` is `["node"]` and an image row
+     * carries a real `runtime`, so before this filter Lore's own `node` IMAGE
+     * was selectable for a Bay deploy and failed downstream with no useful
+     * message.
+     */
+    describe("the format gate", () => {
+      /**
+       * A copy on a lent Bay estate, so `acceptedRuntimes` is `["node"]` and
+       * a node artifact of either format is a candidate as far as `runtime`
+       * is concerned.
+       */
+      const onBay = async () => {
+        const w = await world();
+        const rows = alepha.inject(TestRows);
+        const estate = await rows.estates.create({
+          ownerUserId: w.user.id,
+          type: "bay",
+          slug: `bay-${crypto.randomUUID().slice(0, 6)}`,
+          deployAllowed: true,
+          credentialStatus: "valid",
+        } as never);
+        await rows.grants.create({
+          estateId: estate.id,
+          projectId: w.project.id,
+        });
+        await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+        return { ...w, rows };
+      };
+
+      it("admits a node archive and a node image under one tag", async ({
+        expect,
+      }) => {
+        // The widened unique key, from the other side: two rows that differ
+        // only in `format` both insert. Before it, the second was a conflict.
+        const { project, rows } = await onBay();
+
+        await rows.artifacts.create({
+          projectId: project.id,
+          app: "my-app",
+          tag: "0.30.0",
+          runtime: "node",
+          format: "archive",
+          sha256: "a".repeat(64),
+          size: 10,
+          fileId: crypto.randomUUID(),
+        } as never);
+        await rows.artifacts.create({
+          projectId: project.id,
+          app: "my-app",
+          tag: "0.30.0",
+          runtime: "node",
+          format: "image",
+          reference: "ghcr.io/acme/my-app:0.30.0",
+          sha256: "b".repeat(64),
+        } as never);
+
+        const both = await rows.artifacts.findMany({
+          where: { projectId: { eq: project.id }, tag: { eq: "0.30.0" } },
+        });
+        expect(both).toHaveLength(2);
+      });
+
+      it("deploys the archive, never the image, when a tag carries both", async ({
+        expect,
+      }) => {
+        const { project, instance, rows } = await onBay();
+
+        const archive = await rows.artifacts.create({
+          projectId: project.id,
+          app: "my-app",
+          tag: "0.30.0",
+          runtime: "node",
+          format: "archive",
+          sha256: "a".repeat(64),
+          size: 10,
+          fileId: crypto.randomUUID(),
+        } as never);
+        await rows.artifacts.create({
+          projectId: project.id,
+          app: "my-app",
+          tag: "0.30.0",
+          runtime: "node",
+          format: "image",
+          reference: "ghcr.io/acme/my-app:0.30.0",
+          sha256: "b".repeat(64),
+        } as never);
+
+        const row = await alepha.inject(DeployService).queue({
+          projectId: project.id,
+          instanceId: instance.id,
+          tag: "0.30.0",
+        });
+
+        // The row names the tarball, not the reference - and `sha256` is what
+        // the run later looks the artifact back up by.
+        expect(row.artifactId).toBe(archive.id);
+        expect(row.sha256).toBe("a".repeat(64));
+      });
+
+      it("refuses an image-only tag by name, not by 'no artifact tagged'", async ({
+        expect,
+      }) => {
+        // ⚠️ The refusal an operator who just pushed an image has to read.
+        // Filtering inside the query would tell them the tag does not exist.
+        const { project, instance, rows } = await onBay();
+
+        await rows.artifacts.create({
+          projectId: project.id,
+          app: "my-app",
+          tag: "0.30.0",
+          runtime: "node",
+          format: "image",
+          reference: "ghcr.io/acme/my-app:0.30.0",
+          sha256: "b".repeat(64),
+        } as never);
+
+        await expect(
+          alepha.inject(DeployService).queue({
+            projectId: project.id,
+            instanceId: instance.id,
+            tag: "0.30.0",
+          }),
+        ).rejects.toThrowError(
+          /exists only as a container image \(ghcr\.io\/acme\/my-app:0\.30\.0\)/,
+        );
+
+        // And nothing was written: a queued row for a deploy that can never
+        // run is a row somebody has to explain.
+        expect(await rows.deployments.findMany({})).toEqual([]);
+      });
+
+      it("never reports 'node, node' when the wrong-variant refusal fires", async ({
+        expect,
+      }) => {
+        // A Cloudflare estate, a node archive and a node image. The refusal
+        // lists the ARCHIVE runtimes, so it reads `node` once.
+        const w = await world();
+        const rows = alepha.inject(TestRows);
+        const estate = await rows.estates.create({
+          ownerUserId: w.user.id,
+          type: "cloudflare",
+          slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
+          deployAllowed: true,
+          credentialStatus: "valid",
+          accountId: "acct",
+          credential: "sealed",
+        } as never);
+        await rows.grants.create({
+          estateId: estate.id,
+          projectId: w.project.id,
+        });
+        await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+
+        for (const [format, sha, extra] of [
+          ["archive", "a", { size: 10, fileId: crypto.randomUUID() }],
+          ["image", "b", { reference: "ghcr.io/acme/my-app:0.30.0" }],
+        ] as const) {
+          await rows.artifacts.create({
+            projectId: w.project.id,
+            app: "my-app",
+            tag: "0.30.0",
+            runtime: "node",
+            format,
+            sha256: sha.repeat(64),
+            ...extra,
+          } as never);
+        }
+
+        await expect(
+          alepha.inject(DeployService).queue({
+            projectId: w.project.id,
+            instanceId: w.instance.id,
+            tag: "0.30.0",
+          }),
+        ).rejects.toThrowError(
+          "my-app@0.30.0 has no `workerd` build. Run `lore apps build --tag 0.30.0 --env <env>`, then `lore artifacts push`.",
+        );
+      });
+    });
   });
 
   describe("the sigil a build asks for", () => {
@@ -901,6 +1083,42 @@ describe("the runtime gate", () => {
         available: ["workerd"],
       }),
     ).toThrowError(/has no `node` build/);
+  });
+
+  it("names the image, and never says the tag does not exist", ({ expect }) => {
+    // ⚠️ The whole reason the deploy path filters AFTER the query. Reading
+    // only archives would answer "has no artifact tagged '0.30.0'. Push one
+    // with `lore artifacts push`" - a lie told to somebody who pushed one
+    // thirty seconds ago, sending them to push it again.
+    const gate = alepha.inject(DeployGate);
+
+    expect(() =>
+      gate.assertDeployable({
+        estate: bayEstate,
+        app: "panda",
+        tag: "0.30.0",
+        images: ["ghcr.io/acme/panda:0.30.0"],
+      }),
+    ).toThrowError(
+      "panda@0.30.0 exists only as a container image (ghcr.io/acme/panda:0.30.0), and Lore cannot deploy an image: estate 'vps' (bay) runs `node` from a packed build. Push one with `lore artifacts push`.",
+    );
+  });
+
+  it("still refuses when the image row carries no reference to show", ({
+    expect,
+  }) => {
+    const gate = alepha.inject(DeployGate);
+
+    expect(() =>
+      gate.assertDeployable({
+        estate: cloudflareEstate,
+        app: "panda",
+        tag: "0.30.0",
+        images: [undefined],
+      }),
+    ).toThrowError(
+      "panda@0.30.0 exists only as a container image, and Lore cannot deploy an image: estate 'zug' (cloudflare) runs `workerd` from a packed build. Push one with `lore artifacts push`.",
+    );
   });
 });
 

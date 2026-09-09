@@ -124,10 +124,25 @@ export class EstatePullController {
         throw this.refused();
       }
 
-      const file = await this.files.streamFile(artifact.fileId, {
+      // ⚠️ An image row has no `fileId` and often no `size`: Lore records a
+      // registry reference and never the bytes. Nothing should ever queue a
+      // deploy command naming one (`EstateCommandController` refuses it, and
+      // so does `DeployService`), so reaching here means a row changed shape
+      // under a queued command - which is the same fact `refused()` already
+      // states, and it stays opaque for the same reason.
+      const { fileId, size } = artifact;
+      if (!fileId || size === undefined) {
+        this.log.warn("Artifact pull refused: the row stores no bytes", {
+          commandId: command.id,
+          format: artifact.format,
+        });
+        throw this.refused();
+      }
+
+      const file = await this.files.streamFile(fileId, {
         bucket: ArtifactService.BUCKET,
       });
-      reply.setHeader("content-length", String(artifact.size));
+      reply.setHeader("content-length", String(size));
       reply.setHeader("x-artifact-sha256", artifact.sha256);
       reply.setHeader("cache-control", "no-store");
       return file;
