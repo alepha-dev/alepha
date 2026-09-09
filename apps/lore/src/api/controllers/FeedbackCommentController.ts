@@ -19,6 +19,7 @@ import { feedbackComments } from "../entities/feedbackComments.ts";
 import { projects } from "../entities/projects.ts";
 import { feedbackCommentResourceSchema } from "../schemas/feedbackCommentResourceSchema.ts";
 import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
+import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
@@ -57,6 +58,7 @@ export class FeedbackCommentController {
   projects = $repository(projects);
   audits = $inject(LoreAudits);
   mentions = $inject(MentionNotifier);
+  reporterNotifier = $inject(FeedbackNotifier);
   security = $inject(ProjectSecurityService);
   dt = $inject(DateTimeProvider);
 
@@ -205,13 +207,29 @@ export class FeedbackCommentController {
       // Here rather than at the HTTP layer, because
       // `FeedbackTools.feedback_comment_add` calls this method directly, and
       // the MCP path is the one where the author is usually a member.
-      if (await this.security.isMember(row.projectId, user)) {
-        await this.mentions.notify({
-          subject: await this.mentionSubject(row),
-          authorId: user.id,
-          body: body.body,
-        });
-      }
+      // ⚠️ The mention pass is member-only and the reporter pass is not, so
+      // they cannot be folded together. A reporter submitted through
+      // `/:projectSlug/request`, which asks for an account and not for
+      // membership, so `MentionNotifier` can never reach one who is not a
+      // member - which is most of them, and the whole gap #P2165 reported.
+      const mentioned = (await this.security.isMember(row.projectId, user))
+        ? await this.mentions.notify({
+            subject: await this.mentionSubject(row),
+            authorId: user.id,
+            body: body.body,
+          })
+        : [];
+
+      // Second, and given what the first reached: a comment that both answers
+      // a report and writes its author's name is one event, so the reporter
+      // gets the mention OR the answer, never both.
+      await this.reporterNotifier.commented({
+        feedback: row,
+        authorId: user.id,
+        authorName: user.username ?? "",
+        body: body.body,
+        alreadyNotified: mentioned,
+      });
 
       const [resource] = await this.withAuthors([created]);
       return resource;

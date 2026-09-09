@@ -1842,6 +1842,11 @@ export default {
   "account.notifications.categories.description":
     "These apply to both channels.",
   "account.notifications.saveFailed": "Could not save your preferences.",
+  // ⚠️ Read by `categoryLabel`, which derives the key from the category a
+  // template registers. A category with no key here renders as its raw name.
+  "account.notifications.category.feedback": "Your reports",
+  "account.notifications.category.feedback.description":
+    "When a project accepts, rejects or answers a report you submitted.",
   "account.notifications.category.mentions": "Mentions",
   "account.notifications.category.mentions.description":
     "Somebody writes your name in a quest or feedback comment.",

@@ -72,6 +72,13 @@ export class MentionNotifier {
    *
    * Never throws: a comment that saved must not fail because a message could
    * not be queued.
+   *
+   * Returns the user ids it wrote to, so a second sender on the same comment
+   * can stand down rather than send a second message about one event -
+   * `FeedbackNotifier` uses it for a comment that both answers a report and
+   * `@mentions` its author. Empty on the cheap gate and on failure, which is
+   * the safe direction either way: the worst case is the message this returns
+   * nothing about being sent twice, never a message not sent at all.
    */
   public async notify(options: {
     subject: MentionSubject;
@@ -82,10 +89,10 @@ export class MentionNotifier {
      * matched handle new.
      */
     previousBody?: string;
-  }): Promise<void> {
+  }): Promise<string[]> {
     try {
       // The cheap gate, before any query. See the class docstring.
-      if (!options.body.includes("@")) return;
+      if (!options.body.includes("@")) return [];
 
       const roster = await this.roster.of(options.subject.projectId);
       const author = roster.find((it) => it.userId === options.authorId);
@@ -94,7 +101,7 @@ export class MentionNotifier {
       const recipients = roster.filter(
         (it) => it.userId !== options.authorId && it.email,
       );
-      if (recipients.length === 0) return;
+      if (recipients.length === 0) return [];
 
       const now = this.mentioned(options.body, recipients);
       const before = options.previousBody
@@ -107,12 +114,15 @@ export class MentionNotifier {
       for (const recipient of added) {
         await this.push(options.subject, author, recipient, options.body);
       }
+
+      return added.map((it) => it.userId);
     } catch (error) {
       this.log.error("Failed to deliver mentions for a comment", {
         projectId: options.subject.projectId,
         reference: options.subject.reference,
         error,
       });
+      return [];
     }
   }
 
