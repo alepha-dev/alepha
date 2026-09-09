@@ -52,10 +52,11 @@ covers more than it does.
 
 ## Working on Bay
 
-⚠️ **`yarn v` does not run any of this.** It is the JavaScript pipeline; a
-green `yarn v` says nothing about the Go. The Go lane is its own command, and
-it runs in a Linux container because that is the only place the whole suite
-compiles:
+⚠️ **`yarn v` does not run any of this.** It is the JavaScript inner loop; a
+green `yarn v` says nothing about the Go. CI's `bay` job does run it on every
+branch push, so the push covers you - but the Go lane is its own command for
+the tighter loop, and it runs in a Linux container because that is the only
+place the whole suite compiles:
 
 ```bash
 yarn v:go     # gofmt, vet, build, tests, cross-compile - reproduces the CI job
