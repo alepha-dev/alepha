@@ -4,7 +4,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Check } from "lucide-react";
 
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
-import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
+import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
 import {
   type DashboardBoard,
   DashboardMetricCatalog,
@@ -29,6 +29,20 @@ export interface DashboardScopeApp {
   beacon: boolean;
 }
 
+/**
+ * The four fields a scope picker reads off a project.
+ *
+ * ⚠️ Narrowed rather than taking a whole resource, because the two boards hand
+ * it different ones: home passes `ProjectOverviewResource` (which carries
+ * `openQuestCount`) and a project board passes the `currentProjectAtom`
+ * resource (which carries `rank` and `permissions`). Neither is assignable to
+ * the other, and this picker needs nothing either of them adds.
+ */
+export type DashboardScopeProject = Pick<
+  ProjectResource,
+  "id" | "title" | "icon" | "capabilities"
+>;
+
 export interface DashboardScopeStepProps {
   metric: DashboardMetricDescriptor;
   /**
@@ -36,7 +50,7 @@ export interface DashboardScopeStepProps {
    * offered: inside a project, `projects` and `all` are not choices.
    */
   board: DashboardBoard;
-  projects: ProjectOverviewResource[];
+  projects: DashboardScopeProject[];
   apps: DashboardScopeApp[];
   scope: DashboardScope;
   onChange: (scope: DashboardScope) => void;

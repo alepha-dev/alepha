@@ -15,7 +15,6 @@ import { useMemo, useState } from "react";
 
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
-import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 import {
   type DashboardBoard,
   DashboardMetricCatalog,
@@ -29,6 +28,7 @@ import { dashboardFilterFields } from "./dashboardFilterFields.ts";
 import DashboardFilterStep from "./DashboardFilterStep.tsx";
 import DashboardScopeStep, {
   type DashboardScopeApp,
+  type DashboardScopeProject,
 } from "./DashboardScopeStep.tsx";
 
 export interface DashboardCatalogueProps {
@@ -55,7 +55,7 @@ export interface DashboardCatalogueProps {
    */
   projectTags?: string[];
   cards: DashboardCardResource[];
-  projects: ProjectOverviewResource[];
+  projects: DashboardScopeProject[];
   apps: DashboardScopeApp[];
   /**
    * When set, the panel opens straight on the scope step for this card and

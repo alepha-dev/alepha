@@ -14,6 +14,16 @@ export interface DashboardGridProps {
    * The catalogue, by metric key, for each card's label and icon.
    */
   metrics: Map<string, DashboardMetricDescriptor>;
+  /**
+   * The project this board belongs to, on a project board. Drives the scope
+   * chip rule - see `DashboardCard.boardProjectId`.
+   */
+  boardProjectId?: number;
+  /**
+   * Whether the viewer may curate the board. `false` renders no add tile, no
+   * card menu and no drag handle. Defaults to true, so home is untouched.
+   */
+  canEdit?: boolean;
   onReorder: (ids: number[]) => void;
   onAdd: () => void;
   onChangeScope: (card: DashboardCardResource) => void;
@@ -56,6 +66,8 @@ const DashboardGrid = (props: DashboardGridProps) => {
   const resolvedValue = (cardId: number) =>
     props.values?.find((value) => value.cardId === cardId);
 
+  const canEdit = props.canEdit ?? true;
+
   const move = (from: number | undefined, to: number) => {
     setDragging(undefined);
     setOver(undefined);
@@ -87,6 +99,8 @@ const DashboardGrid = (props: DashboardGridProps) => {
             }
             icon={descriptor?.icon ?? "circle-dashed"}
             presentation={descriptor?.presentation}
+            boardProjectId={props.boardProjectId}
+            canEdit={canEdit}
             armed={armed === index}
             dragging={dragging === index}
             over={over === index && dragging !== index}
@@ -112,7 +126,7 @@ const DashboardGrid = (props: DashboardGridProps) => {
           />
         );
       })}
-      <DashboardAddTile onClick={props.onAdd} />
+      {canEdit && <DashboardAddTile onClick={props.onAdd} />}
     </div>
   );
 };
