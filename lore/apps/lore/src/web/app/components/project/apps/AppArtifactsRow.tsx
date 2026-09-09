@@ -1,3 +1,4 @@
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
 import { Cloud, Container, GitCommitHorizontal, Server } from "lucide-react";
@@ -132,9 +133,10 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
         {heaviest === undefined ? "N/A" : size(heaviest)}
       </span>
 
-      <span className="text-muted-foreground shrink-0 text-xs">
-        {String(l(group.pushedAt, { date: "fromNow" }))}
-      </span>
+      <TimeAgo
+        value={group.pushedAt}
+        className="text-muted-foreground shrink-0 text-xs"
+      />
 
       {group.commitSha && (
         <span

@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
   Dialog,
@@ -10,8 +11,7 @@ import {
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { type Page, z } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
-import { useAlepha, useClient, useInject, useStore } from "alepha/react";
+import { useAlepha, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
@@ -84,7 +84,6 @@ const ProjectBlights = () => {
   const canTriage = blightApi.resolveBlight.can();
   const toaster = useToast();
   const dialog = useDialog();
-  const dt = useInject(DateTimeProvider);
 
   const [stackView, setStackView] = useState<BlightResource | null>(null);
   // Sigil options for the "filter by sigil" dropdown, hydrated from the list
@@ -314,13 +313,15 @@ const ProjectBlights = () => {
           lastSeenAt: {
             label: tr("blights.col.lastSeen"),
             sortable: true,
+            // This column was the reference implementation - relative label,
+            // exact date on hover - and `TimeAgo` is that pattern extracted.
+            // Its own `title` went with the span: two titles means the outer
+            // one never shows.
             cell: (b) => (
-              <span
+              <TimeAgo
+                value={b.lastSeenAt}
                 className="text-muted-foreground whitespace-nowrap"
-                title={formatDate(b.lastSeenAt)}
-              >
-                {dt.of(b.lastSeenAt).fromNow()}
-              </span>
+              />
             ),
           },
         }}
@@ -471,14 +472,6 @@ const ProjectBlights = () => {
 };
 
 export default ProjectBlights;
-
-/**
- * Format an ISO timestamp for the `title` tooltip, falling back to raw.
- */
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
-};
 
 /**
  * Client-side sort over the deduped blight list. Supports the two sortable

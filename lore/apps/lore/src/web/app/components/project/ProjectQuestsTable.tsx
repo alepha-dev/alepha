@@ -4,6 +4,7 @@ import {
   type BulkMenuAction,
 } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import {
   Sheet,
@@ -831,18 +832,20 @@ const ProjectQuestsTable = () => {
             label: tr("board.table.created"),
             sortable: true,
             cell: (quest: QuestResource) => (
-              <span className="text-muted-foreground text-xs">
-                {dateFormatter.of(quest.createdAt).fromNow()}
-              </span>
+              <TimeAgo
+                value={quest.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
           updatedAt: {
             label: tr("board.table.updated"),
             sortable: true,
             cell: (quest: QuestResource) => (
-              <span className="text-muted-foreground text-xs">
-                {dateFormatter.of(quest.updatedAt).fromNow()}
-              </span>
+              <TimeAgo
+                value={quest.updatedAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
         }}

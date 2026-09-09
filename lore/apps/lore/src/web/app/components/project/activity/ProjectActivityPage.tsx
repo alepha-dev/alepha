@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { type Page, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -77,7 +78,7 @@ const activityFiltersSchema = z.object({
  * seek and not a scan.
  */
 const ProjectActivityPage = () => {
-  const { tr, l } = useI18n<I18n, "en">();
+  const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
   const projectApi = useClient<ProjectController>();
@@ -279,7 +280,7 @@ const ProjectActivityPage = () => {
                     : String(dt.of(row.createdAt).format("lll"))
                 }
               >
-                {String(l(row.createdAt, { date: "fromNow" }))}
+                <TimeAgo value={row.createdAt} />
               </span>
             ),
           },

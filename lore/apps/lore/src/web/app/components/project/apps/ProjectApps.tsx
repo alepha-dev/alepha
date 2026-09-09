@@ -1,5 +1,6 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Button } from "@alepha/ui/components/ui/button";
 import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
@@ -584,11 +585,17 @@ const ProjectApps = () => {
             // last, which `paginateLocal` does with a nullish value whichever
             // way the arrow points.
             sortValue: (instance) => instance.sigil?.lastSeenAt,
+            // ⚠️ Relative, with the exact datetime on hover. It rendered
+            // `lll` outright until feedback #P2174, which is four rows of
+            // "Sep 9, 2026 7:00 PM" and a reader subtracting dates by hand to
+            // answer the one question this column exists for: is this copy
+            // alive. The Blights table one page over had it right already.
             cell: (instance) =>
               instance.sigil?.lastSeenAt ? (
-                <span className="text-muted-foreground text-xs whitespace-nowrap">
-                  {String(l(instance.sigil.lastSeenAt, { date: "lll" }))}
-                </span>
+                <TimeAgo
+                  value={instance.sigil.lastSeenAt}
+                  className="text-muted-foreground text-xs whitespace-nowrap"
+                />
               ) : (
                 // Nothing, not a dash: a copy with no sigil never reports, so
                 // there is no last time rather than an unknown one.
