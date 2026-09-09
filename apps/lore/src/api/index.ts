@@ -33,6 +33,7 @@ import { KanbanController } from "./controllers/KanbanController.ts";
 import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
 import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
+import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
@@ -373,5 +374,9 @@ export const LoreApi = $module({
     InsightsController,
     BlightController,
     DashboardController,
+    // The project board. A second controller rather than a branch inside the
+    // one above: every path here hangs off `/projects/:projectId` and is
+    // gated by `$ownsProject`, where home's hang off `/me` and cannot be.
+    ProjectDashboardController,
   ],
 });
