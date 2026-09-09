@@ -19,6 +19,7 @@ import {
 } from "../schemas/releaseCascadeSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
+import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { EpicDependencyService } from "../services/EpicDependencyService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
@@ -66,6 +67,12 @@ export class EpicController {
   linkService = $inject(FolioLinkService);
   attachment = $inject(ReleaseAttachmentService);
   cascade = $inject(ReleaseCascadeService);
+  /**
+   * Where an epic ships when nobody said (#E48). Read on the Begin edge only,
+   * and best effort: beginning an epic must never fail over a planning
+   * convenience.
+   */
+  defaults = $inject(DefaultReleaseService);
   dependencies = $inject(EpicDependencyService);
   /**
    * The epic phase gate (epic #31): the quest set can change only while the
@@ -425,13 +432,27 @@ export class EpicController {
    * no-op that writes nothing and logs nothing (`epic_set_status` is declared
    * idempotent).
    *
-   * ⚠️ Must not write to any quest row. Activating an epic releases its
-   * quests because the backlog gate (`EpicVisibilityService`) stops
-   * matching them, not because anything about them changed — this is the
-   * single most important invariant in this controller, and a terminal
-   * `done` is the transition most tempted to break it by "stamping" the
-   * quests. See `EpicController.spec.ts`'s `updatedAt`-is-unchanged
-   * assertion.
+   * ⚠️ **Status is never written to a quest row, and that invariant is
+   * unchanged.** Activating an epic releases its quests because the backlog
+   * gate (`EpicVisibilityService`) stops matching them, not because anything
+   * about them changed - this is the single most important rule in this
+   * controller, and a terminal `done` is the transition most tempted to break
+   * it by "stamping" the quests. Nothing here touches `status`, `acceptedAt`,
+   * `shelvedAt` or the kanban column, on any edge.
+   *
+   * ⚠️ **One narrow carve-out, added by #E48 and deliberate.** An epic that
+   * names no release takes the project's DEFAULT release when it begins, and
+   * `ReleaseCascadeService` then writes that one column, `releaseId`, onto
+   * every quest of it that named none. That is the same cascade `updateEpic`
+   * already runs, on an edge that is a release move like any other; the
+   * alternative was an epic whose release disagrees with its own contents
+   * forever, which is the 0/0 card the "why Begin" note below describes. Do
+   * not delete the cascade to restore a rule whose point is the paragraph
+   * above: the rule is about a quest's STATUS, and this writes a release.
+   *
+   * `EpicController.spec.ts` pins both halves - a Begin with no default
+   * touches no quest row at all, and a Begin with one moves exactly the
+   * release-less quests.
    */
   setEpicStatus = $action({
     use: [this.ownsEpicForWork("epic:write")],
@@ -440,7 +461,18 @@ export class EpicController {
       body: z.object({
         status: z.enum(["planned", "active", "done"]),
       }),
-      response: epicResourceSchema,
+      /**
+       * The epic, plus what a Begin-attached release did to its quests.
+       *
+       * `releaseCascade` is present only when the default fired, so every
+       * other transition answers exactly what it answered before. Same shape
+       * `updateEpic` returns: an epic that silently acquires a release and
+       * moves nine quest rows is a bigger surprise than the one
+       * `quest_complete` reports.
+       */
+      response: epicResourceSchema.extend({
+        releaseCascade: releaseCascadeSchema.optional(),
+      }),
     },
     handler: async ({ params, body, user }) => {
       const epic = this.owned.get<Epic>();
@@ -462,6 +494,24 @@ export class EpicController {
         await this.workflow.assertCanConclude(epic);
       }
 
+      // ⚠️ Begin, and never Conclude. Attaching on Conclude produces an epic
+      // card that reads 0/0: its quests complete one at a time while the epic
+      // still names no release, each is stamped individually by
+      // `QuestController.attachToDefaultRelease` with whatever was default at
+      // the time, and the epic then concludes into a release holding none of
+      // its own work. Attaching on Begin inverts it - the epic names a
+      // release from the moment work can start, the cascade below writes it
+      // onto every quest that named none, and the completion rule then finds
+      // an explicit release on each and leaves it alone.
+      //
+      // Best effort: `openDefault` answers `undefined` for a project with no
+      // default, for one whose default has been published, and for a read
+      // that failed. Beginning an epic must never fail over this.
+      const releaseId =
+        body.status === "active" && epic.releaseId == null
+          ? (await this.defaults.openDefault(epic.projectId))?.id
+          : undefined;
+
       const updated = await this.epics.updateById(params.id, {
         status: body.status,
         ...(body.status === "active"
@@ -470,13 +520,35 @@ export class EpicController {
         ...(body.status === "done"
           ? { completedAt: this.dt.nowISOString() }
           : {}),
+        ...(releaseId != null ? { releaseId } : {}),
       });
+
+      // AFTER the epic's own write, for the reason `updateEpic` gives: there
+      // is no transaction here, so the other order can leave quests pointing
+      // at a release the epic is not in, and catching cannot undo it.
+      //
+      // ⚠️ `previous` is `null`, and that is load-bearing. The epic named no
+      // release, so the follower test (`current === null || current ===
+      // previous`) selects exactly the quests that name nothing. A quest
+      // given an explicit release while the epic was being planned is counted
+      // in `kept` and keeps its own - the deliberate cross-release state
+      // `release-contents.spec.ts` pins, which the cascade must not eat here
+      // any more than anywhere else.
+      const cascade =
+        releaseId != null
+          ? await this.cascade.toQuests(updated, null, releaseId)
+          : undefined;
+
       await this.logEpic("status", updated, user, {
         from: epic.status,
         to: body.status,
+        ...(cascade ? { cascade } : {}),
       });
 
-      return await this.buildEpicResource(updated);
+      return {
+        ...(await this.buildEpicResource(updated)),
+        ...(cascade ? { releaseCascade: cascade } : {}),
+      };
     },
   });
 
