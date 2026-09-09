@@ -73,9 +73,9 @@ build says so in its manifest, and a deploy mints the copy's sigil and writes
 terminal and never in a response.
 
 ```bash
-lore apps deploy --env production           # a sigil appears, if the build asks
-lore apps deploy --env production --no-sigil   # it does not
-lore apps deploy --env production --sigil      # it does, even for a silent build
+lore deploy                # a sigil appears, if the build asks
+lore deploy --no-sigil     # it does not
+lore deploy --sigil        # it does, even for a silent build
 ```
 
 ⚠️ **Only a fresh sigil can be stored.** A sigil is kept as a hash, so Lore
@@ -138,14 +138,21 @@ for anything you intend to promote.
 From a terminal:
 
 ```bash
-lore apps deploy --env production
+lore deploy
 ```
 
 With no `--tag`, that builds, pushes and deploys, in that order. It is the inner
 loop, where rebuilding is exactly what you want.
 
+⚠️ **No `--env` either, when the app has one copy.** The command asks Lore which
+copies of this app exist: one, and it takes it. Several, and it refuses rather
+than guessing, naming them - `docs has production, preview. Pass --env <name>.`
+An explicit `--env` or `LORE_ENV` always wins over that.
+
+`lore apps deploy` is the same command spelled longer, and keeps working.
+
 ```bash
-lore apps deploy --env production --tag 1.2.3
+lore deploy --env production --tag 1.2.3
 ```
 
 With a tag, it deploys the **stored** build and **never** builds one. If no
@@ -186,9 +193,9 @@ lore apps destroy --env staging --confirm my-app/staging
 ```
 
 ⚠️ **Both flags are required and neither has a default.** `--env` does not fall
-back to `LORE_ENV` or to the project's default environment the way every other
-command does: on a command that deletes things, a forgotten flag would mean
-destroying production without the word appearing anywhere. And the confirmation
+back to `LORE_ENV`, and it does not take the app's only environment the way
+`lore deploy` does: on a command that deletes things, a forgotten flag would
+mean destroying production without the word appearing anywhere. And the confirmation
 is typed rather than composed, so naming the wrong environment fails the check
 instead of confirming itself. There is no `--yes`.
 
