@@ -111,6 +111,7 @@ import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
 import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
 import { TrelloParser } from "./services/parsers/TrelloParser.ts";
+import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
@@ -284,6 +285,10 @@ export const LoreApi = $module({
     // here as well as in `LoreWebApp`.
     DashboardScopeService,
     DashboardCardService,
+    // The project board's own storage. A second table rather than a branch
+    // inside the one above: the configuration belongs to the project, so
+    // every query here names a project and none of them names a user.
+    ProjectDashboardCardService,
     DailyVisitorsService,
     // One resolver per metric, plus the registry that groups a card list by
     // metric so N cards on one metric stay one query.
