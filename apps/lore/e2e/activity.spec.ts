@@ -6,14 +6,15 @@ import {
 } from "./_helpers.ts";
 
 /**
- * The Activity page, and the fact that it is the project's landing page.
+ * The Activity page, at `/activity`.
  *
- * The second half is the one that needs an e2e. Which component a route
- * renders is a unit concern, but "a bare `/:projectSlug` opens Activity and
- * not the quest list" is a claim about the real router, the real sidebar and
- * the real project layout, and it is the claim the whole change rests on.
- * `test/dashboard-links.spec.ts` pins the quest list's new path from the
- * other side.
+ * ⚠️ It held the project root until #Q2104 and does not any more - the
+ * dashboard does. What that first half of this spec is for is unchanged
+ * though: which component a route renders is a unit concern, but "the page at
+ * this path is the feed, and the URL does not move under the reader" is a
+ * claim about the real router, the real sidebar and the real project layout.
+ * `e2e/dashboard.spec.ts` pins the root's own destination from the other
+ * side.
  *
  * Since the page became an `AlephaTable` over scoped `audits` rows, the last
  * step also pins the half that no unit test can: that a filter is answered by
@@ -21,9 +22,7 @@ import {
  * real request proves it was honoured.
  */
 test.describe("Activity", () => {
-  test("is what a bare project URL opens, and reports what moved", async ({
-    page,
-  }) => {
+  test("lives at /activity, and reports what moved", async ({ page }) => {
     test.setTimeout(120_000);
 
     const t = Date.now();
@@ -88,8 +87,11 @@ test.describe("Activity", () => {
     });
 
     await test.step("the sidebar entry goes back to Activity", async () => {
-      await page.locator(`a[href="/${slug}"]`).first().click();
-      await page.waitForURL(`**/${slug}`, { timeout: 15_000 });
+      // ⚠️ `/activity`, not the bare slug: that href is the DASHBOARD's since
+      // #Q2104, and clicking it would leave this spec asserting Activity's
+      // breadcrumb on the board.
+      await page.locator(`a[href="/${slug}/activity"]`).first().click();
+      await page.waitForURL(`**/${slug}/activity`, { timeout: 15_000 });
       // The breadcrumb leaf again, for the reason given on the first step.
       await expect(
         page

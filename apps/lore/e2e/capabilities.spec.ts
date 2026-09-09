@@ -157,6 +157,7 @@ test.describe("Project capabilities", () => {
 
     expect(await navHrefs(page, slug)).toEqual([
       "/",
+      "/activity",
       "/apps",
       "/artifacts",
       "/reports",
