@@ -255,7 +255,8 @@ export class EpicTools {
    */
   epic_set_status = $tool({
     description:
-      "Move an epic forward through its lifecycle, one way: 'planned' to 'active' (Begin), then 'active' to 'done' (Conclude). Every other edge is refused: 'done' is terminal, and the way forward from a concluded epic is a new epic with dependsOn_number pointing at it; an active epic cannot return to planning, since its quest set is frozen. Asking for the status the epic already has is a no-op. Begin stamps activatedAt, Conclude stamps completedAt. Never writes to any quest row: Begin releases the epic's quests because the backlog gate stops matching them.",
+      "Move an epic forward through its lifecycle, one way: 'planned' to 'active' (Begin), then 'active' to 'done' (Conclude). Every other edge is refused: 'done' is terminal, and the way forward from a concluded epic is a new epic with dependsOn_number pointing at it; an active epic cannot return to planning, since its quest set is frozen. Asking for the status the epic already has is a no-op. Begin stamps activatedAt, Conclude stamps completedAt. " +
+      "Begin releases the epic's quests because the backlog gate stops matching them, and never by changing anything about their status. ⚠️ It does write ONE column on them: an epic that names no release takes the project's DEFAULT release (see release_set_default) when it begins, and that release is carried down to every quest of the epic that named none - a quest that named its own keeps it. When that happens the result carries `releaseCascade` with what moved, what was kept and what was refused.",
     title: "Set epic status",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
