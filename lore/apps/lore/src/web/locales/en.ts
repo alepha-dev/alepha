@@ -593,26 +593,12 @@ export default {
   "project.settings.nav.members": "Members",
   "project.settings.nav.group.capabilities": "Capabilities",
   "project.settings.nav.areas": "Areas",
+  "project.settings.data.export.failed": "Export failed",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
     "Download all quests in this project as a CSV file.",
   "project.settings.data.export.button": "Export Quests",
-  "project.settings.data.import.title": "Import quests",
-  "project.settings.data.import.subtitle":
-    "Upload a CSV exported from Lore or Trello. Existing quests with the same shortId are updated; others are created.",
-  "project.settings.data.import.choose": "Import Quests",
-  "project.settings.data.import.preview.title": "Import preview",
-  "project.settings.data.import.preview.body":
-    "$1 row(s) detected in $2. Existing quests with matching shortId will be updated; new rows will be created.",
-  "project.settings.data.import.preview.confirm": "Import",
-  "project.settings.data.import.preview.cancel": "Cancel",
-  "project.settings.data.import.preview.empty":
-    "No data rows detected. The file appears to contain only a header.",
-  "project.settings.data.import.result":
-    "Imported $1 quests ($2 updated, $3 skipped)",
-  "project.settings.data.import.details": "View details",
-  "project.settings.data.import.error.title": "Import failed",
   // ── Capabilities ────────────────────────────────────────────────────────
   // The four product surfaces a project composes, and the switches inside
   // each. Labels move; the persisted keys never do.
