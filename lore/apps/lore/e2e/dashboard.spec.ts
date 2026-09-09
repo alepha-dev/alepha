@@ -369,10 +369,13 @@ test.describe("Project dashboard", () => {
 
     await test.step("a fresh project's board is empty, with the way in on screen", async () => {
       // Nothing seeds, so this is the first impression rather than a corner
-      // case. Asserted as the empty state plus the Add tile, never as a card
-      // count that a seeder could satisfy.
+      // case. Asserted as the empty state plus the header's Add card button,
+      // never as a card count that a seeder could satisfy. The dashed Add
+      // tile that used to be the second half of this assertion was deleted
+      // with feedback #P2168: an empty board says what a board is for, and
+      // the way in is the one button in the header.
       await expect(page.getByTestId("dashboard-card")).toHaveCount(0);
-      await expect(page.getByTestId("dashboard-add-tile")).toBeVisible();
+      await expect(page.getByTestId("dashboard-add")).toBeVisible();
       await expect(page.getByTestId("dashboard-empty-docs")).toBeVisible();
     });
 
@@ -386,7 +389,7 @@ test.describe("Project dashboard", () => {
     await test.step("a card added through the wizard is still there after a reload", async () => {
       await page.goto(`/${slug}`);
       await page.waitForLoadState("networkidle");
-      await page.getByTestId("dashboard-add-tile").click();
+      await page.getByTestId("dashboard-add").click();
       await expect(page.getByTestId("dashboard-catalogue")).toBeVisible({
         timeout: 10_000,
       });
@@ -455,7 +458,7 @@ test.describe("Project dashboard", () => {
       await test.step("the owner fills the board and invites a reader", async () => {
         await page.goto(`/${slug}`);
         await page.waitForLoadState("networkidle");
-        await page.getByTestId("dashboard-add-tile").click();
+        await page.getByTestId("dashboard-add").click();
         await page
           .locator(
             '[data-testid="dashboard-catalogue-row"][data-metric="heldQuests"]',
@@ -548,9 +551,6 @@ test.describe("Project dashboard", () => {
         // cannot curate, which is exactly what the empty state says once
         // instead.
         await expect(reader.page.getByTestId("dashboard-add")).toHaveCount(0);
-        await expect(reader.page.getByTestId("dashboard-add-tile")).toHaveCount(
-          0,
-        );
         await expect(
           reader.page.getByRole("button", { name: /card options/i }),
         ).toHaveCount(0);
