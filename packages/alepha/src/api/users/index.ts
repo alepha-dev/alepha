@@ -1,4 +1,5 @@
 import { $module } from "alepha";
+import { AlephaCacheDatabase } from "alepha/cache/database";
 
 import { SessionAudits } from "./audits/SessionAudits.ts";
 import { UserAudits } from "./audits/UserAudits.ts";
@@ -109,6 +110,17 @@ export * from "./storage/UserStorage.ts";
  */
 export const AlephaApiUsers = $module({
   name: "alepha.api.users",
+  /**
+   * ⚠️ **Declared, though injecting `DatabaseCacheProvider` already registers
+   * it.** Alepha registers a service's own module on first injection, so this
+   * module has always pulled `alepha.cache.database` in as a side effect of
+   * one field initializer deep in a service. Since #Q2151 that incidental
+   * registration decides the Cloudflare cache backend for the whole app -
+   * `CloudflareCacheProvider` picks the database cache exactly when the
+   * container has one - and a dependency that load-bearing must not rest on
+   * a line somebody could tidy away.
+   */
+  imports: [AlephaCacheDatabase],
   services: [
     RealmProvider,
     SessionService,

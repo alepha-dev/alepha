@@ -8,6 +8,7 @@ import { MemoryCacheProvider } from "./providers/MemoryCacheProvider.ts";
 
 export * from "./primitives/$cache.ts";
 export * from "./providers/CacheProvider.ts";
+export * from "./providers/CloudflareCacheProvider.ts";
 export * from "./providers/CloudflareKVProvider.ts";
 export * from "./providers/MemoryCacheProvider.ts";
 

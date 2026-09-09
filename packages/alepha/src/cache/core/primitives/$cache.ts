@@ -162,9 +162,16 @@ export interface CachePrimitiveOptions<
    *   `provider: DatabaseCacheProvider` to keep one cache in SQL while the
    *   rest of the app uses Cloudflare KV).
    * - `undefined` — falls back to whatever is bound to `CacheProvider` in
-   *   the container. On Cloudflare workers this is
-   *   {@link CloudflareKVProvider} by default; on Node it's
-   *   {@link MemoryCacheProvider}.
+   *   the container. On Node that is {@link MemoryCacheProvider}. On
+   *   Cloudflare Workers it is `CloudflareCacheProvider`, which resolves at
+   *   `start` to the **database cache when the container has one** and to
+   *   {@link CloudflareKVProvider} only when it does not.
+   *
+   * ⚠️ **The Cloudflare default was KV unconditionally until #Q2151.** On an
+   * app with a database that was 500x the read cost, eventual instead of
+   * strong consistency, a 60 second TTL floor, and an `incr` that can lose an
+   * update under concurrency. Anything you read describing KV as "the
+   * Cloudflare default" predates that.
    *
    * Note: passing an *abstract* class works because Alepha's DI resolves
    * through substitutions, e.g. `alepha.with({ provide: CacheProvider, use:

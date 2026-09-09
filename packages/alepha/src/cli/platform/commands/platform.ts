@@ -1031,12 +1031,23 @@ export class PlatformCommand {
 
     try {
       // Provision KV only when the user actually wants it: a `$cache` declared
-      // *without* an explicit `provider` falls back to the runtime default
-      // (CloudflareKVProvider on workerd). Any explicit choice — `"memory"`,
-      // `DatabaseCacheProvider`, a Redis provider, or a custom one — opts out
-      // of the platform default and therefore should not trigger KV
-      // provisioning. See platform.ts hasKV docs and `$cache.options.provider`.
+      // *without* an explicit `provider` falls back to the runtime default.
+      // Any explicit choice — `"memory"`, `DatabaseCacheProvider`, a Redis
+      // provider, or a custom one — opts out of the platform default and
+      // therefore should not trigger KV provisioning.
+      //
+      // ⚠️ Since #Q2151 the workerd default is `CloudflareCacheProvider`, so
+      // the fallback is KV only for an app with NO database cache. Same rule
+      // as `BuildManifestTask`, and for the same reason the queue rule below
+      // says so: the two must agree or `plan` lies about what `up` will
+      // create.
+      let hasDatabaseCache = false;
+      try {
+        hasDatabaseCache = !!alepha.inject("DatabaseCacheProvider");
+      } catch {}
+
       hasKV =
+        !hasDatabaseCache &&
         alepha
           .primitives("cache")
           .filter((it: any) => it.options?.provider == null).length > 0;
