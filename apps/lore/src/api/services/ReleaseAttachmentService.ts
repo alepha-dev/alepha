@@ -16,6 +16,14 @@ import { type Release, releases } from "../entities/releases.ts";
  * shape of the 13-endpoint precondition bug `EpicVisibilityService` exists to
  * prevent: the copies drift, and the one that was forgotten is the one nobody
  * looks at.
+ *
+ * ⚠️ **One write path deliberately does not come through here**, and it is
+ * not an oversight: `QuestController.attachToDefaultRelease` (#E48) puts a
+ * finished quest in the project's default release, and must never refuse the
+ * completion. This service throws by design, which is right for every caller
+ * that is doing what the user asked and wrong for one doing a planning
+ * convenience on the side. It reads the release row and branches instead, and
+ * the guard it keeps is the same one: a published release is left alone.
  */
 export class ReleaseAttachmentService {
   releases = $repository(releases);
