@@ -330,6 +330,46 @@ export interface AlephaTableEmptyState {
 }
 
 /**
+ * Which of the preferences {@link AlephaTableBaseProps.persistenceKey} stores
+ * are actually stored.
+ *
+ * Every facet defaults to ON, so a table that sets a key and nothing else
+ * behaves exactly as it always has. Only name the ones you want OFF.
+ *
+ * The facets are genuinely different kinds of preference, which is why one
+ * switch over all three was the wrong shape. Column layout and sort are what
+ * a reader arranged and expects to find again; a filter is what they were
+ * looking for last time, and restoring it opens the page narrowed by a
+ * question they have already answered - the hazard
+ * {@link AlephaTableFilters.seedValues} names as "landing on last week's
+ * stored filter".
+ *
+ * ⚠️ The footer's page SIZE is not one of these and is always stored with the
+ * key. It is a fourth thing, nothing has asked to separate it, and leaving it
+ * alone is what keeps this addition invisible to every existing caller.
+ *
+ * ⚠️ Read where `persistenceKey` is, so treat it as static per call site.
+ * Turning a facet off does not delete what it previously wrote: the stored
+ * value is simply never read again, because writing on mount is the bug the
+ * column and filter effects exist to avoid.
+ */
+export interface AlephaTablePersistedFacets {
+  /**
+   * The filter form's values. Off means the table opens unfiltered every
+   * time, whatever the reader last typed.
+   */
+  filters?: boolean;
+  /**
+   * Which columns are visible, and in what order.
+   */
+  columns?: boolean;
+  /**
+   * The sorted column and its direction.
+   */
+  sort?: boolean;
+}
+
+/**
  * High-level filter slot. AlephaTable creates the `useForm` internally,
  * wraps `render`'s output in a `<form>` element, persists values under
  * `persistenceKey` when set, and refetches on submit (and on every
@@ -577,8 +617,22 @@ export interface AlephaTableBaseProps<T> {
    * persisted to `localStorage` under this key. Pick a key that's
    * unique per page and per scope (e.g. `"admin.users"`,
    * `\`lor.board.${campaignId}\``).
+   *
+   * Narrow what it stores with {@link persist}.
    */
   persistenceKey?: string;
+  /**
+   * Which facets {@link persistenceKey} stores. All three by default, so this
+   * is only ever worth passing to turn one OFF.
+   *
+   * The case it exists for: a list whose column layout is worth remembering
+   * and whose filters are not. Lore's Apps page had to give up persistence
+   * entirely to avoid opening narrowed by last week's search, because the
+   * three were one switch.
+   *
+   * Ignored without a `persistenceKey`, which stores nothing either way.
+   */
+  persist?: AlephaTablePersistedFacets;
   /**
    * Hide the built-in column visibility dropdown in the toolbar.
    */
@@ -640,6 +694,24 @@ export interface AlephaTableBaseProps<T> {
    * Rich empty-state node rendered when the page is empty — e.g. an icon +
    * message + optional call-to-action. Replaces the whole thing, both states
    * included, so it outranks every prop above.
+   *
+   * ⚠️ **Only for a table with no {@link filters}.** Replacing both states
+   * with one node makes the table structurally incapable of telling them
+   * apart, whatever the node says: a filter that matched nothing renders the
+   * "there is nothing here" message, with the filter that produced it still
+   * sitting in the toolbar above. Lore's Apps page shipped exactly that and
+   * offered to create the first app to a reader who had just searched for
+   * one (feedback #P2160); its Releases page had the same defect, unreported
+   * only because nobody had filtered it to zero.
+   *
+   * With `filters` set, reach for {@link emptyState} and {@link noMatchState}
+   * instead. They take the same three pieces - `icon`, `title`,
+   * `description` - plus an `action` slot for the button, and the table keeps
+   * the choice between the two, which is the part a caller cannot get right
+   * from the outside.
+   *
+   * Not type-enforced: the combination is a live one downstream, so the rule
+   * is stated here rather than made uncompilable.
    */
   empty?: ReactNode;
   /**
@@ -845,6 +917,26 @@ const persistedOrder = <T,>(
   );
 
 export function AlephaTable<T>(props: AlephaTableProps<T>) {
+  /**
+   * `persistenceKey`, once per facet.
+   *
+   * A facet that is off gets `undefined`, which is the same value every
+   * persistence helper here already treats as "do not store" - so turning one
+   * off takes the branch a table with no key has always taken, rather than a
+   * new one. That is what keeps the default behaviour of `persistenceKey`
+   * exactly as it was: with `persist` absent, all three of these ARE
+   * `props.persistenceKey`.
+   *
+   * Primitives, so they go straight into the dependency arrays and `useState`
+   * initializers below without giving any of them a new identity per render.
+   */
+  const filtersKey =
+    props.persist?.filters === false ? undefined : props.persistenceKey;
+  const columnsKey =
+    props.persist?.columns === false ? undefined : props.persistenceKey;
+  const sortKey =
+    props.persist?.sort === false ? undefined : props.persistenceKey;
+
   // State, not a constant. It was `props.defaultSize ?? 20` read once, so a
   // reader had no way to see more rows than the call site had decided for
   // them. Already in `load`'s dependency array, so changing it refetches.
@@ -873,12 +965,12 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   // first invocation. Reading inside an effect would be too late —
   // useForm captures `initialValues` only once via useMemo.
   const persistedFilterValues = useMemo(() => {
-    if (!props.persistenceKey || !props.filters) return undefined;
+    if (!filtersKey || !props.filters) return undefined;
     return reconcilePersistedFilters(
       props.filters.schema,
-      readPersisted<Record<string, any>>(props.persistenceKey, "filters"),
+      readPersisted<Record<string, any>>(filtersKey, "filters"),
     );
-  }, [props.persistenceKey, props.filters]);
+  }, [filtersKey, props.filters]);
 
   /**
    * Filter values the URL carries, when the caller opted in with `fromQuery`.
@@ -974,7 +1066,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   });
 
   const [sort, setSort] = useState<SortState | null>(() =>
-    persistedSort(props.persistenceKey, props.defaultSort),
+    persistedSort(sortKey, props.defaultSort),
   );
   const [fetchedData, setData] = useState<T[]>([]);
   const [fetchedMeta, setMeta] = useState<Page<T>["page"] | null>(null);
@@ -1096,9 +1188,9 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   // Persist sort to localStorage on every change.
   useEffect(() => {
-    if (!props.persistenceKey) return;
-    writePersisted(props.persistenceKey, "sort", sort);
-  }, [props.persistenceKey, sort]);
+    if (!sortKey) return;
+    writePersisted(sortKey, "sort", sort);
+  }, [sortKey, sort]);
 
   // -- Refresh + reset wiring -----------------------------------------------
 
@@ -1207,10 +1299,10 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   // Persist filter values to localStorage on change.
   useEffect(() => {
-    if (!props.persistenceKey || !form || !props.filters) return;
-    const persist = () => {
+    if (!filtersKey || !form || !props.filters) return;
+    const writeFilters = () => {
       writePersisted(
-        props.persistenceKey!,
+        filtersKey,
         "filters",
         cleanFilterValues(form.currentValues ?? {}),
       );
@@ -1218,17 +1310,17 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     const unsubs = [
       alepha.events.on("form:change", (event) => {
         if (event.id !== form.id) return;
-        persist();
+        writeFilters();
       }),
       alepha.events.on("form:submit:success", (event) => {
         if (event.id !== form.id) return;
-        persist();
+        writeFilters();
       }),
     ];
     return () => {
       for (const u of unsubs) u();
     };
-  }, [alepha, form, props.filters, props.persistenceKey]);
+  }, [alepha, form, props.filters, filtersKey]);
 
   // -- Polling ---------------------------------------------------------------
 
@@ -1348,7 +1440,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
   );
 
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() =>
-    persistedColumns(props.persistenceKey, props.columns),
+    persistedColumns(columnsKey, props.columns),
   );
 
   /**
@@ -1357,7 +1449,7 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
    * the same code path as a stale stored array.
    */
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
-    persistedOrder(props.persistenceKey, props.columns),
+    persistedOrder(columnsKey, props.columns),
   );
 
   const orderedKeys = useMemo(
@@ -1415,8 +1507,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
 
   const commitOrder = (next: string[]) => {
     setColumnOrder(next);
-    if (props.persistenceKey) {
-      writePersisted(props.persistenceKey, "columnOrder", next);
+    if (columnsKey) {
+      writePersisted(columnsKey, "columnOrder", next);
     }
   };
 
@@ -1466,12 +1558,12 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     scopeRef.current = props.persistenceKey;
     setPage(0);
     setSize(persistedSize(props.persistenceKey, props.defaultSize));
-    setSort(persistedSort(props.persistenceKey, props.defaultSort));
-    setVisibleColumns(persistedColumns(props.persistenceKey, props.columns));
+    setSort(persistedSort(sortKey, props.defaultSort));
+    setVisibleColumns(persistedColumns(columnsKey, props.columns));
     // Same render pass as the rest, and for the identical reason: the effects
     // keyed on `persistenceKey` fire in one flush, so an order left behind
     // here would be written back under the INCOMING key.
-    setColumnOrder(persistedOrder(props.persistenceKey, props.columns));
+    setColumnOrder(persistedOrder(columnsKey, props.columns));
     setRefreshKey((k) => k + 1);
   }
 
@@ -1492,8 +1584,8 @@ export function AlephaTable<T>(props: AlephaTableProps<T>) {
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setVisibleColumns(next);
-    if (props.persistenceKey) {
-      writePersisted(props.persistenceKey, "columns", [...next]);
+    if (columnsKey) {
+      writePersisted(columnsKey, "columns", [...next]);
     }
   };
 
