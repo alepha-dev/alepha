@@ -146,18 +146,14 @@ export class SigilIngestService {
       gates.views
     ) {
       sections.push(
-        this.absorbViews(
+        this.absorbViews({
           sigil,
-          envelope.views ?? [],
-          envelope.engagements ?? [],
-          envelope.country,
-          envelope.device,
-          envelope.traffic,
-          envelope.browser,
-          envelope.os,
-          envelope.visitor,
+          views: envelope.views ?? [],
+          engagements: envelope.engagements ?? [],
+          stamp: envelope,
+          visitor: envelope.visitor,
           now,
-        ),
+        }),
       );
     }
     if (envelope.vitals?.length && gates.vitals) {
@@ -451,18 +447,27 @@ export class SigilIngestService {
     return [...folded.values()];
   }
 
-  protected async absorbViews(
-    sigil: Sigil,
-    views: NonNullable<SigilForwarded["views"]>,
-    engagements: NonNullable<SigilForwarded["engagements"]>,
-    country: string | undefined,
-    device: string | undefined,
-    traffic: string | undefined,
-    browser: string | undefined,
-    os: string | undefined,
-    visitor: string | undefined,
-    now: string,
-  ): Promise<void> {
+  protected async absorbViews(options: {
+    sigil: Sigil;
+    views: NonNullable<SigilForwarded["views"]>;
+    engagements: NonNullable<SigilForwarded["engagements"]>;
+    /**
+     * The proxy-stamped fields, taken whole rather than spread into
+     * parameters.
+     *
+     * ⚠️ It was ten positional arguments and `auth` would have made eleven,
+     * six of them `string | undefined` in a row - a call site where
+     * transposing two is a silent bug the compiler cannot see, and the seam
+     * that has already absorbed five fields will take more.
+     */
+    stamp: Pick<
+      SigilForwarded,
+      "country" | "device" | "traffic" | "browser" | "os" | "auth"
+    >;
+    visitor: string | undefined;
+    now: string;
+  }): Promise<void> {
+    const { sigil, views, engagements, stamp, visitor, now } = options;
     const day = this.dayBucket(now);
 
     // Folded before the write, not just for speed: the store turns a batch
@@ -480,6 +485,7 @@ export class SigilIngestService {
       traffic: string;
       browser: string;
       os: string;
+      auth: string;
       count: number;
       engaged: number;
       entries: number;
@@ -489,20 +495,25 @@ export class SigilIngestService {
     // is `min(1)`, so a proxy that stamps `country: ""` rather than omitting
     // the field would 500 the whole batch. Same for the device stamp, which
     // an older app's proxy does not send at all.
-    const iso = country || "ZZ";
-    const dev = device || "desktop";
+    const iso = stamp.country || "ZZ";
+    const dev = stamp.device || "desktop";
     // `human` for the same reason `desktop` is the device fallback, and for one
     // more: an app whose proxy predates this stamp sends nothing, and counting
     // every such app's readers as crawlers would be the one direction this
     // classification is not allowed to be wrong in. Unknown is a person.
-    const kind = traffic || "human";
+    const kind = stamp.traffic || "human";
     // `other` for both, and for the same reason `desktop` is the device
     // fallback: an app whose proxy predates these stamps sends nothing, and
     // `other` is the bucket that already means "we cannot name it". Naming one
     // wrongly is the direction these classifiers are not allowed to be wrong
     // in - see `sigilBrowserName`.
-    const ua = browser || "other";
-    const system = os || "other";
+    const ua = stamp.browser || "other";
+    const system = stamp.os || "other";
+    // `anon` for the same reason `human` is the traffic fallback: an app whose
+    // proxy predates this stamp sends nothing, and counting its readers as
+    // signed in would be the direction this one must not be wrong in. Unknown
+    // is anonymous.
+    const audience = stamp.auth || "anon";
 
     const bucketFor = (
       hour: string,
@@ -510,7 +521,7 @@ export class SigilIngestService {
       referrer: string,
       campaign: string,
     ): Bucket => {
-      const key = `${hour}|${path}|${iso}|${referrer}|${campaign}|${dev}|${kind}|${ua}|${system}`;
+      const key = `${hour}|${path}|${iso}|${referrer}|${campaign}|${dev}|${kind}|${ua}|${system}|${audience}`;
       let bucket = buckets.get(key);
       if (!bucket) {
         bucket = {
@@ -523,6 +534,7 @@ export class SigilIngestService {
           traffic: kind,
           browser: ua,
           os: system,
+          auth: audience,
           count: 0,
           engaged: 0,
           entries: 0,
@@ -582,6 +594,7 @@ export class SigilIngestService {
         traffic: bucket.traffic,
         browser: bucket.browser,
         os: bucket.os,
+        auth: bucket.auth,
         count: bucket.count,
         engaged: bucket.engaged,
         entries: bucket.entries,

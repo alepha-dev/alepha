@@ -156,6 +156,29 @@ export class LoreAnalytics {
        * defaulted for the same SQLite reason.
        */
       os: z.string().default("other"),
+      /**
+       * `user` | `anon`: whether a session was on the request the reporting
+       * app's own server handled.
+       *
+       * ⚠️ **Cookie sessions only.** The browser reaches the proxy with a
+       * plain same-origin `fetch`, which carries cookies and no
+       * `Authorization` header, so an app holding its token in memory reports
+       * every view as `anon` - silently, and correctly, since there is no
+       * session on that request. Lore itself qualifies; read a flat 0% signed
+       * in as this before reading it as a defect.
+       *
+       * Sorts FIRST of all nine names, so under the old alphabetical
+       * derivation this one dimension would have moved every slot on the
+       * dataset - the worst case the pin below exists to prevent. Appended,
+       * it moves nothing.
+       *
+       * Defaulted for the same SQLite reason as `browser` and `os`, and with
+       * the same consequence: rows written before it existed hold `""`, not
+       * `"anon"`, because a default applies when a row is written and not
+       * when an old one is read. `InsightsController` folds the empty string
+       * into anon on the way out.
+       */
+      auth: z.string().default("anon"),
     }),
     /**
      * Three measures, and the two new ones cost nothing on the wire.
@@ -220,6 +243,12 @@ export class LoreAnalytics {
         // this dataset. Appended, they move nothing.
         "browser",
         "os",
+        // Appended, like the two above, and this one is the case that makes
+        // the argument: `auth` sorts FIRST of all nine, so the old
+        // alphabetical derivation would have pushed every single slot on this
+        // dataset along and made every stored row unreadable - the 2026-08-10
+        // incident again, and worse. On the end of the list it moves nothing.
+        "auth",
       ],
       measures: ["count", "engaged", "entries"],
     },

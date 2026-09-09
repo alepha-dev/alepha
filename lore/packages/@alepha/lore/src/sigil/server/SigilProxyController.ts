@@ -1,6 +1,12 @@
 import { $env, $inject, z } from "alepha";
 import { CryptoProvider, SecretProvider } from "alepha/crypto";
 import { DateTimeProvider } from "alepha/datetime";
+// ⚠️ Type-only, and load-bearing. `alepha/security` declaration-merges `user`
+// onto the request; without this the property does not exist in the program.
+// Being type-only means no runtime dependency and no new module requirement:
+// an app that does not register `alepha/security` simply sees `undefined`,
+// and every visitor stays anonymous, which is the correct answer there.
+import type {} from "alepha/security";
 import { $action } from "alepha/server";
 
 import { sigilEnvelope } from "../shared/schemas/sigilEnvelope.ts";
@@ -115,7 +121,47 @@ export class SigilProxyController {
       const dailySalt = this.crypto.hash(
         `alepha-sigil-visitor:${secret}:${utcDate}`,
       );
-      const visitor = this.crypto.hash(`${host}:${ip}:${ua}:${dailySalt}`);
+      // ⚠️ The SUBJECT of the hash, and the only thing this change swaps.
+      //
+      // The session is already on this request and costs nothing to read:
+      // `alepha/server/auth` promotes the session cookie into an
+      // `Authorization` header on `server:onRequest`, and
+      // `ServerSecurityProvider` runs at `priority: "last"` and resolves
+      // `request.user` for EVERY route, secured or not. This endpoint is not
+      // secured and gets the user anyway.
+      //
+      // Everything around it is untouched, which is the point. Still salted
+      // with the app's own host, so two apps behind one sink cannot be
+      // correlated. Still rotating daily, so it is useless as a long-term
+      // identifier. Still one-way: the user id never leaves the app, only its
+      // hash does, and the sink can no more reverse `u:<uuid>` than it could
+      // reverse an IP.
+      //
+      // What it fixes, neither of which is fixable from an IP:
+      //  - an office or a NAT where twenty people share one address and one
+      //    Chrome build currently count as ONE visitor;
+      //  - a phone that changes address mid-day, which currently counts as
+      //    TWO;
+      //  - one person on a laptop and a phone, both signed in, which becomes
+      //    one visitor, and that is the correct answer.
+      //
+      // ⚠️ **Cookie sessions only.** The browser reaches this endpoint with a
+      // plain same-origin `fetch`, which carries cookies and does not carry an
+      // `Authorization` header. An app holding its token in memory therefore
+      // reports every visit as anonymous, silently and correctly - there is no
+      // session on the request to read. Read a flat 0% signed in as that
+      // before reading it as a bug.
+      //
+      // ⚠️ **Unique visitors step ONCE when this deploys.** Somebody who
+      // browses signed out and then signs in on the same day counts as two
+      // identities that day: the anonymous half is already written, and
+      // nothing can merge it retroactively. Bounded at one extra per person
+      // per day, and only on a day they actually arrive signed out. The
+      // discontinuity in the chart is this, not a regression.
+      const subject = request.user?.id
+        ? `u:${request.user.id}`
+        : `ip:${ip}:${ua}`;
+      const visitor = this.crypto.hash(`${host}:${subject}:${dailySalt}`);
 
       // Classified here rather than in the browser for the same reason
       // `country` is: the header is already in hand server-side, so spending
@@ -135,6 +181,13 @@ export class SigilProxyController {
       const browser = sigilBrowserName(ua);
       const os = sigilOsName(ua);
 
+      // Fifth field of the same seam, and the first that reads something other
+      // than the user-agent. Derived from the session the hash above already
+      // closes over - and stamped anyway rather than left to be inferred from
+      // it, because a hash is opaque by construction and `SigilSinkProvider`'s
+      // own doctrine is that redundancy must not be made load-bearing.
+      const auth = request.user?.id ? "user" : "anon";
+
       // The kill-switches are applied by the sink provider. Filtering here too
       // would be a second place to keep in sync with the fetched config.
       //
@@ -151,6 +204,7 @@ export class SigilProxyController {
         traffic,
         browser,
         os,
+        auth,
         host: sigilHost(host),
       });
 

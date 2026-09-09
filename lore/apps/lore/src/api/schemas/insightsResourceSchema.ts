@@ -211,6 +211,29 @@ export const insightsResourceSchema = z.object({
       count: z.integer(),
     }),
   ),
+  /**
+   * `user` / `anon`, by total views: what share of this app's traffic is
+   * signed in.
+   *
+   * ⚠️ **Legacy rows carry `""`, and it folds into `anon`** rather than into
+   * `other`, which is where every other dimension's empty string goes. The
+   * difference is deliberate: `other` means "we cannot name this", and here
+   * we can - a row written before the dimension existed came from a proxy
+   * that stamped nothing, and a visit with no session stamped is a visit with
+   * no session. Anonymous is the true reading, and an `other` bucket beside
+   * `user` and `anon` would be a third audience that does not exist.
+   *
+   * ⚠️ **Cookie sessions only.** An app that keeps its token in memory posts
+   * to its proxy with a `fetch` carrying no `Authorization` header, so it
+   * reports 100% anonymous - correctly, since there is no session on that
+   * request to read. A flat zero is that before it is a bug.
+   */
+  topAudience: z.array(
+    z.object({
+      auth: z.string(),
+      count: z.integer(),
+    }),
+  ),
   topReferrers: z.array(
     z.object({
       /**
