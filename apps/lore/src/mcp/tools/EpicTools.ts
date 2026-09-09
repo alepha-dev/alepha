@@ -283,6 +283,8 @@ export class EpicTools {
         status: epic.status,
         activatedAt: epic.activatedAt,
         completedAt: epic.completedAt,
+        // Only when Begin attached the default release and carried it down.
+        ...(epic.releaseCascade ? { releaseCascade: epic.releaseCascade } : {}),
       };
     },
   });
