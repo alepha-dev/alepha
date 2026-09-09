@@ -78,6 +78,12 @@ class Probe {
       browser?: string;
       os?: string;
       /**
+       * `user` | `anon`, or `""` for a row written before the dimension
+       * existed. Optional and defaulted like the rest, so every fixture that
+       * predates it keeps reading as it did.
+       */
+      auth?: string;
+      /**
        * `human` | `bot`, or `""` to stand in for a row written before the
        * dimension existed. Optional and defaulted on the dataset, like
        * `referrer`, so every fixture that predates the traffic filter keeps
