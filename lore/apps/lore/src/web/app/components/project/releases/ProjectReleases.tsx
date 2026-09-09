@@ -6,7 +6,7 @@ import { type Page, z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleDot, Flag, Plus, Search } from "lucide-react";
+import { CircleDot, Flag, Inbox, Plus, Search, X } from "lucide-react";
 import { useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
@@ -20,6 +20,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
+import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
 import ReleaseProgress from "./ReleaseProgress.tsx";
 import {
   releaseState,
@@ -27,6 +28,7 @@ import {
   STATE_LABEL_KEYS,
   STATE_TONE,
 } from "./releaseState.ts";
+import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
 
 const releasesFiltersSchema = z.object({
   search: z.string().optional(),
@@ -108,6 +110,7 @@ const ProjectReleases = () => {
   // sidebar and both release CONTROLS read, so a create has to refresh it.
   const [, setReleases] = useStore(currentReleasesAtom);
   const releaseApi = useClient<ReleaseController>();
+  const defaultRelease = useSetDefaultRelease();
 
   const [creating, setCreating] = useState(false);
   // The list, its rows and the empty state all stay; only the two doors into
@@ -268,6 +271,36 @@ const ProjectReleases = () => {
               ]
             : []
         }
+        rowActions={(release) =>
+          // Hidden without `release:manage`, and never offered on a published
+          // release: the server refuses it, and an affordance that always
+          // fails is worse than no affordance.
+          !defaultRelease.can || release.releasedAt
+            ? []
+            : [
+                release.defaultSince
+                  ? {
+                      icon: X,
+                      label: tr("release.default.clear"),
+                      onClick: (row: ReleaseResource) =>
+                        void defaultRelease
+                          .clear(row)
+                          .then((done) => done && setReload((n) => n + 1)),
+                    }
+                  : {
+                      icon: Inbox,
+                      label: tr("release.default.set"),
+                      onClick: (row: ReleaseResource) =>
+                        void defaultRelease
+                          .set(row)
+                          // The hook already wrote `currentReleasesAtom` from
+                          // the response, which is what both chips read. The
+                          // TABLE fetches its own rows, so it needs the bump
+                          // and not a second `getReleases`.
+                          .then((done) => done && setReload((n) => n + 1)),
+                    },
+              ]
+        }
         columns={{
           // First on the row, like the epic status chip and the Quests
           // table's status dot.
@@ -279,10 +312,17 @@ const ProjectReleases = () => {
               const state = releaseState(release);
               const Icon = STATE_ICONS[state];
               return (
-                <Badge variant="tint" tone={STATE_TONE[state]}>
-                  <Icon className="size-3" />
-                  {tr(STATE_LABEL_KEYS[state])}
-                </Badge>
+                // Two chips, never one with three values: see
+                // `ReleaseDefaultBadge`. The second renders nothing at all
+                // for every release but the default, so the column is one
+                // chip wide on almost every row.
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge variant="tint" tone={STATE_TONE[state]}>
+                    <Icon className="size-3" />
+                    {tr(STATE_LABEL_KEYS[state])}
+                  </Badge>
+                  <ReleaseDefaultBadge release={release} />
+                </div>
               );
             },
           },
