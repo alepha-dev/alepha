@@ -204,37 +204,48 @@ const ProjectReleases = () => {
         // has never had a release still explains what one IS and offers the
         // way to make one. A bare "No results" in a table nobody has filled
         // teaches nothing.
-        empty={
-          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <Flag className="text-muted-foreground size-7" />
-            <h2 className="text-[15px] font-semibold">
-              {tr("release.empty.title")}
-            </h2>
-            <p className="text-muted-foreground max-w-md text-[13px] text-pretty">
-              {tr("release.empty.body")}
-            </p>
-            {canCreate && (
-              <Button className="mt-1" onClick={() => setCreating(true)}>
-                <Plus className="size-4" />
-                {tr("release.start")}
-              </Button>
-            )}
-            {/* An empty state is a signpost, not a manual. The release model
-                and the default release are explained once, in the Lore docs,
-                and linked from here rather than grown into prose in the app.
-                ⚠️ Absolute, through `loreDocsUrl`: written root-relative it
-                resolves against Lore's own origin and 404s (feedback #P2142). */}
-            <a
-              href={loreDocsUrl("guides-releases")}
-              target="_blank"
-              rel="noreferrer"
-              className="text-muted-foreground text-sm underline underline-offset-4"
-              data-testid="releases-empty-docs"
-            >
-              {tr("release.empty.docs")}
-            </a>
-          </div>
-        }
+        //
+        // ⚠️ Two states, never the single `empty` node this used to be. That
+        // prop replaces BOTH of them at once, so filtering the list down to
+        // nothing announced that no release is open and offered to open one -
+        // the same defect feedback #P2160 reported against Apps, unreported
+        // here only because nobody filtered this page to zero.
+        emptyState={{
+          icon: Flag,
+          title: tr("release.empty.title"),
+          description: tr("release.empty.body"),
+          // Both the way in and the way to the explanation. An empty state is
+          // a signpost, not a manual: the release model and the default
+          // release are written once, in the Lore docs, rather than grown
+          // into prose here. The link stands whether or not this rank may
+          // create a release - reading about the model is not a write.
+          action: (
+            <div className="flex flex-col items-center gap-3">
+              {canCreate && (
+                <Button onClick={() => setCreating(true)}>
+                  <Plus className="size-4" />
+                  {tr("release.start")}
+                </Button>
+              )}
+              {/* ⚠️ Absolute, through `loreDocsUrl`: written root-relative it
+                  resolves against Lore's own origin and 404s (feedback
+                  #P2142). */}
+              <a
+                href={loreDocsUrl("guides-releases")}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground text-sm underline underline-offset-4"
+                data-testid="releases-empty-docs"
+              >
+                {tr("release.empty.docs")}
+              </a>
+            </div>
+          ),
+        }}
+        noMatchState={{
+          title: tr("release.noMatch.title"),
+          description: tr("release.noMatch.body"),
+        }}
         refreshSignal={reload}
         filters={{
           schema: releasesFiltersSchema,

@@ -28,12 +28,12 @@ export default {
   "quest-log.search": "Chercher par nom, domaine ou difficulté...",
   "quest-log.empty": "Aucune quête en attente",
   "quest-log.empty-description":
-    "Le royaume est bien calme. Forgez une nouvelle quête pour lancer votre compagnie.",
+    "Les quêtes servent à suivre le travail du projet. Créez-en une pour commencer.",
 
   "home.nav": "Accueil",
   "home.title": "Bienvenue dans l’aventure Lore",
   "home.subtitle":
-    "Votre périple commence ici. Forgez des quêtes, ralliez votre équipée et consignez ses exploits à travers le royaume.",
+    "Organisez votre travail sous forme de quêtes, invitez les personnes qui y participent, et gardez au même endroit les décisions et les notes qui vont avec.",
   "home.create-project": "Lancer un nouveau projet",
   "home.create-project.max": "Limite atteinte ($1)",
   "project.create.limit.title": "Vous avez atteint la limite de projets",
@@ -853,6 +853,8 @@ export default {
   "release.empty.title": "Aucune version ouverte",
   "release.empty.body":
     "Une version est un objectif nommé - 0.1.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
+  "release.noMatch.title": "Aucune version ne correspond",
+  "release.noMatch.body": "Ajustez ou effacez les filtres.",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Enregistrer dans les Folios",
@@ -1130,6 +1132,8 @@ export default {
   "apps.empty": "Aucune app pour l\u2019instant",
   "apps.empty.description":
     "Une app est une copie déployée : quelle application, et quelle copie. Créez-en une pour la suivre ici.",
+  "apps.noMatch": "Aucune app ne correspond",
+  "apps.noMatch.description": "Ajustez ou effacez les filtres.",
   "apps.unavailable": "Impossible de charger les apps",
   "apps.unavailable.description":
     "La liste n\u2019a pas pu être lue. Ce n\u2019est pas la même chose que ne pas en avoir : rechargez pour réessayer.",
@@ -1311,19 +1315,6 @@ export default {
   "app.settings.estate.manage": "Gérer les domaines",
   "app.settings.estate.clear": "Aucun domaine",
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
-  "project.settings.apps.defaultEnv.title": "Environnement par défaut",
-  "project.settings.apps.defaultEnv.description":
-    "L'environnement visé par une commande qui n'en nomme aucun. `lore apps deploy` sans --env se résout ici, tout comme un lien /apps/<nom> sans environnement.",
-  "project.settings.apps.defaultEnv.label": "Environnement par défaut",
-  "project.settings.apps.defaultEnv.rowDescription":
-    "Seuls les environnements que ce projet possède déjà sont proposés.",
-  "project.settings.apps.defaultEnv.none":
-    "Ce projet n'a encore aucune copie déployée, donc aucun environnement par défaut possible.",
-  "project.settings.apps.defaultEnv.clear": "Aucun",
-  "project.settings.apps.defaultEnv.fallback":
-    "Sans valeur par défaut, production est utilisé s'il existe, sinon le premier environnement par ordre alphabétique.",
-  "project.settings.apps.defaultEnv.saved":
-    "Environnement par défaut enregistré",
   "app.settings.danger": "Zone dangereuse",
   "app.settings.delete.title": "Supprimer cette app",
   "app.settings.delete.description":

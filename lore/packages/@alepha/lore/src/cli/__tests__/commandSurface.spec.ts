@@ -45,10 +45,15 @@ describe("the Lore CLI command surface", () => {
   };
 
   /**
-   * Seven, and no root of their own: the binary IS the root, so a `lore`
+   * Eight, and no root of their own: the binary IS the root, so a `lore`
    * command inside it would read `lore lore quality push`.
+   *
+   * `deploy` is the one verb promoted out of a subject, because it is the
+   * inner loop and `lore apps deploy` is two words for one act. Nothing else
+   * is: see {@link AppsCommand.deployCommand} for why `build` and `destroy`
+   * stay where they are.
    */
-  it("puts the seven Lore verbs at the top level", () => {
+  it("puts the eight Lore verbs at the top level", () => {
     const names = setup()
       .testGetTopLevelCommands()
       .map((command) => command.name)
@@ -58,11 +63,37 @@ describe("the Lore CLI command surface", () => {
       "apps",
       "artifacts",
       "attachments",
+      "deploy",
       "login",
       "logout",
       "quality",
       "releases",
     ]);
+  });
+
+  /**
+   * ⚠️ One flags schema and one handler, asserted by IDENTITY rather than by
+   * comparing two `--help` outputs. Two `$command`s that mean the same thing
+   * are exactly the shape that drifts, and a structural comparison would go on
+   * passing while one grew an alias the other did not.
+   */
+  it("gives `lore deploy` and `lore apps deploy` the same flags object", () => {
+    const cli = setup();
+    const top = cli
+      .testGetTopLevelCommands()
+      .find((command) => command.name === "deploy");
+    const child = cli
+      .testGetTopLevelCommands()
+      .find((command) => command.name === "apps")
+      ?.children.find((command) => command.name === "deploy");
+
+    expect(top).toBeDefined();
+    expect(child).toBeDefined();
+    // Two primitives, so not the same command...
+    expect(top).not.toBe(child);
+    // ...over one schema.
+    expect(top!.flags).toBe(child!.flags);
+    expect(top!.options.description).toBe(child!.options.description);
   });
 
   it("keeps each subject's own verb reachable underneath", () => {

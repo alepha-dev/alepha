@@ -31,12 +31,12 @@ export default {
   "quest-log.search": "Find by name, area...",
   "quest-log.empty": "No quests yet",
   "quest-log.empty-description":
-    "The kingdom is quiet. Forge a new quest to set your party in motion.",
+    "Quests are how this project tracks its work. Create one to get started.",
 
   "home.nav": "Home",
   "home.title": "Welcome",
   "home.subtitle":
-    "Your journey begins here. Forge quests, recruit your party and record their deeds across the realm.",
+    "Plan your work as quests, invite the people working on them, and keep the decisions and the notes that go with it in one place.",
   "home.create-project": "New Project",
   "home.create-project.max": "Limit reached ($1)",
   "project.create.limit.title": "You have reached the project limit",
@@ -668,7 +668,7 @@ export default {
   "project.settings.areas.column.select": "Select",
   "project.settings.areas.select": "Select $1",
   "project.settings.areas.empty":
-    "No areas yet. Forge a quest and pick an area, and it appears here.",
+    "No areas yet. Create a quest and pick an area, and it appears here.",
   "project.settings.areas.selected": "$1 selected",
   "project.settings.areas.selected.one": "1 selected",
   "project.settings.areas.merge.action": "Merge into...",
@@ -870,6 +870,8 @@ export default {
   "release.empty.title": "No release is open",
   "release.empty.body":
     "A release is a named goal - 0.1.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
+  "release.noMatch.title": "No release matches",
+  "release.noMatch.body": "Try adjusting or clearing the filters.",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Save to Folios",
@@ -1144,6 +1146,8 @@ export default {
   "apps.empty": "No app yet",
   "apps.empty.description":
     "An app is one deployed copy: which app, and which copy of it. Create one to track it here.",
+  "apps.noMatch": "No app matches",
+  "apps.noMatch.description": "Try adjusting or clearing the filters.",
   "apps.unavailable": "Couldn\u2019t load apps",
   "apps.unavailable.description":
     "The list could not be read. This is not the same as having none - reload to try again.",
@@ -1322,18 +1326,6 @@ export default {
   "app.settings.estate.manage": "Manage estates",
   "app.settings.estate.clear": "No estate",
   "app.settings.estate.saved": "Deploy target saved",
-  "project.settings.apps.defaultEnv.title": "Default environment",
-  "project.settings.apps.defaultEnv.description":
-    "Which environment a command means when it names none. `lore apps deploy` with no --env resolves to this, and so does a bare /apps/<name> link.",
-  "project.settings.apps.defaultEnv.label": "Default environment",
-  "project.settings.apps.defaultEnv.rowDescription":
-    "Only environments this project already has are offered.",
-  "project.settings.apps.defaultEnv.none":
-    "This project has no deployed copy yet, so there is no environment to default to.",
-  "project.settings.apps.defaultEnv.clear": "No default",
-  "project.settings.apps.defaultEnv.fallback":
-    "With no default, production is used when it exists, otherwise the first environment by name.",
-  "project.settings.apps.defaultEnv.saved": "Default environment saved",
   "app.settings.danger": "Danger zone",
   "app.settings.delete.title": "Delete this app",
   "app.settings.delete.description":

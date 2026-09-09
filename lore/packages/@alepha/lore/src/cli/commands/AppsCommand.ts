@@ -1,5 +1,5 @@
 import { $inject, AlephaError, z } from "alepha";
-import { $command, CliProvider } from "alepha/command";
+import { $command, type CommandHandlerArgs, CliProvider } from "alepha/command";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { HttpError } from "alepha/server";
@@ -14,12 +14,15 @@ import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 import { ArtifactCommand } from "./ArtifactCommand.ts";
 
 /**
- * `lore apps build` and `lore apps deploy` - produce the bytes, and place them.
+ * `lore apps build` and `lore deploy` - produce the bytes, and place them.
  *
  * ```bash
- * lore apps deploy                 # build, push, deploy
- * lore apps deploy --tag 0.28.0    # deploy the stored artifact, NO build
+ * lore deploy                 # build, push, deploy
+ * lore deploy --tag 0.28.0    # deploy the stored artifact, NO build
  * ```
+ *
+ * `deploy` is registered twice, at the top level and under `apps`, over one
+ * flags schema and one handler - see {@link deployCommand}.
  *
  * ## ⚠️ The tag is the switch, and that is what makes the registry real
  *
@@ -100,6 +103,16 @@ import { ArtifactCommand } from "./ArtifactCommand.ts";
  * ⚠️ **`--env` is a remote read; `--target` is not.** Naming an env names a
  * row, so resolving it needs Lore. `lore apps build` with neither flag builds
  * what the local config declares, with no network at all.
+ *
+ * ## ⚠️ On `deploy`, an OMITTED `--env` is a remote read too
+ *
+ * `LoreProjectResolver.resolveEnv` asks Lore which copies of this app exist and
+ * takes the single one, refusing when there are several. So the bare `lore
+ * deploy` costs one extra request and none when `--env` is given.
+ *
+ * That is only true of `deploy`. `build`'s `--env` selects a build target
+ * rather than a copy, and `destroy` refuses to fall back at all - see the note
+ * on its handler.
  */
 export class AppsCommand {
   protected readonly log = $logger();
@@ -263,7 +276,7 @@ export class AppsCommand {
         .text({
           aliases: ["e"],
           description:
-            "Which deployed copy. ⚠️ Required here, unlike every other command: this one does not fall back to LORE_ENV or the project's default environment.",
+            "Which deployed copy. ⚠️ Required here, unlike every other command: this one does not fall back to LORE_ENV, nor to the app's own rows when it has only one.",
         })
         .optional(),
       confirm: z
@@ -278,15 +291,15 @@ export class AppsCommand {
       const projectId = await this.projects.resolve(project);
       const app = await this.projects.resolveApp(flags.app, root);
 
-      // ⚠️ `flags.env` directly, NEVER `resolveEnv`. Everywhere else an
-      // omitted `--env` falls back to LORE_ENV and then to the project's own
-      // default environment - which is usually `production`. On a command that
-      // deletes things, that turns a forgotten flag into "destroy production",
-      // and the word never appears on screen.
+      // ⚠️ `flags.env` directly, NEVER `resolveEnv`. On deploy an omitted
+      // `--env` falls back to LORE_ENV and then to the app's own rows, taking
+      // the single one when there is exactly one - which for most apps IS
+      // production. On a command that deletes things, that turns a forgotten
+      // flag into "destroy production", and the word never appears on screen.
       const env = flags.env?.trim();
       if (!env) {
         throw new AlephaError(
-          `Name the copy with --env. This command does not fall back to LORE_ENV or to the project's default environment, because a forgotten flag would mean destroying production without either of us typing the word.`,
+          `Name the copy with --env. This command does not fall back to LORE_ENV, and it does not take an app's only environment the way \`deploy\` does, because a forgotten flag would mean destroying production without either of us typing the word.`,
         );
       }
 
@@ -330,97 +343,85 @@ export class AppsCommand {
     },
   });
 
+  /**
+   * The deploy flags, declared once and handed to BOTH primitives below.
+   *
+   * A static rather than two literals, because two `$command`s that mean the
+   * same thing must not be able to drift into two different `--help` outputs
+   * or two different alias sets. Statics are initialized before any instance
+   * field, so a field initializer may read this whatever its position.
+   */
+  protected static readonly DEPLOY_FLAGS = z.object({
+    project: z
+      .text({
+        aliases: ["p"],
+        description: "Lore project slug, overriding LORE_PROJECT.",
+      })
+      .optional(),
+    app: z
+      .text({
+        description:
+          "App name. Defaults to the slugified `name` from package.json.",
+      })
+      .optional(),
+    tag: z
+      .text({
+        aliases: ["t"],
+        description:
+          "Deploy the stored build under this tag, without building. Omitted, this builds and pushes first.",
+      })
+      .optional(),
+    env: z
+      .text({
+        aliases: ["e"],
+        description:
+          "Which deployed copy to place it on. Unlike `apps build`, this names the instance, not a target. Falls back to LORE_ENV, then to the app's own rows when it has exactly one.",
+      })
+      .optional(),
+    sigil: z
+      .boolean()
+      .describe(
+        "Force a sigil for this copy, storing its key in the copy's own environment. Unneeded for a build that declares SIGIL_KEY: that is detected and done for you. `--no-sigil` opts out.",
+      )
+      .optional(),
+  });
+
+  protected static readonly DEPLOY_DESCRIPTION =
+    "Deploy this app onto one of its environments";
+
   public readonly deploy = $command({
     name: "deploy",
-    description: "Deploy this app onto one of its environments",
-    flags: z.object({
-      project: z
-        .text({
-          aliases: ["p"],
-          description: "Lore project slug, overriding LORE_PROJECT.",
-        })
-        .optional(),
-      app: z
-        .text({
-          description:
-            "App name. Defaults to the slugified `name` from package.json.",
-        })
-        .optional(),
-      tag: z
-        .text({
-          aliases: ["t"],
-          description:
-            "Deploy the stored build under this tag, without building. Omitted, this builds and pushes first.",
-        })
-        .optional(),
-      env: z
-        .text({
-          aliases: ["e"],
-          description:
-            "Which deployed copy to place it on. Unlike `apps build`, this names the instance, not a target. Falls back to LORE_ENV then the project's default environment.",
-        })
-        .optional(),
-      sigil: z
-        .boolean()
-        .describe(
-          "Force a sigil for this copy, storing its key in the copy's own environment. Unneeded for a build that declares SIGIL_KEY: that is detected and done for you. `--no-sigil` opts out.",
-        )
-        .optional(),
-    }),
-    handler: async ({ flags, root, run }) => {
-      const project = this.client.resolveProject(flags.project);
-      const projectId = await this.projects.resolve(project);
-      const app = await this.projects.resolveApp(flags.app, root);
-      const env = this.projects.assertEnv(
-        await this.projects.resolveEnv(flags.env, project),
-        app,
-      );
+    description: AppsCommand.DEPLOY_DESCRIPTION,
+    flags: AppsCommand.DEPLOY_FLAGS,
+    handler: (args) => this.runDeploy(args),
+  });
 
-      // ⚠️ First, and before anything is built. An app or env that was never
-      // enrolled is a refusal, not a creation: minting a deploy target as a
-      // side effect of a typo in `--env` is how `clbu` gets deployed to.
-      const instance = await this.loadInstance(projectId, app, env);
-      const tag = flags.tag ?? AppsCommand.DEFAULT_TAG;
-
-      // ⚠️ The switch. A named tag never builds - see the class doc.
-      if (!flags.tag) {
-        await this.buildAndPush({
-          project,
-          projectId,
-          app,
-          env,
-          tag,
-          root,
-          run,
-          instance,
-        });
-      }
-
-      const started = await this.start(
-        projectId,
-        instance.id,
-        tag,
-        flags.sigil,
-      );
-      this.log.info(`Deploying ${app}@${tag} to ${app}/${env}`, {
-        deployment: started.id,
-      });
-
-      const finished = await this.follow(projectId, started.id);
-      if (finished.status !== "succeeded") {
-        // ⚠️ Non-zero, because this runs in CI. Throwing is what sets
-        // `process.exitCode`; returning here would report a failed deploy as a
-        // successful pipeline step.
-        throw new AlephaError(
-          finished.error ||
-            `The deploy of ${app}@${tag} to ${app}/${env} ended ${finished.status}.`,
-        );
-      }
-
-      this.log.info(
-        `Deployed ${app}@${tag} to ${app}/${env}${finished.url ? ` - ${finished.url}` : ""}`,
-      );
-    },
+  /**
+   * `lore deploy`, the same command one word shorter.
+   *
+   * A second primitive over {@link DEPLOY_FLAGS} and {@link runDeploy}, so
+   * there is one flags schema and one handler body and nothing to drift.
+   * `lore apps deploy` keeps working: `resolveCommand` matches the first word
+   * against TOP-LEVEL commands only, and {@link deploy} is a child of `apps`,
+   * so `deploy` reaches this one and the child stays reachable underneath its
+   * parent.
+   *
+   * ## ⚠️ Only `deploy` is promoted
+   *
+   * Not `build`. `commandSurface.spec.ts` asserts there is no top-level
+   * `build`, and that assertion is the canary for `alepha build` leaking in
+   * through the DI graph - injecting one service registers its whole module.
+   * Promoting ours would disarm the guard for the single name most likely to
+   * leak.
+   *
+   * Not `destroy` either. Shortening the one command that deliberately refuses
+   * to guess its environment is backwards: it is long on purpose.
+   */
+  public readonly deployCommand = $command({
+    name: "deploy",
+    description: AppsCommand.DEPLOY_DESCRIPTION,
+    flags: AppsCommand.DEPLOY_FLAGS,
+    handler: (args) => this.runDeploy(args),
   });
 
   public readonly appsCommand = $command({
@@ -431,6 +432,59 @@ export class AppsCommand {
       help();
     },
   });
+
+  /**
+   * The deploy, once, for both primitives above.
+   */
+  protected async runDeploy(
+    args: CommandHandlerArgs<typeof AppsCommand.DEPLOY_FLAGS>,
+  ): Promise<void> {
+    const { flags, root, run } = args;
+    const project = this.client.resolveProject(flags.project);
+    const projectId = await this.projects.resolve(project);
+    const app = await this.projects.resolveApp(flags.app, root);
+    const env = await this.projects.resolveEnv(flags.env, projectId, app);
+
+    // ⚠️ First, and before anything is built. An app or env that was never
+    // enrolled is a refusal, not a creation: minting a deploy target as a
+    // side effect of a typo in `--env` is how `clbu` gets deployed to.
+    const instance = await this.loadInstance(projectId, app, env);
+    const tag = flags.tag ?? AppsCommand.DEFAULT_TAG;
+
+    // ⚠️ The switch. A named tag never builds - see the class doc.
+    if (!flags.tag) {
+      await this.buildAndPush({
+        project,
+        projectId,
+        app,
+        env,
+        tag,
+        root,
+        run,
+        instance,
+      });
+    }
+
+    const started = await this.start(projectId, instance.id, tag, flags.sigil);
+    this.log.info(`Deploying ${app}@${tag} to ${app}/${env}`, {
+      deployment: started.id,
+    });
+
+    const finished = await this.follow(projectId, started.id);
+    if (finished.status !== "succeeded") {
+      // ⚠️ Non-zero, because this runs in CI. Throwing is what sets
+      // `process.exitCode`; returning here would report a failed deploy as a
+      // successful pipeline step.
+      throw new AlephaError(
+        finished.error ||
+          `The deploy of ${app}@${tag} to ${app}/${env} ended ${finished.status}.`,
+      );
+    }
+
+    this.log.info(
+      `Deployed ${app}@${tag} to ${app}/${env}${finished.url ? ` - ${finished.url}` : ""}`,
+    );
+  }
 
   /**
    * Which targets this invocation builds.
