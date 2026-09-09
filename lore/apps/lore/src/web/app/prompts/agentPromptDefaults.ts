@@ -1,5 +1,6 @@
 import type { AgentPromptKind } from "@/api/schemas/agentPromptKindSchema.ts";
 
+import { blightTriagePromptDefault } from "./blightTriagePrompt.ts";
 import { epicActivatePromptDefault } from "./epicActivatePrompt.ts";
 import { epicReviewPromptDefault } from "./epicReviewPrompt.ts";
 import { feedbackLoopPromptDefault } from "./feedbackLoopPrompt.ts";
@@ -24,4 +25,5 @@ export const AGENT_PROMPT_DEFAULTS: Record<AgentPromptKind, string> = {
   questWork: questWorkPromptDefault,
   feedbackWork: feedbackWorkPromptDefault,
   feedbackLoop: feedbackLoopPromptDefault,
+  blightTriage: blightTriagePromptDefault,
 };

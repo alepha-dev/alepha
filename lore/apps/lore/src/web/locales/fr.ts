@@ -1988,6 +1988,7 @@ export default {
   "agentPrompts.review": "Relire",
   "agentPrompts.activate": "Activer",
   "agentPrompts.triageInbox": "Traiter la boîte",
+  "agentPrompts.triageBlights": "Traiter les anomalies",
   "agentPrompts.workOnIt": "S’en charger",
   "agentPrompts.review.description":
     "Demande à un agent de lire l'épopée et ses quêtes, et de challenger le plan avant toute construction.",
@@ -1999,6 +2000,8 @@ export default {
     "Confie le signalement à un agent de code, avec à la clé une quête qui y est liée.",
   "agentPrompts.feedbackLoop.description":
     "Parcourt toute la boîte en attente, accepte ou refuse chaque signalement et laisse une quête liée derrière chaque signalement accepté.",
+  "agentPrompts.blightTriage.description":
+    "Parcourt les rapports de plantage ouverts, crée une quête pour les vrais défauts et résout le bruit.",
   "agentPrompts.copied":
     "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
   "agentPrompts.copied.surface":

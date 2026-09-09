@@ -32,8 +32,11 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentBlightCountAtom } from "../../../atoms/currentBlightCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { hasCapability } from "../../../services/projectCapabilities.ts";
 import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
+import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 
 /**
  * Filter form, owned by AlephaTable: a status multi-select (open / resolved,
@@ -79,6 +82,12 @@ const ProjectBlights = () => {
   const { tr } = useI18n<I18n, "en">();
   const router = useRouter<AppRouter>();
   const [project] = useStore(currentProjectAtom);
+  const promptSubject = useAgentPromptSubject();
+  // Blights live under Apps: there is no capability of their own, and this
+  // page's route is already gated on it. Stated anyway rather than passing
+  // the item unconditionally, so the menu carries its own gate wherever this
+  // component ends up rendered.
+  const appsEnabled = hasCapability(project, "apps");
   const alepha = useAlepha();
   const blightApi = useClient<BlightController>();
   const canTriage = blightApi.resolveBlight.can();
@@ -224,6 +233,28 @@ const ProjectBlights = () => {
             </div>
           ),
         }}
+        // ⚠️ `toolbar`, not `actions`: `AgentPromptsMenu` is a dropdown
+        // trigger rather than a button that acts on click, which is the
+        // distinction `AlephaTable`'s own note draws between the two slots.
+        //
+        // Two switches, like the feedback inbox: the menu renders nothing
+        // when the project has `agentPrompts` off, and this passes no items
+        // when Apps is off, so both have to be on for anything to appear.
+        toolbar={
+          <AgentPromptsMenu
+            iconOnly
+            items={
+              appsEnabled
+                ? [
+                    {
+                      kind: "blightTriage" as const,
+                      subject: () => promptSubject.forBlightsInbox(),
+                    },
+                  ]
+                : []
+            }
+          />
+        }
         fetch={fetchBlights}
         // The bulk bar is triage too: a rank that may not resolve one blight
         // may not delete twenty.

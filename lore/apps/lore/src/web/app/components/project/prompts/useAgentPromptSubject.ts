@@ -114,5 +114,15 @@ export const useAgentPromptSubject = () => {
       slug: project?.slug ?? "",
       url: absolute(router.path("projectFeedback")),
     }),
+
+    /**
+     * The blights inbox. Surface-scoped for the same reason the feedback
+     * inbox is: a triage loop has no item to number.
+     */
+    forBlightsInbox: (): AgentPromptProjectSubject => ({
+      project: project?.title ?? "",
+      slug: project?.slug ?? "",
+      url: absolute(router.path("projectBlights")),
+    }),
   };
 };

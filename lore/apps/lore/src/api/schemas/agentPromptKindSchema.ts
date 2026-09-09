@@ -29,6 +29,7 @@ export const agentPromptKindSchema = z.enum([
   "questWork",
   "feedbackWork",
   "feedbackLoop",
+  "blightTriage",
 ]);
 
 export type AgentPromptKind = Infer<typeof agentPromptKindSchema>;
