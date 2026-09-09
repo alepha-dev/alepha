@@ -223,67 +223,81 @@ export const addKanbanColumn = async (
 };
 
 /**
- * Register a fresh user through the UI, submit the email verification code
- * read from the dev-mail directory, and wait for auto-login to land on "/".
+ * Register a fresh user and land on "/" signed in as them.
+ *
+ * ⚠️ **This does NOT drive the registration UI, on purpose.** It posts the
+ * same two-phase registration the form posts, reads the verification code from
+ * the dev-mail directory exactly as the UI path does, then mints a session
+ * through `/_auth/token`. The token route sets cookies, and `page.request`
+ * shares the browser context's cookie jar, so the browser is authenticated
+ * when this returns.
+ *
+ * **Why:** 172 of this suite's 174 tests called the UI flow, and it costs
+ * ~2.5s each - a page load, a Turnstile widget lifecycle, a `toPass` hydration
+ * loop, a 300ms-granularity poll for a deferred email, and two more
+ * navigations. Measured head to head on 2026-09-09: UI 2639/2525/2426ms
+ * against 203/238/289ms here, ~10.5x. That was ~73% of the entire
+ * `e2e-lore` CI job, spent re-proving the registration form on every test of
+ * something else.
+ *
+ * The registration UI is still tested, and by the two specs whose subject it
+ * actually is: `register.spec.ts` drives the form three times (including the
+ * captcha container and the OTP step) and `invitation.spec.ts` drives it for
+ * the invited guest. Both write the flow out inline and always did, so this
+ * change removed no UI coverage - it removed 132 rehearsals of it. The UI-
+ * driving `registerAndVerifyViaUi` was deleted with them rather than left as
+ * a helper with no callers.
+ *
+ * Post-condition is deliberately identical to the UI flow's - signed in, on
+ * "/" - so the two are interchangeable at every call site.
  */
 export const registerAndVerify = async (
   page: Page,
   email: string,
   password: string,
 ) => {
-  await page.goto("/auth/register");
-  // `networkidle` never settles once Turnstile is loaded — its widget polls.
-  await page.waitForLoadState("domcontentloaded");
-
-  const emailField = page.getByRole("textbox", { name: "Email", exact: true });
-  const passwordField = page.getByRole("textbox", {
-    name: "Password",
-    exact: true,
-  });
-
-  // Filled under `toPass` because the page is server-rendered and React
-  // hydrates after first paint: a value typed into the pre-hydration DOM is
-  // discarded when the form model takes over, and the only evidence is the
-  // submit failing with "'password' is required" — which reads like a bad
-  // fixture rather than a race. Re-filling until the values stick is the fix;
-  // a bare `fill` is actionability-aware but knows nothing about hydration.
-  await expect(async () => {
-    await emailField.fill(email);
-    await passwordField.fill(password);
-    await expect(emailField).toHaveValue(email);
-    await expect(passwordField).toHaveValue(password);
-  }).toPass({ timeout: 15_000 });
-  // Captcha gate — test site key auto-solves but the submit button stays
-  // disabled until Turnstile fires its callback.
-  const submit = page.getByRole("button", { name: /create account/i });
-  await expect(submit).toBeEnabled({ timeout: 30_000 });
-  // Stamped before the submit so the poll below cannot pick up an email that
-  // predates this registration. `emailDir` is a real directory that survives
-  // the run, and the same address can be registered more than once across
-  // runs - the fixed `ADMIN_EMAIL` always is. Without the floor, the poll
-  // returns the previous run's message instantly and the spec dies on
-  // "Email verification code has already been used", which reads like a
-  // server bug rather than a stale file.
   const sentAfter = Date.now();
-  await submit.click();
-  await expect(
-    page.getByRole("button", { name: /complete registration/i }),
-  ).toBeVisible({ timeout: 10_000 });
 
-  // The verification email is written by a fire-and-forget background job
-  // (DirectJobDispatcher defers the send) that the register response does not
-  // await — under CI contention the file can land several seconds after the
-  // "complete registration" step renders. Poll generously so a slow-but-
-  // arriving email doesn't read as a missing one.
+  // `captchaToken` is accepted rather than skipped: the realm has
+  // `captchaRequired` on, and the e2e server runs Cloudflare's documented
+  // "always passes" test secret (`1x0000...AA`), which answers `success: true`
+  // for ANY token. Verified against siteverify directly, not assumed.
+  const intentRes = await page.request.post("/api/users/register", {
+    data: { email, password, captchaToken: "e2e" },
+  });
+  if (!intentRes.ok()) {
+    throw new Error(
+      `register intent ${intentRes.status()}: ${await intentRes.text()}`,
+    );
+  }
+  const intent = (await intentRes.json()) as { intentId: string };
+
   const emailPath = await findLatestEmail(email, 20_000, sentAfter);
-  expect(emailPath).not.toBeNull();
+  expect(emailPath, `verification email for ${email}`).not.toBeNull();
   const code = extractCode(fs.readFileSync(emailPath!, "utf-8"));
   expect(code).not.toBeNull();
   expect(code).toHaveLength(6);
 
-  await page.locator("#emailCode").fill(code!);
-  await page.getByRole("button", { name: /complete registration/i }).click();
-  await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout: 15_000 });
+  const completeRes = await page.request.post("/api/users/register/complete", {
+    data: { intentId: intent.intentId, emailCode: code, captchaToken: "e2e" },
+  });
+  if (!completeRes.ok()) {
+    throw new Error(
+      `register complete ${completeRes.status()}: ${await completeRes.text()}`,
+    );
+  }
+
+  const tokenRes = await page.request.post(
+    "/_auth/token?provider=credentials",
+    {
+      data: { username: email, password },
+    },
+  );
+  if (!tokenRes.ok()) {
+    throw new Error(`sign-in ${tokenRes.status()}: ${await tokenRes.text()}`);
+  }
+
+  await page.goto("/");
 };
 
 /**
