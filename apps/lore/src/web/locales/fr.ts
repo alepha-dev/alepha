@@ -2192,6 +2192,9 @@ export default {
   "dashboard.metric.activeQuests": "Quetes actives",
   "dashboard.metric.activeQuests.hint":
     "nouvelles + acceptees, un projet ou tous",
+  "dashboard.metric.heldQuests": "En pause",
+  "dashboard.metric.heldQuests.hint":
+    "quetes ouvertes en pause, en attente de quelque chose",
   "dashboard.metric.openBlights": "Fleaux ouverts",
   "dashboard.metric.openBlights.hint": "un projet, ou une liste d'apps",
   "dashboard.metric.untriagedFeedback": "Retours non traites",
@@ -2217,6 +2220,9 @@ export default {
   "dashboard.filterValue.yesterday": "Hier",
 
   "dashboard.footer.questSplit": "$1 acceptees, $2 nouvelles",
+  "dashboard.footer.held": "sur $1 quetes ouvertes",
+  "dashboard.footer.held.one": "sur 1 quete ouverte",
+  "dashboard.footer.held.none": "rien en pause",
   "dashboard.footer.blights": "$1 occurrences, $2 apps",
   "dashboard.footer.blights.one": "$1 occurrences, 1 app",
   "dashboard.footer.feedback.none": "rien en attente",

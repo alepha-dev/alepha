@@ -104,6 +104,7 @@ import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
+import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
@@ -293,6 +294,7 @@ export const LoreApi = $module({
     // One resolver per metric, plus the registry that groups a card list by
     // metric so N cards on one metric stay one query.
     ActiveQuestsMetric,
+    HeldQuestsMetric,
     OpenBlightsMetric,
     UntriagedFeedbackMetric,
     UniqueVisitorsMetric,

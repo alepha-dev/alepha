@@ -6,6 +6,7 @@ import type {
   DashboardScope,
   DashboardScopeKind,
 } from "../schemas/dashboardScopeSchema.ts";
+import { heldQuestsFiltersSchema } from "../schemas/heldQuestsFiltersSchema.ts";
 import { openBlightsFiltersSchema } from "../schemas/openBlightsFiltersSchema.ts";
 import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSchema.ts";
 import { untriagedFeedbackFiltersSchema } from "../schemas/untriagedFeedbackFiltersSchema.ts";
@@ -217,7 +218,14 @@ export class DashboardMetricCatalog {
   protected readonly metrics: DashboardMetricDescriptor[] = [
     {
       key: "activeQuests",
-      boards: ["home"],
+      /**
+       * ⚠️ On BOTH boards, and the project half is what makes `heldQuests`
+       * legible: "Quests 12 / On hold 3" reads as three of the twelve being
+       * stuck only while both numbers are on screen and come from the same
+       * `OpenQuestScope`. Home is unchanged - inside a project the scope step
+       * is skipped and the controller forces `projects: [thisProject]`.
+       */
+      boards: ["home", "project"],
       group: "quests",
       labelKey: "dashboard.metric.activeQuests",
       hintKey: "dashboard.metric.activeQuests.hint",
@@ -240,6 +248,38 @@ export class DashboardMetricCatalog {
               route: "projectQuests",
               params: { projectSlug: target.projectSlug },
               query: { status: "new" },
+            }
+          : undefined,
+    },
+    {
+      key: "heldQuests",
+      /**
+       * Project only. A held count across every project the reader belongs to
+       * answers nobody's question: a hold is somebody waiting on somebody in
+       * one project, and the drill-through is one project's quest list.
+       */
+      boards: ["project"],
+      group: "quests",
+      labelKey: "dashboard.metric.heldQuests",
+      hintKey: "dashboard.metric.heldQuests.hint",
+      icon: "circle-pause",
+      presentation: "scalar",
+      scopeKinds: ["projects"],
+      filters: heldQuestsFiltersSchema,
+      needs: { capability: "work" },
+      /**
+       * ⚠️ `?status=held`, and it only decodes because
+       * `boardFiltersSchema.status` is derived from `questStatusSchema`
+       * (#Q2082). Before that fix the value was silently dropped and the link
+       * degraded to the unfiltered list, which is the failure this drill-
+       * through would otherwise repeat.
+       */
+      link: (_scope, target) =>
+        target.projectSlug
+          ? {
+              route: "projectQuests",
+              params: { projectSlug: target.projectSlug },
+              query: { status: "held" },
             }
           : undefined,
     },

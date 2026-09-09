@@ -2182,6 +2182,9 @@ export default {
   "dashboard.metric.unknown": "Unknown card",
   "dashboard.metric.activeQuests": "Active quests",
   "dashboard.metric.activeQuests.hint": "new + accepted, project or all",
+  "dashboard.metric.heldQuests": "On hold",
+  "dashboard.metric.heldQuests.hint":
+    "open quests parked, waiting on something",
   "dashboard.metric.openBlights": "Open blights",
   "dashboard.metric.openBlights.hint": "project, or a list of apps",
   "dashboard.metric.untriagedFeedback": "Untriaged feedback",
@@ -2208,6 +2211,9 @@ export default {
   "dashboard.filterValue.yesterday": "Yesterday",
 
   "dashboard.footer.questSplit": "$1 accepted, $2 new",
+  "dashboard.footer.held": "of $1 open quests",
+  "dashboard.footer.held.one": "of 1 open quest",
+  "dashboard.footer.held.none": "nothing parked",
   "dashboard.footer.blights": "$1 occurrences, $2 apps",
   "dashboard.footer.blights.one": "$1 occurrences, 1 app",
   "dashboard.footer.feedback.none": "nothing waiting",

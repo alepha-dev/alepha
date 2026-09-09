@@ -282,6 +282,154 @@ describe("dashboard resolve", () => {
     });
   });
 
+  /**
+   * The On hold card. Its whole contract is a containment: the number must be
+   * a subset of the Active Quests card beside it, from the same
+   * `OpenQuestScope`, or "Quests 12 / On hold 3" stops meaning what it reads
+   * as.
+   */
+  describe("heldQuests", () => {
+    /**
+     * One card on the project board, resolved through the project entry
+     * point. Built here rather than added through a controller so this spec
+     * stays about the metric.
+     */
+    const resolveHeld = async (project: Project, user: UserAccountToken) => {
+      const values = await ctx.alepha
+        .inject(DashboardMetricRegistry)
+        .resolveForProject(
+          [
+            {
+              id: 1,
+              metric: "heldQuests",
+              scope: { kind: "projects", projectIds: [project.id] },
+              filters: {},
+              size: 1,
+              position: 0,
+            },
+          ],
+          user,
+          project,
+        );
+      return values[0]!;
+    };
+
+    it("counts the open quests that are parked, and says what of", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, { title: "open" });
+      await createTestQuest(ctx.alepha, project, {
+        title: "parked",
+        heldAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        title: "also parked",
+        acceptedAt: new Date().toISOString(),
+        heldAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, user);
+
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(2);
+      // The denominator the card is a subset of, so the footer can say
+      // "of 3 open quests" and a reader can check the containment.
+      expect(value.detail.open).toBe(3);
+    });
+
+    it("stays a subset of Active quests: completed and shelved are out", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, { title: "open" });
+      // ⚠️ Both of these carry `heldAt` and neither may be counted. A hold is
+      // not cleared on the way out, so a resolver that looked at `heldAt`
+      // alone would report work that is finished or declined.
+      await createTestQuest(ctx.alepha, project, {
+        title: "finished while held",
+        heldAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        title: "shelved while held",
+        heldAt: new Date().toISOString(),
+        shelvedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, user);
+
+      expect(value.value).toBe(0);
+      expect(value.detail.open).toBe(1);
+    });
+
+    it("honours the planned-epic backlog gate, like the card beside it", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const planned = await createTestEpic(ctx.alepha, project, {
+        status: "planned",
+      });
+      await createTestQuest(ctx.alepha, project, {
+        title: "held inside a planned epic",
+        epicId: planned.id,
+        heldAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        title: "held in the open backlog",
+        heldAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, user);
+
+      // A quest parked inside a planned epic is out of the Active Quests
+      // count by design, so counting it here would put a number on the board
+      // larger than the card beside it can account for.
+      expect(value.value).toBe(1);
+      expect(value.detail.open).toBe(1);
+    });
+
+    it("links to the quest list already filtered to held", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, {
+        title: "parked",
+        heldAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, user);
+
+      expect(value.link?.route).toBe("projectQuests");
+      expect(value.link?.params?.projectSlug).toBe(project.slug);
+      // ⚠️ Asserted to ARRIVE filtered. `?status=held` decodes only because
+      // `boardFiltersSchema.status` is derived from `questStatusSchema`; when
+      // it was a hand-written four-value enum the param was dropped and this
+      // link opened the whole list.
+      expect(value.link?.query).toEqual({ status: "held" });
+    });
+
+    it("answers zero rather than failing when the project turned Work off", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha, {
+        capabilities: [{ key: "knowledge" }],
+      });
+      await createTestMember(ctx.alepha, project, project.createdBy!);
+      await createTestQuest(ctx.alepha, project, {
+        title: "still parked, still hidden",
+        heldAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, token(project.createdBy!));
+
+      // Zero, not `ok: false`: the project genuinely has no Work surface, and
+      // "unreadable" is reserved for a scope that cannot be proven at all.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(0);
+    });
+  });
+
   describe("untriagedFeedback", () => {
     it("counts pending items and ages the oldest one", async ({ expect }) => {
       const { user, project } = await memberOf(ctx);
@@ -660,16 +808,21 @@ describe("dashboard resolve", () => {
     }) => {
       const { user, project } = await memberOf(ctx);
       const registry = ctx.alepha.inject(DashboardMetricRegistry);
+      const sigil = await createSigil(ctx, project, "app/production", [
+        "beacon",
+      ]);
 
-      // `activeQuests` declares `boards: ["home"]`. The board argument has to
-      // reach `accepts()` for this to be anything but a counted card.
+      // `uniqueVisitors` declares `boards: ["home"]` and accepts an `apps`
+      // scope, so only the board argument reaching `accepts()` can refuse
+      // this. Without it the card would resolve and put a cross-project
+      // metric on a project's board.
       const values = await registry.resolveForProject(
         [
           {
             id: 1,
-            metric: "activeQuests",
-            scope: { kind: "projects", projectIds: [project.id] },
-            filters: { statuses: ["new", "accepted"] },
+            metric: "uniqueVisitors",
+            scope: { kind: "apps", sigilIds: [sigil.id] },
+            filters: { period: "yesterday" },
             size: 1,
             position: 0,
           },
