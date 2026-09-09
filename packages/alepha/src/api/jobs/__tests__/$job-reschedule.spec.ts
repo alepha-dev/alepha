@@ -126,6 +126,20 @@ describe("$job — reschedule", () => {
         label: "row gone after the last stage",
       },
     );
+    // ⚠️ The wait above is NOT evidence that `job:success` has fired, and this
+    // assertion used to be made as if it were. `JobProvider` deletes the row
+    // and emits afterwards, in that order and unconditionally, so "row gone"
+    // is satisfied strictly BEFORE the hook runs. The assertion passed only
+    // because the emit usually wins inside the same tick; on a loaded CI
+    // runner it does not, and the failure reads as `expected +0 to be 1` with
+    // nothing in the log to explain it.
+    //
+    // Waiting on the counter is waiting on the thing actually being asserted.
+    await waitFor(
+      () => successes,
+      (n) => n === 1,
+      { label: "job:success fired" },
+    );
     expect(successes).toBe(1);
   });
 
