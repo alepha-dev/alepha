@@ -105,7 +105,7 @@ describe("the default prompts", () => {
    * was right while there were four kinds and is the assertion that went red
    * when the fifth arrived.
    */
-  const SURFACE_SCOPED: AgentPromptKind[] = ["feedbackLoop"];
+  const SURFACE_SCOPED: AgentPromptKind[] = ["feedbackLoop", "blightTriage"];
 
   it("carries the placeholders that name its subject", () => {
     for (const [kind, template] of Object.entries(AGENT_PROMPT_DEFAULTS)) {

@@ -30,6 +30,11 @@ class Routes {
     path: "/feedback",
     component: () => null,
   });
+  blights = $page({
+    name: "projectBlights",
+    path: "/blights",
+    component: () => null,
+  });
 }
 
 /**
@@ -214,5 +219,14 @@ describe("useAgentPromptSubject", () => {
     expect(subject).not.toHaveProperty("number");
     expect(subject).not.toHaveProperty("id");
     expect(subject).not.toHaveProperty("title");
+  });
+
+  it("builds a blights subject of the same three fields", async () => {
+    const handle = await handleFor();
+    const subject = handle.forBlightsInbox();
+
+    expect(Object.keys(subject).sort()).toEqual(["project", "slug", "url"]);
+    expect(subject.url).toContain("/blights");
+    expect(subject).not.toHaveProperty("reference");
   });
 });

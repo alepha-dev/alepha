@@ -1,4 +1,5 @@
 import {
+  Bug,
   ClipboardCheck,
   ListChecks,
   type LucideIcon,
@@ -72,5 +73,12 @@ export const AGENT_PROMPT_MENU_META: Record<
     Icon: ListChecks,
     labelKey: "agentPrompts.triageInbox",
     descriptionKey: "agentPrompts.feedbackLoop.description",
+  },
+  // `Bug`, not `ListChecks`: both are triage loops, and the surface is what
+  // tells them apart in a menu.
+  blightTriage: {
+    Icon: Bug,
+    labelKey: "agentPrompts.triageBlights",
+    descriptionKey: "agentPrompts.blightTriage.description",
   },
 };
