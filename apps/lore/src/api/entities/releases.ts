@@ -14,6 +14,11 @@ import { projects } from "./projects.ts";
  * `acceptedAt` / `completedAt` / `shelvedAt`. A third state later is a plain
  * additive `ADD COLUMN`, added knowing what it is for.
  *
+ * **`defaultSince` is that additive column, and it is NOT a third state.** A
+ * default release is still open: it is the project's intake point for finished
+ * work nobody filed anywhere, orthogonal to `releasedAt` rather than a value
+ * beside it. The two states stay two, and `releaseState.ts` stays right.
+ *
  * **A hotfix is not a state.** It is a new release: `0.28.1` created beside
  * `1.0.0`, quests attached, published, and `1.0.0` untouched. That is why
  * nothing here pauses and why N releases are open at once.
@@ -79,6 +84,34 @@ export const releases = $entity({
      */
     releasedAt: z.datetime().optional(),
     /**
+     * When this release became the project's DEFAULT: where a completed quest
+     * that names no release, and inherits none from its epic, lands. Null for
+     * every other release, and zero defaults is a normal, supported state.
+     *
+     * ⚠️ Not a third state. A default release is still open, and
+     * `releaseState.ts` still has exactly two values. This is orthogonal to
+     * `releasedAt` the way `projects.defaultEnv` is orthogonal to what
+     * environments exist: it says which one a bare reference resolves to.
+     *
+     * ⚠️ **At most one per project, and the index below does NOT enforce it.**
+     * A partial `UNIQUE (projectId) WHERE default_since IS NOT NULL` looks
+     * like the obvious guard and is a bug: SQLite checks uniqueness per row as
+     * an `UPDATE` walks the table, so the single-statement swap in
+     * `ReleaseController.setDefaultRelease` transiently holds two default rows
+     * and throws depending on row order, with no deferred constraint to fall
+     * back on. The invariant is that one statement, not an index.
+     *
+     * A timestamp rather than a boolean so the UI can say "Default since
+     * 8 Sep". Not `defaultedAt`: a participle there reads as a debt in
+     * default. `targetDate` above is the precedent for a non-participle date
+     * column on this entity.
+     *
+     * Optional with NO `db.default`, so the migration is a plain additive
+     * `ALTER TABLE ADD COLUMN` and never the rebuild that cascade-wipes
+     * children on D1.
+     */
+    defaultSince: z.datetime().optional(),
+    /**
      * Markdown snapshot rendered at publish time. While the release is open
      * the changelog is computed live from its contents.
      */
@@ -141,6 +174,15 @@ export const releases = $entity({
      * rows it returns, so neither needs one of its own.
      */
     { columns: ["projectId", "updatedAt"] },
+    /**
+     * The default-release lookup, run on every quest completion and on every
+     * epic Begin.
+     *
+     * ⚠️ **Non-unique on purpose.** See `defaultSince` above: a partial unique
+     * index would throw mid-swap on SQLite. This one is for finding the row,
+     * and nothing else.
+     */
+    { columns: ["projectId", "defaultSince"] },
   ],
 });
 

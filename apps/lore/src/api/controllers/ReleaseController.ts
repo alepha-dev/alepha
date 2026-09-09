@@ -237,6 +237,12 @@ export class ReleaseController {
       // `1.0.0` and `1.1.0` are meant to coexist, and a hotfix is a new
       // release beside the one it patches rather than a state on it.
       //
+      // Exactly one of those open releases MAY be the project's default
+      // (`defaultSince`, `setDefaultRelease` below), which is where a
+      // completed quest lands when nobody said where it should go. That is a
+      // fallback and not a plan: a hotfix is still filled by hand, and zero
+      // defaults is a normal state.
+      //
       // That makes this cap the ONLY thing bounding the table, so it matters
       // more than it did, not less.
       const maxReleasesPerProject = await this.limits.maxReleasesPerProject();
