@@ -136,6 +136,78 @@ export class ArtifactController {
   });
 
   /**
+   * Record a container image under `(app, tag, runtime, image)`.
+   *
+   * ## ⚠️ The path is named deliberately and is the wire contract
+   *
+   * `POST /projects/:projectId/artifacts/image`. `@alepha/lore/cli` reaches
+   * this by PATH rather than through `$client`, so a renamed route answers an
+   * older CLI with a 404 rather than failing typecheck. The literal `image`
+   * cannot be mistaken for the sibling route's `:artifactId`, which is a
+   * `z.uuid()`.
+   *
+   * The gate is `artifact:read`, matching {@link pushArtifact}: that is what
+   * pushing an artifact already requires, and an image is an artifact.
+   *
+   * ⚠️ **No `runtime` field and no `platform` field, and there must never be
+   * one.** The runtime is read from the image's own `dev.alepha.runtime`
+   * label and the platforms are inside its index. Same rule as
+   * {@link pushArtifact}, applied to a second axis.
+   *
+   * Nothing is uploaded here, so there is no `maxBytes` and no bucket: the
+   * body is a few hundred bytes of JSON, and the expensive part is four
+   * bounded calls to a registry.
+   */
+  pushImage = $action({
+    use: [this.ownsProject("artifact:read")],
+    method: "POST",
+    path: "/projects/:projectId/artifacts/image",
+    description:
+      "Record a container image in the project's artifact registry, by reference.",
+    schema: {
+      params: z.object({ projectId: z.integer() }),
+      body: z.object({
+        app: appNameSchema,
+        tag: releaseTagSchema,
+        /**
+         * The pullable string, `ghcr.io/alepha-dev/lore:0.30.0`.
+         *
+         * ⚠️ Untrusted input that decides which host the Worker then calls -
+         * the only field in Lore with that property. `ImageRegistryClient`
+         * parses and refuses it before any fetch; the bound here is only the
+         * column's ceiling.
+         */
+        reference: z.string().min(1).max(512),
+        commitSha: z.string().max(40).optional(),
+        /**
+         * Move a pinned tag onto a different image. For "tagged the wrong
+         * commit", which happens.
+         */
+        force: z.boolean().optional(),
+        /**
+         * What the pusher believes it pushed. Optional, and checked against
+         * what the registry reports when it is sent.
+         */
+        digest: z.string().min(64).max(71).optional(),
+      }),
+      response: artifactPushResultSchema,
+    },
+    handler: async ({ params, body }) => {
+      const { artifact, stored } = await this.artifacts.pushImage({
+        projectId: params.projectId,
+        app: body.app,
+        tag: body.tag,
+        reference: body.reference,
+        commitSha: body.commitSha,
+        force: body.force,
+        digest: body.digest,
+      });
+
+      return { artifact: this.resource(artifact), stored };
+    },
+  });
+
+  /**
    * What this project has built, newest first, with every runtime of a tag in
    * one entry.
    *
@@ -257,6 +329,8 @@ export class ArtifactController {
       app: artifact.app,
       tag: artifact.tag,
       runtime: artifact.runtime,
+      format: artifact.format,
+      reference: artifact.reference,
       sha256: artifact.sha256,
       size: artifact.size,
       commitSha: artifact.commitSha,

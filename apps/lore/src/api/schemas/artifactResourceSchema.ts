@@ -22,7 +22,25 @@ export const artifactResourceSchema = z.object({
   tag: z.string(),
   runtime: z.string(),
   /**
-   * Lowercase hex, 64 characters. The artifact's identity.
+   * `archive` or `image`. Which kind of thing this variant is.
+   *
+   * ⚠️ Without it a caller cannot tell two `node` variants of one tag apart,
+   * and every surface that keys on `runtime` alone collides. `z.string()`
+   * rather than the enum, matching the column: a value the enum has never
+   * heard of must render as itself, not fail the whole payload.
+   */
+  format: z.string(),
+  /**
+   * The pullable string for an image, absent for an archive.
+   *
+   * ⚠️ `z.string()`, not `z.text()`, for the reason at the top of this file:
+   * `z.text()` caps at 255 and the column allows 512, so a long reference
+   * would make the whole payload fail to serialize rather than truncate.
+   */
+  reference: z.string().optional(),
+  /**
+   * Lowercase hex, 64 characters. The artifact's identity: the tarball's
+   * digest for an archive, the index digest for an image.
    */
   sha256: z.string(),
   /**
