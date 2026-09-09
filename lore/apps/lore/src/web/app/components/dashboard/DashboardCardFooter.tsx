@@ -43,6 +43,18 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         args: [String(detail.acceptedCount ?? 0), String(detail.newCount ?? 0)],
       });
     }
+    if (props.metric === "heldQuests") {
+      // Says what the number is made OF, which for this card means the
+      // denominator it is a subset of: the same open count the Active Quests
+      // card shows, from the same `OpenQuestScope`. "3 of 12 open" is what
+      // makes the containment checkable rather than asserted.
+      const open = Number(detail.open ?? 0);
+      if (props.value?.value === 0) return tr("dashboard.footer.held.none");
+      return tr(
+        open === 1 ? "dashboard.footer.held.one" : "dashboard.footer.held",
+        { args: [String(open)] },
+      );
+    }
     if (props.metric === "openBlights") {
       const apps = Number(detail.apps ?? 0);
       return tr(

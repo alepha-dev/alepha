@@ -318,11 +318,30 @@ describe("dashboard cards and capabilities", () => {
     }) => {
       const catalog = ctx.alepha.inject(DashboardMetricCatalog);
 
-      expect(catalog.accepts("activeQuests", "projects", "home")).toBe(true);
-      expect(catalog.accepts("activeQuests", "projects", "project")).toBe(
-        false,
-      );
-      expect(catalog.offers("activeQuests", "project")).toBe(false);
+      // `uniqueVisitors` is home's: its scope is a set of apps that may span
+      // projects, which inside one project is a question with a different
+      // answer. The scope kind is accepted on home and the metric is not
+      // offered at all on a project board, and `accepts` refuses on the
+      // second ground even though the first would have passed.
+      expect(catalog.accepts("uniqueVisitors", "apps", "home")).toBe(true);
+      expect(catalog.accepts("uniqueVisitors", "apps", "project")).toBe(false);
+      expect(catalog.offers("uniqueVisitors", "project")).toBe(false);
+    });
+
+    it("offers On hold only inside a project, beside Active quests", ({
+      expect,
+    }) => {
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+
+      expect(catalog.offers("heldQuests", "project")).toBe(true);
+      // ⚠️ Never on home. A held count across every project the reader belongs
+      // to answers nobody's question, and its drill-through is one project's
+      // quest list.
+      expect(catalog.offers("heldQuests", "home")).toBe(false);
+
+      // And the card it has to be read beside is on the same board, from the
+      // same `OpenQuestScope`, which is what makes "3 of 12 open" true.
+      expect(catalog.offers("activeQuests", "project")).toBe(true);
     });
 
     it("filters apps by their own project, and by beacon", ({ expect }) => {

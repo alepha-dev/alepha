@@ -21,6 +21,7 @@ import {
   DashboardScopeService,
   type ResolvedDashboardScope,
 } from "./DashboardScopeService.ts";
+import { HeldQuestsMetric } from "./HeldQuestsMetric.ts";
 import { OpenBlightsMetric } from "./OpenBlightsMetric.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 import { UniqueVisitorsMetric } from "./UniqueVisitorsMetric.ts";
@@ -68,6 +69,7 @@ export class DashboardMetricRegistry {
   protected readonly registry = $inject(CapabilityRegistry);
 
   protected readonly activeQuests = $inject(ActiveQuestsMetric);
+  protected readonly heldQuests = $inject(HeldQuestsMetric);
   protected readonly openBlights = $inject(OpenBlightsMetric);
   protected readonly untriagedFeedback = $inject(UntriagedFeedbackMetric);
   protected readonly uniqueVisitors = $inject(UniqueVisitorsMetric);
@@ -82,6 +84,7 @@ export class DashboardMetricRegistry {
   protected resolvers(): Map<string, DashboardMetricResolver> {
     const all: DashboardMetricResolver[] = [
       this.activeQuests,
+      this.heldQuests,
       this.openBlights,
       this.untriagedFeedback,
       this.uniqueVisitors,
