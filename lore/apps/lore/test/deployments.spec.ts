@@ -39,6 +39,15 @@ const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
 
 const userDataSchema = z.object({ username: z.string(), email: z.email() });
 
+/**
+ * `declaresSigil` is protected, and pinning it directly is the point: the
+ * indirect path through `queue` can only ever show that the ARCHIVE was read,
+ * which is exactly the thing that was already true by accident.
+ */
+class TestDeployService extends DeployService {
+  public testDeclaresSigil = this.declaresSigil.bind(this);
+}
+
 class TestRows {
   public readonly deployments = $repository(deployments);
   public readonly estates = $repository(estates);
@@ -119,6 +128,10 @@ const setup = async () => {
   alepha.with(AlephaFake);
   alepha.with(LoreApi);
   alepha.with(TestRows);
+  // ⚠️ Registered here rather than injected on demand: the container locks at
+  // `start()`, so a spec that reaches for a service the container has never
+  // seen gets `ContainerLockedError` instead of the assertion it wanted.
+  alepha.with(TestDeployService);
   await alepha.start();
   return alepha;
 };
@@ -522,6 +535,60 @@ describe("a deployment", () => {
       });
 
       expect(await sigilOf(w.instance.id)).toBeFalsy();
+    });
+
+    /**
+     * ⚠️ **`manifest` holds two shapes now, told apart only by `format`.**
+     * For an archive it is `dist/manifest.json`; for an image it is the OCI
+     * index, which has a `manifests` array and no `env` at all.
+     *
+     * `declaresSigil` does a bare `JSON.parse` and looks for an `env` array,
+     * so it answers false for an index. That is the RIGHT answer and it was
+     * right by accident: nothing in the code said an index could land in that
+     * column. This spec is what turns the accident into a decision, so a
+     * future reader who makes `declaresSigil` smarter has to notice.
+     */
+    it("mints nothing from an OCI index, which is the other manifest shape", async ({
+      expect,
+    }) => {
+      const w = await deployable(["APP_SECRET", "SIGIL_KEY"]);
+      const rows = alepha.inject(TestRows);
+
+      // The same tag, as an image: an index document in `manifest`, no
+      // `fileId`, and a `runtime` a Cloudflare estate cannot run anyway.
+      await rows.artifacts.create({
+        projectId: w.project.id,
+        app: "my-app",
+        tag: "1.2.3",
+        runtime: "node",
+        format: "image",
+        reference: "ghcr.io/acme/my-app:1.2.3",
+        sha256: "b".repeat(64),
+        manifest: JSON.stringify({
+          schemaVersion: 2,
+          mediaType: "application/vnd.oci.image.index.v1+json",
+          manifests: [{ digest: `sha256:${"c".repeat(64)}` }],
+        }),
+      } as never);
+
+      // The archive still mints, so the image row changed nothing about the
+      // decision - it is simply never the row this reads.
+      await alepha.inject(DeployService).queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "1.2.3",
+        createdBy: w.user.id,
+      });
+
+      expect(await sigilOf(w.instance.id)).toBeTruthy();
+
+      // And directly: an index in the column declares nothing.
+      const gate = alepha.inject(TestDeployService);
+      expect(
+        gate.testDeclaresSigil({
+          manifest: JSON.stringify({ manifests: [], schemaVersion: 2 }),
+        } as never),
+      ).toBe(false);
     });
 
     it("mints nothing when asked not to", async ({ expect }) => {

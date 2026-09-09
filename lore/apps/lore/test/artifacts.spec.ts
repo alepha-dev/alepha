@@ -12,7 +12,9 @@ import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { artifacts } from "../src/api/entities/artifacts.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { ArtifactService } from "../src/api/services/ArtifactService.ts";
+import { RegistryTransport } from "../src/api/services/RegistryTransport.ts";
 import { packedArtifact, tar } from "./fixtures/artifactTarball.ts";
+import { MemoryRegistryTransport } from "./fixtures/MemoryRegistryTransport.ts";
 
 /**
  * The registry half of epic #18: CI pushes what it built, and Lore keeps it.
@@ -51,6 +53,7 @@ interface TestContext {
   artifactService: ArtifactService;
   rows: TestRows;
   fakeProvider: FakeProvider;
+  registry: MemoryRegistryTransport;
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -67,6 +70,13 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaSecurity);
   alepha.with(AlephaEmail);
   alepha.with(AlephaApiUsers);
+  // ⚠️ BEFORE the modules that inject it. A substitution registered after the
+  // service has been resolved is a `TooLateSubstitutionError`, and `LoreApi`
+  // resolves `ArtifactService` - which holds the registry client - on the way
+  // in. Substituted rather than mocked, so the whole file still runs with no
+  // network and no credential.
+  alepha.with({ provide: RegistryTransport, use: MemoryRegistryTransport });
+
   alepha.with(AlephaFake);
   alepha.with(LoreApi);
   alepha.with(TestRows);
@@ -81,6 +91,7 @@ const setup = async (): Promise<TestContext> => {
     artifactService: alepha.inject(ArtifactService),
     rows: alepha.inject(TestRows),
     fakeProvider: alepha.inject(FakeProvider),
+    registry: alepha.inject(MemoryRegistryTransport),
   };
 };
 
@@ -161,6 +172,37 @@ describe("artifacts", () => {
    * Lore for a request it was right to refuse, and a CI log full of "Internal
    * Server Error" tells nobody what to fix.
    */
+  /**
+   * The image sibling of `push`. Same defaults, and no `runtime` field to
+   * pass even if a case wanted to.
+   */
+  const pushImage = async (
+    projectId: number,
+    user: { id: string },
+    body: {
+      app?: string;
+      tag?: string;
+      reference?: string;
+      commitSha?: string;
+      force?: boolean;
+      digest?: string;
+    },
+  ) =>
+    ctx.artifactController.pushImage.fetch(
+      {
+        params: { projectId },
+        body: {
+          app: body.app ?? "my-app",
+          tag: body.tag ?? "0.30.0",
+          reference: body.reference ?? "ghcr.io/alepha-dev/lore:0.30.0",
+          commitSha: body.commitSha,
+          force: body.force,
+          digest: body.digest,
+        },
+      },
+      { user },
+    );
+
   const statusOf = async (call: Promise<unknown>): Promise<number> => {
     try {
       await call;
@@ -868,6 +910,235 @@ describe("artifacts", () => {
           push(projectId, stranger, { file: await packedArtifact() }),
         ),
       ).toBe(403);
+    });
+
+    it("gates the image push the same way, on artifact:read", async ({
+      expect,
+    }) => {
+      const { projectId } = await aProject();
+      const stranger = await createTestUser(ctx);
+      ctx.registry.healthy();
+
+      expect(await statusOf(pushImage(projectId, stranger, {}))).toBe(403);
+    });
+  });
+
+  /**
+   * An image is a reference, not bytes.
+   *
+   * The properties worth pinning here are the ones that separate this from
+   * `push`: what the row records, what it refuses, and what makes a re-run of
+   * a release job exit 0.
+   */
+  describe("pushing an image", () => {
+    const REFERENCE = "ghcr.io/alepha-dev/lore:0.30.0";
+
+    it("records the reference, the bare index digest and the index", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy();
+
+      const response = await pushImage(projectId, owner, {});
+
+      expect(response.data.stored).toBe(true);
+      const [row] = await ctx.rows.artifacts.findMany({});
+      expect(row.format).toBe("image");
+      expect(row.reference).toBe(REFERENCE);
+      // ⚠️ Bare hex. The column is exactly 64 characters and the registry
+      // reports `sha256:` plus 64, which is 71.
+      expect(row.sha256).toBe("a".repeat(64));
+      // ⚠️ No bytes at all: Lore records a reference and stores nothing.
+      expect(row.fileId).toBeUndefined();
+      // The OCI INDEX, which carries the platform list and the per-arch
+      // digests - which is why there is no arch column.
+      expect(JSON.parse(row.manifest as string).manifests).toHaveLength(3);
+    });
+
+    it("takes the runtime from the label, never from the request", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy({ runtime: "bun" });
+
+      await pushImage(projectId, owner, {});
+
+      const [row] = await ctx.rows.artifacts.findMany({});
+      expect(row.runtime).toBe("bun");
+      // And there is no field on the endpoint that could have said otherwise.
+      // ⚠️ Read off the action rather than from a list written here: a
+      // `runtime` added to the body would sail past a hand-maintained one.
+      const body = ctx.artifactController.pushImage.options.schema?.body as {
+        shape: Record<string, unknown>;
+      };
+      expect(Object.keys(body.shape)).not.toContain("runtime");
+    });
+
+    it("returns the format and the reference on the wire", async ({
+      expect,
+    }) => {
+      // ⚠️ `schema.response` is what serializes: a field on the row that is
+      // not on the resource is absent from the payload, silently.
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy();
+
+      const response = await pushImage(projectId, owner, {});
+
+      expect(response.data.artifact.format).toBe("image");
+      expect(response.data.artifact.reference).toBe(REFERENCE);
+    });
+
+    it("keeps a size the registry answered, and tolerates one it did not", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy();
+
+      await pushImage(projectId, owner, {});
+      const [sized] = await ctx.rows.artifacts.findMany({});
+      expect(sized.size).toBe(42_002_000);
+
+      // ⚠️ An absent size is a NORMAL row, not an error. Every surface
+      // renders N/A for it.
+      ctx.registry.on("/manifests/sha256:" + "b".repeat(64), {
+        status: 200,
+        body: JSON.stringify({
+          config: { digest: `sha256:${"e".repeat(64)}` },
+          layers: [{ size: 1 }],
+        }),
+      });
+      await pushImage(projectId, owner, { tag: "0.31.0" });
+
+      const rows = await ctx.rows.artifacts.findMany({
+        where: { tag: { eq: "0.31.0" } },
+      });
+      expect(rows[0].size).toBeUndefined();
+    });
+
+    it("refuses a workerd image by name: a Worker does not run in a container", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy({ runtime: "workerd" });
+
+      await expect(pushImage(projectId, owner, {})).rejects.toThrowError(
+        /a Worker does not run in a container/,
+      );
+      expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
+    });
+
+    it("is a no-op that exits 0 when the digest AND the reference match", async ({
+      expect,
+    }) => {
+      // A re-run of a release job. Answering it with a conflict would turn an
+      // idempotent pipeline red for succeeding.
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy();
+
+      await pushImage(projectId, owner, {});
+      const again = await pushImage(projectId, owner, {});
+
+      expect(again.data.stored).toBe(false);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
+    });
+
+    it("is NOT a no-op when the same digest arrives under a new reference", async ({
+      expect,
+    }) => {
+      // ⚠️ Where this differs from the archive path, which decides on
+      // `sha256` alone. The same image published under two references is a
+      // different answer to "what do I pull", and a row still naming the old
+      // string would send a reader to a tag CI no longer pushes.
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy();
+      await pushImage(projectId, owner, {});
+
+      ctx.registry.healthy({ repository: "alepha-dev/lore-mirror" });
+
+      await expect(
+        pushImage(projectId, owner, {
+          reference: "ghcr.io/alepha-dev/lore-mirror:0.30.0",
+        }),
+      ).rejects.toThrowError(/already names .* write-once - push --force/);
+    });
+
+    it("refuses to move a pinned tag without force, and moves it with one", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy();
+      await pushImage(projectId, owner, {});
+
+      ctx.registry.healthy({ digest: `sha256:${"9".repeat(64)}` });
+
+      await expect(pushImage(projectId, owner, {})).rejects.toThrowError(
+        /write-once - push --force to move it/,
+      );
+
+      const moved = await pushImage(projectId, owner, { force: true });
+      expect(moved.data.stored).toBe(true);
+      const rows = await ctx.rows.artifacts.findMany({});
+      expect(rows).toHaveLength(1);
+      expect(rows[0].sha256).toBe("9".repeat(64));
+    });
+
+    it("moves `latest` with no force at all", async ({ expect }) => {
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy({ tag: "latest" });
+      await pushImage(projectId, owner, {
+        tag: "latest",
+        reference: "ghcr.io/alepha-dev/lore:latest",
+      });
+
+      ctx.registry.healthy({
+        tag: "latest",
+        digest: `sha256:${"9".repeat(64)}`,
+      });
+      const moved = await pushImage(projectId, owner, {
+        tag: "latest",
+        reference: "ghcr.io/alepha-dev/lore:latest",
+      });
+
+      expect(moved.data.stored).toBe(true);
+      expect(await ctx.rows.artifacts.findMany({})).toHaveLength(1);
+    });
+
+    it("refuses a supplied digest that disagrees with the registry", async ({
+      expect,
+    }) => {
+      // `release.yml` sends none, deliberately. The field stays because
+      // somebody else's CI may want it, and an unexercised branch is worse
+      // than an unused field.
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy();
+
+      await expect(
+        pushImage(projectId, owner, { digest: `sha256:${"f".repeat(64)}` }),
+      ).rejects.toThrowError(
+        /is aaaaaaaaaaaa in the registry, and the push claims/,
+      );
+      expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
+    });
+
+    it("coexists with an archive of the same tag and runtime", async ({
+      expect,
+    }) => {
+      // The widened key, from the push side: the archive push must not
+      // resolve to the image row and try to replace it.
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy({ tag: "1.2.3" });
+
+      await push(projectId, owner, { file: await packedArtifact() });
+      await pushImage(projectId, owner, {
+        tag: "1.2.3",
+        reference: "ghcr.io/alepha-dev/lore:1.2.3",
+      });
+
+      const rows = await ctx.rows.artifacts.findMany({});
+      expect(rows).toHaveLength(2);
+      expect(rows.map((it) => it.format).sort()).toEqual(["archive", "image"]);
+      // One of them holds bytes, and it is not the image.
+      expect(rows.filter((it) => it.fileId)).toHaveLength(1);
     });
   });
 });

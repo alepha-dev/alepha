@@ -14,6 +14,7 @@ import {
   RELEASE_TAG_PATTERN,
 } from "../schemas/releaseTagSchema.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
+import { ImageRegistryClient } from "./ImageRegistryClient.ts";
 
 /**
  * Everything that writes, reads or reclaims an artifact.
@@ -38,6 +39,7 @@ import { ArtifactTarReader } from "./ArtifactTarReader.ts";
 export class ArtifactService {
   protected readonly rows = $repository(artifacts);
   protected readonly reader = $inject(ArtifactTarReader);
+  protected readonly registry = $inject(ImageRegistryClient);
   protected readonly files = $inject(FileService);
 
   /**
@@ -79,6 +81,11 @@ export class ArtifactService {
         app: { eq: app },
         tag: { eq: tag },
         runtime: { eq: manifest.runtime },
+        // ⚠️ The whole key, since `format` joined it. Without this clause a
+        // node ARCHIVE push would resolve to the node IMAGE row of the same
+        // tag, compare digests that can never match, and then either conflict
+        // or `replace` an image row with a tarball.
+        format: { eq: ArtifactService.ARCHIVE },
       },
     });
 
@@ -134,6 +141,7 @@ export class ArtifactService {
         app,
         tag,
         runtime: manifest.runtime,
+        format: ArtifactService.ARCHIVE,
         sha256,
         size: bytes.length,
         fileId: stored.id,
@@ -149,6 +157,138 @@ export class ArtifactService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Record a container image, or recognise that it is already recorded.
+   *
+   * The sibling of {@link push}, and deliberately a separate method for the
+   * same reason `lore artifacts push-image` is a separate verb: this shares
+   * none of the tarball machinery and none of its failure modes. Nothing is
+   * uploaded, nothing is hashed here, and no bytes are ever stored - the row
+   * records a reference, and `ImageRegistryClient` is what turns that
+   * reference into facts by reading the image's own claims.
+   *
+   * ## ⚠️ No runtime and no platform on the input, and there must never be
+   *
+   * The runtime comes from the image's `dev.alepha.runtime` label and the
+   * platforms are inside the index. Neither is the pusher's to declare, which
+   * is the same rule {@link push} follows by reading `dist/manifest.json`
+   * rather than accepting a form field.
+   *
+   * ## Write once, `--force` to move, `latest` excepted
+   *
+   * Identical to the archive rule, and for the identical reason: an artifact
+   * is what answers "which version is running here", and a tag that quietly
+   * changed underneath one makes that unanswerable.
+   *
+   * ⚠️ **The no-op needs BOTH the digest and the reference to match**, where
+   * the archive path decides on `sha256` alone. The same image published under
+   * two references is a genuinely different answer to "what do I pull", and
+   * treating it as a re-push would leave the row naming a string that is no
+   * longer what CI pushed.
+   */
+  public async pushImage(
+    input: ArtifactImagePushInput,
+  ): Promise<ArtifactPushResult> {
+    const app = this.normalizeApp(input.app);
+    const tag = this.normalizeTag(input.tag);
+
+    const image = await this.registry.read(input.reference, {
+      digest: input.digest,
+    });
+
+    // ⚠️ Refused by NAME rather than stored. A Worker does not run in a
+    // container, so this row is impossible rather than merely unusual, and a
+    // registry that can hold an impossible row is one somebody has to debug
+    // later. Note the check is here and not at build time: refusing
+    // `target: docker` with `runtime: workerd` in the CLI is a framework
+    // behaviour change with its own blast radius, and this is the only moment
+    // the combination actually matters.
+    if (image.runtime === ArtifactService.CONTAINERLESS_RUNTIME) {
+      throw new BadRequestError(
+        `${image.reference} declares \`${ImageRegistryClient.RUNTIME_LABEL}: ${image.runtime}\`, and a Worker does not run in a container. Build the image with a \`node\` or \`bun\` runtime, or push the workerd build as an archive with \`lore artifacts push\`.`,
+      );
+    }
+
+    const existing = await this.rows.findOne({
+      where: {
+        projectId: { eq: input.projectId },
+        app: { eq: app },
+        tag: { eq: tag },
+        runtime: { eq: image.runtime },
+        format: { eq: ArtifactService.IMAGE },
+      },
+    });
+
+    if (existing) {
+      if (
+        existing.sha256 === image.digest &&
+        existing.reference === image.reference
+      ) {
+        // A re-run of a release job, which must exit 0 rather than turn an
+        // idempotent pipeline red for succeeding.
+        return { artifact: existing, stored: false };
+      }
+
+      if (tag !== ArtifactService.MUTABLE_TAG && !input.force) {
+        throw new ConflictError(
+          `${app} ${tag} (${image.runtime}, image) already names ${existing.reference ?? "another image"} at ${existing.sha256.slice(0, 12)}. Every tag but \`${ArtifactService.MUTABLE_TAG}\` is write-once - push --force to move it.`,
+        );
+      }
+
+      return {
+        artifact: await this.rows.updateById(existing.id, {
+          reference: image.reference,
+          sha256: image.digest,
+          // ⚠️ `sql`NULL`` for the same reason the archive replace uses it:
+          // the ORM reads an explicit `undefined` as an absent key, so a
+          // re-push whose image answers no size would leave the row stating
+          // the size of bytes it no longer names.
+          size: image.size ?? sql`NULL`,
+          commitSha: input.commitSha ?? sql`NULL`,
+          manifest: this.serialiseDocument(image.document) ?? sql`NULL`,
+        }),
+        stored: true,
+      };
+    }
+
+    return {
+      artifact: await this.rows.create({
+        projectId: input.projectId,
+        app,
+        tag,
+        runtime: image.runtime,
+        format: ArtifactService.IMAGE,
+        reference: image.reference,
+        sha256: image.digest,
+        // Absent is a normal row, never an error: the size is best effort and
+        // every surface renders N/A for a variant that has none.
+        size: image.size,
+        // ⚠️ No `fileId`. Lore stores no bytes for an image, which is what
+        // makes this whole path cheap and what `EstatePullController` and
+        // `DeployRunner` both check before reaching for one.
+        commitSha: input.commitSha,
+        manifest: this.serialiseDocument(image.document),
+      }),
+      stored: true,
+    };
+  }
+
+  /**
+   * The registry document as the column holds it, or nothing when it will not
+   * fit - the same rule {@link serialise} applies to a build manifest, and for
+   * the same reason: absent already means "unknown" to every reader, while a
+   * truncated document is JSON nobody can parse.
+   *
+   * An OCI index is about a kilobyte against a 64 KB ceiling, so this
+   * normally does nothing. It exists because `ImageRegistryClient` will read
+   * up to 256 KB and the column will not hold that.
+   */
+  protected serialiseDocument(document: string): string | undefined {
+    return document.length > ArtifactService.MAX_MANIFEST_BYTES
+      ? undefined
+      : document;
   }
 
   /**
@@ -362,6 +502,11 @@ export class ArtifactService {
         app: { eq: this.normalizeApp(key.app) },
         tag: { eq: key.tag },
         runtime: { eq: key.runtime },
+        // ⚠️ Omitted rather than defaulted when the caller names no format:
+        // `(app, tag, node)` genuinely identifies two rows now, and answering
+        // with whichever came back first is how a caller asking about the
+        // image gets told about the tarball. A caller that means one says so.
+        ...(key.format ? { format: { eq: key.format } } : {}),
       },
     });
   }
@@ -476,6 +621,21 @@ export class ArtifactService {
   public static readonly MUTABLE_TAG = "latest";
 
   /**
+   * The two formats, as the service names them. `artifactFormatSchema` is the
+   * validated list; these are so a query filter cannot be a typo.
+   */
+  public static readonly ARCHIVE = "archive";
+  public static readonly IMAGE = "image";
+
+  /**
+   * The one runtime an image can never be.
+   *
+   * A Worker does not run in a container. Stated as a constant rather than
+   * inline because it is a claim about the world, not a string.
+   */
+  public static readonly CONTAINERLESS_RUNTIME = "workerd";
+
+  /**
    * How many artifacts a listing hands back when the caller names no bound.
    */
   protected static readonly DEFAULT_LIMIT = 200;
@@ -486,6 +646,13 @@ export interface ArtifactKey {
   app: string;
   tag: string;
   runtime: string;
+  /**
+   * Narrow to one format. Optional, because a caller that does not care about
+   * the distinction should not have to state one - but a `(app, tag, node)`
+   * that matches both a tarball and an image is genuinely ambiguous, and this
+   * is how a caller says which it meant.
+   */
+  format?: string;
 }
 
 /**
@@ -535,6 +702,35 @@ export interface ArtifactPushInput {
    * included, so it needs no lifecycle of its own.
    */
   maps?: FileLike;
+}
+
+export interface ArtifactImagePushInput {
+  projectId: number;
+  app: string;
+  tag: string;
+  /**
+   * The pullable string, exactly as it should be rendered back.
+   *
+   * ⚠️ Its docker tag is allowed to differ from `tag`. A project that tags
+   * `v0.30.0` in ghcr and `0.30.0` in Lore is doing nothing wrong, and the
+   * reference is rendered verbatim so the difference is visible rather than
+   * hidden. That is a different class of thing from `(image, workerd)`, which
+   * is impossible rather than unusual.
+   */
+  reference: string;
+  commitSha?: string;
+  force?: boolean;
+  /**
+   * What the pusher believes it pushed, checked against what the registry
+   * reports.
+   *
+   * Optional, and `release.yml` sends none: with the record step at the end
+   * of the job, a `--metadata-file` value from minutes earlier would have to
+   * travel through `$GITHUB_ENV` to guard against a re-tag that cannot happen
+   * inside one job. Somebody else's CI may want it, and an unexercised branch
+   * is worse than an unused field.
+   */
+  digest?: string;
 }
 
 export interface ArtifactPushResult {
