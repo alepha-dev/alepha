@@ -4,6 +4,8 @@ import { Cloud, Container, Link2, Server } from "lucide-react";
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
+import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
+
 export interface ReleaseArtifactsTabProps {
   /**
    * The release's tag, which IS the join key. Named in the header and in the
@@ -173,6 +175,21 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
                 <span className="text-muted-foreground w-30 shrink-0 truncate text-[11.5px]">
                   {String(l(group.pushedAt, { date: "fromNow" }))}
                 </span>
+                {/*
+                  ⚠️ Beside the tarballs, and the only affordance any variant
+                  on this page has. An image has nothing to download - Lore
+                  records the reference and never the bytes - so the reference
+                  IS the artifact, and this is what a self-hoster came here
+                  for: which image goes with this release.
+                */}
+                {group.variants
+                  .filter((it) => it.format === "image" && it.reference)
+                  .map((it) => (
+                    <ArtifactPullCommand
+                      key={it.id}
+                      reference={it.reference as string}
+                    />
+                  ))}
               </div>
             );
           })}

@@ -282,9 +282,15 @@ export default {
   "artifacts.filter.runtime": "Runtime",
   "artifacts.filter.allRuntimes": "Tous les runtimes",
   "artifacts.filter.runtimeCount": "$1 runtimes",
+  "artifacts.filter.format": "Format",
+  "artifacts.filter.allFormats": "Tous les formats",
+  "artifacts.filter.formatCount": "$1 formats",
   "artifacts.table.app": "Application",
   "artifacts.table.tag": "Tag",
   "artifacts.table.runtime": "Runtime",
+  "artifacts.table.format": "Format",
+  "artifacts.pull.copy": "Copier la commande docker pull de $1",
+  "artifacts.pull.copied": "Commande docker pull copiée",
   "artifacts.table.size": "Taille",
   "artifacts.table.pushed": "Publié",
   "artifacts.table.commit": "Commit",
@@ -1179,6 +1185,8 @@ export default {
   "app.deploy.pick": "Ce qui peut être déployé ici",
   "app.deploy.wrongRuntime":
     "Ce domaine exécute $1, et aucun build de ce tag n\u2019a été produit pour lui.",
+  "app.deploy.imageOnly":
+    "Ce tag n\u2019existe que sous forme d\u2019image de conteneur, et Lore déploie des builds empaquetés.",
   "app.deploy.runs": "Déploiements",
   "app.deploy.loading": "Chargement...",
   "app.deploy.error": "Impossible de lire les déploiements de cette copie.",
@@ -1278,6 +1286,8 @@ export default {
   "app.artifacts.loading": "Lecture de ce que cette app a construit…",
   "app.artifacts.error": "Impossible de lire les artefacts de cette app.",
   "app.artifacts.commit": "Construit depuis le commit $1",
+  "app.artifacts.size.hint":
+    "Le build le plus lourd sous ce tag. La taille d’une image de conteneur ne couvre qu’une architecture.",
   "app.artifacts.empty.description":
     "Aucun artefact publié pour l'instant. Tout le reste de cette page vient de l'app elle-même ; les artefacts viennent de la CI, donc une app sans pipeline n'en montre aucun.",
   "insights.errors.title": "Budget d'erreurs",

@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 
 import type { I18n } from "../../../services/I18n.ts";
+import ArtifactPullCommand from "../../shared/ArtifactPullCommand.tsx";
 
 export interface AppArtifactsRowProps {
   group: ArtifactGroup;
@@ -144,6 +145,24 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
           {group.commitSha.slice(0, 7)}
         </span>
       )}
+
+      {/*
+        ⚠️ The one affordance an image variant has, and the reason the epic
+        exists. There is nothing to download - Lore stores the reference and
+        never the bytes - so the reference IS the artifact and the useful
+        thing to do with it is pull it.
+
+        One per image variant rather than one per row: a tag could carry a
+        node image and a bun image, which are two different pulls.
+      */}
+      {group.variants
+        .filter((variant) => variant.format === "image" && variant.reference)
+        .map((variant) => (
+          <ArtifactPullCommand
+            key={variant.id}
+            reference={variant.reference as string}
+          />
+        ))}
 
       {props.action ? (
         <span className="ml-auto shrink-0">{props.action(group)}</span>

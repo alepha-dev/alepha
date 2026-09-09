@@ -132,6 +132,10 @@ docker run -d --name lore -p 3000:3000 -v lore:/data ghcr.io/alepha-dev/lore:lat
 
 Images are tagged `:<version>` and `:latest`, nothing floating. Pin a version if you would rather choose when to move.
 
+### Which image goes with a given version
+
+Every release page on [lore.alepha.dev](https://lore.alepha.dev) carries an **Artifacts** tab, and since 0.30.0 the image is listed there beside the packed builds, with its `docker pull` line ready to copy. That is the place to look when you want the image for one specific version rather than whatever `:latest` currently points at - the tag on the page and the tag in the registry are the same string, recorded by the release job itself rather than written by hand.
+
 **Downgrading is not supported once a migration has run.** An older image does not know how to undo a newer schema, and there is no down-migration. Take the backup above before an upgrade; that snapshot is the way back.
 
 ## Behind a Reverse Proxy

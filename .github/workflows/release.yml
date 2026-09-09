@@ -438,6 +438,36 @@ jobs:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
 
+      # The image, as a reference rather than as bytes. Lore reads what the
+      # image says about itself out of ghcr - its `dev.alepha.runtime` label
+      # and its OCI index - so this step names only the tag and the reference.
+      # There is no `--runtime` and no `--arch` to pass.
+      #
+      # ⚠️ HERE, at the end with the other pushes, and not beside the buildx
+      # step. The reason is the block comment above: npm, the git tag, ghcr
+      # and the GitHub Release are all done by now, so a red step tears
+      # nothing. Wedged between the build and `Create GitHub Release` it could
+      # redden the run before the GitHub Release exists, which is the exact
+      # property this placement protects. Not `continue-on-error`, for the
+      # same reason none of its neighbours is.
+      #
+      # ⚠️ The VERSION tag only. `latest` moves after the release through a
+      # separate CI push, so it is not this step's fact to state, and a
+      # `latest` row would be stale the moment anything else ships.
+      #
+      # No `--digest`: within one job nobody re-pushes an immutable version
+      # tag, and `Docker-Content-Digest` answers the same question at read
+      # time. The flag exists for somebody else's CI.
+      - name: Record the Lore image in Lore
+        working-directory: apps/lore
+        run: >-
+          yarn lore artifacts push-image
+          --tag "$VERSION"
+          --image "ghcr.io/alepha-dev/lore:$VERSION"
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+
       - name: Publish the Lore release
         run: yarn lore releases publish --tag "$VERSION"
         env:

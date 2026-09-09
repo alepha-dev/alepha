@@ -265,6 +265,84 @@ describe("AppArtifacts", () => {
     expect(card).not.toContain("NaN");
   });
 
+  /**
+   * ⚠️ The affordance the epic exists for, and the one thing an image variant
+   * offers: there is nothing to download, so the reference IS the artifact.
+   *
+   * The row must ALSO read correctly with nothing to download - there is no
+   * Download button on any variant anywhere, and when the authenticated
+   * download endpoint eventually lands it must not grow one here.
+   */
+  it("offers a copyable docker pull for an image variant, and no download", async ({
+    expect,
+  }) => {
+    const { findByTestId, getByTestId } = await show(
+      instanceOf(),
+      listing([
+        {
+          app: "docs-production",
+          tag: "0.32.0",
+          pushedAt: "2026-09-09T10:00:00.000Z",
+          variants: [
+            {
+              id: "00000000-0000-4000-8000-000000000030",
+              projectId: 1,
+              app: "docs-production",
+              tag: "0.32.0",
+              runtime: "node",
+              format: "image",
+              reference: "ghcr.io/alepha-dev/lore:0.32.0",
+              sha256: "d".repeat(64),
+              createdAt: "2026-09-09T10:00:00.000Z",
+              updatedAt: "2026-09-09T10:00:00.000Z",
+            },
+          ],
+        },
+      ]),
+    );
+
+    const pull = await findByTestId("artifact-pull");
+    // The reference is what is SHOWN; the whole command is what is copied,
+    // and it lives on the title so a reader can see it before clicking.
+    expect(pull.textContent).toContain("ghcr.io/alepha-dev/lore:0.32.0");
+    expect(pull.getAttribute("title")).toBe(
+      "docker pull ghcr.io/alepha-dev/lore:0.32.0",
+    );
+    expect(getByTestId("app-artifacts").textContent).not.toContain("Download");
+  });
+
+  it("offers no pull command for a tag with only an archive", async ({
+    expect,
+  }) => {
+    const { findByText, queryByTestId } = await show(
+      instanceOf(),
+      listing([
+        {
+          app: "docs-production",
+          tag: "0.33.0",
+          pushedAt: "2026-09-09T10:00:00.000Z",
+          variants: [
+            {
+              id: "00000000-0000-4000-8000-000000000031",
+              projectId: 1,
+              app: "docs-production",
+              tag: "0.33.0",
+              runtime: "node",
+              format: "archive",
+              sha256: "e".repeat(64),
+              size: 1_000_000,
+              createdAt: "2026-09-09T10:00:00.000Z",
+              updatedAt: "2026-09-09T10:00:00.000Z",
+            },
+          ],
+        },
+      ]),
+    );
+
+    expect(await findByText("0.33.0")).toBeTruthy();
+    expect(queryByTestId("artifact-pull")).toBeNull();
+  });
+
   it("shows N/A when no variant under the tag states a size", async ({
     expect,
   }) => {
