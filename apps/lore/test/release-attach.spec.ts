@@ -700,5 +700,62 @@ describe("Attaching an epic to a release", () => {
 
       expect(renamed.data.releaseCascade).toBeUndefined();
     });
+
+    /**
+     * #Q2146. The cost of the cascade must not grow with the epic.
+     *
+     * ⚠️ It counts READS OF `releases`, not calls to a service, because the
+     * defect was a read: `ReleaseCascadeService.apply` called
+     * `ReleaseAttachmentService.resolve` once per quest and `resolve` reads
+     * both release rows, so twenty followers cost 42 `select from releases`
+     * against 20 `update quests` - 56% of the request spent asking the same
+     * question twenty-one times. `repository:read:before` is what `findById`
+     * ends up emitting, so this observes the statements rather than the
+     * intention behind them.
+     *
+     * ⚠️ Two sizes and an equality, not a magic number. A budget would have
+     * to be re-tuned by anyone who adds an unrelated read to `updateEpic`,
+     * and would then be re-tuned to whatever it happened to be; what has to
+     * hold is that the second number does not depend on the first.
+     */
+    it("costs the same whether the epic holds three quests or twelve", async ({
+      expect,
+    }) => {
+      const releaseReadsForCascadeOf = async (quests: number) => {
+        const user = await createTestUser(ctx);
+        const project = await createTestProject(ctx, user, `Cost${quests}`);
+        const epic = await anEpic(user, project.id);
+        const release = await aRelease(user, project.id, "1.0.0");
+        for (let i = 0; i < quests; i++) {
+          await aQuestInTheEpic(user, project.id, epic.data.id, `Q${i}`);
+        }
+
+        let reads = 0;
+        const unsubscribe = ctx.alepha.events.on(
+          "repository:read:before",
+          (event) => {
+            if (event.tableName === "releases") reads += 1;
+          },
+        );
+        const updated = await ctx.epicController.updateEpic.fetch(
+          {
+            params: { id: epic.data.id },
+            body: { releaseId: release.data.id },
+          },
+          { user },
+        );
+        unsubscribe();
+
+        // The cascade really ran, so a count of zero cannot pass by the work
+        // having been skipped.
+        expect(updated.data.releaseCascade?.moved).toBe(quests);
+        return reads;
+      };
+
+      const small = await releaseReadsForCascadeOf(3);
+      const large = await releaseReadsForCascadeOf(12);
+
+      expect(large).toBe(small);
+    });
   });
 });

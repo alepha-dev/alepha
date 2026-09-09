@@ -95,13 +95,18 @@ target.
 ## Deploy
 
 ```bash
-lore apps deploy --env production
+lore deploy
 ```
 
-With no tag: build, push, deploy, stopping on the first failure. The inner loop.
+With no tag and no environment: build, push, deploy, stopping on the first
+failure. The inner loop, and the shortest thing that does the whole job.
+
+`lore apps deploy` is the same command and keeps working - `deploy` is the one
+verb promoted to the top level, because it is the one typed most often. Both
+are one flags schema over one handler, so they cannot drift.
 
 ```bash
-lore apps deploy --env production --tag 1.2.3
+lore deploy --tag 1.2.3
 ```
 
 With a tag: deploy the **stored** artifact. It never builds, and it refuses when
@@ -118,6 +123,27 @@ shipped under a name that claims to be the thing that was tested.
 command builds environment-independent bytes and then places them at an
 environment. It reads as an inconsistency with `lore apps build --env` until you
 know that one selects a build axis and the other a deploy axis.
+
+### Which environment, when you do not say
+
+`--env`, then `LORE_ENV`, then **the app's own rows**:
+
+| deployed copies of this app | what happens                                                             |
+| --------------------------- | ------------------------------------------------------------------------ |
+| exactly one                 | that one, no flag needed                                                 |
+| two or more                 | refused, naming them: `docs has production, preview. Pass --env <name>.` |
+| none                        | refused by the next paragraph, which names the pair and where to make it |
+
+An app with one copy therefore needs no flag at all, which is what makes `lore
+deploy` on its own a complete command. There is no project-wide default
+setting: the question is per app, so a project-level answer could only ever be
+wrong for an app whose single copy is called something else - and it would
+override the one place that app can go.
+
+⚠️ An explicit `--env` or `LORE_ENV` always wins over the count. `lore apps
+build` and `lore apps destroy` are untouched by this: `build`'s `--env` selects
+a build target rather than a copy, and `destroy` refuses to fall back at all,
+on purpose.
 
 Omitting `--tag` deploys `latest`, which is the one tag whose bytes may be
 replaced in place. Two copies both showing `latest` may be running different
@@ -137,7 +163,7 @@ the web UI and for the MCP tools, so no surface anywhere accepts one.
 
 ### An environment that does not exist is refused
 
-`lore apps deploy --env prod` against a project whose copy is called
+`lore deploy --env prod` against a project whose copy is called
 `production` says so and names where to create one. It does not create it.
 Minting a deploy target as a side effect of a typo is how a fleet grows a copy
 nobody meant to make.
@@ -169,7 +195,7 @@ Configured by the same three variables as CI - `LORE_URL`, `LORE_API_KEY`,
 
 **It ensures the copy.** One that does not exist is created, because that is
 what the caller is doing: a program provisioning a tenant is not a person
-mistyping `--env`. `lore apps deploy` refuses instead, and the difference is
+mistyping `--env`. `lore deploy` refuses instead, and the difference is
 deliberate. ⚠️ Only a **404** creates: a revoked key or an unreachable Lore
 rethrows, so an outage cannot become a burst of copies nobody asked for.
 

@@ -97,6 +97,37 @@ describe("AlephaTable (empty states)", () => {
     expect(screen.queryByText("No items")).toBeNull();
   });
 
+  it("tells them apart in static-data mode, where rows exist and the filter kept none", async () => {
+    // The case the two callers that had to be converted actually hit: `data`
+    // is a non-empty array and a `filter` predicate narrows it to zero, so
+    // the empty body is produced locally rather than by a fetch that came
+    // back empty. `activeFilterCount` is recomputed off the same `refreshKey`
+    // the filter form bumps to recompute the local page, so the two cannot
+    // disagree - a counter that never flipped here would be the same bug
+    // with a different cause.
+    await mount(
+      <AlephaTable<Row>
+        data={[{ id: 1, title: "club" }]}
+        columns={columns}
+        filters={{
+          schema: filtersSchema,
+          seedValues: { search: "nobody" },
+          render: () => null,
+        }}
+        filter={(row, values) =>
+          !values.search || row.title.includes(String(values.search))
+        }
+        emptyState={{ title: "No apps yet" }}
+        noMatchState={{ title: "No app matches" }}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText("No app matches")).toBeTruthy(),
+    );
+    expect(screen.queryByText("No apps yet")).toBeNull();
+  });
+
   it("lets emptyMessage replace the title, and drops the description with it", async () => {
     // The one-line escape hatch every existing caller uses. Pairing their
     // sentence with a stock second line reads as the component talking over

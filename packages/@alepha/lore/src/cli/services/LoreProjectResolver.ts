@@ -2,6 +2,7 @@ import { $inject, AlephaError } from "alepha";
 import { WorkspacePacker } from "alepha/cli";
 import { $client } from "alepha/server/links";
 import { FileSystemProvider } from "alepha/system";
+import type { AppController } from "lore/api/controllers/AppController";
 import type { ProjectController } from "lore/api/controllers/ProjectController";
 
 import { LoreClientService } from "./LoreClientService.ts";
@@ -12,10 +13,11 @@ import { LoreClientService } from "./LoreClientService.ts";
  *
  * ## ⚠️ NOT re-exported from `index.ts`, and it must stay that way
  *
- * It names `ProjectController`, a type from the private `lore` workspace. The
- * import is erased, but an EXPORTED signature carrying it would put that
- * workspace in the published `.d.ts` and break the install for anyone outside
- * this repo - `scripts/check-dts.ts` fails the build if that happens.
+ * It names `ProjectController` and `AppController`, types from the private
+ * `lore` workspace. The imports are erased, but an EXPORTED signature carrying
+ * one would put that workspace in the published `.d.ts` and break the install
+ * for anyone outside this repo - `scripts/check-dts.ts` fails the build if
+ * that happens.
  *
  * ## Why a service rather than a method on the command that needed it first
  *
@@ -31,7 +33,7 @@ import { LoreClientService } from "./LoreClientService.ts";
  * | url | `--url`, `LORE_URL` (in `LoreClientService`) |
  * | project | `--project` / `-p`, `LORE_PROJECT` |
  * | app | `--app`, `LORE_APP`, the directory's slugified package name |
- * | env | `--env`, `LORE_ENV`, the project's own default environment |
+ * | env | `--env`, `LORE_ENV`, the app's own rows |
  *
  * ⚠️ Every step uses `||` and never `??`. A schema default only fills an
  * ABSENT variable, and `LORE_APP=` in a CI environment is present and empty;
@@ -40,7 +42,10 @@ import { LoreClientService } from "./LoreClientService.ts";
  *
  * ⚠️ The env fallback is a REMOTE read, not a constant. `production` stopped
  * being a safe client-side default the moment environments became rows: a
- * project may run `b14-production` and have no `production` at all.
+ * project may run `b14-production` and have no `production` at all. It reads
+ * the APP's rows - the only thing that knows how many environments that app
+ * has - and falls back to the word only for an app with no rows, where every
+ * answer is equally wrong and the refusal downstream is the useful one.
  */
 export class LoreProjectResolver {
   protected readonly client = $inject(LoreClientService);
@@ -53,6 +58,12 @@ export class LoreProjectResolver {
    * ordering constraint every `$client` in this package carries.
    */
   protected readonly projects = $client<ProjectController>(this.client.scope());
+
+  /**
+   * The app's own rows, which is what answers the environment question when
+   * nobody named one. Same ordering constraint as `projects` above.
+   */
+  protected readonly apps = $client<AppController>(this.client.scope());
 
   /**
    * `--project` names a project the way a person does: by its slug, which is
@@ -121,54 +132,56 @@ export class LoreProjectResolver {
   }
 
   /**
-   * Which environment this invocation is about, or nothing.
+   * Which environment this invocation is about.
    *
-   * `--env`, `LORE_ENV`, then the project's own `defaultEnv`, asked of Lore.
+   * `--env`, `LORE_ENV`, then **the app's own rows**, which is the only place
+   * that knows the answer:
    *
-   * ⚠️ **Answers `undefined` rather than throwing**, because the caller knows
-   * something this does not: how many environments the app actually has. One
-   * environment needs no flag, several must refuse rather than guess. That
-   * decision belongs to the command; {@link assertEnv} is the refusal, so its
-   * wording lives here with the rest of the chain.
+   * | rows for this app | result |
+   * | --- | --- |
+   * | exactly 1 | that one, no flag needed |
+   * | 2 or more | refuse, naming them |
+   * | 0 | `production` |
+   *
+   * ⚠️ **This used to be the project's `defaultEnv`, and that was the wrong
+   * shape.** It is one value shared by every app of a project while the
+   * question is per app, so a project set to `production` with an app whose
+   * only row is `preview` had a setting that could only ever be wrong - and it
+   * overrode the single place that app can go. The rows are how we know, and a
+   * default is only for when we do not.
+   *
+   * ⚠️ **The zero case answers `production` rather than refusing here**, and
+   * cannot succeed either way: a deploy never creates a row, so it lands on
+   * `AppsCommand.loadInstance`'s refusal, which names the app, the env and
+   * where to create it. That is a better sentence than anything this method
+   * could write, since it knows nothing about deploy targets.
    *
    * The remote read is skipped entirely when a flag or a variable answered, so
    * the common path costs no request.
    */
   public async resolveEnv(
     flag: string | undefined,
-    project: string,
-  ): Promise<string | undefined> {
+    projectId: number,
+    app: string,
+  ): Promise<string> {
     const named = this.client.envFromEnv(flag);
     if (named) {
       return named;
     }
 
-    // A numeric project is an id and has no slug to look up, so the remote
-    // default is only reachable by name. Answering `undefined` sends the
-    // caller to `assertEnv`, which names `--env`; guessing would be worse.
-    if (/^\d+$/.test(project)) {
-      return undefined;
-    }
+    const { items } = await this.apps.listApps({ params: { projectId } });
+    // `listApps` orders by app then env, so these arrive sorted and the
+    // refusal below names them in the order the Apps page reads in.
+    const envs = items
+      .filter((item) => item.app === app)
+      .map((item) => item.env);
 
-    const found = await this.projects.getProjectBySlug({
-      params: { slug: project },
-    });
-    return found?.defaultEnv || undefined;
-  }
-
-  /**
-   * The refusal when no environment resolved.
-   *
-   * Names all three ways to answer, the third being a setting rather than an
-   * input: a project that deploys to one environment should set it once rather
-   * than have every command carry a flag.
-   */
-  public assertEnv(env: string | undefined, app: string): string {
-    if (!env) {
-      throw new AlephaError(
-        `No environment named for "${app}". Pass --env <name>, set LORE_ENV in the environment, or set the project's default environment in its Apps settings.`,
-      );
+    if (envs.length === 1) {
+      return envs[0];
     }
-    return env;
+    if (envs.length === 0) {
+      return "production";
+    }
+    throw new AlephaError(`${app} has ${envs.join(", ")}. Pass --env <name>.`);
   }
 }

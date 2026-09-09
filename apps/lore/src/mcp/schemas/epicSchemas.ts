@@ -1,5 +1,6 @@
 import { z } from "alepha";
 
+import { releaseCascadeSchema } from "../../api/schemas/releaseCascadeSchema.ts";
 import { DIAGRAM_CAPABILITY } from "./diagramCapability.ts";
 import { diagramWarningsShape } from "./diagramWarningsSchema.ts";
 import { epicStatusSchema } from "./epicStatusSchema.ts";
@@ -180,6 +181,16 @@ export const epicSetStatusResultSchema = z.object({
   status: epicStatusSchema,
   activatedAt: z.datetime().optional(),
   completedAt: z.datetime().optional(),
+  /**
+   * Present only when Begin attached the project's default release to this
+   * epic and carried it down to the epic's release-less quests (#E48).
+   *
+   * Absent on every other transition, and on a Begin that attached nothing -
+   * the epic already named a release, or the project has no default. An epic
+   * that silently acquires a release and moves nine quest rows is a bigger
+   * surprise than the one `quest_complete` reports, so it is said out loud.
+   */
+  releaseCascade: releaseCascadeSchema.optional(),
 });
 
 // -----------------------------------------------------------------------------

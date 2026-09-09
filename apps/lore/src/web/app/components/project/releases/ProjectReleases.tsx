@@ -6,7 +6,7 @@ import { type Page, z } from "alepha";
 import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
-import { CircleDot, Flag, Plus, Search } from "lucide-react";
+import { CircleDot, Flag, Inbox, Plus, Search, X } from "lucide-react";
 import { useState } from "react";
 
 import type { ReleaseController } from "@/api/controllers/ReleaseController.ts";
@@ -15,11 +15,13 @@ import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
+import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import FilterSlot from "../../shared/FilterSlot.tsx";
 import ReleaseCreateDialog from "./ReleaseCreateDialog.tsx";
+import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
 import ReleaseProgress from "./ReleaseProgress.tsx";
 import {
   releaseState,
@@ -27,6 +29,7 @@ import {
   STATE_LABEL_KEYS,
   STATE_TONE,
 } from "./releaseState.ts";
+import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
 
 const releasesFiltersSchema = z.object({
   search: z.string().optional(),
@@ -108,6 +111,7 @@ const ProjectReleases = () => {
   // sidebar and both release CONTROLS read, so a create has to refresh it.
   const [, setReleases] = useStore(currentReleasesAtom);
   const releaseApi = useClient<ReleaseController>();
+  const defaultRelease = useSetDefaultRelease();
 
   const [creating, setCreating] = useState(false);
   // The list, its rows and the empty state all stay; only the two doors into
@@ -200,23 +204,48 @@ const ProjectReleases = () => {
         // has never had a release still explains what one IS and offers the
         // way to make one. A bare "No results" in a table nobody has filled
         // teaches nothing.
-        empty={
-          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <Flag className="text-muted-foreground size-7" />
-            <h2 className="text-[15px] font-semibold">
-              {tr("release.empty.title")}
-            </h2>
-            <p className="text-muted-foreground max-w-md text-[13px] text-pretty">
-              {tr("release.empty.body")}
-            </p>
-            {canCreate && (
-              <Button className="mt-1" onClick={() => setCreating(true)}>
-                <Plus className="size-4" />
-                {tr("release.start")}
-              </Button>
-            )}
-          </div>
-        }
+        //
+        // ⚠️ Two states, never the single `empty` node this used to be. That
+        // prop replaces BOTH of them at once, so filtering the list down to
+        // nothing announced that no release is open and offered to open one -
+        // the same defect feedback #P2160 reported against Apps, unreported
+        // here only because nobody filtered this page to zero.
+        emptyState={{
+          icon: Flag,
+          title: tr("release.empty.title"),
+          description: tr("release.empty.body"),
+          // Both the way in and the way to the explanation. An empty state is
+          // a signpost, not a manual: the release model and the default
+          // release are written once, in the Lore docs, rather than grown
+          // into prose here. The link stands whether or not this rank may
+          // create a release - reading about the model is not a write.
+          action: (
+            <div className="flex flex-col items-center gap-3">
+              {canCreate && (
+                <Button onClick={() => setCreating(true)}>
+                  <Plus className="size-4" />
+                  {tr("release.start")}
+                </Button>
+              )}
+              {/* ⚠️ Absolute, through `loreDocsUrl`: written root-relative it
+                  resolves against Lore's own origin and 404s (feedback
+                  #P2142). */}
+              <a
+                href={loreDocsUrl("guides-releases")}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground text-sm underline underline-offset-4"
+                data-testid="releases-empty-docs"
+              >
+                {tr("release.empty.docs")}
+              </a>
+            </div>
+          ),
+        }}
+        noMatchState={{
+          title: tr("release.noMatch.title"),
+          description: tr("release.noMatch.body"),
+        }}
         refreshSignal={reload}
         filters={{
           schema: releasesFiltersSchema,
@@ -268,6 +297,36 @@ const ProjectReleases = () => {
               ]
             : []
         }
+        rowActions={(release) =>
+          // Hidden without `release:manage`, and never offered on a published
+          // release: the server refuses it, and an affordance that always
+          // fails is worse than no affordance.
+          !defaultRelease.can || release.releasedAt
+            ? []
+            : [
+                release.defaultSince
+                  ? {
+                      icon: X,
+                      label: tr("release.default.clear"),
+                      onClick: (row: ReleaseResource) =>
+                        void defaultRelease
+                          .clear(row)
+                          .then((done) => done && setReload((n) => n + 1)),
+                    }
+                  : {
+                      icon: Inbox,
+                      label: tr("release.default.set"),
+                      onClick: (row: ReleaseResource) =>
+                        void defaultRelease
+                          .set(row)
+                          // The hook already wrote `currentReleasesAtom` from
+                          // the response, which is what both chips read. The
+                          // TABLE fetches its own rows, so it needs the bump
+                          // and not a second `getReleases`.
+                          .then((done) => done && setReload((n) => n + 1)),
+                    },
+              ]
+        }
         columns={{
           // First on the row, like the epic status chip and the Quests
           // table's status dot.
@@ -279,10 +338,17 @@ const ProjectReleases = () => {
               const state = releaseState(release);
               const Icon = STATE_ICONS[state];
               return (
-                <Badge variant="tint" tone={STATE_TONE[state]}>
-                  <Icon className="size-3" />
-                  {tr(STATE_LABEL_KEYS[state])}
-                </Badge>
+                // Two chips, never one with three values: see
+                // `ReleaseDefaultBadge`. The second renders nothing at all
+                // for every release but the default, so the column is one
+                // chip wide on almost every row.
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge variant="tint" tone={STATE_TONE[state]}>
+                    <Icon className="size-3" />
+                    {tr(STATE_LABEL_KEYS[state])}
+                  </Badge>
+                  <ReleaseDefaultBadge release={release} />
+                </div>
               );
             },
           },
