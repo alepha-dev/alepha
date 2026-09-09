@@ -37,6 +37,7 @@ const ROW_FILTER: Record<Dimension, (typeof APP_INSIGHTS_FILTER_KEYS)[number]> =
     referrer: "referrer",
     browser: "browser",
     os: "os",
+    auth: "auth",
   };
 
 // Literal key strings (not template-interpolated) so the i18n audit sees them.
@@ -50,6 +51,7 @@ const TITLE: Record<
   | "insights.topReferrers"
   | "insights.topBrowsers"
   | "insights.topSystems"
+  | "insights.topAudience"
 > = {
   country: "insights.topCountries",
   path: "insights.topPaths",
@@ -59,6 +61,7 @@ const TITLE: Record<
   referrer: "insights.topReferrers",
   browser: "insights.topBrowsers",
   os: "insights.topSystems",
+  auth: "insights.topAudience",
 };
 
 /**

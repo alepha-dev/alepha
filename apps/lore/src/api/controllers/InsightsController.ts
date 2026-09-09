@@ -150,6 +150,7 @@ export class InsightsController {
     referrer: { groupBy: "referrer", measure: "count" },
     browser: { groupBy: "browser", measure: "count" },
     os: { groupBy: "os", measure: "count" },
+    auth: { groupBy: "auth", measure: "count" },
   };
 
   /**
@@ -301,6 +302,7 @@ export class InsightsController {
         device: z.string().optional(),
         browser: z.string().optional(),
         os: z.string().optional(),
+        auth: z.string().optional(),
       }),
       response: insightsResourceSchema,
     },
@@ -359,6 +361,7 @@ export class InsightsController {
           topDevices: [],
           topReferrers: [],
           topBrowsers: [],
+          topAudience: [],
           topSystems: [],
           // Every metric present with zero samples rather than nulls: a page
           // with no apps and a page whose apps have sent no vitals are the
@@ -429,6 +432,7 @@ export class InsightsController {
         topReferrerResult,
         topBrowserResult,
         topSystemResult,
+        topAudienceResult,
         timelineResult,
         errorSeriesResult,
         vitalsResult,
@@ -528,6 +532,15 @@ export class InsightsController {
           since,
           until,
           where: viewsWhere,
+          groupBy: ["auth"],
+          select: { count: "sum" },
+          orderBy: { key: "count", direction: "desc" },
+          limit: this.TOP_N,
+        }),
+        this.datasets.views.query({
+          since,
+          until,
+          where: viewsWhere,
           groupBy: ["day"],
           select: { count: "sum" },
           orderBy: { key: "day", direction: "asc" },
@@ -606,6 +619,16 @@ export class InsightsController {
       // the fold, so the two buckets become one row rather than two.
       const topBrowsers = this.foldUnknown(topBrowserResult.rows, "browser");
       const topSystems = this.foldUnknown(topSystemResult.rows, "os");
+      // ⚠️ Folded into `anon`, not into `other`. Every other dimension's empty
+      // string means "we cannot name this" and belongs in `other`; here it
+      // means the proxy stamped nothing, which is a visit with no session -
+      // and anonymous is what that is. An `other` bucket beside `user` and
+      // `anon` would invent a third audience.
+      const topAudience = this.foldUnknown(
+        topAudienceResult.rows,
+        "auth",
+        "anon",
+      );
 
       const topReferrers = topReferrerResult.rows.map((row) => ({
         referrer: String(row.referrer),
@@ -700,6 +723,7 @@ export class InsightsController {
         topReferrers,
         topBrowsers,
         topSystems,
+        topAudience,
         vitals,
         timeline,
         errorGroups,
@@ -731,6 +755,7 @@ export class InsightsController {
         device: z.string().optional(),
         browser: z.string().optional(),
         os: z.string().optional(),
+        auth: z.string().optional(),
         /**
          * Rows to return. The overview draws ten; this exists for the view
          * that draws the rest.
@@ -1010,10 +1035,17 @@ export class InsightsController {
     // stated once, here.
     rows: Array<Record<string, string | number>>,
     key: K,
+    /**
+     * Where an empty string goes. `other` for every dimension that names a
+     * thing we may fail to recognise; `anon` for `auth`, where the empty
+     * string is not a failure to recognise but a proxy that stamped nothing,
+     * and a visit with no session stamped is an anonymous visit.
+     */
+    unknown = "other",
   ): Array<Record<K, string> & { count: number }> {
     const totals = new Map<string, number>();
     for (const row of rows) {
-      const value = String(row[key] ?? "") || "other";
+      const value = String(row[key] ?? "") || unknown;
       totals.set(value, (totals.get(value) ?? 0) + Number(row.count));
     }
     return [...totals.entries()]

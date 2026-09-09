@@ -505,7 +505,7 @@ export class SigilSinkProvider {
    * wrong one.
    */
   protected batchFor(stamp: SigilStamp): PendingBatch {
-    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}\u0000${stamp.host ?? ""}\u0000${stamp.browser ?? ""}\u0000${stamp.os ?? ""}`;
+    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}\u0000${stamp.host ?? ""}\u0000${stamp.browser ?? ""}\u0000${stamp.os ?? ""}\u0000${stamp.auth ?? ""}`;
     let batch = this.pending.get(key);
     if (!batch) {
       batch = {
@@ -719,6 +719,16 @@ export interface SigilStamp {
    * header.
    */
   os?: string;
+  /**
+   * `user` | `anon`, from whether a session was on the request.
+   *
+   * ⚠️ In the batch key on the same footing as `traffic`, and for the same
+   * reason: it IS derivable from the visitor hash, which closes over the
+   * session - and a hash is opaque, so nothing downstream can perform that
+   * derivation. Leaving a field out because something else implies it is how
+   * redundancy becomes load-bearing.
+   */
+  auth?: string;
   /**
    * Where this app answers, from its own inbound `Host` header.
    *
