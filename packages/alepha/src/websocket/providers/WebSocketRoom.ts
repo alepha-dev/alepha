@@ -118,11 +118,19 @@ export class WebSocketRoom {
    */
   protected alarmScheduled = false;
 
+  protected readonly ctx: WebSocketRoomState;
+  protected readonly env: Record<string, unknown>;
+  protected readonly clock: RoomClock;
+
   constructor(
-    protected readonly ctx: WebSocketRoomState,
-    protected readonly env: Record<string, unknown>,
-    protected readonly clock: RoomClock = defaultRoomClock,
-  ) {}
+    ctx: WebSocketRoomState,
+    env: Record<string, unknown>,
+    clock: RoomClock = defaultRoomClock,
+  ) {
+    this.ctx = ctx;
+    this.env = env;
+    this.clock = clock;
+  }
 
   /**
    * Upgrade entry. Forwarded here by the worker `fetch` handler with the

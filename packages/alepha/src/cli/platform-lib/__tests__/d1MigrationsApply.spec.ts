@@ -55,7 +55,11 @@ const ROOT = "dist/migrations";
  * was exactly that distinction being made carelessly.
  */
 class FakeFs {
-  constructor(protected readonly paths: Set<string>) {}
+  protected readonly paths: Set<string>;
+
+  constructor(paths: Set<string>) {
+    this.paths = paths;
+  }
 
   join(...parts: string[]) {
     // Match `NodeFileSystemProvider.join`'s real behavior (`path.join`),
@@ -128,7 +132,11 @@ class FakeCloudflareApi {
    */
   public readonly imported: string[] = [];
 
-  constructor(protected readonly appliedNames: string[] = []) {}
+  protected readonly appliedNames: string[];
+
+  constructor(appliedNames: string[] = []) {
+    this.appliedNames = appliedNames;
+  }
 
   async resolveD1Id(name: string) {
     return `uuid-of-${name}`;

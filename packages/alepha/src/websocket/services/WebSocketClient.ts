@@ -39,6 +39,22 @@ declare module "alepha" {
  * Manages a single WebSocket connection to a channel with multiple room subscriptions.
  * One connection can handle multiple rooms on the same channel.
  */
+/**
+ * How a channel connection reconnects, and where it connects to.
+ *
+ * Named rather than written inline on the constructor: the parameter property
+ * that used to carry it is gone (Node's strip-only TypeScript loader cannot
+ * generate the field, which breaks a vendored checkout), and repeating a
+ * six-line object literal on both the field and the parameter is worse than
+ * naming it once.
+ */
+export interface WebSocketClientOptions {
+  url?: string;
+  autoReconnect?: boolean;
+  reconnectInterval?: number;
+  maxReconnectAttempts?: number;
+}
+
 export class WebSocketChannelConnection<
   TClient extends TWSObject,
   TServer extends TWSObject,
@@ -88,16 +104,19 @@ export class WebSocketChannelConnection<
   protected onDisconnectCallbacks = new Set<() => void>();
   protected onErrorCallbacks = new Set<(error: Error) => void>();
 
+  protected readonly channel: ChannelPrimitive<TClient, TServer>;
+  protected readonly options: WebSocketClientOptions;
+  protected readonly env: Infer<typeof envSchema>;
+
   constructor(
-    protected readonly channel: ChannelPrimitive<TClient, TServer>,
-    protected readonly options: {
-      url?: string;
-      autoReconnect?: boolean;
-      reconnectInterval?: number;
-      maxReconnectAttempts?: number;
-    },
-    protected readonly env: Infer<typeof envSchema>,
-  ) {}
+    channel: ChannelPrimitive<TClient, TServer>,
+    options: WebSocketClientOptions,
+    env: Infer<typeof envSchema>,
+  ) {
+    this.channel = channel;
+    this.options = options;
+    this.env = env;
+  }
 
   /**
    * Build WebSocket URL

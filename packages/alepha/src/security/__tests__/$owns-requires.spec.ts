@@ -90,7 +90,11 @@ class Roles {
 class CountingRepository {
   public calls = 0;
 
-  constructor(protected readonly inner: Repository<any>) {}
+  protected readonly inner: Repository<any>;
+
+  constructor(inner: Repository<any>) {
+    this.inner = inner;
+  }
 
   public get tableName(): string {
     return this.inner.tableName;

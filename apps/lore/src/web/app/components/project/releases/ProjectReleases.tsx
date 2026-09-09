@@ -338,17 +338,15 @@ const ProjectReleases = () => {
               const state = releaseState(release);
               const Icon = STATE_ICONS[state];
               return (
-                // Two chips, never one with three values: see
-                // `ReleaseDefaultBadge`. The second renders nothing at all
-                // for every release but the default, so the column is one
-                // chip wide on almost every row.
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge variant="tint" tone={STATE_TONE[state]}>
-                    <Icon className="size-3" />
-                    {tr(STATE_LABEL_KEYS[state])}
-                  </Badge>
-                  <ReleaseDefaultBadge release={release} />
-                </div>
+                // One chip, and never one with three values: see
+                // `ReleaseDefaultBadge`. The default marker used to be a
+                // second chip here and wrapped underneath, making the row
+                // twice as tall as its neighbours; it is a glyph beside the
+                // tag now.
+                <Badge variant="tint" tone={STATE_TONE[state]}>
+                  <Icon className="size-3" />
+                  {tr(STATE_LABEL_KEYS[state])}
+                </Badge>
               );
             },
           },
@@ -369,27 +367,34 @@ const ProjectReleases = () => {
               const tag = release.tag;
               return (
                 <div className="flex flex-col overflow-hidden whitespace-nowrap">
-                  {tag ? (
-                    // A real anchor inside a clickable row, so the browser
-                    // owns cmd / shift / middle click and "copy link
-                    // address". `stopPropagation` because the row carries
-                    // `onRowClick` too: without it a plain click navigates
-                    // twice, once through each.
-                    <Link
-                      href={router.path("projectRelease", {
-                        params: { releaseTag: tag },
-                      })}
-                      onClick={(e) => e.stopPropagation()}
-                      className="truncate font-mono text-sm font-medium"
-                      title={tag}
-                    >
-                      {tag}
-                    </Link>
-                  ) : (
-                    <span className="text-muted-foreground truncate font-mono text-sm">
-                      {formatReference("release", release.number)}
-                    </span>
-                  )}
+                  {/* The default glyph rides with the tag, which is the
+                      thing it qualifies. `min-w-0` on the link's wrapper so
+                      the ellipsis still fires against the glyph rather than
+                      pushing it out of the cell. */}
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {tag ? (
+                      // A real anchor inside a clickable row, so the browser
+                      // owns cmd / shift / middle click and "copy link
+                      // address". `stopPropagation` because the row carries
+                      // `onRowClick` too: without it a plain click navigates
+                      // twice, once through each.
+                      <Link
+                        href={router.path("projectRelease", {
+                          params: { releaseTag: tag },
+                        })}
+                        onClick={(e) => e.stopPropagation()}
+                        className="truncate font-mono text-sm font-medium"
+                        title={tag}
+                      >
+                        {tag}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground truncate font-mono text-sm">
+                        {formatReference("release", release.number)}
+                      </span>
+                    )}
+                    <ReleaseDefaultBadge release={release} />
+                  </span>
                   {/* Only when it says something the tag does not. `title`
                       defaults to the tag server-side, so printing both would
                       show the same string twice. */}

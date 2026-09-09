@@ -300,11 +300,17 @@ describe("AppDashboard", () => {
     expect(without.queryByText("Deploys to")).toBeNull();
   });
 
-  it("says the address is not known rather than inventing one", async ({
+  it("names the absent address as a real state, not a pending one", async ({
     expect,
   }) => {
+    // "None", not the "Not known yet" this used to say (feedback #P2172):
+    // `yet` promises a value the system will fill in later, and some apps
+    // have no address and never will. The Apps TABLE renders nothing at all
+    // for the same state - an empty cell in a column of links is
+    // unambiguous, while a blank value beside a label in this grid would
+    // read as a broken render.
     const unknown = await show(instanceOf());
-    expect(unknown.getByText("Not known yet")).toBeTruthy();
+    expect(unknown.getByText("None")).toBeTruthy();
 
     const detected = await show(
       instanceOf({ lastSeenHost: "docs.alepha.dev" }),

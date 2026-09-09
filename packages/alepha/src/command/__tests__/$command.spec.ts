@@ -1,3 +1,7 @@
+import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { Alepha, AlephaError, z } from "alepha";
 import {
   LogDestinationProvider,
@@ -7,9 +11,11 @@ import { describe, expect, test, vi } from "vitest";
 
 import {
   $command,
+  CliProvider,
   CommandError,
   ConsoleOutputProvider,
   cliOptions,
+  ExclusiveProvider,
   MemoryOutputProvider,
 } from "../index.ts";
 
@@ -127,6 +133,143 @@ describe("$command", () => {
       mockOutput: alepha.inject(MemoryOutputProvider),
     };
   };
+
+  describe("exclusive", () => {
+    /**
+     * Point the queue at a scratch directory for the duration of one case.
+     *
+     * The variable is read inside `baseDir()` at acquire time, so it has to be
+     * set on this process rather than passed in.
+     */
+    const inScratchQueue = async (
+      body: (dir: string) => Promise<void>,
+    ): Promise<void> => {
+      const dir = mkdtempSync(join(tmpdir(), "alepha-exclusive-cmd-"));
+      process.env.ALEPHA_EXCLUSIVE_DIR = dir;
+      try {
+        await body(dir);
+      } finally {
+        delete process.env.ALEPHA_EXCLUSIVE_DIR;
+      }
+    };
+
+    test("holds one slot for the whole pre-hook, handler and post-hook run", async () => {
+      await inScratchQueue(async () => {
+        const seen: string[] = [];
+
+        class ExclusiveCommands {
+          prework = $command({
+            pre: "work",
+            handler: async () => {
+              seen.push("pre");
+            },
+          });
+
+          work = $command({
+            name: "work",
+            exclusive: "test:work",
+            handler: async () => {
+              seen.push("handler");
+            },
+          });
+
+          postwork = $command({
+            post: "work",
+            handler: async () => {
+              seen.push("post");
+            },
+          });
+        }
+
+        const { alepha } = await setupTestCommands(["work"], (a) =>
+          a.with(ExclusiveCommands),
+        );
+
+        expect(seen).toEqual(["pre", "handler", "post"]);
+
+        // The slot was taken and released, so the queue is empty again.
+        const exclusive = alepha.inject(ExclusiveProvider);
+        const queue = exclusive.queueDir("test:work");
+        expect(existsSync(queue)).toBe(true);
+        expect(
+          readdirSync(queue).filter((f) => f.endsWith(".json")),
+        ).toHaveLength(0);
+      });
+    });
+
+    test("does not queue from CliProvider.run(), the programmatic path", async () => {
+      await inScratchQueue(async () => {
+        class RunCommands {
+          work = $command({
+            name: "work",
+            exclusive: "test:run",
+            handler: async () => {},
+          });
+        }
+
+        const alepha = Alepha.create();
+        const commands = alepha.inject(RunCommands);
+        const cli = alepha.inject(CliProvider);
+        const exclusive = alepha.inject(ExclusiveProvider);
+
+        await cli.run(commands.work);
+
+        // run() is documented as the lightweight path: no runner session, no
+        // context wrapper, no .env loading. Queueing there would make every
+        // unit test that drives a command wait on a real filesystem queue.
+        expect(existsSync(exclusive.queueDir("test:run"))).toBe(false);
+      });
+    });
+
+    test("resolves a function key against the parsed flags", async () => {
+      await inScratchQueue(async () => {
+        const seen: Array<boolean | undefined> = [];
+
+        class FlagKeyedCommands {
+          work = $command({
+            name: "work",
+            flags: z.object({ fast: z.boolean().optional() }),
+            exclusive: ({ flags }) => {
+              seen.push(flags.fast);
+              return flags.fast ? undefined : "test:flagged";
+            },
+            handler: async () => {},
+          });
+        }
+
+        const { alepha } = await setupTestCommands(["work"], (a) =>
+          a.with(FlagKeyedCommands),
+        );
+        const exclusive = alepha.inject(ExclusiveProvider);
+
+        expect(seen).toEqual([undefined]);
+        // The slot was taken, so the key's directory exists and is now empty.
+        expect(existsSync(exclusive.queueDir("test:flagged"))).toBe(true);
+      });
+    });
+
+    test("takes no slot at all when the function returns undefined", async () => {
+      await inScratchQueue(async () => {
+        class FlagKeyedCommands {
+          work = $command({
+            name: "work",
+            flags: z.object({ fast: z.boolean().optional() }),
+            exclusive: ({ flags }) => (flags.fast ? undefined : "test:skipped"),
+            handler: async () => {},
+          });
+        }
+
+        const { alepha } = await setupTestCommands(["work", "--fast"], (a) =>
+          a.with(FlagKeyedCommands),
+        );
+        const exclusive = alepha.inject(ExclusiveProvider);
+
+        // Never acquired, so the key's directory was never created. This is
+        // the concurrent lane: it must not queue behind the serialised one.
+        expect(existsSync(exclusive.queueDir("test:skipped"))).toBe(false);
+      });
+    });
+  });
 
   describe("Command Execution", () => {
     test("should execute a matched command with correct flags", async () => {

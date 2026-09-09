@@ -70,7 +70,11 @@ class FakeCloudflareApi {
  * elsewhere.
  */
 class FakeFs {
-  constructor(protected readonly paths: Set<string>) {}
+  protected readonly paths: Set<string>;
+
+  constructor(paths: Set<string>) {
+    this.paths = paths;
+  }
 
   join(...parts: string[]) {
     return nodeJoin(...parts);

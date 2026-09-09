@@ -66,9 +66,11 @@ export class RoomEngine<
    */
   protected ticking = false;
 
-  constructor(
-    protected readonly deps: RoomEngineDeps<TClient, TServer, TState>,
-  ) {}
+  protected readonly deps: RoomEngineDeps<TClient, TServer, TState>;
+
+  constructor(deps: RoomEngineDeps<TClient, TServer, TState>) {
+    this.deps = deps;
+  }
 
   get size(): number {
     return this.sockets.size;

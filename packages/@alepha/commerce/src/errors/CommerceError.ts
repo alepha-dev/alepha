@@ -60,11 +60,11 @@ export class InvalidAddressError extends CommerceError {
   override name = "InvalidAddressError";
   public readonly status = 400;
 
-  constructor(
-    public readonly field: string,
-    message: string,
-  ) {
+  public readonly field: string;
+
+  constructor(field: string, message: string) {
     super(message);
+    this.field = field;
   }
 }
 
@@ -96,13 +96,13 @@ export class ProductHasOrdersError extends CommerceError {
    */
   public readonly status = 409;
 
-  constructor(
-    productId: string,
-    public readonly orderLines: number,
-  ) {
+  public readonly orderLines: number;
+
+  constructor(productId: string, orderLines: number) {
     super(
       `Product ${productId} appears on ${orderLines} order line(s) and cannot be deleted. Unpublish it instead to remove it from the shop while keeping order history readable.`,
     );
+    this.orderLines = orderLines;
   }
 }
 

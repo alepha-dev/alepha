@@ -69,7 +69,35 @@
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  /*
+   * The boundary of a control, and NOT a divider.
+   *
+   * `--input` has always existed as its own token and has always been aliased
+   * to `--border`, which is upstream shadcn's value. That made one value do
+   * two jobs. `--border` draws card edges, table dividers and section rules -
+   * decoration, which WCAG 1.4.11 exempts, and which a restrained console
+   * wants quiet. `--input` draws the boundary of every `Input`, `Select`,
+   * `Textarea`, `Checkbox` and combobox trigger, which 1.4.11 does not exempt:
+   * these controls have no fill separating them from the card behind them, so
+   * the border is the only thing saying where the field is.
+   *
+   * At `oklch(0.922 0 0)` that boundary measured **1.26:1** against white and
+   * 1.15:1 against `--muted`, against a required 3:1. This value is the
+   * lightest neutral clearing 3:1 on every surface a bordered control sits on
+   * in this palette: 3.40:1 on `--background`, 3.12:1 on `--muted`,
+   * `--secondary`, `--accent` and `--sidebar-accent`.
+   *
+   * ⚠️ It has to stay clearly weaker than `--ring`, or focus stops reading as
+   * a change rather than as a shade. That is what moved `--ring` below: at its
+   * old `oklch(0.708 0 0)` the focus ring was 2.59:1, so it FAILED 1.4.11 on
+   * its own account and was weaker than any resting border that passes.
+   * `--ring` is now 7.44:1 on `--background`, a 2.19x step up from resting.
+   *
+   * `--border` is deliberately untouched. Darkening it to pass would turn
+   * every divider in every table into a heavy grey line to fix a rule that
+   * does not apply to dividers.
+   */
+  --input: oklch(0.637 0 0);
   /*
    * The border a field takes on hover.
    *
@@ -87,7 +115,20 @@
    * the same direction: a hovered field reads as more present, not less.
    */
   --input-hover: color-mix(in oklab, var(--input), var(--foreground) 20%);
-  --ring: oklch(0.708 0 0);
+  /*
+   * The focus indicator, on every control.
+   *
+   * Moved from `oklch(0.708 0 0)`, which was 2.59:1 on white: a focus
+   * indicator is exactly the "visual information required to identify a user
+   * interface component" that 1.4.11 asks 3:1 of, so it was failing the same
+   * rule as the resting border it was supposed to outrank. It also could not
+   * outrank it: any resting `--input` that passes 3:1 was, by arithmetic,
+   * stronger than the ring meant to signal focus.
+   *
+   * Both had to move together, and the separation is what makes focus legible:
+   * 3.40:1 resting to 7.44:1 focused on `--background`.
+   */
+  --ring: oklch(0.45 0 0);
   /*
    * The bevel: a 1px inset line laid along the TOP edge of a chrome surface,
    * immediately under the `--border` that already closes that edge. The pair
@@ -120,7 +161,7 @@
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.45 0 0);
 }
 
 .dark {
@@ -141,8 +182,26 @@
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /*
+   * Same split as light, and it failed here too: at 15% the composite was
+   * 1.47:1 on `--background` and 1.62:1 on `--muted`.
+   *
+   * Kept translucent rather than given a flat colour. `--input` is white laid
+   * over whatever surface the control sits on, so one alpha tracks a card, a
+   * popover and the sidebar at once, and it follows a tinted theme instead of
+   * washing it toward neutral grey. The cost is that the ratio varies by
+   * surface, so the alpha is set from the WORST of them: 36% gives 3.10:1 over
+   * `--sidebar-accent`, the lightest surface a control sits on, and 3.34:1
+   * over `--card`.
+   */
+  --input: oklch(1 0 0 / 36%);
+  /*
+   * See the light theme's note. 3.19:1 over `--muted` was marginal on its own
+   * and, more to the point, below a resting border that passes, so the focus
+   * ring read as a shade rather than as a change. Now 7.59:1 at the worst
+   * surface, a 2.45x step up from resting.
+   */
+  --ring: oklch(0.82 0 0);
   --bevel: oklch(0 0 0 / 30%);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
@@ -156,7 +215,7 @@
   --sidebar-accent: oklch(0.308 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.82 0 0);
 }
 
 @layer base {

@@ -74,12 +74,20 @@ export class SigilVitals {
    *   reading `location` inside a `buffered: true` observer callback can land
    *   after a navigation the entry predates.
    */
+  protected readonly sink: Sink;
+  protected readonly onLcp?: () => void;
+  protected readonly currentPath: PathResolver;
+
   constructor(
-    protected readonly sink: Sink,
-    protected readonly onLcp?: () => void,
-    protected readonly currentPath: PathResolver = () =>
+    sink: Sink,
+    onLcp?: () => void,
+    currentPath: PathResolver = () =>
       typeof location === "undefined" ? "/" : location.pathname,
-  ) {}
+  ) {
+    this.sink = sink;
+    this.onLcp = onLcp;
+    this.currentPath = currentPath;
+  }
 
   /**
    * Records an LCP candidate and, the first time, fires {@link onLcp}.

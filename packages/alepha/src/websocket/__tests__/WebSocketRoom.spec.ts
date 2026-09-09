@@ -9,7 +9,11 @@ import { WebSocketRoom } from "../providers/WebSocketRoom.ts";
 class FakeWs {
   public sent: string[] = [];
 
-  constructor(protected attachment: any) {}
+  protected attachment: any;
+
+  constructor(attachment: any) {
+    this.attachment = attachment;
+  }
 
   serializeAttachment(a: any) {
     this.attachment = a;

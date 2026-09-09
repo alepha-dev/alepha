@@ -538,9 +538,21 @@ test.describe("Releases", () => {
       ).toBeVisible({ timeout: 15_000 });
     };
 
-    await test.step("the chip lands, and moves off the first when the second takes it", async () => {
+    /**
+     * The default marker, by accessible name.
+     *
+     * ⚠️ NOT `getByText("Default")`. Since feedback #P2171 the marker is a
+     * GLYPH beside the tag rather than a chip below the state, so it carries
+     * no visible text at all - the label lives on `aria-label` and the
+     * "Default since <date>" on `title`. A text locator finds nothing, which
+     * is how this spec caught the change.
+     */
+    const defaultMarker = (scope = page) =>
+      scope.getByRole("img", { name: "Default", exact: true });
+
+    await test.step("the marker lands, and moves off the first when the second takes it", async () => {
       await setDefaultFrom("0.1.0");
-      await expect(page.getByText("Default", { exact: true })).toBeVisible();
+      await expect(defaultMarker()).toBeVisible();
 
       await setDefaultFrom("0.2.0");
 
@@ -549,7 +561,7 @@ test.describe("Releases", () => {
       await page.goto(`/${slug}/releases`);
       const defaultRow = page
         .locator("tbody tr")
-        .filter({ hasText: "Default" });
+        .filter({ has: defaultMarker() });
       await expect(defaultRow).toHaveCount(1, { timeout: 15_000 });
       await expect(defaultRow).toContainText("0.2.0");
     });
@@ -622,7 +634,7 @@ test.describe("Releases", () => {
       await expect(rows.filter({ hasText: "Released" })).toHaveCount(1, {
         timeout: 15_000,
       });
-      await expect(rows.filter({ hasText: "Default" })).toHaveCount(0);
+      await expect(rows.filter({ has: defaultMarker() })).toHaveCount(0);
     });
 
     await test.step("with no default, a quest still completes and lands nowhere", async () => {

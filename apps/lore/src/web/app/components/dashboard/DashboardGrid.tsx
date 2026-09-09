@@ -4,7 +4,6 @@ import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceS
 import type { DashboardCardValue } from "@/api/schemas/dashboardCardValueSchema.ts";
 import type { DashboardMetricDescriptor } from "@/api/services/DashboardMetricCatalog.ts";
 
-import DashboardAddTile from "./DashboardAddTile.tsx";
 import DashboardCard from "./DashboardCard.tsx";
 
 export interface DashboardGridProps {
@@ -126,7 +125,6 @@ const DashboardGrid = (props: DashboardGridProps) => {
           />
         );
       })}
-      {canEdit && <DashboardAddTile onClick={props.onAdd} />}
     </div>
   );
 };

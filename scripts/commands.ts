@@ -100,6 +100,30 @@ export class AlephaCommands {
     aliases: ["v"],
     description:
       "Fast local checks: lint, typecheck, audits, unit tests. CI is the gate - push the branch.",
+    // One run of this lane per machine, whatever the checkout.
+    //
+    // The key is derived from the package name and never from the cwd, so
+    // every worktree of this repository shares the single slot. That is the
+    // point: what two checkouts contend for is not the machine's RAM but the
+    // four services `vitest.config.ts` points every one of them at, on fixed
+    // ports 15432, 16379 and 19090. `test` and `test:bun` both drive that one
+    // postgres, so two concurrent lanes are two suites interleaving in the
+    // same database, which is the shape of a flake that never reproduces the
+    // same way twice.
+    //
+    // ⚠️ The reason is NOT the one #Q2148 was written against. That quest
+    // argued from memory: three FULL lanes peaked at 48.9 GB against a 48 GB
+    // ceiling, driven by `e2e` (13.6 GB) and `build` (7.3 GB), and it said
+    // explicitly that the fast lane must stay concurrent because its whole
+    // value is failing fast. The full lane was then deleted the same day, so
+    // the lane that survives is the one the quest exempted. It still takes the
+    // slot, on the service argument above rather than the memory one, and the
+    // trade is much better than the one the quest was refusing: a second agent
+    // waits out ~3 minutes rather than ~10, and what it was going to get
+    // instead was a red run it would have had to re-run anyway.
+    //
+    // `ALEPHA_NO_EXCLUSIVE=1` bypasses the queue.
+    exclusive: true,
     flags: z.object({
       fast: z
         .boolean()
@@ -162,6 +186,8 @@ export class AlephaCommands {
     name: "verify:go",
     aliases: ["v:go"],
     description: "Run the Go suite (apps/bay) on the platform it ships for.",
+    // No slot. It runs in a container of its own and touches none of the four
+    // services, so it has nothing to contend with `verify` over.
     handler: async ({ run }) => {
       // A lane of its own rather than a step inside `verify`, because the two
       // toolchains have nothing to say to each other: every Go file in this

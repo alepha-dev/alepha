@@ -25,7 +25,11 @@ import { WebSocketRoom } from "../providers/WebSocketRoom.ts";
  */
 class FakeWs {
   public closedWith?: { code: number; reason: string };
-  constructor(protected attachment: unknown) {}
+  protected attachment: unknown;
+
+  constructor(attachment: unknown) {
+    this.attachment = attachment;
+  }
   serializeAttachment(a: unknown) {
     this.attachment = a;
   }

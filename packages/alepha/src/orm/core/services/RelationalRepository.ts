@@ -56,10 +56,13 @@ export class RelationalRepository<
   protected readonly rqb = $inject(RqbExecutor);
   protected readonly queryManager = $inject(QueryManager);
 
-  constructor(
-    public readonly relations: RelationsPrimitive<ZType, TMap>,
-    public readonly key: TKey,
-  ) {}
+  public readonly relations: RelationsPrimitive<ZType, TMap>;
+  public readonly key: TKey;
+
+  constructor(relations: RelationsPrimitive<ZType, TMap>, key: TKey) {
+    this.relations = relations;
+    this.key = key;
+  }
 
   /**
    * The entity this repository is bound to.

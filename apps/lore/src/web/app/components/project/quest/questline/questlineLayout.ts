@@ -96,7 +96,11 @@ export class QuestlineLayout<T extends QuestlineItem> {
    *   `metadata` on a `QuestResource`; derived from the three timestamps on
    *   a release row. The layout never reads it any other way.
    */
-  constructor(protected readonly statusOf: QuestlineStatusOf<T>) {}
+  protected readonly statusOf: QuestlineStatusOf<T>;
+
+  constructor(statusOf: QuestlineStatusOf<T>) {
+    this.statusOf = statusOf;
+  }
 
   build(quests: T[]): QuestlineTrack<T>[] {
     const byId = new Map(quests.map((q) => [q.id, q]));

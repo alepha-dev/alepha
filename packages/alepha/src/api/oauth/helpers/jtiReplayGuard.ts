@@ -7,10 +7,13 @@
 export class JtiReplayGuard {
   protected readonly seen = new Map<string, number>(); // jti -> expiry epoch ms
 
-  constructor(
-    protected readonly ttlMs = 120_000,
-    protected readonly maxEntries = 10_000,
-  ) {}
+  protected readonly ttlMs: number;
+  protected readonly maxEntries: number;
+
+  constructor(ttlMs = 120_000, maxEntries = 10_000) {
+    this.ttlMs = ttlMs;
+    this.maxEntries = maxEntries;
+  }
 
   /**
    * Records `jti` and returns true if fresh; false if already used (replay).

@@ -4,7 +4,11 @@ import { AlephaFake, FakeProvider } from "../index.ts";
 
 // Example showing how to use the AlephaFake module
 class MyApp {
-  constructor(protected fake = $inject(FakeProvider)) {}
+  protected fake: FakeProvider;
+
+  constructor(fake = $inject(FakeProvider)) {
+    this.fake = fake;
+  }
 
   async seedDatabase() {
     // Define your schema
