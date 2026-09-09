@@ -2126,6 +2126,14 @@ export default {
 
   // -- Dashboard (the signed-in landing page) -------------------------------
   "project.dashboard.title": "Dashboard",
+  "project.dashboard.empty.title": "Nothing on this board yet",
+  "project.dashboard.empty.body":
+    "A board is a few numbers worth checking without opening anything. Add the first card.",
+  "project.dashboard.empty.body.readOnly":
+    "A board is a few numbers worth checking without opening anything. Someone with permission to change the project settings can fill it.",
+  "project.dashboard.empty.body.noMetrics":
+    "This project does not do anything a card can count yet. Turn on a capability in Settings and the board has something to show.",
+  "project.dashboard.empty.docs": "How project dashboards work",
   "project.dashboard.standfirst": "$1 cards on this project's board.",
   "project.dashboard.standfirst.one": "1 card on this project's board.",
   "project.dashboard.standfirst.empty":

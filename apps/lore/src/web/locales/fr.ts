@@ -2132,6 +2132,14 @@ export default {
 
   // -- Tableau de bord (page d'accueil connectee) ---------------------------
   "project.dashboard.title": "Tableau de bord",
+  "project.dashboard.empty.title": "Rien sur ce tableau pour l'instant",
+  "project.dashboard.empty.body":
+    "Un tableau, c'est quelques chiffres a verifier sans rien ouvrir. Ajoutez la premiere carte.",
+  "project.dashboard.empty.body.readOnly":
+    "Un tableau, c'est quelques chiffres a verifier sans rien ouvrir. Une personne autorisee a modifier les parametres du projet peut le remplir.",
+  "project.dashboard.empty.body.noMetrics":
+    "Ce projet ne fait encore rien qu'une carte puisse compter. Activez une capacite dans les parametres et le tableau aura de quoi afficher.",
+  "project.dashboard.empty.docs": "Comment fonctionnent les tableaux de projet",
   "project.dashboard.standfirst": "$1 cartes sur le tableau du projet.",
   "project.dashboard.standfirst.one": "1 carte sur le tableau du projet.",
   "project.dashboard.standfirst.empty":
