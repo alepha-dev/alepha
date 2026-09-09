@@ -1995,60 +1995,6 @@ export class QuestController {
   });
 
   /**
-   * Undo a completion.
-   *
-   * A completed quest used to be terminal — no endpoint could reverse it,
-   * and the board refused to drag its card out of Done. Correct for a log,
-   * wrong for a board, where pulling something back out of Done is routine.
-   *
-   * `completionMessage` is deliberately KEPT. It is project memory, it has
-   * a visible home in the Discussion feed as the completion-summary entry,
-   * and deleting it would destroy the account of work that really did
-   * happen. Completing again overwrites it.
-   *
-   * The card returns to the FIRST sub-column rather than to whichever one
-   * it was completed from: the old column is not stored (`completeQuest`
-   * does not preserve it), and inventing one would put a reopened card in a
-   * lane nobody moved it to. First column is where a freshly accepted quest
-   * lands, which is what a reopened one is.
-   */
-  reopenQuest = $action({
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
-    schema: {
-      params: z.object({
-        id: z.integer(),
-      }),
-      response: questResourceSchema,
-    },
-    handler: async ({ params, user }) => {
-      const { quest, project } = this.getQuestForTransition("reopen", [
-        "completed",
-      ]);
-      // A concluded epic's quest stays closed: the board reaches this by
-      // dragging a card out of Done, and a done epic's cards ARE on the
-      // board (the backlog gate hides planned epics only).
-      await this.epicWorkflow.assertQuestWorkable(quest, "reopen");
-
-      quest.completedAt = undefined;
-      quest.completedBy = undefined;
-      // Back to whoever held it. `completeQuest` leaves `acceptedBy` set, so
-      // a reopened quest returns to its assignee rather than to nobody.
-      if (await this.boardEnabled(project.id)) {
-        quest.kanbanColumn = project.kanbanColumns?.[0];
-      }
-      quest.history.push({
-        at: this.dt.nowISOString(),
-        by: user.id,
-        action: "reopened",
-      });
-
-      await this.quests.save(quest);
-      await this.logQuest("reopen", quest, user);
-      return this.mapQuestToResource(quest);
-    },
-  });
-
-  /**
    * Hand a quest to another member.
    *
    * `acceptQuest` is self-assignment and always will be — it is the "I am

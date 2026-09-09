@@ -87,25 +87,28 @@ describe("EpicWorkflowService", () => {
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
       await expect(
-        app.workflow.assertQuestWorkable(quest, "reopen"),
+        app.workflow.assertQuestWorkable(quest, "complete"),
       ).rejects.toThrow(
-        `Cannot reopen quest #Q${quest.shortId}: Epic #E${epic.number} is concluded. File this in a new epic.`,
+        `Cannot complete quest #Q${quest.shortId}: Epic #E${epic.number} is concluded. File this in a new epic.`,
       );
     });
 
-    it("carries the caller's verb, so five actions share one message shape", async ({
+    it("carries the caller's verb, so every action shares one message shape", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
       const epic = await createTestEpic(alepha, project, { status: "done" });
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
+      // ⚠️ `reopen` was the sixth until epic #E48 deleted quest reopen. The
+      // verb is gone from `EpicWorkflowVerb`, so listing it here is a type
+      // error rather than a silently dead case.
       for (const verb of [
         "accept",
         "assign",
         "complete",
-        "reopen",
         "unshelve",
+        "unhold",
       ] as const) {
         await expect(
           app.workflow.assertQuestWorkable(quest, verb),

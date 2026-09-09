@@ -1025,12 +1025,6 @@ export default {
   "kanban.composer.submit": "Add",
   "kanban.composer.needsArea":
     "Create an area first: a quest has to belong to one.",
-  "kanban.reopen.title": "Reopen this quest?",
-  "kanban.reopen.confirm":
-    "It goes back to In progress. Its completion summary is kept.",
-  "kanban.reopen.confirmWithDependents":
-    "It goes back to In progress, and $1 depended on it being done. Anything already started stays started. Its completion summary is kept.",
-  "kanban.reopen.confirmButton": "Reopen",
   "kanban.error.completedCannotMove": "Completed quests cannot be moved",
   "kanban.error.acceptFirst": "You must accept the quest before completing it",
   "kanban.error.actionFailed": "Action failed",
