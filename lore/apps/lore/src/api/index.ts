@@ -127,6 +127,7 @@ import { QuestService } from "./services/QuestService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
+import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
@@ -303,6 +304,7 @@ export const LoreApi = $module({
     ActiveQuestsMetric,
     HeldQuestsMetric,
     EpicProgressMetric,
+    ReleaseProgressMetric,
     OpenBlightsMetric,
     UntriagedFeedbackMetric,
     UniqueVisitorsMetric,

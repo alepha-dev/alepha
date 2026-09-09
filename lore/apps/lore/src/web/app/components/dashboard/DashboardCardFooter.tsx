@@ -80,6 +80,26 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         args: [String(detail.completed ?? 0), String(denominator)],
       });
     }
+    if (props.metric === "releaseProgress") {
+      // ⚠️ Two states, and no third: a release is `open` or `published`, and
+      // `releases` has no status column because a status column would let a
+      // row claim one thing while `releasedAt` says the other. A published
+      // release is finished by definition, so the card reports the date
+      // rather than a ratio nobody is going to move.
+      if (detail.hidden) return tr("dashboard.footer.release.hidden");
+      if (detail.published) {
+        return detail.releasedAt
+          ? tr("dashboard.footer.release.published", {
+              args: [String(l(String(detail.releasedAt), { date: "ll" }))],
+            })
+          : tr("dashboard.footer.release.publishedUndated");
+      }
+      const denominator = Number(detail.denominator ?? 0);
+      if (denominator === 0) return tr("dashboard.footer.release.empty");
+      return tr("dashboard.footer.release.done", {
+        args: [String(detail.completed ?? 0), String(denominator)],
+      });
+    }
     if (props.metric === "heldQuests") {
       // Says what the number is made OF, which for this card means the
       // denominator it is a subset of: the same open count the Active Quests

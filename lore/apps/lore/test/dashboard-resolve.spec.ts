@@ -622,6 +622,204 @@ describe("dashboard resolve", () => {
     });
   });
 
+  /**
+   * The release card. Its arithmetic looks identical to the epic card's and
+   * is NOT: `ReleaseContentService.progressOf` already counts shelved outside
+   * its `total`, so the subtraction A3 ruled is a no-op here and applying it
+   * twice would put a card over 100%.
+   */
+  describe("releaseProgress", () => {
+    const resolveRelease = async (
+      project: Project,
+      user: UserAccountToken,
+      releaseId: number,
+    ) => {
+      const values = await ctx.alepha
+        .inject(DashboardMetricRegistry)
+        .resolveForProject(
+          [
+            {
+              id: 1,
+              metric: "releaseProgress",
+              scope: { kind: "release", releaseId },
+              filters: {},
+              size: 1,
+              position: 0,
+            },
+          ],
+          user,
+          project,
+        );
+      return values[0]!;
+    };
+
+    it("counts the quests attached to the release", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 1,
+        tag: "0.1.0",
+        title: "First",
+      });
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        releaseId: release.id,
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { releaseId: release.id });
+
+      const value = await resolveRelease(project, user, release.id);
+
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(50);
+      expect(value.detail.denominator).toBe(2);
+    });
+
+    it("does NOT subtract shelved twice", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 2,
+        tag: "0.2.0",
+        title: "Second",
+      });
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        releaseId: release.id,
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { releaseId: release.id });
+      await createTestQuest(ctx.alepha, project, {
+        releaseId: release.id,
+        shelvedAt: now,
+      });
+
+      const value = await resolveRelease(project, user, release.id);
+
+      // ⚠️ `progressOf` already reports `total: 2` with `shelved: 1` beside
+      // it, OUTSIDE the total. Subtracting again would divide by 1 and read
+      // 100% on a release with a quest still open.
+      expect(value.detail.total).toBe(2);
+      expect(value.detail.shelved).toBe(1);
+      expect(value.detail.denominator).toBe(2);
+      expect(value.value).toBe(50);
+    });
+
+    it("counts an attached epic's quests, not only the loose ones", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 3,
+        tag: "0.3.0",
+        title: "Third",
+      });
+      const epic = await createTestEpic(ctx.alepha, project, {
+        releaseId: release.id,
+      });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveRelease(project, user, release.id);
+
+      // The reason `progressOf` exists at all: a release is mostly a set of
+      // EPICS, so a direct `releaseId` count would report 0 of 0 here and
+      // disagree with the changelog beside it.
+      expect(value.detail.total).toBe(1);
+      expect(value.value).toBe(100);
+    });
+
+    it("reads a published release's frozen columns and never recounts it", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 4,
+        tag: "0.4.0",
+        title: "Shipped",
+        releasedAt: new Date().toISOString(),
+        completed: 8,
+        inProgress: 0,
+        shelved: 2,
+        total: 8,
+      });
+      // Live work that must NOT rewrite what 0.4.0 shipped.
+      await createTestQuest(ctx.alepha, project, { releaseId: release.id });
+
+      const value = await resolveRelease(project, user, release.id);
+
+      expect(value.value).toBe(100);
+      expect(value.detail.total).toBe(8);
+      expect(value.detail.published).toBe(true);
+      expect(value.detail.releasedAt).toBeTruthy();
+    });
+
+    it("links by the tag, and gives no link when there is none", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const tagged = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 5,
+        tag: "0.5.0",
+        title: "Tagged",
+      });
+      const untagged = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 6,
+        title: "Untagged",
+      });
+
+      const withTag = await resolveRelease(project, user, tagged.id);
+      expect(withTag.link?.route).toBe("projectRelease");
+      expect(withTag.link?.params).toEqual({
+        projectSlug: project.slug,
+        releaseTag: "0.5.0",
+      });
+      // The chip reads the tag too, which is how a release is named
+      // everywhere else in the app.
+      expect(withTag.scopeNames).toEqual(["0.5.0"]);
+
+      // ⚠️ `tag` is optional at the column. Better no link than
+      // `/releases/undefined`.
+      const withoutTag = await resolveRelease(project, user, untagged.id);
+      expect(withoutTag.link).toBeUndefined();
+    });
+
+    it("resolves to nothing when the project turned releases off", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha, {
+        capabilities: [{ key: "work", options: { releases: false } }],
+      });
+      await createTestMember(ctx.alepha, project, project.createdBy!);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 1,
+        tag: "9.9.9",
+        title: "Hidden",
+      });
+      await createTestQuest(ctx.alepha, project, {
+        releaseId: release.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveRelease(
+        project,
+        token(project.createdBy!),
+        release.id,
+      );
+
+      expect(value.ok).toBe(true);
+      expect(value.value).toBeUndefined();
+      expect(value.detail.hidden).toBe(true);
+    });
+  });
+
   describe("untriagedFeedback", () => {
     it("counts pending items and ages the oldest one", async ({ expect }) => {
       const { user, project } = await memberOf(ctx);

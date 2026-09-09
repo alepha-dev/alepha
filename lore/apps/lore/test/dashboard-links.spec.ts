@@ -43,7 +43,12 @@ describe("dashboard drill-through links", () => {
    * reaches `link()` through `DashboardCardTarget` because the stored scope
    * carries the id and `/epics/:epicNumber` takes the other one.
    */
-  const params = { projectSlug: "sds", appName: "docs", epicNumber: "46" };
+  const params = {
+    projectSlug: "sds",
+    appName: "docs",
+    epicNumber: "46",
+    releaseTag: "0.28.0",
+  };
 
   it("resolves every metric's link to a real path", ({ expect }) => {
     // A guard that silently checks nothing is worse than no guard.
@@ -56,6 +61,7 @@ describe("dashboard drill-through links", () => {
           projectSlug: params.projectSlug,
           appName: params.appName,
           epicNumber: Number(params.epicNumber),
+          releaseTag: params.releaseTag,
         },
       );
       expect(link, `metric '${metric.key}' produced no link`).toBeDefined();
@@ -113,6 +119,23 @@ describe("dashboard drill-through links", () => {
     );
   });
 
+  it("addresses a release by its tag, never by its row id", ({ expect }) => {
+    const link = catalog
+      .get("releaseProgress")
+      .link(
+        { kind: "release", releaseId: 12 },
+        { projectSlug: "sds", releaseTag: "0.28.0" },
+      );
+
+    expect(link).toEqual({
+      route: "projectRelease",
+      params: { projectSlug: "sds", releaseTag: "0.28.0" },
+    });
+    expect(router.path(link!.route, { params: link!.params })).toBe(
+      "/sds/releases/0.28.0",
+    );
+  });
+
   it("gives no link at all when the target does not exist", ({ expect }) => {
     // Better no link than a 404. The visitors tile needs an app name, and a
     // project with no beacon-carrying app cannot supply one.
@@ -130,6 +153,13 @@ describe("dashboard drill-through links", () => {
       catalog
         .get("epicProgress")
         .link({ kind: "epic", epicId: 1 }, { projectSlug: "sds" }),
+    ).toBeUndefined();
+    // `releases.tag` is optional at the column, so this is a real state and
+    // not a defensive branch: better no link than `/releases/undefined`.
+    expect(
+      catalog
+        .get("releaseProgress")
+        .link({ kind: "release", releaseId: 1 }, { projectSlug: "sds" }),
     ).toBeUndefined();
   });
 });
