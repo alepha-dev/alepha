@@ -246,14 +246,29 @@ jobs:
       - name: Setup Playwright
         uses: ./.github/actions/playwright
 
-      # `yarn e2e` minus lore, spelled inline rather than as a root script so
-      # that `yarn e2e` keeps meaning "all of it" for a human running it.
-      # `--exclude` matches the ident, so this drops `apps/lore` and leaves
-      # `packages/@alepha/lore` (which has no `e2e` script anyway) alone.
-      # Verified: it selects docs, ui, examples/shop and examples/ssr.
+      # `yarn e2e` minus lore: docs, ui, examples/shop and examples/ssr.
+      #
+      # ⚠️ **`--exclude alepha-monorepo` is load-bearing and is NOT tidy-up.**
+      # `-A` includes the repository root, the root workspace has an `e2e`
+      # script of its own, and that script is `foreach -Apt run e2e` with no
+      # exclusions - so dropping this flag makes the step run every suite a
+      # second time, lore included, both copies at once. That is not a
+      # theoretical risk: it is what the first version of this job did.
+      # Two concurrent `docs` runs then raced for the same derived port and
+      # the step died on `EADDRINUSE` after 11 minutes, which reads as a
+      # flaky port allocator rather than as a recursive foreach.
+      #
+      # Yarn's own recursion guard does not cover this. It is keyed on the
+      # workspace AND the script name, so it saves `yarn e2e` (root `e2e`
+      # calling root `e2e`) and saves nothing here, where the caller is a
+      # shell rather than the script being called. A root `e2e:apps` script
+      # was tried first for exactly that reason and recursed the same way.
+      #
+      # `--exclude lore` matches the ident, so it drops `apps/lore` and
+      # leaves `packages/@alepha/lore` (which has no `e2e` script) alone.
       - name: Run E2E Tests
         timeout-minutes: 20
-        run: yarn workspaces foreach -Apt --exclude lore run e2e
+        run: yarn workspaces foreach -Apt --exclude lore --exclude alepha-monorepo run e2e
 
   e2e-lore:
     runs-on: ubuntu-latest
