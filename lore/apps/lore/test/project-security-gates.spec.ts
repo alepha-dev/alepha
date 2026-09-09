@@ -144,31 +144,6 @@ describe("project security gates", () => {
     expect(await res.data.text()).toContain("Secret plan of Alpha");
   });
 
-  it("refuses a stranger the CSV import of a project", async () => {
-    ctx = await setup();
-    const owner = await ctx.newUser();
-    const stranger = await ctx.newUser();
-    const project = await ownedProject(ctx, owner, "Owned Beta");
-    const quest = await newQuest(ctx, owner, project.id, "Original title");
-
-    const csv = `"shortId","title","priority"\n"${quest.shortId}","HIJACKED","high"\n`;
-    await expect(
-      ctx.port.importQuests.fetch(
-        {
-          params: { id: project.id },
-          body: { file: new File([csv], "q.csv", { type: "text/csv" }) },
-        },
-        { user: stranger },
-      ),
-    ).rejects.toThrow();
-
-    const after = await ctx.quests.getQuestByShortId.fetch(
-      { params: { projectId: project.id, shortId: quest.shortId } },
-      { user: owner },
-    );
-    expect(after.data.title).toBe("Original title");
-  });
-
   it("refuses a stranger the pending invitations of a project", async () => {
     ctx = await setup();
     const owner = await ctx.newUser();

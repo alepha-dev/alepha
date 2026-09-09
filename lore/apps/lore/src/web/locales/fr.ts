@@ -28,12 +28,12 @@ export default {
   "quest-log.search": "Chercher par nom, domaine ou difficulté...",
   "quest-log.empty": "Aucune quête en attente",
   "quest-log.empty-description":
-    "Le royaume est bien calme. Forgez une nouvelle quête pour lancer votre compagnie.",
+    "Les quêtes servent à suivre le travail du projet. Créez-en une pour commencer.",
 
   "home.nav": "Accueil",
   "home.title": "Bienvenue dans l’aventure Lore",
   "home.subtitle":
-    "Votre périple commence ici. Forgez des quêtes, ralliez votre équipée et consignez ses exploits à travers le royaume.",
+    "Organisez votre travail sous forme de quêtes, invitez les personnes qui y participent, et gardez au même endroit les décisions et les notes qui vont avec.",
   "home.create-project": "Lancer un nouveau projet",
   "home.create-project.max": "Limite atteinte ($1)",
   "project.create.limit.title": "Vous avez atteint la limite de projets",
@@ -591,26 +591,12 @@ export default {
   "project.settings.nav.members": "Membres",
   "project.settings.nav.group.capabilities": "Capacités",
   "project.settings.nav.areas": "Domaines",
+  "project.settings.data.export.failed": "L'export a échoué",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
     "Téléchargez toutes les quêtes de ce projet en CSV.",
   "project.settings.data.export.button": "Exporter les quêtes",
-  "project.settings.data.import.title": "Importer des quêtes",
-  "project.settings.data.import.subtitle":
-    "Importez un CSV exporté depuis Lore ou Trello. Les quêtes existantes avec le même shortId sont mises à jour ; les autres sont créées.",
-  "project.settings.data.import.choose": "Importer des quêtes",
-  "project.settings.data.import.preview.title": "Aperçu de l'import",
-  "project.settings.data.import.preview.body":
-    "$1 ligne(s) détectée(s) dans $2. Les quêtes existantes avec un shortId correspondant seront mises à jour ; les autres seront créées.",
-  "project.settings.data.import.preview.confirm": "Importer",
-  "project.settings.data.import.preview.cancel": "Annuler",
-  "project.settings.data.import.preview.empty":
-    "Aucune ligne de données détectée. Le fichier ne contient qu'un en-tête.",
-  "project.settings.data.import.result":
-    "$1 quêtes importées ($2 mises à jour, $3 ignorées)",
-  "project.settings.data.import.details": "Voir les détails",
-  "project.settings.data.import.error.title": "L'import a échoué",
   // ── Capacités ───────────────────────────────────────────────────────────
   // Voir la note dans en.ts : `.short` est le nom court du rail, `.label`
   // reste la phrase de l'assistant de création et des titres de section.
@@ -829,9 +815,18 @@ export default {
   "release.detail.edit": "Modifier",
   "release.detail.notFound": "Aucune version taguée $1 dans ce projet.",
   "release.publish.action": "Publier",
+  "release.default.badge": "Par défaut",
+  "release.default.since": "Par défaut depuis le $1",
+  "release.default.set": "Définir par défaut",
+  "release.default.clear": "Retirer par défaut",
+  "release.default.confirm.title": "Faire de $1 la version par défaut ?",
+  "release.default.confirm.description":
+    "Les quêtes terminées qui ne nomment aucune version iront dans $1, et une épopée commencée sans version sera livrée dedans. Tout reste rattachable à la main, et publier $1 retire ce statut.",
+  "release.default.cleared": "$1 n'est plus la version par défaut",
+  "quest.complete.landedIn": "Terminée dans $1",
   "release.publish.title": "Publier cette version ?",
   "release.publish.description":
-    "Publier $1 fige son journal et ses compteurs d'avancement, et plus aucune épopée ni quête ne pourra y être rattachée. C'est irréversible : la rouvrir efface tout ce qu'elle a figé.",
+    "Publier $1 fige son journal et ses compteurs d'avancement, et plus aucune épopée ni quête ne pourra y être rattachée. Si $1 est la version par défaut, elle cesse de l'être. C'est irréversible : la rouvrir efface tout ce qu'elle a figé, et ne la remet pas par défaut.",
   "release.publish.confirm": "Publier",
   "release.reopen.action": "Rouvrir",
   "release.reopen.title": "Rouvrir cette version ?",
@@ -860,9 +855,12 @@ export default {
   "release.detail.save": "Enregistrer",
   "release.detail.saved": "Version mise à jour",
   "release.hero.progress": "Avancement",
+  "release.empty.docs": "Comment fonctionnent les versions",
   "release.empty.title": "Aucune version ouverte",
   "release.empty.body":
     "Une version est un objectif nommé - 0.1.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
+  "release.noMatch.title": "Aucune version ne correspond",
+  "release.noMatch.body": "Ajustez ou effacez les filtres.",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Enregistrer dans les Folios",
@@ -1020,12 +1018,6 @@ export default {
   "kanban.composer.submit": "Ajouter",
   "kanban.composer.needsArea":
     "Créez d'abord un domaine : une quête doit appartenir à l'un d'eux.",
-  "kanban.reopen.title": "Rouvrir cette quête ?",
-  "kanban.reopen.confirm":
-    "Elle repart en cours. Son résumé de complétion est conservé.",
-  "kanban.reopen.confirmWithDependents":
-    "Elle repart en cours, et $1 dépendai(en)t de son achèvement. Ce qui a déjà démarré reste démarré. Son résumé de complétion est conservé.",
-  "kanban.reopen.confirmButton": "Rouvrir",
   "kanban.error.completedCannotMove":
     "Les quêtes terminées ne peuvent pas être déplacées",
   "kanban.error.acceptFirst":
@@ -1146,6 +1138,8 @@ export default {
   "apps.empty": "Aucune app pour l\u2019instant",
   "apps.empty.description":
     "Une app est une copie déployée : quelle application, et quelle copie. Créez-en une pour la suivre ici.",
+  "apps.noMatch": "Aucune app ne correspond",
+  "apps.noMatch.description": "Ajustez ou effacez les filtres.",
   "apps.unavailable": "Impossible de charger les apps",
   "apps.unavailable.description":
     "La liste n\u2019a pas pu être lue. Ce n\u2019est pas la même chose que ne pas en avoir : rechargez pour réessayer.",
@@ -1331,19 +1325,6 @@ export default {
   "app.settings.estate.manage": "Gérer les domaines",
   "app.settings.estate.clear": "Aucun domaine",
   "app.settings.estate.saved": "Cible de déploiement enregistrée",
-  "project.settings.apps.defaultEnv.title": "Environnement par défaut",
-  "project.settings.apps.defaultEnv.description":
-    "L'environnement visé par une commande qui n'en nomme aucun. `lore apps deploy` sans --env se résout ici, tout comme un lien /apps/<nom> sans environnement.",
-  "project.settings.apps.defaultEnv.label": "Environnement par défaut",
-  "project.settings.apps.defaultEnv.rowDescription":
-    "Seuls les environnements que ce projet possède déjà sont proposés.",
-  "project.settings.apps.defaultEnv.none":
-    "Ce projet n'a encore aucune copie déployée, donc aucun environnement par défaut possible.",
-  "project.settings.apps.defaultEnv.clear": "Aucun",
-  "project.settings.apps.defaultEnv.fallback":
-    "Sans valeur par défaut, production est utilisé s'il existe, sinon le premier environnement par ordre alphabétique.",
-  "project.settings.apps.defaultEnv.saved":
-    "Environnement par défaut enregistré",
   "app.settings.danger": "Zone dangereuse",
   "app.settings.delete.title": "Supprimer cette app",
   "app.settings.delete.description":

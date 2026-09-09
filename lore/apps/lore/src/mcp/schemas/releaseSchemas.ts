@@ -41,6 +41,12 @@ const releaseRowSchema = z.object({
     .datetime()
     .describe("Absent while the release is open. Present means published.")
     .optional(),
+  defaultSince: z
+    .datetime()
+    .describe(
+      "When this release became the project's DEFAULT: where a completed quest that names no release, and inherits none from its epic, lands, and what an epic begun without a release takes. Absent on every other release. At most one release per project has it, and zero is a normal state. Not a third state - a default release is still open. Set it with release_set_default.",
+    )
+    .optional(),
   progress: z.object({
     completed: z.integer(),
     inProgress: z.integer(),
@@ -93,6 +99,34 @@ export const releaseGetResultSchema = releaseRowSchema.extend({
     .describe(
       "Attached directly rather than through an epic: the hotfix, the doc pass, the one chore.",
     ),
+});
+
+// -----------------------------------------------------------------------------
+// release_set_default
+// -----------------------------------------------------------------------------
+
+export const releaseSetDefaultParamsSchema = projectParamsSchema.extend({
+  tag: z
+    .string()
+    .describe(
+      "The release to point this project's intake at, e.g. `0.28.0` (see release_list). ⚠️ OMIT IT TO CLEAR the default, leaving the project with none - that is a normal, supported state and not a degenerate one. There is deliberately no separate clear tool: this one takes only the release, so a sibling's whole body would be this one with null.",
+    )
+    .optional(),
+});
+
+export const releaseSetDefaultResultSchema = z.object({
+  tag: z
+    .string()
+    .describe(
+      "The release that is now the default. ABSENT when the call cleared it and the project now has none.",
+    )
+    .optional(),
+  defaultSince: z
+    .datetime()
+    .describe(
+      "When it became the default. Absent when the default was cleared.",
+    )
+    .optional(),
 });
 
 // -----------------------------------------------------------------------------

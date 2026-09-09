@@ -227,6 +227,67 @@ describe("quests and epics as link sources, through their controllers", () => {
     return { owner, projectId, target: target.data };
   };
 
+  /**
+   * #Q2146. A create issues no DELETE against `folio_links`.
+   *
+   * The source id is brand new on that path, so the delete can never match a
+   * row - and on D1 a statement is a round trip, paid on every quest, epic
+   * and folio ever made. A 31-row CSV import spent 31 of its 226 statements
+   * on deletes that matched nothing.
+   *
+   * ⚠️ The second half is the one that matters. `created` is a CREATE flag,
+   * not a "there is nothing to insert" flag: an UPDATE still deletes
+   * unconditionally, because the edit that removes the last link from a body
+   * is exactly the one with no rows to insert and rows that must go. Skipping
+   * there would leave a link the reader still renders pointing at something
+   * the body no longer mentions.
+   */
+  it("skips the link DELETE on a create, and keeps it on an update", async () => {
+    const { owner, projectId, target } = await seedTarget();
+
+    let deletes = 0;
+    const unsubscribe = ctx.alepha.events.on(
+      "repository:delete:before",
+      (event) => {
+        if (event.tableName === "folio_links") deletes += 1;
+      },
+    );
+
+    const quest = await ctx.questController.createQuest.fetch(
+      {
+        body: {
+          projectId,
+          title: "Created with a link",
+          description: `Per [[#F${target.shortId}]].`,
+          area: "orm",
+          priority: "high",
+          objectives: [],
+          attachments: [],
+        },
+      },
+      { user: owner },
+    );
+
+    // The link was written, so a count of zero cannot pass by the sync having
+    // been skipped altogether.
+    expect(await ctx.folioLinkService.findInbound(target.id)).toHaveLength(1);
+    expect(deletes).toBe(0);
+
+    // The update path clears the link, which is only possible because it
+    // still deletes with nothing to insert.
+    await ctx.questController.updateQuestById.fetch(
+      {
+        params: { id: quest.data.id },
+        body: { description: "No references here." },
+      },
+      { user: owner },
+    );
+    unsubscribe();
+
+    expect(deletes).toBeGreaterThan(0);
+    expect(await ctx.folioLinkService.findInbound(target.id)).toHaveLength(0);
+  });
+
   it("a link in a quest DESCRIPTION reaches the folio's backlinks", async () => {
     const { owner, projectId, target } = await seedTarget();
 

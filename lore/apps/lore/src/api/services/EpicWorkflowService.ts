@@ -14,7 +14,6 @@ export type EpicWorkflowVerb =
   | "accept"
   | "assign"
   | "complete"
-  | "reopen"
   | "unshelve"
   | "unhold";
 
@@ -79,12 +78,16 @@ export class EpicWorkflowService {
    * You can work on a quest only if its epic is `active`.
    *
    * Called first thing by every action that opens or advances work: accept,
-   * assign, complete, reopen, unshelve and unhold. Accept and complete are
-   * the obvious two; the other four each open work by another door
-   * (`assignQuest` skips `acceptQuest`, the kanban board reopens by drag,
-   * unshelving turns a resolved quest back into an open one, unholding turns
-   * a blocked one back into a workable one), and gating the obvious two
-   * alone leaves four ways in.
+   * assign, complete, unshelve and unhold. Accept and complete are the
+   * obvious two; the other three each open work by another door
+   * (`assignQuest` skips `acceptQuest`, unshelving turns a resolved quest
+   * back into an open one, unholding turns a blocked one back into a
+   * workable one), and gating the obvious two alone leaves three ways in.
+   *
+   * ⚠️ There was a sixth, `reopen`, until epic #E48 deleted it. A quest is
+   * immutable now: follow-up work is a NEW quest linked to the old one, and
+   * `updateQuestById` cannot clear `completedAt`. Nothing here needs to
+   * refuse a transition that no longer exists.
    *
    * Shelve, hold and unassign are deliberately NOT gated: they move a quest
    * toward resolution or away from work, and shelving is the only exit for a

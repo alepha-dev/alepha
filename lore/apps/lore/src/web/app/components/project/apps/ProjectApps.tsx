@@ -228,36 +228,48 @@ const ProjectApps = () => {
       <AlephaTable<AppInstanceResource>
         className="min-h-0 flex-1"
         data={instances}
-        // ⚠️ **No `persistenceKey`, and the hidden columns below therefore do
-        // not survive a reload.** That is a known cost, taken deliberately.
+        persistenceKey={`lor.apps.${project.id}`}
+        // ⚠️ **Filters deliberately excluded**, which is the whole reason this
+        // page has a `persistenceKey` at all. The hidden columns below are
+        // worth remembering; the search is not. Restoring it opened the list
+        // narrowed by whatever the reader last typed - the hazard
+        // `seedValues`'s own note names, "landing on last week's stored
+        // filter" - and `apps.spec` caught it by arriving here after an
+        // earlier step had searched.
         //
-        // `AlephaTable` persists column visibility only through that one prop,
-        // which stores the FILTERS and the sort with it - there is no
-        // per-facet opt-out. Turning it on here was tried and it changed
-        // behaviour nobody asked for: the Apps list opened narrowed by
-        // whatever the reader last typed, which is the hazard `seedValues`'s
-        // own note names ("landing on last week's stored filter"). `apps.spec`
-        // caught it, by arriving at the list after an earlier step had
-        // searched.
-        //
-        // Persisting columns without filters is a change to `AlephaTable` and
-        // affects every table; it is not this one's to make.
+        // Keyed per project: `env` values are project-specific, so one
+        // project's stored column layout has no business on another's list.
+        persist={{ filters: false }}
         // Not "no apps enrolled": enrolment is no longer how an app comes into
         // existence, and the empty state's job here is to offer the create.
-        empty={
-          <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <span className="text-sm font-medium">{tr("apps.empty")}</span>
-            <span className="text-muted-foreground max-w-sm text-xs">
-              {tr("apps.empty.description")}
-            </span>
-            {isOwner && (
-              <Button onClick={() => setCreating(true)}>
-                <Plus className="size-4" />
-                {tr("apps.create.title")}
-              </Button>
-            )}
-          </div>
-        }
+        //
+        // ⚠️ Two states, never the single `empty` node this used to be. That
+        // prop replaces BOTH of them at once, so a filter that matched nothing
+        // still offered to create the first app, with the filter that produced
+        // it sitting in the toolbar above (feedback #P2160). The choice
+        // belongs to the table, which reads it off `activeFilterCount` - and
+        // that counter is live here despite static-data mode, because the
+        // `refreshKey` the filter form bumps is the same one that recomputes
+        // the local page.
+        emptyState={{
+          icon: Boxes,
+          title: tr("apps.empty"),
+          description: tr("apps.empty.description"),
+          action: isOwner ? (
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="size-4" />
+              {tr("apps.create.title")}
+            </Button>
+          ) : undefined,
+        }}
+        // No action on this side. Clearing the filters is already one button
+        // away in the toolbar, and `resetFilters` lives inside the table with
+        // nothing handing it out, so a second copy here would be a new API
+        // rather than a slot fill.
+        noMatchState={{
+          title: tr("apps.noMatch"),
+          description: tr("apps.noMatch.description"),
+        }}
         // The same dialog the header's create menu opens, mounted here as the
         // page's primary action: this list is where somebody who came looking
         // for their apps already is.

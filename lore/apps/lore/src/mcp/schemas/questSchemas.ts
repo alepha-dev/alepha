@@ -54,7 +54,7 @@ const questEpicRefSchema = z.object({
     ),
   title: z.string().describe("Epic title."),
   status: epicStatusSchema.describe(
-    "Epic lifecycle status, and the permission on this quest: `active` is the only phase in which it can be accepted, assigned, completed or reopened. Under a `planned` epic it is specified but not released, readable but not workable, and quest_accept answers 'Begin it first'; under a `done` epic it is a record, and the way forward is a new epic.",
+    "Epic lifecycle status, and the permission on this quest: `active` is the only phase in which it can be accepted, assigned or completed. Under a `planned` epic it is specified but not released, readable but not workable, and quest_accept answers 'Begin it first'; under a `done` epic it is a record, and the way forward is a new epic.",
   ),
 });
 
@@ -442,7 +442,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   release_tag: z
     .string()
     .describe(
-      "Tag of the release this quest ships in, e.g. `0.28.0` (see release_list). A release HOLDS the quests assigned to it, so this is what puts the quest in one - nothing is attached by completing it while a release is open. Refused if that release has already been published.",
+      "Tag of the release this quest ships in, e.g. `0.28.0` (see release_list). A release HOLDS the quests assigned to it, so this is what puts the quest in one. ⚠️ Naming it here is not the only way in: if the project has a DEFAULT release (see release_set_default), a quest completed without one, and inheriting none from its epic, lands there. Refused if that release has already been published.",
     )
     .optional(),
   accept: z
@@ -594,6 +594,23 @@ export const questCompleteResultSchema = z.object({
   shortId: z.integer(),
   title: z.string(),
   completedAt: z.datetime(),
+  /**
+   * The release this quest landed in because the project's DEFAULT release
+   * caught it, by tag.
+   *
+   * ⚠️ Present ONLY when the default fired. Absent when the quest already
+   * named a release, when it inherits one from its epic, and when the
+   * project has no default - so this is never a report of where the quest
+   * is, only of a move nobody asked for. An agent that closes ten quests and
+   * discovers afterwards that they all went into `0.30.0` has been given a
+   * surprise it could have been told about at the time.
+   */
+  release: z
+    .string()
+    .describe(
+      "Tag of the release this quest landed in because the project's default release caught it. Absent unless that happened: a quest that already named a release, or inherits one from its epic, is never moved.",
+    )
+    .optional(),
   ...diagramWarningsShape,
 });
 

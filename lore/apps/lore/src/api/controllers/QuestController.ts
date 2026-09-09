@@ -47,6 +47,7 @@ import {
 } from "../schemas/questResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { AreaService } from "../services/AreaService.ts";
+import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { FolioLinkService } from "../services/FolioLinkService.ts";
@@ -129,6 +130,11 @@ export class QuestController {
    */
   epics = $repository(epics);
   releases = $repository(releases);
+  /**
+   * Where a finished quest goes when nobody said where (#E48). Read-only from
+   * here, and best effort: see `attachToDefaultRelease`.
+   */
+  defaults = $inject(DefaultReleaseService);
   /**
    * Write-only here, and for one act: `holdQuest` posts its reason into the
    * Discussion instead of into a `heldReason` column, so that `@mentions`
@@ -843,7 +849,8 @@ export class QuestController {
         createdBy: user.id,
       });
 
-      await this.syncQuestLinks(quest);
+      // A brand-new id has no links to clear, so the delete is skipped.
+      await this.syncQuestLinks(quest, { created: true });
       await this.logQuest("create", quest, user);
 
       return this.mapQuestToResource(quest);
@@ -873,12 +880,16 @@ export class QuestController {
    * enforces that — a new write path that forgets simply leaves the graph
    * stale.
    */
-  protected async syncQuestLinks(quest: Quest): Promise<void> {
+  protected async syncQuestLinks(
+    quest: Quest,
+    opts: { created?: boolean } = {},
+  ): Promise<void> {
     await this.linkService.syncLinks(
       { kind: "quest", id: quest.id, projectId: quest.projectId },
       [quest.description, quest.note, quest.completionMessage]
         .filter(Boolean)
         .join("\n\n"),
+      opts,
     );
   }
 
@@ -1989,60 +2000,6 @@ export class QuestController {
   });
 
   /**
-   * Undo a completion.
-   *
-   * A completed quest used to be terminal — no endpoint could reverse it,
-   * and the board refused to drag its card out of Done. Correct for a log,
-   * wrong for a board, where pulling something back out of Done is routine.
-   *
-   * `completionMessage` is deliberately KEPT. It is project memory, it has
-   * a visible home in the Discussion feed as the completion-summary entry,
-   * and deleting it would destroy the account of work that really did
-   * happen. Completing again overwrites it.
-   *
-   * The card returns to the FIRST sub-column rather than to whichever one
-   * it was completed from: the old column is not stored (`completeQuest`
-   * does not preserve it), and inventing one would put a reopened card in a
-   * lane nobody moved it to. First column is where a freshly accepted quest
-   * lands, which is what a reopened one is.
-   */
-  reopenQuest = $action({
-    use: [$transactional(), this.ownsQuestForWork("quest:update")],
-    schema: {
-      params: z.object({
-        id: z.integer(),
-      }),
-      response: questResourceSchema,
-    },
-    handler: async ({ params, user }) => {
-      const { quest, project } = this.getQuestForTransition("reopen", [
-        "completed",
-      ]);
-      // A concluded epic's quest stays closed: the board reaches this by
-      // dragging a card out of Done, and a done epic's cards ARE on the
-      // board (the backlog gate hides planned epics only).
-      await this.epicWorkflow.assertQuestWorkable(quest, "reopen");
-
-      quest.completedAt = undefined;
-      quest.completedBy = undefined;
-      // Back to whoever held it. `completeQuest` leaves `acceptedBy` set, so
-      // a reopened quest returns to its assignee rather than to nobody.
-      if (await this.boardEnabled(project.id)) {
-        quest.kanbanColumn = project.kanbanColumns?.[0];
-      }
-      quest.history.push({
-        at: this.dt.nowISOString(),
-        by: user.id,
-        action: "reopened",
-      });
-
-      await this.quests.save(quest);
-      await this.logQuest("reopen", quest, user);
-      return this.mapQuestToResource(quest);
-    },
-  });
-
-  /**
    * Hand a quest to another member.
    *
    * `acceptQuest` is self-assignment and always will be — it is the "I am
@@ -2243,6 +2200,89 @@ export class QuestController {
     },
   });
 
+  /**
+   * Put a finished quest in the project's default release, if it is in no
+   * release at all and there is one.
+   *
+   * ## ⚠️ The condition is the EFFECTIVE release, not the column
+   *
+   * `quest.releaseId IS NULL` does **not** mean "this quest has no release".
+   * Per `ReleaseContentService.contentsOf`, a quest with a null `releaseId`
+   * inside an epic attached to `1.0.0` **is in** `1.0.0`: the null is
+   * precisely what lets it inherit, and an explicit id is what overrides its
+   * epic's. Writing the default onto such a quest silently moves it out of
+   * `1.0.0`, dropping a line from that release's changelog and a unit from
+   * its progress bar - the exact dishonesty the frozen-changelog design
+   * exists to prevent, arriving by a side door.
+   *
+   * So the epic is read too, whenever there is one. One extra query on a
+   * completion, and non-negotiable.
+   *
+   * ⚠️ Rarer than it looks, and still mandatory. `ReleaseCascadeService`
+   * writes an epic's release down onto its quests when the epic gains one,
+   * when a quest joins one, and on the epic's Begin edge, so most quests
+   * inside a release-bearing epic carry an explicit `releaseId` and never
+   * reach the second branch at all. The null-inheritance case survives for
+   * rows written before that service, and for any quest whose cascade was
+   * refused.
+   *
+   * ## No epic guard, and that was weighed
+   *
+   * The alternative was to attach only when `epicId IS NULL`, so an epic's
+   * work could never scatter into a release the epic is not in. Rejected on
+   * 2026-09-09: a quest inside an epic that names no release still lands in
+   * the default, and shows there as loose work while its epic shows nowhere.
+   * That is the accepted cost of the Begin edge firing only once - an epic
+   * begun before a default existed keeps stamping its quests one at a time,
+   * forever. The quests land somewhere, which is the point of the feature,
+   * and the release page is honest about them being loose.
+   *
+   * ## The move is visible
+   *
+   * `completeQuest` writes no history entry of its own - the feed's completed
+   * row is derived from `completedAt` - so this pushes one, in the same
+   * `changes: [{ field: "release", … }]` shape `updateQuestById` writes and
+   * `questDiscussionEntries` renders. The feed therefore reads identically
+   * whether a human moved the quest or the default caught it. There is no
+   * `from`, because this branch only runs when the quest named nothing.
+   *
+   * A quest turning up in a changelog nobody put it in is not acceptable in
+   * a model this much of which rests on the changelog being honest.
+   */
+  protected async attachToDefaultRelease(
+    quest: Quest,
+    userId: string,
+    now: string,
+  ): Promise<void> {
+    if (quest.releaseId != null) return;
+
+    if (quest.epicId != null) {
+      const epic = await this.epics.findById(quest.epicId).catch(() => null);
+      if (epic?.releaseId != null) return;
+    }
+
+    const fallback = await this.defaults.openDefault(quest.projectId);
+    if (!fallback) return;
+
+    quest.releaseId = fallback.id;
+    quest.history = [
+      ...quest.history,
+      {
+        at: now,
+        by: userId,
+        action: "updated",
+        changes: [
+          {
+            field: "release",
+            // The tag, never the id: `diffQuest` names releases the same way,
+            // and an id says nothing to a reader.
+            to: fallback.tag ?? String(fallback.number),
+          },
+        ],
+      },
+    ];
+  }
+
   completeQuest = $action({
     // Transactional so two concurrent completions cannot both pass the
     // `completedAt IS NULL` read.
@@ -2360,6 +2400,13 @@ export class QuestController {
           now,
         );
       }
+
+      // The project's DEFAULT release catches a quest nobody filed anywhere
+      // (#E48). Best effort, never fatal: a quest that will not close because
+      // of a planning convenience is a worse bug than a missed attachment,
+      // which is why this reads the row and branches rather than going
+      // through `ReleaseAttachmentService.resolve`, which throws by design.
+      await this.attachToDefaultRelease(quest, user.id, now);
 
       quest.completedAt = now;
       quest.completedBy = user.id;
