@@ -131,10 +131,19 @@ jobs:
   # The unit and integration suite - `yarn v`'s longest single step, and the
   # other half of the old `verify` job.
   #
-  # Alone in a job because that is what makes it shardable: `alepha test`
-  # appends `VITEST_ARGS` last on the vitest command line, so `--shard=i/N`
-  # across a matrix needs no code change. Not sharded yet, on purpose - the
-  # split lands and gets proven green first.
+  # Sharded four ways. `alepha test` appends `VITEST_ARGS` last on the vitest
+  # command line, so this needs no code change on the CLI side - the flag
+  # reaches vitest as `vitest run --shard=i/4`.
+  #
+  # Four rather than six because the other jobs floor out around 6min (each
+  # e2e job pays a 149s `yarn build`), so a fifth and sixth shard would buy
+  # ~1min of a critical path that something else already owns. Raise it only
+  # after that floor moves.
+  #
+  # ⚠️ Vitest shards by sha1 of the spec's path, sorted, sliced into equal
+  # COUNTS - not by duration, and not per project. With 868 spec files that
+  # balances statistically; it would not for a handful of files, and vitest
+  # refuses outright when the shard count exceeds the file count.
   #
   # Coverage is NOT measured here. It lives in `coverage.yml`, nightly, and
   # that file carries the reasoning: Lore keeps one quality row per branch per
@@ -145,6 +154,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      # A failing shard must not cancel its siblings. The point of running the
+      # suite is to learn everything that is broken, and `fail-fast: true`
+      # (the default) turns four shards into "the first one to fail", which is
+      # strictly less than the single job this replaced told you.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     services:
       redis:
         image: redis
@@ -183,12 +200,19 @@ jobs:
       # on the JSON test reporter. Nothing in this job reads either report.
       - name: Test Project
         run: yarn alepha test
+        env:
+          VITEST_ARGS: --shard=${{ matrix.shard }}/4
 
       # Here rather than in `checks`, because two of the six bun specs are
       # `BunPostgresProvider` and `BunRedisProvider`: they want the service
       # containers above. It costs 3s, so it rides with the suite it belongs
       # to rather than buying `checks` a reason to keep the containers.
+      #
+      # On one shard only: `bun test` takes no `--shard`, so without this the
+      # same six specs would run four times and a failure would report four
+      # times over.
       - name: Test Bun Providers
+        if: matrix.shard == 1
         run: yarn test:bun
 
   # ──────────────────────────────────────────────────────────────────────
@@ -273,6 +297,12 @@ jobs:
   e2e-lore:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      # Same reasoning as `test` above: a red shard must not hide its
+      # siblings' results.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -292,14 +322,20 @@ jobs:
       - name: Setup Playwright
         uses: ./.github/actions/playwright
 
+      # Sharded four ways, which `apps/lore` is already safe for: it is
+      # `fullyParallel` with one Lore instance per worker and no shared
+      # `webServer`, so a shard shares nothing with its siblings and they are
+      # on separate runners anyway.
+      #
       # ⚠️ `apps/lore/playwright.config.ts` sets `globalTimeout: 900_000`, and
       # that number was sized against this suite running alongside four others
-      # on one runner. It now has the runner to itself, so it is no longer the
-      # measurement its comment describes - generous rather than wrong, which
-      # is the safe direction. Re-read that comment before tightening it.
+      # on one runner. It now bounds a QUARTER of the suite on a runner of its
+      # own, so it is generous rather than wrong - the safe direction, but no
+      # longer the measurement its comment describes. Re-read that comment
+      # before tightening it.
       - name: Run E2E Tests
         timeout-minutes: 20
-        run: yarn w lore e2e
+        run: yarn w lore e2e --shard=${{ matrix.shard }}/4
 
   # Its own job for the reason it was already its own step: `e2e-cli` packs
   # the workspace with `yarn pack` and installs the tarball into a throwaway
