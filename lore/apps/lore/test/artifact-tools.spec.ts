@@ -159,6 +159,32 @@ describe("Lore MCP — artifacts", () => {
       expect(res.truncated).toBe(false);
     });
 
+    /**
+     * ⚠️ `schema.response` is what serializes: a field on the row that is not
+     * on `artifactResourceSchema` is absent from the payload, silently. An
+     * agent reading this list has to be able to tell two `node` variants
+     * apart, and to answer "what do I pull" without a second call.
+     */
+    it("reports each variant's format, and an image's reference", async () => {
+      const ctx = await setup();
+      await ctx.push({ runtime: "node" });
+      await ctx.pushImage({ tag: "1.2.3" });
+
+      const res: any = await ctx.call(ctx.tools.artifact_list, {
+        project: ctx.project.id,
+      });
+
+      const [group] = res.artifacts;
+      expect(group.variants.map((v: any) => v.format)).toEqual([
+        "archive",
+        "image",
+      ]);
+      expect(group.variants.map((v: any) => v.reference)).toEqual([
+        undefined,
+        "ghcr.io/acme/my-app:1.2.3",
+      ]);
+    });
+
     it("narrows by app and by tag", async () => {
       const ctx = await setup();
       await ctx.push({ app: "my-app", tag: "1.2.3" });

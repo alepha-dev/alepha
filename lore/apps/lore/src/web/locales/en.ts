@@ -358,6 +358,8 @@ export default {
   "artifacts.table.tag": "Tag",
   "artifacts.table.runtime": "Runtime",
   "artifacts.table.format": "Format",
+  "artifacts.pull.copy": "Copy the docker pull command for $1",
+  "artifacts.pull.copied": "docker pull command copied",
   "artifacts.table.size": "Size",
   // ⚠️ On the title attribute, because a number that means two different
   // things in two rows of one column has to say which it is somewhere. An
