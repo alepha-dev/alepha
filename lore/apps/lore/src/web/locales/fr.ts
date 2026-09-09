@@ -2137,10 +2137,6 @@ export default {
   "dashboard.standfirst.empty":
     "Tableau de bord vide. Ajoutez la premiere carte.",
   "dashboard.refreshed": "Actualise $1.",
-  "dashboard.reset": "Reinitialiser",
-  "dashboard.reset.confirm.title": "Reinitialiser le tableau de bord ?",
-  "dashboard.reset.confirm.description":
-    "Vos cartes actuelles sont remplacees par le jeu par defaut.",
   "dashboard.addCard": "Ajouter une carte",
   "dashboard.addCard.hint":
     "Choisissez une metrique, puis le projet, l'app ou l'epopee a mesurer.",

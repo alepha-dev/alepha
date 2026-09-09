@@ -167,17 +167,6 @@ test.describe("Dashboard", () => {
       });
       await expect(page.getByTestId("dashboard-card")).toHaveCount(0);
     });
-
-    await test.step("reset restores the default set", async () => {
-      await page.getByTestId("dashboard-reset").click();
-      await page
-        .getByRole("button", { name: "Reset layout", exact: true })
-        .last()
-        .click();
-      await expect(page.getByTestId("dashboard-card")).toHaveCount(3, {
-        timeout: 15_000,
-      });
-    });
   });
 
   /**
