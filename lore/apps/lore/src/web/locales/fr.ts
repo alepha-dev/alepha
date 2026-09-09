@@ -1832,6 +1832,9 @@ export default {
     "Ces réglages valent pour les deux canaux.",
   "account.notifications.saveFailed":
     "Impossible d'enregistrer vos préférences.",
+  "account.notifications.category.feedback": "Vos demandes",
+  "account.notifications.category.feedback.description":
+    "Quand un projet accepte, refuse ou répond à une demande que vous avez envoyée.",
   "account.notifications.category.mentions": "Mentions",
   "account.notifications.category.mentions.description":
     "Quelqu'un écrit votre nom dans un commentaire de quête ou de retour.",

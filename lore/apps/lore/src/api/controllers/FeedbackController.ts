@@ -37,6 +37,7 @@ import {
 } from "../schemas/myFeedbackResourceSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { BoundParameters } from "../services/BoundParameters.ts";
+import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
@@ -96,6 +97,7 @@ export class FeedbackController {
   protected rateLimiter = $inject(FeedbackRateLimiter);
   protected bound = $inject(BoundParameters);
   protected audits = $inject(LoreAudits);
+  protected reporterNotifier = $inject(FeedbackNotifier);
   protected security = $inject(ProjectSecurityService);
   protected fileService = $inject(FileService);
   protected fileSystem = $inject(FileSystemProvider);
@@ -672,6 +674,16 @@ export class FeedbackController {
         metadata: { id: feedback.id },
       });
 
+      // ⚠️ AFTER the audit, and never behind a condition on it. The reporter
+      // learning what happened IS the decision reaching them: before this,
+      // accept and reject both completed in silence and the only way to find
+      // out was to come back and look (feedback #P2165).
+      await this.reporterNotifier.triaged({
+        feedback,
+        outcome: "accepted",
+        actorId: user.id,
+      });
+
       return { ok: true };
     },
   });
@@ -714,6 +726,16 @@ export class FeedbackController {
         resourceId: String(feedback.shortId),
         description: feedback.title,
         metadata: { id: feedback.id },
+      });
+
+      // ⚠️ AFTER the audit, and never behind a condition on it. The reporter
+      // learning what happened IS the decision reaching them: before this,
+      // accept and reject both completed in silence and the only way to find
+      // out was to come back and look (feedback #P2165).
+      await this.reporterNotifier.triaged({
+        feedback,
+        outcome: "rejected",
+        actorId: user.id,
       });
 
       return { ok: true };
