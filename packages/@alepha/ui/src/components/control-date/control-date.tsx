@@ -251,6 +251,23 @@ const DatePopover = (props: DatePopoverProps) => {
               disabled={props.disabled}
               className={cn(
                 "flex-1 justify-start text-left font-normal",
+                // ⚠️ **`border-input`, overriding the outline variant's
+                // `border-border`.** Both tokens hold the same value today,
+                // so this changes nothing on screen - and that is exactly why
+                // it is written down. Rendering as a Button means inheriting
+                // `buttonVariants.outline`, which reaches for `--border`;
+                // right for a BUTTON, whose edge is decoration beside a fill
+                // and a label, and wrong for a FIELD, whose edge is the only
+                // thing saying where it is.
+                //
+                // The alias is what makes the mistake invisible. It was split
+                // once (#Q2149) and this control was immediately the only one
+                // of the six field slots on the wrong side of it, while
+                // `input`, `textarea`, `select-trigger`, `input-group` and
+                // `combobox-trigger` all followed `--input` on their own.
+                // Same reason the comment above claims
+                // `data-slot="date-trigger"` rather than leaving it a button.
+                "border-input",
                 // Undo the outline variant's hover fill AND its open-state
                 // fill. A select trigger shades for neither: the border is the
                 // affordance in both cases, and a field that greys out while

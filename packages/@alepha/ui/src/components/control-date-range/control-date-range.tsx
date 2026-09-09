@@ -188,6 +188,12 @@ export const ControlDateRange = (props: ControlDateRangeProps) => {
                 name={props.input.props.name}
                 className={cn(
                   "flex-1 justify-start text-left font-normal",
+                  // `border-input`, for the reason `ControlDate` spells out:
+                  // rendering as a Button means inheriting the outline
+                  // variant's `border-border`, which is right for a button
+                  // and wrong for a field. A no-op while the two tokens are
+                  // aliased, which is why it is worth stating.
+                  "border-input",
                   "hover:bg-background aria-expanded:bg-background",
                   !formatted &&
                     "text-muted-foreground hover:text-muted-foreground aria-expanded:text-muted-foreground",
