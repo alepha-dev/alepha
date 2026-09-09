@@ -20,8 +20,8 @@ import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
  * `projects` is the `ON DELETE CASCADE` parent that wiped lore-production on
  * 2026-05-13 - `DROP TABLE projects` took members, quests, releases, folios
  * and feedback with it. So this joins `unlockedFeatures`, `unlockHistory`,
- * `public`, `areas`, `milestoneDuration` and `defaultSurface` as a frozen
- * dead column. `createProject` keeps writing `defaultProjectFeatures` into it
+ * `public`, `areas`, `milestoneDuration`, `defaultSurface` and `defaultEnv`
+ * as a frozen dead column. `createProject` keeps writing `defaultProjectFeatures` into it
  * so every row on disk stays decodable by the schema that still describes it,
  * and `defaultProjectFeatures` itself must not change: it IS the column
  * DEFAULT, and changing a DEFAULT is the same rebuild.
@@ -301,29 +301,25 @@ export const projects = $entity({
      */
     tagColors: z.record(z.text(), paletteColorSchema).optional(),
     /**
-     * Which environment a command means when it names none.
+     * @deprecated — the project-wide default environment, removed by #Q2135.
+     * Nothing reads or writes it.
      *
-     * Read by `lore apps build|deploy` through the project resource, and by
-     * `defaultAppInstance` ahead of its fixed rule, so the CLI, the
-     * `/apps/:app` redirect and the `sigil_create` shim cannot disagree about
-     * which env a bare app name resolves to.
+     * It shipped with #1811 as "which environment a command means when it
+     * names none", read by the CLI and by `defaultAppInstance` ahead of its
+     * fixed rule. The shape was wrong: it is ONE value shared by every app of
+     * a project, while the question it answered is per app. A project set to
+     * `production` with an app whose only copy is `preview` held a setting
+     * that could only ever be wrong — and it outranked the single place that
+     * app could go. `lore deploy` reads the app's own rows now (#Q2134), and
+     * `defaultAppInstance` is back to `production`, else the first env by
+     * name.
      *
-     * ⚠️ **Absent is the normal state and means "no answer", not
-     * `production`.** A project may run `b14-production` and `eu-staging` and
-     * have no `production` at all, which is exactly why a client-side constant
-     * was wrong once environments became rows. The fallback when this is unset
-     * lives in `defaultAppInstance`; the CLI refuses without `--env` rather
-     * than guessing when an app has several envs.
-     *
-     * Free text with the same shape as `app_instances.env` rather than an
-     * enum, because `env` is a free opaque slug there. **Not** validated
-     * against the project's existing instances: an operator may set the env
-     * they are about to create, and a value naming nothing simply falls
-     * through to the fixed rule.
-     *
-     * NB: `z.optional` with NO `db.default(...)`, like `retentionDays`,
-     * `defaultSurface` and `tagColors` above — a column DEFAULT triggers
-     * the `projects` table rebuild that cascade-wipes children on D1.
+     * Kept in the schema ON PURPOSE, like `public`, `unlockedFeatures`,
+     * `milestoneDuration` and `defaultSurface` above: dropping a column from
+     * `projects` risks the Drizzle/D1 table-rebuild path, and `projects` is a
+     * CASCADE parent of members/quests/releases/folios/feedback — exactly the
+     * shape that wiped production on 2026-05-13. A future PR can drop it with
+     * a hand-written, verified `ALTER TABLE … DROP COLUMN`.
      */
     defaultEnv: z.text({ max: APP_NAME_MAX_LENGTH }).optional(),
     /**
