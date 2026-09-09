@@ -2,7 +2,9 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
+import { type Epic, epics } from "../entities/epics.ts";
 import { type Project, projects } from "../entities/projects.ts";
+import { type Release, releases } from "../entities/releases.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import { relations } from "../relations.ts";
 import type { DashboardScope } from "../schemas/dashboardScopeSchema.ts";
@@ -24,6 +26,21 @@ export interface ResolvedDashboardScope {
    */
   sigilIds?: string[];
   sigils: Sigil[];
+  /**
+   * The epic, for a `kind: "epic"` scope, proven to belong to a project the
+   * caller may read.
+   *
+   * The whole row rather than the id, because the resolver is the only layer
+   * that can carry the per-project `number` across to `link()` — see
+   * {@link DashboardCardTarget}. A card that put an id where the page expects
+   * a number would land on somebody else's epic, silently.
+   */
+  epic?: Epic;
+  /**
+   * The release, for a `kind: "release"` scope. Same reasoning as
+   * {@link epic}: `projectRelease` is addressed by TAG.
+   */
+  release?: Release;
 }
 
 /**
@@ -50,6 +67,8 @@ export interface ResolvedDashboardScope {
 export class DashboardScopeService {
   protected readonly projects = $repository(projects);
   protected readonly sigils = $repository(sigils);
+  protected readonly epics = $repository(epics);
+  protected readonly releases = $repository(releases);
   protected readonly usersWith = $repository(relations, "users");
 
   /**
@@ -110,8 +129,11 @@ export class DashboardScopeService {
    * same users-to-projects join ten times, which is the shape this endpoint
    * exists to avoid. Omitted, it is read here.
    *
-   * @throws NotFoundError when the scope names a project or app the caller
-   * cannot see — deliberately, rather than silently returning an empty set.
+   * @throws NotFoundError when the scope names a project, app, epic or
+   * release the caller cannot see — deliberately, rather than silently
+   * returning an empty set. Inside a project board the visible set is the
+   * route's own project, so "belongs to this project" is the same proof
+   * written once.
    */
   async resolve(
     scope: DashboardScope,
@@ -181,9 +203,40 @@ export class DashboardScopeService {
       };
     }
 
-    // `epic` and `release` are in the union for the deferred tiles. No v1
-    // metric accepts either, so reaching here means a card was written past
-    // the catalogue's `accepts()` gate.
+    if (scope.kind === "epic") {
+      const epic = await this.epics.findOne({
+        where: { id: { eq: scope.epicId! } },
+      });
+      // Two ways to fail, one answer, exactly as for an app above: the epic
+      // does not exist, or it belongs to a project the caller has nothing to
+      // do with. "No such epic here" is true either way, and distinguishing
+      // them would leak the second.
+      if (!epic || !visibleById.has(epic.projectId)) {
+        throw new NotFoundError("Epic not found");
+      }
+      return {
+        projectIds: [epic.projectId],
+        projects: [visibleById.get(epic.projectId)!],
+        sigils: [],
+        epic,
+      };
+    }
+
+    if (scope.kind === "release") {
+      const release = await this.releases.findOne({
+        where: { id: { eq: scope.releaseId! } },
+      });
+      if (!release || !visibleById.has(release.projectId)) {
+        throw new NotFoundError("Release not found");
+      }
+      return {
+        projectIds: [release.projectId],
+        projects: [visibleById.get(release.projectId)!],
+        sigils: [],
+        release,
+      };
+    }
+
     throw new BadRequestError(`Unsupported scope kind: ${scope.kind}`);
   }
 }
