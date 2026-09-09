@@ -387,7 +387,7 @@ It lives in `atoms/kanbanReloadAtom.ts`.
 
 The board is `projectKanban` at `/:projectSlug/kanban`, with its own sidebar entry. Between the 2026-08 rename and epic #2 it was a _mode_ of the Quests page — no URL, no entry, reachable only through the view bar, which is precisely why that bar had to be invented ("unreachable from the UI at all"). Restoring the route collapsed `ProjectView`'s `kanbanView` special case into the machinery Epics, Folios and Blights already use.
 
-**A bare `/:projectSlug` always lands on the list.** Between 2026-08 and 2026-09-02 `project.defaultSurface` (`"list" | "kanban"`) could send it to the board through the `projectQuests` loader, owner-settable as "Open on the board" on the Kanban settings page. That setting, its write path and the redirect were removed with feedback #2066 ("not needed"). ⚠️ `projects.default_surface` is still on disk and still declared on the entity as a `@deprecated` optional: dropping a `projects` column is the D1 rebuild that cascade-wipes children, so it joins `unlockedFeatures` and `milestoneDuration` as a frozen dead column.
+**A bare `/:projectSlug` always lands on the list.** Between 2026-08 and 2026-09-02 `project.defaultSurface` (`"list" | "kanban"`) could send it to the board through the `projectQuests` loader, owner-settable as "Open on the board" on the Kanban settings page. That setting, its write path and the redirect were removed with feedback #2066 ("not needed"). ⚠️ `projects.default_surface` is still on disk and still declared on the entity as a `@deprecated` optional: dropping a `projects` column is the D1 rebuild that cascade-wipes children, so it joins `unlockedFeatures`, `milestoneDuration` and `defaultEnv` as a frozen dead column.
 
 ⚠️ **What #156 was, so it does not come back by another route.** #156 was a `useEffect` seeding `?view=` from `localStorage` during render: `useRouterState` is a global store, so it fired on the OUTGOING render of every navigation away, saw the _next_ route's empty query, and bounced the user straight back — every sidebar link was dead while the board was the stored view. A loader redirect (the removed `defaultSurface` one) runs once on entry and has no outgoing render to misread; a render-time effect never may. `quest.spec.ts`'s "leaving the board actually leaves it" still guards the history.
 
@@ -828,6 +828,17 @@ anything - it picks that env if it exists, else the first by name - which is why
 the rule is a module and not a method: its two callers are `AppService` and the
 `/apps/:app` redirect loader, and a loader running in the browser cannot inject a
 service.
+
+⚠️ **A project-wide preference used to sit above that rule and is gone.**
+`projects.defaultEnv` (#1811) was consulted first, by `defaultAppInstance` and
+by the CLI's `--env` fallback, and was settable on Settings ▸ Apps. #Q2135
+removed the card, its write path, its spec and its eight i18n keys: it was ONE
+value shared by every app of a project while the question it answered is per
+app, so a project set to `production` with an app whose only copy is `preview`
+held a setting that could only ever be wrong - and it outranked the single
+place that app could go. `lore deploy` reads the app's own rows now (#Q2134).
+The column is frozen on disk with the rest; do not reintroduce an argument for
+it.
 
 **`sigils.name` is derived, and `AppService` is its only writer.** It mirrors
 `app/env` for the ingest path and for every reader written before v3; nothing
