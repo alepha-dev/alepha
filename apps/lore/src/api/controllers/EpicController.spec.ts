@@ -142,7 +142,7 @@ describe("EpicController", () => {
     expect(epic.status).toBe("planned");
   });
 
-  it("stamps activatedAt when the epic begins, and writes to no quest row", async ({
+  it("stamps activatedAt when the epic begins, and writes to no quest row when the project has no default release", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);
@@ -165,6 +165,150 @@ describe("EpicController", () => {
     const after = await ctx.repos.quests.getById(quest.id);
     expect(after.updatedAt).toEqual(before);
     expect(after.shelvedAt).toBeUndefined();
+    // ⚠️ The title says "when the project has no default release" because
+    // this project has none, so #E48's Begin-attach finds nothing and this
+    // assertion is only conditionally about the invariant. The two cases
+    // below are the other half.
+    expect(updated.releaseCascade).toBeUndefined();
+  });
+
+  it("takes the default release on Begin, and its release-less quests follow", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const release = await ctx.repos.releases.create({
+      projectId: project.id,
+      number: 1,
+      tag: "0.30.0",
+      title: "0.30.0",
+      description: "",
+      defaultSince: new Date().toISOString(),
+    });
+    const epic = await createTestEpic(ctx.alepha, project, {
+      status: "planned",
+    });
+    const follower = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+    });
+
+    const updated = await ctx.controller.setEpicStatus(
+      { params: { id: epic.id }, body: { status: "active" } },
+      { user },
+    );
+
+    // One shape for "an epic has a release": the epic's row and its quests'
+    // rows both name it, exactly as `updateEpic` already leaves them.
+    expect(updated.releaseId).toBe(release.id);
+    expect((await ctx.repos.quests.getById(follower.id)).releaseId).toBe(
+      release.id,
+    );
+    // Said out loud rather than left to be discovered.
+    expect(updated.releaseCascade).toEqual({
+      moved: 1,
+      kept: 0,
+      refused: [],
+    });
+    // The carve-out is one COLUMN. Nothing about the quest's status moved.
+    const after = await ctx.repos.quests.getById(follower.id);
+    expect(after.acceptedAt).toBeUndefined();
+    expect(after.shelvedAt).toBeUndefined();
+    expect(after.kanbanColumn).toBeUndefined();
+  });
+
+  it("keeps a quest that named its own release while the epic was planned", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    const fallback = await ctx.repos.releases.create({
+      projectId: project.id,
+      number: 1,
+      tag: "0.30.0",
+      title: "0.30.0",
+      description: "",
+      defaultSince: new Date().toISOString(),
+    });
+    const own = await ctx.repos.releases.create({
+      projectId: project.id,
+      number: 2,
+      tag: "1.0.0",
+      title: "1.0.0",
+      description: "",
+    });
+    const epic = await createTestEpic(ctx.alepha, project, {
+      status: "planned",
+    });
+    const follower = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+    });
+    const crossRelease = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+      releaseId: own.id,
+    });
+
+    const updated = await ctx.controller.setEpicStatus(
+      { params: { id: epic.id }, body: { status: "active" } },
+      { user },
+    );
+
+    // `previous` is null in the `toQuests` call, so the follower test selects
+    // exactly the quests naming nothing. The deliberate cross-release state
+    // `release-contents.spec.ts` pins survives here as it does everywhere.
+    expect((await ctx.repos.quests.getById(follower.id)).releaseId).toBe(
+      fallback.id,
+    );
+    expect((await ctx.repos.quests.getById(crossRelease.id)).releaseId).toBe(
+      own.id,
+    );
+    expect(updated.releaseCascade).toEqual({
+      moved: 1,
+      kept: 1,
+      refused: [],
+    });
+  });
+
+  it("leaves an epic that already names a release, and its quests, untouched", async ({
+    expect,
+  }) => {
+    const project = await createTestProject(ctx.alepha);
+    const user = ownerToken(project);
+    await ctx.repos.releases.create({
+      projectId: project.id,
+      number: 1,
+      tag: "0.30.0",
+      title: "0.30.0",
+      description: "",
+      defaultSince: new Date().toISOString(),
+    });
+    const own = await ctx.repos.releases.create({
+      projectId: project.id,
+      number: 2,
+      tag: "1.0.0",
+      title: "1.0.0",
+      description: "",
+    });
+    const epic = await createTestEpic(ctx.alepha, project, {
+      status: "planned",
+      releaseId: own.id,
+    });
+    const quest = await createTestQuest(ctx.alepha, project, {
+      epicId: epic.id,
+    });
+    const before = (await ctx.repos.quests.getById(quest.id)).updatedAt;
+
+    const updated = await ctx.controller.setEpicStatus(
+      { params: { id: epic.id }, body: { status: "active" } },
+      { user },
+    );
+
+    // The attach only ever fills a blank. An epic that answered the question
+    // is not second-guessed, and no cascade runs at all.
+    expect(updated.releaseId).toBe(own.id);
+    expect(updated.releaseCascade).toBeUndefined();
+    expect((await ctx.repos.quests.getById(quest.id)).updatedAt).toEqual(
+      before,
+    );
   });
 
   it("counts every quest in its progress, planned ones included", async ({

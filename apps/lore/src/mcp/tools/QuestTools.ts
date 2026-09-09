@@ -731,7 +731,8 @@ export class QuestTools {
     description:
       "Mark a quest as complete. Every objective must be either ticked or waived, and a quest filed under an epic completes only while that epic is 'active' (the same rule as quest_accept). Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `project_context` so future agents working on this project can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session. " +
       "An objective you did not do is waived with a reason, never ticked: pass it in `waive` and it stays unticked with the reason shown on the quest. Ticking it instead would be indistinguishable from work that actually happened. " +
-      "If you know what shipped, pass `commits` too; `quest_commit_add` records any sha that turns up after the merge.",
+      "If you know what shipped, pass `commits` too; `quest_commit_add` records any sha that turns up after the merge. " +
+      "⚠️ A quest that names no release, and inherits none from its epic, lands in the project's DEFAULT release if it has one (see release_set_default). When that happens the result carries `release`; otherwise the quest completes attached to nothing, as before.",
     title: "Complete quest",
     annotations: {
       // destructive: state-altering; cannot be undone
@@ -753,11 +754,24 @@ export class QuestTools {
         },
       });
 
+      // ⚠️ Read off the quest's own history rather than guessed from
+      // `releaseId`. `QuestController.attachToDefaultRelease` pushes an
+      // `updated` entry carrying `changes: [{ field: "release", to: tag }]`
+      // stamped with the SAME instant as the completion, and only when it
+      // actually attached - so an entry at `completedAt` is the server saying
+      // it fired, where a non-null `releaseId` says nothing about who put it
+      // there.
+      const caught = result.history
+        .filter((entry) => entry.at === result.completedAt)
+        .flatMap((entry) => entry.changes ?? [])
+        .find((change) => change.field === "release" && !change.from)?.to;
+
       return {
         id: result.id,
         shortId: result.shortId,
         title: result.title,
         completedAt: result.completedAt!,
+        ...(caught ? { release: caught } : {}),
         ...this.diagrams.warn(params.message),
       };
     },

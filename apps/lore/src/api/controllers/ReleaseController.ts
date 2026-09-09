@@ -1,4 +1,4 @@
-import { $inject, z } from "alepha";
+import { $inject, type Infer, z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, $sequence, $transactional } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
@@ -6,6 +6,7 @@ import {
   $action,
   BadRequestError,
   ForbiddenError,
+  NotFoundError,
   okSchema,
 } from "alepha/server";
 import { $etag } from "alepha/server/etag";
@@ -27,6 +28,7 @@ import {
   releaseTagSchema,
 } from "../schemas/releaseTagSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
+import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import {
@@ -43,6 +45,7 @@ export class ReleaseController {
 
   limits = $inject(ProjectLimits);
   contents = $inject(ReleaseContentService);
+  defaults = $inject(DefaultReleaseService);
 
   /**
    * One project-layer audit row for something that happened to a release.
@@ -153,57 +156,60 @@ export class ReleaseController {
       }),
       response: z.array(releaseResourceSchema),
     },
-    handler: async ({ params }) => {
-      const rows = await this.releases.findMany({
-        where: {
-          projectId: { eq: params.projectId },
-        },
-        orderBy: [{ column: "number", direction: "desc" }],
-      });
-
-      // Batched: two queries for the whole page rather than two per row.
-      // Only OPEN releases are looked up at all - a released one renders
-      // entirely from its own frozen columns.
-      const open = rows.filter((release) => !release.releasedAt);
-      const contents = await this.contents.contentsOfMany(
-        params.projectId,
-        open,
-      );
-
-      return (
-        rows
-          .map((release) => ({
-            ...release,
-            progress: this.contents.progressOf(
-              release,
-              contents.get(release.id),
-            ),
-          }))
-          // Version order, and it is settled HERE rather than at each of the
-          // dozen surfaces that render this list (#1745, from feedback
-          // #2075: "sort release by name / 0.28 -> 0.29 -> 1.0").
-          //
-          // The SQL above orders by `number`, which is a `$sequence` and so
-          // only tracks version order while releases happen to be created in
-          // it. Planning `1.0.0` before `0.29.0` breaks the proxy, and one
-          // project had already done exactly that - the roadmap read
-          // `0.28.0, 1.0.0, 0.29.0`.
-          //
-          // Ascending, which is what the report asked for and the opposite of
-          // the `desc` above: the surfaces that read this list are pickers and
-          // filters, where the oldest open release is the one being planned
-          // into. The Releases and Epics tables sort themselves and are
-          // unaffected.
-          //
-          // `number` stays as the explicit tiebreak rather than being left to
-          // the sort's stability, because the SQL order it would inherit is
-          // descending and this ordering is ascending.
-          .sort(
-            (a, b) => compareReleaseTags(a.tag, b.tag) || a.number - b.number,
-          )
-      );
-    },
+    handler: async ({ params }) => this.listReleases(params.projectId),
   });
+
+  /**
+   * The project's releases with their progress, in version order.
+   *
+   * A method rather than one action's handler body, because two actions
+   * answer it: `getReleases`, and `setDefaultRelease`, which returns the
+   * repainted list so the default chip moves without a second request.
+   */
+  protected async listReleases(
+    projectId: number,
+  ): Promise<Array<Infer<typeof releaseResourceSchema>>> {
+    const rows = await this.releases.findMany({
+      where: {
+        projectId: { eq: projectId },
+      },
+      orderBy: [{ column: "number", direction: "desc" }],
+    });
+
+    // Batched: two queries for the whole page rather than two per row.
+    // Only OPEN releases are looked up at all - a released one renders
+    // entirely from its own frozen columns.
+    const open = rows.filter((release) => !release.releasedAt);
+    const contents = await this.contents.contentsOfMany(projectId, open);
+
+    return (
+      rows
+        .map((release) => ({
+          ...release,
+          progress: this.contents.progressOf(release, contents.get(release.id)),
+        }))
+        // Version order, and it is settled HERE rather than at each of the
+        // dozen surfaces that render this list (#1745, from feedback
+        // #2075: "sort release by name / 0.28 -> 0.29 -> 1.0").
+        //
+        // The SQL above orders by `number`, which is a `$sequence` and so
+        // only tracks version order while releases happen to be created in
+        // it. Planning `1.0.0` before `0.29.0` breaks the proxy, and one
+        // project had already done exactly that - the roadmap read
+        // `0.28.0, 1.0.0, 0.29.0`.
+        //
+        // Ascending, which is what the report asked for and the opposite of
+        // the `desc` above: the surfaces that read this list are pickers and
+        // filters, where the oldest open release is the one being planned
+        // into. The Releases and Epics tables sort themselves and are
+        // unaffected.
+        //
+        // `number` stays as the explicit tiebreak rather than being left to
+        // the sort's stability, because the SQL order it would inherit is
+        // descending and this ordering is ascending.
+        .sort((a, b) => compareReleaseTags(a.tag, b.tag) || a.number - b.number)
+    );
+  }
 
   createRelease = $action({
     // Gate INSIDE the transaction, not ahead of it - see `$ownsProject`.
@@ -236,6 +242,12 @@ export class ReleaseController {
       // There is deliberately no "one open at a time" guard: `0.28.0`,
       // `1.0.0` and `1.1.0` are meant to coexist, and a hotfix is a new
       // release beside the one it patches rather than a state on it.
+      //
+      // Exactly one of those open releases MAY be the project's default
+      // (`defaultSince`, `setDefaultRelease` below), which is where a
+      // completed quest lands when nobody said where it should go. That is a
+      // fallback and not a plan: a hotfix is still filled by hand, and zero
+      // defaults is a normal state.
       //
       // That makes this cap the ONLY thing bounding the table, so it matters
       // more than it did, not less.
@@ -303,6 +315,16 @@ export class ReleaseController {
 
       const published = await this.releases.updateById(release.id, {
         releasedAt: this.dt.nowISOString(),
+        // Publishing is the natural end of being the intake point, and
+        // clearing it here is not optional: without it the next quest
+        // completion tries to attach to a published release,
+        // `ReleaseAttachmentService.assertOpen` refuses, and the quest cannot
+        // close. In the patch this action already builds rather than a second
+        // write, because there is no transaction on D1 to make two atomic.
+        //
+        // `reopenRelease` deliberately does NOT restore it: reopening says the
+        // record was wrong, not that intake should resume here.
+        defaultSince: null,
         changelog: markdown,
         // Frozen TOGETHER with the markdown. See `releaseChangelogGroupSchema`
         // for the asymmetry this replaces.
@@ -368,6 +390,108 @@ export class ReleaseController {
       await this.logRelease("reopen", release, user);
 
       return reopened;
+    },
+  });
+
+  /**
+   * Point this project's intake at a release, or at nothing.
+   *
+   * The release named here is where a completed quest that names no release,
+   * and inherits none from its epic, lands (`QuestController.completeQuest`),
+   * and what an epic with no release of its own takes when it begins
+   * (`EpicController.setEpicStatus`). A quality-of-life fallback, never a
+   * plan: everything can still be filed by hand, and a hotfix always is.
+   *
+   * ## One action, both directions
+   *
+   * Omit `releaseId`, or send it as `null`, and the project ends up with no
+   * default. That is a legitimate state rather than a degenerate one, so it
+   * does not deserve a second endpoint - two of them for one column would
+   * have to be kept in step for nothing, and MCP's `release_set_default`
+   * clears the same way, by omitting the tag.
+   *
+   * ## The three refusals
+   *
+   * 1. A **published** release cannot become the default. Otherwise the next
+   *    completion tries to attach to it, `ReleaseAttachmentService.assertOpen`
+   *    refuses, and the quest cannot close. Worded like that refusal: reopen
+   *    it first.
+   * 2. A release from **another project** is a 404, not a 403: the caller is
+   *    not entitled to learn that an id exists somewhere else. The statement's
+   *    own `WHERE project_id` would have made it a silent no-op.
+   * 3. `publishRelease` clears `defaultSince` on the row it publishes, in the
+   *    patch it already builds. Publishing is the natural end of being the
+   *    intake point, and skipping it is the same deadlock as refusal 1.
+   *
+   * `deleteRelease` needs nothing: the flag lives on the row that goes.
+   * `reopenRelease` deliberately does NOT restore it - reopening says the
+   * record was wrong, not that intake should resume there.
+   *
+   * The response is the project's whole release list, the same payload
+   * `getReleases` answers, because the caller's next move is always to
+   * repaint it: the chip moves off one row and onto another, and a second
+   * request to learn that is a round trip for nothing.
+   */
+  setDefaultRelease = $action({
+    // Gate INSIDE the transaction, like `createRelease` - see `$ownsProject`.
+    // `release:manage`, because pointing a project's intake somewhere is
+    // configuration rather than work.
+    use: [$transactional(), this.ownsProjectForWork("release:manage")],
+    method: "PUT",
+    path: "/projects/:projectId/releases/default",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+      }),
+      body: z.object({
+        /**
+         * The release to point intake at. Omitted or `null` clears the
+         * default, leaving the project with none.
+         */
+        releaseId: z.integer().nullable().optional(),
+      }),
+      response: z.array(releaseResourceSchema),
+    },
+    handler: async ({ params, body, user }) => {
+      const next = body.releaseId ?? null;
+      // Read before anything moves: clearing has to name the release intake
+      // was taken away from, and the audit row is the only place that is
+      // recorded.
+      const previous = await this.defaults.current(params.projectId);
+
+      if (next != null) {
+        const target = await this.releases.findById(next);
+        if (!target || target.projectId !== params.projectId) {
+          // Same message for missing and for another project's release, for
+          // the reason `ReleaseAttachmentService.resolve` gives.
+          throw new NotFoundError(`Release ${next} not found in this project.`);
+        }
+        if (target.releasedAt) {
+          throw new BadRequestError(
+            `Cannot make ${target.tag ?? formatReference("release", target.number)} the default release: it has been published. Reopen it first.`,
+          );
+        }
+        if (previous?.id !== target.id) {
+          await this.defaults.set(
+            params.projectId,
+            target.id,
+            this.dt.nowISOString(),
+          );
+          // The release page's activity feed should say who pointed intake
+          // where, and it is the only surface that ever will.
+          await this.logRelease(
+            "default",
+            target,
+            user,
+            previous ? { from: previous.tag ?? previous.number } : {},
+          );
+        }
+      } else if (previous) {
+        await this.defaults.set(params.projectId, null, this.dt.nowISOString());
+        await this.logRelease("undefault", previous, user);
+      }
+
+      return await this.listReleases(params.projectId);
     },
   });
 

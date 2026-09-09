@@ -31,8 +31,16 @@ export interface ExportRow {
  *
  * Data cells are also neutralised against CSV injection: a value opening on
  * one of the characters a spreadsheet reads as the start of a formula gets a
- * leading apostrophe, the OWASP recommendation. `AlephaLoreParser` drops one
- * leading apostrophe back off every cell, so the round trip is lossless.
+ * leading apostrophe, the OWASP recommendation. A cell that already opened on
+ * one has it DOUBLED, which is why the escape is lossless.
+ *
+ * ⚠️ That doubling used to be described by its other half: `AlephaLoreParser`
+ * stripped one leading apostrophe back off every cell on the way in, so the
+ * round trip was lossless. Quest import was deleted in epic #E48, so nothing
+ * strips it any more and the doubling now only matters to whoever reads the
+ * file. `test/quest-csv-formatter.spec.ts` still pins it: an export that
+ * silently ate an apostrophe would be a data bug whether or not Lore is the
+ * thing reading it back.
  */
 export class QuestCsvFormatter {
   readonly QUEST_CSV_HEADER: ReadonlyArray<keyof ExportRow> = [

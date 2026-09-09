@@ -2,21 +2,73 @@ import { Alepha } from "alepha";
 import { describe, it } from "vitest";
 
 import { QuestCsvFormatter } from "../src/api/services/QuestCsvFormatter.ts";
-import { QuestCsvParser } from "../src/api/services/QuestCsvParser.ts";
+
+/**
+ * Read a CSV document back into cells.
+ *
+ * ⚠️ **Test-only, and it used to be `QuestCsvParser`.** That service went
+ * with quest import in epic #E48, and it was the only reader in the tree.
+ * What these cases assert is CELL values - `He said "hi"`, `'+North`, the
+ * doubled leading apostrophe - which only exist after unquoting, so the spec
+ * needs a reader even though production no longer does. Asserting the raw
+ * bytes instead would pin the quoting style rather than the contract.
+ */
+const readCsv = (text: string): string[][] => {
+  const stripped = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let i = 0; i < stripped.length; i += 1) {
+    const char = stripped[i];
+    if (quoted) {
+      if (char === '"') {
+        // A doubled quote inside a quoted field is one literal quote.
+        if (stripped[i + 1] === '"') {
+          cell += '"';
+          i += 1;
+        } else {
+          quoted = false;
+        }
+      } else {
+        cell += char;
+      }
+      continue;
+    }
+    if (char === '"') {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (char === "\r") {
+      // Swallowed: a CRLF document ends its rows on the \n below.
+    } else if (char === "\n") {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  if (cell !== "" || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows;
+};
 
 describe("QuestCsvFormatter", () => {
   const setup = () => {
     const alepha = Alepha.create({
       env: { LOG_LEVEL: "error", SERVER_PORT: 0 },
     });
-    return {
-      formatter: alepha.inject(QuestCsvFormatter),
-      parser: alepha.inject(QuestCsvParser),
-    };
+    return { formatter: alepha.inject(QuestCsvFormatter) };
   };
 
   it("produces a header followed by data rows", ({ expect }) => {
-    const { formatter, parser } = setup();
+    const { formatter } = setup();
     const text = formatter.format([
       {
         shortId: 1,
@@ -37,7 +89,7 @@ describe("QuestCsvFormatter", () => {
         description: "",
       },
     ]);
-    const rows = parser.parse(text);
+    const rows = readCsv(text);
     expect(rows[0]).toEqual([
       "shortId",
       "title",
@@ -63,7 +115,7 @@ describe("QuestCsvFormatter", () => {
   });
 
   it("escapes embedded quotes and preserves newlines", ({ expect }) => {
-    const { formatter, parser } = setup();
+    const { formatter } = setup();
     const text = formatter.format([
       {
         shortId: 2,
@@ -84,13 +136,13 @@ describe("QuestCsvFormatter", () => {
         description: "line one\nline two",
       },
     ]);
-    const rows = parser.parse(text);
+    const rows = readCsv(text);
     expect(rows[1][1]).toBe('He said "hi"');
     expect(rows[1][15]).toBe("line one\nline two");
   });
 
   it("neutralises cells a spreadsheet would evaluate", ({ expect }) => {
-    const { formatter, parser } = setup();
+    const { formatter } = setup();
     const text = formatter.format([
       {
         shortId: 4,
@@ -112,7 +164,7 @@ describe("QuestCsvFormatter", () => {
         description: "Harmless",
       },
     ]);
-    const rows = parser.parse(text);
+    const rows = readCsv(text);
     expect(rows[1][1]).toBe('\'=HYPERLINK("https://evil.example","click")');
     expect(rows[1][5]).toBe("'+North");
     expect(rows[1][6]).toBe("'-Todo");
@@ -126,7 +178,7 @@ describe("QuestCsvFormatter", () => {
   it("doubles a leading apostrophe so the import-side strip is lossless", ({
     expect,
   }) => {
-    const { formatter, parser } = setup();
+    const { formatter } = setup();
     const text = formatter.format([
       {
         shortId: 5,
@@ -147,12 +199,12 @@ describe("QuestCsvFormatter", () => {
         description: "",
       },
     ]);
-    const rows = parser.parse(text);
+    const rows = readCsv(text);
     expect(rows[1][1]).toBe("''tis the season");
   });
 
   it("serializes objectives as JSON", ({ expect }) => {
-    const { formatter, parser } = setup();
+    const { formatter } = setup();
     const text = formatter.format([
       {
         shortId: 3,
@@ -176,7 +228,7 @@ describe("QuestCsvFormatter", () => {
         description: "",
       },
     ]);
-    const rows = parser.parse(text);
+    const rows = readCsv(text);
     expect(JSON.parse(rows[1][14])).toEqual([
       { title: "Step 1", completed: true },
       { title: "Step 2", completed: false },
