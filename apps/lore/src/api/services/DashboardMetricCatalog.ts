@@ -9,6 +9,7 @@ import type {
 import { epicProgressFiltersSchema } from "../schemas/epicProgressFiltersSchema.ts";
 import { heldQuestsFiltersSchema } from "../schemas/heldQuestsFiltersSchema.ts";
 import { openBlightsFiltersSchema } from "../schemas/openBlightsFiltersSchema.ts";
+import { releaseProgressFiltersSchema } from "../schemas/releaseProgressFiltersSchema.ts";
 import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSchema.ts";
 import { untriagedFeedbackFiltersSchema } from "../schemas/untriagedFeedbackFiltersSchema.ts";
 
@@ -319,6 +320,38 @@ export class DashboardMetricCatalog {
               params: {
                 projectSlug: target.projectSlug,
                 epicNumber: String(target.epicNumber),
+              },
+            }
+          : undefined,
+    },
+    {
+      key: "releaseProgress",
+      /**
+       * The companion to the epic card, on the second scope kind
+       * `dashboardScopeSchema` reserved in #E4 and no metric ever accepted.
+       */
+      boards: ["project"],
+      group: "epics",
+      labelKey: "dashboard.metric.releaseProgress",
+      hintKey: "dashboard.metric.releaseProgress.hint",
+      icon: "flag",
+      presentation: "progress",
+      scopeKinds: ["release"],
+      filters: releaseProgressFiltersSchema,
+      needs: { capability: "work", option: "releases" },
+      /**
+       * ⚠️ By TAG, not by id. `projectRelease` is `/releases/:releaseTag`
+       * because `/alepha/releases/0.28.0` is what the URL is for, and the
+       * scope stores `releaseId`. A release with no tag has no destination
+       * and the card is inert rather than linking to `/releases/undefined`.
+       */
+      link: (_scope, target) =>
+        target.projectSlug && target.releaseTag
+          ? {
+              route: "projectRelease",
+              params: {
+                projectSlug: target.projectSlug,
+                releaseTag: target.releaseTag,
               },
             }
           : undefined,
