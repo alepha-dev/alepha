@@ -92,13 +92,29 @@ describe("feedbackWorkPromptDefault", () => {
     expect(prompt).toContain("Never on main");
   });
 
-  it("works, verifies, commits, merges and closes the loop with the reporter", () => {
+  it("works, checks, commits, pushes, merges and closes the loop with the reporter", () => {
     expect(prompt).toContain("quest_objective_set");
     expect(prompt).toContain("A skipped check is a failure, not a pass");
     expect(prompt).toContain("quest_commit_add");
-    expect(prompt).toContain("Merge the branch into main and push");
+    expect(prompt).toContain("Push the branch");
+    expect(prompt).toContain("merge the branch into main and push");
     expect(prompt).toContain("quest_complete");
     expect(prompt).toContain("tell the reporter");
+  });
+
+  it("makes CI the gate and cleans up the branch and worktree", () => {
+    expect(prompt).toContain("that run is the source of truth");
+    expect(prompt).toContain("Only when it is green");
+    expect(prompt).toContain("delete the branch locally and on the remote");
+    expect(prompt).toContain("remove the worktree");
+  });
+
+  /**
+   * ⚠️ Served to EVERY Lore project, so it must name no project's command.
+   */
+  it("names no project-specific verification command", () => {
+    expect(prompt).not.toContain("yarn v");
+    expect(prompt).toContain("the project's local checks");
   });
 
   it("carries nothing but the fields it was given", () => {

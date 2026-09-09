@@ -41,6 +41,7 @@ The report: {{url}}
 1. Reproduce, or find the code that would produce, what the reporter describes, and decide what the change is. If the report is unclear or you disagree with it, ask in its discussion (\`feedback_comment_add\`) and stop. Put the question in your reply as well: what the report asks, what you found in the code, and what you would do about it. The comment reaches the reporter; your reply reaches the person who sent you here.
 2. Accept it if it is still pending (\`feedback_accept\`), then \`quest_create\` with \`feedback_shortId\` {{number}} and \`accept: true\`: a title, a description of what will change, an area from \`project_context\`, and the objectives.
 3. Work in a git worktree of your own, on a branch named after the quest. Never on main.
-4. Do the work. Tick objectives with \`quest_objective_set\`. Run the project's verification commands (its CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
-5. Commit, one commit, its message naming the quest and {{reference}}. Record the sha with \`quest_commit_add\`. Merge the branch into main and push.
-6. \`quest_complete\` with a short note, then tell the reporter in the feedback's discussion what shipped, in one or two sentences.`;
+4. Do the work. Tick objectives with \`quest_objective_set\`. Run the project's local checks (its CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass.
+5. Commit, one commit, its message naming the quest and {{reference}}. Record the sha with \`quest_commit_add\`.
+6. Push the branch. If the project verifies on CI, that run is the source of truth and a green local check is not: fix and push again until it is green. Only when it is green, merge the branch into main and push, then delete the branch locally and on the remote, and remove the worktree.
+7. \`quest_complete\` with a short note, then tell the reporter in the feedback's discussion what shipped, in one or two sentences.`;

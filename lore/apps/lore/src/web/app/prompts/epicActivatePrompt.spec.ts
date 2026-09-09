@@ -63,12 +63,37 @@ describe("epicActivatePromptDefault", () => {
     );
   });
 
-  it("closes with a full verify, a merge, a conclude and an outcome folio", () => {
-    expect(prompt).toContain("full verification pipeline");
-    expect(prompt).toContain("Merge the branch into main and push");
+  it("closes with a green CI run, a merge, a conclude and an outcome folio", () => {
+    expect(prompt).toContain("wait for CI this time");
+    expect(prompt).toContain("merge the branch into main and push");
     expect(prompt).toContain('epic_set_status` "done"');
     expect(prompt).toContain("folio_create");
     expect(prompt).toContain("`epic_number` 41");
+  });
+
+  /**
+   * Pushing per quest rather than once at the end is the whole reason this
+   * differs from the quest template: a failure that arrives at the end of an
+   * epic is attached to every quest in it at once.
+   */
+  it("pushes per quest, and makes the CI run the source of truth", () => {
+    expect(prompt).toContain("Push the branch as you go");
+    expect(prompt).toContain("that run is the source of truth");
+    expect(prompt).toContain("names the quest that caused it");
+    expect(prompt).toContain("Only when it is green");
+  });
+
+  it("requires the branch and the worktree to be cleaned up", () => {
+    expect(prompt).toContain("delete the branch locally and on the remote");
+    expect(prompt).toContain("remove the worktree");
+  });
+
+  /**
+   * ⚠️ Served to EVERY Lore project, so it must name no project's command.
+   */
+  it("names no project-specific verification command", () => {
+    expect(prompt).not.toContain("yarn v");
+    expect(prompt).toContain("the project's local checks");
   });
 
   it("says to stop and comment rather than guess", () => {
