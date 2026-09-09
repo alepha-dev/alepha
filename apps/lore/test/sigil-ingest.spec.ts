@@ -71,7 +71,7 @@ const readMeasures = async (analytics: LoreAnalytics, sigilId: string) => {
 const readBy = async (
   analytics: LoreAnalytics,
   sigilId: string,
-  dimension: "campaign" | "device" | "traffic",
+  dimension: "campaign" | "device" | "traffic" | "auth",
 ) => {
   const result = await analytics.views.query({
     since: "2000-01-01",
