@@ -965,10 +965,38 @@ describe("BuildCloudflareTask", () => {
 
       expect(task.warnings).toHaveLength(1);
       expect(task.warnings[0]).toMatch(/reports:render \(600s\)/);
-      // The other two are reachable and must not be named.
+      // A timeout the budget already covers is honoured, so it is not named.
       expect(task.warnings[0]).not.toMatch(/quick/);
-      expect(task.warnings[0]).not.toMatch(/untimed/);
+      // A job with no timeout at all is held to the same budget, so it IS
+      // named, in its own clause: see the test below for why the two cannot
+      // share one sentence.
+      expect(task.warnings[0]).toMatch(/untimed/);
       // And it points at the fix rather than at lowering the timeout.
+      expect(task.warnings[0]).toMatch(/AlephaApiJobsQueue/);
+    });
+
+    /**
+     * The case the first version of this warning was blind to, and the one
+     * that actually reached production: `lore.deploy.run` declared no
+     * `timeout`, so the filter never looked at it, and it was killed at the
+     * `waitUntil` budget while its own `DeployLimits` promised ten minutes.
+     */
+    it("warns about a job that declares no timeout at all", () => {
+      const task = createTask();
+      task.testWarnUnreachableTimeouts({
+        manifest: manifest({
+          jobs: [{ name: "lore.deploy.run" }],
+        }),
+      } as any);
+
+      expect(task.warnings).toHaveLength(1);
+      expect(task.warnings[0]).toMatch(/lore\.deploy\.run/);
+      // Its consequence is the WORSE one, and the reason it gets a clause of
+      // its own: with no timeout to double, crash recovery falls back to the
+      // `runTimeout` config rather than to twice the declared timeout.
+      expect(task.warnings[0]).toMatch(/runTimeout/);
+      // Nothing declared a timeout here, so the other clause must stay out.
+      expect(task.warnings[0]).not.toMatch(/cannot be honoured/);
       expect(task.warnings[0]).toMatch(/AlephaApiJobsQueue/);
     });
 
@@ -982,8 +1010,20 @@ describe("BuildCloudflareTask", () => {
           jobs: [{ name: "slow", timeoutMs: 600_000 }],
         }),
       } as any);
-      // A queue consumer gets 15 minutes of wall clock AND of CPU, so the
-      // declared timeout is reachable and there is nothing to say.
+      // A queue consumer gets 15 minutes of wall clock, so the declared
+      // timeout is reachable and there is nothing to say.
+      expect(task.warnings).toHaveLength(0);
+    });
+
+    it("says nothing about an untimed job once a queue is bound", () => {
+      const task = createTask();
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-app-jobs";
+      task.testWarnUnreachableTimeouts({
+        manifest: manifest({
+          jobs: [{ name: "lore.deploy.run" }],
+        }),
+      } as any);
+      // Same reason: off `waitUntil`, an undeclared timeout is not a cap.
       expect(task.warnings).toHaveLength(0);
     });
 

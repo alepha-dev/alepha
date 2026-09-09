@@ -55,9 +55,11 @@ export class BuildCloudflareTask extends BuildTask {
    * This is the whole budget a job pushed from a request gets in direct mode,
    * and nothing in the `$job` API hints at it: `DirectJobDispatcher` runs the
    * handler through `BackgroundTaskProvider.defer`, which on Workers is
-   * `waitUntil`. A queue consumer gets 15 minutes of wall clock AND 15
-   * minutes of CPU instead, which is why the warning points at
-   * `AlephaApiJobsQueue` rather than at lowering the timeout.
+   * `waitUntil`. A queue consumer gets 15 minutes of wall clock instead,
+   * which is why the warning points at `AlephaApiJobsQueue` rather than at
+   * lowering the timeout. Wall clock only: CPU stays on the standard limit
+   * (30 s by default, 5 min at most through `limits.cpu_ms`), which is a
+   * separate ceiling the queue does not lift.
    */
   protected readonly waitUntilBudgetMs = 30_000;
 
@@ -354,17 +356,26 @@ export class BuildCloudflareTask extends BuildTask {
   }
 
   /**
-   * Warn about a `timeout` direct mode on Cloudflare cannot honour.
+   * Warn about the `waitUntil` budget direct mode on Cloudflare holds every
+   * job to, in the two shapes it is invisible in.
    *
-   * Only in direct mode: with a queue binding the consumer gets 15 minutes
-   * of wall clock and 15 minutes of CPU, the most generous surface
-   * Cloudflare offers, and the declared timeout is reachable.
+   * Only in direct mode: behind a queue binding the consumer gets 15 minutes
+   * of wall clock instead, so neither shape is a cap any more.
    *
    * The consequence is worse than the truncation itself, which is why it is
-   * worth a build-time line. `crashThresholdMs` is derived as twice the
-   * declared timeout, so a step killed at 30 seconds under a
-   * `timeout: [10, "minute"]` sits `running` for **twenty minutes** before
-   * the sweep will even consider it crashed.
+   * worth a build-time line, and it differs between the two:
+   *
+   * - **A declared timeout longer than the budget.** `crashThresholdMs` is
+   *   derived as twice the declared timeout, so a step killed at 30 seconds
+   *   under a `timeout: [10, "minute"]` sits `running` for **twenty minutes**
+   *   before the sweep will even consider it crashed.
+   * - **No declared timeout at all.** Held to the same budget with nothing in
+   *   the code hinting at it, and with no timeout to double,
+   *   `crashThresholdMs` falls back to the `runTimeout` config (30 minutes by
+   *   default), which is longer still. This is the shape that reached
+   *   production: `lore.deploy.run` declared no `timeout`, so the first
+   *   version of this warning filtered it straight out while its own
+   *   `DeployLimits` promised ten minutes.
    */
   protected warnUnreachableTimeouts(ctx: BuildTaskContext): void {
     // A queue binding changes the budget entirely, so there is nothing to
@@ -380,17 +391,32 @@ export class BuildCloudflareTask extends BuildTask {
         typeof job.timeoutMs === "number" &&
         job.timeoutMs > this.waitUntilBudgetMs,
     );
-    if (unreachable.length === 0) {
+    const untimed = jobs.filter((job) => typeof job.timeoutMs !== "number");
+    if (unreachable.length === 0 && untimed.length === 0) {
       return;
     }
+    const budget = `Direct mode on Cloudflare gives a job about ${this.waitUntilBudgetMs / 1000}s of wall clock after the response (executionCtx.waitUntil).`;
+    const declared =
+      unreachable.length === 0
+        ? ""
+        : ` These declared timeouts cannot be honoured: ${unreachable
+            .map(
+              (job) =>
+                `${job.name} (${Math.round((job.timeoutMs ?? 0) / 1000)}s)`,
+            )
+            .join(
+              ", ",
+            )}. Worse, crash recovery is derived from the declared timeout, so a job killed at the budget sits 'running' for twice its timeout before the sweep touches it.`;
+    const undeclared =
+      untimed.length === 0
+        ? ""
+        : ` These jobs declare no timeout, so they are held to the same budget with nothing in the code saying so: ${untimed
+            .map((job) => job.name)
+            .join(
+              ", ",
+            )}. With no timeout to double, crash recovery falls back to the jobs 'runTimeout' config (30 min by default), so a job killed at the budget sits 'running' for longer still.`;
     this.warn(
-      `Direct mode on Cloudflare gives a job about ${this.waitUntilBudgetMs / 1000}s of wall clock after the response (executionCtx.waitUntil), so these declared timeouts cannot be honoured: ${unreachable
-        .map(
-          (job) => `${job.name} (${Math.round((job.timeoutMs ?? 0) / 1000)}s)`,
-        )
-        .join(
-          ", ",
-        )}. Worse, crash recovery is derived from the declared timeout, so a job killed at the budget sits 'running' for twice its timeout before the sweep touches it. Register AlephaApiJobsQueue and set CLOUDFLARE_QUEUE_NAME: a queue consumer gets 15 minutes of wall clock AND 15 minutes of CPU.`,
+      `${budget}${declared}${undeclared} Register AlephaApiJobsQueue and set CLOUDFLARE_QUEUE_NAME: a queue consumer gets 15 minutes of wall clock. CPU stays on the standard limit (30s by default, raise it with limits.cpu_ms, max 5 min).`,
     );
   }
 

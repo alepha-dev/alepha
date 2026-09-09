@@ -76,9 +76,11 @@ declare module "alepha" {
  *
  * **{@link AlephaApiJobsQueue} is the answer to all of that**, and the
  * recommended path for anything long-running or high-volume on Cloudflare: a
- * queue consumer gets 15 minutes of wall clock AND 15 minutes of CPU, the
- * most generous surface Cloudflare offers, and the transport can hold a
- * delayed message so retries land on their backoff rather than on the sweep.
+ * queue consumer gets 15 minutes of wall clock, the most generous surface
+ * Cloudflare offers, and the transport can hold a delayed message so retries
+ * land on their backoff rather than on the sweep. It buys wall clock only:
+ * CPU stays on the standard limit, so a handler that spends its time
+ * computing rather than waiting still needs `limits.cpu_ms` raised.
  *
  * **Retries** use exponential backoff with full jitter (`retryBackoffBase`,
  * `retryBackoffMax`). The outbox row's `scheduledAt` is the truth and the
@@ -98,8 +100,16 @@ declare module "alepha" {
  * | `waitUntil` after a response (direct mode) | ~30 s |
  * | Cron Trigger wall clock | 15 min |
  * | Cron Trigger CPU | 30 s under an hourly interval, 15 min at or above |
- * | Queue consumer | 15 min wall AND 15 min CPU |
+ * | Queue consumer wall clock | 15 min |
+ * | Queue consumer CPU | 30 s, raise with `limits.cpu_ms`, max 5 min |
  * | Cron Triggers per **account** | 5 free, 250 paid |
+ *
+ * Wall clock and CPU are two ceilings, and a queue lifts only the first one.
+ * Cloudflare's CPU table has a single configurable row, "CPU time per HTTP
+ * request" - default 30 s, capped at 300,000 ms through `limits.cpu_ms` - and
+ * nothing grants a queue consumer more than that. So a handler that waits on
+ * I/O gets the full 15 minutes, while one that hashes, renders or parses for
+ * more than 30 seconds is killed as Error 1102 regardless of the queue.
  *
  * The last one is per account rather than per Worker, so two Alepha apps can
  * exceed it between them. The build cannot see the account, so it does not
@@ -140,10 +150,15 @@ export const AlephaApiJobs = $module({
  * **On Cloudflare this is the recommended path for anything long-running or
  * high-volume**, not an optimisation. See {@link AlephaApiJobs} for the
  * budgets direct mode is held to there; a queue consumer gets 15 minutes of
- * wall clock AND 15 minutes of CPU instead of ~30 seconds of `waitUntil`,
- * and the transport can hold a delayed message so retries land on their
- * backoff. Set `CLOUDFLARE_QUEUE_NAME` and the build emits the producer
- * binding, the consumer, and its dead-letter queue.
+ * wall clock instead of ~30 seconds of `waitUntil`, and the transport can
+ * hold a delayed message so retries land on their backoff. Set
+ * `CLOUDFLARE_QUEUE_NAME` and the build emits the producer binding, the
+ * consumer, and its dead-letter queue.
+ *
+ * ⚠️ **It lifts the wall clock, not the CPU ceiling.** CPU stays on the
+ * standard limit, 30 seconds by default and 5 minutes at most through
+ * `limits.cpu_ms`, so a handler that computes rather than waits still needs
+ * that raised. Landing the queue is not a reason to remove it.
  *
  * ⚠️ **Nothing consumes that dead-letter queue, and it catches less than it
  * looks.** `WorkerdWorkerProvider` deliberately lets `JobProvider` absorb

@@ -220,9 +220,22 @@ there as an infrastructure problem you will have to go looking for.
 
 **Queues are the recommended path for anything long-running or high-volume on
 Cloudflare**, for the reason in the next section: a queue consumer gets 15
-minutes of wall clock _and_ 15 minutes of CPU, the most generous surface the
-platform offers, and the transport can hold a delayed message so retries land
-on their backoff instead of on the sweep grid.
+minutes of wall clock, the most generous surface the platform offers, and the
+transport can hold a delayed message so retries land on their backoff instead
+of on the sweep grid.
+
+⚠️ **That buys wall clock, not CPU.** Cloudflare's CPU table has a single
+configurable row, "CPU time per HTTP request", default 30 seconds and capped at
+300,000 ms through `limits.cpu_ms`; nothing grants a queue consumer more. A
+handler that waits on I/O gets the full 15 minutes, because waiting does not
+count as CPU. One that hashes, renders or parses for more than 30 seconds is
+killed as Error 1102 whether or not a queue is bound, so raise `limits.cpu_ms`
+for it and keep it raised after the queue lands:
+
+```jsonc
+// wrangler.jsonc, via alepha.config.ts
+"limits": { "cpu_ms": 300000 }
+```
 
 ## Jobs without a queue (direct mode)
 
@@ -241,11 +254,16 @@ gives you no hint of the cliff:
 - **A job pushed from a request has about 30 seconds of wall clock.** The
   isolate is kept alive by `executionCtx.waitUntil`, which Cloudflare caps
   there. A declared `timeout` longer than that is simply unreachable, and the
-  build now warns when it sees one.
+  build warns when it sees one.
 - **Crash recovery is derived from the declared timeout**, at twice its value.
   So a job declaring `timeout: [10, "minute"]` and killed at 30 seconds sits
   `running` for **twenty minutes** before the sweep will even consider it
   crashed.
+- **Declaring no `timeout` is not an escape, it is the worse case.** The job is
+  held to the same 30 seconds with nothing in its own code hinting at it, and
+  with no timeout to double, crash recovery falls back to the `runTimeout`
+  config instead: 30 minutes by default. The build warns about these too, in a
+  clause of their own.
 - **Timers do not survive.** A local timer armed after the response never
   fires, so delayed pushes and retry backoff both degrade to sweep
   granularity here (see below).
