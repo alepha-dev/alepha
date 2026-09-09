@@ -30,7 +30,7 @@ All user-facing strings still go through `I18n.ts` for EN/FR localization.
 
 Lore lives inside the **Alepha monorepo** at `apps/lore`. The Alepha framework is a sibling workspace at `../../packages/alepha`; the shared shadcn UI lives at `../../packages/@alepha/ui`. Yarn workspace links route imports of `alepha` / `@alepha/ui` to those local packages — no vendoring, no sync step.
 
-**Why this matters for AI:** Alepha is a small framework that LLMs have **near-zero training data on**. Do not guess Alepha APIs from memory — they will be wrong. Read `../../packages/alepha/src/...` and `../../packages/@alepha/ui/src/...` as the authoritative source whenever framework behavior matters. Editing them from inside `apps/lore` is fine — they're the same monorepo. Run `yarn v --fast` from the monorepo root to verify framework + lore together.
+**Why this matters for AI:** Alepha is a small framework that LLMs have **near-zero training data on**. Do not guess Alepha APIs from memory — they will be wrong. Read `../../packages/alepha/src/...` and `../../packages/@alepha/ui/src/...` as the authoritative source whenever framework behavior matters. Editing them from inside `apps/lore` is fine — they're the same monorepo. Run `yarn v` from the monorepo root for the inner loop, then push the branch: CI is the gate.
 
 ```
 apps/lore/                # This app
@@ -981,8 +981,8 @@ yarn lint              # oxlint --fix, then oxfmt
 yarn test              # vitest run
 yarn e2e               # playwright test
 yarn db:generate       # Generate new migration from entity changes
-yarn v                 # Full verify pipeline (lint, typecheck, test, depcheck, db check, build, e2e)
-yarn v --fast          # Inner-loop check: skip build + e2e (~30s)
+yarn v                 # Inner loop: lint, typecheck, the five audits, unit tests. NOT the gate
+                       # -> the gate is pushing the branch: CI runs the full graph in ~5min
 yarn deploy            # alepha platform up -e production (Cloudflare D1)
 ```
 
@@ -1040,7 +1040,7 @@ Mitigations, in order of preference:
 - **Manually rewrite the migration** to back child rows up into `__bk_*` tables before the `DROP`, then re-insert and drop the backups after `RENAME`. Tedious but correct.
 - **Temporarily switch the CASCADE child(ren) to `onDelete: "set null"`** for the migration window if the children make sense without a parent — only viable when the FK column is nullable.
 
-**Why local testing won't catch this:** `yarn v` uses in-memory SQLite, where `PRAGMA foreign_keys=OFF` actually works. The bomb only goes off on D1. Inspect the migration SQL manually.
+**Why local testing won't catch this:** the suites use in-memory SQLite, where `PRAGMA foreign_keys=OFF` actually works. The bomb only goes off on D1. Inspect the migration SQL manually.
 
 **CI auto-deploys to prod on every push to `main`** (alepha monorepo's `.github/workflows/ci.yml` → `deploy-lore-production` job → `yarn alepha platform up --env production` from `apps/lore`). There is no human gate between push and prod migration. Treat every D1 migration as you would a `DROP DATABASE` — read every line before pushing.
 
@@ -1052,7 +1052,7 @@ drizzle-kit's auto-generator wanted to add a `projects` table _rebuild_ on top o
 
 ### ⚠️ Renaming a REQUIRED key inside a JSON column takes production down (real incident, 2026-08-05)
 
-The rename above shipped green — `yarn v` passed, e2e passed, the migration was
+The rename above shipped green — the checks passed, e2e passed, the migration was
 rename-only with zero `DROP TABLE`, and prod data survived intact. Production
 still broke on **every project read**, minutes after deploy:
 
@@ -1116,7 +1116,7 @@ ALTER TABLE `sigils` ADD `name` text NOT NULL;
 ```
 
 **SQLite refuses this on any table that has rows** — _"Cannot add a NOT NULL column
-with default value NULL"_ — and accepts it on an empty one. Every database CI, `yarn v`
+with default value NULL"_ — and accepts it on an empty one. Every database CI
 and the test suite construct is empty, so the statement is green everywhere it is ever
 exercised and fails only against the single database that has data. It is the same
 blind spot as the JSON-key incident above, from the opposite direction: there, empty
@@ -1530,6 +1530,6 @@ Clears all projects, members, sessions, etc. Migrations auto-apply on boot. Opti
 
 ## Working on the framework while in this repo
 
-Lore is a workspace member of the Alepha monorepo — there is no vendor step. Edit `../../packages/alepha/src/...` or `../../packages/@alepha/ui/src/...` directly; Vite HMR picks the change up immediately. Run `yarn v --fast` from the monorepo root to verify framework + apps together before committing.
+Lore is a workspace member of the Alepha monorepo — there is no vendor step. Edit `../../packages/alepha/src/...` or `../../packages/@alepha/ui/src/...` directly; Vite HMR picks the change up immediately. Run `yarn v` from the monorepo root for the inner loop, then push the branch and read CI before calling it done.
 
 The same CI run that ships Alepha now also verifies Lore (because Lore is just another workspace under `yarn workspaces foreach`), and the `deploy-lore-production` job in `.github/workflows/ci.yml` ships Lore to Cloudflare on every push to `main`. So a single commit covers both sides — no cross-repo handoff, no sync drift to worry about.

@@ -2,6 +2,7 @@ import { connect } from "node:net";
 
 import { AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
+import { $logger } from "alepha/logger";
 
 /**
  * The repository's own commands: `clean`, `verify` / `v` and `verify:go` /
@@ -17,6 +18,8 @@ import { $command } from "alepha/command";
  * fan-out instead.
  */
 export class AlephaCommands {
+  protected readonly log = $logger();
+
   public readonly clean = $command({
     description: "Will remove all generated files.",
     handler: async ({ run }) => {
@@ -64,14 +67,43 @@ export class AlephaCommands {
     { name: "s3mock", port: 19090 },
   ];
 
+  /**
+   * The inner loop, and deliberately NOT the gate.
+   *
+   * ⚠️ **CI is the gate now.** Until 2026-09-09 this command ran the whole
+   * pipeline locally - copy, build, e2e, e2e-cli, gen:llms - and that lane is
+   * deleted rather than hidden behind a flag, because a flag is a thing an
+   * agent reaches for. Measured over 30 days of transcripts before the
+   * change: 1,325 full runs across 243 sessions, p50 ~7min and p90 ~14min,
+   * 84 machine-hours a month, and **1,082 of those 1,325 (82%) were re-runs
+   * inside a single session** - the old lane opened and closed with
+   * `yarn clean`, so every re-run was cold by construction. With four epics
+   * building at once on one machine that is ~30 minutes of contended wall
+   * clock for an answer CI now gives in about five, in parallel, for free.
+   *
+   * So: push the branch. Every branch triggers the full graph (checks, test
+   * x6, e2e-apps, e2e-lore x6, e2e-cli, docker, bay), and that graph - not a
+   * green terminal here - is what says the work is sound.
+   *
+   * What survives is worth about three minutes, measured: ~146s of it is
+   * `yarn test`, and lint plus the six parallel audits are under 30s
+   * together. It catches a typo, a bad import, a broken unit test, a missing
+   * i18n key. It cannot catch a build failure, an SSR regression or anything
+   * an e2e covers, and it is not supposed to.
+   *
+   * `--fast` is accepted and does nothing. It named the distinction between
+   * this lane and the full one, and there is no longer a distinction to name;
+   * it stays accepted so the call sites already carrying it keep working
+   * rather than dying on an unknown flag.
+   */
   public readonly verify = $command({
     aliases: ["v"],
     description:
-      "Run linter, checker and tests (JavaScript/TypeScript only, Go lives in `v:go`).",
+      "Fast local checks: lint, typecheck, audits, unit tests. CI is the gate - push the branch.",
     flags: z.object({
       fast: z
         .boolean()
-        .describe("Skip build + e2e (faster local sanity check).")
+        .describe("Accepted and ignored: this lane is always the fast one.")
         .optional(),
     }),
     handler: async ({ run, flags }) => {
@@ -83,118 +115,42 @@ export class AlephaCommands {
       process.env.YARN_ENABLE_IMMUTABLE_INSTALLS = "false";
       process.env.YARN_ENABLE_HARDENED_MODE = "false";
 
-      await run("yarn");
-      await run(`yarn clean`);
-
       if (flags.fast) {
-        // No `copy` in this lane, so nothing generated exists to format and
-        // `lint` can go first: see the full path below for why the order
-        // matters there.
-        await run(`yarn lint`);
-        await run([
-          `yarn typecheck`,
-          `yarn check:deps`,
-          `yarn check:conventions`,
-          `yarn check:docs`,
-          `yarn check:i18n`,
-          `yarn check:migrations`,
-        ]);
-        await this.assertServicesUp();
-
-        // Sequential, like the full lane below. These two ran as a parallel
-        // group here for as long as this lane existed, and that is one
-        // process interleaving with itself: `test:bun` drives the same
-        // postgres on 15432 as `test` does. This is the lane used as the gate
-        // before a commit, which makes it a good suspect for a flake that
-        // never reproduces the same way twice.
-        await run(`yarn test`);
-        await run(`yarn test:bun`);
-        return;
+        this.log.warn(
+          "`--fast` no longer means anything: this lane is always the fast one. Drop the flag.",
+        );
       }
 
-      // Deliberately serial, and measured rather than assumed.
+      // Install, but never `yarn clean`.
       //
-      // Grouping these was tried and reverted. On a saturated machine
-      // parallelism does not compose: run as one group they finished in
-      // 16.8s against 18.4s serial, 1.6s, while `check:deps` alone went
-      // from 5.9s to 16.8s and `typecheck` from 10.1s to 16.6s. All that
-      // buys is timings that no longer mean anything when a step regresses,
-      // and memory pressure on the one tool in this repo with a history of
-      // exhausting it. The only pairing below that pays is e2e.
-      await run(`yarn copy`);
+      // The old lane opened with `yarn clean`, which removes every `dist` and
+      // every `packages/*/node_modules`. In a gate run once before a commit
+      // that was defensible; in a loop run three to eleven times a session it
+      // is what made each run cold, and it broke the next command as well - a
+      // `yarn e2e` straight after a verify died on `Cannot find module dist`,
+      // which reads as a fixture bug rather than as the previous command
+      // having deleted the build. An inner loop must not mutate the tree.
+      await run("yarn");
 
-      // Redundant in this lane, and kept anyway.
-      //
-      // `gen:docs` writes docs/2-reference, docs/3-packages and every
-      // package README straight out of the JSDoc, and its output is not
-      // formatted. That used to make `yarn copy` leave ~290 files dirty in
-      // the working tree, so ordering it before `lint` here was the whole
-      // fix, and anyone who ran `yarn copy` on its own still got the diff.
-      // The root `copy` script now ends in `yarn lint` itself, which fixes
-      // it everywhere instead of only inside this pipeline.
-      //
-      // So this is a second pass over an already-clean tree, costing a few
-      // seconds. It stays because it is the lint gate the `--fast` lane
-      // runs too, and a pipeline whose linting is a side effect of a step
-      // named `copy` is one rename away from having none.
+      // Nothing generated exists to format in this lane, so `lint` goes
+      // first; the deleted full lane had to run `copy` ahead of it.
       await run(`yarn lint`);
-
-      // After `copy` for the same reason: checking before it would validate
-      // a stale copy and miss a doc-breaking comment change.
-      await run(`yarn check:docs`);
-      await run(`yarn check:deps`);
-      await run(`yarn check:conventions`);
-      await run(`yarn typecheck`);
+      await run([
+        `yarn typecheck`,
+        `yarn check:deps`,
+        `yarn check:conventions`,
+        `yarn check:docs`,
+        `yarn check:i18n`,
+        `yarn check:migrations`,
+      ]);
       await this.assertServicesUp();
 
-      await run(`yarn check:i18n`);
-      await run(`yarn check:migrations`);
-
-      // `test` genuinely does not need `build`, and pairing them still lost:
-      // together they took 129.4s against 142.3s serial, because `test` alone
-      // stretched from 47.4s to 115.6s under the contention. Thirteen seconds
-      // is not worth a test run that takes two and a half times as long to
-      // tell you it failed.
-      //
-      // Two calls rather than `run([a, b])` for `test` and `test:bun`:
-      // `run([a, b])` is `Promise.all`, and these two drive the same postgres,
-      // so running them together is one process interleaving with itself.
+      // Sequential, not a parallel group: `test:bun` drives the same postgres
+      // on 15432 as `test` does, so running them together is one process
+      // interleaving with itself, and a good suspect for a flake that never
+      // reproduces the same way twice.
       await run(`yarn test`);
       await run(`yarn test:bun`);
-      await run(`yarn build`);
-
-      // Give the one dev-mode e2e suite a cold Vite cache. Only
-      // `apps/examples/ssr/playwright.dev.config.ts` runs `yarn dev`; every
-      // other suite serves a built app and never reads `node_modules/.vite`.
-      //
-      // Deliberately scoped to that single app. The previous
-      // `apps/*/node_modules/.vite` sweep deleted the dep-optimizer cache
-      // out from under any dev server running during `yarn v`: the server's
-      // in-memory metadata still listed the prebundled chunks, so every
-      // cold `/node_modules/.vite/deps/*` request 504'd (Outdated Optimize
-      // Dep) until restart, surfacing in the browser as "Failed to fetch
-      // dynamically imported module" on whatever page was opened next.
-      // A dev server on examples/ssr itself can still be hit; nothing else.
-      await run.rm([`apps/examples/ssr/node_modules/.vite`]);
-
-      // Both need `build` and neither needs the other. They do not collide:
-      // `e2e` gives each suite its own port (see `playwright.port.ts`) and
-      // `e2e-cli` exercises a packed tarball with no server at all.
-      await run([`yarn e2e`, `yarn e2e-cli`]);
-
-      // ⚠️ `{ root }`, never `cd X && …`. `shell.run(string)` passes every
-      // token through as a LITERAL argument on both runtimes; that is a
-      // deliberate contract, pinned by `shellStringContract.spec.ts`, so
-      // metacharacters cannot break out of an argument. A `&&` here is not
-      // a separator: the whole line spawned the binary `cd` with `&&` and
-      // the rest as its arguments, which exits 0 in ten milliseconds having
-      // done nothing. This step reported success on every run for as long
-      // as it existed and never once generated anything; CI caught the
-      // first real failure in it only because the deploy job runs the
-      // command properly.
-      await run(`yarn alepha gen:llms`, { root: "apps/docs" });
-      await run(`yarn clean`);
-      await run("yarn");
     },
   });
 

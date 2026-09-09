@@ -18,7 +18,7 @@ on:
   # Read that block before adding a fourth deploy job.
   push:
     branches:
-      - '**'
+      - "**"
   # Kept, though same-repo branches no longer need it: a pull_request run is
   # the only way a FORK's code is ever tested, and this repository is public.
   # The cost is that a PR opened by hand from a local branch runs CI twice.
