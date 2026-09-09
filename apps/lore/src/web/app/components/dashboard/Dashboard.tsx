@@ -176,17 +176,6 @@ const Dashboard = () => {
     apply([...currentCards(), made]);
   };
 
-  const onReset = async () => {
-    const confirmed = await dialog.confirm({
-      title: String(tr("dashboard.reset.confirm.title")),
-      description: String(tr("dashboard.reset.confirm.description")),
-      confirmLabel: String(tr("dashboard.reset")),
-    });
-    if (!confirmed) return;
-    const res = await dashboardApi.resetLayout({});
-    apply(res.cards);
-  };
-
   const onAdd = async (input: {
     metric: string;
     scope: DashboardScope;
@@ -228,7 +217,6 @@ const Dashboard = () => {
           name={displayName(auth.user, "")}
           cardCount={dashboard.cards.length}
           refreshedAt={dashboard.refreshedAt}
-          onReset={onReset}
           onAdd={openCatalogue}
         />
 
@@ -267,6 +255,7 @@ const Dashboard = () => {
       <DashboardCatalogue
         key={editing?.id ?? "new"}
         open={catalogueOpen}
+        board="home"
         cards={dashboard.cards}
         projects={projects}
         apps={apps}

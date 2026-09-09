@@ -19,6 +19,25 @@ export const DASHBOARD_NO_VALUE = "·";
  * `openBlights` card filtered to `open` is the default reading of the metric,
  * so a chip saying so would be noise.
  */
+/**
+ * The chips that are literal text rather than an i18n key.
+ *
+ * One case, and it is the reason this exists rather than being folded into
+ * {@link dashboardFilterChipKeys}: a tag card's chip is the TAG, which is the
+ * reader's own word and the only thing telling two tag cards apart. Every
+ * other chip is a key, because the resolver returns numbers and keys and
+ * never formatted copy.
+ */
+export const dashboardFilterChipLabels = (
+  card: DashboardCardResource,
+): string[] => {
+  if (card.metric === "tagCompletion") {
+    const tag = (card.filters as Record<string, unknown>).tag;
+    return typeof tag === "string" && tag.length > 0 ? [tag] : [];
+  }
+  return [];
+};
+
 export const dashboardFilterChipKeys = (
   card: DashboardCardResource,
 ): string[] => {
@@ -38,6 +57,14 @@ export const dashboardFilterChipKeys = (
 
   if (card.metric === "openBlights") {
     return filters.status === "all" ? ["dashboard.filter.allStatuses"] : [];
+  }
+
+  if (card.metric === "tagCompletion") {
+    // ⚠️ Deliberately NOT an i18n key: the tag is the reader's own text, and
+    // it is the only thing distinguishing two tag cards on the same board.
+    // `dashboardFilterChipKeys` answers keys, so this one is handled where
+    // the card renders its chips instead - see `DashboardCard`.
+    return [];
   }
 
   if (card.metric === "uniqueVisitors") {

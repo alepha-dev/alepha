@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
@@ -14,11 +14,17 @@ import { dashboardCards } from "@/api/entities/dashboardCards.ts";
 import { dashboardSettings } from "@/api/entities/dashboardSettings.ts";
 import { feedback } from "@/api/entities/feedback.ts";
 import type { Project } from "@/api/entities/projects.ts";
+import { releases } from "@/api/entities/releases.ts";
 import { sigilErrorGroups } from "@/api/entities/sigilErrorGroups.ts";
 import { type Sigil, sigils } from "@/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "@/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "@/api/index.ts";
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
+import { DashboardMetricRegistry } from "@/api/services/DashboardMetricRegistry.ts";
+import { DashboardScopeService } from "@/api/services/DashboardScopeService.ts";
+import { EpicProgressService } from "@/api/services/EpicProgressService.ts";
+import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
+import { QuestTagTallyService } from "@/api/services/QuestTagTallyService.ts";
 
 import {
   createTestEpic,
@@ -37,6 +43,7 @@ class ResolveTestRepositories {
   feedback = $repository(feedback);
   cards = $repository(dashboardCards);
   settings = $repository(dashboardSettings);
+  releases = $repository(releases);
 }
 
 interface TestContext {
@@ -45,6 +52,11 @@ interface TestContext {
   repos: ResolveTestRepositories;
   dateTime: DateTimeProvider;
   counter: ReadCounter;
+  /**
+   * Injected before `start()`, because the container locks afterwards and a
+   * subclass is a service the graph has not seen.
+   */
+  registry: TestDashboardMetricRegistry;
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -62,6 +74,7 @@ const setup = async (): Promise<TestContext> => {
 
   alepha.inject(TestEntityRepositories);
   const repos = alepha.inject(ResolveTestRepositories);
+  const registry = alepha.inject(TestDashboardMetricRegistry);
 
   await alepha.start();
 
@@ -69,6 +82,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     controller: alepha.inject(DashboardController),
     repos,
+    registry,
     dateTime: alepha.inject(DateTimeProvider),
     counter: alepha.inject(ReadCounter),
   };
@@ -107,6 +121,14 @@ const only = async (
   }
   return ids;
 };
+
+/**
+ * `narrow()` is protected, and it is where the capability rule actually runs.
+ * A subclass is how this repo unit-tests one, rather than reaching for a mock.
+ */
+class TestDashboardMetricRegistry extends DashboardMetricRegistry {
+  public testNarrow = this.narrow.bind(this);
+}
 
 let tokenSeq = 0;
 
@@ -259,6 +281,696 @@ describe("dashboard resolve", () => {
       // The drill-through picks the project holding most of the number, not
       // whichever row came back first.
       expect(values[0]?.link?.params?.projectSlug).toBe(second.slug);
+    });
+  });
+
+  /**
+   * The On hold card. Its whole contract is a containment: the number must be
+   * a subset of the Active Quests card beside it, from the same
+   * `OpenQuestScope`, or "Quests 12 / On hold 3" stops meaning what it reads
+   * as.
+   */
+  describe("heldQuests", () => {
+    /**
+     * One card on the project board, resolved through the project entry
+     * point. Built here rather than added through a controller so this spec
+     * stays about the metric.
+     */
+    const resolveHeld = async (project: Project, user: UserAccountToken) => {
+      const values = await ctx.alepha
+        .inject(DashboardMetricRegistry)
+        .resolveForProject(
+          [
+            {
+              id: 1,
+              metric: "heldQuests",
+              scope: { kind: "projects", projectIds: [project.id] },
+              filters: {},
+              size: 1,
+              position: 0,
+            },
+          ],
+          user,
+          project,
+        );
+      return values[0]!;
+    };
+
+    it("counts the open quests that are parked, and says what of", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, { title: "open" });
+      await createTestQuest(ctx.alepha, project, {
+        title: "parked",
+        heldAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        title: "also parked",
+        acceptedAt: new Date().toISOString(),
+        heldAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, user);
+
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(2);
+      // The denominator the card is a subset of, so the footer can say
+      // "of 3 open quests" and a reader can check the containment.
+      expect(value.detail.open).toBe(3);
+    });
+
+    it("stays a subset of Active quests: completed and shelved are out", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, { title: "open" });
+      // ⚠️ Both of these carry `heldAt` and neither may be counted. A hold is
+      // not cleared on the way out, so a resolver that looked at `heldAt`
+      // alone would report work that is finished or declined.
+      await createTestQuest(ctx.alepha, project, {
+        title: "finished while held",
+        heldAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        title: "shelved while held",
+        heldAt: new Date().toISOString(),
+        shelvedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, user);
+
+      expect(value.value).toBe(0);
+      expect(value.detail.open).toBe(1);
+    });
+
+    it("honours the planned-epic backlog gate, like the card beside it", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const planned = await createTestEpic(ctx.alepha, project, {
+        status: "planned",
+      });
+      await createTestQuest(ctx.alepha, project, {
+        title: "held inside a planned epic",
+        epicId: planned.id,
+        heldAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        title: "held in the open backlog",
+        heldAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, user);
+
+      // A quest parked inside a planned epic is out of the Active Quests
+      // count by design, so counting it here would put a number on the board
+      // larger than the card beside it can account for.
+      expect(value.value).toBe(1);
+      expect(value.detail.open).toBe(1);
+    });
+
+    it("links to the quest list already filtered to held", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, {
+        title: "parked",
+        heldAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, user);
+
+      expect(value.link?.route).toBe("projectQuests");
+      expect(value.link?.params?.projectSlug).toBe(project.slug);
+      // ⚠️ Asserted to ARRIVE filtered. `?status=held` decodes only because
+      // `boardFiltersSchema.status` is derived from `questStatusSchema`; when
+      // it was a hand-written four-value enum the param was dropped and this
+      // link opened the whole list.
+      expect(value.link?.query).toEqual({ status: "held" });
+    });
+
+    it("answers zero rather than failing when the project turned Work off", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha, {
+        capabilities: [{ key: "knowledge" }],
+      });
+      await createTestMember(ctx.alepha, project, project.createdBy!);
+      await createTestQuest(ctx.alepha, project, {
+        title: "still parked, still hidden",
+        heldAt: new Date().toISOString(),
+      });
+
+      const value = await resolveHeld(project, token(project.createdBy!));
+
+      // Zero, not `ok: false`: the project genuinely has no Work surface, and
+      // "unreadable" is reserved for a scope that cannot be proven at all.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(0);
+    });
+  });
+
+  /**
+   * The epic card, and the denominator two surfaces have to agree about.
+   */
+  describe("epicProgress", () => {
+    const resolveEpic = async (
+      project: Project,
+      user: UserAccountToken,
+      epicId: number,
+    ) => {
+      const values = await ctx.alepha
+        .inject(DashboardMetricRegistry)
+        .resolveForProject(
+          [
+            {
+              id: 1,
+              metric: "epicProgress",
+              scope: { kind: "epic", epicId },
+              filters: {},
+              size: 1,
+              position: 0,
+            },
+          ],
+          user,
+          project,
+        );
+      return values[0]!;
+    };
+
+    it("divides by total minus shelved, and says what it divided by", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "active",
+      });
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        acceptedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { epicId: epic.id });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        shelvedAt: now,
+      });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      // ⚠️ 1 of 3, not 1 of 4. The rollup's own `total` counts the shelved
+      // quest; the subtraction happens here, at the card, because four other
+      // surfaces read that number.
+      expect(value.value).toBe(33);
+      expect(value.detail.total).toBe(4);
+      expect(value.detail.shelved).toBe(1);
+      expect(value.detail.denominator).toBe(3);
+    });
+
+    it("renders no number rather than NaN when every quest is shelved", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "active",
+      });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        shelvedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      // The divide-by-zero case. `undefined` renders as the card's no-value
+      // glyph; a `0` would claim none of it is done, which is not what an
+      // entirely-declined epic means.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBeUndefined();
+      expect(value.detail.denominator).toBe(0);
+    });
+
+    it("agrees with the rollup the Epics list reads", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "active",
+      });
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { epicId: epic.id });
+
+      const value = await resolveEpic(project, user, epic.id);
+      // The same method, not a second count. A card that disagreed with the
+      // Epics list by one is worse than no card.
+      const buckets = await ctx.alepha
+        .inject(EpicProgressService)
+        .computeProgressOf([epic.id]);
+
+      expect(value.detail.completed).toBe(buckets.get(epic.id)?.completed);
+      expect(value.detail.total).toBe(buckets.get(epic.id)?.total);
+    });
+
+    it("keeps a concluded epic's card, and says it is concluded", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "done",
+        completedAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      // ⚠️ It stays. `done` is terminal, so the number is settled rather than
+      // stale, and repointing is the Edit item the menu already has - never
+      // an auto-repoint and never a self-deletion.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(100);
+      expect(value.detail.status).toBe("done");
+      expect(value.detail.completedAt).toBeTruthy();
+      expect(value.link?.route).toBe("projectEpic");
+    });
+
+    it("links by the per-project number, never by the row id", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      // A number deliberately unequal to any plausible row id, so a resolver
+      // that shipped the id would land on a different epic and this would go
+      // red instead of silently pointing somewhere real.
+      const epic = await createTestEpic(ctx.alepha, project, { number: 46 });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      expect(value.link?.params).toEqual({
+        projectSlug: project.slug,
+        epicNumber: "46",
+      });
+      expect(value.link?.params?.epicNumber).not.toBe(String(epic.id));
+    });
+
+    it("names the epic on its chip, not the project", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        title: "Lore Project Dashboard",
+      });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      // A board full of epic cards all chipped with the project's own name
+      // says nothing; the epic's title is the part that differs.
+      expect(value.scopeNames).toEqual(["Lore Project Dashboard"]);
+    });
+
+    it("resolves to nothing when the project turned epics off", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha, {
+        capabilities: [{ key: "work", options: { epics: false } }],
+      });
+      await createTestMember(ctx.alepha, project, project.createdBy!);
+      const epic = await createTestEpic(ctx.alepha, project);
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveEpic(
+        project,
+        token(project.createdBy!),
+        epic.id,
+      );
+
+      // The option went off after the card was added. A capability is hidden
+      // and never deleted, so the quests are still there - counting them
+      // would put a number on the board for a surface the project no longer
+      // has.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBeUndefined();
+      expect(value.detail.hidden).toBe(true);
+    });
+  });
+
+  /**
+   * The release card. Its arithmetic looks identical to the epic card's and
+   * is NOT: `ReleaseContentService.progressOf` already counts shelved outside
+   * its `total`, so the subtraction A3 ruled is a no-op here and applying it
+   * twice would put a card over 100%.
+   */
+  describe("releaseProgress", () => {
+    const resolveRelease = async (
+      project: Project,
+      user: UserAccountToken,
+      releaseId: number,
+    ) => {
+      const values = await ctx.alepha
+        .inject(DashboardMetricRegistry)
+        .resolveForProject(
+          [
+            {
+              id: 1,
+              metric: "releaseProgress",
+              scope: { kind: "release", releaseId },
+              filters: {},
+              size: 1,
+              position: 0,
+            },
+          ],
+          user,
+          project,
+        );
+      return values[0]!;
+    };
+
+    it("counts the quests attached to the release", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 1,
+        tag: "0.1.0",
+        title: "First",
+      });
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        releaseId: release.id,
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { releaseId: release.id });
+
+      const value = await resolveRelease(project, user, release.id);
+
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(50);
+      expect(value.detail.denominator).toBe(2);
+    });
+
+    it("does NOT subtract shelved twice", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 2,
+        tag: "0.2.0",
+        title: "Second",
+      });
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        releaseId: release.id,
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { releaseId: release.id });
+      await createTestQuest(ctx.alepha, project, {
+        releaseId: release.id,
+        shelvedAt: now,
+      });
+
+      const value = await resolveRelease(project, user, release.id);
+
+      // ⚠️ `progressOf` already reports `total: 2` with `shelved: 1` beside
+      // it, OUTSIDE the total. Subtracting again would divide by 1 and read
+      // 100% on a release with a quest still open.
+      expect(value.detail.total).toBe(2);
+      expect(value.detail.shelved).toBe(1);
+      expect(value.detail.denominator).toBe(2);
+      expect(value.value).toBe(50);
+    });
+
+    it("counts an attached epic's quests, not only the loose ones", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 3,
+        tag: "0.3.0",
+        title: "Third",
+      });
+      const epic = await createTestEpic(ctx.alepha, project, {
+        releaseId: release.id,
+      });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveRelease(project, user, release.id);
+
+      // The reason `progressOf` exists at all: a release is mostly a set of
+      // EPICS, so a direct `releaseId` count would report 0 of 0 here and
+      // disagree with the changelog beside it.
+      expect(value.detail.total).toBe(1);
+      expect(value.value).toBe(100);
+    });
+
+    it("reads a published release's frozen columns and never recounts it", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 4,
+        tag: "0.4.0",
+        title: "Shipped",
+        releasedAt: new Date().toISOString(),
+        completed: 8,
+        inProgress: 0,
+        shelved: 2,
+        total: 8,
+      });
+      // Live work that must NOT rewrite what 0.4.0 shipped.
+      await createTestQuest(ctx.alepha, project, { releaseId: release.id });
+
+      const value = await resolveRelease(project, user, release.id);
+
+      expect(value.value).toBe(100);
+      expect(value.detail.total).toBe(8);
+      expect(value.detail.published).toBe(true);
+      expect(value.detail.releasedAt).toBeTruthy();
+    });
+
+    it("links by the tag, and gives no link when there is none", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const tagged = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 5,
+        tag: "0.5.0",
+        title: "Tagged",
+      });
+      const untagged = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 6,
+        title: "Untagged",
+      });
+
+      const withTag = await resolveRelease(project, user, tagged.id);
+      expect(withTag.link?.route).toBe("projectRelease");
+      expect(withTag.link?.params).toEqual({
+        projectSlug: project.slug,
+        releaseTag: "0.5.0",
+      });
+      // The chip reads the tag too, which is how a release is named
+      // everywhere else in the app.
+      expect(withTag.scopeNames).toEqual(["0.5.0"]);
+
+      // ⚠️ `tag` is optional at the column. Better no link than
+      // `/releases/undefined`.
+      const withoutTag = await resolveRelease(project, user, untagged.id);
+      expect(withoutTag.link).toBeUndefined();
+    });
+
+    it("resolves to nothing when the project turned releases off", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha, {
+        capabilities: [{ key: "work", options: { releases: false } }],
+      });
+      await createTestMember(ctx.alepha, project, project.createdBy!);
+      const release = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 1,
+        tag: "9.9.9",
+        title: "Hidden",
+      });
+      await createTestQuest(ctx.alepha, project, {
+        releaseId: release.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveRelease(
+        project,
+        token(project.createdBy!),
+        release.id,
+      );
+
+      expect(value.ok).toBe(true);
+      expect(value.value).toBeUndefined();
+      expect(value.detail.hidden).toBe(true);
+    });
+  });
+
+  /**
+   * The tag card: Thibaut's first request, as one number per tag.
+   */
+  describe("tagCompletion", () => {
+    const resolveTag = async (
+      project: Project,
+      user: UserAccountToken,
+      tag: string,
+    ) => {
+      const values = await ctx.alepha
+        .inject(DashboardMetricRegistry)
+        .resolveForProject(
+          [
+            {
+              id: 1,
+              metric: "tagCompletion",
+              scope: { kind: "projects", projectIds: [project.id] },
+              filters: { tag },
+              size: 1,
+              position: 0,
+            },
+          ],
+          user,
+          project,
+        );
+      return values[0]!;
+    };
+
+    it("counts completed over total for one tag", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { tags: ["api"] });
+      await createTestQuest(ctx.alepha, project, { tags: ["ui"] });
+
+      const value = await resolveTag(project, user, "api");
+
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(50);
+      expect(value.detail.total).toBe(2);
+    });
+
+    it("counts a quest carrying two tags in both", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api", "ui"],
+        completedAt: new Date().toISOString(),
+      });
+
+      // ⚠️ The overlap the card's footer has to say out loud: these numbers
+      // do not partition the project, and one card on its own would hide it.
+      expect((await resolveTag(project, user, "api")).detail.total).toBe(1);
+      expect((await resolveTag(project, user, "ui")).detail.total).toBe(1);
+    });
+
+    it("keeps shelved quests out of the denominator", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        completedAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        shelvedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveTag(project, user, "api");
+
+      // Declined work leaves both the numerator and the denominator, the same
+      // `inScope` rule every Reports aggregate applies.
+      expect(value.detail.total).toBe(1);
+      expect(value.value).toBe(100);
+    });
+
+    it("keeps an open quest inside a planned epic out, and a completed one in", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const planned = await createTestEpic(ctx.alepha, project, {
+        status: "planned",
+      });
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        epicId: planned.id,
+      });
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        epicId: planned.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveTag(project, user, "api");
+
+      // ⚠️ The completed quest is EXEMPT from the backlog gate, exactly as
+      // `ProjectReportsController.questInScope` exempts it: nothing stops an
+      // owner flipping a done epic back to planned, and gating finished work
+      // would retroactively erase it.
+      expect(value.detail.total).toBe(1);
+      expect(value.detail.completed).toBe(1);
+    });
+
+    it("agrees with the fold Reports uses", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        completedAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, { tags: ["api"] });
+
+      const value = await resolveTag(project, user, "api");
+      const service = ctx.alepha.inject(QuestTagTallyService);
+      const counts = service
+        .tally(await service.rowsFor([project.id]))
+        .get("api");
+
+      // One tally, two readers. A second copy is the silent disagreement the
+      // service exists to prevent.
+      expect(value.detail.completed).toBe(counts?.completed);
+      expect(value.detail.remaining).toBe(counts?.remaining);
+    });
+
+    it("shows no number for a tag nothing carries", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, { tags: ["api"] });
+
+      const value = await resolveTag(project, user, "typo");
+
+      // Not 0%. "None of it is done" and "there is none of it" are different
+      // facts, and only one of them is about progress.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBeUndefined();
+      expect(value.detail.total).toBe(0);
+    });
+
+    it("links to the quest list filtered by tag and to the open half", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, { tags: ["api"] });
+
+      const value = await resolveTag(project, user, "api");
+
+      expect(value.link?.route).toBe("projectQuests");
+      expect(value.link?.query).toEqual({
+        tag: "api",
+        status: "new,accepted",
+      });
     });
   });
 
@@ -520,6 +1232,194 @@ describe("dashboard resolve", () => {
       expect(values[0]?.value).toBeUndefined();
       expect(values[0]?.detail).toEqual({ noBeaconApp: true });
       expect(values[0]?.link).toBeUndefined();
+    });
+  });
+
+  /**
+   * The two scope kinds `dashboardScopeSchema` reserved in epic #E4 and no
+   * metric ever accepted, plus the project board's own entry point.
+   *
+   * Driven through `DashboardScopeService` rather than through a controller,
+   * because that class IS the security boundary: it is where "belongs to this
+   * project" is decided, and the two answers that matter — the row, or a 404 —
+   * are its own.
+   */
+  describe("epic and release scopes", () => {
+    const scopeService = () => ctx.alepha.inject(DashboardScopeService);
+
+    it("resolves an epic of a project the caller belongs to", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        title: "Dashboard",
+        number: 46,
+      });
+
+      const resolved = await scopeService().resolve(
+        { kind: "epic", epicId: epic.id },
+        user,
+      );
+
+      expect(resolved.epic?.id).toBe(epic.id);
+      // The per-project NUMBER is what `projectEpic` addresses, and it is
+      // reachable only because the row came back rather than the id.
+      expect(resolved.epic?.number).toBe(46);
+      expect(resolved.projectIds).toEqual([project.id]);
+    });
+
+    it("answers 404 for an epic in a project the caller has nothing to do with", async ({
+      expect,
+    }) => {
+      const { user } = await memberOf(ctx);
+      const stranger = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, stranger);
+
+      // ⚠️ 404, never an empty answer. "No such epic here" is true whether the
+      // epic does not exist or belongs to somebody else's project, and
+      // distinguishing them would leak the second.
+      await expect(
+        scopeService().resolve({ kind: "epic", epicId: epic.id }, user),
+      ).rejects.toThrowError(/Epic not found/);
+    });
+
+    it("answers 404 for an epic id that exists nowhere", async ({ expect }) => {
+      const { user } = await memberOf(ctx);
+
+      await expect(
+        scopeService().resolve({ kind: "epic", epicId: 987654 }, user),
+      ).rejects.toThrowError(/Epic not found/);
+    });
+
+    it("resolves a release, and refuses one from another project", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const mine = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 1,
+        tag: "0.1.0",
+        title: "First",
+      });
+      const stranger = await createTestProject(ctx.alepha);
+      const theirs = await ctx.repos.releases.create({
+        projectId: stranger.id,
+        number: 1,
+        tag: "9.9.9",
+        title: "Theirs",
+      });
+
+      const resolved = await scopeService().resolve(
+        { kind: "release", releaseId: mine.id },
+        user,
+      );
+      // The TAG, which is what `/alepha/releases/0.1.0` is built from.
+      expect(resolved.release?.tag).toBe("0.1.0");
+
+      await expect(
+        scopeService().resolve({ kind: "release", releaseId: theirs.id }, user),
+      ).rejects.toThrowError(/Release not found/);
+    });
+
+    it("still refuses a malformed scope before it reaches a table", async ({
+      expect,
+    }) => {
+      const { user } = await memberOf(ctx);
+
+      // `assertWellFormed` already covered these two kinds; what was missing
+      // was only the resolution half, and adding it must not have loosened
+      // the structural check on the way past.
+      await expect(
+        scopeService().resolve({ kind: "epic" } as DashboardScope, user),
+      ).rejects.toThrowError(/requires epicId/);
+      await expect(
+        scopeService().resolve(
+          { kind: "release", releaseId: 1, epicId: 2 } as DashboardScope,
+          user,
+        ),
+      ).rejects.toThrowError(/must not carry epicId/);
+    });
+  });
+
+  /**
+   * The project board's own entry point: the route has already proved
+   * membership, so the registry is handed that one project instead of running
+   * an account-wide users-to-projects join for a board that has a gate.
+   */
+  describe("the project board's resolve path", () => {
+    it("refuses a home-only metric, whatever its scope kind", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const registry = ctx.alepha.inject(DashboardMetricRegistry);
+      const sigil = await createSigil(ctx, project, "app/production", [
+        "beacon",
+      ]);
+
+      // `uniqueVisitors` declares `boards: ["home"]` and accepts an `apps`
+      // scope, so only the board argument reaching `accepts()` can refuse
+      // this. Without it the card would resolve and put a cross-project
+      // metric on a project's board.
+      const values = await registry.resolveForProject(
+        [
+          {
+            id: 1,
+            metric: "uniqueVisitors",
+            scope: { kind: "apps", sigilIds: [sigil.id] },
+            filters: { period: "yesterday" },
+            size: 1,
+            position: 0,
+          },
+        ],
+        user,
+        project,
+      );
+
+      expect(values[0]?.ok).toBe(false);
+    });
+
+    it("drops an epic whose project turned the capability off", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha, {
+        capabilities: [{ key: "knowledge" }],
+      });
+      await createTestMember(ctx.alepha, project, project.createdBy!);
+      const epic = await createTestEpic(ctx.alepha, project);
+
+      const security = ctx.alepha.inject(ProjectSecurityService);
+      const capabilities = await security.capabilityRowsForProjects([
+        project.id,
+      ]);
+
+      const narrowed = ctx.registry.testNarrow(
+        {
+          key: "epicProgress",
+          boards: ["project"],
+          group: "epics",
+          labelKey: "x",
+          hintKey: "x",
+          icon: "layers",
+          presentation: "progress",
+          scopeKinds: ["epic"],
+          filters: z.object({}),
+          needs: { capability: "work", option: "epics" },
+          link: () => undefined,
+        },
+        {
+          projectIds: [project.id],
+          projects: [project],
+          sigils: [],
+          epic,
+        },
+        capabilities,
+      );
+
+      // ⚠️ The epic goes WITH its project. A capability is hidden and never
+      // deleted, so the rows are still there — counting them would put a
+      // number on the board for a surface the project no longer has.
+      expect(narrowed.projects).toEqual([]);
+      expect(narrowed.epic).toBeUndefined();
     });
   });
 

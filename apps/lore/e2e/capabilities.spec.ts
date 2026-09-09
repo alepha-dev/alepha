@@ -29,8 +29,9 @@ import {
  * The `href`s the project sidebar currently offers, relative to the project.
  *
  * Read as hrefs rather than by label: a label is localized and a heading is
- * ambiguous, while an `href` is what the entry actually is. `/` is Activity,
- * which is Core and must survive every case here.
+ * ambiguous, while an `href` is what the entry actually is. `/` is the
+ * DASHBOARD since #Q2104 and `/activity` is the feed; both are Core and both
+ * must survive every case here.
  */
 const navHrefs = async (page: Page, slug: string): Promise<string[]> => {
   const hrefs = await page
@@ -99,10 +100,16 @@ test.describe("Project capabilities", () => {
     );
     const slug = new URL(page.url()).pathname.split("/").find(Boolean)!;
 
-    // Activity and Reports are Core, Folios is Knowledge's. Nothing else.
+    // The dashboard, Activity and Reports are Core; Folios is Knowledge's.
+    // Nothing else.
     // ⚠️ No `/inbox`: the page is Core too, but its rail entry was removed in
     // favour of the header bell (feedback #P2127).
-    expect(await navHrefs(page, slug)).toEqual(["/", "/folios", "/reports"]);
+    expect(await navHrefs(page, slug)).toEqual([
+      "/",
+      "/activity",
+      "/folios",
+      "/reports",
+    ]);
 
     // A URL typed by hand is a page that does not exist, not a 403 and not a
     // redirect: the project genuinely has no such surface.
@@ -150,6 +157,7 @@ test.describe("Project capabilities", () => {
 
     expect(await navHrefs(page, slug)).toEqual([
       "/",
+      "/activity",
       "/apps",
       "/artifacts",
       "/reports",
@@ -340,8 +348,9 @@ test.describe("Project capabilities", () => {
     await page.goto(`/${slug}/`);
     await page.waitForLoadState("networkidle");
 
-    // Activity and Reports, and that is the whole rail. A legal state by the
-    // epic's decision 8, and the test that the modularity is real.
+    // The dashboard, Activity and Reports, and that is the whole rail. A legal
+    // state by the epic's decision 8, and the test that the modularity is
+    // real.
     //
     // ⚠️ Notifications is Core too - the events that fill it span Work (quest
     // mentions, releases) and Support (feedback mentions), so it could never
@@ -349,7 +358,7 @@ test.describe("Project capabilities", () => {
     // entry was removed in favour of the header bell (feedback #P2127). The
     // page still exists and the bell still reaches it with every capability
     // off; `inbox.spec.ts` is where that is asserted.
-    expect(await navHrefs(page, slug)).toEqual(["/", "/reports"]);
+    expect(await navHrefs(page, slug)).toEqual(["/", "/activity", "/reports"]);
 
     // The feed still renders what happened while the capabilities were on:
     // the rows are filtered by kind, never purged.

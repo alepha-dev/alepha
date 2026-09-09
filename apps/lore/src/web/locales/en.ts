@@ -322,6 +322,7 @@ export default {
   "project.menu.invite-member": "Invite Member",
   "project.menu.create-feedback": "New Feedback",
   "project.menu.create": "Create",
+  "project.menu.dashboard": "Dashboard",
   "project.menu.activity": "Activity",
   "project.menu.quests": "Quests",
   "project.menu.kanban": "Kanban",
@@ -2123,15 +2124,26 @@ export default {
   "epic.quests.column.updated": "Updated",
 
   // -- Dashboard (the signed-in landing page) -------------------------------
+  "project.dashboard.title": "Dashboard",
+  "project.dashboard.empty.title": "Nothing on this board yet",
+  "project.dashboard.empty.body":
+    "A board is a few numbers worth checking without opening anything. Add the first card.",
+  "project.dashboard.empty.body.readOnly":
+    "A board is a few numbers worth checking without opening anything. Someone with permission to change the project settings can fill it.",
+  "project.dashboard.empty.body.noMetrics":
+    "This project does not do anything a card can count yet. Turn on a capability in Settings and the board has something to show.",
+  "project.dashboard.empty.docs": "How project dashboards work",
+  "project.dashboard.standfirst": "$1 cards on this project's board.",
+  "project.dashboard.standfirst.one": "1 card on this project's board.",
+  "project.dashboard.standfirst.empty":
+    "This board is shared by everyone in the project.",
+  "project.dashboard.card.delete.shared":
+    "The board belongs to the project, so this removes the card for everyone in it.",
   "dashboard.greeting": "Welcome back, $1",
   "dashboard.standfirst": "$1 cards.",
   "dashboard.standfirst.one": "1 card.",
   "dashboard.standfirst.empty": "An empty dashboard. Add the first card.",
   "dashboard.refreshed": "Refreshed $1.",
-  "dashboard.reset": "Reset layout",
-  "dashboard.reset.confirm.title": "Reset your dashboard?",
-  "dashboard.reset.confirm.description":
-    "Your current cards are replaced by the default set.",
   "dashboard.addCard": "Add card",
   "dashboard.addCard.hint":
     "Pick a metric, then the project, app or epic to scope it to.",
@@ -2162,6 +2174,7 @@ export default {
     "Every card is one metric plus a scope. Metrics with no data available, such as an app metric on a project with no enrolled app, are not offered.",
   "dashboard.catalogue.noProjects": "You have no project yet",
   "dashboard.catalogue.noApps": "No enrolled app reports this",
+  "dashboard.catalogue.notHere": "This project does not do this yet",
 
   "dashboard.scope.all": "all projects",
   "dashboard.scope.allProjects": "All projects",
@@ -2179,6 +2192,16 @@ export default {
   "dashboard.metric.unknown": "Unknown card",
   "dashboard.metric.activeQuests": "Active quests",
   "dashboard.metric.activeQuests.hint": "new + accepted, project or all",
+  "dashboard.metric.heldQuests": "On hold",
+  "dashboard.metric.heldQuests.hint":
+    "open quests parked, waiting on something",
+  "dashboard.metric.epicProgress": "Epic progress",
+  "dashboard.metric.epicProgress.hint": "how far one epic has got",
+  "dashboard.metric.releaseProgress": "Release progress",
+  "dashboard.metric.releaseProgress.hint": "how far one release has got",
+  "dashboard.metric.tagCompletion": "Tag completion",
+  "dashboard.metric.tagCompletion.hint":
+    "one tag, done over total; a quest with two tags counts in both",
   "dashboard.metric.openBlights": "Open blights",
   "dashboard.metric.openBlights.hint": "project, or a list of apps",
   "dashboard.metric.untriagedFeedback": "Untriaged feedback",
@@ -2194,6 +2217,7 @@ export default {
   "dashboard.filter.untriaged": "untriaged",
   "dashboard.filter.allStatuses": "every status",
   "dashboard.filter.yesterday": "yesterday",
+  "dashboard.filter.noTags": "This project has no quest tags yet.",
   "dashboard.filterField.statuses": "Status",
   "dashboard.filterField.status": "Status",
   "dashboard.filterField.period": "Period",
@@ -2205,6 +2229,23 @@ export default {
   "dashboard.filterValue.yesterday": "Yesterday",
 
   "dashboard.footer.questSplit": "$1 accepted, $2 new",
+  "dashboard.footer.epic.done": "$1 of $2 done, shelved excluded",
+  "dashboard.footer.epic.specified": "$1 specified, none released yet",
+  "dashboard.footer.epic.concluded": "concluded $1",
+  "dashboard.footer.epic.concludedUndated": "concluded",
+  "dashboard.footer.epic.nothing": "nothing to count yet",
+  "dashboard.footer.epic.hidden": "epics are turned off here",
+  "dashboard.footer.release.done": "$1 of $2 done, shelved excluded",
+  "dashboard.footer.release.published": "published $1",
+  "dashboard.footer.release.publishedUndated": "published",
+  "dashboard.footer.release.empty": "nothing attached yet",
+  "dashboard.footer.release.hidden": "releases are turned off here",
+  "dashboard.footer.tag.done":
+    "$1 of $2 tagged quests, counted in every tag they carry",
+  "dashboard.footer.tag.none": "no quest carries this tag",
+  "dashboard.footer.held": "of $1 open quests",
+  "dashboard.footer.held.one": "of 1 open quest",
+  "dashboard.footer.held.none": "nothing parked",
   "dashboard.footer.blights": "$1 occurrences, $2 apps",
   "dashboard.footer.blights.one": "$1 occurrences, 1 app",
   "dashboard.footer.feedback.none": "nothing waiting",

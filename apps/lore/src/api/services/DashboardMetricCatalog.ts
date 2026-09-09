@@ -6,9 +6,30 @@ import type {
   DashboardScope,
   DashboardScopeKind,
 } from "../schemas/dashboardScopeSchema.ts";
+import { epicProgressFiltersSchema } from "../schemas/epicProgressFiltersSchema.ts";
+import { heldQuestsFiltersSchema } from "../schemas/heldQuestsFiltersSchema.ts";
 import { openBlightsFiltersSchema } from "../schemas/openBlightsFiltersSchema.ts";
+import { releaseProgressFiltersSchema } from "../schemas/releaseProgressFiltersSchema.ts";
+import { tagCompletionFiltersSchema } from "../schemas/tagCompletionFiltersSchema.ts";
 import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSchema.ts";
 import { untriagedFeedbackFiltersSchema } from "../schemas/untriagedFeedbackFiltersSchema.ts";
+
+/**
+ * Which board a metric may be offered on.
+ *
+ * `home` is the signed-in landing page: per user, cross-project, and the only
+ * board that existed before epic #E46. `project` is a project's own board,
+ * shared by everyone in it and reached at the project root.
+ *
+ * ⚠️ **Where a metric may be OFFERED, which is not what a card POINTS at.**
+ * A project-board card that points at the project stores
+ * `kind: "projects", projectIds: [thisProject]`, forced by the controller
+ * rather than chosen by the reader, so the four existing resolvers,
+ * `assertWellFormed`, `narrow()` and `ResolvedDashboardScope` all keep
+ * working untouched. A `self` scope kind would have needed a branch in every
+ * one of them for a value that is always the same.
+ */
+export type DashboardBoard = "home" | "project";
 
 /**
  * How a card renders its value. Taken from the mockup, which shows all four.
@@ -46,6 +67,32 @@ export interface DashboardCardLink {
 export interface DashboardCardTarget {
   projectSlug?: string;
   appName?: string;
+  /**
+   * The epic's per-project `number`, for an `epic` scope.
+   *
+   * ⚠️ **Not the id the scope stores.** `projectEpic` is `/epics/:epicNumber`
+   * and `dashboardScopeSchema.epicId` is a row id, so the two are different
+   * integers and a card that confused them would land on somebody else's
+   * epic without erroring. `link()` is pure and receives only the scope and
+   * this target, so the resolver is the only layer that can carry the
+   * translation across — `DashboardScopeService` reads the row.
+   */
+  epicNumber?: number;
+  /**
+   * The release's `tag`, for a `release` scope. Same trap as
+   * {@link epicNumber}: `projectRelease` is `/releases/:releaseTag`, because
+   * `/alepha/releases/0.28.0` is what the URL is for, and the scope stores an
+   * id. Absent for a release with no tag, which the column permits.
+   */
+  releaseTag?: string;
+  /**
+   * The tag a `tagCompletion` card is narrowed to.
+   *
+   * ⚠️ On the TARGET rather than read off the scope, because it is a FILTER
+   * and `link()` only receives the scope and this. It is the one drill-through
+   * value that comes from `filters` instead of from a resolved row.
+   */
+  tag?: string;
 }
 
 /**
@@ -84,6 +131,14 @@ export interface DashboardMetricDescriptor {
    */
   key: string;
   /**
+   * The boards this metric may be offered on.
+   *
+   * Required rather than defaulted, so a metric added tomorrow decides where
+   * it belongs instead of inheriting an answer. The four v1 metrics are
+   * `["home"]`, which is what keeps home exactly as it was.
+   */
+  boards: DashboardBoard[];
+  /**
    * Catalogue section in the Add-card panel.
    */
   group: "quests" | "epics" | "inbox" | "apps";
@@ -119,6 +174,18 @@ export interface DashboardMetricDescriptor {
    * This metric's own filter vocabulary.
    */
   filters: ZType;
+  /**
+   * Where a filter field's options come from, when the schema cannot say.
+   *
+   * ⚠️ Only for values that are ROWS rather than a build-time enum. A
+   * project's tags are the case: the schema types the field as text, and a
+   * free-text box would let somebody type a tag that does not exist and get a
+   * permanent zero. Naming the source here keeps the wizard generated - the
+   * step reads this and fills the options - rather than special-casing a
+   * metric key in a component, which is the property the panel's docblock
+   * asks for.
+   */
+  filterSources?: Record<string, "projectTags">;
   /**
    * The capability, and optionally the option, a target must have for this
    * metric to mean anything there. Every v1 metric has one; the field is
@@ -174,6 +241,14 @@ export class DashboardMetricCatalog {
   protected readonly metrics: DashboardMetricDescriptor[] = [
     {
       key: "activeQuests",
+      /**
+       * ⚠️ On BOTH boards, and the project half is what makes `heldQuests`
+       * legible: "Quests 12 / On hold 3" reads as three of the twelve being
+       * stuck only while both numbers are on screen and come from the same
+       * `OpenQuestScope`. Home is unchanged - inside a project the scope step
+       * is skipped and the controller forces `projects: [thisProject]`.
+       */
+      boards: ["home", "project"],
       group: "quests",
       labelKey: "dashboard.metric.activeQuests",
       hintKey: "dashboard.metric.activeQuests.hint",
@@ -200,7 +275,142 @@ export class DashboardMetricCatalog {
           : undefined,
     },
     {
+      key: "heldQuests",
+      /**
+       * Project only. A held count across every project the reader belongs to
+       * answers nobody's question: a hold is somebody waiting on somebody in
+       * one project, and the drill-through is one project's quest list.
+       */
+      boards: ["project"],
+      group: "quests",
+      labelKey: "dashboard.metric.heldQuests",
+      hintKey: "dashboard.metric.heldQuests.hint",
+      icon: "circle-pause",
+      presentation: "scalar",
+      scopeKinds: ["projects"],
+      filters: heldQuestsFiltersSchema,
+      needs: { capability: "work" },
+      /**
+       * ⚠️ `?status=held`, and it only decodes because
+       * `boardFiltersSchema.status` is derived from `questStatusSchema`
+       * (#Q2082). Before that fix the value was silently dropped and the link
+       * degraded to the unfiltered list, which is the failure this drill-
+       * through would otherwise repeat.
+       */
+      link: (_scope, target) =>
+        target.projectSlug
+          ? {
+              route: "projectQuests",
+              params: { projectSlug: target.projectSlug },
+              query: { status: "held" },
+            }
+          : undefined,
+    },
+    {
+      key: "epicProgress",
+      /**
+       * ⚠️ The `epics` group has existed in this catalogue since epic #E4
+       * with nothing in it, and `dashboardScopeSchema` has carried
+       * `kind: "epic"` since then commented "reserved for the deferred
+       * epic-progress tile". This is the entry both were waiting for.
+       */
+      boards: ["project"],
+      group: "epics",
+      labelKey: "dashboard.metric.epicProgress",
+      hintKey: "dashboard.metric.epicProgress.hint",
+      icon: "layers",
+      presentation: "progress",
+      scopeKinds: ["epic"],
+      filters: epicProgressFiltersSchema,
+      /**
+       * The OPTION as well as the capability. `CapabilityRegistry`'s list is
+       * flat and can only say `work`, which is exactly why `needs` exists:
+       * a project that does Work without epics has no epic to point at.
+       */
+      needs: { capability: "work", option: "epics" },
+      /**
+       * ⚠️ `epicNumber`, filled by the resolver from the row the scope
+       * proved. `projectEpic` is `/epics/:epicNumber` and the scope stores
+       * `epicId`; the two are different integers and confusing them lands on
+       * a real page showing the wrong epic.
+       */
+      link: (_scope, target) =>
+        target.projectSlug && target.epicNumber !== undefined
+          ? {
+              route: "projectEpic",
+              params: {
+                projectSlug: target.projectSlug,
+                epicNumber: String(target.epicNumber),
+              },
+            }
+          : undefined,
+    },
+    {
+      key: "releaseProgress",
+      /**
+       * The companion to the epic card, on the second scope kind
+       * `dashboardScopeSchema` reserved in #E4 and no metric ever accepted.
+       */
+      boards: ["project"],
+      group: "epics",
+      labelKey: "dashboard.metric.releaseProgress",
+      hintKey: "dashboard.metric.releaseProgress.hint",
+      icon: "flag",
+      presentation: "progress",
+      scopeKinds: ["release"],
+      filters: releaseProgressFiltersSchema,
+      needs: { capability: "work", option: "releases" },
+      /**
+       * ⚠️ By TAG, not by id. `projectRelease` is `/releases/:releaseTag`
+       * because `/alepha/releases/0.28.0` is what the URL is for, and the
+       * scope stores `releaseId`. A release with no tag has no destination
+       * and the card is inert rather than linking to `/releases/undefined`.
+       */
+      link: (_scope, target) =>
+        target.projectSlug && target.releaseTag
+          ? {
+              route: "projectRelease",
+              params: {
+                projectSlug: target.projectSlug,
+                releaseTag: target.releaseTag,
+              },
+            }
+          : undefined,
+    },
+    {
+      key: "tagCompletion",
+      boards: ["project"],
+      group: "quests",
+      labelKey: "dashboard.metric.tagCompletion",
+      hintKey: "dashboard.metric.tagCompletion.hint",
+      icon: "flame",
+      presentation: "progress",
+      /**
+       * The PROJECT, not the tag. A tag is not a thing a card points at; it
+       * is how the card narrows what it counts, which is what `filters` is.
+       */
+      scopeKinds: ["projects"],
+      filters: tagCompletionFiltersSchema,
+      filterSources: { tag: "projectTags" },
+      needs: { capability: "work" },
+      /**
+       * ⚠️ `?tag=` AND `?status=`, both of which the quests page's query
+       * schema already takes. The status is `new,accepted` - the OPEN half -
+       * because the card's number is a completion ratio and the useful thing
+       * to open is what is left, not what is finished.
+       */
+      link: (_scope, target) =>
+        target.projectSlug && target.tag
+          ? {
+              route: "projectQuests",
+              params: { projectSlug: target.projectSlug },
+              query: { tag: target.tag, status: "new,accepted" },
+            }
+          : undefined,
+    },
+    {
       key: "openBlights",
+      boards: ["home"],
       group: "inbox",
       labelKey: "dashboard.metric.openBlights",
       hintKey: "dashboard.metric.openBlights.hint",
@@ -224,6 +434,7 @@ export class DashboardMetricCatalog {
     },
     {
       key: "untriagedFeedback",
+      boards: ["home"],
       group: "inbox",
       labelKey: "dashboard.metric.untriagedFeedback",
       cardLabelKey: "dashboard.metric.untriagedFeedback.card",
@@ -249,6 +460,7 @@ export class DashboardMetricCatalog {
     },
     {
       key: "uniqueVisitors",
+      boards: ["home"],
       group: "apps",
       labelKey: "dashboard.metric.uniqueVisitors",
       hintKey: "dashboard.metric.uniqueVisitors.hint",
@@ -285,6 +497,24 @@ export class DashboardMetricCatalog {
   }
 
   /**
+   * Every metric one board may offer, catalogue order.
+   *
+   * The Add-card panel reads this rather than {@link all}, so a metric that
+   * only means something inside a project never appears on home and the four
+   * cross-project ones never appear on a project board.
+   */
+  on(board: DashboardBoard): DashboardMetricDescriptor[] {
+    return this.metrics.filter((metric) => metric.boards.includes(board));
+  }
+
+  /**
+   * Whether this metric may be offered on this board at all.
+   */
+  offers(key: string, board: DashboardBoard): boolean {
+    return this.find(key)?.boards.includes(board) ?? false;
+  }
+
+  /**
    * One metric, or `undefined` for a key this build does not know.
    */
   find(key: string): DashboardMetricDescriptor | undefined {
@@ -303,10 +533,61 @@ export class DashboardMetricCatalog {
   }
 
   /**
-   * Whether this metric can be pointed at this kind of thing.
+   * Whether this metric can be pointed at this kind of thing, on this board.
+   *
+   * ⚠️ **The board is not optional, and that is the point.** A metric offered
+   * only on home must not become storable on a project board because a caller
+   * forgot which board it was validating for, and the two boards genuinely
+   * differ about `projects` and `all`: inside a project the route IS the
+   * project, so both are server-forced rather than chosen.
    */
-  accepts(key: string, kind: DashboardScopeKind): boolean {
+  accepts(
+    key: string,
+    kind: DashboardScopeKind,
+    board: DashboardBoard,
+  ): boolean {
+    if (!this.offers(key, board)) {
+      return false;
+    }
     return this.find(key)?.scopeKinds.includes(kind) ?? false;
+  }
+
+  /**
+   * The scope kinds a READER may pick from, for this metric on this board.
+   *
+   * Not the same list as `scopeKinds`, and the difference is what makes the
+   * Add-card wizard skip a step rather than render a picker with one answer:
+   * on a project board `projects` and `all` both mean "this project", which
+   * the controller forces, so neither is something to choose. What is left is
+   * an app, an epic or a release — genuinely several answers.
+   */
+  pickableScopeKinds(key: string, board: DashboardBoard): DashboardScopeKind[] {
+    const kinds = this.find(key)?.scopeKinds ?? [];
+    if (board === "home") {
+      return kinds;
+    }
+    return kinds.filter((kind) => kind !== "all" && kind !== "projects");
+  }
+
+  /**
+   * The scope a card gets when the reader was never asked.
+   *
+   * On a project board a metric with nothing to point at is stored against
+   * the project itself, as an ordinary `projects` scope carrying the route's
+   * single id. `undefined` when the reader does have a choice to make.
+   */
+  forcedScope(
+    key: string,
+    board: DashboardBoard,
+    projectId: number,
+  ): DashboardScope | undefined {
+    if (board !== "project") {
+      return undefined;
+    }
+    if (this.pickableScopeKinds(key, board).length > 0) {
+      return undefined;
+    }
+    return { kind: "projects", projectIds: [projectId] };
   }
 
   /**

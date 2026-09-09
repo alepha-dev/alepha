@@ -183,18 +183,6 @@ export class DashboardCardService {
   }
 
   /**
-   * Drop every card and write the default set again.
-   *
-   * Deliberately does NOT touch the seeding marker: reset restores defaults
-   * because the user asked, and emptying the board afterwards must still be
-   * a state that survives a reload.
-   */
-  async reset(user: UserAccountToken): Promise<void> {
-    await this.cards.deleteMany({ userId: { eq: user.id } });
-    await this.seed(user);
-  }
-
-  /**
    * The starting dashboard.
    *
    * Three `all`-scoped cards that are meaningful for any account, plus
@@ -282,7 +270,10 @@ export class DashboardCardService {
     if (!descriptor) {
       throw new BadRequestError(`Unknown metric: ${metric}`);
     }
-    if (!descriptor.scopeKinds.includes(scope.kind)) {
+    // Through `accepts`, which additionally asks whether the metric may be
+    // offered on THIS board at all: a project-only metric must not become
+    // storable on home because this line only looked at the scope kind.
+    if (!this.catalog.accepts(metric, scope.kind, "home")) {
       throw new BadRequestError(
         `Metric ${metric} does not accept a ${scope.kind} scope`,
       );

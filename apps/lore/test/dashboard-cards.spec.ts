@@ -337,9 +337,7 @@ describe("dashboard cards", () => {
     ).rejects.toThrowError(/every card exactly once/);
   });
 
-  it("restores the default set on reset, and keeps the board empty-able after", async ({
-    expect,
-  }) => {
+  it("keeps an emptied board empty across reads", async ({ expect }) => {
     const { user } = await memberOf(ctx);
     const { cards } = await ctx.controller.listCards({}, { user });
     for (const card of cards) {
@@ -349,19 +347,10 @@ describe("dashboard cards", () => {
       );
     }
 
-    const reset = await ctx.controller.resetLayout({}, { user });
-    expect(reset.cards.map((card) => card.metric)).toEqual([
-      "activeQuests",
-      "openBlights",
-      "untriagedFeedback",
-    ]);
-
-    for (const card of reset.cards) {
-      await ctx.controller.removeCard(
-        { params: { cardId: card.id } },
-        { user },
-      );
-    }
+    // ⚠️ The whole reason `dashboard_settings.seededAt` exists, and the half
+    // of the old reset case that outlives Reset itself: zero rows means both
+    // "never seeded" and "emptied by hand", and only the marker tells them
+    // apart. Without it this second read would write the defaults again.
     const after = await ctx.controller.listCards({}, { user });
     expect(after.cards).toEqual([]);
   });

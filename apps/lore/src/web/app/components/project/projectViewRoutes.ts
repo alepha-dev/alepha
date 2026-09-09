@@ -53,9 +53,15 @@ export const ROUTES_APP = new Set([
 ]);
 
 export const ROUTES_FULL_WIDTH = new Set([
-  // The project's landing page. Full width because it is a feed of one
-  // column of rows plus a filter bar, and a centred 1024px column would
-  // leave the project background down both sides of the page you open on.
+  // The project's landing page since #Q2104. Full width because it is a grid
+  // that lays its own columns out from the space it is given (`auto-fill` over
+  // a container query), and a centred 1024px column would both cap the tiles
+  // and leave the project background down either side of the page you open on.
+  "projectDashboard",
+  // Full width because it is a feed of one column of rows plus a filter bar,
+  // and a centred column would leave the background down both sides. It moved
+  // to `/activity` with the same treatment; the entry is keyed by route NAME,
+  // so the path change touched nothing here.
   "projectActivity",
   "projectQuest",
   "projectKanban",
@@ -136,6 +142,7 @@ export const SECTION_HREF_ROUTES: Record<
   projectFoliosFolio: "projectFolios",
   projectEpic: "projectEpics",
   projectQuest: "projectQuests",
+  projectQuestGraph: "projectQuests",
   projectRelease: "projectReleases",
   projectApp: "projectApps",
   projectAppRedirect: "projectApps",
@@ -152,6 +159,10 @@ export const SECTION_HREF_ROUTES: Record<
 };
 
 export const SECTION_LABEL_KEYS: Record<string, string> = {
+  // ⚠️ A leaf and the whole section, so it is deliberately absent from
+  // `SECTION_HREF_ROUTES` above: an href there would link the page to itself.
+  // Same reading as `projectActivity` and `projectInbox` below.
+  projectDashboard: "project.menu.dashboard",
   // Deliberately absent from `SECTION_HREF_ROUTES` above: Activity is a
   // leaf with no detail route under it, so its crumb is the open page and
   // stays inert, the same reading as `projectQuests` on the list itself.
@@ -165,6 +176,13 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectInbox: "project.menu.inbox",
   projectQuests: "project.menu.quests",
   projectQuest: "project.menu.quests",
+  // ⚠️ It had NO entry until #Q2104, so the questline page's crumb read
+  // "Alepha" and stopped where every sibling reads "Alepha > Something". It
+  // was invisible because no spec walked the project shell's children; one
+  // does now, and this is what it found. A bug rather than an exemption:
+  // `/quests/:shortId/graph` is a page under Quests exactly as `projectQuest`
+  // is, so it takes the same label and the same crumb href.
+  projectQuestGraph: "project.menu.quests",
   projectKanban: "project.menu.kanban",
   projectEpics: "project.menu.epics",
   projectEpic: "project.menu.epics",
