@@ -86,6 +86,7 @@ const DashboardGrid = (props: DashboardGridProps) => {
               "dashboard.metric.unknown"
             }
             icon={descriptor?.icon ?? "circle-dashed"}
+            presentation={descriptor?.presentation}
             armed={armed === index}
             dragging={dragging === index}
             over={over === index && dragging !== index}

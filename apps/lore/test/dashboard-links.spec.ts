@@ -38,8 +38,12 @@ describe("dashboard drill-through links", () => {
 
   /**
    * Every param any catalogue link can ask for, so `path()` can build one.
+   *
+   * ⚠️ `epicNumber` is the epic's PER-PROJECT number, not its row id, and it
+   * reaches `link()` through `DashboardCardTarget` because the stored scope
+   * carries the id and `/epics/:epicNumber` takes the other one.
    */
-  const params = { projectSlug: "sds", appName: "docs" };
+  const params = { projectSlug: "sds", appName: "docs", epicNumber: "46" };
 
   it("resolves every metric's link to a real path", ({ expect }) => {
     // A guard that silently checks nothing is worse than no guard.
@@ -48,7 +52,11 @@ describe("dashboard drill-through links", () => {
     for (const metric of catalog.all()) {
       const link = metric.link(
         { kind: "all" },
-        { projectSlug: params.projectSlug, appName: params.appName },
+        {
+          projectSlug: params.projectSlug,
+          appName: params.appName,
+          epicNumber: Number(params.epicNumber),
+        },
       );
       expect(link, `metric '${metric.key}' produced no link`).toBeDefined();
       expect(
@@ -83,6 +91,28 @@ describe("dashboard drill-through links", () => {
     );
   });
 
+  it("addresses an epic by its number and never by its row id", ({
+    expect,
+  }) => {
+    // The trap #Q2140 exists for: the scope stores `epicId`, the route takes
+    // `epicNumber`, and both are integers. A card that shipped the id would
+    // land on a real page showing somebody else's epic, silently.
+    const link = catalog
+      .get("epicProgress")
+      .link(
+        { kind: "epic", epicId: 981 },
+        { projectSlug: "sds", epicNumber: 46 },
+      );
+
+    expect(link).toEqual({
+      route: "projectEpic",
+      params: { projectSlug: "sds", epicNumber: "46" },
+    });
+    expect(router.path(link!.route, { params: link!.params })).toBe(
+      "/sds/epics/46",
+    );
+  });
+
   it("gives no link at all when the target does not exist", ({ expect }) => {
     // Better no link than a 404. The visitors tile needs an app name, and a
     // project with no beacon-carrying app cannot supply one.
@@ -93,6 +123,13 @@ describe("dashboard drill-through links", () => {
     ).toBeUndefined();
     expect(
       catalog.get("activeQuests").link({ kind: "all" }, {}),
+    ).toBeUndefined();
+    // An epic card with no number resolved is the same rule: better no link
+    // than one built with `undefined` in the path.
+    expect(
+      catalog
+        .get("epicProgress")
+        .link({ kind: "epic", epicId: 1 }, { projectSlug: "sds" }),
     ).toBeUndefined();
   });
 });

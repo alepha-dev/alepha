@@ -6,6 +6,7 @@ import type { DragEvent } from "react";
 
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue as CardValue } from "@/api/schemas/dashboardCardValueSchema.ts";
+import type { DashboardPresentation } from "@/api/services/DashboardMetricCatalog.ts";
 
 import type { AppRouter } from "../../AppRouter.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -29,6 +30,11 @@ export interface DashboardCardProps {
    * lucide id for the metric's icon, from the catalogue.
    */
   icon: string;
+  /**
+   * How this metric renders its figure, from the catalogue. A `progress`
+   * metric's number is a percentage and is drawn as one.
+   */
+  presentation?: DashboardPresentation;
   /**
    * Whether a mousedown on this card's header has armed it for dragging.
    *
@@ -159,12 +165,18 @@ const DashboardCard = (props: DashboardCardProps) => {
           data-testid="dashboard-card-open"
           className="flex flex-1 flex-col items-start justify-start gap-1 text-left"
         >
-          <DashboardCardValue value={props.value} />
+          <DashboardCardValue
+            value={props.value}
+            presentation={props.presentation}
+          />
           <DashboardCardFooter metric={props.card.metric} value={props.value} />
         </button>
       ) : (
         <div className="flex flex-1 flex-col items-start justify-start gap-1">
-          <DashboardCardValue value={props.value} />
+          <DashboardCardValue
+            value={props.value}
+            presentation={props.presentation}
+          />
           <DashboardCardFooter metric={props.card.metric} value={props.value} />
         </div>
       )}

@@ -91,6 +91,8 @@ import { DeployRegistry } from "./services/DeployRegistry.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
+import { EpicProgressMetric } from "./services/EpicProgressMetric.ts";
+import { EpicProgressService } from "./services/EpicProgressService.ts";
 import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
 import { EstateCommandService } from "./services/EstateCommandService.ts";
@@ -191,6 +193,10 @@ export const LoreApi = $module({
     ReleaseContentService,
     RoadmapService,
     EpicDependencyService,
+    // The epic rollup, on a service rather than on the controller now that
+    // five surfaces read it: the Epics list, `epic_list`, `project_context`,
+    // MCP output and the dashboard's epic card.
+    EpicProgressService,
     // The one place the epic workflow's refusals are written (epic #31):
     // which quest action is allowed in which epic phase, and the words a
     // refusal carries. Injected by the quest and epic controllers.
@@ -296,6 +302,7 @@ export const LoreApi = $module({
     // metric so N cards on one metric stay one query.
     ActiveQuestsMetric,
     HeldQuestsMetric,
+    EpicProgressMetric,
     OpenBlightsMetric,
     UntriagedFeedbackMetric,
     UniqueVisitorsMetric,

@@ -2195,6 +2195,8 @@ export default {
   "dashboard.metric.heldQuests": "En pause",
   "dashboard.metric.heldQuests.hint":
     "quetes ouvertes en pause, en attente de quelque chose",
+  "dashboard.metric.epicProgress": "Avancement d'un epic",
+  "dashboard.metric.epicProgress.hint": "ou en est un epic",
   "dashboard.metric.openBlights": "Fleaux ouverts",
   "dashboard.metric.openBlights.hint": "un projet, ou une liste d'apps",
   "dashboard.metric.untriagedFeedback": "Retours non traites",
@@ -2220,6 +2222,12 @@ export default {
   "dashboard.filterValue.yesterday": "Hier",
 
   "dashboard.footer.questSplit": "$1 acceptees, $2 nouvelles",
+  "dashboard.footer.epic.done": "$1 sur $2 terminees, hors abandonnees",
+  "dashboard.footer.epic.specified": "$1 specifiees, aucune publiee",
+  "dashboard.footer.epic.concluded": "conclu le $1",
+  "dashboard.footer.epic.concludedUndated": "conclu",
+  "dashboard.footer.epic.nothing": "rien a compter pour l'instant",
+  "dashboard.footer.epic.hidden": "les epics sont desactives ici",
   "dashboard.footer.held": "sur $1 quetes ouvertes",
   "dashboard.footer.held.one": "sur 1 quete ouverte",
   "dashboard.footer.held.none": "rien en pause",

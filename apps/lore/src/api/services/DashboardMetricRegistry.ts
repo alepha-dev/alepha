@@ -21,6 +21,7 @@ import {
   DashboardScopeService,
   type ResolvedDashboardScope,
 } from "./DashboardScopeService.ts";
+import { EpicProgressMetric } from "./EpicProgressMetric.ts";
 import { HeldQuestsMetric } from "./HeldQuestsMetric.ts";
 import { OpenBlightsMetric } from "./OpenBlightsMetric.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
@@ -70,6 +71,7 @@ export class DashboardMetricRegistry {
 
   protected readonly activeQuests = $inject(ActiveQuestsMetric);
   protected readonly heldQuests = $inject(HeldQuestsMetric);
+  protected readonly epicProgress = $inject(EpicProgressMetric);
   protected readonly openBlights = $inject(OpenBlightsMetric);
   protected readonly untriagedFeedback = $inject(UntriagedFeedbackMetric);
   protected readonly uniqueVisitors = $inject(UniqueVisitorsMetric);
@@ -85,6 +87,7 @@ export class DashboardMetricRegistry {
     const all: DashboardMetricResolver[] = [
       this.activeQuests,
       this.heldQuests,
+      this.epicProgress,
       this.openBlights,
       this.untriagedFeedback,
       this.uniqueVisitors,
