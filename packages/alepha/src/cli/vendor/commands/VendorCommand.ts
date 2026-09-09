@@ -5,6 +5,7 @@ import { ConsoleColorProvider } from "alepha/logger";
 
 import { vendorOptions } from "../atoms/vendorOptions.ts";
 import type {
+  VendorBuildResult,
   VendorDiffResult,
   VendorPackageDiff,
   VendorSyncResult,
@@ -99,17 +100,43 @@ export class VendorCommand {
         return;
       }
 
+      let buildResult: VendorBuildResult = {
+        built: [],
+        skipped: [],
+        errors: [],
+      };
+
       if (result.synced.length > 0) {
         const pmName = await this.pm.getPackageManager(root);
         await run(`${pmName} install`, { root });
+
+        // ⚠️ **After the install, and it has to be.** The vendored packages
+        // are workspaces of this project, so the install is what puts their
+        // devDependencies - `tsdown` among them - on disk. Building before
+        // it has no toolchain to build with.
+        //
+        // Without this step the vendored copy serves raw TypeScript to
+        // anything that loads it outside Vite, and `.tsx` cannot be loaded by
+        // Node at all: any published package importing `alepha/react` is
+        // unbootable in a project that vendors the framework (#Q2150). See
+        // `VendorService.build`.
+        await run({
+          name: "Building vendored packages",
+          handler: async () => {
+            buildResult = await this.vendorService.build({
+              root,
+              dir: opts.dir,
+              packages: result.synced,
+              packageManager: pmName,
+            });
+          },
+        });
       }
 
       run.end();
 
-      if (result.errors.length > 0) {
-        for (const error of result.errors) {
-          process.stdout.write(`${c.set("RED", "  error")} ${error}\n`);
-        }
+      for (const error of [...result.errors, ...buildResult.errors]) {
+        process.stdout.write(`${c.set("RED", "  error")} ${error}\n`);
       }
 
       if (result.synced.length > 0) {
