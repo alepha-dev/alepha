@@ -131,19 +131,30 @@ jobs:
   # The unit and integration suite - `yarn v`'s longest single step, and the
   # other half of the old `verify` job.
   #
-  # Sharded four ways. `alepha test` appends `VITEST_ARGS` last on the vitest
+  # Sharded six ways. `alepha test` appends `VITEST_ARGS` last on the vitest
   # command line, so this needs no code change on the CLI side - the flag
-  # reaches vitest as `vitest run --shard=i/4`.
+  # reaches vitest as `vitest run --shard=i/6`.
   #
-  # Four rather than six because the other jobs floor out around 6min (each
-  # e2e job pays a 149s `yarn build`), so a fifth and sixth shard would buy
-  # ~1min of a critical path that something else already owns. Raise it only
-  # after that floor moves.
+  # ⚠️ **Six is the ceiling, and it is not a round number - it is where this
+  # job stops being the critical path.** Measured on run #1691, which ran
+  # this at four: the shards came in at 5.7 / 6.5 / 6.2 / 6.2min against
+  # 20.3min unsharded, which splits into ~89s of fixed setup per shard and
+  # ~1192s of shardable work. So six lands at ~4.8min and eight at ~4.0min -
+  # and `e2e-apps` sits at 6.2min, unsharded, with a floor it cannot leave
+  # while every e2e job rebuilds the world. Past six the extra shards finish
+  # early and wait.
+  #
+  # Raising it again is therefore the wrong lever twice over: it buys no wall
+  # clock, and it costs 89s of setup per added shard plus one more draw from
+  # a flake distribution this repository knows is environmental. The lever
+  # that IS left is the 149s `yarn build` in the three e2e jobs, none of
+  # which needs every workspace built.
   #
   # ⚠️ Vitest shards by sha1 of the spec's path, sorted, sliced into equal
   # COUNTS - not by duration, and not per project. With 868 spec files that
-  # balances statistically; it would not for a handful of files, and vitest
-  # refuses outright when the shard count exceeds the file count.
+  # balances well (the four shards above spread 0.8min); it would not for a
+  # handful of files, and vitest refuses outright when the shard count
+  # exceeds the file count.
   #
   # Coverage is NOT measured here. It lives in `coverage.yml`, nightly, and
   # that file carries the reasoning: Lore keeps one quality row per branch per
@@ -161,7 +172,7 @@ jobs:
       # strictly less than the single job this replaced told you.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     services:
       redis:
         image: redis
@@ -201,7 +212,7 @@ jobs:
       - name: Test Project
         run: yarn alepha test
         env:
-          VITEST_ARGS: --shard=${{ matrix.shard }}/4
+          VITEST_ARGS: --shard=${{ matrix.shard }}/6
 
       # Here rather than in `checks`, because two of the six bun specs are
       # `BunPostgresProvider` and `BunRedisProvider`: they want the service
@@ -302,7 +313,7 @@ jobs:
       # siblings' results.
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -322,10 +333,23 @@ jobs:
       - name: Setup Playwright
         uses: ./.github/actions/playwright
 
-      # Sharded four ways, which `apps/lore` is already safe for: it is
+      # Sharded six ways, which `apps/lore` is already safe for: it is
       # `fullyParallel` with one Lore instance per worker and no shared
       # `webServer`, so a shard shares nothing with its siblings and they are
       # on separate runners anyway.
+      #
+      # ⚠️ This job is floor-bound, not work-bound, so it scales far worse
+      # than `test` does and the ceiling argument there applies harder here.
+      # At four (run #1691) the shards were 7.4 / 5.7 / 6.1 / 7.2min against
+      # 14.8min unsharded: only 2x, because ~218s of each shard is checkout,
+      # setup, `yarn copy`, `yarn build` and the browser install before one
+      # test runs. Six takes it to ~6.3min and eight would take it to ~5.5,
+      # which is under `e2e-apps` and therefore worth nothing.
+      #
+      # ⚠️ Playwright shards by test COUNT, and lore's tests vary a lot in
+      # duration - hence the 5.7 to 7.4 spread above from an even split of
+      # 174 tests. Smaller shards make that imbalance relatively worse, so
+      # the projection above is the optimistic end.
       #
       # ⚠️ `apps/lore/playwright.config.ts` sets `globalTimeout: 900_000`, and
       # that number was sized against this suite running alongside four others
@@ -335,7 +359,7 @@ jobs:
       # before tightening it.
       - name: Run E2E Tests
         timeout-minutes: 20
-        run: yarn w lore e2e --shard=${{ matrix.shard }}/4
+        run: yarn w lore e2e --shard=${{ matrix.shard }}/6
 
   # Its own job for the reason it was already its own step: `e2e-cli` packs
   # the workspace with `yarn pack` and installs the tarball into a throwaway
