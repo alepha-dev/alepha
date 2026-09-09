@@ -12,7 +12,8 @@ permissions:
 # `claude/**` branch and watches CI. When the deploys lived in the same
 # workflow they still ran as jobs and were skipped by an `if:` - correct, but
 # four grey nodes on every branch run, and one edit away from not being
-# skipped. Downstream they are simply absent unless Verify passed on main.
+# skipped. Downstream, with the branch filter below, no run is created at all
+# unless Verify ran on main.
 #
 # ⚠️ **Three things about `workflow_run` that are not obvious, and two of them
 # have already cost this repository a silent missed deploy:**
@@ -45,6 +46,21 @@ on:
     workflows: ["Verify"]
     types:
       - completed
+    # ⚠️ This filter reads the head branch of the TRIGGERING run, not
+    # `github.ref` (which point 2 above says is always the default branch). It
+    # is the only place `workflow_run` will tell you the real branch before a
+    # run exists, and that is the point: without it every `claude/**` push
+    # created a Deploy latest run that skipped all four jobs in four seconds,
+    # filed under `main` because of point 2, and left a grey line in the run
+    # list next to the Verify it belonged to. Those runs decided nothing.
+    # With it, no run is created at all.
+    #
+    # The `head_branch == 'main'` checks on the jobs below stay. They are not
+    # redundant: the filter keeps the history clean, the job conditions keep
+    # the deploy correct, and only one of them survives someone adding a
+    # second trigger to this block.
+    branches:
+      - main
 
 concurrency:
   # ⚠️ Keyed on the HEAD BRANCH, never on `github.ref` - see point 2 above.
