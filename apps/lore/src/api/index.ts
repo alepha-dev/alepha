@@ -4,6 +4,7 @@ import {
   AlephaApiAnalyticsRollup,
 } from "alepha/api/analytics";
 import { AlephaApiInvitations } from "alepha/api/invitations";
+import { AlephaApiJobsQueue } from "alepha/api/jobs";
 import { AlephaApiRanks } from "alepha/api/ranks";
 import { AlephaServerRateLimit } from "alepha/server/rate-limit";
 import { AlephaWebSocket } from "alepha/websocket";
@@ -155,6 +156,29 @@ export const LoreApi = $module({
     AlephaApiAnalyticsRollup,
     AlephaApiAnalyticsAdmin,
     AlephaApiInvitations,
+    // ⚠️ **Without this every `$job` runs inside `executionCtx.waitUntil`,
+    // which Cloudflare cuts off about 30 seconds after the response.** That
+    // is not a slow path, it is a hard ceiling, and `lore.deploy.run` is the
+    // job that lives past it: a `docs` deploy on 2026-09-09 logged
+    // `Uploaded 405 assets` at exactly 30s, the isolate was cancelled
+    // mid-upload, and because the run's own timer died with it the row read
+    // `running` until the sweep, while `lore apps deploy` polled it for the
+    // full ten minutes and CI reported nothing but a long step.
+    //
+    // A queue consumer gets 15 minutes of wall clock instead, which is the
+    // only surface Cloudflare offers that a deploy of somebody else's site
+    // fits inside. It also gives retries a real delay, since the transport
+    // can hold a delayed message rather than waiting for the outbox sweep.
+    //
+    // ⚠️ CPU is a SEPARATE budget and the queue does not raise it. That is
+    // `limits.cpu_ms` in `alepha.config.ts`, and it stays.
+    //
+    // On Node (the self-hosted image, `alepha dev`, tests) this resolves to
+    // `MemoryQueueProvider`, so dispatch takes an in-process hop instead of
+    // running in front of the caller. Durability is unchanged either way:
+    // the outbox row is the guarantee and the reconciliation sweep is the
+    // backstop.
+    AlephaApiJobsQueue,
     // The rank module. Registering it IS what substitutes the grants
     // provider `$owns({ requires })` asks, so it has to come before the
     // controllers whose gates use one - which is what `imports:` guarantees.
