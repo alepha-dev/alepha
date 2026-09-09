@@ -38,8 +38,18 @@ describe("dashboard drill-through links", () => {
 
   /**
    * Every param any catalogue link can ask for, so `path()` can build one.
+   *
+   * ⚠️ `epicNumber` is the epic's PER-PROJECT number, not its row id, and it
+   * reaches `link()` through `DashboardCardTarget` because the stored scope
+   * carries the id and `/epics/:epicNumber` takes the other one.
    */
-  const params = { projectSlug: "sds", appName: "docs" };
+  const params = {
+    projectSlug: "sds",
+    appName: "docs",
+    epicNumber: "46",
+    releaseTag: "0.28.0",
+    tag: "need-answer",
+  };
 
   it("resolves every metric's link to a real path", ({ expect }) => {
     // A guard that silently checks nothing is worse than no guard.
@@ -48,7 +58,13 @@ describe("dashboard drill-through links", () => {
     for (const metric of catalog.all()) {
       const link = metric.link(
         { kind: "all" },
-        { projectSlug: params.projectSlug, appName: params.appName },
+        {
+          projectSlug: params.projectSlug,
+          appName: params.appName,
+          epicNumber: Number(params.epicNumber),
+          releaseTag: params.releaseTag,
+          tag: params.tag,
+        },
       );
       expect(link, `metric '${metric.key}' produced no link`).toBeDefined();
       expect(
@@ -83,6 +99,66 @@ describe("dashboard drill-through links", () => {
     );
   });
 
+  it("addresses an epic by its number and never by its row id", ({
+    expect,
+  }) => {
+    // The trap #Q2140 exists for: the scope stores `epicId`, the route takes
+    // `epicNumber`, and both are integers. A card that shipped the id would
+    // land on a real page showing somebody else's epic, silently.
+    const link = catalog
+      .get("epicProgress")
+      .link(
+        { kind: "epic", epicId: 981 },
+        { projectSlug: "sds", epicNumber: 46 },
+      );
+
+    expect(link).toEqual({
+      route: "projectEpic",
+      params: { projectSlug: "sds", epicNumber: "46" },
+    });
+    expect(router.path(link!.route, { params: link!.params })).toBe(
+      "/sds/epics/46",
+    );
+  });
+
+  it("addresses a release by its tag, never by its row id", ({ expect }) => {
+    const link = catalog
+      .get("releaseProgress")
+      .link(
+        { kind: "release", releaseId: 12 },
+        { projectSlug: "sds", releaseTag: "0.28.0" },
+      );
+
+    expect(link).toEqual({
+      route: "projectRelease",
+      params: { projectSlug: "sds", releaseTag: "0.28.0" },
+    });
+    expect(router.path(link!.route, { params: link!.params })).toBe(
+      "/sds/releases/0.28.0",
+    );
+  });
+
+  it("opens the tag card on the OPEN half of its own tag", ({ expect }) => {
+    const link = catalog
+      .get("tagCompletion")
+      .link(
+        { kind: "projects", projectIds: [1] },
+        { projectSlug: "sds", tag: "need-answer" },
+      );
+
+    // ⚠️ Deliberately disagrees with the count, like the active-quests tile:
+    // the number is a completion ratio, so the useful thing to open is what
+    // is LEFT rather than what is finished.
+    expect(link).toEqual({
+      route: "projectQuests",
+      params: { projectSlug: "sds" },
+      query: { tag: "need-answer", status: "new,accepted" },
+    });
+    expect(router.path(link!.route, { params, query: link!.query })).toBe(
+      "/sds/quests?tag=need-answer&status=new%2Caccepted",
+    );
+  });
+
   it("gives no link at all when the target does not exist", ({ expect }) => {
     // Better no link than a 404. The visitors tile needs an app name, and a
     // project with no beacon-carrying app cannot supply one.
@@ -93,6 +169,20 @@ describe("dashboard drill-through links", () => {
     ).toBeUndefined();
     expect(
       catalog.get("activeQuests").link({ kind: "all" }, {}),
+    ).toBeUndefined();
+    // An epic card with no number resolved is the same rule: better no link
+    // than one built with `undefined` in the path.
+    expect(
+      catalog
+        .get("epicProgress")
+        .link({ kind: "epic", epicId: 1 }, { projectSlug: "sds" }),
+    ).toBeUndefined();
+    // `releases.tag` is optional at the column, so this is a real state and
+    // not a defensive branch: better no link than `/releases/undefined`.
+    expect(
+      catalog
+        .get("releaseProgress")
+        .link({ kind: "release", releaseId: 1 }, { projectSlug: "sds" }),
     ).toBeUndefined();
   });
 });

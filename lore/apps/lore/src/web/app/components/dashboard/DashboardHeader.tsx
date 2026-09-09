@@ -2,7 +2,7 @@ import { Button } from "@alepha/ui/components/ui/button";
 import { DateTimeProvider } from "alepha/datetime";
 import { ClientOnly, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Plus, RotateCcw } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import type { I18n } from "../../services/I18n.ts";
 import HeaderActions from "../shared/header/HeaderActions.tsx";
@@ -14,7 +14,6 @@ export interface DashboardHeaderProps {
    * Absent until the first resolve returns.
    */
   refreshedAt?: string;
-  onReset: () => void;
   onAdd: () => void;
 }
 
@@ -36,12 +35,12 @@ export interface DashboardHeaderProps {
  * The top row is app-level and nothing else: the account / theme / language
  * cluster every other surface pins at `top-3`, here flush right so it lands
  * on the same line. The second row is the dashboard's own — the greeting on
- * the left, and the two board actions that only mean anything on this page
- * on the right.
+ * the left, and Add card on the right.
  *
- * All five used to share one baseline, which put the account chrome level
- * with the reader's name and made "Reset layout" read as ambient app chrome
- * rather than something that rewrites this board.
+ * ⚠️ **There is no Reset**, here or on a project board (#Q2145). A board of
+ * at most ten tiles has no layout worth an undo, Reset restored a default set
+ * that anybody who curated past it wanted least, and removing a card at a
+ * time is both the way back and the way anybody got there.
  */
 const DashboardHeader = (props: DashboardHeaderProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -95,15 +94,6 @@ const DashboardHeader = (props: DashboardHeaderProps) => {
         {/* Inert in the stacked direction, so it is not drawn there. */}
         <span className="hidden flex-1 sm:block" />
         <div className="flex shrink-0 items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={props.onReset}
-            data-testid="dashboard-reset"
-            className="h-8 rounded-[9px] px-2.5 text-[12.5px]"
-          >
-            <RotateCcw className="size-3.5" />
-            {tr("dashboard.reset")}
-          </Button>
           <Button
             onClick={props.onAdd}
             data-testid="dashboard-add"
