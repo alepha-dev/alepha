@@ -585,26 +585,12 @@ export default {
   "project.settings.nav.members": "Membres",
   "project.settings.nav.group.capabilities": "Capacités",
   "project.settings.nav.areas": "Domaines",
+  "project.settings.data.export.failed": "L'export a échoué",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
     "Téléchargez toutes les quêtes de ce projet en CSV.",
   "project.settings.data.export.button": "Exporter les quêtes",
-  "project.settings.data.import.title": "Importer des quêtes",
-  "project.settings.data.import.subtitle":
-    "Importez un CSV exporté depuis Lore ou Trello. Les quêtes existantes avec le même shortId sont mises à jour ; les autres sont créées.",
-  "project.settings.data.import.choose": "Importer des quêtes",
-  "project.settings.data.import.preview.title": "Aperçu de l'import",
-  "project.settings.data.import.preview.body":
-    "$1 ligne(s) détectée(s) dans $2. Les quêtes existantes avec un shortId correspondant seront mises à jour ; les autres seront créées.",
-  "project.settings.data.import.preview.confirm": "Importer",
-  "project.settings.data.import.preview.cancel": "Annuler",
-  "project.settings.data.import.preview.empty":
-    "Aucune ligne de données détectée. Le fichier ne contient qu'un en-tête.",
-  "project.settings.data.import.result":
-    "$1 quêtes importées ($2 mises à jour, $3 ignorées)",
-  "project.settings.data.import.details": "Voir les détails",
-  "project.settings.data.import.error.title": "L'import a échoué",
   // ── Capacités ───────────────────────────────────────────────────────────
   // Voir la note dans en.ts : `.short` est le nom court du rail, `.label`
   // reste la phrase de l'assistant de création et des titres de section.
