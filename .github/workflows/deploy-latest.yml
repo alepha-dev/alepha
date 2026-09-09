@@ -1,0 +1,363 @@
+name: Deploy latest
+
+permissions:
+  contents: read
+
+# ---------------------------------------------------------------------------
+# The deploy half, split out of `ci.yml` on 2026-09-09. `verify.yml` is the
+# other half and this file is downstream of it: nothing here decides whether
+# the code is good, only where it goes.
+#
+# **Why a second file at all.** An agent works in a worktree, pushes a
+# `claude/**` branch and watches CI. When the deploys lived in the same
+# workflow they still ran as jobs and were skipped by an `if:` - correct, but
+# four grey nodes on every branch run, and one edit away from not being
+# skipped. Downstream they are simply absent unless Verify passed on main.
+#
+# ⚠️ **Three things about `workflow_run` that are not obvious, and two of them
+# have already cost this repository a silent missed deploy:**
+#
+#  1. It fires on FAILURE as well as success. Every job below checks
+#     `conclusion == 'success'` itself; there is no workflow-level gate.
+#  2. `github.ref` is the DEFAULT BRANCH, not the branch that ran. Never gate
+#     on it and never check out from it - use `workflow_run.head_branch` and
+#     `workflow_run.head_sha`, which is what every job below does.
+#  3. The file that runs is always the DEFAULT BRANCH's copy of this one. That
+#     is a feature: deploy logic cannot be edited from a branch, so a branch
+#     cannot teach itself to deploy.
+#
+# ⚠️ **One property of the old single file could not survive the split.**
+# `deploy-lore-production` deliberately did NOT list `docker` in its `needs`,
+# so a docker flake could never block a Cloudflare Worker deploy that touches
+# nothing the image contains. A `workflow_run` gate is atomic - Verify passed
+# or it did not - so `docker` and `bay` now gate every deploy here. The cost
+# is a delayed deploy that the next push recovers; the fix, if it ever bites,
+# is to move those two jobs into a workflow of their own rather than to weaken
+# the condition below.
+#
+# Per-deploy gating went the same way: docs, ui and shop used to need only
+# `[checks, test]` and could ship while e2e was still running. They now wait
+# for all of Verify, which costs them a minute or two and is arguably more
+# honest.
+# ---------------------------------------------------------------------------
+on:
+  workflow_run:
+    workflows: ["Verify"]
+    types:
+      - completed
+
+concurrency:
+  # ⚠️ Keyed on the HEAD BRANCH, never on `github.ref` - see point 2 above.
+  # `github.ref` is the default branch for every `workflow_run`, so a group
+  # built from it would put every branch's deploy in one bucket and cancel
+  # them against each other.
+  group: deploy-latest-${{ github.event.workflow_run.head_branch }}
+  # Deliberately NOT cancel-in-progress. A deploy that is halfway through
+  # `platform up` has already run migrations; cancelling it leaves the
+  # database ahead of the Worker. A superseded deploy is wasteful, an
+  # interrupted one is a broken production.
+  cancel-in-progress: false
+
+# Where every `lore` command in this workflow reports, named once so no step
+# can forget. A step that means to push somewhere else passes `--project`, and
+# exactly one does.
+#
+# It used to come from `lore({ project: "alepha" })` in `alepha.config.ts`,
+# which meant it came from whichever directory a step happened to run in.
+# `apps/lore`'s config named no project, so its artifact push died on
+# `No Lore project named`, `continue-on-error` swallowed it, and the 0.28.0
+# release shipped green without Lore's own artifact. A workflow-level default
+# is the shape that cannot do that again.
+#
+# Not a secret: a project slug is in every URL Lore serves. `LORE_API_KEY` is
+# the secret, and it stays on the individual steps that need it.
+env:
+  LORE_PROJECT: alepha
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Cloudflare Workers deploy of the docs at `alepha.dev`.
+  #
+  # This replaced a job that published the same `dist/public` to GitHub Pages.
+  # Pages is gone as a target because it cannot host the one thing the site
+  # needs: a same-origin `POST /api/sigil/ingest`, which is where the visitor's
+  # IP becomes a salted hash and where the sigil credential stays instead of
+  # shipping to every reader.
+  #
+  # The cutover was a Worker *Route* (`alepha.dev/*`), not a Custom Domain, so
+  # the apex DNS records were never touched - see the `platform()` block in
+  # `apps/docs/alepha.config.ts` for why, and for how to roll back.
+  #
+  # ⚠️ **The apex is a Custom Domain now, where it was a Worker Route.** The
+  # route existed so the four GitHub Pages A records and their AAAA
+  # counterparts could stay in place during the move off Pages; a Lore deploy
+  # only ever attaches a Custom Domain, so those eight records were deleted and
+  # Cloudflare owns the apex record. `apps/docs/alepha.config.ts` says the same
+  # thing by NOT setting a `zone`.
+  #
+  # ⚠️ Three steps rather than the ui job's one, and the split is why this job
+  # cannot use the bare `lore apps deploy`. That command with no `--tag` builds
+  # before it pushes, and its build would run BEFORE `gen:llms` - so
+  # `llms.txt`, `llms-full.txt` and the raw markdown would never reach the bytes
+  # that ship. Build, fill `dist/public`, push THAT, then deploy the stored tag.
+  # ---------------------------------------------------------------------------
+  deploy-docs-production:
+    # Doesn't require e2e - only that the codebase is lint/typecheck-clean and
+    # the tests pass. Both halves of the old `verify` job, and only those.
+    # ⚠️ **This is the whole safety mechanism.** `workflow_run` fires for EVERY
+    # completed Verify run, branches and pull requests included, so without
+    # this condition a push to `claude/anything` would deploy to production.
+    #
+    #   conclusion  - `workflow_run` fires on failure too, not only on success
+    #   head_branch - the branch Verify actually ran on. This is the line that
+    #                 makes an agent's branch run verify and stop.
+    #
+    # ⚠️ NOT `github.ref`, which for a `workflow_run` is the DEFAULT BRANCH and
+    # would therefore be `main` for every branch on earth. Same trap as the
+    # concurrency group's, and it has already cost this repository one silent
+    # missed deploy.
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # This job's artifact is deployed, and `alepha.meta.version` reads
+          # the git tag on the built commit. The default checkout fetches
+          # shallow and passes --no-tags, so without this every deploy would
+          # report "latest". The other jobs deploy nothing and need no tags.
+          # ⚠️ The commit Verify actually passed on. WITHOUT this line a
+          # `workflow_run` checkout takes the DEFAULT BRANCH's tip, which with
+          # several agents pushing to main is routinely a commit nothing has
+          # verified. It is the single most important line in this file.
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Prepare
+        run: yarn copy
+
+      - name: Build Documentation
+        working-directory: apps/docs
+        run: yarn alepha build -t cloudflare && yarn alepha gen:llms
+
+      - name: Push docs artifact to Lore
+        working-directory: apps/docs
+        run: yarn lore artifacts push
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+      # ⚠️ `--tag latest` deploys the STORED build and never makes one. Without
+      # it this rebuilds, which is exactly what the split above exists to
+      # prevent. `latest` is the tag the push wrote, and the one tag whose bytes
+      # may be replaced in place.
+      - name: Deploy
+        working-directory: apps/docs
+        run: yarn lore apps deploy --env production --tag latest
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+  # ---------------------------------------------------------------------------
+  # The component showcase at `ui.alepha.dev`, deployed THROUGH Lore.
+  #
+  # ⚠️ **No Cloudflare credentials, and that is the point of the migration.**
+  # The account is an estate lent to the `alepha` project, and the copy's own
+  # row says which one - so a runner that is compromised holds a Lore key
+  # scoped to this project rather than a token that can reach every Worker on
+  # the account. `LORE_API_KEY` is the only secret this job has.
+  #
+  # ⚠️ `SIGIL_KEY` is gone from here too. It lives in the copy's Lore
+  # environment now, uploaded with the script rather than pushed after it, so
+  # there is no window in which the new build runs against the old secret set.
+  #
+  # One step, unlike the docs job above: `lore apps deploy` with no `--tag`
+  # builds, pushes and deploys in that order, and nothing writes into this
+  # app's output after its build.
+  #
+  # The Worker is `alepha-ui-production` - Lore composes `<project>-<app>-<env>`
+  # where `alepha platform` composed `<app>-<env>`. `ui.alepha.dev` is a Custom
+  # Domain that Lore attaches on every deploy.
+  #
+  # ⚠️ This used to be gated on `checks` and `test` only, so the showcase - no
+  # database, no auth, no migrations - could ship while an unrelated e2e suite
+  # was still running. A `workflow_run` gate cannot express that: it waits for
+  # all of Verify. The paragraph is kept because the reasoning is still the
+  # reason someone might want it back.
+  # ---------------------------------------------------------------------------
+  deploy-ui-production:
+    # See the docs job above for the guard's reasoning.
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # This job's artifact is deployed, and `alepha.meta.version` reads the
+          # git tag on the built commit. The default checkout fetches shallow
+          # and passes --no-tags, so without this every deploy would report
+          # "latest".
+          # ⚠️ The commit Verify actually passed on. WITHOUT this line a
+          # `workflow_run` checkout takes the DEFAULT BRANCH's tip, which with
+          # several agents pushing to main is routinely a commit nothing has
+          # verified. It is the single most important line in this file.
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Prepare
+        run: yarn copy
+
+      # Run inside the app, because `lore apps deploy` reads the name from the
+      # `package.json` of the directory it runs in - which is also how it finds
+      # the copy to place the build on. The project comes from the
+      # workflow-level `LORE_PROJECT` at the top of this file.
+      - name: Deploy
+        working-directory: apps/ui
+        run: yarn lore apps deploy --env production
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+  # ---------------------------------------------------------------------------
+  # shop: the artifact only, and the job name says where this is going.
+  #
+  # `apps/examples/shop` declares `shop.alepha.dev` in its `platform()` block
+  # and nothing deploys it. This job builds the bundle that deploy would upload
+  # and stores it in Lore, so the foundation for deploying THROUGH Lore exists
+  # before anything depends on it. When shop really deploys, the deploy step
+  # goes in here beside the push, and the job is already named for it.
+  #
+  # ⚠️ The build is `-t cloudflare`, and that is the whole point of the job.
+  # `yarn build` in `e2e` produces a `node` bundle; shop runs on Workers, so a
+  # node artifact of it is a build nobody can deploy. The manifest records
+  # `runtime: workerd`, which is where Lore reads it from - there is no
+  # `--runtime` flag anywhere and nothing parses a filename.
+  #
+  # No Cloudflare credentials: this builds and never talks to the API. The
+  # bindings the build emits come from env vars (`DATABASE_URL` and friends),
+  # not from a lookup, so an unset one costs a binding in the generated
+  # `wrangler.jsonc` rather than a failure.
+  #
+  # ⚠️ Was gated on `checks` and `test` only, like docs and ui; it now waits
+  # for all of Verify, for the reason given on the ui job above. Nothing gates
+  # on this job in turn - a failed push blocks no deploy, which is the
+  # property that lets it be non-swallowing.
+  #
+  # Tagged `latest` - the CLI's default, so no `--tag`. It replaces in place
+  # and IS the retention policy: one row and one stored object, no sweep job.
+  # `release.yml` is where version tags are pushed. No `--app` or `--project`
+  # either: the name is the slugified `package.json` name of the working
+  # directory, and the project is the workflow-level `LORE_PROJECT` above.
+  # ---------------------------------------------------------------------------
+  deploy-shop-production:
+    # See the docs job above for the guard's reasoning.
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # `alepha.meta.version` reads the git tag on the built commit, and
+          # the default checkout passes --no-tags, so without this the artifact
+          # would report "latest" as its version.
+          # ⚠️ The commit Verify actually passed on. WITHOUT this line a
+          # `workflow_run` checkout takes the DEFAULT BRANCH's tip, which with
+          # several agents pushing to main is routinely a commit nothing has
+          # verified. It is the single most important line in this file.
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Prepare
+        run: yarn copy
+
+      - name: Build
+        working-directory: apps/examples/shop
+        run: yarn alepha build -t cloudflare
+
+      - name: Push shop artifact to Lore
+        working-directory: apps/examples/shop
+        run: yarn lore artifacts push
+        env:
+          LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
+
+  # ⚠️ The one job that gates on everything, e2e included, and the list has to
+  # be spelled out: `needs` takes job ids, and the three e2e jobs replaced one.
+  # A job left off this list is not an error, it is a deploy that stops waiting
+  # for it - silently.
+  deploy-lore-production:
+    # As the three jobs above, plus one more clause. Lore has never deployed on
+    # a Release - its old guard was `event_name == 'push' && ref == main`, so
+    # the `workflow_run` half that let docs, ui and shop ship on a Release
+    # deliberately excluded it. `workflow_run.event` is what Verify itself was
+    # triggered by, so `== 'push'` preserves exactly that.
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: lore-production
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # The key is the whole enrolment: it authorises the reporting and names
+      # the project, so nothing has to be kept in sync with it. SIGIL_CONFIG is
+      # optional switches, and SIGIL_SINK is unset because Lore reports to the
+      # default sink, which is itself. Absent, the module goes inert rather
+      # than failing, so a missing one here costs telemetry and nothing else.
+      SIGIL_KEY: ${{ secrets.SIGIL_KEY }}
+      SIGIL_CONFIG: ${{ secrets.SIGIL_CONFIG }}
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Same as the docs deploy: without the tags `alepha.meta.version`
+          # reports "latest".
+          # ⚠️ The commit Verify actually passed on. WITHOUT this line a
+          # `workflow_run` checkout takes the DEFAULT BRANCH's tip, which with
+          # several agents pushing to main is routinely a commit nothing has
+          # verified. It is the single most important line in this file.
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-tags: true
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Deploy
+        working-directory: apps/lore
+        run: yarn alepha platform up --env production
+        env:
+          GITHUB_CLIENT_ID: ${{ secrets.APP_GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.APP_GITHUB_CLIENT_SECRET }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+
+          TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+          # No SIGIL_SINK here on purpose. Lore IS the sink, and a Cloudflare
+          # Worker cannot fetch its own hostname, so pointing Lore at an origin
+          # would make every flush a failed subrequest. It still reports: the
+          # key above enrols it, and `LoreSigilSinkProvider` routes its own
+          # batches in process instead of over HTTP.
