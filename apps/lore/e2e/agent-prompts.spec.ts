@@ -302,7 +302,16 @@ test.describe("agent prompts", () => {
         timeout: 15_000,
       });
 
-      await page.getByRole("button", { name: /agent prompts/i }).click();
+      // ⚠️ Scoped to the DETAIL pane. There are two robot buttons on this
+      // page since #Q2153: this one, on the open report, and the inbox
+      // toolbar's, which offers the loop over the whole queue. A page-wide
+      // locator resolved to both and failed on strict mode - which is the
+      // right failure, because "the Agent Prompts button" stopped naming one
+      // thing the moment the second surface got one.
+      await page
+        .getByTestId("feedback-detail")
+        .getByRole("button", { name: /agent prompts/i })
+        .click();
       await page.getByRole("menuitem", { name: /work on it/i }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
