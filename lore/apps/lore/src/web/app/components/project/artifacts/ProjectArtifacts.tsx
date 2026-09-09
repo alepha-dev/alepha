@@ -40,7 +40,13 @@ interface ArtifactRow {
   app: string;
   tag: string;
   runtime: string;
-  size: number;
+  /**
+   * ⚠️ Optional. An image variant often has no size, and where it has one it
+   * is one architecture's compressed total. `paginate-local` already sorts a
+   * nullish value last whichever way the arrow points, so the Size column
+   * needs nothing extra to stay sortable.
+   */
+  size?: number;
   commitSha?: string | null;
   pushedAt?: string | null;
 }
@@ -155,8 +161,15 @@ const ProjectArtifacts = () => {
     return null;
   }
 
-  const size = (bytes: number) =>
-    `${l(bytes / 1_000_000, { number: { maximumFractionDigits: 1 } })} MB`;
+  // ⚠️ Absent is rendered, never computed around. An image variant may carry
+  // no size at all, and `${NaN} MB` is what a `Math.max` over a list holding
+  // one produces. A plain literal rather than a catalogue key, matching the
+  // `pushedAt` cell just below it: this is a placeholder for a missing value,
+  // not a sentence.
+  const size = (bytes: number | undefined) =>
+    bytes === undefined
+      ? "N/A"
+      : `${l(bytes / 1_000_000, { number: { maximumFractionDigits: 1 } })} MB`;
 
   return (
     <div

@@ -111,9 +111,13 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
           */}
           {props.artifacts.map((group) => {
             const [newest] = group.variants;
-            const heaviest = Math.max(
-              ...group.variants.map((variant) => variant.size),
-            );
+            // ⚠️ Only the variants that HAVE a size. A `Math.max` over a list
+            // holding one `undefined` is `NaN`, and an image variant often
+            // carries no size at all.
+            const sizes = group.variants
+              .map((variant) => variant.size)
+              .filter((it): it is number => it !== undefined);
+            const heaviest = sizes.length ? Math.max(...sizes) : undefined;
 
             return (
               <div
@@ -144,8 +148,15 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
                 >
                   {newest.sha256.slice(0, 12)}
                 </span>
-                <span className="w-[78px] shrink-0 text-right font-mono text-[11.5px] tabular-nums">
-                  {size(heaviest)}
+                <span
+                  className="w-[78px] shrink-0 text-right font-mono text-[11.5px] tabular-nums"
+                  title={
+                    heaviest === undefined
+                      ? undefined
+                      : tr("app.artifacts.size.hint")
+                  }
+                >
+                  {heaviest === undefined ? "N/A" : size(heaviest)}
                 </span>
                 <span className="text-muted-foreground w-30 shrink-0 truncate text-[11.5px]">
                   {String(l(group.pushedAt, { date: "fromNow" }))}

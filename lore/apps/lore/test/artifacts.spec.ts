@@ -210,8 +210,12 @@ describe("artifacts", () => {
       await push(projectId, owner, { file: await packedArtifact() });
 
       const [row] = await ctx.rows.artifacts.findMany({});
+      // A pushed archive always has bytes; the column is optional only
+      // because an IMAGE row has none, and this spec pushes a tarball.
+      expect(row.format).toBe("archive");
+      expect(row.fileId).toBeDefined();
       const stored = await ctx.artifactController.artifactBucket.get(
-        row.fileId,
+        row.fileId as string,
       );
       expect(stored.bucket).toBe(ArtifactService.BUCKET);
       expect(stored.size).toBe(row.size);

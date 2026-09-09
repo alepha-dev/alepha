@@ -218,6 +218,17 @@ export class EstateCommandController {
       if (!artifact) {
         throw new NotFoundError("Artifact not found");
       }
+      // ⚠️ A THIRD deploy entry point, reached by artifact id rather than by
+      // tag, so the format gate belongs here too: a `deploy` command names an
+      // artifact for a Bay machine to fetch, and an image row has no bytes to
+      // fetch. Refused by name here, where the caller is still holding the
+      // request, rather than as an opaque pull refusal on the machine.
+      const { fileId, size } = artifact;
+      if (artifact.format !== "archive" || !fileId || size === undefined) {
+        throw new BadRequestError(
+          `${artifact.app} ${artifact.tag} is a container image (${artifact.reference ?? "no reference recorded"}), not a packed build. Bay runs a Node process under systemd, not containers - deploy an artifact pushed with \`lore artifacts push\`.`,
+        );
+      }
       await this.ranks.assert(
         "project",
         String(artifact.projectId),
@@ -252,7 +263,7 @@ export class EstateCommandController {
             artifact: {
               id: artifact.id,
               sha256: artifact.sha256,
-              size: artifact.size,
+              size,
             },
           },
         },

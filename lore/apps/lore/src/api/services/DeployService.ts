@@ -79,7 +79,13 @@ export class DeployService {
 
     // Every variant of this tag, because the refusal has to tell "wrong
     // variant" from "no variant at all" - `artifacts` is unique on
-    // `(projectId, app, tag, runtime)`, so one tag names one row per runtime.
+    // `(projectId, app, tag, runtime, format)`, so one tag names one row per
+    // runtime AND format.
+    //
+    // ⚠️ **Every variant, then partitioned here - never `format: archive` in
+    // the WHERE.** Filtering in the query makes a tag whose only variant is an
+    // image answer "has no artifact tagged", which is a lie to somebody who
+    // just pushed one.
     const variants = await this.artifacts.findMany({
       where: {
         projectId: { eq: input.projectId },
@@ -87,14 +93,32 @@ export class DeployService {
         tag: { eq: input.tag },
       },
     });
+    const deployable = variants.filter((it) => it.format === "archive");
+    const images = variants.filter((it) => it.format === "image");
+
+    if (!deployable.length && images.length) {
+      // Named rather than swallowed into "no artifact tagged": the tag exists,
+      // and what it is is the whole answer.
+      this.gate.assertDeployable({
+        estate,
+        app: instance.app,
+        tag: input.tag,
+        images: images.map((it) => it.reference),
+      });
+    }
 
     // ⚠️ Pick the one this estate can RUN rather than the first row. A project
     // with a `node` and a `workerd` build of one tag is the multi-variant model
     // working, and taking whichever came back first would deploy the wrong one
     // half the time.
+    //
+    // ⚠️ And only from `deployable`. An image row carries a real `runtime`, so
+    // `acceptedRuntimes("bay")` being `["node"]` would happily select Lore's
+    // own `node` IMAGE for a Bay deploy, which then fails downstream with no
+    // useful message.
     const accepted = this.estateService.acceptedRuntimes(estate.type);
     const artifact =
-      variants.find((it) => accepted.includes(it.runtime)) ?? variants[0];
+      deployable.find((it) => accepted.includes(it.runtime)) ?? deployable[0];
 
     if (artifact) {
       // Last clause of the gate, and the only one that needed the artifact row.
@@ -103,7 +127,9 @@ export class DeployService {
         app: instance.app,
         tag: input.tag,
         runtime: artifact.runtime,
-        available: variants.map((it) => it.runtime),
+        // Archive runtimes only, so this never reads "It has: node, node" and
+        // never claims a `node` build for a tag whose only one is an image.
+        available: deployable.map((it) => it.runtime),
       });
     }
 
@@ -196,8 +222,19 @@ export class DeployService {
         );
       }
 
+      // ⚠️ `format: archive` here too, and not only at queue time. This looks
+      // the row up on `sha256` alone, and an image's `sha256` is its index
+      // digest - a different value from any tarball's - so a collision is not
+      // the risk. The risk is the shape: this row is about to be handed to
+      // `DeployRunner`, which fetches `artifact.fileId`, and an image has
+      // none. Constraining the lookup means the miss below fires with its own
+      // message rather than a null dereference two calls later.
       const artifact = await this.artifacts.findOne({
-        where: { projectId: { eq: row.projectId }, sha256: { eq: row.sha256 } },
+        where: {
+          projectId: { eq: row.projectId },
+          sha256: { eq: row.sha256 },
+          format: { eq: "archive" },
+        },
       });
       if (artifact) {
         // ⚠️ Again here, not only at queue time. A row can sit queued while its

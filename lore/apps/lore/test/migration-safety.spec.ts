@@ -140,6 +140,27 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // `20260907102140_bright_gorilla_man`, and no migration between the two
   // touches either.
   "20260805233951_striped_captain_flint": ["artifacts", "deployments"],
+  // ⚠️ The first entry here that sanctions a rebuild of a table holding LIVE
+  // production rows. The two above are historical drops of dead tables whose
+  // names were later reused; this one drops the `artifacts` everyone is using.
+  //
+  // Epic #E47 gave `artifacts` a `format` dimension. `format` and `reference`
+  // are plain `ALTER TABLE ADD`s and rebuild nothing - the rebuild is forced
+  // by relaxing `size` and `file_id` to nullable, because an image row records
+  // a registry reference and has no bytes, and SQLite has no `ALTER COLUMN`.
+  // Sentinels were considered and rejected: four surfaces read those columns
+  // and a value meaning "ignore me" is worse than an absent one.
+  //
+  // Safe because `artifacts` has no CASCADE children. Checked, not assumed, on
+  // 2026-09-09: `grep -rn "artifacts.cols" src/api/entities/` is empty, no
+  // migration in this directory contains ``REFERENCES `artifacts` ``, and
+  // `deployments.artifactId` is a soft uuid with no foreign key. The same
+  // finding is written into the migration itself, on the line above its DROP.
+  //
+  // ⚠️ It expires. The day any entity takes a `db.ref` onto
+  // `artifacts.cols.id`, this reasoning is void and the NEXT rebuild of this
+  // table has to be re-derived rather than waved through by citing this entry.
+  "20260909050116_public_wrecker": ["artifacts"],
 };
 
 /**

@@ -161,6 +161,12 @@ export class DeployGate {
     /**
      * The runtimes this app has actually built for this tag, so the refusal
      * can tell "wrong variant" from "no variant at all".
+     *
+     * ⚠️ **Archive runtimes only.** An image row carries a real `runtime`, so
+     * feeding every variant here makes a refusal read "It has: node, node" for
+     * a tag with a node tarball and a node image - and worse, would claim a
+     * `node` build exists for a tag whose only node artifact is an image
+     * nothing can deploy. See {@link assertDeployable}.
      */
     available: string[];
   }): void {
@@ -178,6 +184,43 @@ export class DeployGate {
 
     throw new BadRequestError(
       `${input.app}@${input.tag} has no \`${wanted}\` build. Run \`lore apps build --tag ${input.tag} --env <env>\`, then \`lore artifacts push\`.`,
+    );
+  }
+
+  /**
+   * Refuse a tag whose only variants are images, by name.
+   *
+   * ⚠️ **This exists so the deploy path can filter AFTER the query rather
+   * than inside it.** Reading only `format: archive` rows would make a tag
+   * whose sole variant is an image answer "has no artifact tagged '0.30.0'.
+   * Push one with `lore artifacts push`" - which is a lie told to somebody who
+   * pushed one thirty seconds ago, and sends them to push it again.
+   *
+   * So the caller reads every variant, partitions on `format`, and calls this
+   * when the archive list came back empty and the image list did not. It lives
+   * beside {@link assertRuntime} because that is where the other two named
+   * refusals live, and a refusal that names the actual state is the whole
+   * deliverable of all three.
+   *
+   * No estate type can run an image today: `acceptedRuntimes` is `bay` to
+   * `["node"]` and `cloudflare` to `["workerd"]`, and Bay runs Node under
+   * systemd rather than containers. The day one can, this is the method that
+   * learns about it.
+   */
+  public assertDeployable(input: {
+    estate: Estate;
+    app: string;
+    tag: string;
+    /**
+     * The references of the image variants under this tag, so the refusal can
+     * show what the tag DOES have. Never empty when this is called.
+     */
+    images: Array<string | undefined>;
+  }): never {
+    const named = input.images.filter((it): it is string => Boolean(it));
+    const shown = named.length ? ` (${named.join(", ")})` : "";
+    throw new BadRequestError(
+      `${input.app}@${input.tag} exists only as a container image${shown}, and Lore cannot deploy an image: estate '${input.estate.slug}' (${input.estate.type}) runs \`${this.estateService.acceptedRuntimes(input.estate.type).join("`, `")}\` from a packed build. Push one with \`lore artifacts push\`.`,
     );
   }
 }

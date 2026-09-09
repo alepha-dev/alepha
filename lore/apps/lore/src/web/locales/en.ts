@@ -355,6 +355,12 @@ export default {
   "artifacts.table.tag": "Tag",
   "artifacts.table.runtime": "Runtime",
   "artifacts.table.size": "Size",
+  // ⚠️ On the title attribute, because a number that means two different
+  // things in two rows of one column has to say which it is somewhere. An
+  // archive's size is the tarball, exactly; a container image's is one
+  // architecture's compressed total for a tag that may carry two.
+  "app.artifacts.size.hint":
+    "The heaviest build under this tag. A container image's size covers one architecture only.",
   "artifacts.table.pushed": "Pushed",
   "artifacts.table.commit": "Commit",
   "project.menu.folios": "Folios",
