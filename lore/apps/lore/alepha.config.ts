@@ -50,6 +50,21 @@ export default defineConfig({
          * point: an ordinary request uses milliseconds, so raising this costs
          * nothing on every other path and is the difference between a big
          * site deploying and failing.
+         *
+         * ## ⚠️ `AlephaApiJobsQueue` does NOT make this redundant
+         *
+         * Registering it (see `LoreApi`) moves every `$job` off the ~30s
+         * `executionCtx.waitUntil` budget and onto a queue consumer, and
+         * Cloudflare documents that consumer as 15 minutes of **wall time**.
+         * Wall time is the half that was killing the docs deploy; it is not
+         * this half. Cloudflare's CPU table has one configurable row, "CPU
+         * time per HTTP request", capped at the 300,000 ms below, and nothing
+         * grants a queue consumer more.
+         *
+         * So the queue and this line fix two different ceilings, and deleting
+         * this one because the queue landed would trade a 30-second wall-clock
+         * kill for a 30-second CPU kill on the same hashing loop, reported as
+         * Error 1102 rather than as a cancelled `waitUntil`.
          */
         limits: { cpu_ms: 300_000 },
       },
