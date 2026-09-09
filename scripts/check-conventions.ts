@@ -18,7 +18,7 @@
  * because that is the scope of the thing it protects.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 /**
  * One row of `yarn workspaces list --json`.
@@ -519,30 +519,45 @@ if (portViolations.length > 0) {
  * group must branch on `github.event_name`, so any expression that keeps the
  * two events apart passes and the one that does not, fails.
  */
-const CI_WORKFLOW = ".github/workflows/ci.yml";
-const ciSource = readFileSync(CI_WORKFLOW, "utf8");
 const concurrencyViolations: string[] = [];
 
-const groupLine = /^concurrency:\n(?:\s*#.*\n)*\s*group:\s*(.+)$/m.exec(
-  ciSource,
-);
+// Every workflow, not one named file. This was `.github/workflows/ci.yml`
+// until that file was split into `verify.yml` and `deploy-latest.yml` on
+// 2026-09-09, at which point the check did not report a violation - it
+// crashed on ENOENT, taking the whole `check:conventions` step with it. A
+// rule that names one file stops being a rule the moment the file is renamed.
+const workflowDir = ".github/workflows";
+for (const file of readdirSync(workflowDir).sort()) {
+  if (!file.endsWith(".yml") && !file.endsWith(".yaml")) continue;
+  const path = `${workflowDir}/${file}`;
+  const source = readFileSync(path, "utf8");
 
-if (!groupLine) {
-  concurrencyViolations.push(
-    `  ${CI_WORKFLOW}\n    → no top-level \`concurrency.group\` found`,
+  const cancels = /^\s*cancel-in-progress:\s*true\s*$/m.test(source);
+  const triggersOnWorkflowRun = /^\s{2}workflow_run:\s*$/m.test(source);
+  if (!cancels || !triggersOnWorkflowRun) continue;
+
+  const groupLine = /^concurrency:\n(?:\s*#.*\n)*\s*group:\s*(.+)$/m.exec(
+    source,
   );
-} else {
-  const group = groupLine[1];
-  const cancels = /^\s*cancel-in-progress:\s*true\s*$/m.test(ciSource);
-  const triggersOnWorkflowRun = /^\s{2}workflow_run:\s*$/m.test(ciSource);
-  if (
-    cancels &&
-    triggersOnWorkflowRun &&
-    !group.includes("github.event_name")
-  ) {
+  if (!groupLine) {
     concurrencyViolations.push(
-      `  ${CI_WORKFLOW}\n    → group ${group.trim()}\n` +
-        "      does not distinguish `workflow_run` from a push to main",
+      `  ${path}\n    → cancels in progress and triggers on \`workflow_run\`,` +
+        " but declares no top-level `concurrency.group`",
+    );
+    continue;
+  }
+
+  // The rule is about `github.ref` specifically, because that is the
+  // expression whose value is a surprise: on a `workflow_run` it resolves to
+  // the DEFAULT BRANCH. A group that never mentions it cannot have the bug -
+  // `deploy-latest.yml` keys on `workflow_run.head_branch` and is correct
+  // without mentioning `github.event_name` at all, which the older
+  // "must contain github.event_name" form would have called a violation.
+  const group = groupLine[1];
+  if (group.includes("github.ref") && !group.includes("github.event_name")) {
+    concurrencyViolations.push(
+      `  ${path}\n    → group ${group.trim()}\n` +
+        "      keys on `github.ref` without distinguishing `workflow_run`",
     );
   }
 }
