@@ -59,8 +59,38 @@ produce byte-identical output, and a test exists to keep that true.
 
 `lore artifacts push` packs `dist/` and stores it. It reads the runtime out of
 the build's own `dist/manifest.json` rather than from a flag, so an artifact is
-identified by `(project, app, tag, runtime)` - `1.2.3` built for Cloudflare and
-`1.2.3` built for a Bay machine are two stored builds rather than a collision.
+identified by `(project, app, tag, runtime, format)` - `1.2.3` built for
+Cloudflare and `1.2.3` built for a Bay machine are two stored builds rather than
+a collision.
+
+## Record a container image
+
+```bash
+docker buildx build --push -t ghcr.io/myorg/myapp:1.2.3 dist
+lore artifacts push-image --tag 1.2.3 --image ghcr.io/myorg/myapp:1.2.3
+```
+
+`push-image` stores a **reference**, never bytes. It is the `format` half of
+that key: the same `1.2.3` can be a stored tarball and a pullable image at once,
+which is what lets a release page answer "what do I run for 1.2.3" instead of
+only "what did CI keep".
+
+A sibling verb rather than a flag on `push`, because the two share no machinery:
+one packs a workspace, the other names a string. There is no `--runtime` and no
+`--arch`, for the same reason `push` has no `--runtime`. Lore reads the image's
+own claims: the runtime from the `dev.alepha.runtime` label every generated
+Dockerfile carries (see [Docker](/docs/guides-deployment-docker)), and the platform list
+from the OCI index. Neither is the pusher's to assert.
+
+Only `ghcr.io` today, and only a public repository: Lore holds no registry
+credentials. An image built before that label existed is refused by name rather
+than filed under a guessed runtime.
+
+⚠️ **An image cannot be deployed.** No estate type runs a container - a Bay
+machine runs a Node process under systemd, and Cloudflare runs a Worker - so
+`lore apps deploy` refuses a tag whose only variant is an image, and says so.
+Recording one answers a question for a self-hoster; it does not add a deploy
+target.
 
 ## Deploy
 

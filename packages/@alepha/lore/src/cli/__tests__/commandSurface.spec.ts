@@ -79,7 +79,7 @@ describe("the Lore CLI command surface", () => {
       ),
     ).toEqual({
       apps: ["build", "deploy", "destroy"],
-      artifacts: ["push"],
+      artifacts: ["push", "push-image"],
       attachments: ["push"],
       quality: ["push"],
       releases: ["publish"],
