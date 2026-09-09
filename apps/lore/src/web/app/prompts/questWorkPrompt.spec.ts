@@ -50,13 +50,46 @@ describe("questWorkPromptDefault", () => {
     expect(prompt).toContain("Never on main");
   });
 
-  it("walks the quest: accept, tick, verify, one commit, merge, complete", () => {
+  it("walks the quest: accept, tick, check, one commit, push, merge, complete", () => {
     expect(prompt).toContain("quest_accept");
     expect(prompt).toContain("quest_objective_set");
     expect(prompt).toContain("A skipped check is a failure, not a pass");
     expect(prompt).toContain("quest_commit_add");
-    expect(prompt).toContain("Merge the branch into main and push");
+    expect(prompt).toContain("merge the branch into main and push");
     expect(prompt).toContain("quest_complete");
+  });
+
+  /**
+   * The order is the point, not the steps. A local check is the inner loop
+   * and the CI run is the source of truth, so the branch is finished only
+   * once CI is green - not once the terminal is.
+   */
+  it("makes the CI run the gate, and finishing the branch conditional on it", () => {
+    expect(prompt).toContain("Push the branch");
+    expect(prompt).toContain("that run is the source of truth");
+    expect(prompt).toContain("a green local check is not");
+    expect(prompt).toContain("Only when it is green");
+    expect(prompt.indexOf("Push the branch")).toBeLessThan(
+      prompt.indexOf("merge the branch into main and push"),
+    );
+  });
+
+  /**
+   * Cleanup is part of the job. A branch and a worktree left behind are what
+   * fourteen stale worktrees look like.
+   */
+  it("requires the branch and the worktree to be cleaned up", () => {
+    expect(prompt).toContain("delete the branch locally and on the remote");
+    expect(prompt).toContain("remove the worktree");
+  });
+
+  /**
+   * ⚠️ This default is served to EVERY Lore project. Naming a command here
+   * would be wrong for every project that is not the one it was written in.
+   */
+  it("names no project-specific verification command", () => {
+    expect(prompt).not.toContain("yarn v");
+    expect(prompt).toContain("the project's local checks");
   });
 
   /**

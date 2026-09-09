@@ -43,16 +43,18 @@ The epic: {{url}}
 
 1. \`quest_accept\` it. Its objectives and its discussion are the contract.
 2. Do the work. Tick each objective with \`quest_objective_set\` as it is met, not at the end.
-3. Run the project's verification commands (its CLAUDE.md names them) and fix everything red before moving on. A skipped check is a failure, not a pass.
+3. Run the project's local checks (its CLAUDE.md names them) and fix everything red before moving on. A skipped check is a failure, not a pass.
 4. Commit, one commit for the quest, its message naming {{reference}} and the quest. Record the sha with \`quest_commit_add\`.
 5. \`quest_complete\` with a short note: what shipped, and anything the next quest needs to know.
 
 Do not start the next quest while the current one is red.
 
+Push the branch as you go rather than only at the end. If the project verifies on CI, that run is the source of truth and a green local check is not; pushing after each quest means a failure names the quest that caused it, instead of arriving at the end attached to the whole epic. You do not have to wait for it before starting the next quest.
+
 ## After the last quest
 
-1. Run the full verification pipeline once more on the whole branch.
-2. Merge the branch into main and push.
+1. Push, and wait for CI this time. Fix and push again until it is green.
+2. Only when it is green: merge the branch into main and push, then delete the branch locally and on the remote, and remove the worktree.
 3. Conclude the epic: \`epic_set_status\` "done".
 4. File an outcome folio under the epic (\`folio_create\` with \`epic_number\` {{number}}): what shipped, where it diverged from the plan and why, what was left.
 

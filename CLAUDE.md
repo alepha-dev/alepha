@@ -23,19 +23,35 @@ Example:
 LOG_FORMAT=pretty LOG_LEVEL=trace yarn w @alepha/devtools build
 ```
 
-## Development Commands
+## The workflow
 
-### Core Commands
+⚠️ **CI is the gate. A green terminal is not.** This is the shape of every
+change, and the steps are not optional garnish - each one exists because the
+alternative cost something.
 
-- `yarn v` or `yarn alepha verify` - Full verification pipeline: clean, copy, lint, check:docs, check:deps, check:conventions, typecheck, check:i18n, check:migrations, test, test:bun, build, e2e (+ e2e-cli), gen:llms, clean. **JavaScript/TypeScript only — it does NOT run the Go suite.** Reach for it when the change can affect the build, SSR, or anything an e2e suite covers — `--fast` skips all three. Must complete within 10 minutes; always run it with a 10-minute timeout. If it exceeds 10 minutes, treat that as a failure (a hung step, usually e2e) and investigate, do not just wait longer.
+1. **Work in a worktree, always.** One epic, one worktree, one branch. Never
+   edit the primary checkout: parallel sessions share it, and a `git add` there
+   sweeps up somebody else's work.
+2. **Commit as you go, and name the quest.** Small commits, staged by explicit
+   path (never `git add -A`). When the work belongs to a quest, put its
+   reference in the message so Lore can link the commit to it.
+3. **Push the branch to verify.** Every branch triggers the full graph, and
+   that graph is the source of truth. It takes about five minutes. Wait for it
+   or carry on with something else - it costs your machine nothing either way.
+4. **When it is green, finish the branch.** Merge to main, push, then delete
+   the branch locally and on the remote, and remove the worktree.
+
+### Verifying
+
+- `yarn v` or `yarn alepha verify` - the **inner loop**, not the gate: `yarn` install, lint, then (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test and test:bun. **~3 minutes**, of which `yarn test` is ~146s; the lint and the six audits together are under 30s. It catches a typo, a bad import, a broken unit test, a missing i18n key. **It cannot catch a build failure, an SSR regression, or anything an e2e covers** - that is what the push is for. It never runs `yarn clean`, so it will not delete the `dist` a following command needs.
   - **Needs Docker running** for the service checks (postgres, redis, s3mock).
-  - **Needs a Go toolchain** since epic #20: `apps/e2e-cli/src/bay.e2e.spec.ts` builds `apps/bay` natively (well under a second on a warm cache, about four seconds for the whole spec) and fails loudly without `go`, because a skipped Go test is how a green run lies. It is the one place `yarn v` runs Go; it does not replace `yarn v:go`.
-- `yarn v:go` - The Go lane: `apps/bay`'s suite in a container (gofmt, vet, build, tests, cross-compile), reproducing the `bay` CI job. **Run it when you touch `apps/bay`** — `yarn v` will not, and a green `yarn v` says nothing about Go.
+  - `--fast` is accepted and does nothing. There is one lane now.
+- **Pushing the branch** - the real gate. `checks`, `test` (x6), `e2e-apps`, `e2e-lore` (x6), `e2e-cli`, `docker` and `bay`, in parallel on GitHub's runners, ~5 minutes. Four epics verify at once without touching each other, which is the whole point: this used to be four concurrent local pipelines on one machine, about thirty minutes of contended wall clock.
+  - ⚠️ **The full local pipeline is deleted, not hidden behind a flag.** Measured over 30 days before the change: 1,325 full runs across 243 sessions, 84 machine-hours a month, and **82% of them were re-runs inside a single session** because the lane opened and closed with `yarn clean` and so was cold by construction. A flag would have been reached for; the lane is gone.
+- `yarn v:go` - The Go lane: `apps/bay`'s suite in a container (gofmt, vet, build, tests, cross-compile), reproducing the `bay` CI job. **Run it when you touch `apps/bay`** - `yarn v` will not, and a green `yarn v` says nothing about Go. The `bay` CI job also runs on every push, so the branch push covers it too; this is for the tighter loop.
   - Separate rather than gated on a `git diff` because a heuristic that misfires skips silently. This one cannot be silently wrong.
   - Not `yarn w bay test`: the native pass is GREEN while skipping every test of `Systemd.render()`, whose files are `//go:build linux` and never compile on macOS.
-  - The `bay` CI job runs unconditionally on every PR and push, so nothing reaches main unchecked either way.
-- `yarn v --fast` - Inner-loop sanity check: lint + (typecheck, check:deps, check:conventions, check:docs, check:i18n, check:migrations) in parallel, then test + test:bun. Skips clean/copy/build/e2e and, like `yarn v`, all Go. Use for tight iteration **and as the gate before a commit**; reach for the full `yarn v` only when the change touches build/e2e territory.
-- `yarn clean` or `yarn alepha clean` - Remove generated files and the **per-package** `node_modules` (`packages/*/node_modules`); the root `node_modules` and every `apps/*/node_modules` are left alone.
+- `yarn clean` or `yarn alepha clean` - Remove generated files and the **per-package** `node_modules` (`packages/*/node_modules`); the root `node_modules` and every `apps/*/node_modules` are left alone. No longer run by `yarn v`, so reach for it deliberately.
 - `yarn build` - Build all workspace packages using `tsdown`
 - `yarn test` - Run all tests using Vitest
 - `yarn lint` - Lint with oxlint (`--fix`), then format with oxfmt
@@ -90,7 +106,7 @@ Alepha uses a hybrid monorepo structure:
 
 ### Lore (`apps/lore`)
 
-The only public Alepha application — a project management app at `lore.alepha.dev`. Lore lives in this monorepo specifically to **dogfood the framework**: framework improvements and bug fixes that surface while building Lore are part of the same commit/PR, not a downstream issue. When working on `apps/lore`, treat `packages/alepha` and `packages/@alepha/ui` as fair game — edit them in place, run `yarn v --fast` from the root, ship both sides in one commit.
+The only public Alepha application — a project management app at `lore.alepha.dev`. Lore lives in this monorepo specifically to **dogfood the framework**: framework improvements and bug fixes that surface while building Lore are part of the same commit/PR, not a downstream issue. When working on `apps/lore`, treat `packages/alepha` and `packages/@alepha/ui` as fair game — edit them in place, run `yarn v` from the root, ship both sides in one commit.
 
 CI auto-deploys Lore to Cloudflare on every push to `main` via the `deploy-lore-production` job in `.github/workflows/ci.yml`. There is no human gate. Lore migrations (`apps/lore/migrations/sqlite/`) target Cloudflare D1, which has a known cascade-on-DROP-TABLE quirk — see `apps/lore/CLAUDE.md` ("Migration safety on D1") before pushing anything that touches `migrations/sqlite/`.
 
@@ -321,27 +337,27 @@ describe("MyComponent", () => {
 
 ## Mandatory Requirements After Code Changes
 
-**⚠️ REQUIRED - Must Run After Every Code Modification:**
-
-After updating ANY code in this repository, you MUST execute:
+**⚠️ REQUIRED - two steps, and the second one is the one that counts:**
 
 ```bash
-yarn lint       # Linting - auto-fixes formatting and import order
-yarn typecheck  # Type checking - catches TypeScript errors
-yarn test       # Unit and integration tests - ensures functionality
+yarn v
 ```
 
-These commands are **MANDATORY** and non-negotiable. Do not skip them under any circumstances.
+Then **push the branch** and read the CI run. `yarn v` is the inner loop and is
+allowed to be wrong about the whole; the CI graph is what says the change is
+sound. Neither is optional, and a green `yarn v` is not a result you may report
+as "verified".
 
-- If `yarn typecheck` fails, fix all type errors before proceeding
-- If `yarn test` fails, fix all test failures
-- If `yarn lint` fails, fix all lint issues
+- If `yarn v` fails, fix it before pushing - do not spend a CI run on something
+  a local lint would have caught.
+- If CI fails, fix it and push again. The previous run cancels itself
+  (`cancel-in-progress` on the per-branch concurrency group), so a re-push costs
+  nothing.
+- If you touched `apps/bay`, `yarn v:go` gives the same answer sooner than CI's
+  `bay` job will.
 
-For package-specific work, use:
-
-```bash
-yarn w @package-name typecheck && yarn w @package-name test
-```
+For a tighter loop inside one package, `yarn w @package-name typecheck` and
+`yarn w @package-name test` are both cheaper than the full `yarn v`.
 
 ## Code Conventions
 

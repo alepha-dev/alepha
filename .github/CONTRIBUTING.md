@@ -18,22 +18,25 @@ cd alepha
 # install dependencies
 yarn install
 
-# run the full verification pipeline
+# run the local checks
 yarn v
 ```
 
-`yarn v` runs: clean → copy → lint → check:docs → check:deps → check:conventions →
-typecheck → check:i18n → check:migrations → test → test:bun → build → e2e →
-clean. If it passes, you're good. It needs
+`yarn v` runs: install → lint → (typecheck, check:deps, check:conventions,
+check:docs, check:i18n, check:migrations) in parallel → test → test:bun. About
+three minutes, most of it the unit suite. It needs
 [Docker](https://www.docker.com/) running, for the Postgres, Redis and S3
-containers the integration tests use, and it should finish inside 10 minutes.
+containers the integration tests use.
 
-Two narrower entry points, for when the full run is more than you need:
+**It is the inner loop, not the gate.** It does not build, and it runs no e2e.
+What proves a change is **pushing the branch**: every branch triggers the full
+CI graph (`checks`, `test` x6, `e2e-apps`, `e2e-lore` x6, `e2e-cli`, `docker`,
+`bay`), which runs in parallel on GitHub's runners in about five minutes. Push
+early, keep working, read the result when it lands.
 
-|                 |                                                                                                                                                                                                                                      |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `yarn v --fast` | lint, then typecheck / test / test:bun / the five audits (deps, conventions, docs, i18n, migrations) in parallel. Skips the build and e2e. The one to use while iterating                                                            |
-| `yarn v:go`     | the Go suite for `apps/bay`, in a container. **`yarn v` does not run it**, and the tests for the systemd half are `//go:build linux`, so a native `go test` on macOS compiles them and runs none. Run this if you touched `apps/bay` |
+|             |                                                                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `yarn v:go` | the Go suite for `apps/bay`, in a container. **`yarn v` does not run it**, and the tests for the systemd half are `//go:build linux`, so a native `go test` on macOS compiles them and runs none. Run this if you touched `apps/bay` |
 
 ## Making Changes
 
