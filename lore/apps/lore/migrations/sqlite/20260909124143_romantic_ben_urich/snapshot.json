@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "8b6c54fe-aca9-4419-bd25-bb50b9e8c651",
-  "prevIds": ["67bb7949-26ee-4e81-a5a5-ef48ef817451"],
+  "id": "bf94b5b0-e915-46ff-804a-a4ddacaef643",
+  "prevIds": ["0cc29ff4-f4d4-42e3-8ecd-e8fdc49eecbf"],
   "ddl": [
     {
       "name": "alepha_sequences",
@@ -6323,6 +6323,16 @@
       "table": "releases"
     },
     {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "default_since",
+      "entityType": "columns",
+      "table": "releases"
+    },
+    {
       "type": "text",
       "notNull": false,
       "autoincrement": false,
@@ -10643,6 +10653,24 @@
       "where": null,
       "origin": "manual",
       "name": "releases_project_id_updated_at_idx",
+      "entityType": "indexes",
+      "table": "releases"
+    },
+    {
+      "columns": [
+        {
+          "value": "project_id",
+          "isExpression": false
+        },
+        {
+          "value": "default_since",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "releases_project_id_default_since_idx",
       "entityType": "indexes",
       "table": "releases"
     },
