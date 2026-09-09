@@ -4,6 +4,7 @@ import { $repository } from "alepha/orm";
 import type { Epic } from "../entities/epics.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
+import { BoundParameters } from "./BoundParameters.ts";
 import { ReleaseAttachmentService } from "./ReleaseAttachmentService.ts";
 
 /**
@@ -55,12 +56,28 @@ import { ReleaseAttachmentService } from "./ReleaseAttachmentService.ts";
  * previous, "in a different release" would be true of a follower too, and
  * every epic that changed release would strand its own quests.
  *
- * **3. The published guard is honoured per quest, and refusals are
- * reported.** Each quest goes through `ReleaseAttachmentService.resolve`, the
- * same call `updateQuestById` makes, so no path here can be the one that gets
- * a published release wrong. D1 has no transaction here, so partial
- * application is the only outcome available; what is not available is
- * reporting it as a clean success.
+ * **3. The published guard is honoured through the same service, and
+ * refusals are reported.** The followers go through
+ * `ReleaseAttachmentService.resolve`, the same call `updateQuestById` makes,
+ * so no path here can be the one that gets a published release wrong. D1 has
+ * no transaction here, so partial application is the only outcome available;
+ * what is not available is reporting it as a clean success.
+ *
+ * ⚠️ **Once per distinct current release, not once per quest.** `resolve`
+ * takes only `(projectId, current, next)`, and across a follower set `next`
+ * is one value and `current` is at most two - `null`, or the epic's previous
+ * release. So a per-quest call asked the same question up to twenty-one
+ * times: at twenty quests the update cost 42 `select from releases` against
+ * 20 `update quests`, 56% of the whole request spent re-reading two rows
+ * (#Q2146, measured on the node:sqlite driver, where statements equal D1
+ * round trips one for one).
+ *
+ * This paragraph used to argue the opposite - that re-reading per quest was
+ * what bought the guarantee, and an epic's quest set was small enough for the
+ * saving to be imaginary. The guarantee is that the rule is stated in ONE
+ * place, and grouping keeps that: `resolve` is still the only thing that
+ * decides, and it is still the same call the single-quest path makes. What
+ * changed is how many times it is asked, not who answers.
  *
  * ⚠️ Where a refusal actually comes from is worth knowing, because the
  * obvious answer is wrong. `toQuests` cannot produce one: `updateEpic` has
@@ -82,6 +99,7 @@ import { ReleaseAttachmentService } from "./ReleaseAttachmentService.ts";
 export class ReleaseCascadeService {
   quests = $repository(quests);
   attachment = $inject(ReleaseAttachmentService);
+  bound = $inject(BoundParameters);
 
   /**
    * Write `next` onto every quest the epic holds that was following it.
@@ -127,6 +145,27 @@ export class ReleaseCascadeService {
     );
   }
 
+  /**
+   * The write, grouped so its cost does not grow with the epic.
+   *
+   * ⚠️ **Grouped by the follower's CURRENT release**, which is the only input
+   * to `resolve` that varies across a follower set - `next` is one value for
+   * all of them. `toQuests` admits two groups at most (a quest in no release,
+   * and one in the epic's previous release) and `toQuest` exactly one, so the
+   * release reads are bounded by the RULE rather than by the quest count.
+   *
+   * ⚠️ **A refusal marks its whole group.** One `resolve` now answers for
+   * several quests, and they are identical questions - same project, same
+   * `current`, same `next` - so an answer that refuses one refuses all of
+   * them, and reporting only the first would under-report the same event.
+   * The reachable refusal is `toQuest`'s single quest anyway; `toQuests`
+   * cannot produce one, for the reason decision 3 gives.
+   *
+   * ⚠️ **`inArray` goes through {@link BoundParameters}**, so this is one
+   * `UPDATE` per 90 followers rather than strictly one: D1 binds at most 100
+   * parameters and an unbounded list is a cliff, not an optimisation. Flat
+   * for every epic anyone has, and O(N/90) rather than O(N) beyond that.
+   */
   protected async apply(
     projectId: number,
     held: Quest[],
@@ -135,32 +174,44 @@ export class ReleaseCascadeService {
   ): Promise<ReleaseCascade> {
     const cascade: ReleaseCascade = { moved: 0, kept: 0, refused: [] };
 
+    const groups = new Map<number | null, Quest[]>();
     for (const quest of held) {
-      if ((quest.releaseId ?? null) === next) {
+      const current = quest.releaseId ?? null;
+      if (current === next) {
         continue;
       }
       if (!follows(quest)) {
         cascade.kept += 1;
         continue;
       }
+      const group = groups.get(current);
+      if (group) group.push(quest);
+      else groups.set(current, [quest]);
+    }
+
+    for (const [current, followers] of groups) {
       try {
-        // The same call `updateQuestById` makes, so this path cannot be the
-        // one that gets a published release wrong. It re-reads the release
-        // rows per quest, which is what buys the guarantee that the rule is
-        // stated once; an epic's quest set is small enough that caching it
-        // would trade a real invariant for an imaginary saving.
         const resolved = await this.attachment.resolve(
           projectId,
-          quest.releaseId,
+          current ?? undefined,
           next,
         );
-        await this.quests.updateById(quest.id, { releaseId: resolved });
-        cascade.moved += 1;
+        // `updateMany` returns the ids it wrote, so `moved` stays a count of
+        // rows that actually changed rather than of rows we asked about.
+        const moved = await this.bound.collect(
+          followers.map((quest) => quest.id),
+          (batch) =>
+            this.quests.updateMany(
+              { id: { inArray: batch } },
+              { releaseId: resolved },
+            ),
+        );
+        cascade.moved += moved.length;
       } catch (error) {
-        cascade.refused.push({
-          shortId: quest.shortId,
-          reason: error instanceof Error ? error.message : String(error),
-        });
+        const reason = error instanceof Error ? error.message : String(error);
+        for (const quest of followers) {
+          cascade.refused.push({ shortId: quest.shortId, reason });
+        }
       }
     }
 

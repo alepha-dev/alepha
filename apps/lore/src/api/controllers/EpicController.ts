@@ -56,7 +56,7 @@ import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
  * Deliberately does NOT inject `EpicVisibilityService`. The backlog gate
  * it owns (`applyBacklogGate` / `plannedEpicSqlPredicate`) governs the
  * PROJECT's listing surfaces (quest list, Kanban, Reports denominators) —
- * never an epic's own view of itself. See `computeProgress` below.
+ * never an epic's own view of itself. See `computeProgressOf` below.
  */
 export class EpicController {
   epics = $repository(epics);
@@ -166,7 +166,7 @@ export class EpicController {
       });
 
       // Two aggregates for the whole page rather than four counts per row.
-      // The list used to fan `computeProgress` out over every epic, which is
+      // The list used to fan a per-epic rollup out over every epic, which is
       // where `GET /api/getEpics/1` got its 89 D1 round trips.
       const progress = await this.computeProgressOf(
         allEpics.map((epic) => epic.id),
@@ -293,7 +293,8 @@ export class EpicController {
         status: "planned",
         ...(dependsOn !== null ? { dependsOn } : {}),
       });
-      await this.syncEpicLinks(epic);
+      // A brand-new id has no links to clear, so the delete is skipped.
+      await this.syncEpicLinks(epic, { created: true });
       await this.logEpic("create", epic, user);
 
       return await this.buildEpicResource(epic);
@@ -692,10 +693,14 @@ export class EpicController {
    * reason: the discriminator and the id shape are decided in one place
    * rather than at each call site.
    */
-  protected async syncEpicLinks(epic: Epic): Promise<void> {
+  protected async syncEpicLinks(
+    epic: Epic,
+    opts: { created?: boolean } = {},
+  ): Promise<void> {
     await this.linkService.syncLinks(
       { kind: "epic", id: epic.id, projectId: epic.projectId },
       epic.description ?? "",
+      opts,
     );
   }
 
@@ -718,9 +723,17 @@ export class EpicController {
         ? await this.epics.findOne({ where: { id: { eq: epic.dependsOn } } })
         : undefined;
 
+    // ⚠️ `computeProgressOf`, not `computeProgress`: one grouped aggregate
+    // rather than four counts. The batched sibling was written for `getEpics`
+    // after the 89-round-trip incident and this path simply never switched,
+    // so every create, update and status hop paid four statements for a
+    // rollup that costs one (#Q2146). `zeroProgress()` covers the epic with
+    // no quests, for which `aggregate()` returns no row at all.
+    const progress = await this.computeProgressOf([epic.id]);
+
     return this.toEpicResource(
       epic,
-      await this.computeProgress(epic),
+      progress.get(epic.id) ?? this.zeroProgress(),
       predecessor,
     );
   }
@@ -762,40 +775,21 @@ export class EpicController {
   }
 
   /**
-   * The four buckets are disjoint by construction, so the list row can
-   * derive the untouched remainder as
-   * `total - completed - inProgress - shelved` without a fifth count:
-   * `shelvedAt` is only ever set on a quest still in `new` status (see
-   * `quests.shelvedAt`), so it never coexists with `acceptedAt` or
-   * `completedAt`, and `inProgress` explicitly excludes both of the
-   * others.
-   */
-  protected async computeProgress(epic: Epic): Promise<EpicProgress> {
-    const [total, completed, inProgress, shelved] = await Promise.all([
-      this.quests.count({ epicId: { eq: epic.id } }),
-      this.quests.count({
-        epicId: { eq: epic.id },
-        completedAt: { isNotNull: true },
-      }),
-      this.quests.count({
-        epicId: { eq: epic.id },
-        acceptedAt: { isNotNull: true },
-        completedAt: { isNull: true },
-      }),
-      this.quests.count({
-        epicId: { eq: epic.id },
-        shelvedAt: { isNotNull: true },
-      }),
-    ]);
-
-    return { completed, inProgress, shelved, total };
-  }
-
-  /**
-   * `computeProgress` for a whole page of epics, in ONE query whatever the
-   * page holds — the batched sibling, not a replacement. The single-epic
-   * callers (`getEpicByNumber`, the create/update/status hops) keep
-   * `computeProgress`, where four counts is already the right shape.
+   * The rollup for any set of epics, in ONE query whatever the set holds.
+   *
+   * ⚠️ **The only way to compute it.** There used to be a four-count sibling
+   * for the single-epic path, on the reasoning that four counts is the right
+   * shape for one epic; it was written before this one and simply never
+   * retired. Four statements is not the right shape for anything when one
+   * answers the same question, and having two spellings is how `epic_list`
+   * and `epic_get` come to disagree about a rollup. Deleted with #Q2146.
+   *
+   * The four buckets are disjoint by construction, so a caller can derive
+   * the untouched remainder as `total - completed - inProgress - shelved`
+   * without a fifth count: `shelvedAt` is only ever set on a quest still in
+   * `new` status (see `quests.shelvedAt`), so it never coexists with
+   * `acceptedAt` or `completedAt`, and `inProgress` explicitly excludes both
+   * of the others.
    *
    * Three of the four buckets are a plain `count` on a nullable column,
    * which compiles to `COUNT(col)` and so skips NULLs: counting

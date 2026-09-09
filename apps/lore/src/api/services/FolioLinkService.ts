@@ -235,8 +235,24 @@ export class FolioLinkService {
    * Callers should run this inside a transactional boundary (the lore
    * `FolioController` already wraps create/update with `$transactional()`)
    * so a partial sync never leaks orphan rows.
+   *
+   * ⚠️ **Pass `created` on a create path.** The source id is brand new there,
+   * so the DELETE below cannot match a row - it is one wasted statement on
+   * every quest, epic and folio ever made, and on D1 a statement is a round
+   * trip. It showed worst where creates are batched: a 31-row CSV import
+   * spent 31 of its 226 statements on deletes that matched nothing (#Q2146).
+   *
+   * ⚠️ It is a CREATE flag, not a "there is nothing to insert" flag. The
+   * update path needs the delete unconditionally, because previous links may
+   * exist and the new body may carry none - that is exactly the edit that has
+   * to remove them. Getting this wrong leaves a link the reader can still see
+   * pointing at something the body no longer mentions.
    */
-  public async syncLinks(source: LinkSource, content: string): Promise<void> {
+  public async syncLinks(
+    source: LinkSource,
+    content: string,
+    opts: { created?: boolean } = {},
+  ): Promise<void> {
     const fromId = String(source.id);
     const tokens = this.parseTokens(content);
     const targets = await this.resolveTokenIds(
@@ -245,10 +261,12 @@ export class FolioLinkService {
       source.kind === "folio" ? fromId : "",
     );
 
-    await this.links.deleteMany({
-      fromType: { eq: source.kind },
-      fromId: { eq: fromId },
-    });
+    if (!opts.created) {
+      await this.links.deleteMany({
+        fromType: { eq: source.kind },
+        fromId: { eq: fromId },
+      });
+    }
 
     if (targets.length === 0) return;
 

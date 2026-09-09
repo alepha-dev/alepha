@@ -843,7 +843,8 @@ export class QuestController {
         createdBy: user.id,
       });
 
-      await this.syncQuestLinks(quest);
+      // A brand-new id has no links to clear, so the delete is skipped.
+      await this.syncQuestLinks(quest, { created: true });
       await this.logQuest("create", quest, user);
 
       return this.mapQuestToResource(quest);
@@ -873,12 +874,16 @@ export class QuestController {
    * enforces that — a new write path that forgets simply leaves the graph
    * stale.
    */
-  protected async syncQuestLinks(quest: Quest): Promise<void> {
+  protected async syncQuestLinks(
+    quest: Quest,
+    opts: { created?: boolean } = {},
+  ): Promise<void> {
     await this.linkService.syncLinks(
       { kind: "quest", id: quest.id, projectId: quest.projectId },
       [quest.description, quest.note, quest.completionMessage]
         .filter(Boolean)
         .join("\n\n"),
+      opts,
     );
   }
 
