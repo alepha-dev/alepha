@@ -1,3 +1,4 @@
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Button } from "@alepha/ui/components/ui/button";
 import {
   DropdownMenu,
@@ -8,8 +9,7 @@ import {
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { cn } from "@alepha/ui/lib/utils";
-import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject } from "alepha/react";
+import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   ChevronRight,
@@ -150,7 +150,6 @@ const actionIcon = (action: FolioRevision["action"]) => {
  */
 const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
-  const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
   const folioApi = useClient<FolioController>();
   const canWrite = folioApi.update.can();
@@ -292,7 +291,7 @@ const FolioHistoryTab = (props: FolioHistoryTabProps): ReactElement => {
                   </span>
                   <span className="text-muted-foreground folio-mono flex items-center gap-1 text-[11px] leading-tight">
                     <Clock className="size-3 shrink-0" />
-                    {dt.of(revision.at).fromNow()}
+                    <TimeAgo value={revision.at} />
                     {revision.pinned && (
                       <>
                         <span aria-hidden>·</span>

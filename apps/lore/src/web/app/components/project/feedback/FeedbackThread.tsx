@@ -1,8 +1,8 @@
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Button } from "@alepha/ui/components/ui/button";
 import { Textarea } from "@alepha/ui/components/ui/textarea";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
-import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject, useStore } from "alepha/react";
+import { useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Bot, MessageSquare, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -52,7 +52,6 @@ export interface FeedbackThreadProps {
 const FeedbackThread = (props: FeedbackThreadProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<FeedbackCommentController>();
-  const dt = useInject(DateTimeProvider);
   const dialog = useDialog();
   const [project] = useStore(currentProjectAtom);
   // Empty outside the project shell, which is exactly the reporter's own
@@ -146,7 +145,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                       {tr("feedback.thread.edited")}
                     </span>
                   )}
-                  {dt.of(comment.createdAt).fromNow()}
+                  <TimeAgo value={comment.createdAt} />
                 </span>
                 {(props.isOwner ||
                   comment.authorId === props.currentUserId) && (

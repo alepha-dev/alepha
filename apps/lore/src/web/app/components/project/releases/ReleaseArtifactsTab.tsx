@@ -1,3 +1,4 @@
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { useI18n } from "alepha/react/i18n";
 import { Cloud, Container, Link2, Server } from "lucide-react";
 
@@ -172,9 +173,10 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
                 >
                   {heaviest === undefined ? "N/A" : size(heaviest)}
                 </span>
-                <span className="text-muted-foreground w-30 shrink-0 truncate text-[11.5px]">
-                  {String(l(group.pushedAt, { date: "fromNow" }))}
-                </span>
+                <TimeAgo
+                  value={group.pushedAt}
+                  className="text-muted-foreground w-30 shrink-0 truncate text-[11.5px]"
+                />
                 {/*
                   ⚠️ Beside the tarballs, and the only affordance any variant
                   on this page has. An image has nothing to download - Lore

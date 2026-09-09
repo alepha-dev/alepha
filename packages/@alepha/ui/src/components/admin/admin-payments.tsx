@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
+
 void React;
 
 import { AdminPage } from "@alepha/ui/components/admin/admin-page";
@@ -23,7 +25,7 @@ const formatAmount = (cents: number, currency = "USD") => {
 
 export const AdminPayments = () => {
   const client = useClient<AdminPaymentController>();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
 
   const fetcher = useCallback(
     async (params: { page: number; size: number; sort?: string }) => {
@@ -43,9 +45,10 @@ export const AdminPayments = () => {
             label: tr("admin.payments.colWhen", { default: "When" }),
             sortable: true,
             cell: (p) => (
-              <span className="text-muted-foreground text-xs">
-                {String(l(p.createdAt, { date: "fromNow" }))}
-              </span>
+              <TimeAgo
+                value={p.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
           amount: {

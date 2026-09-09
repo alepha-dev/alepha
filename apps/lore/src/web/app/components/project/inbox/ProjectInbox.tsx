@@ -1,6 +1,7 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { inboxUnreadAtom } from "@alepha/ui/components/button-inbox/inbox-unread-atom.ts";
 import { Control } from "@alepha/ui/components/control/control";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Button } from "@alepha/ui/components/ui/button";
 import { z } from "alepha";
 import type { NotificationInboxController } from "alepha/api/notifications";
@@ -301,9 +302,10 @@ const ProjectInbox = () => {
             label: tr("inbox.table.when"),
             sortable: true,
             cell: (row) => (
-              <span className="text-muted-foreground text-xs">
-                {dateTime.of(row.createdAt).fromNow()}
-              </span>
+              <TimeAgo
+                value={row.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
         }}

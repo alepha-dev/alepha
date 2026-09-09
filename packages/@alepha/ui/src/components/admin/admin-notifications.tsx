@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
 import { notificationChannelLabel } from "./admin-notifications-channel-label.ts";
 // Relative, not through the `@alepha/ui/components/*` alias: that subpath
 // pattern maps to `.tsx`, so a plain `.ts` sibling only resolves this way.
@@ -53,7 +54,7 @@ export const AdminNotifications = () => {
   const userClient = useClient<AdminUserController>();
   const toast = useToast();
   const router = useRouter();
-  const { l, tr } = useI18n();
+  const { tr } = useI18n();
   const statusLabels = useNotificationStatusLabels();
   const [selected, setSelected] = useState<{ id: string; tab: string } | null>(
     null,
@@ -433,9 +434,10 @@ export const AdminNotifications = () => {
             label: tr("admin.notifications.colWhen", { default: "When" }),
             sortable: true,
             cell: (n) => (
-              <span className="text-muted-foreground text-xs">
-                {String(l(n.createdAt, { date: "fromNow" }))}
-              </span>
+              <TimeAgo
+                value={n.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
           contact: {

@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import TimeAgo from "../time-ago/time-ago.tsx";
+
 void React;
 
 import { Badge } from "@alepha/ui/components/ui/badge";
@@ -82,7 +84,7 @@ export const ParameterHistoryItem = (props: ParameterHistoryItemProps) => {
           </span>
           <span className="text-muted-foreground flex items-center gap-1 text-xs leading-tight">
             <Clock className="size-3" />
-            {String(l(v.activationDate, { date: "fromNow" }))}
+            <TimeAgo value={v.activationDate} />
           </span>
         </div>
         {/* Actions: intercept clicks so the menu never toggles the row. */}

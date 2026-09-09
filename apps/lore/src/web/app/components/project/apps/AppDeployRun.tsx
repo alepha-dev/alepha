@@ -1,3 +1,4 @@
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { Button } from "@alepha/ui/components/ui/button";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
@@ -48,7 +49,7 @@ export interface AppDeployRunProps {
  * fast path invites clicking precisely because it is cheap.
  */
 const AppDeployRun = (props: AppDeployRunProps) => {
-  const { tr, l } = useI18n<I18n, "en">();
+  const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
   const dialog = useDialog();
   const deployApi = useClient<DeployController>();
@@ -160,9 +161,10 @@ const AppDeployRun = (props: AppDeployRunProps) => {
         >
           {String(run.sha256 ?? "").slice(0, 12)}
         </span>
-        <span className="text-muted-foreground text-xs">
-          {String(l(String(run.createdAt), { date: "fromNow" }))}
-        </span>
+        <TimeAgo
+          value={String(run.createdAt)}
+          className="text-muted-foreground text-xs"
+        />
 
         <span className="ml-auto flex items-center gap-2">
           {log.length > 0 ? (

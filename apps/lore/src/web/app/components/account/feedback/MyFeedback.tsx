@@ -1,11 +1,11 @@
 import { AlephaTable } from "@alepha/ui/components/alepha-table/alepha-table";
 import { Control } from "@alepha/ui/components/control/control";
 import { SettingsHeading } from "@alepha/ui/components/settings/settings-heading";
+import TimeAgo from "@alepha/ui/components/time-ago/time-ago";
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { z } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
-import { useClient, useInject } from "alepha/react";
+import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { CircleDot, FolderKanban, Search, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -48,7 +48,6 @@ const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> =
  */
 const MyFeedback = () => {
   const feedbackApi = useClient<FeedbackController>();
-  const dateFormatter = useInject(DateTimeProvider);
   const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
 
@@ -235,9 +234,10 @@ const MyFeedback = () => {
             label: tr("myFeedback.column.created"),
             sortable: true,
             cell: (p: MyFeedbackResource) => (
-              <span className="text-muted-foreground text-xs">
-                {dateFormatter.of(p.createdAt).fromNow()}
-              </span>
+              <TimeAgo
+                value={p.createdAt}
+                className="text-muted-foreground text-xs"
+              />
             ),
           },
         }}
