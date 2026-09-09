@@ -49,6 +49,11 @@ export interface DashboardCatalogueProps {
    * `self` scope kind.
    */
   boardProjectId?: number;
+  /**
+   * The board project's own quest tags, for a metric whose filter is one.
+   * Absent on home.
+   */
+  projectTags?: string[];
   cards: DashboardCardResource[];
   projects: ProjectOverviewResource[];
   apps: DashboardScopeApp[];
@@ -295,10 +300,12 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
                 </div>
               )}
 
-              {dashboardFilterFields(picked.filters).length > 0 && (
+              {dashboardFilterFields(picked.filters, picked.filterSources)
+                .length > 0 && (
                 <DashboardFilterStep
                   metric={picked}
                   values={filters}
+                  projectTags={props.projectTags}
                   onChange={setFilters}
                 />
               )}

@@ -10,6 +10,7 @@ import { epicProgressFiltersSchema } from "../schemas/epicProgressFiltersSchema.
 import { heldQuestsFiltersSchema } from "../schemas/heldQuestsFiltersSchema.ts";
 import { openBlightsFiltersSchema } from "../schemas/openBlightsFiltersSchema.ts";
 import { releaseProgressFiltersSchema } from "../schemas/releaseProgressFiltersSchema.ts";
+import { tagCompletionFiltersSchema } from "../schemas/tagCompletionFiltersSchema.ts";
 import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSchema.ts";
 import { untriagedFeedbackFiltersSchema } from "../schemas/untriagedFeedbackFiltersSchema.ts";
 
@@ -84,6 +85,14 @@ export interface DashboardCardTarget {
    * id. Absent for a release with no tag, which the column permits.
    */
   releaseTag?: string;
+  /**
+   * The tag a `tagCompletion` card is narrowed to.
+   *
+   * ⚠️ On the TARGET rather than read off the scope, because it is a FILTER
+   * and `link()` only receives the scope and this. It is the one drill-through
+   * value that comes from `filters` instead of from a resolved row.
+   */
+  tag?: string;
 }
 
 /**
@@ -165,6 +174,18 @@ export interface DashboardMetricDescriptor {
    * This metric's own filter vocabulary.
    */
   filters: ZType;
+  /**
+   * Where a filter field's options come from, when the schema cannot say.
+   *
+   * ⚠️ Only for values that are ROWS rather than a build-time enum. A
+   * project's tags are the case: the schema types the field as text, and a
+   * free-text box would let somebody type a tag that does not exist and get a
+   * permanent zero. Naming the source here keeps the wizard generated - the
+   * step reads this and fills the options - rather than special-casing a
+   * metric key in a component, which is the property the panel's docblock
+   * asks for.
+   */
+  filterSources?: Record<string, "projectTags">;
   /**
    * The capability, and optionally the option, a target must have for this
    * metric to mean anything there. Every v1 metric has one; the field is
@@ -353,6 +374,37 @@ export class DashboardMetricCatalog {
                 projectSlug: target.projectSlug,
                 releaseTag: target.releaseTag,
               },
+            }
+          : undefined,
+    },
+    {
+      key: "tagCompletion",
+      boards: ["project"],
+      group: "quests",
+      labelKey: "dashboard.metric.tagCompletion",
+      hintKey: "dashboard.metric.tagCompletion.hint",
+      icon: "flame",
+      presentation: "progress",
+      /**
+       * The PROJECT, not the tag. A tag is not a thing a card points at; it
+       * is how the card narrows what it counts, which is what `filters` is.
+       */
+      scopeKinds: ["projects"],
+      filters: tagCompletionFiltersSchema,
+      filterSources: { tag: "projectTags" },
+      needs: { capability: "work" },
+      /**
+       * ⚠️ `?tag=` AND `?status=`, both of which the quests page's query
+       * schema already takes. The status is `new,accepted` - the OPEN half -
+       * because the card's number is a completion ratio and the useful thing
+       * to open is what is left, not what is finished.
+       */
+      link: (_scope, target) =>
+        target.projectSlug && target.tag
+          ? {
+              route: "projectQuests",
+              params: { projectSlug: target.projectSlug },
+              query: { tag: target.tag, status: "new,accepted" },
             }
           : undefined,
     },

@@ -124,6 +124,7 @@ import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestCsvParser } from "./services/QuestCsvParser.ts";
 import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
+import { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
@@ -132,6 +133,7 @@ import { RoadmapService } from "./services/RoadmapService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
+import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 import { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
@@ -305,7 +307,12 @@ export const LoreApi = $module({
     HeldQuestsMetric,
     EpicProgressMetric,
     ReleaseProgressMetric,
+    TagCompletionMetric,
     OpenBlightsMetric,
+    // The per-tag fold, shared by Reports > Quests and the tag card. No
+    // `GROUP BY` reaches inside a JSON array in a text column, so there is
+    // one in-memory tally and it lives here.
+    QuestTagTallyService,
     UntriagedFeedbackMetric,
     UniqueVisitorsMetric,
     DashboardMetricRegistry,

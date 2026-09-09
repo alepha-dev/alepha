@@ -48,6 +48,7 @@ describe("dashboard drill-through links", () => {
     appName: "docs",
     epicNumber: "46",
     releaseTag: "0.28.0",
+    tag: "need-answer",
   };
 
   it("resolves every metric's link to a real path", ({ expect }) => {
@@ -62,6 +63,7 @@ describe("dashboard drill-through links", () => {
           appName: params.appName,
           epicNumber: Number(params.epicNumber),
           releaseTag: params.releaseTag,
+          tag: params.tag,
         },
       );
       expect(link, `metric '${metric.key}' produced no link`).toBeDefined();
@@ -133,6 +135,27 @@ describe("dashboard drill-through links", () => {
     });
     expect(router.path(link!.route, { params: link!.params })).toBe(
       "/sds/releases/0.28.0",
+    );
+  });
+
+  it("opens the tag card on the OPEN half of its own tag", ({ expect }) => {
+    const link = catalog
+      .get("tagCompletion")
+      .link(
+        { kind: "projects", projectIds: [1] },
+        { projectSlug: "sds", tag: "need-answer" },
+      );
+
+    // ⚠️ Deliberately disagrees with the count, like the active-quests tile:
+    // the number is a completion ratio, so the useful thing to open is what
+    // is LEFT rather than what is finished.
+    expect(link).toEqual({
+      route: "projectQuests",
+      params: { projectSlug: "sds" },
+      query: { tag: "need-answer", status: "new,accepted" },
+    });
+    expect(router.path(link!.route, { params, query: link!.query })).toBe(
+      "/sds/quests?tag=need-answer&status=new%2Caccepted",
     );
   });
 

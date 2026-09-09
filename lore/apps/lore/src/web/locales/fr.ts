@@ -2199,6 +2199,9 @@ export default {
   "dashboard.metric.epicProgress.hint": "ou en est un epic",
   "dashboard.metric.releaseProgress": "Avancement d'une release",
   "dashboard.metric.releaseProgress.hint": "ou en est une release",
+  "dashboard.metric.tagCompletion": "Avancement par tag",
+  "dashboard.metric.tagCompletion.hint":
+    "un tag, terminees sur total ; une quete a deux tags compte dans les deux",
   "dashboard.metric.openBlights": "Fleaux ouverts",
   "dashboard.metric.openBlights.hint": "un projet, ou une liste d'apps",
   "dashboard.metric.untriagedFeedback": "Retours non traites",
@@ -2213,6 +2216,7 @@ export default {
   "dashboard.filter.untriaged": "non traites",
   "dashboard.filter.allStatuses": "tous les statuts",
   "dashboard.filter.yesterday": "hier",
+  "dashboard.filter.noTags": "Ce projet n'a pas encore de tag de quete.",
   "dashboard.filterField.statuses": "Statut",
   "dashboard.filterField.status": "Statut",
   "dashboard.filterField.period": "Periode",
@@ -2235,6 +2239,9 @@ export default {
   "dashboard.footer.release.publishedUndated": "publiee",
   "dashboard.footer.release.empty": "rien de rattache pour l'instant",
   "dashboard.footer.release.hidden": "les releases sont desactivees ici",
+  "dashboard.footer.tag.done":
+    "$1 sur $2 quetes taguees, comptees dans chacun de leurs tags",
+  "dashboard.footer.tag.none": "aucune quete ne porte ce tag",
   "dashboard.footer.held": "sur $1 quetes ouvertes",
   "dashboard.footer.held.one": "sur 1 quete ouverte",
   "dashboard.footer.held.none": "rien en pause",

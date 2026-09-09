@@ -26,6 +26,7 @@ import { HeldQuestsMetric } from "./HeldQuestsMetric.ts";
 import { OpenBlightsMetric } from "./OpenBlightsMetric.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 import { ReleaseProgressMetric } from "./ReleaseProgressMetric.ts";
+import { TagCompletionMetric } from "./TagCompletionMetric.ts";
 import { UniqueVisitorsMetric } from "./UniqueVisitorsMetric.ts";
 import { UntriagedFeedbackMetric } from "./UntriagedFeedbackMetric.ts";
 
@@ -74,6 +75,7 @@ export class DashboardMetricRegistry {
   protected readonly heldQuests = $inject(HeldQuestsMetric);
   protected readonly epicProgress = $inject(EpicProgressMetric);
   protected readonly releaseProgress = $inject(ReleaseProgressMetric);
+  protected readonly tagCompletion = $inject(TagCompletionMetric);
   protected readonly openBlights = $inject(OpenBlightsMetric);
   protected readonly untriagedFeedback = $inject(UntriagedFeedbackMetric);
   protected readonly uniqueVisitors = $inject(UniqueVisitorsMetric);
@@ -91,6 +93,7 @@ export class DashboardMetricRegistry {
       this.heldQuests,
       this.epicProgress,
       this.releaseProgress,
+      this.tagCompletion,
       this.openBlights,
       this.untriagedFeedback,
       this.uniqueVisitors,

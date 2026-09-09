@@ -24,6 +24,7 @@ import { DashboardMetricRegistry } from "@/api/services/DashboardMetricRegistry.
 import { DashboardScopeService } from "@/api/services/DashboardScopeService.ts";
 import { EpicProgressService } from "@/api/services/EpicProgressService.ts";
 import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
+import { QuestTagTallyService } from "@/api/services/QuestTagTallyService.ts";
 
 import {
   createTestEpic,
@@ -817,6 +818,159 @@ describe("dashboard resolve", () => {
       expect(value.ok).toBe(true);
       expect(value.value).toBeUndefined();
       expect(value.detail.hidden).toBe(true);
+    });
+  });
+
+  /**
+   * The tag card: Thibaut's first request, as one number per tag.
+   */
+  describe("tagCompletion", () => {
+    const resolveTag = async (
+      project: Project,
+      user: UserAccountToken,
+      tag: string,
+    ) => {
+      const values = await ctx.alepha
+        .inject(DashboardMetricRegistry)
+        .resolveForProject(
+          [
+            {
+              id: 1,
+              metric: "tagCompletion",
+              scope: { kind: "projects", projectIds: [project.id] },
+              filters: { tag },
+              size: 1,
+              position: 0,
+            },
+          ],
+          user,
+          project,
+        );
+      return values[0]!;
+    };
+
+    it("counts completed over total for one tag", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { tags: ["api"] });
+      await createTestQuest(ctx.alepha, project, { tags: ["ui"] });
+
+      const value = await resolveTag(project, user, "api");
+
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(50);
+      expect(value.detail.total).toBe(2);
+    });
+
+    it("counts a quest carrying two tags in both", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api", "ui"],
+        completedAt: new Date().toISOString(),
+      });
+
+      // ⚠️ The overlap the card's footer has to say out loud: these numbers
+      // do not partition the project, and one card on its own would hide it.
+      expect((await resolveTag(project, user, "api")).detail.total).toBe(1);
+      expect((await resolveTag(project, user, "ui")).detail.total).toBe(1);
+    });
+
+    it("keeps shelved quests out of the denominator", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        completedAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        shelvedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveTag(project, user, "api");
+
+      // Declined work leaves both the numerator and the denominator, the same
+      // `inScope` rule every Reports aggregate applies.
+      expect(value.detail.total).toBe(1);
+      expect(value.value).toBe(100);
+    });
+
+    it("keeps an open quest inside a planned epic out, and a completed one in", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const planned = await createTestEpic(ctx.alepha, project, {
+        status: "planned",
+      });
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        epicId: planned.id,
+      });
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        epicId: planned.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveTag(project, user, "api");
+
+      // ⚠️ The completed quest is EXEMPT from the backlog gate, exactly as
+      // `ProjectReportsController.questInScope` exempts it: nothing stops an
+      // owner flipping a done epic back to planned, and gating finished work
+      // would retroactively erase it.
+      expect(value.detail.total).toBe(1);
+      expect(value.detail.completed).toBe(1);
+    });
+
+    it("agrees with the fold Reports uses", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["api"],
+        completedAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, { tags: ["api"] });
+
+      const value = await resolveTag(project, user, "api");
+      const service = ctx.alepha.inject(QuestTagTallyService);
+      const counts = service
+        .tally(await service.rowsFor([project.id]))
+        .get("api");
+
+      // One tally, two readers. A second copy is the silent disagreement the
+      // service exists to prevent.
+      expect(value.detail.completed).toBe(counts?.completed);
+      expect(value.detail.remaining).toBe(counts?.remaining);
+    });
+
+    it("shows no number for a tag nothing carries", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, { tags: ["api"] });
+
+      const value = await resolveTag(project, user, "typo");
+
+      // Not 0%. "None of it is done" and "there is none of it" are different
+      // facts, and only one of them is about progress.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBeUndefined();
+      expect(value.detail.total).toBe(0);
+    });
+
+    it("links to the quest list filtered by tag and to the open half", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      await createTestQuest(ctx.alepha, project, { tags: ["api"] });
+
+      const value = await resolveTag(project, user, "api");
+
+      expect(value.link?.route).toBe("projectQuests");
+      expect(value.link?.query).toEqual({
+        tag: "api",
+        status: "new,accepted",
+      });
     });
   });
 

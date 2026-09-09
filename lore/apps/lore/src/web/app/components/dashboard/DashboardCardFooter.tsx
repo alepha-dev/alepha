@@ -100,6 +100,17 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         args: [String(detail.completed ?? 0), String(denominator)],
       });
     }
+    if (props.metric === "tagCompletion") {
+      const total = Number(detail.total ?? 0);
+      if (total === 0) return tr("dashboard.footer.tag.none");
+      // ⚠️ Says the overlap out loud. A quest carrying two tags counts in
+      // both, so these numbers do not partition the project - Reports carries
+      // the same caveat under its heading, and one card on its own would hide
+      // it entirely.
+      return tr("dashboard.footer.tag.done", {
+        args: [String(detail.completed ?? 0), String(total)],
+      });
+    }
     if (props.metric === "heldQuests") {
       // Says what the number is made OF, which for this card means the
       // denominator it is a subset of: the same open count the Active Quests
