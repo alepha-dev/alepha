@@ -108,19 +108,19 @@ describe("lore artifacts push-image", () => {
         LOG_LEVEL: "error",
         LORE_API_KEY: "lore_secret",
         LORE_URL: server.inject(ServerProvider).hostname,
-        // ⚠️ Blanked unless a case sets them, and `LORE_PROJECT` is the one
-        // that actually bit: every case here names `--project 7`, so a leaked
-        // value changes nothing for them - but "names no project as its own
-        // error" asserts the ABSENCE of one, and CI exports `LORE_PROJECT`.
-        // The suite was green on a laptop that has none and red in CI, which
-        // is the whole reason this block exists rather than trusting the
-        // machine. `LORE_APP` and `LORE_ENV` are the same class and are
-        // blanked for the same reason before they cost a second afternoon.
+        // Blanked unless a case sets them, for the reason the GITHUB_* ones
+        // below carry: `ci.yml` sets `LORE_PROJECT: alepha` for every job, so
+        // a suite that does not clear it never sees the no-project branch -
+        // the run resolves the CI slug, asks the sink for `getProjectBySlug`,
+        // and fails with a missing action instead. Green locally, red in CI.
+        //
+        // `LORE_ENV` is blanked with them: no case here reads it, and the
+        // next one that does should not have to rediscover this.
         LORE_PROJECT: "",
         LORE_APP: "",
         LORE_ENV: "",
-        // Actions sets both on every job, so a suite that does not clear them
-        // reads the real CI commit and asserts nothing.
+        // Blanked unless a case sets them: Actions sets both on every job, so
+        // a suite that does not clear them reads the real CI commit.
         GITHUB_SHA: "",
         GITHUB_REF_NAME: "",
         GITHUB_OUTPUT: "",

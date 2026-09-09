@@ -22,7 +22,7 @@ export interface DashboardCardFooterProps {
  * blight count of 4 reading as calm.
  */
 const DashboardCardFooter = (props: DashboardCardFooterProps) => {
-  const { tr } = useI18n<I18n, "en">();
+  const { tr, l } = useI18n<I18n, "en">();
 
   if (!props.value) {
     return <Skeleton className="h-3.5 w-32" />;
@@ -36,12 +36,92 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
     );
   }
 
-  const detail = props.value.detail as Record<string, number | boolean>;
+  // ⚠️ Widened from `number | boolean` when `epicProgress` arrived: it puts an
+  // epic's status and its conclusion date in the bag, both strings. Kept as a
+  // union of the primitives the metrics actually write rather than `unknown`,
+  // because `String(unknown)` is what `no-base-to-string` refuses - and it is
+  // right to, since a bag that could hold an object would stringify one as
+  // `[object Object]` in the middle of a sentence.
+  const detail = props.value.detail as Record<
+    string,
+    number | boolean | string | null | undefined
+  >;
   const line = (() => {
     if (props.metric === "activeQuests") {
       return tr("dashboard.footer.questSplit", {
         args: [String(detail.acceptedCount ?? 0), String(detail.newCount ?? 0)],
       });
+    }
+    if (props.metric === "epicProgress") {
+      // ⚠️ Status-dependent, reusing the Epics list's own readings rather
+      // than inventing prose: a `planned` epic reports what is SPECIFIED and
+      // that none of it is released, a `done` one reports when it concluded,
+      // and only an `active` one gets the buckets. See `ProjectEpicsProgress`.
+      if (detail.hidden) return tr("dashboard.footer.epic.hidden");
+      const denominator = Number(detail.denominator ?? 0);
+      if (denominator === 0) return tr("dashboard.footer.epic.nothing");
+      if (detail.status === "done") {
+        return detail.completedAt
+          ? tr("dashboard.footer.epic.concluded", {
+              args: [String(l(String(detail.completedAt), { date: "ll" }))],
+            })
+          : tr("dashboard.footer.epic.concludedUndated");
+      }
+      if (detail.status === "planned") {
+        return tr("dashboard.footer.epic.specified", {
+          args: [String(detail.total ?? 0)],
+        });
+      }
+      // ⚠️ Says the DENOMINATOR, not just the ratio. The Epics list draws its
+      // tick bar over `total`, shelved included, so a reader comparing the
+      // two finds numbers that do not match and has to be told which is
+      // which. The docs page says it again.
+      return tr("dashboard.footer.epic.done", {
+        args: [String(detail.completed ?? 0), String(denominator)],
+      });
+    }
+    if (props.metric === "releaseProgress") {
+      // ⚠️ Two states, and no third: a release is `open` or `published`, and
+      // `releases` has no status column because a status column would let a
+      // row claim one thing while `releasedAt` says the other. A published
+      // release is finished by definition, so the card reports the date
+      // rather than a ratio nobody is going to move.
+      if (detail.hidden) return tr("dashboard.footer.release.hidden");
+      if (detail.published) {
+        return detail.releasedAt
+          ? tr("dashboard.footer.release.published", {
+              args: [String(l(String(detail.releasedAt), { date: "ll" }))],
+            })
+          : tr("dashboard.footer.release.publishedUndated");
+      }
+      const denominator = Number(detail.denominator ?? 0);
+      if (denominator === 0) return tr("dashboard.footer.release.empty");
+      return tr("dashboard.footer.release.done", {
+        args: [String(detail.completed ?? 0), String(denominator)],
+      });
+    }
+    if (props.metric === "tagCompletion") {
+      const total = Number(detail.total ?? 0);
+      if (total === 0) return tr("dashboard.footer.tag.none");
+      // ⚠️ Says the overlap out loud. A quest carrying two tags counts in
+      // both, so these numbers do not partition the project - Reports carries
+      // the same caveat under its heading, and one card on its own would hide
+      // it entirely.
+      return tr("dashboard.footer.tag.done", {
+        args: [String(detail.completed ?? 0), String(total)],
+      });
+    }
+    if (props.metric === "heldQuests") {
+      // Says what the number is made OF, which for this card means the
+      // denominator it is a subset of: the same open count the Active Quests
+      // card shows, from the same `OpenQuestScope`. "3 of 12 open" is what
+      // makes the containment checkable rather than asserted.
+      const open = Number(detail.open ?? 0);
+      if (props.value?.value === 0) return tr("dashboard.footer.held.none");
+      return tr(
+        open === 1 ? "dashboard.footer.held.one" : "dashboard.footer.held",
+        { args: [String(open)] },
+      );
     }
     if (props.metric === "openBlights") {
       const apps = Number(detail.apps ?? 0);

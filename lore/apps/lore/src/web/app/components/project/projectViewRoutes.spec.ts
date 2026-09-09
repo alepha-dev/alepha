@@ -1,5 +1,5 @@
 import { Alepha, AlephaError } from "alepha";
-import { $page, AlephaReactRouter } from "alepha/react/router";
+import { $page, AlephaReactRouter, ReactRouter } from "alepha/react/router";
 import { describe, expect, it } from "vitest";
 
 import { AppRouter } from "../../AppRouter.ts";
@@ -86,6 +86,83 @@ describe("projectViewRoutes", () => {
     // The same shape, and the reason the rule is written down rather than
     // remembered.
     expect(SECTION_HREF_ROUTES.projectActivity).toBeUndefined();
+  });
+
+  /**
+   * ⚠️ **The net that did not exist.** This spec walked `projectApp` and
+   * `projectReports` and nothing else, so a `$page` added under the `project`
+   * shell and left out of `SECTION_LABEL_KEYS` was caught by nothing: it
+   * renders with a breadcrumb that stops one level short, silently, which is
+   * the Explore-tab failure (#1689) one shell up.
+   *
+   * It went red on `projectQuestGraph` the first time it ran, which had had no
+   * label entry since it shipped. That was fixed rather than excused - see the
+   * note on it in `projectViewRoutes.ts` - because it is a page under Quests
+   * exactly as `projectQuest` is.
+   *
+   * Two routes are deliberately absent and are named here rather than skipped
+   * silently: `projectSettings` and `projectApp` are SHELLS whose leaves carry
+   * the crumb, and `projectAppRedirect` never paints.
+   */
+  it("gives every page under the project shell a section label", async ({
+    expect,
+  }) => {
+    const names = await pageNamesUnder("project");
+
+    // The route this quest added, named explicitly: a loop over whatever the
+    // router happens to hold would still pass if the dashboard vanished.
+    expect(names).toContain("projectDashboard");
+
+    /**
+     * A shell contributes no crumb of its own; its leaves do. `ProjectView`
+     * only ever reads the ACTIVE leaf, so a shell without a label is not a
+     * broken page - but naming them here keeps the exemption a decision
+     * rather than a hole.
+     */
+    const shells = new Set([
+      "project",
+      "projectApp",
+      "projectReports",
+      "projectSettings",
+      // Redirects in its loader and never paints.
+      "projectAppRedirect",
+    ]);
+
+    for (const name of names) {
+      if (shells.has(name)) continue;
+      expect(
+        SECTION_LABEL_KEYS[name],
+        `${name} has no section label in SECTION_LABEL_KEYS`,
+      ).toBeTruthy();
+    }
+  });
+
+  /**
+   * The project root, and the two prohibitions it carries.
+   */
+  it("puts the dashboard at the project root and Activity one path down", async () => {
+    const alepha = Alepha.create().with(AlephaReactRouter);
+    alepha.inject(AppRouter);
+    await alepha.start();
+
+    const router = alepha.inject(ReactRouter<AppRouter>);
+
+    // ⚠️ The board owns `/` by BEING the page at `/`. Nothing redirects there
+    // and it redirects nowhere: a loader redirect on the project root is the
+    // shape #156 was about, and a per-project landing setting is the one
+    // feedback #2066 rejected.
+    // `/sds/` with the trailing slash, which is what a `path: "/"` child of
+    // the project shell builds - Activity produced exactly this string while
+    // it held the root, so the move changed the route NAME at `/` and nothing
+    // about the URL a bare project link resolves to.
+    expect(
+      router.path("projectDashboard", { params: { projectSlug: "sds" } }),
+    ).toBe("/sds/");
+    expect(
+      router.path("projectActivity", { params: { projectSlug: "sds" } }),
+    ).toBe("/sds/activity");
+
+    await alepha.stop();
   });
 
   /**

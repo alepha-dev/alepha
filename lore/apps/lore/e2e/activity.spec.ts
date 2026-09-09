@@ -6,14 +6,15 @@ import {
 } from "./_helpers.ts";
 
 /**
- * The Activity page, and the fact that it is the project's landing page.
+ * The Activity page, at `/activity`.
  *
- * The second half is the one that needs an e2e. Which component a route
- * renders is a unit concern, but "a bare `/:projectSlug` opens Activity and
- * not the quest list" is a claim about the real router, the real sidebar and
- * the real project layout, and it is the claim the whole change rests on.
- * `test/dashboard-links.spec.ts` pins the quest list's new path from the
- * other side.
+ * ⚠️ It held the project root until #Q2104 and does not any more - the
+ * dashboard does. What that first half of this spec is for is unchanged
+ * though: which component a route renders is a unit concern, but "the page at
+ * this path is the feed, and the URL does not move under the reader" is a
+ * claim about the real router, the real sidebar and the real project layout.
+ * `e2e/dashboard.spec.ts` pins the root's own destination from the other
+ * side.
  *
  * Since the page became an `AlephaTable` over scoped `audits` rows, the last
  * step also pins the half that no unit test can: that a filter is answered by
@@ -21,9 +22,7 @@ import {
  * real request proves it was honoured.
  */
 test.describe("Activity", () => {
-  test("is what a bare project URL opens, and reports what moved", async ({
-    page,
-  }) => {
+  test("lives at /activity, and reports what moved", async ({ page }) => {
     test.setTimeout(120_000);
 
     const t = Date.now();
@@ -47,14 +46,17 @@ test.describe("Activity", () => {
       attachments: [],
     });
 
-    await test.step("a bare project URL lands on Activity", async () => {
-      await page.goto(`/${slug}`);
+    await test.step("Activity is at /activity, and the URL does not move", async () => {
+      await page.goto(`/${slug}/activity`);
       await page.waitForLoadState("networkidle");
 
-      // The URL must not have moved: Activity RENDERS at the root, it does
-      // not redirect there. A redirect is the shape #156 was about, and a
-      // per-project landing setting is the one feedback #2066 removed.
-      expect(new URL(page.url()).pathname).toBe(`/${slug}`);
+      // ⚠️ Activity moved off the project root when the dashboard took it
+      // (#Q2104), exactly as the quest list moved off it when Activity did.
+      // The URL must not move either way: this page RENDERS at `/activity`
+      // and nothing redirects to or from it. A redirect is the shape #156 was
+      // about, and a per-project landing setting is the one feedback #2066
+      // removed.
+      expect(new URL(page.url()).pathname).toBe(`/${slug}/activity`);
       // The BREADCRUMB leaf, not a heading. The page had an `<h1>` reading
       // Activity until feedback #2090; it was removed precisely because this
       // crumb already says the word, and no sibling list page carries one.
@@ -85,8 +87,11 @@ test.describe("Activity", () => {
     });
 
     await test.step("the sidebar entry goes back to Activity", async () => {
-      await page.locator(`a[href="/${slug}"]`).first().click();
-      await page.waitForURL(`**/${slug}`, { timeout: 15_000 });
+      // ⚠️ `/activity`, not the bare slug: that href is the DASHBOARD's since
+      // #Q2104, and clicking it would leave this spec asserting Activity's
+      // breadcrumb on the board.
+      await page.locator(`a[href="/${slug}/activity"]`).first().click();
+      await page.waitForURL(`**/${slug}/activity`, { timeout: 15_000 });
       // The breadcrumb leaf again, for the reason given on the first step.
       await expect(
         page
@@ -96,7 +101,7 @@ test.describe("Activity", () => {
     });
 
     await test.step("a resource filter re-queries the server and narrows the table", async () => {
-      await page.goto(`/${slug}`);
+      await page.goto(`/${slug}/activity`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle)).toBeVisible({ timeout: 15_000 });
 

@@ -33,6 +33,7 @@ import { KanbanController } from "./controllers/KanbanController.ts";
 import { NotificationPreferenceController } from "./controllers/NotificationPreferenceController.ts";
 import { ProjectCapabilityController } from "./controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "./controllers/ProjectController.ts";
+import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
 import { ProjectEstateController } from "./controllers/ProjectEstateController.ts";
 import { ProjectPromptController } from "./controllers/ProjectPromptController.ts";
 import { ProjectQuestPortabilityController } from "./controllers/ProjectQuestPortabilityController.ts";
@@ -90,6 +91,8 @@ import { DeployRegistry } from "./services/DeployRegistry.ts";
 import { DeployRunner } from "./services/DeployRunner.ts";
 import { DeployService } from "./services/DeployService.ts";
 import { EpicDependencyService } from "./services/EpicDependencyService.ts";
+import { EpicProgressMetric } from "./services/EpicProgressMetric.ts";
+import { EpicProgressService } from "./services/EpicProgressService.ts";
 import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { EstateCloudflareService } from "./services/EstateCloudflareService.ts";
 import { EstateCommandService } from "./services/EstateCommandService.ts";
@@ -104,24 +107,29 @@ import { FolioHistoryService } from "./services/FolioHistoryService.ts";
 import { FolioLinkService } from "./services/FolioLinkService.ts";
 import { FolioNameService } from "./services/FolioNameService.ts";
 import { FrozenSigilAnalyticsTables } from "./services/FrozenSigilAnalyticsTables.ts";
+import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
+import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { QualityService } from "./services/QualityService.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 import { QuestService } from "./services/QuestService.ts";
+import { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
 import { ReleaseContentService } from "./services/ReleaseContentService.ts";
 import { ReleaseNotifier } from "./services/ReleaseNotifier.ts";
+import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
 import { RoadmapService } from "./services/RoadmapService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
+import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
 import { WebSocketEstateCommandTransport } from "./services/WebSocketEstateCommandTransport.ts";
@@ -184,6 +192,10 @@ export const LoreApi = $module({
     ReleaseContentService,
     RoadmapService,
     EpicDependencyService,
+    // The epic rollup, on a service rather than on the controller now that
+    // five surfaces read it: the Epics list, `epic_list`, `project_context`,
+    // MCP output and the dashboard's epic card.
+    EpicProgressService,
     // The one place the epic workflow's refusals are written (epic #31):
     // which quest action is allowed in which epic phase, and the words a
     // refusal carries. Injected by the quest and epic controllers.
@@ -276,11 +288,23 @@ export const LoreApi = $module({
     // here as well as in `LoreWebApp`.
     DashboardScopeService,
     DashboardCardService,
+    // The project board's own storage. A second table rather than a branch
+    // inside the one above: the configuration belongs to the project, so
+    // every query here names a project and none of them names a user.
+    ProjectDashboardCardService,
     DailyVisitorsService,
     // One resolver per metric, plus the registry that groups a card list by
     // metric so N cards on one metric stay one query.
     ActiveQuestsMetric,
+    HeldQuestsMetric,
+    EpicProgressMetric,
+    ReleaseProgressMetric,
+    TagCompletionMetric,
     OpenBlightsMetric,
+    // The per-tag fold, shared by Reports > Quests and the tag card. No
+    // `GROUP BY` reaches inside a JSON array in a text column, so there is
+    // one in-memory tally and it lives here.
+    QuestTagTallyService,
     UntriagedFeedbackMetric,
     UniqueVisitorsMetric,
     DashboardMetricRegistry,
@@ -358,5 +382,9 @@ export const LoreApi = $module({
     InsightsController,
     BlightController,
     DashboardController,
+    // The project board. A second controller rather than a branch inside the
+    // one above: every path here hangs off `/projects/:projectId` and is
+    // gated by `$ownsProject`, where home's hang off `/me` and cannot be.
+    ProjectDashboardController,
   ],
 });

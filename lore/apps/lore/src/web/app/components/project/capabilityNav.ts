@@ -6,6 +6,7 @@ import {
   Bug,
   Columns3,
   Flag,
+  Gauge,
   Grid3x2,
   Inbox,
   Layers,
@@ -257,18 +258,29 @@ export const CAPABILITY_NAV: Record<CapabilityKey, CapabilityNavEntry[]> = {
 /**
  * The entries no capability owns.
  *
- * Activity is the project's landing page and says something whatever else is
- * turned off. Reports is Core because its TABS declare capabilities - Quality
+ * The dashboard is the project's landing page and Activity sits under it;
+ * both say something whatever else is turned off, which is what makes them
+ * Core. Reports is Core because its TABS declare capabilities - Quality
  * is Apps baseline and Members comes from a core table, so an Apps-only
  * project would lose its Quality tab along with the Reports entry.
  */
 export const CORE_NAV: CapabilityNavEntry[] = [
   {
+    // The project's landing page, and therefore first. ⚠️ No `permission`,
+    // like Activity below it: `project:read` is the floor every rank holds,
+    // so gating either would be a check that can never fail.
+    route: "projectDashboard",
+    labelKey: "project.menu.dashboard",
+    icon: Gauge,
+    group: "activity",
+    order: 10,
+  },
+  {
     route: "projectActivity",
     labelKey: "project.menu.activity",
     icon: Activity,
     group: "activity",
-    order: 10,
+    order: 20,
   },
   /*
    * ⚠️ **No Notifications entry, and it is not an omission** (feedback
