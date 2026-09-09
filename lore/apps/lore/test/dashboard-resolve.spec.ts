@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, z } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
@@ -14,11 +14,15 @@ import { dashboardCards } from "@/api/entities/dashboardCards.ts";
 import { dashboardSettings } from "@/api/entities/dashboardSettings.ts";
 import { feedback } from "@/api/entities/feedback.ts";
 import type { Project } from "@/api/entities/projects.ts";
+import { releases } from "@/api/entities/releases.ts";
 import { sigilErrorGroups } from "@/api/entities/sigilErrorGroups.ts";
 import { type Sigil, sigils } from "@/api/entities/sigils.ts";
 import { sigilUniquesDaily } from "@/api/entities/sigilUniquesDaily.ts";
 import { LoreApi } from "@/api/index.ts";
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
+import { DashboardMetricRegistry } from "@/api/services/DashboardMetricRegistry.ts";
+import { DashboardScopeService } from "@/api/services/DashboardScopeService.ts";
+import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
 
 import {
   createTestEpic,
@@ -37,6 +41,7 @@ class ResolveTestRepositories {
   feedback = $repository(feedback);
   cards = $repository(dashboardCards);
   settings = $repository(dashboardSettings);
+  releases = $repository(releases);
 }
 
 interface TestContext {
@@ -45,6 +50,11 @@ interface TestContext {
   repos: ResolveTestRepositories;
   dateTime: DateTimeProvider;
   counter: ReadCounter;
+  /**
+   * Injected before `start()`, because the container locks afterwards and a
+   * subclass is a service the graph has not seen.
+   */
+  registry: TestDashboardMetricRegistry;
 }
 
 const setup = async (): Promise<TestContext> => {
@@ -62,6 +72,7 @@ const setup = async (): Promise<TestContext> => {
 
   alepha.inject(TestEntityRepositories);
   const repos = alepha.inject(ResolveTestRepositories);
+  const registry = alepha.inject(TestDashboardMetricRegistry);
 
   await alepha.start();
 
@@ -69,6 +80,7 @@ const setup = async (): Promise<TestContext> => {
     alepha,
     controller: alepha.inject(DashboardController),
     repos,
+    registry,
     dateTime: alepha.inject(DateTimeProvider),
     counter: alepha.inject(ReadCounter),
   };
@@ -107,6 +119,14 @@ const only = async (
   }
   return ids;
 };
+
+/**
+ * `narrow()` is protected, and it is where the capability rule actually runs.
+ * A subclass is how this repo unit-tests one, rather than reaching for a mock.
+ */
+class TestDashboardMetricRegistry extends DashboardMetricRegistry {
+  public testNarrow = this.narrow.bind(this);
+}
 
 let tokenSeq = 0;
 
@@ -520,6 +540,189 @@ describe("dashboard resolve", () => {
       expect(values[0]?.value).toBeUndefined();
       expect(values[0]?.detail).toEqual({ noBeaconApp: true });
       expect(values[0]?.link).toBeUndefined();
+    });
+  });
+
+  /**
+   * The two scope kinds `dashboardScopeSchema` reserved in epic #E4 and no
+   * metric ever accepted, plus the project board's own entry point.
+   *
+   * Driven through `DashboardScopeService` rather than through a controller,
+   * because that class IS the security boundary: it is where "belongs to this
+   * project" is decided, and the two answers that matter — the row, or a 404 —
+   * are its own.
+   */
+  describe("epic and release scopes", () => {
+    const scopeService = () => ctx.alepha.inject(DashboardScopeService);
+
+    it("resolves an epic of a project the caller belongs to", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        title: "Dashboard",
+        number: 46,
+      });
+
+      const resolved = await scopeService().resolve(
+        { kind: "epic", epicId: epic.id },
+        user,
+      );
+
+      expect(resolved.epic?.id).toBe(epic.id);
+      // The per-project NUMBER is what `projectEpic` addresses, and it is
+      // reachable only because the row came back rather than the id.
+      expect(resolved.epic?.number).toBe(46);
+      expect(resolved.projectIds).toEqual([project.id]);
+    });
+
+    it("answers 404 for an epic in a project the caller has nothing to do with", async ({
+      expect,
+    }) => {
+      const { user } = await memberOf(ctx);
+      const stranger = await createTestProject(ctx.alepha);
+      const epic = await createTestEpic(ctx.alepha, stranger);
+
+      // ⚠️ 404, never an empty answer. "No such epic here" is true whether the
+      // epic does not exist or belongs to somebody else's project, and
+      // distinguishing them would leak the second.
+      await expect(
+        scopeService().resolve({ kind: "epic", epicId: epic.id }, user),
+      ).rejects.toThrowError(/Epic not found/);
+    });
+
+    it("answers 404 for an epic id that exists nowhere", async ({ expect }) => {
+      const { user } = await memberOf(ctx);
+
+      await expect(
+        scopeService().resolve({ kind: "epic", epicId: 987654 }, user),
+      ).rejects.toThrowError(/Epic not found/);
+    });
+
+    it("resolves a release, and refuses one from another project", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const mine = await ctx.repos.releases.create({
+        projectId: project.id,
+        number: 1,
+        tag: "0.1.0",
+        title: "First",
+      });
+      const stranger = await createTestProject(ctx.alepha);
+      const theirs = await ctx.repos.releases.create({
+        projectId: stranger.id,
+        number: 1,
+        tag: "9.9.9",
+        title: "Theirs",
+      });
+
+      const resolved = await scopeService().resolve(
+        { kind: "release", releaseId: mine.id },
+        user,
+      );
+      // The TAG, which is what `/alepha/releases/0.1.0` is built from.
+      expect(resolved.release?.tag).toBe("0.1.0");
+
+      await expect(
+        scopeService().resolve({ kind: "release", releaseId: theirs.id }, user),
+      ).rejects.toThrowError(/Release not found/);
+    });
+
+    it("still refuses a malformed scope before it reaches a table", async ({
+      expect,
+    }) => {
+      const { user } = await memberOf(ctx);
+
+      // `assertWellFormed` already covered these two kinds; what was missing
+      // was only the resolution half, and adding it must not have loosened
+      // the structural check on the way past.
+      await expect(
+        scopeService().resolve({ kind: "epic" } as DashboardScope, user),
+      ).rejects.toThrowError(/requires epicId/);
+      await expect(
+        scopeService().resolve(
+          { kind: "release", releaseId: 1, epicId: 2 } as DashboardScope,
+          user,
+        ),
+      ).rejects.toThrowError(/must not carry epicId/);
+    });
+  });
+
+  /**
+   * The project board's own entry point: the route has already proved
+   * membership, so the registry is handed that one project instead of running
+   * an account-wide users-to-projects join for a board that has a gate.
+   */
+  describe("the project board's resolve path", () => {
+    it("refuses a home-only metric, whatever its scope kind", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const registry = ctx.alepha.inject(DashboardMetricRegistry);
+
+      // `activeQuests` declares `boards: ["home"]`. The board argument has to
+      // reach `accepts()` for this to be anything but a counted card.
+      const values = await registry.resolveForProject(
+        [
+          {
+            id: 1,
+            metric: "activeQuests",
+            scope: { kind: "projects", projectIds: [project.id] },
+            filters: { statuses: ["new", "accepted"] },
+            size: 1,
+            position: 0,
+          },
+        ],
+        user,
+        project,
+      );
+
+      expect(values[0]?.ok).toBe(false);
+    });
+
+    it("drops an epic whose project turned the capability off", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha, {
+        capabilities: [{ key: "knowledge" }],
+      });
+      await createTestMember(ctx.alepha, project, project.createdBy!);
+      const epic = await createTestEpic(ctx.alepha, project);
+
+      const security = ctx.alepha.inject(ProjectSecurityService);
+      const capabilities = await security.capabilityRowsForProjects([
+        project.id,
+      ]);
+
+      const narrowed = ctx.registry.testNarrow(
+        {
+          key: "epicProgress",
+          boards: ["project"],
+          group: "epics",
+          labelKey: "x",
+          hintKey: "x",
+          icon: "layers",
+          presentation: "progress",
+          scopeKinds: ["epic"],
+          filters: z.object({}),
+          needs: { capability: "work", option: "epics" },
+          link: () => undefined,
+        },
+        {
+          projectIds: [project.id],
+          projects: [project],
+          sigils: [],
+          epic,
+        },
+        capabilities,
+      );
+
+      // ⚠️ The epic goes WITH its project. A capability is hidden and never
+      // deleted, so the rows are still there — counting them would put a
+      // number on the board for a surface the project no longer has.
+      expect(narrowed.projects).toEqual([]);
+      expect(narrowed.epic).toBeUndefined();
     });
   });
 

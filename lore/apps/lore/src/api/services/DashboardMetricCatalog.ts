@@ -63,6 +63,24 @@ export interface DashboardCardLink {
 export interface DashboardCardTarget {
   projectSlug?: string;
   appName?: string;
+  /**
+   * The epic's per-project `number`, for an `epic` scope.
+   *
+   * ⚠️ **Not the id the scope stores.** `projectEpic` is `/epics/:epicNumber`
+   * and `dashboardScopeSchema.epicId` is a row id, so the two are different
+   * integers and a card that confused them would land on somebody else's
+   * epic without erroring. `link()` is pure and receives only the scope and
+   * this target, so the resolver is the only layer that can carry the
+   * translation across — `DashboardScopeService` reads the row.
+   */
+  epicNumber?: number;
+  /**
+   * The release's `tag`, for a `release` scope. Same trap as
+   * {@link epicNumber}: `projectRelease` is `/releases/:releaseTag`, because
+   * `/alepha/releases/0.28.0` is what the URL is for, and the scope stores an
+   * id. Absent for a release with no tag, which the column permits.
+   */
+  releaseTag?: string;
 }
 
 /**
