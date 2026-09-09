@@ -518,17 +518,25 @@ test.describe("Apps", () => {
       );
     });
 
-    await test.step("choosing a default environment leaves the sidebar alone", async () => {
+    await test.step("saving on the Apps settings page leaves the sidebar alone", async () => {
       /*
        * Feedback #P2141: "changing `dev env` remove all items from sidebar.
        * Reloading page fix it."
        *
        * ⚠️ The assertion is the SIDEBAR and not the saved value, because the
-       * saved value was never wrong. `updateProjectById` answers a project
-       * resource with no `permissions` on it - that field is on the extended
-       * response the layout loader uses - and writing it straight into
-       * `currentProjectAtom` left `canInProject` reading an absent set, which
-       * it answers false for. Every permission-gated entry then vanished.
+       * saved value was never wrong. A write that answers a project resource
+       * with no `permissions` on it - that field is on the extended response
+       * the layout loader uses - left `canInProject` reading an absent set,
+       * which it answers false for. Every permission-gated entry then
+       * vanished.
+       *
+       * ⚠️ It drove the default-environment picker until #Q2135 deleted that
+       * setting. The guard is retargeted rather than dropped: what it catches
+       * is any writer of `currentProjectAtom` that skips `setCurrentProject`,
+       * and this page still has one in the capability switches. **Quests** is
+       * the entry asserted precisely because it belongs to a DIFFERENT
+       * capability - it cannot disappear for any reason this page has, so if
+       * it goes, the permission set went with it.
        */
       await page.goto(`/${projectSlug}/settings/apps`);
       await page.waitForLoadState("networkidle");
@@ -536,15 +544,18 @@ test.describe("Apps", () => {
       const sidebarQuests = page.locator(`a[href="/${projectSlug}/quests"]`);
       await expect(sidebarQuests).toBeVisible({ timeout: 15_000 });
 
-      await page.getByLabel("Default environment").click();
-      await page.getByRole("option", { name: secondEnv }).click();
-
-      // The save landed, and the nav is still there. No reload: a reload is
-      // what USED to be the fix.
-      await expect(page.getByText("Default environment saved")).toBeVisible({
-        timeout: 15_000,
-      });
-      await expect(sidebarQuests).toBeVisible();
+      // `deploy` rather than `track`: nothing later in this spec depends on
+      // it, and it is flipped straight back so the copy ends as it started.
+      const deploy = page.getByRole("switch", { name: /^deploy apps$/i });
+      for (const _ of [0, 1]) {
+        const saved = page.waitForResponse((res) =>
+          res.url().includes("/capabilities/apps"),
+        );
+        await deploy.click();
+        expect((await saved).ok()).toBe(true);
+        // No reload: a reload is what USED to be the fix.
+        await expect(sidebarQuests).toBeVisible();
+      }
     });
 
     let token = "";

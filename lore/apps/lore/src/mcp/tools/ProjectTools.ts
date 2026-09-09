@@ -470,6 +470,9 @@ export class ProjectTools {
                 targetDate: release.targetDate,
                 completed: release.progress.completed,
                 total: release.progress.total,
+                // Omitted rather than `false` on every other release: an
+                // orientation payload pays for every key on every row.
+                ...(release.defaultSince ? { default: true } : {}),
               })),
             }
           : {}),

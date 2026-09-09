@@ -1,4 +1,4 @@
-import { Alepha, AlephaError } from "alepha";
+import { Alepha } from "alepha";
 import { CliProvider } from "alepha/command";
 import { HttpError } from "alepha/server";
 import {
@@ -149,15 +149,12 @@ const create = (
       resolve: async () => 1,
       resolveApp: async () => "docs",
       // The real chain, minus its remote read: `--env`, `LORE_ENV`, then the
-      // project's own default. The empty string is what a present-but-empty
-      // CI variable looks like, and `||` is what keeps it from resolving.
-      resolveEnv: async (flag?: string) => flag || undefined,
-      assertEnv: (env: string | undefined) => {
-        if (!env) {
-          throw new AlephaError('No environment named for "docs".');
-        }
-        return env;
-      },
+      // app's own rows. The empty string is what a present-but-empty CI
+      // variable looks like, and `||` is what keeps it from resolving. With no
+      // rows faked here it answers `production`, which is what the real one
+      // does for an app that has none - and which `loadInstance` then refuses
+      // unless a case put `production` in `instances`.
+      resolveEnv: async (flag?: string) => flag || "production",
     },
   });
 
@@ -512,16 +509,49 @@ describe("lore apps deploy", () => {
     );
   });
 
-  it("refuses when no environment resolves, rather than guessing production", async () => {
-    // ⚠️ Combined with the zero-flag cascade, a hardcoded default would make
-    // the bare command "build my dirty working tree and ship it to production".
-    const { fs, cli, command, started } = aCloudflareCopy();
+  it("refuses an environment that names no copy, before building anything", async () => {
+    // ⚠️ Where the zero-rows case lands. `resolveEnv` answers `production` for
+    // an app with no rows rather than refusing itself, precisely so the
+    // refusal is THIS one - it names the pair and where to make it, which is
+    // what somebody who typed a near-miss needs.
+    //
+    // ⚠️ And it happens before the build. A refusal after the build would have
+    // shipped the working tree into an artifact for a copy that does not
+    // exist.
+    const { fs, cli, command, started, shell } = create(
+      // Every other env exists; `production`, which the fake chain resolves to,
+      // does not.
+      { staging: { id: "inst-2", estateId: "cf-1" } },
+      [{ id: "cf-1", acceptedRuntimes: ["workerd"] }],
+    );
     await aWorkspace(fs);
 
     await expect(
       cli.run(command.deploy, { root: "/project", argv: "" }),
-    ).rejects.toThrow(/No environment named/);
+    ).rejects.toThrow(
+      /docs\/production is not a deployed copy of this project/,
+    );
     expect(started).toEqual([]);
+    expect(commandsOf(shell)).toEqual([]);
+  });
+
+  it("runs the same deploy from the top-level `lore deploy`", async () => {
+    // ⚠️ Two `$command`s over one handler, so this is not a second code path -
+    // and this case is what proves the promoted primitive is actually wired to
+    // it rather than merely registered.
+    const { fs, cli, command, started } = aCloudflareCopy();
+    await aWorkspace(fs);
+
+    await cli.run(command.deployCommand, {
+      root: "/project",
+      argv: "--env production --tag 0.28.0",
+    });
+
+    expect(started).toHaveLength(1);
+    expect(started[0]).toMatchObject({
+      instanceId: "inst-1",
+      body: { tag: "0.28.0" },
+    });
   });
 
   it("stops following after its own timeout, saying the run continues", async () => {
@@ -544,10 +574,10 @@ describe("lore apps destroy", () => {
     ]);
 
   /**
-   * ⚠️ The accident this exists to prevent. Every other command falls back to
-   * LORE_ENV and then to the project's own default environment - usually
-   * `production` - so on a command that deletes things a forgotten flag would
-   * mean destroying production with the word never appearing on screen.
+   * ⚠️ The accident this exists to prevent. `deploy` falls back to LORE_ENV and
+   * then to the app's only environment - which for most apps IS production - so
+   * on a command that deletes things a forgotten flag would mean destroying
+   * production with the word never appearing on screen.
    */
   it("refuses without --env, and does not fall back to a default", async () => {
     const { fs, cli, command } = aCloudflareCopy();

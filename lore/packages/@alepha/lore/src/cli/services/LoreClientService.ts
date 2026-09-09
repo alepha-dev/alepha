@@ -50,7 +50,7 @@ export class LoreClientService {
         default: "",
         secret: false,
         description:
-          "Default environment for the `lore apps` commands, overridden by --env. Falls back to the project's own default environment, read from Lore.",
+          "Default environment for the `lore` deploy commands, overridden by --env. Falls back to the app's own environments, read from Lore, when it has exactly one.",
       }),
     }),
   );
@@ -175,10 +175,10 @@ export class LoreClientService {
    * The environment named by a flag or the environment, or nothing.
    *
    * ⚠️ Also `undefined` rather than a throw, and here the third step is a
-   * REMOTE read: the project's own default environment. `production` as a
-   * client-side constant was wrong the moment environments became rows - a
-   * project may run `b14-production` and have no `production` at all - so the
-   * fallback cannot live in this file.
+   * REMOTE read: the app's own rows, in {@link LoreProjectResolver.resolveEnv}.
+   * `production` as a client-side constant was wrong the moment environments
+   * became rows - a project may run `b14-production` and have no `production`
+   * at all - so the fallback cannot live in this file.
    *
    * `||` not `??`, same rule.
    */

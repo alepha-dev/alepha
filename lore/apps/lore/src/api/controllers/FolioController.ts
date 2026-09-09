@@ -702,7 +702,10 @@ export class FolioController {
       // since `content` is ciphertext — scanning it for `[[...]]` would
       // generate noisy junk links from base64 chars.
       if (!isProtected) {
-        await this.linkService.syncLinks(this.folioSource(folio), content);
+        // A brand-new id has no links to clear, so the delete is skipped.
+        await this.linkService.syncLinks(this.folioSource(folio), content, {
+          created: true,
+        });
       }
       // Seed the revision log with a `create` entry. Snapshot is the
       // folio as it stands right after insert — gives the History tab a

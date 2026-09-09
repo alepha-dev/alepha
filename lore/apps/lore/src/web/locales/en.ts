@@ -31,12 +31,12 @@ export default {
   "quest-log.search": "Find by name, area...",
   "quest-log.empty": "No quests yet",
   "quest-log.empty-description":
-    "The kingdom is quiet. Forge a new quest to set your party in motion.",
+    "Quests are how this project tracks its work. Create one to get started.",
 
   "home.nav": "Home",
   "home.title": "Welcome",
   "home.subtitle":
-    "Your journey begins here. Forge quests, recruit your party and record their deeds across the realm.",
+    "Plan your work as quests, invite the people working on them, and keep the decisions and the notes that go with it in one place.",
   "home.create-project": "New Project",
   "home.create-project.max": "Limit reached ($1)",
   "project.create.limit.title": "You have reached the project limit",
@@ -594,26 +594,12 @@ export default {
   "project.settings.nav.members": "Members",
   "project.settings.nav.group.capabilities": "Capabilities",
   "project.settings.nav.areas": "Areas",
+  "project.settings.data.export.failed": "Export failed",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Export quests",
   "project.settings.data.export.subtitle":
     "Download all quests in this project as a CSV file.",
   "project.settings.data.export.button": "Export Quests",
-  "project.settings.data.import.title": "Import quests",
-  "project.settings.data.import.subtitle":
-    "Upload a CSV exported from Lore or Trello. Existing quests with the same shortId are updated; others are created.",
-  "project.settings.data.import.choose": "Import Quests",
-  "project.settings.data.import.preview.title": "Import preview",
-  "project.settings.data.import.preview.body":
-    "$1 row(s) detected in $2. Existing quests with matching shortId will be updated; new rows will be created.",
-  "project.settings.data.import.preview.confirm": "Import",
-  "project.settings.data.import.preview.cancel": "Cancel",
-  "project.settings.data.import.preview.empty":
-    "No data rows detected. The file appears to contain only a header.",
-  "project.settings.data.import.result":
-    "Imported $1 quests ($2 updated, $3 skipped)",
-  "project.settings.data.import.details": "View details",
-  "project.settings.data.import.error.title": "Import failed",
   // ── Capabilities ────────────────────────────────────────────────────────
   // The four product surfaces a project composes, and the switches inside
   // each. Labels move; the persisted keys never do.
@@ -683,7 +669,7 @@ export default {
   "project.settings.areas.column.select": "Select",
   "project.settings.areas.select": "Select $1",
   "project.settings.areas.empty":
-    "No areas yet. Forge a quest and pick an area, and it appears here.",
+    "No areas yet. Create a quest and pick an area, and it appears here.",
   "project.settings.areas.selected": "$1 selected",
   "project.settings.areas.selected.one": "1 selected",
   "project.settings.areas.merge.action": "Merge into...",
@@ -841,9 +827,18 @@ export default {
   "release.detail.edit": "Edit",
   "release.detail.notFound": "No release tagged $1 in this project.",
   "release.publish.action": "Publish",
+  "release.default.badge": "Default",
+  "release.default.since": "Default since $1",
+  "release.default.set": "Set as default",
+  "release.default.clear": "Clear default",
+  "release.default.confirm.title": "Make $1 the default release?",
+  "release.default.confirm.description":
+    "Finished quests that name no release will land in $1, and an epic begun without one will ship in it. Everything can still be filed by hand, and publishing $1 clears the default.",
+  "release.default.cleared": "$1 is no longer the default release",
+  "quest.complete.landedIn": "Completed in $1",
   "release.publish.title": "Publish this release?",
   "release.publish.description":
-    "Publishing $1 freezes its changelog and its progress counts, and no epic or quest can be attached to it afterwards. This is one-way: reopening it clears everything it froze.",
+    "Publishing $1 freezes its changelog and its progress counts, and no epic or quest can be attached to it afterwards. If $1 is the default release, it stops being it. This is one-way: reopening it clears everything it froze, and does not make it the default again.",
   "release.publish.confirm": "Publish",
   "release.reopen.action": "Reopen",
   "release.reopen.title": "Reopen this release?",
@@ -872,9 +867,12 @@ export default {
   "release.detail.save": "Save",
   "release.detail.saved": "Release updated",
   "release.hero.progress": "Progress",
+  "release.empty.docs": "How releases work",
   "release.empty.title": "No release is open",
   "release.empty.body":
     "A release is a named goal - 0.1.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
+  "release.noMatch.title": "No release matches",
+  "release.noMatch.body": "Try adjusting or clearing the filters.",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Save to Folios",
@@ -1031,12 +1029,6 @@ export default {
   "kanban.composer.submit": "Add",
   "kanban.composer.needsArea":
     "Create an area first: a quest has to belong to one.",
-  "kanban.reopen.title": "Reopen this quest?",
-  "kanban.reopen.confirm":
-    "It goes back to In progress. Its completion summary is kept.",
-  "kanban.reopen.confirmWithDependents":
-    "It goes back to In progress, and $1 depended on it being done. Anything already started stays started. Its completion summary is kept.",
-  "kanban.reopen.confirmButton": "Reopen",
   "kanban.error.completedCannotMove": "Completed quests cannot be moved",
   "kanban.error.acceptFirst": "You must accept the quest before completing it",
   "kanban.error.actionFailed": "Action failed",
@@ -1155,6 +1147,8 @@ export default {
   "apps.empty": "No app yet",
   "apps.empty.description":
     "An app is one deployed copy: which app, and which copy of it. Create one to track it here.",
+  "apps.noMatch": "No app matches",
+  "apps.noMatch.description": "Try adjusting or clearing the filters.",
   "apps.unavailable": "Couldn\u2019t load apps",
   "apps.unavailable.description":
     "The list could not be read. This is not the same as having none - reload to try again.",
@@ -1333,18 +1327,6 @@ export default {
   "app.settings.estate.manage": "Manage estates",
   "app.settings.estate.clear": "No estate",
   "app.settings.estate.saved": "Deploy target saved",
-  "project.settings.apps.defaultEnv.title": "Default environment",
-  "project.settings.apps.defaultEnv.description":
-    "Which environment a command means when it names none. `lore apps deploy` with no --env resolves to this, and so does a bare /apps/<name> link.",
-  "project.settings.apps.defaultEnv.label": "Default environment",
-  "project.settings.apps.defaultEnv.rowDescription":
-    "Only environments this project already has are offered.",
-  "project.settings.apps.defaultEnv.none":
-    "This project has no deployed copy yet, so there is no environment to default to.",
-  "project.settings.apps.defaultEnv.clear": "No default",
-  "project.settings.apps.defaultEnv.fallback":
-    "With no default, production is used when it exists, otherwise the first environment by name.",
-  "project.settings.apps.defaultEnv.saved": "Default environment saved",
   "app.settings.danger": "Danger zone",
   "app.settings.delete.title": "Delete this app",
   "app.settings.delete.description":

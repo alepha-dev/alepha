@@ -23,7 +23,8 @@ backlog and freezes the quest set. Its quests can be accepted, completed,
 shelved and unassigned. No quest enters, none leaves, and none is deleted.
 
 **Done** is the record. Concluding is final: the epic cannot be reopened or
-returned to planning, and no quest inside it can be reopened either. The
+returned to planning. Neither can a quest, in any epic: a completed quest is
+immutable, and follow-up work is a new quest linked to the old one. The
 epic's own title and description stay editable, because the record of what
 happened is meant to be curated, and folios can still be filed under it. An
 outcome note written after the work shipped belongs exactly there.

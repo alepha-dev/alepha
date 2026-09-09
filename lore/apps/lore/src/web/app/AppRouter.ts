@@ -1066,7 +1066,7 @@ export class AppRouter {
       const { items } = await this.appApi.listApps({
         params: { projectId: project.id },
       });
-      const target = defaultAppInstance(items, params.app, project.defaultEnv);
+      const target = defaultAppInstance(items, params.app);
       if (!target) {
         throw new NotFoundError("App not found");
       }
