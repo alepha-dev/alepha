@@ -564,4 +564,152 @@ test.describe("Project dashboard", () => {
       await reader.ctx.close();
     }
   });
+
+  /**
+   * The two metrics whose scope is neither a project nor an app.
+   *
+   * ⚠️ **This is the shape that shipped broken.** `epicProgress` and
+   * `releaseProgress` point at a single row of another table, so the Add-card
+   * panel has to ask a question it asks nowhere else - and nothing exercised
+   * it. The resolvers were specced to death in
+   * `test/dashboard-resolve.spec.ts`, and the panel was specced on
+   * `heldQuests`, whose scope a project board FORCES so the step never
+   * renders. Both metrics therefore reached production with a scope step that
+   * drew nothing and a Save button that could never enable, while every unit
+   * spec stayed green.
+   *
+   * So the assertion is the whole path - catalogue, picker, save, resolved
+   * value - and never the pieces.
+   *
+   * The epic figure is 50 on purpose. Zero is also what a card that renders
+   * and never resolves shows, and 100 is what the wrong denominator gives
+   * (`EpicProgressService` counts shelved INSIDE `total`, so the card
+   * subtracts); only 50 can come from a real read done right.
+   */
+  test("adds an epic card and a release card, each scoped to one row", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `escope${t}@example.com`, "GoodPassw0rd");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `EP${t}`.slice(0, 20),
+      { options: { work: ["epics", "releases"] } },
+    );
+
+    const post = async <T>(path: string, body: unknown): Promise<T> =>
+      (await page.evaluate(
+        async ({ path, body }) => {
+          const r = await fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(body),
+          });
+          if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+          return r.json();
+        },
+        { path, body },
+      )) as T;
+
+    const epic = await post<{ id: number }>(`/api/createEpic/${projectId}`, {
+      title: `Scoped${t}`,
+    });
+    const release = await post<{ id: number }>(
+      `/api/createRelease/${projectId}`,
+      { tag: "1.0.0" },
+    );
+    await post(`/api/updateEpic/${epic.id}`, { releaseId: release.id });
+
+    const made: Array<{ id: number }> = [];
+    for (const title of [`A${t}`, `B${t}`]) {
+      made.push(
+        await apiPost<{ id: number }>(page, "createQuest", {
+          projectId,
+          title,
+          description: "seeded",
+          area: "Main",
+          priority: "medium",
+          objectives: [],
+          attachments: [],
+        }),
+      );
+    }
+    // ⚠️ Both attached while the epic is PLANNED, then it begins: the quest
+    // set freezes at Begin, and a quest is acceptable only inside an active
+    // epic. Reversing these two is the refusal "Begin it first".
+    for (const quest of made) {
+      await post(`/api/attachQuest/${epic.id}`, { questId: quest.id });
+    }
+    await post(`/api/setEpicStatus/${epic.id}`, { status: "active" });
+
+    // One of the two done → 1/2.
+    await page.evaluate(async (id) => {
+      const r = await fetch(`/api/acceptQuest/${id}`, {
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error(`accept ${r.status}`);
+    }, made[0].id);
+    await post(`/api/completeQuest/${made[0].id}`, {});
+
+    const addCard = async (metric: string, scopeTestId: string) => {
+      await page.goto(`/${slug}`);
+      await page.waitForLoadState("networkidle");
+      await page.getByTestId("dashboard-add-tile").click();
+      await expect(page.getByTestId("dashboard-catalogue")).toBeVisible({
+        timeout: 10_000,
+      });
+      await page
+        .locator(
+          `[data-testid="dashboard-catalogue-row"][data-metric="${metric}"]`,
+        )
+        .click();
+
+      // The step that rendered nothing. Asserted as a visible, clickable row
+      // before anything is clicked, because "Save stayed disabled" is the
+      // symptom and an empty picker is the cause.
+      const target = page.getByTestId(scopeTestId).first();
+      await expect(target).toBeVisible({ timeout: 10_000 });
+      await target.click();
+
+      // ⚠️ Armed BEFORE the click. Lore batches through `/api/_batch`, so a
+      // DOM assertion afterwards passes before the save is sent.
+      const saved = page.waitForResponse(
+        (r) => r.url().includes("/api/") && r.request().method() === "POST",
+        { timeout: 15_000 },
+      );
+      await page.getByTestId("dashboard-catalogue-save").click();
+      expect((await saved).ok()).toBe(true);
+    };
+
+    await test.step("an epic card is scoped to one epic and resolves", async () => {
+      await addCard("epicProgress", "dashboard-scope-epic");
+
+      // Reloaded rather than asserted in place: Base UI leaves
+      // `pointer-events: none` on the body after a drawer closes.
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+
+      const card = page.locator('[data-metric="epicProgress"]');
+      await expect(card).toHaveCount(1, { timeout: 15_000 });
+      await expect(card).toContainText("50", { timeout: 15_000 });
+    });
+
+    await test.step("a release card is scoped to one release and resolves", async () => {
+      await addCard("releaseProgress", "dashboard-scope-release");
+
+      await page.reload();
+      await page.waitForLoadState("networkidle");
+
+      const card = page.locator('[data-metric="releaseProgress"]');
+      await expect(card).toHaveCount(1, { timeout: 15_000 });
+      // The release holds the epic, so it counts the same two quests. ⚠️ NO
+      // subtraction on this side - `ReleaseContentService.progressOf` already
+      // counts shelved outside `total` - and 50 is the same figure either
+      // way here, which is why the epic card above is the one that pins it.
+      await expect(card).toContainText("50", { timeout: 15_000 });
+    });
+  });
 });

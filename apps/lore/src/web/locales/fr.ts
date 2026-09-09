@@ -2185,6 +2185,10 @@ export default {
     "Aucune app de vos projets ne remonte cela pour l'instant.",
   "dashboard.scope.noProjects":
     "Aucun de vos projets ne fait cela pour l'instant.",
+  "dashboard.scope.noEpics": "Ce projet n'a pas encore d'epopee.",
+  "dashboard.scope.noReleases": "Ce projet n'a pas encore de version.",
+  "dashboard.scope.releaseOpen": "Ouverte",
+  "dashboard.scope.releasePublished": "Publiee",
 
   "dashboard.group.quests": "Quetes",
   "dashboard.group.epics": "Epopees et versions",
@@ -2223,6 +2227,7 @@ export default {
   "dashboard.filterField.statuses": "Statut",
   "dashboard.filterField.status": "Statut",
   "dashboard.filterField.period": "Periode",
+  "dashboard.filterField.tag": "Tag",
   "dashboard.filterValue.new": "Nouvelles",
   "dashboard.filterValue.accepted": "Acceptees",
   "dashboard.filterValue.open": "Ouverts",
