@@ -14,10 +14,11 @@ import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { projectDashboardAtom } from "../../../atoms/projectDashboardAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import DashboardCatalogue from "../../dashboard/DashboardCatalogue.tsx";
-import DashboardEmpty from "../../dashboard/DashboardEmpty.tsx";
+import { projectAnswers } from "../../dashboard/dashboardEligibility.ts";
 import DashboardGrid from "../../dashboard/DashboardGrid.tsx";
 import type { DashboardScopeApp } from "../../dashboard/DashboardScopeStep.tsx";
 import { useRank } from "../../shared/useRank.ts";
+import ProjectDashboardEmpty from "./ProjectDashboardEmpty.tsx";
 import ProjectDashboardHeader from "./ProjectDashboardHeader.tsx";
 
 /**
@@ -86,6 +87,20 @@ const ProjectDashboard = () => {
   const metrics = useMemo(
     () => new Map(catalog.all().map((metric) => [metric.key, metric])),
     [catalog],
+  );
+
+  /**
+   * Whether this project can answer any project-board metric at all.
+   *
+   * Read off the metric's own `needs` rather than by naming a capability, so
+   * a metric added tomorrow is covered. All four are Work today, which is why
+   * a Knowledge-only project has an empty board and no way to fill it - a
+   * true state the empty state has to be able to say.
+   */
+  const hasOfferableMetric = useMemo(
+    () =>
+      catalog.on("project").some((metric) => projectAnswers(metric, project)),
+    [catalog, project],
   );
 
   /**
@@ -301,7 +316,12 @@ const ProjectDashboard = () => {
         onRemove={onRemove}
       />
 
-      {cards.length === 0 && <DashboardEmpty />}
+      {cards.length === 0 && (
+        <ProjectDashboardEmpty
+          canEdit={canEdit}
+          hasOfferableMetric={hasOfferableMetric}
+        />
+      )}
 
       {/*
        * Kept mounted and re-keyed rather than mounted by a condition: the
