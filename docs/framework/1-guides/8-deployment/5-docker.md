@@ -23,13 +23,18 @@ The generated Dockerfile is minimal because the app is already bundled:
 ```dockerfile
 FROM node:24-alpine
 WORKDIR /app
+
+LABEL "dev.alepha.runtime"="node"
+
 COPY --chown=1000:1000 . .
 ENV SERVER_HOST=0.0.0.0
 USER 1000
 CMD ["node", "index.js"]
 ```
 
-With `--runtime=bun`, the base image becomes `oven/bun:alpine` and the command `bun`. An `npm install` / `bun install` layer is added only when `dist/package.json` declares runtime dependencies - Alepha apps normally bundle everything via Vite, so there's usually nothing to install.
+`dev.alepha.runtime` is always there, in every generated Dockerfile. An image's runtime appears nowhere in its OCI index, so a registry cannot answer "what runs inside this" and a pusher's claim about it is not evidence - the image states it itself, and a reader gets it out of the config blob with one small GET. It is what lets `lore artifacts push-image` need no `--runtime` flag. It is not part of the `oci` opt-in below.
+
+With `--runtime=bun`, the base image becomes `oven/bun:alpine`, the command `bun`, and the label `"bun"`. An `npm install` / `bun install` layer is added only when `dist/package.json` declares runtime dependencies - Alepha apps normally bundle everything via Vite, so there's usually nothing to install.
 
 ## Baking Defaults Into the Image
 
@@ -55,6 +60,8 @@ export default defineConfig({
 ```dockerfile
 FROM node:24-alpine
 WORKDIR /app
+
+LABEL "dev.alepha.runtime"="node"
 
 COPY --chown=1000:1000 . .
 
@@ -136,6 +143,8 @@ LABEL "org.opencontainers.image.title"="My App"
 
 That matters as soon as something other than `--image` builds the image - a release pipeline running `docker buildx build` on `dist/` for two architectures, say. A field left unset produces no label rather than an empty one.
 
+`dev.alepha.runtime` is **not** part of this opt-in. It is emitted whether or not `oci` is set, because it is Alepha's own contract with its registry rather than an OCI annotation: an app that never configured `oci` would otherwise ship an image whose `lore artifacts push-image` is refused for a missing label, for a reason nothing in its config explains.
+
 `source` is the one that matters for a published package: it is what links a GHCR package to its repository, and without it the package page stands alone, with no README and no repo link. It is **never derived from the git remote** - an SSH remote is not a URL, a CI checkout may have no remote at all, and a fork would publish either the upstream's URL or its own with nothing inside the build able to tell which is meant. A wrong `source` on a published image is worse than a missing one.
 
 ## Configuration
@@ -162,6 +171,9 @@ alepha build --target=docker --runtime=bun --compile --image
 ```dockerfile
 FROM gcr.io/distroless/static-debian12
 WORKDIR /app
+
+LABEL "dev.alepha.runtime"="bun"
+
 COPY app .
 ENV SERVER_HOST=0.0.0.0
 ENTRYPOINT ["/app/app"]

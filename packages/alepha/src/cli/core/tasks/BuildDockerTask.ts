@@ -86,7 +86,10 @@ export class BuildDockerTask extends BuildTask {
           env: ctx.options.docker?.env ?? {},
           volumes: ctx.options.docker?.volumes ?? [],
           user: this.resolveUser(ctx, compile),
-          labels: this.staticOciLabels(ctx),
+          labels: {
+            ...this.runtimeLabel(ctx),
+            ...this.staticOciLabels(ctx),
+          },
         });
       },
     });
@@ -421,6 +424,36 @@ ${userLine}CMD ["${command}", "index.js"]
   }
 
   /**
+   * `dev.alepha.runtime`, the runtime the image actually runs, written into
+   * the Dockerfile as a `LABEL` line.
+   *
+   * An image's runtime appears nowhere in its OCI index, so a registry
+   * cannot answer it and a pusher's word for it is not evidence. The image
+   * carries its own claim instead, and a reader (Lore's artifact registry)
+   * gets it out of the config blob with one small GET.
+   *
+   * ⚠️ Emitted UNCONDITIONALLY, and deliberately not through
+   * {@link staticOciLabels}: that one returns nothing unless
+   * `build.docker.image.oci` is set, so routing this through it would mean
+   * an app that never opted into OCI annotations ships an image whose push
+   * is refused for a missing label, for a reason nothing in its config
+   * explains. This label is Alepha's contract with its own registry, not an
+   * annotation the user opts into.
+   *
+   * Only `node` and `bun` are reachable here: {@link run} returns early on
+   * any target but `docker`, so `static` (which comes from
+   * `target: "static"`) never gets this far. `workerd` is technically
+   * reachable and deliberately left so — a Worker in a container is refused
+   * at push time, where the refusal can name itself, rather than at build
+   * time, which would be a behaviour change of its own.
+   */
+  protected runtimeLabel(ctx: BuildTaskContext): Record<string, string> {
+    // Same resolution BuildManifestTask uses, so the label and the
+    // manifest cannot disagree about one build.
+    return { "dev.alepha.runtime": ctx.options.runtime ?? "node" };
+  }
+
+  /**
    * The `org.opencontainers.image.*` annotations that do not depend on the
    * build invocation, written into the Dockerfile as `LABEL` lines.
    *
@@ -439,10 +472,10 @@ ${userLine}CMD ["${command}", "index.js"]
     }
 
     const labels: Record<string, string | undefined> = {
-      source: imageConfig.source,
-      title: imageConfig.title,
-      description: imageConfig.description,
-      licenses: imageConfig.licenses,
+      "org.opencontainers.image.source": imageConfig.source,
+      "org.opencontainers.image.title": imageConfig.title,
+      "org.opencontainers.image.description": imageConfig.description,
+      "org.opencontainers.image.licenses": imageConfig.licenses,
     };
 
     return Object.fromEntries(
@@ -476,12 +509,17 @@ ${userLine}CMD ["${command}", "index.js"]
   /**
    * `LABEL` lines in exec form, which needs no escaping rules of its own for
    * a description carrying a quote or a space.
+   *
+   * Names arrive FULLY QUALIFIED. This used to prepend
+   * `org.opencontainers.image.` to every key it was handed, which made it
+   * impossible to render a label from any other namespace — and
+   * `dev.alepha.runtime` is one.
    */
   protected renderLabels(labels: Record<string, string>): string {
     return Object.entries(labels)
       .map(
         ([name, value]) =>
-          `LABEL ${JSON.stringify(`org.opencontainers.image.${name}`)}=${JSON.stringify(value)}\n`,
+          `LABEL ${JSON.stringify(name)}=${JSON.stringify(value)}\n`,
       )
       .join("");
   }

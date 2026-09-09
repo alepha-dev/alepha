@@ -673,7 +673,7 @@ describe("BuildDockerTask", () => {
       );
     });
 
-    it("emits no labels at all when oci is off", async () => {
+    it("emits no OCI labels at all when oci is off", async () => {
       const { cmd, dockerfile } = await buildWithImage({
         image: {
           tag: "ghcr.io/myorg/app",
@@ -682,7 +682,9 @@ describe("BuildDockerTask", () => {
       });
 
       expect(cmd).not.toContain("--label");
-      expect(dockerfile).not.toContain("LABEL");
+      expect(dockerfile).not.toContain("org.opencontainers.image.");
+      // The runtime label is not part of the `oci` opt-in.
+      expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="node"');
     });
 
     it("writes the labels into the compile variant too", async () => {
@@ -706,6 +708,96 @@ describe("BuildDockerTask", () => {
 
       expect(readDockerfile(fs)).toContain(
         'LABEL "org.opencontainers.image.source"="https://github.com/myorg/app"',
+      );
+    });
+  });
+
+  /**
+   * `dev.alepha.runtime` is what lets a registry reader answer "what runs
+   * inside this image" without taking the pusher's word for it. It is
+   * Alepha's own contract rather than an OCI annotation, so it is emitted
+   * whether or not the app opted into `oci`.
+   *
+   * Only `node` and `bun` are reachable: `static` comes from
+   * `target: "static"`, and `run` returns early on any target but `docker`.
+   */
+  describe("the dev.alepha.runtime label", () => {
+    const writeDockerfileFor = async (options: BuildOptions) => {
+      const { fs, shell, task } = createTestEnv();
+      await fs.writeFile("/project/dist/index.js", "// bundle");
+      await task.run(createCtx(fs, shell, options));
+      return readDockerfile(fs);
+    };
+
+    it("declares node in the standard variant, with no oci config at all", async () => {
+      const dockerfile = await writeDockerfileFor({
+        target: "docker",
+        runtime: "node",
+      });
+
+      expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="node"');
+    });
+
+    it("declares node when no runtime is set, matching the manifest's default", async () => {
+      const dockerfile = await writeDockerfileFor({ target: "docker" });
+
+      expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="node"');
+    });
+
+    it("declares bun in the standard variant", async () => {
+      const dockerfile = await writeDockerfileFor({
+        target: "docker",
+        runtime: "bun",
+      });
+
+      expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="bun"');
+    });
+
+    it("declares bun in the compile variant, which is bun by construction", async () => {
+      const dockerfile = await writeDockerfileFor({
+        target: "docker",
+        runtime: "bun",
+        docker: { compile: true },
+      });
+
+      expect(dockerfile).toContain("FROM gcr.io/distroless/static-debian12");
+      expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="bun"');
+    });
+
+    it("declares node in the compile variant's sibling, the node standard build", async () => {
+      // The compile branch cannot be node (`resolveCompile` throws), so the
+      // node assertion for that code path is the standard one above. This
+      // pins that the two branches do not disagree about the label's shape.
+      const compile = await writeDockerfileFor({
+        target: "docker",
+        runtime: "bun",
+        docker: { compile: true },
+      });
+      const standard = await writeDockerfileFor({
+        target: "docker",
+        runtime: "node",
+      });
+
+      expect(compile).toMatch(/^LABEL "dev\.alepha\.runtime"="bun"$/m);
+      expect(standard).toMatch(/^LABEL "dev\.alepha\.runtime"="node"$/m);
+    });
+
+    it("sits beside the OCI labels rather than replacing them", async () => {
+      const dockerfile = await writeDockerfileFor({
+        target: "docker",
+        runtime: "node",
+        docker: {
+          image: {
+            tag: "ghcr.io/myorg/app",
+            oci: true,
+            title: "App",
+          },
+        },
+      });
+
+      expect(dockerfile).toContain('LABEL "dev.alepha.runtime"="node"');
+      expect(dockerfile).toContain(
+        'LABEL "org.opencontainers.image.title"="App"',
       );
     });
   });
