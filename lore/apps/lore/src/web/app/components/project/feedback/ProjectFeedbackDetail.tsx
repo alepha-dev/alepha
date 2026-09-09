@@ -420,7 +420,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="ghost" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
-          <AgentPromptsMenu iconOnly items={promptItems} />
+          <AgentPromptsMenu items={promptItems} />
         </div>
       )}
 
@@ -435,7 +435,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button variant="ghost" onClick={handleDelete} disabled={busy}>
             {tr("feedback.delete")}
           </Button>
-          <AgentPromptsMenu iconOnly items={promptItems} />
+          <AgentPromptsMenu items={promptItems} />
         </div>
       )}
 
@@ -451,7 +451,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               disappear on something unrelated to what it does. `promptItems`
               drops `feedbackWork` here on its own: there is nothing to work
               on in a rejected report. */}
-          <AgentPromptsMenu iconOnly items={promptItems} />
+          <AgentPromptsMenu items={promptItems} />
         </div>
       )}
 

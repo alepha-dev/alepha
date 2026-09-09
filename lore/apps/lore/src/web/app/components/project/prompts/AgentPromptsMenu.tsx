@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from "@alepha/ui/components/ui/dropdown-menu";
 import { useI18n } from "alepha/react/i18n";
-import { Bot, ChevronDown } from "lucide-react";
+import { Bot } from "lucide-react";
 
 import type { AgentPromptKind } from "@/api/schemas/agentPromptKindSchema.ts";
 import type { AgentPromptSubject } from "@/web/app/prompts/renderPromptTemplate.ts";
@@ -38,26 +38,25 @@ export interface AgentPromptsMenuItem {
 
 export interface AgentPromptsMenuProps {
   items: AgentPromptsMenuItem[];
-
-  /**
-   * Render the trigger as the robot glyph alone.
-   *
-   * For a footer whose row is ordered by importance, where this is the
-   * least urgent control and also the widest (feedback #P2150). The label
-   * moves into `aria-label` AND `title` - an `aria-label` alone leaves a
-   * pointer user with an unlabelled glyph, which is the rule #Q2017
-   * records.
-   *
-   * ⚠️ **No caret in this form**, unlike the labelled one. The caret
-   * (#Q2070) exists to say a word is a menu; on a 32px square it is a
-   * second glyph competing with the one that names the thing, and the
-   * button reads as a menu from its own shape.
-   */
-  iconOnly?: boolean;
 }
 
 /**
- * The Agent Prompts menu, for a DETAIL page.
+ * The Agent Prompts menu, for a DETAIL page: the robot glyph alone.
+ *
+ * ⚠️ **The labelled form is gone** (feedback #P2175), and with it the
+ * `iconOnly` prop that selected between the two - every one of the six mounts
+ * passed it. Deleted deliberately rather than left as a branch nobody takes.
+ *
+ * What went with it is worth recording, because it was argued for once. The
+ * labelled trigger carried a `ChevronDown`, added by #Q2070 to say that a WORD
+ * is a menu; with no word there is nothing for a caret to qualify, and on a
+ * 32px square it was a second glyph competing with the one that names the
+ * thing. The label moves to `aria-label` AND `title` - an `aria-label` alone
+ * leaves a pointer user with an unlabelled glyph, which is the rule #Q2017
+ * records, and the reason the icon form always carried both.
+ *
+ * ⚠️ A menu with a visible label needs that caret back if this is ever
+ * reversed. Do not reintroduce the labelled trigger without it.
  *
  * The row-menu form of this is a `RowActionGroup` handed to `AlephaTable`;
  * this is the same set of entries behind a button of its own, for the pages
@@ -87,26 +86,15 @@ export const AgentPromptsMenu = (props: AgentPromptsMenuProps) => {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          props.iconOnly ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={String(tr("agentPrompts.menu"))}
-              title={String(tr("agentPrompts.menu"))}
-            />
-          ) : (
-            <Button variant="outline" size="lg" />
-          )
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={String(tr("agentPrompts.menu"))}
+            title={String(tr("agentPrompts.menu"))}
+          />
         }
       >
         <Bot className="size-4" />
-        {!props.iconOnly && tr("agentPrompts.menu")}
-        {/* ⚠️ Same size and opacity as `AlephaTableBulkMenu`'s, so the two
-            read as one kind of control; `Down` rather than `Up` because
-            this menu opens downward. It is decoration and carries no
-            accessible name of its own - the trigger is already named by
-            its label, and in the icon form there is no label to qualify. */}
-        {!props.iconOnly && <ChevronDown className="size-3.5 opacity-70" />}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {props.items.map((item) => {
