@@ -1,10 +1,15 @@
 import { cn } from "@alepha/ui/lib/utils";
+import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Check } from "lucide-react";
 
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
-import type { DashboardMetricDescriptor } from "@/api/services/DashboardMetricCatalog.ts";
+import {
+  type DashboardBoard,
+  DashboardMetricCatalog,
+  type DashboardMetricDescriptor,
+} from "@/api/services/DashboardMetricCatalog.ts";
 
 import type { I18n } from "../../services/I18n.ts";
 import { ProjectIcon } from "../shared/ProjectIcon.tsx";
@@ -26,6 +31,11 @@ export interface DashboardScopeApp {
 
 export interface DashboardScopeStepProps {
   metric: DashboardMetricDescriptor;
+  /**
+   * Which board the card is being added to. It decides which pickers are
+   * offered: inside a project, `projects` and `all` are not choices.
+   */
+  board: DashboardBoard;
   projects: ProjectOverviewResource[];
   apps: DashboardScopeApp[];
   scope: DashboardScope;
@@ -56,7 +66,11 @@ export interface DashboardScopeStepProps {
  */
 const DashboardScopeStep = (props: DashboardScopeStepProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const kinds = props.metric.scopeKinds;
+  const catalog = useInject(DashboardMetricCatalog);
+  // The kinds a READER may pick, not the kinds the metric accepts. The
+  // difference is the whole of this board's behaviour: inside a project, both
+  // `all` and `projects` resolve to the project and neither is a question.
+  const kinds = catalog.pickableScopeKinds(props.metric.key, props.board);
 
   const projects = eligibleProjects(props.metric, props.projects);
   const apps = eligibleApps(props.metric, props.apps, props.projects);

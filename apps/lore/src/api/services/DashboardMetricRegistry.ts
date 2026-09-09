@@ -116,9 +116,10 @@ export class DashboardMetricRegistry {
         values.set(card.id, this.failed(card, []));
         continue;
       }
-      if (!descriptor.scopeKinds.includes(card.scope.kind)) {
-        // A card stored before the metric narrowed its accepted kinds. It
-        // cannot be resolved and must not be guessed at.
+      if (!this.catalog.accepts(card.metric, card.scope.kind, "home")) {
+        // A card stored before the metric narrowed its accepted kinds, or
+        // before it stopped being offered on this board. It cannot be
+        // resolved and must not be guessed at.
         values.set(card.id, this.failed(card, []));
         continue;
       }

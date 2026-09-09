@@ -178,6 +178,40 @@ describe("dashboard cards and capabilities", () => {
         }
       }
     });
+
+    /**
+     * `boards` says where a metric may be offered, and `CapabilityRegistry`
+     * cannot express it: that list is flat, one array of keys per capability,
+     * with no room for a board any more than for a target. So the two
+     * declarations stay pinned by the pair of assertions above, and the board
+     * is checked here — on the catalogue, which is the only place it exists.
+     */
+    it("every metric names at least one board", ({ expect }) => {
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+
+      for (const metric of catalog.all()) {
+        expect(
+          metric.boards.length,
+          `${metric.key} names no board and can be offered nowhere`,
+        ).toBeGreaterThan(0);
+      }
+    });
+
+    it("home still offers exactly the four metrics it always did", ({
+      expect,
+    }) => {
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+
+      // The point of `boards` is that home did not move. A metric added for a
+      // project board and accidentally offered here is a card on somebody's
+      // landing page pointing at a project they may not even be in.
+      expect(catalog.on("home").map((it) => it.key)).toEqual([
+        "activeQuests",
+        "openBlights",
+        "untriagedFeedback",
+        "uniqueVisitors",
+      ]);
+    });
   });
 
   describe("what the Add-card panel offers", () => {
@@ -225,6 +259,70 @@ describe("dashboard cards and capabilities", () => {
           aProject(1, [{ key: "apps", options: { track: true } }]),
         ]).map((it) => it.id),
       ).toEqual([1]);
+    });
+
+    /**
+     * The project board asks a different question and reads the same
+     * declaration: not "have you a project that does this" but "does THIS
+     * project". A metric whose capability is off here must not be offerable,
+     * which is the resolver's rule one layer up, stated where the reader sees
+     * it rather than only where the query runs.
+     */
+    it("withholds a project-board metric whose capability this project has off", ({
+      expect,
+    }) => {
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+      const activeQuests = catalog.get("activeQuests");
+      const knowledgeOnly = [aProject(7, [{ key: "knowledge" }])];
+
+      expect(
+        metricUnavailableKey(activeQuests, knowledgeOnly, [], "project"),
+      ).toBe("dashboard.catalogue.notHere");
+
+      // And the same project with Work on has nothing standing in the way.
+      expect(
+        metricUnavailableKey(
+          activeQuests,
+          [aProject(7, [{ key: "work" }])],
+          [],
+          "project",
+        ),
+      ).toBeUndefined();
+    });
+
+    it("asks nothing on a project board for a metric with one possible target", ({
+      expect,
+    }) => {
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+
+      // `activeQuests` accepts `projects` and `all`; inside a project both
+      // mean the project, so the wizard has no scope question to ask and the
+      // controller forces the scope instead.
+      expect(catalog.pickableScopeKinds("activeQuests", "project")).toEqual([]);
+      expect(catalog.forcedScope("activeQuests", "project", 7)).toEqual({
+        kind: "projects",
+        projectIds: [7],
+      });
+
+      // On home the same metric keeps every kind it declares, and nothing is
+      // forced.
+      expect(catalog.pickableScopeKinds("activeQuests", "home")).toEqual([
+        "projects",
+        "all",
+      ]);
+      expect(catalog.forcedScope("activeQuests", "home", 7)).toBeUndefined();
+    });
+
+    it("refuses a home-only metric on a project board, whatever its scope kind", ({
+      expect,
+    }) => {
+      const catalog = ctx.alepha.inject(DashboardMetricCatalog);
+
+      expect(catalog.accepts("activeQuests", "projects", "home")).toBe(true);
+      expect(catalog.accepts("activeQuests", "projects", "project")).toBe(
+        false,
+      );
+      expect(catalog.offers("activeQuests", "project")).toBe(false);
     });
 
     it("filters apps by their own project, and by beacon", ({ expect }) => {

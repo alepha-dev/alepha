@@ -2171,6 +2171,7 @@ export default {
     "Chaque carte est une metrique et une portee. Les metriques sans donnees disponibles, par exemple une metrique d'app sur un projet sans app enregistree, ne sont pas proposees.",
   "dashboard.catalogue.noProjects": "Vous n'avez pas encore de projet",
   "dashboard.catalogue.noApps": "Aucune app enregistree ne remonte cela",
+  "dashboard.catalogue.notHere": "Ce projet ne fait pas encore cela",
 
   "dashboard.scope.all": "tous les projets",
   "dashboard.scope.allProjects": "Tous les projets",

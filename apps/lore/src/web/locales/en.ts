@@ -2164,6 +2164,7 @@ export default {
     "Every card is one metric plus a scope. Metrics with no data available, such as an app metric on a project with no enrolled app, are not offered.",
   "dashboard.catalogue.noProjects": "You have no project yet",
   "dashboard.catalogue.noApps": "No enrolled app reports this",
+  "dashboard.catalogue.notHere": "This project does not do this yet",
 
   "dashboard.scope.all": "all projects",
   "dashboard.scope.allProjects": "All projects",

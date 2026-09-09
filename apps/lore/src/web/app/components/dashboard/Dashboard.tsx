@@ -267,6 +267,7 @@ const Dashboard = () => {
       <DashboardCatalogue
         key={editing?.id ?? "new"}
         open={catalogueOpen}
+        board="home"
         cards={dashboard.cards}
         projects={projects}
         apps={apps}

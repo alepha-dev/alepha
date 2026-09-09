@@ -1,5 +1,8 @@
 import type { ProjectResource } from "@/api/schemas/projectResourceSchema.ts";
-import type { DashboardMetricDescriptor } from "@/api/services/DashboardMetricCatalog.ts";
+import type {
+  DashboardBoard,
+  DashboardMetricDescriptor,
+} from "@/api/services/DashboardMetricCatalog.ts";
 import {
   capabilityOption,
   hasCapability,
@@ -90,10 +93,31 @@ export const metricUnavailableKey = (
   metric: DashboardMetricDescriptor,
   projects: DashboardEligibleProject[],
   apps: DashboardScopeApp[],
+  board: DashboardBoard = "home",
 ):
   | "dashboard.catalogue.noProjects"
   | "dashboard.catalogue.noApps"
+  | "dashboard.catalogue.notHere"
   | undefined => {
+  // ⚠️ A project board asks a different question, and the same one for every
+  // metric on it: not "have you a project that does this" but "does THIS
+  // project do this". There is nowhere else to look, so a Knowledge-only
+  // project reads "this project does not do this yet" rather than the home
+  // board's "you have no project", which would be false on the very page the
+  // reader is standing on.
+  if (board === "project") {
+    if (!projectAnswers(metric, projects[0])) {
+      return "dashboard.catalogue.notHere";
+    }
+    return metric.scopeKinds.includes("apps") &&
+      !metric.scopeKinds.includes("epic") &&
+      !metric.scopeKinds.includes("release") &&
+      !metric.scopeKinds.includes("projects") &&
+      eligibleApps(metric, apps, projects).length === 0
+      ? "dashboard.catalogue.noApps"
+      : undefined;
+  }
+
   if (
     metric.scopeKinds.includes("all") ||
     metric.scopeKinds.includes("projects")

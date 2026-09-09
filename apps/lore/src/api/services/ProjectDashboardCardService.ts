@@ -181,7 +181,7 @@ export class ProjectDashboardCardService {
     if (!descriptor) {
       throw new BadRequestError(`Unknown metric: ${metric}`);
     }
-    if (!this.catalog.accepts(metric, scope.kind)) {
+    if (!this.catalog.accepts(metric, scope.kind, "project")) {
       throw new BadRequestError(
         `Metric ${metric} does not accept a ${scope.kind} scope on a project board`,
       );
