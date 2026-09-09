@@ -248,6 +248,7 @@ export class CapabilityRegistry {
         "heldQuests",
         "epicProgress",
         "releaseProgress",
+        "tagCompletion",
       ],
       // Areas belong here: quests carry one, blights forward into one, and
       // `project_context` files them beside the epic index.

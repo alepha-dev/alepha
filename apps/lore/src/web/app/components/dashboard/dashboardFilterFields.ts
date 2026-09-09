@@ -11,6 +11,16 @@ export interface DashboardFilterField {
   name: string;
   options: string[];
   multiple: boolean;
+  /**
+   * Where the options come from, when the schema could not say.
+   *
+   * ⚠️ Set only for a field the metric declared in `filterSources`. Its
+   * `options` arrive EMPTY here and are filled by the step from data the page
+   * fetched, which is why such a field survives the "fewer than two options"
+   * filter below: at this layer it has none yet, and dropping it would delete
+   * the only control the metric has.
+   */
+  source?: "projectTags";
 }
 
 /**
@@ -31,11 +41,20 @@ export interface DashboardFilterField {
  */
 export const dashboardFilterFields = (
   schema: ZType,
+  sources?: Record<string, "projectTags">,
 ): DashboardFilterField[] => {
   const shape = z.schema.shape(schema);
   const fields: DashboardFilterField[] = [];
 
   for (const [name, raw] of Object.entries(shape)) {
+    const source = sources?.[name];
+    if (source) {
+      // A field whose values are ROWS. The schema types it as text and could
+      // not enumerate it; the step fills the options from the project.
+      fields.push({ name, options: [], multiple: false, source });
+      continue;
+    }
+
     const field = z.schema.unwrap(raw);
 
     if (z.schema.isEnum(field)) {
@@ -59,5 +78,7 @@ export const dashboardFilterFields = (
     }
   }
 
-  return fields.filter((field) => field.options.length > 1);
+  // A source-backed field keeps its place with zero options: they arrive at
+  // the step, not here. Everything else with fewer than two is not a choice.
+  return fields.filter((field) => field.source || field.options.length > 1);
 };

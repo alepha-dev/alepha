@@ -21,6 +21,7 @@ import {
 } from "../schemas/reportsSchemas.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
+import { QuestTagTallyService } from "../services/QuestTagTallyService.ts";
 
 export class ProjectReportsController {
   quests = $repository(quests);
@@ -30,6 +31,15 @@ export class ProjectReportsController {
   database = $inject(DatabaseProvider);
   sqlx = $inject(SqlExpressionProvider);
   epicVisibility = $inject(EpicVisibilityService);
+  /**
+   * The fold that turns `quests.tags` into a per-tag tally.
+   *
+   * ⚠️ On a service since #Q2108, because the dashboard's tag card is the
+   * second reader of it and two copies of a tally is the silent disagreement
+   * a shared service exists to prevent. The raw-SQL row read stays here: it
+   * rides an aggregate query this handler already runs.
+   */
+  tagTally = $inject(QuestTagTallyService);
   dt = $inject(DateTimeProvider);
 
   /**
@@ -74,34 +84,6 @@ export class ProjectReportsController {
    * `EpicVisibilityService.plannedEpicSqlPredicate`, which returns
    * `undefined` when there is no planned epic so no clause is emitted.
    */
-  /**
-   * `quests.tags` as an array, whatever the driver handed back.
-   *
-   * ⚠️ Defensive on purpose rather than by habit. This reads the column
-   * through raw SQL, so nothing decodes it on the way out: SQLite answers
-   * the serialized JSON string it stores, and a Postgres driver may answer
-   * either that string or a parsed array depending on how the column landed.
-   * The tests and production do not run the same engine, so branching on one
-   * of them would be a fold that works in exactly one place.
-   */
-  protected parseTags(raw: unknown): string[] {
-    const value =
-      typeof raw === "string" && raw.length > 0 ? this.safeJson(raw) : raw;
-    return Array.isArray(value)
-      ? value.filter((tag): tag is string => typeof tag === "string")
-      : [];
-  }
-
-  protected safeJson(raw: string): unknown {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      // A column that is not the JSON it should be counts as no tags rather
-      // than failing the whole report.
-      return undefined;
-    }
-  }
-
   protected questInScope(plannedEpicIds: number[]) {
     const outsidePlannedEpic =
       this.epicVisibility.plannedEpicSqlPredicate(plannedEpicIds);
@@ -478,16 +460,12 @@ export class ProjectReportsController {
         z.object({ tags: z.any(), completed_at: z.any() }),
       );
 
-      const tally = new Map<string, { completed: number; remaining: number }>();
-      for (const row of tagRows) {
-        const done = row.completed_at != null;
-        for (const tag of this.parseTags(row.tags)) {
-          const entry = tally.get(tag) ?? { completed: 0, remaining: 0 };
-          if (done) entry.completed += 1;
-          else entry.remaining += 1;
-          tally.set(tag, entry);
-        }
-      }
+      const tally = this.tagTally.tally(
+        tagRows.map((row) => ({
+          tags: row.tags,
+          completed: row.completed_at != null,
+        })),
+      );
 
       // Top 8 by volume, like `byArea`: a project with forty tags would
       // otherwise draw a chart nobody can read.

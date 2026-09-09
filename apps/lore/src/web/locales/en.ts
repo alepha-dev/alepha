@@ -2189,6 +2189,9 @@ export default {
   "dashboard.metric.epicProgress.hint": "how far one epic has got",
   "dashboard.metric.releaseProgress": "Release progress",
   "dashboard.metric.releaseProgress.hint": "how far one release has got",
+  "dashboard.metric.tagCompletion": "Tag completion",
+  "dashboard.metric.tagCompletion.hint":
+    "one tag, done over total; a quest with two tags counts in both",
   "dashboard.metric.openBlights": "Open blights",
   "dashboard.metric.openBlights.hint": "project, or a list of apps",
   "dashboard.metric.untriagedFeedback": "Untriaged feedback",
@@ -2204,6 +2207,7 @@ export default {
   "dashboard.filter.untriaged": "untriaged",
   "dashboard.filter.allStatuses": "every status",
   "dashboard.filter.yesterday": "yesterday",
+  "dashboard.filter.noTags": "This project has no quest tags yet.",
   "dashboard.filterField.statuses": "Status",
   "dashboard.filterField.status": "Status",
   "dashboard.filterField.period": "Period",
@@ -2226,6 +2230,9 @@ export default {
   "dashboard.footer.release.publishedUndated": "published",
   "dashboard.footer.release.empty": "nothing attached yet",
   "dashboard.footer.release.hidden": "releases are turned off here",
+  "dashboard.footer.tag.done":
+    "$1 of $2 tagged quests, counted in every tag they carry",
+  "dashboard.footer.tag.none": "no quest carries this tag",
   "dashboard.footer.held": "of $1 open quests",
   "dashboard.footer.held.one": "of 1 open quest",
   "dashboard.footer.held.none": "nothing parked",

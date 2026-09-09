@@ -13,7 +13,10 @@ import type { I18n } from "../../services/I18n.ts";
 import DashboardCardFooter from "./DashboardCardFooter.tsx";
 import DashboardCardMenu from "./DashboardCardMenu.tsx";
 import DashboardCardValue from "./DashboardCardValue.tsx";
-import { dashboardFilterChipKeys } from "./dashboardChips.ts";
+import {
+  dashboardFilterChipKeys,
+  dashboardFilterChipLabels,
+} from "./dashboardChips.ts";
 import { dashboardMetricIcon } from "./dashboardMetricIcon.ts";
 
 export interface DashboardCardProps {
@@ -149,6 +152,14 @@ const DashboardCard = (props: DashboardCardProps) => {
             {scopeChip}
           </span>
         )}
+        {dashboardFilterChipLabels(props.card).map((label) => (
+          <span
+            key={label}
+            className="bg-muted inline-flex h-[19px] items-center rounded-full px-[7px] text-[11px]"
+          >
+            {label}
+          </span>
+        ))}
         {dashboardFilterChipKeys(props.card).map((key) => (
           <span
             key={key}
