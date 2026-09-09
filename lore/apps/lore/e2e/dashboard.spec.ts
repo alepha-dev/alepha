@@ -657,7 +657,7 @@ test.describe("Project dashboard", () => {
     const addCard = async (metric: string, scopeTestId: string) => {
       await page.goto(`/${slug}`);
       await page.waitForLoadState("networkidle");
-      await page.getByTestId("dashboard-add-tile").click();
+      await page.getByTestId("dashboard-add").click();
       await expect(page.getByTestId("dashboard-catalogue")).toBeVisible({
         timeout: 10_000,
       });
