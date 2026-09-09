@@ -278,7 +278,10 @@ describe("the Apps list", () => {
       const { view } = await mount(A_FLEET());
       await waitFor(() => expect(rowText(view)).toHaveLength(3));
 
-      await pick("Status", "Silent for over a day");
+      // "Silent", not "Silent for over a day" (feedback #P2173): the filter
+      // lists NAMES now, and the long form stayed on the liveness dot, where
+      // it is the only place the threshold can be stated.
+      await pick("Status", "Silent");
 
       await waitFor(() => expect(rowText(view)).toHaveLength(1));
       expect(rowText(view)[0]).toContain("staging");

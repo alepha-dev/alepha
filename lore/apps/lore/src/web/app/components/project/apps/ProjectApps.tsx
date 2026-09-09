@@ -359,16 +359,31 @@ const ProjectApps = () => {
                   // means and the trigger's `x` is how you get back to it.
                   clearLabel={String(tr("apps.filter.status"))}
                   // Semantic order, not alphabetical: reporting, silent,
-                  // never wired up. The labels are `AppStatusDot`'s own, so
-                  // the dot and the filter cannot come to disagree about what
-                  // a state is called.
+                  // never wired up.
+                  //
+                  // ⚠️ These used to be `AppStatusDot`'s own strings, on the
+                  // reasoning that the dot and the filter must not disagree
+                  // about what a state is called. They now diverge on
+                  // purpose, because the two are not saying the same kind of
+                  // thing: a dropdown is a list of NAMES, and "Silent for
+                  // over a day" and "No sigil, nothing reports" are
+                  // explanations of a state rather than names for one.
+                  //
+                  // The dot keeps the long form and needs it - it is a
+                  // coloured circle with no other context, so its accessible
+                  // name is the only place the threshold and the reason can
+                  // be stated. `apps.status.*` therefore keeps its existing
+                  // meaning and the short names are new keys beside it, so
+                  // nothing changes meaning under a name already in use.
+                  //
+                  // `reporting` is shared: it was already a name.
                   items={[
                     {
                       value: "reporting",
                       label: tr("apps.status.reporting"),
                     },
-                    { value: "silent", label: tr("apps.status.silent") },
-                    { value: "none", label: tr("apps.status.none") },
+                    { value: "silent", label: tr("apps.status.silent.short") },
+                    { value: "none", label: tr("apps.status.none.short") },
                   ]}
                   inputProps={{ "aria-label": tr("apps.filter.status") }}
                 />
@@ -531,15 +546,22 @@ const ProjectApps = () => {
                   <span className="truncate">{appUrlLabel(url)}</span>
                   <ExternalLink className="size-3 shrink-0" aria-hidden />
                 </a>
-              ) : (
-                // ⚠️ Text, never a link with no href. A copy with no sigil
-                // never posts to the ingest and neither does a Feedback-only
-                // app, so this is a real state rather than a missing value,
-                // and an anchor that goes nowhere says the opposite.
-                <span className="text-muted-foreground text-xs">
-                  {tr("app.dashboard.address.unknown")}
-                </span>
-              );
+              ) : // ⚠️ Nothing at all, and never a link with no href. A copy
+              // with no sigil never posts to the ingest and neither does a
+              // Feedback-only app, so this is a real state rather than a
+              // missing value: an anchor that goes nowhere says the
+              // opposite, and so did the words that used to be here.
+              //
+              // "Not known yet" was the string, and `yet` was doing the
+              // damage - between two real hostnames it read as a value
+              // still loading, or one the system would fill in later.
+              // Neither is true. An empty cell in a column of links is
+              // unambiguous, which is why this site can say nothing while
+              // `AppDashboardIdentity` still needs a word: there, the
+              // address is one row of a label/value grid, and a blank value
+              // beside a label reads as a broken render rather than an
+              // absent one.
+              null;
             },
           },
           /*

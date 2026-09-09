@@ -1160,6 +1160,11 @@ export default {
   "apps.status.reporting": "Reporting",
   "apps.status.silent": "Silent for over a day",
   "apps.status.none": "No sigil, nothing reports",
+  // The names, for the Status filter. The three above are the liveness dot's
+  // accessible name and tooltip, where the threshold and the reason are the
+  // whole point; a dropdown wants a list of states, not a list of sentences.
+  "apps.status.silent.short": "Silent",
+  "apps.status.none.short": "Not tracked",
   "apps.empty": "No app yet",
   "apps.empty.description":
     "An app is one deployed copy: which app, and which copy of it. Create one to track it here.",
@@ -1274,7 +1279,11 @@ export default {
   "app.nextSteps.estate.description":
     "Where this copy deploys to, out of the estates lent to this project.",
   "app.dashboard.address": "Address",
-  "app.dashboard.address.unknown": "Not known yet",
+  // ⚠️ Read by `AppDashboardIdentity` alone. The Apps table renders an empty
+  // cell instead - see the note at its address column for why the two sites
+  // want different answers. "Not known yet" was the old string on both, and
+  // `yet` was the problem: some apps have no address and never will.
+  "app.dashboard.address.unknown": "None",
   "app.dashboard.address.pinned": "Pinned on the Settings tab",
   "app.dashboard.address.detected": "Detected from this app's last report",
   "app.dashboard.lastReport": "Last report",
@@ -2145,8 +2154,6 @@ export default {
   "dashboard.standfirst.empty": "An empty dashboard. Add the first card.",
   "dashboard.refreshed": "Refreshed $1.",
   "dashboard.addCard": "Add card",
-  "dashboard.addCard.hint":
-    "Pick a metric, then the project, app or epic to scope it to.",
   "dashboard.projects": "Projects",
   "dashboard.search": "Search",
   "dashboard.newProject": "New Project",

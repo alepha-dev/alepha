@@ -1136,6 +1136,8 @@ export default {
   "apps.status.reporting": "Remonte des données",
   "apps.status.silent": "Silencieuse depuis plus d\u2019un jour",
   "apps.status.none": "Pas de sigil, rien ne remonte",
+  "apps.status.silent.short": "Silencieuse",
+  "apps.status.none.short": "Non suivie",
   "apps.empty": "Aucune app pour l\u2019instant",
   "apps.empty.description":
     "Une app est une copie déployée : quelle application, et quelle copie. Créez-en une pour la suivre ici.",
@@ -1252,7 +1254,7 @@ export default {
   "app.nextSteps.estate.description":
     "Où cette copie est déployée, parmi les domaines prêtés à ce projet.",
   "app.dashboard.address": "Adresse",
-  "app.dashboard.address.unknown": "Pas encore connue",
+  "app.dashboard.address.unknown": "Aucune",
   "app.dashboard.address.pinned": "Fixée dans l'onglet Paramètres",
   "app.dashboard.address.detected":
     "Détectée depuis le dernier rapport de l'app",
@@ -2145,8 +2147,6 @@ export default {
     "Tableau de bord vide. Ajoutez la premiere carte.",
   "dashboard.refreshed": "Actualise $1.",
   "dashboard.addCard": "Ajouter une carte",
-  "dashboard.addCard.hint":
-    "Choisissez une metrique, puis le projet, l'app ou l'epopee a mesurer.",
   "dashboard.projects": "Projets",
   "dashboard.search": "Rechercher",
   "dashboard.newProject": "Nouveau projet",
