@@ -47,14 +47,17 @@ test.describe("Activity", () => {
       attachments: [],
     });
 
-    await test.step("a bare project URL lands on Activity", async () => {
-      await page.goto(`/${slug}`);
+    await test.step("Activity is at /activity, and the URL does not move", async () => {
+      await page.goto(`/${slug}/activity`);
       await page.waitForLoadState("networkidle");
 
-      // The URL must not have moved: Activity RENDERS at the root, it does
-      // not redirect there. A redirect is the shape #156 was about, and a
-      // per-project landing setting is the one feedback #2066 removed.
-      expect(new URL(page.url()).pathname).toBe(`/${slug}`);
+      // ⚠️ Activity moved off the project root when the dashboard took it
+      // (#Q2104), exactly as the quest list moved off it when Activity did.
+      // The URL must not move either way: this page RENDERS at `/activity`
+      // and nothing redirects to or from it. A redirect is the shape #156 was
+      // about, and a per-project landing setting is the one feedback #2066
+      // removed.
+      expect(new URL(page.url()).pathname).toBe(`/${slug}/activity`);
       // The BREADCRUMB leaf, not a heading. The page had an `<h1>` reading
       // Activity until feedback #2090; it was removed precisely because this
       // crumb already says the word, and no sibling list page carries one.
@@ -96,7 +99,7 @@ test.describe("Activity", () => {
     });
 
     await test.step("a resource filter re-queries the server and narrows the table", async () => {
-      await page.goto(`/${slug}`);
+      await page.goto(`/${slug}/activity`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle)).toBeVisible({ timeout: 15_000 });
 

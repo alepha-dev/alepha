@@ -261,6 +261,7 @@ export default {
   "project.menu.invite-member": "Inviter un membre",
   "project.menu.create-feedback": "Nouveau retour",
   "project.menu.create": "Créer",
+  "project.menu.dashboard": "Tableau de bord",
   "project.menu.activity": "Activité",
   "project.menu.quests": "Quêtes",
   "project.menu.kanban": "Kanban",

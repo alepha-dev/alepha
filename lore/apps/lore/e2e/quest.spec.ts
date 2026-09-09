@@ -1235,7 +1235,7 @@ test.describe("Quest", () => {
     await expect(page).toHaveURL(new RegExp(`/${projectSlug}/kanban$`));
 
     // The Quests entry is `/quests` now, not the bare project root: the root
-    // is the Activity page.
+    // is the project dashboard.
     await page.locator(`a[href="/${projectSlug}/quests"]`).first().click();
     await expect(page.getByTestId("quests-table")).toBeVisible({
       timeout: 10_000,
@@ -1520,10 +1520,11 @@ test.describe("Quest", () => {
    * (`defaultSurface`, the per-project setting that could send a bare
    * project URL to the board instead, was removed with feedback #2066.)
    *
-   * ⚠️ A bare `/:projectSlug` lands on **Activity** now, not on the list.
+   * ⚠️ A bare `/:projectSlug` lands on the **dashboard** now, not on the list
+   * and no longer on Activity either (#Q2104).
    * That is not a weakening of what this test guards: the thing under
    * guard was never "which page is the root", it was that nothing may
-   * silently re-point a URL the reader chose. `e2e/activity.spec.ts` pins
+   * silently re-point a URL the reader chose. `e2e/dashboard.spec.ts` pins
    * the root's own destination.
    *
    * ⚠️ This used to drive the "Quest list | Kanban board" rail, which is gone
@@ -2043,7 +2044,8 @@ test.describe("Quest", () => {
       await expect(page.getByText(renamed).first()).toBeVisible({
         timeout: 15_000,
       });
-      // Still on the list, which is `/quests` since Activity took the root.
+      // Still on the list, which is `/quests` and has been since Activity
+      // took the root; the root is the dashboard's now.
       // The assertion is "no navigation happened", so the path it names has
       // to be the one the step started on.
       await expect(page).toHaveURL(new RegExp(`/${projectSlug}/quests$`));
