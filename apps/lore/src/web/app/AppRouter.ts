@@ -24,6 +24,7 @@ import type { FeedbackController } from "../../api/controllers/FeedbackControlle
 import type { FolioController } from "../../api/controllers/FolioController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
+import type { ProjectDashboardController } from "../../api/controllers/ProjectDashboardController.ts";
 import type { ProjectPromptController } from "../../api/controllers/ProjectPromptController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QualityController } from "../../api/controllers/QualityController.ts";
@@ -50,6 +51,7 @@ import { currentQuestCountAtom } from "./atoms/currentQuestCountAtom.ts";
 import { currentReleasesAtom } from "./atoms/currentReleasesAtom.ts";
 import { dashboardAtom } from "./atoms/dashboardAtom.ts";
 import { folioTreeSeedAtom } from "./atoms/folioTreeSeedAtom.ts";
+import { projectDashboardAtom } from "./atoms/projectDashboardAtom.ts";
 import { projectDirectoriesAtom } from "./atoms/projectDirectoriesAtom.ts";
 import { projectPromptsAtom } from "./atoms/projectPromptsAtom.ts";
 import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
@@ -96,6 +98,7 @@ export class AppRouter {
   invitationApi = $client<InvitationController>();
   feedbackApi = $client<FeedbackController>();
   epicApi = $client<EpicController>();
+  projectDashboardApi = $client<ProjectDashboardController>();
   areaApi = $client<AreaController>();
   blightApi = $client<BlightController>();
   // The framework's inbox, not a Lore controller: the read side of the
@@ -524,6 +527,7 @@ export class AppRouter {
 
   project = $page({
     children: () => [
+      this.projectDashboard,
       this.projectActivity,
       this.projectQuests,
       this.projectKanban,
@@ -1305,31 +1309,70 @@ export class AppRouter {
   }
 
   /**
-   * What moved in this project, and the project's landing page.
+   * The project's board, and the page you land on when you open a project.
    *
-   * **Why this owns `/` and Quests does not.** Every other module is
-   * behind a feature flag - `sigils`, `blights`, `vitals`, `epics`,
-   * `feedback`, `milestones`, `quality` - and `quests` is the one with no
-   * flag at all, precisely because it owned this path. A project using
-   * only the Apps module landed on a page it does not use. Activity is the
-   * only surface that is true regardless of which modules are on, so it is
-   * the honest thing to open on, and moving the root here is what makes
-   * gating Quests possible later.
+   * ⚠️ **It renders here; it does not redirect here**, and nothing may
+   * redirect to it. `AppRouter` has said so twice and both prohibitions were
+   * paid for: a loader redirect on the project root is the shape #156 was
+   * about, where a page could not tell "nobody has chosen yet" from "we are
+   * leaving" and every sidebar link went dead, and a per-project "which page
+   * do I open on" setting is the one feedback #2066 rejected. The board owns
+   * `/` by BEING the page at `/`.
    *
-   * ⚠️ **It renders here; it does not redirect here.** `projectQuests`
-   * used to send a bare `/:projectSlug` to `/kanban` through
-   * `project.defaultSurface`, and that setting, its write path and the
-   * redirect were removed with feedback #2066. Nothing in this route may
-   * reintroduce either half: a loader redirect on the project root is the
-   * shape #156 was about, and a per-project "which page do I open on"
-   * setting is the one #2066 rejected.
+   * ⚠️ **No capability gate and no permission gate**, unlike `projectQuests`
+   * one route over, which 404s on both. Every project lands here whatever it
+   * has turned on - a Knowledge-only one included, which lands on the empty
+   * state - and a gate on the project root would lock people out of their own
+   * project.
+   *
+   * The loader fills the card list so the grid lays out with the right tiles
+   * before a single number exists; the page resolves them once on mount. It
+   * catches to an empty board rather than failing the route: a board that
+   * could not be read costs a board, and this is the page the project opens
+   * on.
+   */
+  projectDashboard = $page({
+    path: "/",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Dashboard`,
+    }),
+    lazy: () => import("./components/project/dashboard/ProjectDashboard.tsx"),
+    loader: async () => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      const listed = await this.projectDashboardApi
+        .listProjectDashboardCards({ params: { projectId: project.id } })
+        .catch(() => undefined);
+      this.alepha.store.set(projectDashboardAtom, {
+        projectId: project.id,
+        cards: listed?.cards ?? [],
+      });
+    },
+  });
+
+  /**
+   * What moved in this project: every recorded write, newest first.
+   *
+   * ⚠️ **Moved off `/` when the dashboard took the project root**, exactly as
+   * Quests moved off it when Activity took it. It sits at `/activity`, a
+   * SIBLING of every other project surface, and every caller reaches it by
+   * NAME - so the path change touched no call site and a bare
+   * `/:projectSlug` bookmark now lands on the board.
+   *
+   * What it used to argue here, and which is still true of Activity itself:
+   * it is the one surface that says something whatever a project has turned
+   * on, which is why it is Core and carries no capability gate. That is no
+   * longer a reason for it to own the root, because the board is true of
+   * every project too and answers a question rather than listing events.
    *
    * No loader. `ProjectActivityPage` fetches its own window and re-fetches
    * on demand, because the window is a control on the page rather than a
    * property of the URL.
    */
   projectActivity = $page({
-    path: "/",
+    path: "/activity",
     head: (_props, previous) => ({
       title: `${previous?.title ?? ""} › Activity`,
     }),
@@ -1392,7 +1435,7 @@ export class AppRouter {
     // ⚠️ The loader GATES and fetches nothing. It used to redirect to
     // `/kanban` when the project's `defaultSurface` said so; the setting is
     // gone (feedback #2066), and the prohibition is unchanged: a bare
-    // `/:projectSlug` lands on `projectActivity` and nothing may send a
+    // `/:projectSlug` lands on `projectDashboard` and nothing may send a
     // project URL anywhere, because a redirect there is the shape #156 was
     // about. What it does now is the capability check every capability's
     // landing route carries - see `projectFolios` for the rule.
@@ -1421,9 +1464,10 @@ export class AppRouter {
   /**
    * The Kanban board as a destination rather than a mode.
    *
-   * Sibling of `projectQuests` (which keeps `path: "/"`). Giving it a real
-   * route is what lets it have a sidebar entry, a linkable URL and — once
-   * the card route lands — addressable cards.
+   * ⚠️ Sibling of `projectQuests`, which sits at `/quests` - it has not held
+   * `path: "/"` since Activity took the project root, and the root is the
+   * dashboard's now. Giving the board a real route is what lets it have a
+   * sidebar entry, a linkable URL and addressable cards.
    */
   projectKanban = $page({
     name: "projectKanban",
