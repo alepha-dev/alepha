@@ -26,6 +26,8 @@ import {
   releasePublishResultSchema,
   releaseReopenParamsSchema,
   releaseReopenResultSchema,
+  releaseSetDefaultParamsSchema,
+  releaseSetDefaultResultSchema,
   releaseUpdateParamsSchema,
   releaseUpdateResultSchema,
 } from "../schemas/index.ts";
@@ -100,6 +102,7 @@ export class ReleaseTools {
       description: release.description,
       targetDate: release.targetDate,
       releasedAt: release.releasedAt,
+      defaultSince: release.defaultSince,
       progress: release.progress,
       createdAt: release.createdAt,
     };
@@ -124,7 +127,7 @@ export class ReleaseTools {
     description:
       "List every release in a project, open and published. A release HOLDS the epics and quests assigned to it: membership is an assignment, not a time window, and nothing is in a release because it happened to be finished while the release was open. " +
       "SEVERAL RELEASES ARE OPEN AT ONCE and that is the normal state - `0.28.0`, `1.0.0` and `1.1.0` coexist, and a hotfix is a new release beside the one it patches rather than a state on it. " +
-      "Sorted by release number ASCENDING, never by tag: `0.10.0` sorts before `0.9.0` as text. Each entry carries its tag, its target date, whether it has been published, and the progress rollup.",
+      "Sorted by release number ASCENDING, never by tag: `0.10.0` sorts before `0.9.0` as text. Each entry carries its tag, its target date, whether it has been published, the progress rollup, and `defaultSince` on the ONE release (if any) the project's unfiled work lands in.",
     title: "List releases",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -151,7 +154,8 @@ export class ReleaseTools {
   release_get = $tool({
     description:
       "One release by tag, with the epics attached to it (each with its own progress inside this release) and the quests attached directly. This is what 'what is in 0.28.0' means. " +
-      "A published release reports its FROZEN progress counts: they are what it shipped, not what its quests say today.",
+      "A published release reports its FROZEN progress counts: they are what it shipped, not what its quests say today. " +
+      "`defaultSince` is present when this is the release a completed quest lands in when nobody said where it should go.",
     title: "Get release",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -185,6 +189,39 @@ export class ReleaseTools {
           completedAt: quest.completedAt,
         })),
       };
+    },
+  });
+
+  release_set_default = $tool({
+    description:
+      "Point this project's intake at a release: from then on, a quest completed WITHOUT a release of its own, and inheriting none from its epic, lands in it, and an epic begun without a release takes it and carries it down to its own release-less quests. " +
+      "⚠️ **Omit `tag` to CLEAR the default**, leaving the project with none - a normal state, and where every project starts. Exactly one release per project may be the default, and setting one clears the previous in the same write. " +
+      "A quality-of-life fallback, never a plan: everything can still be attached by hand with release_attach and quest_update's `release_tag`, and a hotfix is still a release beside the one it patches. " +
+      "A PUBLISHED release is refused - reopen it first - and publishing the default clears it, because a published release cannot accept anything. Creating a release never makes it the default: only this call does.",
+    title: "Set the default release",
+    annotations: { readOnlyHint: false, idempotentHint: true },
+    schema: {
+      params: releaseSetDefaultParamsSchema,
+      result: releaseSetDefaultResultSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      // `resolveRelease` turns an unknown tag into a 404 naming it, which is
+      // the answer an agent needs; omitting the tag is the clear.
+      const release = params.tag
+        ? await this.resolveRelease({ ...params, tag: params.tag })
+        : undefined;
+
+      const releases = await this.releaseController.setDefaultRelease({
+        params: { projectId },
+        body: { releaseId: release?.id ?? null },
+      });
+
+      const now = releases.find((it) => it.defaultSince);
+      return now ? { tag: now.tag, defaultSince: now.defaultSince } : {};
     },
   });
 

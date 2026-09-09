@@ -213,6 +213,15 @@ export const projectContextResultSchema = z.object({
         targetDate: z.datetime().optional(),
         completed: z.integer(),
         total: z.integer(),
+        /**
+         * True on the ONE release (if any) a quest completed without a
+         * release of its own lands in, and an epic begun without one takes.
+         *
+         * A plain boolean rather than `defaultSince`: this projection is
+         * deliberately narrow, and orientation needs the answer rather than
+         * the date. `release_list` and `release_get` carry the timestamp.
+         */
+        default: z.boolean().optional(),
       }),
     )
     .optional(),
