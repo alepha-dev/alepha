@@ -28,10 +28,15 @@ export default defineConfig({
    * went red with nothing broken in it. A global timeout that the healthy
    * suite reaches is not a hang detector, it is a flake.
    *
-   * 15 minutes is ~35% over the clean run, and the `e2e` job's own
+   * 15 minutes is ~35% over the clean run, and the CI job's own
    * `timeout-minutes: 30` is the real ceiling - the whole job (build plus
    * every app's suite) took 14 minutes that day, of which lore was 10. Raise
    * this and check that budget, not just this line.
+   *
+   * ⚠️ That arithmetic is from when one `e2e` job ran every app's suite. Since
+   * 2026-09-09 this suite has a runner to itself (`e2e-lore`), so the margin
+   * is wider than the paragraph above describes, not narrower. It gets wider
+   * again the day the job is sharded, because `globalTimeout` bounds a shard.
    */
   globalTimeout: 900_000,
   // Email verification is delivered by a fire-and-forget background job

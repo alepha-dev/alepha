@@ -47,17 +47,26 @@ env:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────
-  # The `yarn v` pipeline, minus its build and e2e half - which is the job
-  # below. Named to match: a red `verify` here is the same red you would
-  # have got locally.
+  # The static half of `yarn v`: lint, typecheck and every `check:*`.
   #
-  # Coverage is NOT measured here. It lives in `coverage.yml`, nightly, and
-  # that file carries the reasoning: Lore keeps one quality row per branch per
-  # day, so eighteen of the ~19 pushes a day were overwritten before anyone
-  # read them, and the instrumentation was costing ~2min on the critical path
-  # to the deploys to produce them. Read `coverage.yml` before moving it back.
+  # This job and `test` below are the job that used to be called `verify`,
+  # split in two on 2026-09-09. Together they are still exactly `yarn v` minus
+  # its build and e2e half, so a red one here is the same red you would have
+  # got locally - it just says which half, without waiting for the other. The
+  # split is also the shape sharding needs: `test` can fan out across runners
+  # without dragging these seven cheap steps through every one of them.
+  #
+  # Measured on run 34291618784, where this was all one job: these steps are
+  # 117s of it and `yarn alepha test` is 870s.
+  #
+  # ⚠️ The service containers are kept, and kept UNPROVEN. Nothing in these
+  # steps obviously wants postgres, but `check:migrations` boots each app's
+  # server entry through `loadAlephaFromServerEntryFile`, and whether that
+  # connects has never been tested: this half has always run with the
+  # containers already up. Dropping them is worth ~16s and is a deliberate
+  # experiment, not a tidy-up to smuggle into a split.
   # ──────────────────────────────────────────────────────────────────────
-  verify:
+  checks:
     runs-on: ubuntu-latest
     # A hang detector, not a budget. Public-repo minutes are free and the
     # GitHub cap is 6 hours, so a generous number costs nothing while a tight
@@ -118,26 +127,104 @@ jobs:
       - name: Docs Check
         run: yarn check:docs
 
+  # ──────────────────────────────────────────────────────────────────────
+  # The unit and integration suite - `yarn v`'s longest single step, and the
+  # other half of the old `verify` job.
+  #
+  # Alone in a job because that is what makes it shardable: `alepha test`
+  # appends `VITEST_ARGS` last on the vitest command line, so `--shard=i/N`
+  # across a matrix needs no code change. Not sharded yet, on purpose - the
+  # split lands and gets proven green first.
+  #
+  # Coverage is NOT measured here. It lives in `coverage.yml`, nightly, and
+  # that file carries the reasoning: Lore keeps one quality row per branch per
+  # day, so eighteen of the ~19 pushes a day were overwritten before anyone
+  # read them, and the instrumentation was costing ~2min on the critical path
+  # to the deploys to produce them. Read `coverage.yml` before moving it back.
+  # ──────────────────────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      redis:
+        image: redis
+        ports:
+          - 16379:6379
+
+      postgres:
+        image: postgres
+        ports:
+          - 15432:5432
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+
+      s3mock:
+        image: adobe/s3mock
+        ports:
+          - 19090:9090
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
+
       # No `--coverage`. That flag is what `coverage.yml` runs nightly, and it
       # carries five of the nine numbers Lore stores, not four: it also turns
       # on the JSON test reporter. Nothing in this job reads either report.
       - name: Test Project
         run: yarn alepha test
 
+      # Here rather than in `checks`, because two of the six bun specs are
+      # `BunPostgresProvider` and `BunRedisProvider`: they want the service
+      # containers above. It costs 3s, so it rides with the suite it belongs
+      # to rather than buying `checks` a reason to keep the containers.
       - name: Test Bun Providers
         run: yarn test:bun
 
   # ──────────────────────────────────────────────────────────────────────
-  # Build + E2E. The long pole, and the half of `yarn v` the job above skips.
-  # ──────────────────────────────────────────────────────────────────────
-  # No service containers, deliberately. Only `vitest.config.ts` points at
-  # them, and that is `verify` above: every app this job builds is SQLite or
-  # nothing (shop injects `:memory:`, lore and docs inject no
+  # Build + E2E, as three jobs. The long pole of the workflow, and the half
+  # of `yarn v` the two jobs above skip.
+  #
+  # One job until 2026-09-09, where `yarn e2e` ran every app's suite through
+  # `foreach -p` and then `yarn e2e-cli` after it. Measured on run
+  # 34291618784: 653s for the suites, of which **lore alone was 10.8 minutes**
+  # (171 tests, 2 workers) and every other app finished inside 2.1 minutes.
+  # One suite was the whole wall clock, so one suite gets its own job - and
+  # with it, the handle sharding needs (`playwright test --shard=i/N`, which
+  # `apps/lore` is already safe for: `fullyParallel` with one Lore instance
+  # per worker and no shared `webServer`).
+  #
+  # All three pay `yarn build` (149s) rather than sharing one through an
+  # artifact, and that is arithmetic, not laziness: a serialised build job
+  # costs its own ~82s of setup before anything can start, which is more than
+  # the download saves. Three builds in parallel are cheaper than one in front.
+  #
+  # The suites are bounded on the STEP, not just the job. Playwright's
+  # `globalTimeout` covers the tests but not teardown, and teardown is where
+  # this hangs: a failing run once printed its results and then sat five
+  # minutes holding orphaned wrangler and browser processes until the job cap
+  # killed everything, which reads as "CI is slow" rather than "two tests
+  # failed".
+  #
+  # No service containers on any of them, deliberately. Only `vitest.config.ts`
+  # points at those, and that is `test` above: every app these jobs build is
+  # SQLite or nothing (shop injects `:memory:`, lore and docs inject no
   # `DATABASE_URL` at all, and `alepha/orm` picks SQLite unless the URL starts
   # with `d1:`). Nothing here references REDIS_URL or S3_ENDPOINT, and
   # `node dist` does not read `.env`, so the containers were unreachable
   # rather than merely unused.
-  e2e:
+  # ──────────────────────────────────────────────────────────────────────
+  e2e-apps:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -156,46 +243,74 @@ jobs:
       - name: Build Project
         run: yarn build
 
-      # Keyed on the exact Playwright version rather than on the lockfile: the
-      # lockfile churns constantly in a monorepo this size, and a miss that
-      # only costs a re-download is not worth taking on every dependency bump.
-      - name: Resolve Playwright version
-        id: playwright-version
-        run: |
-          version="$(yarn playwright --version | tr -d '\n' | sed 's/.* //')"
-          [ -n "$version" ] || { echo "could not resolve the Playwright version"; exit 1; }
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Setup Playwright
+        uses: ./.github/actions/playwright
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
-
-      # `--with-deps` is deliberately absent. On `ubuntu-latest` every shared
-      # library chromium needs is already on the image; all the flag adds is
-      # nine font packages, and it pays for them by putting `apt-get update`
-      # against `azure.archive.ubuntu.com` on the critical path. On 2026-08-19
-      # that mirror flapped and took the e2e job of three consecutive pushes
-      # with it, at up to 12min per fetch, each run reported `cancelled` with
-      # no test output and each skipping the Lore deploy.
-      #
-      # The suites render Latin text only and there is no screenshot
-      # comparison anywhere, so nothing can observe a glyph. If a runner image
-      # ever does drop a real chromium dependency the failure is a missing
-      # `.so` at browser launch - restore the flag then, off the critical path.
-      - name: Install Playwright
-        timeout-minutes: 4
-        run: yarn playwright install chromium
-
-      # Bounded on the step, not just the job. Playwright's `globalTimeout`
-      # covers the tests but not teardown, and teardown is where this hangs: a
-      # failing run once printed its results and then sat five minutes holding
-      # orphaned wrangler and browser processes until the job cap killed
-      # everything, which reads as "CI is slow" rather than "two tests failed".
+      # `yarn e2e` minus lore, spelled inline rather than as a root script so
+      # that `yarn e2e` keeps meaning "all of it" for a human running it.
+      # `--exclude` matches the ident, so this drops `apps/lore` and leaves
+      # `packages/@alepha/lore` (which has no `e2e` script anyway) alone.
+      # Verified: it selects docs, ui, examples/shop and examples/ssr.
       - name: Run E2E Tests
         timeout-minutes: 20
-        run: yarn e2e
+        run: yarn workspaces foreach -Apt --exclude lore run e2e
+
+  e2e-lore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
+
+      - name: Build Project
+        run: yarn build
+
+      - name: Setup Playwright
+        uses: ./.github/actions/playwright
+
+      # ⚠️ `apps/lore/playwright.config.ts` sets `globalTimeout: 900_000`, and
+      # that number was sized against this suite running alongside four others
+      # on one runner. It now has the runner to itself, so it is no longer the
+      # measurement its comment describes - generous rather than wrong, which
+      # is the safe direction. Re-read that comment before tightening it.
+      - name: Run E2E Tests
+        timeout-minutes: 20
+        run: yarn w lore e2e
+
+  # Its own job for the reason it was already its own step: `e2e-cli` packs
+  # the workspace with `yarn pack` and installs the tarball into a throwaway
+  # project, so a failure here means a packaging bug rather than a UI one.
+  # No Playwright - it drives the CLI, not a browser.
+  e2e-cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Clean
+        run: yarn clean
+
+      - name: Prepare
+        run: yarn copy
+
+      # The tarball carries `dist/`, so the build has to have happened: see
+      # the header of `apps/e2e-cli/src/lore.e2e.spec.ts`, which fails with a
+      # named error rather than a mysterious one when it has not.
+      - name: Build Project
+        run: yarn build
 
       # The Bay end-to-end in e2e-cli builds the real bay binary natively
       # (apps/e2e-cli/src/bay.e2e.spec.ts) and fails loudly without go, on
@@ -207,9 +322,6 @@ jobs:
           go-version-file: apps/bay/go.mod
           cache-dependency-path: apps/bay/go.sum
 
-      # Its own step: `e2e-cli` packs the workspace with `yarn pack` and
-      # installs the tarball into a throwaway project, so a failure here means
-      # a packaging bug rather than a UI one.
       - name: Run CLI E2E Tests
         timeout-minutes: 10
         run: yarn e2e-cli
@@ -225,8 +337,8 @@ jobs:
   # `npm publish` - so a broken Dockerfile would be found on release day, past
   # the irreversible half of the pipeline. Here rather than in `e2e-cli`,
   # because that runs inside `yarn v` and a docker build does not fit the
-  # 10-minute budget. The runners already have a docker daemon (the `verify`
-  # job's `services:` need one) and public-repo minutes are free.
+  # 10-minute budget. The runners already have a docker daemon (the `checks`
+  # and `test` jobs' `services:` need one) and public-repo minutes are free.
   #
   # ⚠️ **`deploy-lore-production` deliberately does NOT gate on this job.**
   # That job ships a Cloudflare Worker and touches nothing this one builds, so
@@ -355,8 +467,8 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-docs-production:
     # Doesn't require e2e - only that the codebase is lint/typecheck-clean and
-    # the tests pass.
-    needs: [verify]
+    # the tests pass. Both halves of the old `verify` job, and only those.
+    needs: [checks, test]
     # Deploying is a real side effect, so it must not fire for a proposed
     # change. Phrased as "not a PR" rather than copying
     # `deploy-lore-production`'s `push && ref == main`: docs also deploy on the
@@ -422,12 +534,12 @@ jobs:
   # where `alepha platform` composed `<app>-<env>`. `ui.alepha.dev` is a Custom
   # Domain that Lore attaches on every deploy.
   #
-  # Gated on `verify` only, like docs and unlike Lore: the showcase has no
-  # database, no auth and no migrations, so an e2e failure elsewhere in the
-  # repository should not hold a documentation site.
+  # Gated on `checks` and `test` only, like docs and unlike Lore: the showcase
+  # has no database, no auth and no migrations, so an e2e failure elsewhere in
+  # the repository should not hold a documentation site.
   # ---------------------------------------------------------------------------
   deploy-ui-production:
-    needs: [verify]
+    needs: [checks, test]
     # Deploying is a real side effect, so it must not fire for a proposed
     # change. Phrased as "not a PR" for the same reason the docs job is: this
     # also has to keep working on the `workflow_run` (Release) trigger.
@@ -481,9 +593,9 @@ jobs:
   # not from a lookup, so an unset one costs a binding in the generated
   # `wrangler.jsonc` rather than a failure.
   #
-  # Gated on `verify` only, like docs and ui: nothing here touches e2e's
-  # territory, and nothing gates on this job in turn - a failed push blocks no
-  # deploy, which is the property that lets it be non-swallowing.
+  # Gated on `checks` and `test` only, like docs and ui: nothing here touches
+  # e2e's territory, and nothing gates on this job in turn - a failed push
+  # blocks no deploy, which is the property that lets it be non-swallowing.
   #
   # Tagged `latest` - the CLI's default, so no `--tag`. It replaces in place
   # and IS the retention policy: one row and one stored object, no sweep job.
@@ -492,7 +604,7 @@ jobs:
   # directory, and the project is the workflow-level `LORE_PROJECT` above.
   # ---------------------------------------------------------------------------
   deploy-shop-production:
-    needs: [verify]
+    needs: [checks, test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -522,8 +634,12 @@ jobs:
         env:
           LORE_API_KEY: ${{ secrets.LORE_API_KEY }}
 
+  # ⚠️ The one job that gates on everything, e2e included, and the list has to
+  # be spelled out: `needs` takes job ids, and the three e2e jobs replaced one.
+  # A job left off this list is not an error, it is a deploy that stops waiting
+  # for it - silently.
   deploy-lore-production:
-    needs: [verify, e2e]
+    needs: [checks, test, e2e-apps, e2e-lore, e2e-cli]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
