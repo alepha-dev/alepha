@@ -88,6 +88,23 @@ import { ReleaseAttachmentService } from "./ReleaseAttachmentService.ts";
  * be `planned` and `publishRelease` runs no completeness check. So the guard
  * here is not decoration, and it is also not the common path.
  *
+ * **5. Beginning an epic is a release move like any other.** An epic that
+ * names no release takes the project's DEFAULT one on the `planned -> active`
+ * edge (#E48), and that release reaches its quests through this service, on
+ * that edge, exactly as it would through `updateEpic`. One shape for "an epic
+ * has a release": the epic's row and its quests' rows both name it.
+ *
+ * ⚠️ `EpicController.setEpicStatus`'s doc says it must not write to any quest
+ * row. That rule is about a quest's STATUS, and it is untouched: activating an
+ * epic still releases its quests because `EpicVisibilityService` stops
+ * matching them. This writes `releaseId` and nothing else. Without this
+ * paragraph the next reader finds an epic activation writing to quests and
+ * deletes it to restore a rule whose point they have lost.
+ *
+ * ⚠️ That call passes `previous = null`, which is what makes the follower test
+ * select the quests naming nothing and leave a quest given its own release
+ * during planning in `kept`.
+ *
  * **4. A quest filed into an epic that already has a release inherits it**,
  * when it is in no release. Otherwise the drift returns the first time
  * somebody adds an eleventh quest, which is how the original incident

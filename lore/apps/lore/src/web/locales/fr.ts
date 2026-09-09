@@ -585,26 +585,12 @@ export default {
   "project.settings.nav.members": "Membres",
   "project.settings.nav.group.capabilities": "Capacités",
   "project.settings.nav.areas": "Domaines",
+  "project.settings.data.export.failed": "L'export a échoué",
   "project.settings.data.title": "Data",
   "project.settings.data.export.title": "Exporter les quêtes",
   "project.settings.data.export.subtitle":
     "Téléchargez toutes les quêtes de ce projet en CSV.",
   "project.settings.data.export.button": "Exporter les quêtes",
-  "project.settings.data.import.title": "Importer des quêtes",
-  "project.settings.data.import.subtitle":
-    "Importez un CSV exporté depuis Lore ou Trello. Les quêtes existantes avec le même shortId sont mises à jour ; les autres sont créées.",
-  "project.settings.data.import.choose": "Importer des quêtes",
-  "project.settings.data.import.preview.title": "Aperçu de l'import",
-  "project.settings.data.import.preview.body":
-    "$1 ligne(s) détectée(s) dans $2. Les quêtes existantes avec un shortId correspondant seront mises à jour ; les autres seront créées.",
-  "project.settings.data.import.preview.confirm": "Importer",
-  "project.settings.data.import.preview.cancel": "Annuler",
-  "project.settings.data.import.preview.empty":
-    "Aucune ligne de données détectée. Le fichier ne contient qu'un en-tête.",
-  "project.settings.data.import.result":
-    "$1 quêtes importées ($2 mises à jour, $3 ignorées)",
-  "project.settings.data.import.details": "Voir les détails",
-  "project.settings.data.import.error.title": "L'import a échoué",
   // ── Capacités ───────────────────────────────────────────────────────────
   // Voir la note dans en.ts : `.short` est le nom court du rail, `.label`
   // reste la phrase de l'assistant de création et des titres de section.
@@ -823,9 +809,18 @@ export default {
   "release.detail.edit": "Modifier",
   "release.detail.notFound": "Aucune version taguée $1 dans ce projet.",
   "release.publish.action": "Publier",
+  "release.default.badge": "Par défaut",
+  "release.default.since": "Par défaut depuis le $1",
+  "release.default.set": "Définir par défaut",
+  "release.default.clear": "Retirer par défaut",
+  "release.default.confirm.title": "Faire de $1 la version par défaut ?",
+  "release.default.confirm.description":
+    "Les quêtes terminées qui ne nomment aucune version iront dans $1, et une épopée commencée sans version sera livrée dedans. Tout reste rattachable à la main, et publier $1 retire ce statut.",
+  "release.default.cleared": "$1 n'est plus la version par défaut",
+  "quest.complete.landedIn": "Terminée dans $1",
   "release.publish.title": "Publier cette version ?",
   "release.publish.description":
-    "Publier $1 fige son journal et ses compteurs d'avancement, et plus aucune épopée ni quête ne pourra y être rattachée. C'est irréversible : la rouvrir efface tout ce qu'elle a figé.",
+    "Publier $1 fige son journal et ses compteurs d'avancement, et plus aucune épopée ni quête ne pourra y être rattachée. Si $1 est la version par défaut, elle cesse de l'être. C'est irréversible : la rouvrir efface tout ce qu'elle a figé, et ne la remet pas par défaut.",
   "release.publish.confirm": "Publier",
   "release.reopen.action": "Rouvrir",
   "release.reopen.title": "Rouvrir cette version ?",
@@ -854,6 +849,7 @@ export default {
   "release.detail.save": "Enregistrer",
   "release.detail.saved": "Version mise à jour",
   "release.hero.progress": "Avancement",
+  "release.empty.docs": "Comment fonctionnent les versions",
   "release.empty.title": "Aucune version ouverte",
   "release.empty.body":
     "Une version est un objectif nommé - 0.1.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
@@ -1016,12 +1012,6 @@ export default {
   "kanban.composer.submit": "Ajouter",
   "kanban.composer.needsArea":
     "Créez d'abord un domaine : une quête doit appartenir à l'un d'eux.",
-  "kanban.reopen.title": "Rouvrir cette quête ?",
-  "kanban.reopen.confirm":
-    "Elle repart en cours. Son résumé de complétion est conservé.",
-  "kanban.reopen.confirmWithDependents":
-    "Elle repart en cours, et $1 dépendai(en)t de son achèvement. Ce qui a déjà démarré reste démarré. Son résumé de complétion est conservé.",
-  "kanban.reopen.confirmButton": "Rouvrir",
   "kanban.error.completedCannotMove":
     "Les quêtes terminées ne peuvent pas être déplacées",
   "kanban.error.acceptFirst":

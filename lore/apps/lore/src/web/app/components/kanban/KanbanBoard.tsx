@@ -1,6 +1,5 @@
 import { Control } from "@alepha/ui/components/control/control";
 import { Button } from "@alepha/ui/components/ui/button";
-import { useDialog } from "@alepha/ui/components/use-dialog/use-dialog";
 import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import {
   DndContext,
@@ -43,7 +42,6 @@ import { kanbanFiltersAtom } from "../../atoms/kanbanFiltersAtom.ts";
 import { kanbanReloadAtom } from "../../atoms/kanbanReloadAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { AREA_DOT_CLASS, AreaDotColor } from "../shared/areaColor.ts";
-import { formatReference } from "../shared/element/typedReference.ts";
 import FilterSlot from "../shared/FilterSlot.tsx";
 import ToolbarSpinner from "../shared/ToolbarSpinner.tsx";
 import { useProjectUsers } from "../shared/useProjectUsers.ts";
@@ -178,7 +176,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
   const epicApi = useClient<EpicController>();
   const { tr } = useI18n<I18n, "en">();
   const toaster = useToast();
-  const dialog = useDialog();
   const auth = useAuth();
   const dt = useInject(DateTimeProvider);
   const dndId = useId();
@@ -627,33 +624,17 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       );
     }
 
-    // Done → anywhere is a reopen. It used to be refused outright
-    // (`kanban.error.completedCannotMove`), which is right for a quest log
-    // and wrong for a board: pulling a card back out of Done is routine.
+    // Done → anywhere was a reopen, and reopen is gone (epic #E48): a quest
+    // is immutable, and follow-up work is a NEW quest linked to the old one.
     //
-    // Confirmed rather than silent, because reopening a predecessor turns
-    // its dependents from ready back to waiting — and a dependent already
-    // accepted on the strength of this completion STAYS accepted. That is
-    // worth saying out loud rather than blocking.
+    // ⚠️ **Refused out loud, never swallowed.** Done cards are not draggable
+    // at all now (`draggable` below), so this arm only catches the paths a
+    // drag block cannot - and a card that snapped back in silence would read
+    // as a bug rather than as a rule. The string predates reopen and is the
+    // one the board used before it existed.
     if (fromStatus === "completed") {
-      const dependents = quests.filter(
-        (row) => row.dependsOn === quest.id && !row.completedAt,
-      );
-      const ok = await dialog.confirm({
-        title: tr("kanban.reopen.title"),
-        description: dependents.length
-          ? tr("kanban.reopen.confirmWithDependents", {
-              args: [
-                dependents
-                  .map((d) => formatReference("quest", d.shortId))
-                  .join(", "),
-              ],
-            })
-          : tr("kanban.reopen.confirm"),
-        confirmLabel: tr("kanban.reopen.confirmButton"),
-        cancelLabel: tr("common.cancel"),
-      });
-      if (!ok) return;
+      toaster.show(tr("kanban.error.completedCannotMove"), "warning");
+      return;
     }
 
     if (fromStatus === "new" && toKind === "completed") {
@@ -706,22 +687,6 @@ const KanbanBoard = (props: KanbanBoardProps) => {
         });
       } else if (fromStatus === "accepted" && toKind === "completed") {
         await questMutations.complete(quest.id, {});
-      } else if (fromStatus === "completed") {
-        // Reopening lands the card in the first sub-column, so a drop onto
-        // a different lane needs a second call to place it there.
-        await questApi.reopenQuest({ params: { id: quest.id } });
-        if (
-          toKind === "accepted" &&
-          toSubColumn &&
-          toSubColumn !== acceptLandsIn
-        ) {
-          await questApi.setQuestKanbanColumn({
-            params: { id: quest.id },
-            body: { kanbanColumn: toSubColumn },
-          });
-        } else if (toKind === "new") {
-          await questMutations.unassign(quest.id);
-        }
       }
       await reload();
     } catch (error: any) {
@@ -1029,7 +994,13 @@ const KanbanBoard = (props: KanbanBoardProps) => {
                         : descriptor;
                       return (
                         <KanbanColumn
-                          draggable={canMoveCards}
+                          // A Done card cannot be dragged at all: there is
+                          // nowhere for it to go since reopen was deleted,
+                          // and refusing the gesture before the user commits
+                          // to it beats catching it after the drop.
+                          draggable={
+                            canMoveCards && descriptor.kind !== "completed"
+                          }
                           key={scoped.key}
                           descriptor={scoped}
                           quests={laneGrouped[descriptor.key] ?? []}

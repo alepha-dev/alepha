@@ -6,6 +6,7 @@ import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   CalendarCheck,
+  Inbox,
   Layers,
   Package,
   Pencil,
@@ -23,6 +24,7 @@ import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 import { releaseBuckets } from "./releaseBuckets.ts";
+import ReleaseDefaultBadge from "./ReleaseDefaultBadge.tsx";
 import ReleaseProgressBar from "./ReleaseProgressBar.tsx";
 import {
   releaseState,
@@ -31,6 +33,7 @@ import {
   STATE_TONE,
 } from "./releaseState.ts";
 import { useCountLabel } from "./useCountLabel.ts";
+import { useSetDefaultRelease } from "./useSetDefaultRelease.ts";
 
 export interface ReleasePlateProps {
   release: ReleaseResource;
@@ -73,6 +76,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
   const releaseApi = useClient<ReleaseController>();
   // Three counts on one line: "(s)" would be the loudest thing on it.
   const count = useCountLabel();
+  const defaultRelease = useSetDefaultRelease();
   const [submitting, setSubmitting] = useState(false);
 
   const published = !!release.releasedAt;
@@ -199,6 +203,10 @@ const ReleasePlate = (props: ReleasePlateProps) => {
             <StateIcon className="size-3" />
             {tr(STATE_LABEL_KEYS[state])}
           </Badge>
+          {/* Beside the state chip, never inside it: a default release is
+              still open. `ReleaseDefaultBadge` renders nothing when this
+              release is not the default, which is most of them. */}
+          <ReleaseDefaultBadge release={release} />
           {/* Printed only when it says something the tag does not: `title`
               is NOT NULL and defaults to the tag server-side, so most
               releases have one that is a duplicate. */}
@@ -246,6 +254,26 @@ const ReleasePlate = (props: ReleasePlateProps) => {
         {/* Hidden rather than disabled once published. A published release
             is a record: the server refuses every write to it, and an
             affordance that always fails is worse than no affordance. */}
+        {/* Never offered on a published release: the server refuses it, and
+            the affordance would always fail. Hidden rather than disabled
+            without `release:manage`, the same rule as Publish below. */}
+        {!published && defaultRelease.can && (
+          <Button
+            variant="ghost"
+            size="lg"
+            disabled={submitting}
+            onClick={() =>
+              void (release.defaultSince
+                ? defaultRelease.clear(release)
+                : defaultRelease.set(release))
+            }
+          >
+            <Inbox className="size-4" />
+            {release.defaultSince
+              ? tr("release.default.clear")
+              : tr("release.default.set")}
+          </Button>
+        )}
         {!published && releaseApi.updateRelease.can() && (
           <Button variant="outline" size="lg" onClick={props.onEdit}>
             <Pencil className="size-4" />

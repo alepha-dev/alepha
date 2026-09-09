@@ -15,6 +15,8 @@ import { QuestController } from "../src/api/controllers/QuestController.ts";
 import { ReleaseController } from "../src/api/controllers/ReleaseController.ts";
 import { LoreApi } from "../src/api/index.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
+import { ProjectTools } from "../src/mcp/tools/ProjectTools.ts";
+import { QuestTools } from "../src/mcp/tools/QuestTools.ts";
 import { ReleaseTools } from "../src/mcp/tools/ReleaseTools.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -32,6 +34,15 @@ interface TestContext {
   questController: QuestController;
   epicController: EpicController;
   tools: ReleaseTools;
+  /**
+   * The two tools outside this file's own surface that the DEFAULT release
+   * changes: `quest_complete`'s result names the release the default caught
+   * it with, and `project_context`'s `openReleases` says which one is it.
+   * They are asserted here rather than in their own files because what is
+   * being pinned is the default release, not those tools.
+   */
+  questTools: QuestTools;
+  projectTools: ProjectTools;
   dt: DateTimeProvider;
   fakeProvider: FakeProvider;
 }
@@ -55,6 +66,8 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(LoreMcp);
 
   const tools = alepha.inject(ReleaseTools);
+  const questTools = alepha.inject(QuestTools);
+  const projectTools = alepha.inject(ProjectTools);
 
   await alepha.start();
 
@@ -66,6 +79,8 @@ const setup = async (): Promise<TestContext> => {
     questController: alepha.inject(QuestController),
     epicController: alepha.inject(EpicController),
     tools,
+    questTools,
+    projectTools,
     dt: alepha.inject(DateTimeProvider),
     fakeProvider: alepha.inject(FakeProvider),
   };
@@ -358,6 +373,189 @@ describe("MCP release tools", () => {
         ctx.tools.release_get.execute({ project: project.id, tag: "9.9.9" }),
       ),
     ).rejects.toThrowError(/not found/i);
+  });
+
+  it("sets, moves and clears the default release, by tag", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    for (const tag of ["0.28.0", "0.29.0"]) {
+      await call(user, () =>
+        ctx.tools.release_create.execute({ project: project.id, tag }),
+      );
+    }
+
+    // Nothing is the default until somebody says so: creating a release
+    // never picks one.
+    const before = await call(user, () =>
+      ctx.tools.release_list.execute({ project: project.id }),
+    );
+    expect(before.releases.filter((r) => r.defaultSince)).toEqual([]);
+
+    const set = await call(user, () =>
+      ctx.tools.release_set_default.execute({
+        project: project.id,
+        tag: "0.28.0",
+      }),
+    );
+    expect(set.tag).toBe("0.28.0");
+    expect(set.defaultSince).toBeTruthy();
+
+    // Moving it clears the previous in the same write, which is the whole
+    // point of the one-statement swap behind this tool.
+    await call(user, () =>
+      ctx.tools.release_set_default.execute({
+        project: project.id,
+        tag: "0.29.0",
+      }),
+    );
+    const moved = await call(user, () =>
+      ctx.tools.release_list.execute({ project: project.id }),
+    );
+    expect(
+      moved.releases.filter((r) => r.defaultSince).map((r) => r.tag),
+    ).toEqual(["0.29.0"]);
+
+    // ⚠️ Clearing is this same tool with the tag OMITTED, not a sibling. An
+    // omitted argument that means "clear" is not guessable, which is why the
+    // description says so and why this case exists.
+    const cleared = await call(user, () =>
+      ctx.tools.release_set_default.execute({ project: project.id }),
+    );
+    expect(cleared).toEqual({});
+    const after = await call(user, () =>
+      ctx.tools.release_get.execute({ project: project.id, tag: "0.29.0" }),
+    );
+    expect(after.defaultSince).toBeUndefined();
+  });
+
+  it("refuses a published release as the default, and clears it on publish", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await call(user, () =>
+      ctx.tools.release_create.execute({ project: project.id, tag: "0.28.0" }),
+    );
+    await call(user, () =>
+      ctx.tools.release_set_default.execute({
+        project: project.id,
+        tag: "0.28.0",
+      }),
+    );
+
+    // Publishing the default clears it. Without that the next completion
+    // would try to attach to a published release and the quest could not
+    // close.
+    await call(user, () =>
+      ctx.tools.release_publish.execute({
+        project: project.id,
+        tag: "0.28.0",
+      }),
+    );
+    const published = await call(user, () =>
+      ctx.tools.release_get.execute({ project: project.id, tag: "0.28.0" }),
+    );
+    expect(published.defaultSince).toBeUndefined();
+
+    await expect(
+      call(user, () =>
+        ctx.tools.release_set_default.execute({
+          project: project.id,
+          tag: "0.28.0",
+        }),
+      ),
+    ).rejects.toThrowError(/published\. Reopen it first\./);
+  });
+
+  it("names the default in project_context, and in quest_complete's result", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    await call(user, () =>
+      ctx.tools.release_create.execute({ project: project.id, tag: "0.30.0" }),
+    );
+    await call(user, () =>
+      ctx.tools.release_set_default.execute({
+        project: project.id,
+        tag: "0.30.0",
+      }),
+    );
+
+    // A plain boolean rather than the date: `openReleases` is five fields
+    // wide by design and orientation needs the answer, not when.
+    const context = await call(user, () =>
+      ctx.projectTools.project_context.execute({ project: project.id }),
+    );
+    expect(
+      context.openReleases?.map((r) => ({ tag: r.tag, default: r.default })),
+    ).toEqual([{ tag: "0.30.0", default: true }]);
+
+    const quest = (
+      await ctx.questController.createQuest.fetch(
+        {
+          body: {
+            projectId: project.id,
+            title: "Unfiled work",
+            area: "General",
+            priority: "medium",
+          },
+        },
+        { user },
+      )
+    ).data;
+    await ctx.questController.acceptQuest.fetch(
+      { params: { id: quest.id } },
+      { user },
+    );
+
+    const completed = await call(user, () =>
+      ctx.questTools.quest_complete.execute({
+        project: project.id,
+        shortId: quest.shortId,
+      }),
+    );
+
+    // Present only because the default fired. An agent that closes ten
+    // quests and finds out afterwards that they all went into `0.30.0` has
+    // been given a surprise it could have been told about at the time.
+    expect(completed.release).toBe("0.30.0");
+  });
+
+  it("says nothing about a release when the default did not fire", async ({
+    expect,
+  }) => {
+    const user = await createTestUser(ctx);
+    const project = await createTestProject(ctx, user);
+    const quest = (
+      await ctx.questController.createQuest.fetch(
+        {
+          body: {
+            projectId: project.id,
+            title: "Unfiled work",
+            area: "General",
+            priority: "medium",
+          },
+        },
+        { user },
+      )
+    ).data;
+    await ctx.questController.acceptQuest.fetch(
+      { params: { id: quest.id } },
+      { user },
+    );
+
+    const completed = await call(user, () =>
+      ctx.questTools.quest_complete.execute({
+        project: project.id,
+        shortId: quest.shortId,
+      }),
+    );
+
+    // Never a report of where the quest IS, only of a move nobody asked for.
+    expect(completed.release).toBeUndefined();
   });
 
   it("needs something to move", async ({ expect }) => {

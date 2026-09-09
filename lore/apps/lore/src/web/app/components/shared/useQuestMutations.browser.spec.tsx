@@ -4,6 +4,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaFake, FakeProvider } from "alepha/fake";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
+import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { LinkProvider } from "alepha/server/links";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
@@ -16,6 +17,7 @@ import { projectFixture } from "@/testing/projectFixture.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts";
+import { I18n } from "@/web/app/services/I18n.ts";
 
 import { useQuestMutations } from "./useQuestMutations.ts";
 
@@ -108,8 +110,15 @@ describe("useQuestMutations", () => {
       // Before the modules that reach for it - a substitution after
       // `LinkProvider` has been instantiated is a `TooLateSubstitutionError`.
       .with({ provide: LinkProvider, use: FakeLinkProvider })
-      .with(AlephaReact);
+      .with(AlephaReact)
+      // ⚠️ Not optional, even though nothing here asserts on a string: since
+      // #E48 `complete` says which release the project's default caught the
+      // quest with, so the hook calls `useI18n`, and `useInject` on a started
+      // container without the module is a `ContainerLockedError`.
+      .with(AlephaReactI18n);
+    alepha.inject(I18n);
     await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
 
     const fake = alepha.inject(FakeLinkProvider);
     alepha.store.set(currentProjectAtom, projectFixture() as never);
