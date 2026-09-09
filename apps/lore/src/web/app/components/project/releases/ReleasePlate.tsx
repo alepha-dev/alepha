@@ -190,8 +190,13 @@ const ReleasePlate = (props: ReleasePlateProps) => {
           {/* The tag is the release's identity AND the join key to its
               artifacts, so it gets display weight rather than the small
               secondary badge it used to wear. */}
-          <span className="bg-muted border-border flex h-8 items-center rounded-lg border px-3 font-mono text-[19px] font-semibold tracking-[-0.01em]">
-            {release.tag ?? formatReference("release", release.number)}
+          {/* The default glyph rides with the tag here too, so the plate and
+              the list say the same thing in the same place. */}
+          <span className="flex items-center gap-1.5">
+            <span className="bg-muted border-border flex h-8 items-center rounded-lg border px-3 font-mono text-[19px] font-semibold tracking-[-0.01em]">
+              {release.tag ?? formatReference("release", release.number)}
+            </span>
+            <ReleaseDefaultBadge release={release} />
           </span>
           {/* The SAME chip the Releases table draws, from the same three
               tables in `releaseState.ts`. The design called for a green
@@ -203,10 +208,6 @@ const ReleasePlate = (props: ReleasePlateProps) => {
             <StateIcon className="size-3" />
             {tr(STATE_LABEL_KEYS[state])}
           </Badge>
-          {/* Beside the state chip, never inside it: a default release is
-              still open. `ReleaseDefaultBadge` renders nothing when this
-              release is not the default, which is most of them. */}
-          <ReleaseDefaultBadge release={release} />
           {/* Printed only when it says something the tag does not: `title`
               is NOT NULL and defaults to the tag server-side, so most
               releases have one that is a duplicate. */}

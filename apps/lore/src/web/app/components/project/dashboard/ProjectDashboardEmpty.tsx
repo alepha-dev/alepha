@@ -48,7 +48,10 @@ const ProjectDashboardEmpty = (props: ProjectDashboardEmptyProps) => {
   return (
     <div
       data-testid="dashboard-empty"
-      className="border-border mt-6 max-w-[560px] rounded-xl border border-dashed p-7"
+      // Centred on both axes: with the Add tile gone this is the only thing
+      // on the surface, and a panel pinned to the top left of an otherwise
+      // empty board reads as a leftover rather than as the point.
+      className="border-border mx-auto mt-6 flex min-h-[320px] max-w-[560px] flex-col items-center justify-center rounded-xl border border-dashed p-7 text-center"
     >
       <div className="text-sm font-medium">
         {tr("project.dashboard.empty.title")}

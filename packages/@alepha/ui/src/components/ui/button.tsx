@@ -50,6 +50,36 @@ import { Loader2Icon } from "lucide-react";
  * `aria-busy:cursor-progress` wins while `loading`, which sets both attributes:
  * busy and forbidden are different promises. The work is happening, and the
  * button will take clicks again when it finishes.
+ *
+ * ---
+ *
+ * ℹ️ A caller that overrides the font size DOES lose the line height with it,
+ * and it does NOT move the label. Both halves were measured, because the first
+ * one on its own reads like a bug and is the third-most-reported thing about
+ * this file.
+ *
+ * `text-sm` is a PAIR in Tailwind v4: font size and the line height that goes
+ * with it. tailwind-merge groups it with a caller's `text-[12.5px]` and keeps
+ * only the caller's, so the pair's second half is dropped and the line height
+ * becomes the 1.5 default - 18.75px rather than 20px. That much is real, and
+ * `size="sm"` does it too, since it is `text-[0.8rem]`, also arbitrary.
+ *
+ * It cannot decentre anything. Half-leading is symmetric: the inline box sits
+ * in the middle of the line box whatever the line height, the line box is
+ * centred by `items-center`, and the fixed `h-8` is unaffected either way.
+ * Measured on the reported button (Chrome, macOS, the same `-apple-system`
+ * stack production resolves), ink centre against button centre:
+ *
+ *   text-sm         20px    line box   +0.404px
+ *   text-[12.5px]   18.75px line box   -0.050px
+ *
+ * The override is marginally BETTER centred. What remains is the font's own
+ * ascent/descent asymmetry, which is under half a pixel and is the same
+ * effect at every size.
+ *
+ * So: do not add a `leading-*` here to "fix" it. It would change nothing
+ * visible, at 94 call sites, on a base the notes above already record as the
+ * risky place to edit. See #Q2157.
  */
 const buttonVariants = cva(
   "group/button focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-3 not-disabled:active:not-aria-[haspopup]:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 aria-busy:cursor-progress aria-disabled:pointer-events-none aria-invalid:ring-3 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",

@@ -7,7 +7,7 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
@@ -34,12 +34,12 @@ import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { capabilityOption } from "../../../services/projectCapabilities.ts";
-import { formatReference } from "../../shared/element/typedReference.ts";
 import QuestAssigneePicker from "./QuestAssigneePicker.tsx";
 import { formatEstimate } from "./questEstimate.ts";
 import QuestReleaseControl from "./QuestReleaseControl.tsx";
 import { formatQuestSize } from "./questSize.ts";
 import QuestViewDuplicateButton from "./QuestViewDuplicateButton.tsx";
+import QuestViewRailEpicLink from "./QuestViewRailEpicLink.tsx";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
 import QuestViewRailTags from "./QuestViewRailTags.tsx";
 import QuestViewSettings from "./QuestViewSettings.tsx";
@@ -175,17 +175,16 @@ const QuestViewRail = (props: QuestViewRailProps) => {
         {epicsEnabled && (
           <QuestViewRailRow icon={Layers} label={tr("quest.rail.epic")}>
             {epic ? (
-              <Link
-                className="hover:underline"
+              <QuestViewRailEpicLink
+                number={epic.number}
+                title={epic.title}
                 href={router.path("projectEpic", {
                   params: {
                     projectSlug: project?.slug ?? "",
                     epicNumber: String(epic.number),
                   },
                 })}
-              >
-                {formatReference("epic", epic.number)} {epic.title}
-              </Link>
+              />
             ) : undefined}
           </QuestViewRailRow>
         )}
