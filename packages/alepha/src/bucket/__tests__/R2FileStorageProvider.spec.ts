@@ -32,13 +32,25 @@ import {
  * semantics (put/get/head/delete/list, single-use `body`, `customMetadata`).
  */
 class FakeR2Object {
+  public readonly key: string;
+  public readonly value: Uint8Array;
+  public readonly httpMetadata: { contentType?: string };
+  public readonly customMetadata: Record<string, string>;
+  public readonly uploaded: Date;
+
   constructor(
-    public readonly key: string,
-    public readonly value: Uint8Array,
-    public readonly httpMetadata: { contentType?: string },
-    public readonly customMetadata: Record<string, string>,
-    public readonly uploaded: Date,
-  ) {}
+    key: string,
+    value: Uint8Array,
+    httpMetadata: { contentType?: string },
+    customMetadata: Record<string, string>,
+    uploaded: Date,
+  ) {
+    this.key = key;
+    this.value = value;
+    this.httpMetadata = httpMetadata;
+    this.customMetadata = customMetadata;
+    this.uploaded = uploaded;
+  }
 
   get size() {
     return this.value.byteLength;

@@ -1111,14 +1111,28 @@ export class NodeWebSocketConnection implements WebSocketConnection {
   protected readonly log = $logger();
   protected readonly schemaValidator = $inject(SchemaValidator);
 
+  public readonly id: string;
+  public readonly userId: string | undefined;
+  public readonly roomIds: string[];
+  protected readonly ws: WebSocket;
+  protected readonly provider: NodeWebSocketServerProvider;
+  protected readonly endpoint: WebSocketPrimitiveOptions<any, any>;
+
   constructor(
-    public readonly id: string,
-    public readonly userId: string | undefined,
-    public readonly roomIds: string[],
-    protected readonly ws: WebSocket,
-    protected readonly provider: NodeWebSocketServerProvider,
-    protected readonly endpoint: WebSocketPrimitiveOptions<any, any>,
-  ) {}
+    id: string,
+    userId: string | undefined,
+    roomIds: string[],
+    ws: WebSocket,
+    provider: NodeWebSocketServerProvider,
+    endpoint: WebSocketPrimitiveOptions<any, any>,
+  ) {
+    this.id = id;
+    this.userId = userId;
+    this.roomIds = roomIds;
+    this.ws = ws;
+    this.provider = provider;
+    this.endpoint = endpoint;
+  }
 
   public get channelPath(): string {
     return this.endpoint.channel.options.path;

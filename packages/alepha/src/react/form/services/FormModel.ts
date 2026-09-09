@@ -41,10 +41,13 @@ export class FormModel<T extends ZObject> {
 
   public input: SchemaToInput<T>;
 
-  constructor(
-    public readonly id: string,
-    public readonly options: FormCtrlOptions<T>,
-  ) {
+  public readonly id: string;
+  public readonly options: FormCtrlOptions<T>;
+
+  constructor(id: string, options: FormCtrlOptions<T>) {
+    this.id = id;
+    this.options = options;
+
     // Initialize with schema defaults first, then override with initialValues
     const schemaDefaults = this.extractSchemaDefaults(options.schema);
     if (Object.keys(schemaDefaults).length > 0) {

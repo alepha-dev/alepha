@@ -4,11 +4,11 @@ import { AlephaError } from "alepha";
  * Base WebSocket error class
  */
 export class WebSocketError extends AlephaError {
-  constructor(
-    message: string,
-    public readonly code?: number,
-  ) {
+  public readonly code?: number;
+
+  constructor(message: string, code?: number) {
     super(message);
+    this.code = code;
     this.name = "WebSocketError";
   }
 }

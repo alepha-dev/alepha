@@ -38,6 +38,27 @@
     "jsx-a11y"
   ],
   "rules": {
+    // A TypeScript parameter property is not a type annotation that can be
+    // erased. `constructor(protected readonly deps: D) {}` is a field
+    // declaration plus an assignment that has to be GENERATED, so Node's
+    // strip-only TypeScript loader refuses it outright:
+    //
+    //   SyntaxError [ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX]: TypeScript parameter
+    //   property is not supported in strip-only mode
+    //
+    // Nothing notices against a published `alepha`, which ships compiled
+    // `dist`. It bites a checkout that VENDORS the framework, where
+    // `alepha vendor` symlinks the source into `node_modules`: anything
+    // loading it through Vite is fine, anything loading it from Node is not.
+    // `--experimental-transform-types` would fix it and is rejected inside
+    // NODE_OPTIONS, so there is no escape hatch on the consumer's side.
+    //
+    // Enabled as a rule rather than fixed by hand across the 44 sites that
+    // existed when this landed, because the ones that had already been fixed
+    // one at a time kept coming back: every hand edit holds for exactly the
+    // file it touched, and the failure it prevents names a file nobody was
+    // working on, on the day something reachable first imports it.
+    "typescript/parameter-properties": "error",
     // ---------------------------------------------------------------------
     // Enabled by name out of `suspicious`, which is otherwise far too noisy.
     // ---------------------------------------------------------------------

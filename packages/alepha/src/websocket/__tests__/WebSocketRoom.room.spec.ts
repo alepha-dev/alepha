@@ -37,7 +37,11 @@ class FakeClock implements RoomClock {
 class FakeWs {
   public sent: string[] = [];
   public closed = false;
-  constructor(protected attachment: any) {}
+  protected attachment: any;
+
+  constructor(attachment: any) {
+    this.attachment = attachment;
+  }
   serializeAttachment(a: any) {
     this.attachment = a;
   }

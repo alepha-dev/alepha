@@ -113,7 +113,11 @@ describe("Alepha#inject", () => {
 
   it("should pass constructor args correctly", () => {
     class Logger {
-      constructor(public a: string) {}
+      public a: string;
+
+      constructor(a: string) {
+        this.a = a;
+      }
     }
 
     const alepha = new Alepha();
