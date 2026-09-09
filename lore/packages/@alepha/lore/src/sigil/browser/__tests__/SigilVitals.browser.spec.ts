@@ -129,9 +129,11 @@ describe("SigilVitals", () => {
 class FakePerformanceObserver {
   static byType = new Map<string, (entries: any[]) => void>();
 
-  constructor(
-    protected readonly cb: (list: { getEntries: () => any[] }) => void,
-  ) {}
+  protected readonly cb: (list: { getEntries: () => any[] }) => void;
+
+  constructor(cb: (list: { getEntries: () => any[] }) => void) {
+    this.cb = cb;
+  }
 
   observe(options: { type: string }) {
     FakePerformanceObserver.byType.set(options.type, (entries) =>

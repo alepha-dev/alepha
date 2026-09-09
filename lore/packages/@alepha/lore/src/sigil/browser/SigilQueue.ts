@@ -75,13 +75,19 @@ export class SigilQueue {
    */
   protected held = false;
 
+  protected readonly send: (
+    env: Envelope,
+    options: { keepalive: boolean },
+  ) => Promise<void>;
+  protected readonly opts: { debounceMs: number };
+
   constructor(
-    protected readonly send: (
-      env: Envelope,
-      options: { keepalive: boolean },
-    ) => Promise<void>,
-    protected readonly opts: { debounceMs: number } = { debounceMs: 5000 },
-  ) {}
+    send: (env: Envelope, options: { keepalive: boolean }) => Promise<void>,
+    opts: { debounceMs: number } = { debounceMs: 5000 },
+  ) {
+    this.send = send;
+    this.opts = opts;
+  }
 
   /**
    * `arrival` carries the three facts that only a page load has: where it came
