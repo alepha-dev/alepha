@@ -1987,6 +1987,7 @@ export default {
   "agentPrompts.menu": "Invites pour agents",
   "agentPrompts.review": "Relire",
   "agentPrompts.activate": "Activer",
+  "agentPrompts.triageInbox": "Traiter la boîte",
   "agentPrompts.workOnIt": "S’en charger",
   "agentPrompts.review.description":
     "Demande à un agent de lire l'épopée et ses quêtes, et de challenger le plan avant toute construction.",
@@ -1996,8 +1997,12 @@ export default {
     "Confie la quête, ses objectifs et tout ce qu'elle référence à un agent de code.",
   "agentPrompts.feedbackWork.description":
     "Confie le signalement à un agent de code, avec à la clé une quête qui y est liée.",
+  "agentPrompts.feedbackLoop.description":
+    "Parcourt toute la boîte en attente, accepte ou refuse chaque signalement et laisse une quête liée derrière chaque signalement accepté.",
   "agentPrompts.copied":
     "Invite pour $1 copiée. Collez-la dans Claude Code ou Codex.",
+  "agentPrompts.copied.surface":
+    "Invite copiée. Collez-la dans Claude Code ou Codex.",
   "agentPrompts.settings.title": "Invites pour agents",
   "agentPrompts.settings.description":
     "Le texte que chaque entrée Invites pour agents place dans le presse-papiers. Les invites sont rédigées en anglais à dessein : leurs mots sont les noms des outils qu’un agent appelle.",

@@ -2,6 +2,7 @@ import type { AgentPromptKind } from "@/api/schemas/agentPromptKindSchema.ts";
 
 import { epicActivatePromptDefault } from "./epicActivatePrompt.ts";
 import { epicReviewPromptDefault } from "./epicReviewPrompt.ts";
+import { feedbackLoopPromptDefault } from "./feedbackLoopPrompt.ts";
 import { feedbackWorkPromptDefault } from "./feedbackWorkPrompt.ts";
 import { questWorkPromptDefault } from "./questWorkPrompt.ts";
 
@@ -22,4 +23,5 @@ export const AGENT_PROMPT_DEFAULTS: Record<AgentPromptKind, string> = {
   epicActivate: epicActivatePromptDefault,
   questWork: questWorkPromptDefault,
   feedbackWork: feedbackWorkPromptDefault,
+  feedbackLoop: feedbackLoopPromptDefault,
 };
