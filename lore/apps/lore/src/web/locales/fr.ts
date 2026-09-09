@@ -1009,12 +1009,6 @@ export default {
   "kanban.composer.submit": "Ajouter",
   "kanban.composer.needsArea":
     "Créez d'abord un domaine : une quête doit appartenir à l'un d'eux.",
-  "kanban.reopen.title": "Rouvrir cette quête ?",
-  "kanban.reopen.confirm":
-    "Elle repart en cours. Son résumé de complétion est conservé.",
-  "kanban.reopen.confirmWithDependents":
-    "Elle repart en cours, et $1 dépendai(en)t de son achèvement. Ce qui a déjà démarré reste démarré. Son résumé de complétion est conservé.",
-  "kanban.reopen.confirmButton": "Rouvrir",
   "kanban.error.completedCannotMove":
     "Les quêtes terminées ne peuvent pas être déplacées",
   "kanban.error.acceptFirst":
