@@ -3,11 +3,13 @@ import { $logger } from "alepha/logger";
 import type { UserAccountToken } from "alepha/security";
 
 import type { ProjectCapability } from "../entities/projectCapabilities.ts";
+import type { Project } from "../entities/projects.ts";
 import type { DashboardCardResource } from "../schemas/dashboardCardResourceSchema.ts";
 import type { DashboardCardValue } from "../schemas/dashboardCardValueSchema.ts";
 import { ActiveQuestsMetric } from "./ActiveQuestsMetric.ts";
 import { CapabilityRegistry } from "./CapabilityRegistry.ts";
 import {
+  type DashboardBoard,
   DashboardMetricCatalog,
   type DashboardMetricDescriptor,
 } from "./DashboardMetricCatalog.ts";
@@ -19,8 +21,12 @@ import {
   DashboardScopeService,
   type ResolvedDashboardScope,
 } from "./DashboardScopeService.ts";
+import { EpicProgressMetric } from "./EpicProgressMetric.ts";
+import { HeldQuestsMetric } from "./HeldQuestsMetric.ts";
 import { OpenBlightsMetric } from "./OpenBlightsMetric.ts";
 import { ProjectSecurityService } from "./ProjectSecurityService.ts";
+import { ReleaseProgressMetric } from "./ReleaseProgressMetric.ts";
+import { TagCompletionMetric } from "./TagCompletionMetric.ts";
 import { UniqueVisitorsMetric } from "./UniqueVisitorsMetric.ts";
 import { UntriagedFeedbackMetric } from "./UntriagedFeedbackMetric.ts";
 
@@ -66,6 +72,10 @@ export class DashboardMetricRegistry {
   protected readonly registry = $inject(CapabilityRegistry);
 
   protected readonly activeQuests = $inject(ActiveQuestsMetric);
+  protected readonly heldQuests = $inject(HeldQuestsMetric);
+  protected readonly epicProgress = $inject(EpicProgressMetric);
+  protected readonly releaseProgress = $inject(ReleaseProgressMetric);
+  protected readonly tagCompletion = $inject(TagCompletionMetric);
   protected readonly openBlights = $inject(OpenBlightsMetric);
   protected readonly untriagedFeedback = $inject(UntriagedFeedbackMetric);
   protected readonly uniqueVisitors = $inject(UniqueVisitorsMetric);
@@ -80,6 +90,10 @@ export class DashboardMetricRegistry {
   protected resolvers(): Map<string, DashboardMetricResolver> {
     const all: DashboardMetricResolver[] = [
       this.activeQuests,
+      this.heldQuests,
+      this.epicProgress,
+      this.releaseProgress,
+      this.tagCompletion,
       this.openBlights,
       this.untriagedFeedback,
       this.uniqueVisitors,
@@ -87,21 +101,61 @@ export class DashboardMetricRegistry {
     return new Map(all.map((resolver) => [resolver.metric, resolver]));
   }
 
+  /**
+   * The HOME board's entry point.
+   *
+   * It opens with an account-wide users-to-projects join because home has no
+   * single project to gate on: a card there may name several projects, or
+   * apps across them. A project board does have one, already proved on the
+   * route — see {@link resolveForProject}.
+   */
   async resolve(
     cards: DashboardCardResource[],
     user: UserAccountToken,
   ): Promise<DashboardCardValue[]> {
-    const resolvers = this.resolvers();
-    const values = new Map<number, DashboardCardValue>();
-
     // The membership set, read ONCE for the whole board. Every card's scope is
     // proven against it below; letting each card read it would run the same
     // users-to-projects join once per tile, which is the shape this endpoint
     // exists to avoid.
     const visible = await this.scopes.visibleProjects(user);
+    return this.resolveOn(cards, user, visible, "home");
+  }
 
-    // And the capability rows for those projects, also once: one batched
-    // `inArray` for the board rather than one read per card.
+  /**
+   * The PROJECT board's entry point.
+   *
+   * ⚠️ It skips `visibleProjects` entirely, and that changes nothing about
+   * safety. The route has already proved membership on this one project
+   * (`$ownsProject`), so handing the registry that project as the whole
+   * visible set is the same proof arriving from the gate that already ran
+   * rather than from a second account-wide read. Every id a card names is
+   * still proved against it, which inside a project reads as "belongs to this
+   * project", and an id from elsewhere is a 404 rather than an empty answer.
+   *
+   * `narrow()` still runs. A capability is hidden and never deleted, so a card
+   * added while `work.epics` was on must resolve to zero once the option goes
+   * off, rather than counting rows the project no longer shows.
+   */
+  async resolveForProject(
+    cards: DashboardCardResource[],
+    user: UserAccountToken,
+    project: Project,
+  ): Promise<DashboardCardValue[]> {
+    return this.resolveOn(cards, user, [project], "project");
+  }
+
+  protected async resolveOn(
+    cards: DashboardCardResource[],
+    user: UserAccountToken,
+    visible: Project[],
+    board: DashboardBoard,
+  ): Promise<DashboardCardValue[]> {
+    const resolvers = this.resolvers();
+    const values = new Map<number, DashboardCardValue>();
+
+    // The capability rows for those projects, once: one batched `inArray` for
+    // the board rather than one read per card. On a project board that is one
+    // id, and the read still happens — `narrow()` needs it.
     const capabilities = await this.security.capabilityRowsForProjects(
       visible.map((project) => project.id),
     );
@@ -116,9 +170,10 @@ export class DashboardMetricRegistry {
         values.set(card.id, this.failed(card, []));
         continue;
       }
-      if (!descriptor.scopeKinds.includes(card.scope.kind)) {
-        // A card stored before the metric narrowed its accepted kinds. It
-        // cannot be resolved and must not be guessed at.
+      if (!this.catalog.accepts(card.metric, card.scope.kind, board)) {
+        // A card stored before the metric narrowed its accepted kinds, or
+        // before it stopped being offered on this board. It cannot be
+        // resolved and must not be guessed at.
         values.set(card.id, this.failed(card, []));
         continue;
       }
@@ -232,6 +287,19 @@ export class DashboardMetricRegistry {
       // app-scoped: the field's presence is what says which picker filled it.
       sigilIds: scope.sigilIds ? sigils.map((sigil) => sigil.id) : undefined,
       sigils,
+      // ⚠️ Dropped WITH their project rather than carried through it. An epic
+      // card added while `work.epics` was on must resolve to zero once the
+      // option goes off, and the resolvers read these fields, so leaving them
+      // standing over an emptied project list would count rows the project no
+      // longer shows.
+      epic:
+        scope.epic && projectIds.has(scope.epic.projectId)
+          ? scope.epic
+          : undefined,
+      release:
+        scope.release && projectIds.has(scope.release.projectId)
+          ? scope.release
+          : undefined,
     };
   }
 
@@ -247,6 +315,19 @@ export class DashboardMetricRegistry {
     }
     if (entry.card.scope.kind === "projects") {
       return entry.scope.projects.map((project) => project.title);
+    }
+    if (entry.card.scope.kind === "epic") {
+      // The epic's own title, which is what the chip has to read: a card
+      // pinned to one epic on a board full of them says nothing useful with
+      // its project's name on it.
+      return entry.scope.epic ? [entry.scope.epic.title] : [];
+    }
+    if (entry.card.scope.kind === "release") {
+      // The TAG, not the title, matching how a release is named everywhere
+      // else in the app and in its own URL.
+      const release = entry.scope.release;
+      if (!release) return [];
+      return [release.tag ?? release.title];
     }
     return [];
   }

@@ -9,6 +9,11 @@ import { dashboardFilterFields } from "./dashboardFilterFields.ts";
 export interface DashboardFilterStepProps {
   metric: DashboardMetricDescriptor;
   values: Record<string, unknown>;
+  /**
+   * The project's own quest tags, for a field the metric declared as
+   * `projectTags`. Absent on home, which has no single project to ask.
+   */
+  projectTags?: string[];
   onChange: (values: Record<string, unknown>) => void;
 }
 
@@ -25,7 +30,21 @@ export interface DashboardFilterStepProps {
  */
 const DashboardFilterStep = (props: DashboardFilterStepProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const fields = dashboardFilterFields(props.metric.filters);
+  const fields = dashboardFilterFields(
+    props.metric.filters,
+    props.metric.filterSources,
+  );
+
+  /**
+   * A field's options: the schema's own, or the project's rows.
+   *
+   * ⚠️ Read off `field.source` rather than off the metric's key. This file
+   * names no metric, which is the property the panel's docblock asks for and
+   * which the beacon rule used to break by testing
+   * `metric.key === "uniqueVisitors"`.
+   */
+  const optionsOf = (field: (typeof fields)[number]): string[] =>
+    field.source === "projectTags" ? (props.projectTags ?? []) : field.options;
 
   const toggle = (name: string, option: string, multiple: boolean) => {
     if (!multiple) {
@@ -48,7 +67,7 @@ const DashboardFilterStep = (props: DashboardFilterStepProps) => {
             {tr(`dashboard.filterField.${field.name}` as never)}
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {field.options.map((option) => {
+            {optionsOf(field).map((option) => {
               const value = props.values[field.name];
               const on = field.multiple
                 ? ((value as string[]) ?? []).includes(option)
@@ -66,10 +85,17 @@ const DashboardFilterStep = (props: DashboardFilterStepProps) => {
                       : "bg-muted text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {tr(`dashboard.filterValue.${option}` as never)}
+                  {field.source
+                    ? option
+                    : tr(`dashboard.filterValue.${option}` as never)}
                 </button>
               );
             })}
+            {optionsOf(field).length === 0 && (
+              <div className="text-muted-foreground rounded-[9px] border border-dashed px-2.5 py-3 text-[11.5px]">
+                {tr("dashboard.filter.noTags")}
+              </div>
+            )}
           </div>
         </div>
       ))}

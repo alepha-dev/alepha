@@ -68,7 +68,7 @@ describe("the sidebar, derived from capabilities", () => {
     expect(routes).toContain("projectFeedback");
   });
 
-  it("gives a Knowledge-only project one entry beside the core two", ({
+  it("gives a Knowledge-only project one entry beside the core three", ({
     expect,
   }) => {
     const routes = offered(projectFixture({ capabilities: ["knowledge"] }));
@@ -77,20 +77,30 @@ describe("the sidebar, derived from capabilities", () => {
     // all, so every project had them whether or not it wanted them.
     expect(routes.sort((a, b) => a.localeCompare(b))).toEqual([
       "projectActivity",
+      "projectDashboard",
       "projectFolios",
       "projectReports",
     ]);
   });
 
-  it("leaves the two core entries standing with every capability off", ({
+  it("leaves the three core entries standing with every capability off", ({
     expect,
   }) => {
     const routes = offered(projectFixture({ capabilities: [] }));
 
+    // ⚠️ The dashboard is FIRST and Core: it is the page a bare project URL
+    // lands on (#Q2104), so a capability set that could hide it would lock
+    // somebody out of their own project. On a project with nothing turned on
+    // it renders its empty state, which is a true thing to read.
+    //
     // Activity says something whatever else is turned off, and Reports is
     // Core because its TABS declare capabilities - an Apps-only project
     // reaches Quality through it.
-    expect(routes).toEqual(["projectActivity", "projectReports"]);
+    expect(routes).toEqual([
+      "projectDashboard",
+      "projectActivity",
+      "projectReports",
+    ]);
   });
 
   it("offers no Notifications entry, at any capability set", ({ expect }) => {

@@ -13,7 +13,8 @@ import {
  * `useIsMobile()` at runtime, so only a real viewport can tell them apart: a
  * unit render sees whichever branch jsdom's `matchMedia` stub reports, and the
  * regression this guards is precisely that the wrong branch renders. The
- * Activity page is the surface the report names, and its filter bar is the
+ * Activity page is the surface the report names - at `/activity` since the
+ * dashboard took the project root (#Q2104) - and its filter bar is the
  * worst case - three selects, which is what cost several rows of height above
  * the first row of data.
  *
@@ -54,7 +55,7 @@ test.describe("AlephaTable on a phone", () => {
 
     await test.step("at 412x915 the bar is gone and a filter button replaces it", async () => {
       await page.setViewportSize({ width: 412, height: 915 });
-      await page.goto(`/${slug}`);
+      await page.goto(`/${slug}/activity`);
       await page.waitForLoadState("networkidle");
       await expect(page.getByText(questTitle)).toBeVisible({ timeout: 15_000 });
 
@@ -148,7 +149,7 @@ test.describe("AlephaTable on a phone", () => {
 
     await test.step("above the breakpoint nothing moved", async () => {
       await page.setViewportSize({ width: 1280, height: 900 });
-      await page.goto(`/${slug}`);
+      await page.goto(`/${slug}/activity`);
       await page.waitForLoadState("networkidle");
 
       await expect(filterBar).toHaveCount(1);

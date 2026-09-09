@@ -2,6 +2,7 @@ import {
   Activity,
   Bug,
   CircleDashed,
+  CirclePause,
   Eye,
   Flag,
   Flame,
@@ -31,6 +32,7 @@ import {
 const ICONS: Record<string, LucideIcon> = {
   activity: Activity,
   bug: Bug,
+  "circle-pause": CirclePause,
   eye: Eye,
   flag: Flag,
   flame: Flame,

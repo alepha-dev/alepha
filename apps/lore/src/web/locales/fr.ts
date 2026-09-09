@@ -261,6 +261,7 @@ export default {
   "project.menu.invite-member": "Inviter un membre",
   "project.menu.create-feedback": "Nouveau retour",
   "project.menu.create": "Créer",
+  "project.menu.dashboard": "Tableau de bord",
   "project.menu.activity": "Activité",
   "project.menu.quests": "Quêtes",
   "project.menu.kanban": "Kanban",
@@ -2122,16 +2123,27 @@ export default {
   "epic.quests.column.updated": "Mise à jour",
 
   // -- Tableau de bord (page d'accueil connectee) ---------------------------
+  "project.dashboard.title": "Tableau de bord",
+  "project.dashboard.empty.title": "Rien sur ce tableau pour l'instant",
+  "project.dashboard.empty.body":
+    "Un tableau, c'est quelques chiffres a verifier sans rien ouvrir. Ajoutez la premiere carte.",
+  "project.dashboard.empty.body.readOnly":
+    "Un tableau, c'est quelques chiffres a verifier sans rien ouvrir. Une personne autorisee a modifier les parametres du projet peut le remplir.",
+  "project.dashboard.empty.body.noMetrics":
+    "Ce projet ne fait encore rien qu'une carte puisse compter. Activez une capacite dans les parametres et le tableau aura de quoi afficher.",
+  "project.dashboard.empty.docs": "Comment fonctionnent les tableaux de projet",
+  "project.dashboard.standfirst": "$1 cartes sur le tableau du projet.",
+  "project.dashboard.standfirst.one": "1 carte sur le tableau du projet.",
+  "project.dashboard.standfirst.empty":
+    "Ce tableau est partage par tous les membres du projet.",
+  "project.dashboard.card.delete.shared":
+    "Le tableau appartient au projet : la carte disparait pour tout le monde.",
   "dashboard.greeting": "Bon retour, $1",
   "dashboard.standfirst": "$1 cartes.",
   "dashboard.standfirst.one": "1 carte.",
   "dashboard.standfirst.empty":
     "Tableau de bord vide. Ajoutez la premiere carte.",
   "dashboard.refreshed": "Actualise $1.",
-  "dashboard.reset": "Reinitialiser",
-  "dashboard.reset.confirm.title": "Reinitialiser le tableau de bord ?",
-  "dashboard.reset.confirm.description":
-    "Vos cartes actuelles sont remplacees par le jeu par defaut.",
   "dashboard.addCard": "Ajouter une carte",
   "dashboard.addCard.hint":
     "Choisissez une metrique, puis le projet, l'app ou l'epopee a mesurer.",
@@ -2162,6 +2174,7 @@ export default {
     "Chaque carte est une metrique et une portee. Les metriques sans donnees disponibles, par exemple une metrique d'app sur un projet sans app enregistree, ne sont pas proposees.",
   "dashboard.catalogue.noProjects": "Vous n'avez pas encore de projet",
   "dashboard.catalogue.noApps": "Aucune app enregistree ne remonte cela",
+  "dashboard.catalogue.notHere": "Ce projet ne fait pas encore cela",
 
   "dashboard.scope.all": "tous les projets",
   "dashboard.scope.allProjects": "Tous les projets",
@@ -2182,6 +2195,16 @@ export default {
   "dashboard.metric.activeQuests": "Quetes actives",
   "dashboard.metric.activeQuests.hint":
     "nouvelles + acceptees, un projet ou tous",
+  "dashboard.metric.heldQuests": "En pause",
+  "dashboard.metric.heldQuests.hint":
+    "quetes ouvertes en pause, en attente de quelque chose",
+  "dashboard.metric.epicProgress": "Avancement d'un epic",
+  "dashboard.metric.epicProgress.hint": "ou en est un epic",
+  "dashboard.metric.releaseProgress": "Avancement d'une release",
+  "dashboard.metric.releaseProgress.hint": "ou en est une release",
+  "dashboard.metric.tagCompletion": "Avancement par tag",
+  "dashboard.metric.tagCompletion.hint":
+    "un tag, terminees sur total ; une quete a deux tags compte dans les deux",
   "dashboard.metric.openBlights": "Fleaux ouverts",
   "dashboard.metric.openBlights.hint": "un projet, ou une liste d'apps",
   "dashboard.metric.untriagedFeedback": "Retours non traites",
@@ -2196,6 +2219,7 @@ export default {
   "dashboard.filter.untriaged": "non traites",
   "dashboard.filter.allStatuses": "tous les statuts",
   "dashboard.filter.yesterday": "hier",
+  "dashboard.filter.noTags": "Ce projet n'a pas encore de tag de quete.",
   "dashboard.filterField.statuses": "Statut",
   "dashboard.filterField.status": "Statut",
   "dashboard.filterField.period": "Periode",
@@ -2207,6 +2231,23 @@ export default {
   "dashboard.filterValue.yesterday": "Hier",
 
   "dashboard.footer.questSplit": "$1 acceptees, $2 nouvelles",
+  "dashboard.footer.epic.done": "$1 sur $2 terminees, hors abandonnees",
+  "dashboard.footer.epic.specified": "$1 specifiees, aucune publiee",
+  "dashboard.footer.epic.concluded": "conclu le $1",
+  "dashboard.footer.epic.concludedUndated": "conclu",
+  "dashboard.footer.epic.nothing": "rien a compter pour l'instant",
+  "dashboard.footer.epic.hidden": "les epics sont desactives ici",
+  "dashboard.footer.release.done": "$1 sur $2 terminees, hors abandonnees",
+  "dashboard.footer.release.published": "publiee le $1",
+  "dashboard.footer.release.publishedUndated": "publiee",
+  "dashboard.footer.release.empty": "rien de rattache pour l'instant",
+  "dashboard.footer.release.hidden": "les releases sont desactivees ici",
+  "dashboard.footer.tag.done":
+    "$1 sur $2 quetes taguees, comptees dans chacun de leurs tags",
+  "dashboard.footer.tag.none": "aucune quete ne porte ce tag",
+  "dashboard.footer.held": "sur $1 quetes ouvertes",
+  "dashboard.footer.held.one": "sur 1 quete ouverte",
+  "dashboard.footer.held.none": "rien en pause",
   "dashboard.footer.blights": "$1 occurrences, $2 apps",
   "dashboard.footer.blights.one": "$1 occurrences, 1 app",
   "dashboard.footer.feedback.none": "rien en attente",
