@@ -179,11 +179,25 @@ export class LoreAudits {
    * thing somebody comes back to. `reopen` is its undo and belongs beside it:
    * a release that was published, reopened and published again reads as one
    * event without it.
+   *
+   * `default` / `undefault` are the pair that points the project's intake at
+   * a release, or away from it (`ReleaseController.setDefaultRelease`). Worth
+   * a row for the same reason: from that moment every quest completed without
+   * a release of its own lands there, so "why is this in 0.30.0" has an
+   * answer naming who decided it.
    */
   readonly release = $audit({
     type: "release",
     description: "Release lifecycle",
-    actions: ["create", "update", "delete", "publish", "reopen"],
+    actions: [
+      "create",
+      "update",
+      "delete",
+      "publish",
+      "reopen",
+      "default",
+      "undefault",
+    ],
     // A session editing one resource repeatedly is the everyday case here -
     // an MCP agent, or somebody working through a form - so `update` folds
     // into one row with a count. Five minutes, measured from the row's

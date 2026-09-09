@@ -293,13 +293,24 @@ describe("Lore domain audits", () => {
       { params: { id: release.id } },
       { user },
     );
+    // Pointing intake at a release, and taking it away again: from the first
+    // of those, every quest completed without a release of its own lands
+    // here, so who decided it is worth a row.
+    await ctx.releaseController.setDefaultRelease.fetch(
+      { params: { projectId: project.id }, body: { releaseId: release.id } },
+      { user },
+    );
+    await ctx.releaseController.setDefaultRelease.fetch(
+      { params: { projectId: project.id }, body: {} },
+      { user },
+    );
 
     const rows = await rowsOf("release");
     expect(
       rows
         .map((row) => row.action as string)
         .sort((a, b) => a.localeCompare(b)),
-    ).toEqual(["create", "publish", "reopen"]);
+    ).toEqual(["create", "default", "publish", "reopen", "undefault"]);
     // The tag, not the id: it is what a release is called everywhere else.
     expect(rows[0]?.description).toBe("0.28.0");
     // Scoped, so the release's own project's Activity page can find it.
