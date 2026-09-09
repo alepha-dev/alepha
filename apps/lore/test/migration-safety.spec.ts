@@ -144,6 +144,14 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // production rows. The two above are historical drops of dead tables whose
   // names were later reused; this one drops the `artifacts` everyone is using.
   //
+  //
+  // ⚠️ Regenerated after merging main: the first cut of this migration was
+  // generated from a base that predated `20260908235005_release_default_since`,
+  // so its snapshot silently dropped `releases.default_since` and
+  // `check:migrations` wanted to re-add the column. Two migrations generated
+  // in parallel from one base are mutually blind, and the timestamp order does
+  // not save you - regenerate rather than renaming the directory.
+  //
   // Epic #E47 gave `artifacts` a `format` dimension. `format` and `reference`
   // are plain `ALTER TABLE ADD`s and rebuild nothing - the rebuild is forced
   // by relaxing `size` and `file_id` to nullable, because an image row records
@@ -160,7 +168,7 @@ const SANCTIONED_DROPS: Record<string, string[]> = {
   // ⚠️ It expires. The day any entity takes a `db.ref` onto
   // `artifacts.cols.id`, this reasoning is void and the NEXT rebuild of this
   // table has to be re-derived rather than waved through by citing this entry.
-  "20260909050116_public_wrecker": ["artifacts"],
+  "20260909124143_romantic_ben_urich": ["artifacts"],
 };
 
 /**

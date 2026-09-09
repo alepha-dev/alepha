@@ -33,12 +33,12 @@ CREATE TABLE `__new_artifacts` (
 INSERT INTO `__new_artifacts`(`id`, `created_at`, `updated_at`, `project_id`, `app`, `tag`, `runtime`, `sha256`, `size`, `file_id`, `commit_sha`, `maps_file_id`, `manifest`) SELECT `id`, `created_at`, `updated_at`, `project_id`, `app`, `tag`, `runtime`, `sha256`, `size`, `file_id`, `commit_sha`, `maps_file_id`, `manifest` FROM `artifacts`;--> statement-breakpoint
 -- alepha-allow-drop-table: reviewed line by line for epic #E47, quest #Q2115.
 --
--- ⚠️ FINDING, TRUE ON 2026-09-09 AND NOT FOREVER: nothing references
--- `artifacts`. `grep -rn "artifacts.cols" src/api/entities/` finds nothing, no
--- migration in this directory contains `REFERENCES \`artifacts\``, and
--- `deployments.artifactId` is a soft uuid with no foreign key, deliberately.
--- So this DROP has no ON DELETE CASCADE children, and the 2026-05 D1
--- cascade-wipe cannot repeat on this table.
+-- ⚠️ FINDING, RE-DERIVED ON 2026-09-09 AFTER MERGING main AND NOT FOREVER:
+-- nothing references `artifacts`. `grep -rn "artifacts.cols" src/api/entities/`
+-- finds nothing, no migration in this directory contains
+-- ``REFERENCES `artifacts` ``, and `deployments.artifactId` is a soft uuid with
+-- no foreign key, deliberately. So this DROP has no ON DELETE CASCADE children,
+-- and the 2026-05 D1 cascade-wipe cannot repeat on this table.
 --
 -- This stops being true the day any entity takes a `db.ref` onto
 -- `artifacts.cols.id`. Re-derive it before the next rebuild of this table
