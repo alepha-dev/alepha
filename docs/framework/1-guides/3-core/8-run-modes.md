@@ -195,6 +195,57 @@ class BuildCommands {
 }
 ```
 
+### `exclusive`
+
+`exclusive: true` gives the command a machine-wide slot. A second process
+running the same command **queues** rather than failing, and reports who is
+holding the slot while it waits. The slot covers the pre-hooks, the handler and
+the post-hooks as one unit.
+
+The key is derived from the package name at the command's root plus the command
+name, so several git worktrees of one project share a slot while unrelated
+projects never block each other. Pass a string to set the key yourself, which is
+also how two different commands come to share one.
+
+It is one machine, not a cluster. `ALEPHA_NO_EXCLUSIVE=1` bypasses it.
+
+#### A key that depends on the flags
+
+Pass a function instead, and it is called once the flags, args and env have been
+parsed. Returning `undefined` takes no slot at all:
+
+```ts
+verify = $command({
+  flags: z.object({ fast: z.boolean().optional() }),
+  exclusive: ({ flags }) => (flags.fast ? undefined : true),
+  handler: async ({ run }) => {
+    await run("yarn test");
+  },
+});
+```
+
+That is how one command offers both a serialised lane and a concurrent one
+without splitting into two commands. It sees `flags`, `args`, `env` and `root`,
+and nothing else: two processes have to compute the same key from the same
+invocation, so the decision must be a pure function of the parsed input.
+
+#### Claims are reentrant
+
+A command already inside a key may acquire it again. The inner claim takes no
+ticket, so it does not queue behind a slot this process already owns, and only
+the outermost release frees it.
+
+#### What frees a stuck slot
+
+A ticket is swept when the process that wrote it is gone, which is read from the
+pid rather than from the age of its heartbeat. A holder starved of CPU keeps its
+slot however long it stalls for. That is the whole point: on a saturated machine
+the holder is exactly the process most likely to miss a heartbeat, and sweeping
+one meant two processes ended up inside the critical section at once.
+
+`SIGINT` and `SIGTERM` hand the slot over immediately. `SIGKILL` cannot, so the
+next arrival sweeps it.
+
 ### `mode`
 
 `mode: true` adds a `--mode, -m` flag that loads environment files the way Vite

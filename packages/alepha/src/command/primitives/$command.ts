@@ -208,6 +208,63 @@ export interface CommandPrimitiveOptions<
   hide?: boolean;
 
   /**
+   * Ensure only one run of this command executes at a time on the machine.
+   *
+   * A second process running the same command waits its turn in a
+   * first-in-first-out queue rather than failing, and reports who holds the
+   * slot while it waits. The slot covers the pre-hooks, the handler and the
+   * post-hooks as one unit.
+   *
+   * `true` derives the key from the package name at the command's root plus
+   * the command name, so several checkouts of one project (git worktrees, for
+   * instance) share a slot while unrelated projects never block each other.
+   * Pass a string to set the key explicitly, which is also how two commands
+   * share one slot.
+   *
+   * ## A key that depends on the flags
+   *
+   * Pass a function to decide per invocation, once the flags, args and env
+   * have been parsed. Returning `undefined` takes no slot at all, which is how
+   * one command offers both a serialised lane and a concurrent one without
+   * splitting into two commands:
+   *
+   * ```ts
+   * verify = $command({
+   *   flags: z.object({ fast: z.boolean().optional() }),
+   *   exclusive: ({ flags }) => (flags.fast ? undefined : true),
+   *   handler: async ({ run }) => {
+   *     await run("yarn test");
+   *   }
+   * });
+   * ```
+   *
+   * ## Reentrancy
+   *
+   * Claims nest. A command already holding a key that acquires the same key
+   * again takes no second ticket and does not queue behind itself; only the
+   * outermost release frees the slot.
+   *
+   * The queue covers one machine, not a cluster. Set `ALEPHA_NO_EXCLUSIVE=1`
+   * to bypass it.
+   *
+   * @example
+   * ```ts
+   * verify = $command({
+   *   exclusive: true,
+   *   handler: async ({ run }) => {
+   *     await run("yarn test");
+   *   }
+   * });
+   * ```
+   */
+  exclusive?:
+    | boolean
+    | string
+    | ((
+        context: CommandExclusiveContext<T, A, E>,
+      ) => boolean | string | undefined);
+
+  /**
    * Adds a `--mode, -m` flag to load environment files.
    *
    * When enabled:
@@ -345,6 +402,29 @@ export class CommandPrimitive<
 $command[KIND] = CommandPrimitive;
 
 // ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * What a function-form `exclusive` gets to decide from.
+ *
+ * The parsed inputs and nothing else. It is evaluated before the slot is
+ * claimed, so `run`, `ask` and the rest of the handler's toolbox are
+ * deliberately absent: a key must be a pure function of the invocation, or two
+ * processes computing it would not agree on which queue they are in.
+ */
+export interface CommandExclusiveContext<
+  T extends ZObject,
+  A extends ZType = ZType,
+  E extends ZObject = ZObject,
+> {
+  flags: Infer<T>;
+  args: Infer<A>;
+  env: Infer<E>;
+
+  /**
+   * The root directory where the command is executed.
+   */
+  root: string;
+}
 
 export interface CommandHandlerArgs<
   T extends ZObject,
