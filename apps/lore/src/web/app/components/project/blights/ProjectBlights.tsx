@@ -242,7 +242,6 @@ const ProjectBlights = () => {
         // when Apps is off, so both have to be on for anything to appear.
         toolbar={
           <AgentPromptsMenu
-            iconOnly
             items={
               appsEnabled
                 ? [

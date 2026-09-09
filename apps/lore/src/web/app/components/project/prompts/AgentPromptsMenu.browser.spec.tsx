@@ -104,10 +104,21 @@ describe("AgentPromptsMenu", () => {
      */
     await mount([{ kind: "epicReview" }]);
 
-    // The caret, so the button reads as something that opens. Decoration:
-    // it adds no accessible name, and the trigger is still found by its own.
+    /*
+     * ⚠️ **One glyph, and there used to be two.** The second was a
+     * `ChevronDown` added by #Q2070 to say that a WORD is a menu; with the
+     * labelled trigger gone (feedback #P2175) there is no word for a caret
+     * to qualify, and on a 32px square it competed with the glyph that
+     * names the thing. Pinned rather than left implicit, because the caret
+     * belongs back the moment a visible label does.
+     *
+     * The name comes from `aria-label`, and `title` carries it to a pointer
+     * as well - a glyph with only an `aria-label` is unlabelled to anyone
+     * using a mouse, which is the rule #Q2017 records.
+     */
     const trigger = screen.getByRole("button", { name: /^agent prompts$/i });
-    expect(trigger.querySelectorAll("svg").length).toBe(2);
+    expect(trigger.querySelectorAll("svg").length).toBe(1);
+    expect(trigger.getAttribute("title")).toBe("Agent Prompts");
 
     fireEvent.click(trigger);
 

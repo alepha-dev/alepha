@@ -36,24 +36,37 @@ const QuestViewEditButton = (props: QuestViewEditButtonProps) => {
 
   return (
     <>
-      {/* Labelled and full size, per the mockup. It was a 28px icon-only
-          ghost button, which read as a hint next to the lifecycle button
-          rather than its peer. The label hides on narrow screens, the same
-          way the lifecycle button's does, so the pair shrinks together.
+      {/* A borderless pen with a tooltip (feedback #P2175), reversing the
+          labelled full-size form this used to carry.
 
-          No tooltip. It said "Edit" beside a button that says "Edit", which
-          adds nothing and delays the click (feedback #2003). Below `sm` the
-          label is hidden, but that is a touch width, where a hover tooltip
-          never fires anyway - and `aria-label` is what names the button in
-          every case. */}
+          ⚠️ **That form was defended here, and the defence was checked
+          against the running page before it was dropped.** It read: a 28px
+          icon-only ghost button "read as a hint next to the lifecycle button
+          rather than its peer". That objection was about the PAIR, so the
+          pair was measured on the quest header - Edit 32x32, Agent Prompts
+          32x32, and the lifecycle button (Accept/Complete/Unhold, all
+          `size="default"`) 158.71x32. **The same height**, since `size-8`
+          and `h-8` are one number: what separates them is width and weight,
+          never scale, and "hint" was about the old 28px square sitting a
+          notch below the row it was in. Edit is deliberately the quieter of
+          the two now - editing a quest is not the same kind of act as taking
+          or completing one - and the owner has ruled it should not look like
+          it.
+
+          The tooltip is not a reversal, it dissolves. #P2003 removed it
+          because it said "Edit" beside a button already saying "Edit"; with
+          no visible label there is nothing left to duplicate, and `title` is
+          the only thing naming this to a pointer. `aria-label` was always
+          here and stays: it is what names it to a reader, at every width. */}
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
+        size="icon"
         aria-label={tr("quest.view.edit")}
+        title={String(tr("quest.view.edit"))}
         onClick={() => setShowDialog(true)}
       >
         <Pencil className="size-4" />
-        <span className="hidden sm:inline">{tr("quest.view.edit")}</span>
       </Button>
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
