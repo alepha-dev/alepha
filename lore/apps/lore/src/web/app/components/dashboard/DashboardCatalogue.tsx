@@ -17,6 +17,7 @@ import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceS
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
 import type { ProjectOverviewResource } from "@/api/schemas/projectResourceSchema.ts";
 import {
+  type DashboardBoard,
   DashboardMetricCatalog,
   type DashboardMetricDescriptor,
 } from "@/api/services/DashboardMetricCatalog.ts";
@@ -32,6 +33,22 @@ import DashboardScopeStep, {
 
 export interface DashboardCatalogueProps {
   open: boolean;
+  /**
+   * Which board this panel is adding to.
+   *
+   * It decides two things and nothing else: which metrics the list offers,
+   * and whether the scope step has a question to ask. Everything below reads
+   * it through the catalogue rather than branching on it.
+   */
+  board: DashboardBoard;
+  /**
+   * The project a project board belongs to. Absent on home.
+   *
+   * A metric with nothing to point at is stored against it, as an ordinary
+   * `projects` scope carrying this single id — which is why there is no
+   * `self` scope kind.
+   */
+  boardProjectId?: number;
   cards: DashboardCardResource[];
   projects: ProjectOverviewResource[];
   apps: DashboardScopeApp[];
@@ -94,7 +111,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
   const groups = useMemo(() => {
     const wanted = query.trim().toLowerCase();
     const byGroup = new Map<string, DashboardMetricDescriptor[]>();
-    for (const metric of catalog.all()) {
+    for (const metric of catalog.on(props.board)) {
       if (
         wanted &&
         !String(tr(metric.labelKey as never))
@@ -106,7 +123,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
       byGroup.set(metric.group, [...(byGroup.get(metric.group) ?? []), metric]);
     }
     return [...byGroup];
-  }, [catalog, query, tr]);
+  }, [catalog, props.board, query, tr]);
 
   /**
    * Why a metric cannot be added right now, if it cannot.
@@ -119,15 +136,40 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
    * this file, per its docblock, must not name a metric.
    */
   const unavailable = (metric: DashboardMetricDescriptor): string | undefined =>
-    metricUnavailableKey(metric, props.projects, props.apps);
+    metricUnavailableKey(metric, props.projects, props.apps, props.board);
+
+  /**
+   * The scope kinds the reader may choose between, on this board.
+   *
+   * Empty means there is nothing to ask: on a project board `projects` and
+   * `all` both mean "this project", which the controller forces.
+   */
+  const pickable = (metric: DashboardMetricDescriptor) =>
+    catalog.pickableScopeKinds(metric.key, props.board);
+
+  /**
+   * The scope a metric starts on, before the reader has touched anything.
+   */
+  const initialScope = (metric: DashboardMetricDescriptor): DashboardScope => {
+    const forced = props.boardProjectId
+      ? catalog.forcedScope(metric.key, props.board, props.boardProjectId)
+      : undefined;
+    if (forced) {
+      return forced;
+    }
+    const kinds = pickable(metric);
+    if (kinds.includes("all")) {
+      return { kind: "all" };
+    }
+    if (kinds.includes("projects")) {
+      return { kind: "projects", projectIds: [] };
+    }
+    return { kind: "apps", sigilIds: [] };
+  };
 
   const start = (metric: DashboardMetricDescriptor) => {
     setPicked(metric);
-    setScope(
-      metric.scopeKinds.includes("all")
-        ? { kind: "all" }
-        : { kind: "apps", sigilIds: [] },
-    );
+    setScope(initialScope(metric));
     setFilters(catalog.defaultFilters(metric.key));
   };
 
@@ -233,18 +275,25 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
         {picked && (
           <>
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-2">
-              <div className="flex flex-col gap-1.5">
-                <div className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.08em] uppercase">
-                  {tr("dashboard.scope.pick")}
+              {/* ⚠️ SKIPPED, not disabled, when the metric has one possible
+                  answer on this board. A picker with a single preselected row
+                  is a question nobody is being asked, and on a project board
+                  that row would be the project the reader is already inside. */}
+              {pickable(picked).length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="text-muted-foreground text-[10.5px] font-semibold tracking-[0.08em] uppercase">
+                    {tr("dashboard.scope.pick")}
+                  </div>
+                  <DashboardScopeStep
+                    metric={picked}
+                    board={props.board}
+                    projects={props.projects}
+                    apps={props.apps}
+                    scope={scope}
+                    onChange={setScope}
+                  />
                 </div>
-                <DashboardScopeStep
-                  metric={picked}
-                  projects={props.projects}
-                  apps={props.apps}
-                  scope={scope}
-                  onChange={setScope}
-                />
-              </div>
+              )}
 
               {dashboardFilterFields(picked.filters).length > 0 && (
                 <DashboardFilterStep

@@ -282,7 +282,10 @@ export class DashboardCardService {
     if (!descriptor) {
       throw new BadRequestError(`Unknown metric: ${metric}`);
     }
-    if (!descriptor.scopeKinds.includes(scope.kind)) {
+    // Through `accepts`, which additionally asks whether the metric may be
+    // offered on THIS board at all: a project-only metric must not become
+    // storable on home because this line only looked at the scope kind.
+    if (!this.catalog.accepts(metric, scope.kind, "home")) {
       throw new BadRequestError(
         `Metric ${metric} does not accept a ${scope.kind} scope`,
       );

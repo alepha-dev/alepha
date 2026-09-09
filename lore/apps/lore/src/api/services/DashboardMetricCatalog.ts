@@ -11,6 +11,23 @@ import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSch
 import { untriagedFeedbackFiltersSchema } from "../schemas/untriagedFeedbackFiltersSchema.ts";
 
 /**
+ * Which board a metric may be offered on.
+ *
+ * `home` is the signed-in landing page: per user, cross-project, and the only
+ * board that existed before epic #E46. `project` is a project's own board,
+ * shared by everyone in it and reached at the project root.
+ *
+ * ⚠️ **Where a metric may be OFFERED, which is not what a card POINTS at.**
+ * A project-board card that points at the project stores
+ * `kind: "projects", projectIds: [thisProject]`, forced by the controller
+ * rather than chosen by the reader, so the four existing resolvers,
+ * `assertWellFormed`, `narrow()` and `ResolvedDashboardScope` all keep
+ * working untouched. A `self` scope kind would have needed a branch in every
+ * one of them for a value that is always the same.
+ */
+export type DashboardBoard = "home" | "project";
+
+/**
  * How a card renders its value. Taken from the mockup, which shows all four.
  * Only `scalar` is used by the v1 metrics; the other three exist so the
  * deferred tiles (epic progress, page views with a sparkline, needs
@@ -83,6 +100,14 @@ export interface DashboardMetricDescriptor {
    * Registry key, and the value stored in `dashboard_cards.metric`.
    */
   key: string;
+  /**
+   * The boards this metric may be offered on.
+   *
+   * Required rather than defaulted, so a metric added tomorrow decides where
+   * it belongs instead of inheriting an answer. The four v1 metrics are
+   * `["home"]`, which is what keeps home exactly as it was.
+   */
+  boards: DashboardBoard[];
   /**
    * Catalogue section in the Add-card panel.
    */
@@ -174,6 +199,7 @@ export class DashboardMetricCatalog {
   protected readonly metrics: DashboardMetricDescriptor[] = [
     {
       key: "activeQuests",
+      boards: ["home"],
       group: "quests",
       labelKey: "dashboard.metric.activeQuests",
       hintKey: "dashboard.metric.activeQuests.hint",
@@ -201,6 +227,7 @@ export class DashboardMetricCatalog {
     },
     {
       key: "openBlights",
+      boards: ["home"],
       group: "inbox",
       labelKey: "dashboard.metric.openBlights",
       hintKey: "dashboard.metric.openBlights.hint",
@@ -224,6 +251,7 @@ export class DashboardMetricCatalog {
     },
     {
       key: "untriagedFeedback",
+      boards: ["home"],
       group: "inbox",
       labelKey: "dashboard.metric.untriagedFeedback",
       cardLabelKey: "dashboard.metric.untriagedFeedback.card",
@@ -249,6 +277,7 @@ export class DashboardMetricCatalog {
     },
     {
       key: "uniqueVisitors",
+      boards: ["home"],
       group: "apps",
       labelKey: "dashboard.metric.uniqueVisitors",
       hintKey: "dashboard.metric.uniqueVisitors.hint",
@@ -285,6 +314,24 @@ export class DashboardMetricCatalog {
   }
 
   /**
+   * Every metric one board may offer, catalogue order.
+   *
+   * The Add-card panel reads this rather than {@link all}, so a metric that
+   * only means something inside a project never appears on home and the four
+   * cross-project ones never appear on a project board.
+   */
+  on(board: DashboardBoard): DashboardMetricDescriptor[] {
+    return this.metrics.filter((metric) => metric.boards.includes(board));
+  }
+
+  /**
+   * Whether this metric may be offered on this board at all.
+   */
+  offers(key: string, board: DashboardBoard): boolean {
+    return this.find(key)?.boards.includes(board) ?? false;
+  }
+
+  /**
    * One metric, or `undefined` for a key this build does not know.
    */
   find(key: string): DashboardMetricDescriptor | undefined {
@@ -303,10 +350,61 @@ export class DashboardMetricCatalog {
   }
 
   /**
-   * Whether this metric can be pointed at this kind of thing.
+   * Whether this metric can be pointed at this kind of thing, on this board.
+   *
+   * ⚠️ **The board is not optional, and that is the point.** A metric offered
+   * only on home must not become storable on a project board because a caller
+   * forgot which board it was validating for, and the two boards genuinely
+   * differ about `projects` and `all`: inside a project the route IS the
+   * project, so both are server-forced rather than chosen.
    */
-  accepts(key: string, kind: DashboardScopeKind): boolean {
+  accepts(
+    key: string,
+    kind: DashboardScopeKind,
+    board: DashboardBoard,
+  ): boolean {
+    if (!this.offers(key, board)) {
+      return false;
+    }
     return this.find(key)?.scopeKinds.includes(kind) ?? false;
+  }
+
+  /**
+   * The scope kinds a READER may pick from, for this metric on this board.
+   *
+   * Not the same list as `scopeKinds`, and the difference is what makes the
+   * Add-card wizard skip a step rather than render a picker with one answer:
+   * on a project board `projects` and `all` both mean "this project", which
+   * the controller forces, so neither is something to choose. What is left is
+   * an app, an epic or a release — genuinely several answers.
+   */
+  pickableScopeKinds(key: string, board: DashboardBoard): DashboardScopeKind[] {
+    const kinds = this.find(key)?.scopeKinds ?? [];
+    if (board === "home") {
+      return kinds;
+    }
+    return kinds.filter((kind) => kind !== "all" && kind !== "projects");
+  }
+
+  /**
+   * The scope a card gets when the reader was never asked.
+   *
+   * On a project board a metric with nothing to point at is stored against
+   * the project itself, as an ordinary `projects` scope carrying the route's
+   * single id. `undefined` when the reader does have a choice to make.
+   */
+  forcedScope(
+    key: string,
+    board: DashboardBoard,
+    projectId: number,
+  ): DashboardScope | undefined {
+    if (board !== "project") {
+      return undefined;
+    }
+    if (this.pickableScopeKinds(key, board).length > 0) {
+      return undefined;
+    }
+    return { kind: "projects", projectIds: [projectId] };
   }
 
   /**
