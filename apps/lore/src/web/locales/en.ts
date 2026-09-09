@@ -866,6 +866,7 @@ export default {
   "release.detail.save": "Save",
   "release.detail.saved": "Release updated",
   "release.hero.progress": "Progress",
+  "release.empty.docs": "How releases work",
   "release.empty.title": "No release is open",
   "release.empty.body":
     "A release is a named goal - 0.1.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
