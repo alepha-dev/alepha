@@ -174,20 +174,4 @@ export class DashboardController {
       };
     },
   });
-
-  /**
-   * Restore the default card set, keeping the seeding marker.
-   */
-  resetLayout = $action({
-    use: [$secure()],
-    method: "POST",
-    path: "/me/dashboard/reset",
-    schema: {
-      response: z.object({ cards: z.array(dashboardCardResourceSchema) }),
-    },
-    handler: async ({ user }) => {
-      await this.cards.reset(user);
-      return { cards: await this.cards.read(user) };
-    },
-  });
 }

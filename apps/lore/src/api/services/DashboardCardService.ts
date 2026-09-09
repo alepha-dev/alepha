@@ -183,18 +183,6 @@ export class DashboardCardService {
   }
 
   /**
-   * Drop every card and write the default set again.
-   *
-   * Deliberately does NOT touch the seeding marker: reset restores defaults
-   * because the user asked, and emptying the board afterwards must still be
-   * a state that survives a reload.
-   */
-  async reset(user: UserAccountToken): Promise<void> {
-    await this.cards.deleteMany({ userId: { eq: user.id } });
-    await this.seed(user);
-  }
-
-  /**
    * The starting dashboard.
    *
    * Three `all`-scoped cards that are meaningful for any account, plus

@@ -2130,10 +2130,6 @@ export default {
   "dashboard.standfirst.one": "1 card.",
   "dashboard.standfirst.empty": "An empty dashboard. Add the first card.",
   "dashboard.refreshed": "Refreshed $1.",
-  "dashboard.reset": "Reset layout",
-  "dashboard.reset.confirm.title": "Reset your dashboard?",
-  "dashboard.reset.confirm.description":
-    "Your current cards are replaced by the default set.",
   "dashboard.addCard": "Add card",
   "dashboard.addCard.hint":
     "Pick a metric, then the project, app or epic to scope it to.",
