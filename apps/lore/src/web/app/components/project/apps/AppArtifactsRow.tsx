@@ -1,6 +1,6 @@
 import { Badge } from "@alepha/ui/components/ui/badge";
 import { useI18n } from "alepha/react/i18n";
-import { Cloud, GitCommitHorizontal, Server } from "lucide-react";
+import { Cloud, Container, GitCommitHorizontal, Server } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
@@ -66,9 +66,23 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
     .map((variant) => variant.size)
     .filter((it): it is number => it !== undefined);
   const heaviest = sizes.length ? Math.max(...sizes) : undefined;
-  // Same reasoning for the digest: the row names the tag, and the tag's newest
-  // variant is what `pushedAt` already describes.
-  const [newest] = group.variants;
+  // ⚠️ The digest of the ARCHIVE, not of `variants[0]`.
+  //
+  // This used to take the first variant, on the grounds that the row names the
+  // tag and the tag's newest variant is what `pushedAt` already describes. The
+  // variants are sorted by `(runtime, format)`, so with a node tarball and a
+  // node image under one tag, `archive` sorts first and the row would happen
+  // to show the tarball - which is right for the wrong reason, and would flip
+  // the day a `bun` image joined a `node` archive.
+  //
+  // An index digest and a tarball digest are different KINDS of fact, and a
+  // row that shows whichever sorted first is a row nobody can read. The
+  // archive is what the deploy path uses, so it is the one the row names;
+  // where a tag has only an image, the image's digest is the only answer
+  // there is.
+  const newest =
+    group.variants.find((variant) => variant.format === "archive") ??
+    group.variants[0];
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
@@ -78,13 +92,25 @@ const AppArtifactsRow = (props: AppArtifactsRowProps) => {
 
       <span className="flex shrink-0 flex-wrap items-center gap-1.5">
         {group.variants.map((variant) => (
-          <Badge key={variant.runtime} variant="tint" className="gap-1">
-            {variant.runtime === "workerd" ? (
+          // ⚠️ `runtime` alone is no longer unique: a node tarball and a node
+          // image of one tag collided into one key AND read as two identical
+          // "node" badges. The format is what tells them apart, on the key and
+          // on the face of the badge.
+          <Badge
+            key={`${variant.runtime}:${variant.format}`}
+            variant="tint"
+            className="gap-1"
+          >
+            {variant.format === "image" ? (
+              <Container className="size-3 shrink-0" aria-hidden />
+            ) : variant.runtime === "workerd" ? (
               <Cloud className="size-3 shrink-0" aria-hidden />
             ) : (
               <Server className="size-3 shrink-0" aria-hidden />
             )}
-            {variant.runtime}
+            {variant.format === "image"
+              ? `${variant.runtime} image`
+              : variant.runtime}
           </Badge>
         ))}
       </span>

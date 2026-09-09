@@ -165,6 +165,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "1.2.3",
               runtime: "node",
+              format: "archive",
               sha256: "a".repeat(64),
               size: 4_400_000,
               createdAt: "2026-08-30T10:00:00.000Z",
@@ -176,6 +177,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "1.2.3",
               runtime: "workerd",
+              format: "archive",
               sha256: "b".repeat(64),
               size: 8_800_000,
               createdAt: "2026-08-30T10:00:00.000Z",
@@ -199,6 +201,104 @@ describe("AppArtifacts", () => {
     expect(card).toContain("0b35cb3");
   });
 
+  /**
+   * ⚠️ Three things broke on this row when `format` joined the key, and all
+   * three were silent.
+   *
+   * The badge key was `variant.runtime`, so a node tarball and a node image
+   * of one tag collided into ONE React key and read as two identical "node"
+   * chips. The digest was `variants[0]`, which after a `(runtime, format)`
+   * sort is the archive by luck rather than by decision, and would flip the
+   * day a `bun` image joined a `node` archive. And `Math.max` over the sizes
+   * is `NaN` the moment one variant has none.
+   */
+  it("tells a node archive from a node image, and shows the archive's digest", async ({
+    expect,
+  }) => {
+    const { findByText, getByTestId } = await show(
+      instanceOf(),
+      listing([
+        {
+          app: "docs-production",
+          tag: "0.30.0",
+          pushedAt: "2026-09-09T10:00:00.000Z",
+          variants: [
+            {
+              id: "00000000-0000-4000-8000-000000000020",
+              projectId: 1,
+              app: "docs-production",
+              tag: "0.30.0",
+              runtime: "node",
+              format: "archive",
+              sha256: "a".repeat(64),
+              size: 4_400_000,
+              createdAt: "2026-09-09T10:00:00.000Z",
+              updatedAt: "2026-09-09T10:00:00.000Z",
+            },
+            {
+              id: "00000000-0000-4000-8000-000000000021",
+              projectId: 1,
+              app: "docs-production",
+              tag: "0.30.0",
+              runtime: "node",
+              format: "image",
+              reference: "ghcr.io/acme/docs:0.30.0",
+              sha256: "b".repeat(64),
+              // No size at all: an image's is best effort.
+              createdAt: "2026-09-09T10:00:00.000Z",
+              updatedAt: "2026-09-09T10:00:00.000Z",
+            },
+          ],
+        },
+      ]),
+    );
+
+    expect(await findByText("0.30.0")).toBeTruthy();
+    const card = getByTestId("app-artifacts").textContent ?? "";
+    // Two distinct chips, not two identical "node" ones.
+    expect(card).toContain("node image");
+    // The ARCHIVE's digest, decided rather than sorted into place.
+    expect(card).toContain("a".repeat(12));
+    expect(card).not.toContain("b".repeat(12));
+    // The one variant that HAS a size, and never `NaN MB`.
+    expect(card).toContain("4.4 MB");
+    expect(card).not.toContain("NaN");
+  });
+
+  it("shows N/A when no variant under the tag states a size", async ({
+    expect,
+  }) => {
+    const { findByText, getByTestId } = await show(
+      instanceOf(),
+      listing([
+        {
+          app: "docs-production",
+          tag: "0.31.0",
+          pushedAt: "2026-09-09T10:00:00.000Z",
+          variants: [
+            {
+              id: "00000000-0000-4000-8000-000000000022",
+              projectId: 1,
+              app: "docs-production",
+              tag: "0.31.0",
+              runtime: "node",
+              format: "image",
+              reference: "ghcr.io/acme/docs:0.31.0",
+              sha256: "c".repeat(64),
+              createdAt: "2026-09-09T10:00:00.000Z",
+              updatedAt: "2026-09-09T10:00:00.000Z",
+            },
+          ],
+        },
+      ]),
+    );
+
+    expect(await findByText("0.31.0")).toBeTruthy();
+    const card = getByTestId("app-artifacts").textContent ?? "";
+    expect(card).toContain("N/A");
+    expect(card).not.toContain("NaN");
+  });
+
   it("shows no commit when the push named none", async ({ expect }) => {
     const { findByText, getByTestId } = await show(
       instanceOf(),
@@ -214,6 +314,7 @@ describe("AppArtifacts", () => {
               app: "docs-production",
               tag: "latest",
               runtime: "workerd",
+              format: "archive",
               sha256: "c".repeat(64),
               size: 1_000_000,
               createdAt: "2026-08-30T10:00:00.000Z",

@@ -9,6 +9,7 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   AppWindow,
   Cloud,
+  Container,
   GitCommitHorizontal,
   Package,
   Search,
@@ -41,6 +42,14 @@ interface ArtifactRow {
   tag: string;
   runtime: string;
   /**
+   * `archive` or `image`. The second half of what identifies a variant.
+   */
+  format: string;
+  /**
+   * The pullable string for an image variant, absent for an archive.
+   */
+  reference?: string;
+  /**
    * ⚠️ Optional. An image variant often has no size, and where it has one it
    * is one architecture's compressed total. `paginate-local` already sorts a
    * nullish value last whichever way the arrow points, so the Size column
@@ -55,6 +64,7 @@ const filtersSchema = z.object({
   search: z.string().optional(),
   app: z.array(z.string()).optional(),
   runtime: z.array(z.string()).optional(),
+  format: z.array(z.string()).optional(),
 });
 
 /**
@@ -119,12 +129,18 @@ const ProjectArtifacts = () => {
   const rows = useMemo<ArtifactRow[]>(() => {
     return (data?.groups ?? []).flatMap((group) =>
       group.variants.map((variant) => ({
-        // `(app, tag, runtime)` is the entity's own uniqueness, minus the
-        // project which is fixed here, so it is the row's identity too.
-        key: `${group.app}:${group.tag}:${variant.runtime}`,
+        // `(app, tag, runtime, format)` is the entity's own uniqueness, minus
+        // the project which is fixed here, so it is the row's identity too.
+        //
+        // ⚠️ `format` is load-bearing since #E47. Without it a node tarball
+        // and a node image of one tag collide into ONE React key, and the
+        // table renders one row where the registry holds two.
+        key: `${group.app}:${group.tag}:${variant.runtime}:${variant.format}`,
         app: group.app,
         tag: group.tag,
         runtime: variant.runtime,
+        format: variant.format,
+        reference: variant.reference,
         size: variant.size,
         commitSha: group.commitSha,
         pushedAt: group.pushedAt,
@@ -147,6 +163,17 @@ const ProjectArtifacts = () => {
       [...new Set(rows.map((row) => row.runtime))]
         .sort((a, b) => a.localeCompare(b))
         .map((runtime) => ({ label: runtime, value: runtime })),
+    [rows],
+  );
+  // Derived like the other two rather than hardcoded to the two known
+  // formats: a project that has never recorded an image gets no Format
+  // control at all, because it would be a filter that can only ever match
+  // everything.
+  const formatItems = useMemo(
+    () =>
+      [...new Set(rows.map((row) => row.format))]
+        .sort((a, b) => a.localeCompare(b))
+        .map((format) => ({ label: format, value: format })),
     [rows],
   );
 
@@ -307,6 +334,29 @@ const ProjectArtifacts = () => {
                       />
                     </FilterSlot>
                   )}
+                  {formatItems.length > 1 && (
+                    <FilterSlot>
+                      <Control
+                        input={form.input.format}
+                        label=""
+                        clearable
+                        icon={Container}
+                        clearLabel={tr("artifacts.filter.allFormats")}
+                        countLabel={(n) =>
+                          String(
+                            tr("artifacts.filter.formatCount", {
+                              args: [String(n)],
+                            }),
+                          )
+                        }
+                        triggerClassName="w-full"
+                        items={formatItems}
+                        inputProps={{
+                          "aria-label": tr("artifacts.filter.format"),
+                        }}
+                      />
+                    </FilterSlot>
+                  )}
                 </>
               ),
             }}
@@ -327,6 +377,10 @@ const ProjectArtifacts = () => {
               if (apps?.length && !apps.includes(row.app)) return false;
               const runtimes = values.runtime as string[] | undefined;
               if (runtimes?.length && !runtimes.includes(row.runtime)) {
+                return false;
+              }
+              const formats = values.format as string[] | undefined;
+              if (formats?.length && !formats.includes(row.format)) {
                 return false;
               }
               return true;
@@ -389,6 +443,20 @@ const ProjectArtifacts = () => {
                       <Server className="size-3 shrink-0" aria-hidden />
                     )}
                     {row.runtime}
+                  </Badge>
+                ),
+              },
+              format: {
+                label: tr("artifacts.table.format"),
+                sortable: true,
+                cell: (row) => (
+                  <Badge variant="tint" className="gap-1">
+                    {row.format === "image" ? (
+                      <Container className="size-3 shrink-0" aria-hidden />
+                    ) : (
+                      <Package className="size-3 shrink-0" aria-hidden />
+                    )}
+                    {row.format}
                   </Badge>
                 ),
               },

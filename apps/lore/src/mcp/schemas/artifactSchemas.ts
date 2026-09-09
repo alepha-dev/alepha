@@ -71,6 +71,14 @@ export const artifactGetParamsSchema = projectParamsSchema.extend({
       "Narrow to one build: `node`, `bun`, `workerd` or `static`. Omit to get every runtime under this tag, which is usually what you want - a tag names one release, and its variants are the same release built twice.",
     )
     .optional(),
+  format: z
+    .string()
+    .min(1)
+    .max(16)
+    .describe(
+      "Narrow to one KIND of build: `archive` for a packed tarball Lore stores, `image` for a container image Lore records the reference of and holds no bytes for. A tag may carry both of one runtime - Lore's own `node` build is packed AND published to ghcr - so `runtime` alone no longer names a single variant. Omit to get both, which is usually what you want. Only an `archive` can be deployed.",
+    )
+    .optional(),
 });
 
 export const artifactGetResultSchema = z.object({

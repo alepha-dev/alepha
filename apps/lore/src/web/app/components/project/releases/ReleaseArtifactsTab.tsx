@@ -1,5 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
-import { Cloud, Link2, Server } from "lucide-react";
+import { Cloud, Container, Link2, Server } from "lucide-react";
 
 import type { ArtifactGroup } from "@/api/schemas/artifactGroupSchema.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
@@ -110,7 +110,13 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
             releases.
           */}
           {props.artifacts.map((group) => {
-            const [newest] = group.variants;
+            // ⚠️ The ARCHIVE's digest, not `variants[0]`'s. An index digest
+            // and a tarball digest are different kinds of fact, and a row
+            // showing whichever sorted first is a row nobody can read. Where
+            // a tag has only an image, its digest is the only answer there is.
+            const newest =
+              group.variants.find((it) => it.format === "archive") ??
+              group.variants[0];
             // ⚠️ Only the variants that HAVE a size. A `Math.max` over a list
             // holding one `undefined` is `NaN`, and an image variant often
             // carries no size at all.
@@ -129,16 +135,22 @@ const ReleaseArtifactsTab = (props: ReleaseArtifactsTabProps) => {
                 </span>
                 <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                   {group.variants.map((variant) => (
+                    // ⚠️ `runtime` alone is no longer unique: two variants of
+                    // one tag may share it, differing only in `format`.
                     <span
-                      key={variant.runtime}
+                      key={`${variant.runtime}:${variant.format}`}
                       className="flex items-center gap-1.5 font-mono text-[12px]"
                     >
-                      {variant.runtime === "workerd" ? (
+                      {variant.format === "image" ? (
+                        <Container className="size-3.5 shrink-0" aria-hidden />
+                      ) : variant.runtime === "workerd" ? (
                         <Cloud className="size-3.5 shrink-0" aria-hidden />
                       ) : (
                         <Server className="size-3.5 shrink-0" aria-hidden />
                       )}
-                      {variant.runtime}
+                      {variant.format === "image"
+                        ? `${variant.runtime} image`
+                        : variant.runtime}
                     </span>
                   ))}
                 </span>

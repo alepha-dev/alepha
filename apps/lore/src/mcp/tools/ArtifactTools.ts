@@ -40,7 +40,7 @@ export class ArtifactTools {
   artifact_list = $tool({
     title: "List artifacts",
     description:
-      'What a project has built, newest push first, with every runtime of a tag folded into ONE entry - `1.2.3` names one release that may carry a node build and a workerd build, and they are variants rather than two releases. Narrow with `app` for one application, or with `tag` to answer "does a build for this release exist", which is the join a release page makes. `pushedAt` is when the bytes landed, not when the tag first appeared: `latest` is replaced in place, so its creation date would be misleading and is not what is returned. The tarball itself is never included.',
+      'What a project has built, newest push first, with every variant of a tag folded into ONE entry - `1.2.3` names one release that may carry a node build, a workerd build and a container image, and they are variants rather than three releases. A variant is identified by `runtime` AND `format` (`archive` or `image`); an image carries a `reference` to `docker pull` and no bytes at all, and `size` may be absent on one. Narrow with `app` for one application, or with `tag` to answer "does a build for this release exist", which is the join a release page makes. `pushedAt` is when the bytes landed, not when the tag first appeared: `latest` is replaced in place, so its creation date would be misleading and is not what is returned. The tarball itself is never included.',
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: artifactListParamsSchema,
@@ -64,7 +64,7 @@ export class ArtifactTools {
   artifact_get = $tool({
     title: "Get an artifact",
     description:
-      "One tag's builds: their runtimes, sizes, sha256 digests and the commit each was built from when CI named one. Reach for it to confirm a build exists before referencing its tag, or to read the digest a deploy should pin - a tag can be moved by whoever pushes next (`latest` always, any other tag under `--force`), and a digest cannot. `runtime` narrows to a single build; omit it for every variant, which is usually the useful answer. 404 when this project has no such tag for this app, which is a normal state rather than an error: an artifact with no release and a release with no artifact are both ordinary.",
+      "One tag's builds: their runtimes, formats, sizes, sha256 digests and the commit each was built from when CI named one. Reach for it to confirm a build exists before referencing its tag, or to read the digest a deploy should pin - a tag can be moved by whoever pushes next (`latest` always, any other tag under `--force`), and a digest cannot. `runtime` and `format` each narrow, and it takes BOTH to name a single variant: a tag may carry a `node` archive and a `node` image at once. Omit both for every variant, which is usually the useful answer. An `image` variant carries a `reference` to pull and no bytes; only an `archive` can be deployed. `size` is absent on a variant whose size is not known, which is normal for an image. 404 when this project has no such tag for this app, which is a normal state rather than an error: an artifact with no release and a release with no artifact are both ordinary.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
       params: artifactGetParamsSchema,
@@ -91,20 +91,27 @@ export class ArtifactTools {
         );
       }
 
-      if (!params.runtime) {
+      if (!params.runtime && !params.format) {
         return { artifact: group };
       }
 
       const variants = group.variants.filter(
-        (variant) => variant.runtime === params.runtime,
+        (variant) =>
+          (!params.runtime || variant.runtime === params.runtime) &&
+          (!params.format || variant.format === params.format),
       );
       if (variants.length === 0) {
         // Naming what DOES exist, because the answer to "1.2.3 has no workerd
         // build" is almost always "it was built for something else", and a
         // bare 404 makes that a second round trip.
+        //
+        // ⚠️ Both axes, on both sides of the sentence. A `runtime`-only list
+        // reads "It has: node, node" for a tag carrying a node tarball and a
+        // node image, which tells the reader nothing and looks like a bug.
+        const asked = [params.runtime, params.format].filter(Boolean).join(" ");
         throw new NotFoundError(
-          `"${params.tag}" has no ${params.runtime} build of "${params.app}". It has: ${group.variants
-            .map((variant) => variant.runtime)
+          `"${params.tag}" has no ${asked} build of "${params.app}". It has: ${group.variants
+            .map((variant) => `${variant.runtime} ${variant.format}`)
             .join(", ")}.`,
         );
       }

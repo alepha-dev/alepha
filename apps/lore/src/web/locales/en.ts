@@ -351,14 +351,22 @@ export default {
   "artifacts.filter.runtime": "Runtime",
   "artifacts.filter.allRuntimes": "All runtimes",
   "artifacts.filter.runtimeCount": "$1 runtimes",
+  "artifacts.filter.format": "Format",
+  "artifacts.filter.allFormats": "All formats",
+  "artifacts.filter.formatCount": "$1 formats",
   "artifacts.table.app": "App",
   "artifacts.table.tag": "Tag",
   "artifacts.table.runtime": "Runtime",
+  "artifacts.table.format": "Format",
   "artifacts.table.size": "Size",
   // ⚠️ On the title attribute, because a number that means two different
   // things in two rows of one column has to say which it is somewhere. An
   // archive's size is the tarball, exactly; a container image's is one
   // architecture's compressed total for a tag that may carry two.
+  // The tag exists and is simply not a deployable thing. Saying "no `node`
+  // build" would be false: there is one, and it is a container image.
+  "app.deploy.imageOnly":
+    "This tag exists only as a container image, and Lore deploys packed builds.",
   "app.artifacts.size.hint":
     "The heaviest build under this tag. A container image's size covers one architecture only.",
   "artifacts.table.pushed": "Pushed",

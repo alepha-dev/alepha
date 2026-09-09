@@ -69,6 +69,7 @@ const group = (over: Record<string, unknown> = {}) => ({
       app: "docs",
       tag: "1.0.0",
       runtime: "workerd",
+      format: "archive",
       sha256: "a".repeat(64),
       size: 2_000_000,
       commitSha: "abcdef1234567890",
@@ -260,6 +261,70 @@ describe("ProjectArtifacts", () => {
     expect(await findAllByText("1.0.0")).toHaveLength(2);
     expect(await findAllByText("workerd")).toHaveLength(1);
     expect(await findAllByText("node")).toHaveLength(1);
+  });
+
+  /**
+   * ⚠️ The row key was `${app}:${tag}:${runtime}` with a comment calling it
+   * "the entity's own uniqueness, minus the project". After epic #E47 it is
+   * not: `format` joined the key, so a node tarball and a node image of one
+   * tag are two rows that collided into ONE React key - the table rendered
+   * one row where the registry held two, silently.
+   */
+  it("renders two rows for one tag with a node archive and a node image", async ({
+    expect,
+  }) => {
+    const { findAllByText } = await show(
+      listing([
+        group({
+          variants: [
+            { ...group().variants[0], runtime: "node", format: "archive" },
+            {
+              ...group().variants[0],
+              id: "00000000-0000-4000-8000-000000000002",
+              runtime: "node",
+              format: "image",
+              reference: "ghcr.io/acme/docs:1.0.0",
+              sha256: "b".repeat(64),
+              size: undefined,
+            },
+          ],
+        }),
+      ]),
+    );
+
+    expect(await findAllByText("1.0.0")).toHaveLength(2);
+    // Two `node` cells, one per row, which is the collision this guards.
+    expect(await findAllByText("node")).toHaveLength(2);
+    // And the Format column tells them apart.
+    expect(await findAllByText("archive")).toHaveLength(1);
+    expect(await findAllByText("image")).toHaveLength(1);
+  });
+
+  /**
+   * ⚠️ `Math.max(...variants.map(v => v.size))` is `NaN` the moment one
+   * variant has none, and an image's size is best effort. `NaN MB` in a table
+   * cell is the failure this guards.
+   */
+  it("renders N/A for a variant with no size, never NaN", async ({
+    expect,
+  }) => {
+    const { findByText, queryByText } = await show(
+      listing([
+        group({
+          variants: [
+            {
+              ...group().variants[0],
+              runtime: "node",
+              format: "image",
+              size: undefined,
+            },
+          ],
+        }),
+      ]),
+    );
+
+    expect(await findByText("N/A")).toBeTruthy();
+    expect(queryByText(/NaN/)).toBeNull();
   });
 
   /**

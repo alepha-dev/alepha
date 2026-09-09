@@ -1120,6 +1120,35 @@ describe("artifacts", () => {
       expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
     });
 
+    it("sorts a group's variants on (runtime, format), deterministically", async ({
+      expect,
+    }) => {
+      // ⚠️ `listGrouped`'s sort exists so "a group does not reshuffle between
+      // two reads that pushed nothing". Two variants sharing a runtime both
+      // return 0 from a runtime-only comparator, which makes that guarantee
+      // false - and it is also what decides the digest `AppArtifactsRow`
+      // shows, since that takes `variants[0]`.
+      const { owner, projectId } = await aProject();
+      ctx.registry.healthy({ tag: "1.2.3" });
+
+      await push(projectId, owner, { file: await packedArtifact() });
+      await pushImage(projectId, owner, {
+        tag: "1.2.3",
+        reference: "ghcr.io/alepha-dev/lore:1.2.3",
+      });
+
+      const listing = await ctx.artifactController.listArtifacts.fetch(
+        { params: { projectId }, query: { tag: "1.2.3" } },
+        { user: owner },
+      );
+
+      const [group] = listing.data.groups;
+      expect(group.variants.map((it) => `${it.runtime}:${it.format}`)).toEqual([
+        "node:archive",
+        "node:image",
+      ]);
+    });
+
     it("coexists with an archive of the same tag and runtime", async ({
       expect,
     }) => {
