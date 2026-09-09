@@ -19,6 +19,9 @@ import type { AppRouter } from "../../../AppRouter.ts";
 import { currentFeedbackCountAtom } from "../../../atoms/currentFeedbackCountAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
+import { hasCapability } from "../../../services/projectCapabilities.ts";
+import { AgentPromptsMenu } from "../prompts/AgentPromptsMenu.tsx";
+import { useAgentPromptSubject } from "../prompts/useAgentPromptSubject.ts";
 import { FEEDBACK_PAGE_SIZE } from "./feedbackPageSize.ts";
 import ProjectFeedbackCard from "./ProjectFeedbackCard.tsx";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
@@ -43,6 +46,10 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
   const router = useRouter<AppRouter>();
   const routerState = useRouterState();
   const [project] = useStore(currentProjectAtom);
+  const promptSubject = useAgentPromptSubject();
+  // The Support capability, which is what makes a feedback inbox exist at
+  // all. `AgentPromptsMenu` owns the other switch.
+  const supportEnabled = hasCapability(project, "support");
   const [, setFeedbackCount] = useStore(currentFeedbackCountAtom);
   const feedbackApi = useClient<FeedbackController>();
 
@@ -300,6 +307,28 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               })}
               size="lg"
               fullWidth
+            />
+            {/* ⚠️ On the INBOX toolbar, not on the item footer where
+                `feedbackWork` sits. A loop is not an action on the open
+                report: hanging it there would read as one, and would be
+                invisible with nothing selected - which is exactly the state
+                somebody about to triage the whole inbox is in.
+
+                `AgentPromptsMenu` renders nothing when the project has
+                `agentPrompts` off, and this passes no items when Support is
+                off, so both switches have to be on for anything to appear. */}
+            <AgentPromptsMenu
+              iconOnly
+              items={
+                supportEnabled
+                  ? [
+                      {
+                        kind: "feedbackLoop" as const,
+                        subject: () => promptSubject.forFeedbackInbox(),
+                      },
+                    ]
+                  : []
+              }
             />
           </div>
 

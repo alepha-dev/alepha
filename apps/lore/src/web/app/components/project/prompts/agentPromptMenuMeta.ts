@@ -1,5 +1,6 @@
 import {
   ClipboardCheck,
+  ListChecks,
   type LucideIcon,
   PlayCircle,
   Wrench,
@@ -62,5 +63,14 @@ export const AGENT_PROMPT_MENU_META: Record<
     Icon: Wrench,
     labelKey: "agentPrompts.workOnIt",
     descriptionKey: "agentPrompts.feedbackWork.description",
+  },
+  // ⚠️ Its own glyph and its own label, not `Wrench` and "Work on it". The
+  // two above share those because they are the same verb on two surfaces;
+  // this is a different verb on a surface neither touches, and a menu where
+  // every row is a wrench says nothing.
+  feedbackLoop: {
+    Icon: ListChecks,
+    labelKey: "agentPrompts.triageInbox",
+    descriptionKey: "agentPrompts.feedbackLoop.description",
   },
 };

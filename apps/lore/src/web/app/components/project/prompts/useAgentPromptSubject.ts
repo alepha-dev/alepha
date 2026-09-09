@@ -6,7 +6,10 @@ import type { FeedbackResource } from "@/api/schemas/feedbackResourceSchema.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
-import type { AgentPromptSubject } from "@/web/app/prompts/renderPromptTemplate.ts";
+import type {
+  AgentPromptItemSubject,
+  AgentPromptProjectSubject,
+} from "@/web/app/prompts/renderPromptTemplate.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
 
@@ -36,7 +39,7 @@ export const useAgentPromptSubject = () => {
     typeof window === "undefined" ? path : `${window.location.origin}${path}`;
 
   return {
-    forEpic: (epic: EpicResource): AgentPromptSubject => ({
+    forEpic: (epic: EpicResource): AgentPromptItemSubject => ({
       project: project?.title ?? "",
       slug: project?.slug ?? "",
       number: epic.number,
@@ -51,7 +54,7 @@ export const useAgentPromptSubject = () => {
       ),
     }),
 
-    forQuest: (quest: QuestResource): AgentPromptSubject => ({
+    forQuest: (quest: QuestResource): AgentPromptItemSubject => ({
       project: project?.title ?? "",
       slug: project?.slug ?? "",
       // ⚠️ The two differ, and the prompt uses both: `quest_get` takes the
@@ -75,7 +78,7 @@ export const useAgentPromptSubject = () => {
      * of that belongs on a clipboard, and the only thing keeping it off is
      * that this builds seven fields rather than spreading a resource.
      */
-    forFeedback: (feedback: FeedbackResource): AgentPromptSubject => ({
+    forFeedback: (feedback: FeedbackResource): AgentPromptItemSubject => ({
       project: project?.title ?? "",
       slug: project?.slug ?? "",
       number: feedback.shortId,
@@ -94,6 +97,22 @@ export const useAgentPromptSubject = () => {
           query: { feedback: String(feedback.shortId) },
         }),
       ),
+    }),
+
+    /**
+     * The feedback INBOX, for a prompt about the surface rather than one
+     * item.
+     *
+     * ⚠️ Three fields, and the four item-scoped ones are absent rather than
+     * blank. A loop has nothing to number, and `AgentPromptProjectSubject`
+     * is the type that says so - see `renderPromptTemplate`, which leaves a
+     * placeholder it cannot answer verbatim instead of writing `#P0` and an
+     * empty title onto somebody's clipboard.
+     */
+    forFeedbackInbox: (): AgentPromptProjectSubject => ({
+      project: project?.title ?? "",
+      slug: project?.slug ?? "",
+      url: absolute(router.path("projectFeedback")),
     }),
   };
 };
