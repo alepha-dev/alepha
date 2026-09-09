@@ -1,10 +1,13 @@
+import { useToast } from "@alepha/ui/components/use-toast/use-toast";
 import { useAlepha, useClient } from "alepha/react";
+import { useI18n } from "alepha/react/i18n";
 
 import type { QuestController } from "@/api/controllers/QuestController.ts";
 import type { QuestResource } from "@/api/schemas/questResourceSchema.ts";
 import { currentAssignedQuestsAtom } from "@/web/app/atoms/currentAssignedQuestsAtom.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentQuestCountAtom } from "@/web/app/atoms/currentQuestCountAtom.ts";
+import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { type BulkOutcome, settleBulk } from "./bulkOutcome.ts";
 
@@ -48,6 +51,27 @@ import { type BulkOutcome, settleBulk } from "./bulkOutcome.ts";
 export const useQuestMutations = (): QuestMutations => {
   const alepha = useAlepha();
   const questApi = useClient<QuestController>();
+  const toaster = useToast();
+  const { tr } = useI18n<I18n, "en">();
+
+  /**
+   * The release the project's default caught this quest with, if it did.
+   *
+   * ⚠️ Read off the quest's own history rather than guessed from
+   * `releaseId`. `QuestController.attachToDefaultRelease` pushes an
+   * `updated` entry carrying `changes: [{ field: "release", to: tag }]`
+   * stamped with the SAME instant as the completion, and only when it
+   * actually attached - so an entry at `completedAt` is the server saying it
+   * fired, where a non-null `releaseId` says nothing about who put it there.
+   *
+   * The tag, not an id: that is what the history entry carries and what the
+   * toast has to print.
+   */
+  const caughtByDefault = (quest: QuestResource): string | undefined =>
+    quest.history
+      .filter((entry) => entry.at === quest.completedAt)
+      .flatMap((entry) => entry.changes ?? [])
+      .find((change) => change.field === "release" && !change.from)?.to;
 
   const dropFromAssigned = (id: number): void => {
     alepha.store.set(
@@ -117,6 +141,16 @@ export const useQuestMutations = (): QuestMutations => {
       const quest = await questApi.completeQuest({ params: { id }, body });
       dropFromAssigned(id);
       await refreshCount();
+      // The third side of "make it visible". The record has the history
+      // entry and an agent has `quest_complete`'s result; the person who
+      // clicked Complete had nothing, and their work has just landed in a
+      // release they did not name.
+      const landed = caughtByDefault(quest);
+      if (landed) {
+        toaster.success(
+          String(tr("quest.complete.landedIn", { args: [landed] })),
+        );
+      }
       return quest;
     },
     shelve: async (id) => {

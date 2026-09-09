@@ -113,16 +113,12 @@ import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenBlightCounter } from "./services/OpenBlightCounter.ts";
 import { OpenBlightsMetric } from "./services/OpenBlightsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
-import { AlephaLoreParser } from "./services/parsers/AlephaLoreParser.ts";
-import { TrelloParser } from "./services/parsers/TrelloParser.ts";
 import { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 import { ProjectLimits } from "./services/ProjectLimits.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { QualityService } from "./services/QualityService.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
-import { QuestCsvParser } from "./services/QuestCsvParser.ts";
-import { QuestImportFormatProvider } from "./services/QuestImportFormatProvider.ts";
 import { QuestService } from "./services/QuestService.ts";
 import { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 import { ReleaseAttachmentService } from "./services/ReleaseAttachmentService.ts";
@@ -257,11 +253,7 @@ export const LoreApi = $module({
     LoreNotificationPreferences,
     NotificationPreferenceController,
     FeedbackRateLimiter,
-    QuestCsvParser,
     QuestCsvFormatter,
-    AlephaLoreParser,
-    TrelloParser,
-    QuestImportFormatProvider,
     QuestService,
     QualityService,
     ArtifactTarReader,

@@ -490,6 +490,162 @@ test.describe("Releases", () => {
     });
   });
 
+  test("the default release catches unfiled work, and publishing clears it", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    const t = Date.now();
+    await registerAndVerify(page, `reldef${t}@example.com`, "RelTest123!");
+    const { id: projectId, slug } = await createProjectViaWizard(
+      page,
+      `RD${t}`.slice(0, 20),
+      { options: { work: ["releases"] } },
+    );
+
+    await post<Release>(page, `/api/createRelease/${projectId}`, {
+      tag: "0.1.0",
+    });
+    await post<Release>(page, `/api/createRelease/${projectId}`, {
+      tag: "0.2.0",
+    });
+
+    /**
+     * The plate's own control, not the table's row menu.
+     *
+     * ⚠️ Base UI leaves `pointer-events: none` on the body after a popover
+     * closes, and the row menu is a popover. The plate button is a plain
+     * button, so it is the one door that cannot lose a click for a reason
+     * that has nothing to do with this feature.
+     */
+    const setDefaultFrom = async (tag: string) => {
+      await page.goto(`/${slug}/releases/${tag}`);
+      const trigger = page.getByRole("button", { name: "Set as default" });
+      await expect(trigger).toBeVisible({ timeout: 15_000 });
+      await trigger.click();
+      // ⚠️ `alertdialog`, not `dialog`. The confirm comes from
+      // `useDialog().confirm`, which renders an alert dialog; the create
+      // dialog above is a real `Dialog` and is `dialog`. The scoping is not
+      // optional either way: the confirm button carries the same label as the
+      // trigger, because the dialog is where the one-line explanation of what
+      // a default release IS gets said.
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Set as default" })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "Clear default" }),
+      ).toBeVisible({ timeout: 15_000 });
+    };
+
+    await test.step("the chip lands, and moves off the first when the second takes it", async () => {
+      await setDefaultFrom("0.1.0");
+      await expect(page.getByText("Default", { exact: true })).toBeVisible();
+
+      await setDefaultFrom("0.2.0");
+
+      // Read back off the table, which is the surface where the two rows sit
+      // side by side and where a swap that left two defaults would show.
+      await page.goto(`/${slug}/releases`);
+      const defaultRow = page
+        .locator("tbody tr")
+        .filter({ hasText: "Default" });
+      await expect(defaultRow).toHaveCount(1, { timeout: 15_000 });
+      await expect(defaultRow).toContainText("0.2.0");
+    });
+
+    const caught = await createQuest(page, projectId, `Caught${t}`);
+
+    await test.step("a quest completed with no release lands in the default, and says so", async () => {
+      // Through the UI rather than the API, because the toast is the third
+      // side of "make it visible" and only exists here.
+      await page.goto(`/${slug}/quests/${caught.shortId}`);
+      const accept = page.getByRole("button", {
+        name: /sign and accept|accept.*quest/i,
+      });
+      await expect(accept).toBeVisible({ timeout: 15_000 });
+      await accept.click();
+      await page
+        .getByRole("button", { name: /^complete quest$/i })
+        .first()
+        .click();
+      await page
+        .getByRole("button", { name: /complete without summary/i })
+        .click();
+
+      await expect(page.getByText("Completed in 0.2.0")).toBeVisible({
+        timeout: 15_000,
+      });
+
+      // The badge, the completion and the release page's contents are three
+      // surfaces that have to agree, and two of them disagreeing is this
+      // epic's central risk.
+      await expect
+        .poll(
+          async () =>
+            (await listReleases(page, projectId)).find((r) => r.tag === "0.2.0")
+              ?.progress,
+          { timeout: 15_000 },
+        )
+        .toMatchObject({ completed: 1, total: 1 });
+
+      await page.goto(`/${slug}/releases/0.2.0?tab=contents`);
+      await expect(page.getByText(`Caught${t}`).first()).toBeVisible({
+        timeout: 15_000,
+      });
+    });
+
+    await test.step("publishing the default clears it", async () => {
+      await page.goto(`/${slug}/releases/0.2.0`);
+      await page.getByRole("button", { name: "Publish" }).first().click();
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", { name: "Publish" })
+        .click();
+      // ⚠️ Wait for the plate to answer before navigating. The click is
+      // fire-and-forget from here, so `page.goto` races the POST, and the
+      // table then paints two OPEN releases and fails on a publish that was
+      // still in flight. Reopen replacing Publish is the plate's own signal
+      // that the write landed.
+      await expect(page.getByRole("button", { name: "Reopen" })).toBeVisible({
+        timeout: 15_000,
+      });
+
+      await page.goto(`/${slug}/releases`);
+      const rows = page.locator("tbody tr");
+      // ⚠️ Wait for the table to PAINT before counting an absence.
+      // `toHaveCount(0)` is trivially true on a tbody that has not rendered
+      // yet, so a publish that silently failed would read as a cleared
+      // default - which is exactly how this step passed while the release
+      // was still open.
+      await expect(rows).toHaveCount(2, { timeout: 15_000 });
+      await expect(rows.filter({ hasText: "Released" })).toHaveCount(1, {
+        timeout: 15_000,
+      });
+      await expect(rows.filter({ hasText: "Default" })).toHaveCount(0);
+    });
+
+    await test.step("with no default, a quest still completes and lands nowhere", async () => {
+      const loose = await createQuest(page, projectId, `Loose${t}`);
+      await completeQuest(page, loose.id);
+
+      // Above all, that it COMPLETES: a quest that will not close because of
+      // a planning convenience is worse than a missed attachment.
+      const rows = await listReleases(page, projectId);
+      expect(rows.find((r) => r.tag === "0.1.0")?.progress).toMatchObject({
+        completed: 0,
+        total: 0,
+      });
+      // FROZEN at publish, and never recomputed: `0.2.0` shipped one quest
+      // and still says one, which is the whole reason publishing clears the
+      // default rather than leaving intake pointed at a closed record.
+      expect(rows.find((r) => r.tag === "0.2.0")?.progress).toMatchObject({
+        completed: 1,
+        total: 1,
+      });
+    });
+  });
+
   test("the table filters by state and sorts tags by version", async ({
     page,
   }) => {

@@ -9,13 +9,21 @@ import { type Release, releases } from "../entities/releases.ts";
  * release".
  *
  * **A service rather than a line in a handler, on purpose.** The write paths
- * that attach something to a release live in four files across three modules:
- * `EpicController.updateEpic`, `QuestController.updateQuestById`,
- * `ProjectQuestPortabilityController`'s CSV import, and
- * `src/mcp/tools/QuestTools.ts`. A refusal copied into each of them is the
+ * that attach something to a release live in three files across two modules:
+ * `EpicController.updateEpic`, `QuestController.updateQuestById` and
+ * `src/mcp/tools/QuestTools.ts`. (It was four until epic #E48 deleted quest
+ * import, which was the fourth.) A refusal copied into each of them is the
  * shape of the 13-endpoint precondition bug `EpicVisibilityService` exists to
  * prevent: the copies drift, and the one that was forgotten is the one nobody
  * looks at.
+ *
+ * ⚠️ **One write path deliberately does not come through here**, and it is
+ * not an oversight: `QuestController.attachToDefaultRelease` (#E48) puts a
+ * finished quest in the project's default release, and must never refuse the
+ * completion. This service throws by design, which is right for every caller
+ * that is doing what the user asked and wrong for one doing a planning
+ * convenience on the side. It reads the release row and branches instead, and
+ * the guard it keeps is the same one: a published release is left alone.
  */
 export class ReleaseAttachmentService {
   releases = $repository(releases);

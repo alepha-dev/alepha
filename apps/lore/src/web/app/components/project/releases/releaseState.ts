@@ -17,6 +17,13 @@ import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
  * Deriving it rather than storing it is what keeps the two from disagreeing:
  * `releasedAt` is what `publishRelease` writes and what every server-side
  * guard reads, so a stored duplicate could only ever drift from it.
+ *
+ * ⚠️ **The DEFAULT release is not a third value here.** `releases.defaultSince`
+ * says which open release finished work lands in when nobody filed it
+ * anywhere; a default release is still `open`, and it is rendered as a second,
+ * orthogonal chip beside the state chip. Folding it into this union would make
+ * the state filter on `ProjectReleases` lie: filtering "open" would hide the
+ * default release, which is open.
  */
 export type ReleaseState = "open" | "released";
 

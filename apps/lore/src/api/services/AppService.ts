@@ -114,20 +114,20 @@ export class AppService {
    * the rule lives in a module both can import rather than being stated twice.
    * This method is the server-side door onto it, and nothing more.
    *
-   * ⚠️ `defaultEnv` is a parameter rather than a read, because the two callers
-   * already hold the project row and a lookup here would be a second query for
-   * a value they have. Omit it and the fixed rule applies, which is what a
-   * caller that genuinely has no project row wants.
+   * ⚠️ It took a `defaultEnv` argument until #Q2135, threaded from the
+   * project row so a project-wide preference could outrank the rule. That
+   * setting is gone: it answered a per-app question with one project-wide
+   * value, so it could only ever be wrong for an app whose single copy was
+   * called something else.
    */
   async defaultInstance(
     projectId: number,
     app: string,
-    defaultEnv?: string,
   ): Promise<AppInstance | undefined> {
     const rows = await this.instances.findMany({
       where: { projectId: { eq: projectId }, app: { eq: app } },
     });
-    return defaultAppInstance(rows, app, defaultEnv);
+    return defaultAppInstance(rows, app);
   }
 
   /**

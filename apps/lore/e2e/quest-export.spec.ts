@@ -10,13 +10,16 @@ import {
 
 /**
  * Covers the Data settings page export flow end-to-end (UI → server →
- * downloaded CSV). The import path is exercised by the controller
- * integration tests in `quest-csv-roundtrip.spec.ts` and
- * `quest-trello-import.spec.ts`; we don't drive it from the browser here
- * because `setInputFiles` triggers a direct multipart POST through the
- * Alepha client and the e2e session-token wiring for that path is brittle.
+ * downloaded CSV).
+ *
+ * ⚠️ It was `quest-import-export.spec.ts` and held exactly this one test:
+ * the import path was never driven from the browser, because `setInputFiles`
+ * triggers a direct multipart POST through the Alepha client and the e2e
+ * session-token wiring for that path is brittle. Quest import is gone
+ * entirely since epic #E48, along with the card this page no longer renders,
+ * so the file is named for what it covers.
  */
-test.describe("Quest CSV import / export", () => {
+test.describe("Quest CSV export", () => {
   test("exports a project's quests as CSV via Settings → Data", async ({
     page,
   }, testInfo) => {
@@ -35,7 +38,7 @@ test.describe("Quest CSV import / export", () => {
     await apiPost<{ id: number; shortId: number }>(page, "createQuest", {
       projectId,
       title: "Roundtrip quest",
-      description: "Seeded for the import/export e2e.",
+      description: "Seeded for the export e2e.",
       area: "Main",
       priority: "medium",
       objectives: [],
@@ -43,7 +46,7 @@ test.describe("Quest CSV import / export", () => {
     });
 
     // The Data section now lives inside Settings → General (the project
-    // settings root). Navigate there to find the export/import controls.
+    // settings root). Navigate there to find the export control.
     await page.goto(`/${projectSlug}/settings/`);
     await page.waitForLoadState("domcontentloaded");
 

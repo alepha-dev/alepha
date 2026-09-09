@@ -224,6 +224,23 @@ export const quests = $entity({
             "unshelved",
             "held",
             "unheld",
+            /**
+             * ⚠️ **No writer since epic #E48**, which deleted quest reopen,
+             * and it must stay in this list anyway.
+             *
+             * `history` is a JSON column validated on READ. Any quest that
+             * was ever dragged out of Done carries this value, and removing
+             * it would make every one of those rows fail to decode - the
+             * exact shape of the 2026-08-05 incident in CLAUDE.md, where a
+             * renamed required key inside a JSON column took every project
+             * read down. The check the quest asked for (does production hold
+             * one) could not be run from the build, and leaving a value
+             * nothing writes costs nothing, while removing one something
+             * might read costs everything.
+             *
+             * `questDiscussionEntries`'s `QuestEventAction` never listed it,
+             * so the feed already renders these rows as a bare event.
+             */
             "reopened",
             "moved",
           ]),

@@ -242,20 +242,10 @@ describe("the epic phase gate on quest transitions", () => {
     expect(completed.completedAt).toBeDefined();
   });
 
-  it("reopen refuses inside a concluded epic and works inside an active one", async ({
-    expect,
-  }) => {
+  it("has no way to reopen a completed quest at all", async ({ expect }) => {
     const project = await createTestProject(ctx.alepha);
-    const done = await createTestEpic(ctx.alepha, project, { status: "done" });
     const active = await createTestEpic(ctx.alepha, project, {
       status: "active",
-    });
-    const closed = await createTestQuest(ctx.alepha, project, {
-      epicId: done.id,
-      acceptedAt: STAMP,
-      acceptedBy: project.createdBy,
-      completedAt: STAMP,
-      completedBy: project.createdBy,
     });
     const shipped = await createTestQuest(ctx.alepha, project, {
       epicId: active.id,
@@ -266,17 +256,29 @@ describe("the epic phase gate on quest transitions", () => {
     });
     const user = ownerToken(project);
 
-    await expect(
-      ctx.controller.reopenQuest({ params: { id: closed.id } }, { user }),
-    ).rejects.toThrow(
-      `Cannot reopen quest #Q${closed.shortId}: Epic #E${done.number} is concluded. File this in a new epic.`,
-    );
+    // Epic #E48 deleted reopen: a quest is immutable, and follow-up work is
+    // a NEW quest linked to the old one. This case replaces the pair that
+    // asserted reopen was refused under a concluded epic and allowed under
+    // an active one - there is now no phase in which it is allowed, because
+    // there is no action.
+    expect(
+      (ctx.controller as unknown as Record<string, unknown>).reopenQuest,
+    ).toBeUndefined();
 
-    const reopened = await ctx.controller.reopenQuest(
-      { params: { id: shipped.id } },
-      { user },
+    // And the one write path that is left cannot undo a completion: whether
+    // `updateQuestById` refuses the field or drops it, `completedAt` is still
+    // there afterwards. Asserting the END STATE rather than a throw is the
+    // point - what matters is that the quest stays closed, not which of the
+    // two ways it stays closed.
+    await ctx.controller
+      .updateQuestById(
+        { params: { id: shipped.id }, body: { completedAt: null } as never },
+        { user },
+      )
+      .catch(() => undefined);
+    expect((await ctx.repos.quests.getById(shipped.id)).completedAt).toBe(
+      STAMP,
     );
-    expect(reopened.completedAt).toBeUndefined();
   });
 
   it("unshelve refuses inside a concluded epic and works while planned or active", async ({

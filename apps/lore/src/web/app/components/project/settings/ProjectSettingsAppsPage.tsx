@@ -11,11 +11,15 @@ import { hasCapability } from "@/web/app/services/projectCapabilities.ts";
 
 import ProjectBlightRulesDialog from "../blights/ProjectBlightRulesDialog.tsx";
 import ProjectSettingsCapabilitySection from "./ProjectSettingsCapabilitySection.tsx";
-import ProjectSettingsDefaultEnv from "./ProjectSettingsDefaultEnv.tsx";
 
 /**
- * Three blocks: the module switch, the default environment, and the ignore
- * rules.
+ * Two blocks: the module switch and the ignore rules.
+ *
+ * The default environment was a third until #Q2135. It was project-wide while
+ * the question it answered is per app, so a project set to `production` with
+ * an app whose only copy is `preview` held a setting that could only ever be
+ * wrong - and it outranked the single place that app could go. The CLI reads
+ * the app's own rows now, and `defaultAppInstance` is back to its fixed rule.
  *
  * ## What left, and why nothing replaced it
  *
@@ -57,8 +61,6 @@ const ProjectSettingsAppsPage = () => {
   return (
     <div className="flex flex-col gap-6">
       <ProjectSettingsCapabilitySection capability="apps" />
-
-      {enabled && <ProjectSettingsDefaultEnv />}
 
       {enabled && (
         <div className="flex flex-col gap-2">
