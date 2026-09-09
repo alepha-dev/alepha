@@ -11,9 +11,11 @@ import { describe, expect, it } from "vitest";
 import { ArtifactController } from "../src/api/controllers/ArtifactController.ts";
 import { ProjectController } from "../src/api/controllers/ProjectController.ts";
 import { LoreApi } from "../src/api/index.ts";
+import { RegistryTransport } from "../src/api/services/RegistryTransport.ts";
 import { LoreMcp } from "../src/mcp/index.ts";
 import { ArtifactTools } from "../src/mcp/tools/ArtifactTools.ts";
 import { packedArtifact } from "./fixtures/artifactTarball.ts";
+import { MemoryRegistryTransport } from "./fixtures/MemoryRegistryTransport.ts";
 
 /**
  * The registry over MCP: what has this project built, and is the tag I am
@@ -34,6 +36,10 @@ const setup = async () => {
   alepha.with(AlephaApiUsers);
   alepha.with(AlephaFake);
   alepha.with(AlephaMcp);
+  // ⚠️ BEFORE `LoreApi`, which resolves `ArtifactService` and with it the
+  // registry client. A substitution after that is a `TooLateSubstitutionError`
+  // and every case in the file fails in setup.
+  alepha.with({ provide: RegistryTransport, use: MemoryRegistryTransport });
   alepha.with(LoreApi);
   alepha.with(LoreMcp);
 
@@ -96,7 +102,37 @@ const setup = async () => {
     );
   };
 
-  return { alepha, tools, project, call, push, stranger: stranger.id };
+  const registry = alepha.inject(MemoryRegistryTransport);
+
+  /**
+   * The image sibling of `push`. The registry is scripted, so nothing here
+   * reaches the network.
+   */
+  const pushImage = async (over: { app?: string; tag?: string } = {}) => {
+    const tag = over.tag ?? "1.2.3";
+    const app = over.app ?? "my-app";
+    // ⚠️ The fixture matches by URL substring, so the repository it scripts
+    // has to be the one the reference names or the manifest read 404s.
+    registry.healthy({ tag, repository: `acme/${app}` });
+
+    return asUser(OWNER, () =>
+      artifactApi.pushImage({
+        params: { projectId: project.id },
+        body: { app, tag, reference: `ghcr.io/acme/${app}:${tag}` },
+      } as any),
+    );
+  };
+
+  return {
+    alepha,
+    tools,
+    project,
+    call,
+    push,
+    pushImage,
+    registry,
+    stranger: stranger.id,
+  };
 };
 
 describe("Lore MCP — artifacts", () => {
@@ -233,6 +269,69 @@ describe("Lore MCP — artifacts", () => {
           runtime: "workerd",
         }),
       ).rejects.toThrowError(/node/);
+    });
+
+    /**
+     * ⚠️ Before the format dimension this message read "It has: node, node"
+     * for a tag carrying a node tarball and a node image - which tells the
+     * reader nothing and looks like a bug in the tool.
+     */
+    it("never says 'node, node' when a tag carries both formats", async () => {
+      const ctx = await setup();
+      await ctx.push({ runtime: "node" });
+      await ctx.pushImage({ tag: "1.2.3" });
+
+      await expect(
+        ctx.call(ctx.tools.artifact_get, {
+          project: ctx.project.id,
+          app: "my-app",
+          tag: "1.2.3",
+          runtime: "workerd",
+        }),
+      ).rejects.toThrowError(/It has: node archive, node image\./);
+    });
+
+    it("narrows to one variant when a format is named beside the runtime", async () => {
+      // `runtime` alone no longer names a single build.
+      const ctx = await setup();
+      await ctx.push({ runtime: "node" });
+      await ctx.pushImage({ tag: "1.2.3" });
+
+      const both: any = await ctx.call(ctx.tools.artifact_get, {
+        project: ctx.project.id,
+        app: "my-app",
+        tag: "1.2.3",
+        runtime: "node",
+      });
+      expect(both.artifact.variants).toHaveLength(2);
+
+      const one: any = await ctx.call(ctx.tools.artifact_get, {
+        project: ctx.project.id,
+        app: "my-app",
+        tag: "1.2.3",
+        runtime: "node",
+        format: "image",
+      });
+      expect(one.artifact.variants).toHaveLength(1);
+      expect(one.artifact.variants[0].reference).toBe(
+        "ghcr.io/acme/my-app:1.2.3",
+      );
+    });
+
+    it("narrows on format alone, with no runtime named", async () => {
+      const ctx = await setup();
+      await ctx.push({ runtime: "node" });
+      await ctx.pushImage({ tag: "1.2.3" });
+
+      const res: any = await ctx.call(ctx.tools.artifact_get, {
+        project: ctx.project.id,
+        app: "my-app",
+        tag: "1.2.3",
+        format: "archive",
+      });
+
+      expect(res.artifact.variants).toHaveLength(1);
+      expect(res.artifact.variants[0].format).toBe("archive");
     });
 
     it("404s a tag that was never pushed", async () => {

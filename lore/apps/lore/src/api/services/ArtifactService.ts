@@ -453,8 +453,9 @@ export class ArtifactService {
    * releases.
    *
    * Groups keep the row order, so the newest push is first; variants inside a
-   * group are sorted by runtime name, so a group does not reshuffle between
-   * two reads that pushed nothing.
+   * group are sorted by `(runtime, format)` - the whole key minus the project,
+   * app and tag - so a group does not reshuffle between two reads that pushed
+   * nothing.
    */
   public async listGrouped(query: ArtifactQuery): Promise<ArtifactListing> {
     const limit = query.limit ?? ArtifactService.DEFAULT_LIMIT;
@@ -486,7 +487,19 @@ export class ArtifactService {
     }
 
     for (const group of groups) {
-      group.variants.sort((a, b) => a.runtime.localeCompare(b.runtime));
+      // ⚠️ `(runtime, format)`, not `runtime` alone. Two variants sharing a
+      // runtime - a node tarball and a node image of one tag - both return 0
+      // from a runtime-only comparator, which makes the guarantee this sort
+      // exists for ("a group does not reshuffle between two reads that pushed
+      // nothing") false. It also decides what `AppArtifactsRow` shows, since
+      // that takes `variants[0]` for the digest: without the second key,
+      // whether the row shows a tarball digest or an index digest is a coin
+      // flip.
+      group.variants.sort(
+        (a, b) =>
+          a.runtime.localeCompare(b.runtime) ||
+          a.format.localeCompare(b.format),
+      );
     }
 
     return { groups, truncated: rows.length >= limit };

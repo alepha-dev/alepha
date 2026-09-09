@@ -43,11 +43,12 @@ import AppDeployRuns from "./AppDeployRuns.tsx";
  *
  * ## ⚠️ The runtime refusal happens HERE, before the call
  *
- * `artifacts` is unique on `(projectId, app, tag, runtime)` and an estate
- * accepts one runtime, so a tag with no variant this estate can run is a deploy
- * that fails at the gate. The button is disabled with the reason on it rather
- * than enabled into a refusal - the server still refuses (#1598), and this is
- * the affordance, not the boundary.
+ * `artifacts` is unique on `(projectId, app, tag, runtime, format)` and an
+ * estate accepts one runtime and no image at all, so a tag with no ARCHIVE
+ * variant this estate can run is a deploy that fails at the gate. The button
+ * is disabled with the reason on it rather than enabled into a refusal - the
+ * server still refuses (#1598, and `DeployService.queue` for the format half),
+ * and this is the affordance, not the boundary.
  */
 const AppDeploy = () => {
   const { tr } = useI18n<I18n, "en">();
@@ -137,9 +138,22 @@ const AppDeploy = () => {
         app={instance.app}
         title={tr("app.deploy.pick")}
         action={(group) => {
-          const usable = group.variants.some((variant) =>
-            runnable.includes(variant.runtime),
+          // ⚠️ `format === "archive"` is half of this test, not decoration.
+          //
+          // An image row carries a REAL runtime - Lore's own image is `node` -
+          // so a tag whose only node variant is an image would light this
+          // button up and the server would refuse the click. That is exactly
+          // the experience the shared `acceptedRuntimes` module was extracted
+          // to prevent, and the server half of the same gate is in
+          // `DeployService.queue`. Shipping one without the other is what
+          // makes a hidden-button bug.
+          const usable = group.variants.some(
+            (variant) =>
+              variant.format === "archive" &&
+              runnable.includes(variant.runtime),
           );
+          const imageOnly =
+            !usable && group.variants.every((it) => it.format === "image");
           if (!canDeploy) {
             return null;
           }
@@ -151,7 +165,9 @@ const AppDeploy = () => {
               title={
                 usable
                   ? undefined
-                  : tr("app.deploy.wrongRuntime", { args: [runnable[0]] })
+                  : imageOnly
+                    ? tr("app.deploy.imageOnly")
+                    : tr("app.deploy.wrongRuntime", { args: [runnable[0]] })
               }
               onClick={() => deploy(group)}
               data-testid={`app-deploy-${group.tag}`}
