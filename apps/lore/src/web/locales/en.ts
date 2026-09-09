@@ -31,12 +31,12 @@ export default {
   "quest-log.search": "Find by name, area...",
   "quest-log.empty": "No quests yet",
   "quest-log.empty-description":
-    "The kingdom is quiet. Forge a new quest to set your party in motion.",
+    "Quests are how this project tracks its work. Create one to get started.",
 
   "home.nav": "Home",
   "home.title": "Welcome",
   "home.subtitle":
-    "Your journey begins here. Forge quests, recruit your party and record their deeds across the realm.",
+    "Plan your work as quests, invite the people working on them, and keep the decisions and the notes that go with it in one place.",
   "home.create-project": "New Project",
   "home.create-project.max": "Limit reached ($1)",
   "project.create.limit.title": "You have reached the project limit",
@@ -682,7 +682,7 @@ export default {
   "project.settings.areas.column.select": "Select",
   "project.settings.areas.select": "Select $1",
   "project.settings.areas.empty":
-    "No areas yet. Forge a quest and pick an area, and it appears here.",
+    "No areas yet. Create a quest and pick an area, and it appears here.",
   "project.settings.areas.selected": "$1 selected",
   "project.settings.areas.selected.one": "1 selected",
   "project.settings.areas.merge.action": "Merge into...",
