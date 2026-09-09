@@ -15,6 +15,7 @@ import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import type { AppRouter } from "@/web/app/AppRouter.ts";
 import { currentProjectAtom } from "@/web/app/atoms/currentProjectAtom.ts";
 import { currentReleasesAtom } from "@/web/app/atoms/currentReleasesAtom.ts";
+import { loreDocsUrl } from "@/web/app/services/docsUrl.ts";
 import type { I18n } from "@/web/app/services/I18n.ts";
 
 import { formatReference } from "../../shared/element/typedReference.ts";
@@ -218,6 +219,20 @@ const ProjectReleases = () => {
                 {tr("release.start")}
               </Button>
             )}
+            {/* An empty state is a signpost, not a manual. The release model
+                and the default release are explained once, in the Lore docs,
+                and linked from here rather than grown into prose in the app.
+                ⚠️ Absolute, through `loreDocsUrl`: written root-relative it
+                resolves against Lore's own origin and 404s (feedback #P2142). */}
+            <a
+              href={loreDocsUrl("guides-releases")}
+              target="_blank"
+              rel="noreferrer"
+              className="text-muted-foreground text-sm underline underline-offset-4"
+              data-testid="releases-empty-docs"
+            >
+              {tr("release.empty.docs")}
+            </a>
           </div>
         }
         refreshSignal={reload}

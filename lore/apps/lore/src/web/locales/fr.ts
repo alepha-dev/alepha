@@ -849,6 +849,7 @@ export default {
   "release.detail.save": "Enregistrer",
   "release.detail.saved": "Version mise à jour",
   "release.hero.progress": "Avancement",
+  "release.empty.docs": "Comment fonctionnent les versions",
   "release.empty.title": "Aucune version ouverte",
   "release.empty.body":
     "Une version est un objectif nommé - 0.1.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
