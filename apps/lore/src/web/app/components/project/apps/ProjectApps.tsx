@@ -244,20 +244,34 @@ const ProjectApps = () => {
         // affects every table; it is not this one's to make.
         // Not "no apps enrolled": enrolment is no longer how an app comes into
         // existence, and the empty state's job here is to offer the create.
-        empty={
-          <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <span className="text-sm font-medium">{tr("apps.empty")}</span>
-            <span className="text-muted-foreground max-w-sm text-xs">
-              {tr("apps.empty.description")}
-            </span>
-            {isOwner && (
-              <Button onClick={() => setCreating(true)}>
-                <Plus className="size-4" />
-                {tr("apps.create.title")}
-              </Button>
-            )}
-          </div>
-        }
+        //
+        // ⚠️ Two states, never the single `empty` node this used to be. That
+        // prop replaces BOTH of them at once, so a filter that matched nothing
+        // still offered to create the first app, with the filter that produced
+        // it sitting in the toolbar above (feedback #P2160). The choice
+        // belongs to the table, which reads it off `activeFilterCount` - and
+        // that counter is live here despite static-data mode, because the
+        // `refreshKey` the filter form bumps is the same one that recomputes
+        // the local page.
+        emptyState={{
+          icon: Boxes,
+          title: tr("apps.empty"),
+          description: tr("apps.empty.description"),
+          action: isOwner ? (
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="size-4" />
+              {tr("apps.create.title")}
+            </Button>
+          ) : undefined,
+        }}
+        // No action on this side. Clearing the filters is already one button
+        // away in the toolbar, and `resetFilters` lives inside the table with
+        // nothing handing it out, so a second copy here would be a new API
+        // rather than a slot fill.
+        noMatchState={{
+          title: tr("apps.noMatch"),
+          description: tr("apps.noMatch.description"),
+        }}
         // The same dialog the header's create menu opens, mounted here as the
         // page's primary action: this list is where somebody who came looking
         // for their apps already is.

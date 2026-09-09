@@ -640,6 +640,24 @@ export interface AlephaTableBaseProps<T> {
    * Rich empty-state node rendered when the page is empty — e.g. an icon +
    * message + optional call-to-action. Replaces the whole thing, both states
    * included, so it outranks every prop above.
+   *
+   * ⚠️ **Only for a table with no {@link filters}.** Replacing both states
+   * with one node makes the table structurally incapable of telling them
+   * apart, whatever the node says: a filter that matched nothing renders the
+   * "there is nothing here" message, with the filter that produced it still
+   * sitting in the toolbar above. Lore's Apps page shipped exactly that and
+   * offered to create the first app to a reader who had just searched for
+   * one (feedback #P2160); its Releases page had the same defect, unreported
+   * only because nobody had filtered it to zero.
+   *
+   * With `filters` set, reach for {@link emptyState} and {@link noMatchState}
+   * instead. They take the same three pieces - `icon`, `title`,
+   * `description` - plus an `action` slot for the button, and the table keeps
+   * the choice between the two, which is the part a caller cannot get right
+   * from the outside.
+   *
+   * Not type-enforced: the combination is a live one downstream, so the rule
+   * is stated here rather than made uncompilable.
    */
   empty?: ReactNode;
   /**
