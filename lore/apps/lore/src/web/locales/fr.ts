@@ -857,6 +857,8 @@ export default {
   "release.empty.title": "Aucune version ouverte",
   "release.empty.body":
     "Une version est un objectif nommé - 0.1.0, demo-1 - qui porte les quêtes à livrer. Ouvrez-en une pour commencer à la remplir.",
+  "release.noMatch.title": "Aucune version ne correspond",
+  "release.noMatch.body": "Ajustez ou effacez les filtres.",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Enregistrer dans les Folios",
@@ -1140,6 +1142,8 @@ export default {
   "apps.empty": "Aucune app pour l\u2019instant",
   "apps.empty.description":
     "Une app est une copie déployée : quelle application, et quelle copie. Créez-en une pour la suivre ici.",
+  "apps.noMatch": "Aucune app ne correspond",
+  "apps.noMatch.description": "Ajustez ou effacez les filtres.",
   "apps.unavailable": "Impossible de charger les apps",
   "apps.unavailable.description":
     "La liste n\u2019a pas pu être lue. Ce n\u2019est pas la même chose que ne pas en avoir : rechargez pour réessayer.",

@@ -874,6 +874,8 @@ export default {
   "release.empty.title": "No release is open",
   "release.empty.body":
     "A release is a named goal - 0.1.0, demo-1 - holding the quests due to ship in it. Open one to start filling it.",
+  "release.noMatch.title": "No release matches",
+  "release.noMatch.body": "Try adjusting or clearing the filters.",
 
   "release.changelog.md": ".md",
   "release.changelog.saveToFolio": "Save to Folios",
@@ -1154,6 +1156,8 @@ export default {
   "apps.empty": "No app yet",
   "apps.empty.description":
     "An app is one deployed copy: which app, and which copy of it. Create one to track it here.",
+  "apps.noMatch": "No app matches",
+  "apps.noMatch.description": "Try adjusting or clearing the filters.",
   "apps.unavailable": "Couldn\u2019t load apps",
   "apps.unavailable.description":
     "The list could not be read. This is not the same as having none - reload to try again.",
