@@ -28,12 +28,12 @@ export default {
   "quest-log.search": "Chercher par nom, domaine ou difficulté...",
   "quest-log.empty": "Aucune quête en attente",
   "quest-log.empty-description":
-    "Le royaume est bien calme. Forgez une nouvelle quête pour lancer votre compagnie.",
+    "Les quêtes servent à suivre le travail du projet. Créez-en une pour commencer.",
 
   "home.nav": "Accueil",
   "home.title": "Bienvenue dans l’aventure Lore",
   "home.subtitle":
-    "Votre périple commence ici. Forgez des quêtes, ralliez votre équipée et consignez ses exploits à travers le royaume.",
+    "Organisez votre travail sous forme de quêtes, invitez les personnes qui y participent, et gardez au même endroit les décisions et les notes qui vont avec.",
   "home.create-project": "Lancer un nouveau projet",
   "home.create-project.max": "Limite atteinte ($1)",
   "project.create.limit.title": "Vous avez atteint la limite de projets",
