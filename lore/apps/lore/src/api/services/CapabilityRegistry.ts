@@ -243,7 +243,7 @@ export class CapabilityRegistry {
       ],
       searchKinds: ["quest"],
       activityKinds: ["quest", "epic", "release"],
-      dashboardCards: ["activeQuests", "heldQuests"],
+      dashboardCards: ["activeQuests", "heldQuests", "epicProgress"],
       // Areas belong here: quests carry one, blights forward into one, and
       // `project_context` files them beside the epic index.
       permissionGroups: ["quest", "epic", "release", "area"],

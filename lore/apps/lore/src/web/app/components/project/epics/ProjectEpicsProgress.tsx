@@ -24,8 +24,13 @@ const ProjectEpicsProgress = (props: ProjectEpicsProgressProps) => {
   const i18n = useI18n<I18n, "en">();
   const { tr } = i18n;
   const { completed, inProgress, shelved, total } = props.epic.progress;
-  // The four server buckets are disjoint (see `EpicController.computeProgress`),
-  // so whatever they do not claim is a quest nobody has touched.
+  // The four server buckets are disjoint (see `EpicProgressService`), so
+  // whatever they do not claim is a quest nobody has touched.
+  //
+  // ⚠️ This bar draws all four over `total`, shelved included. The dashboard's
+  // epic card divides by `total - shelved` instead and says so in its footer,
+  // so the two legitimately disagree and the card is the one that explains
+  // itself.
   const open = Math.max(0, total - completed - inProgress - shelved);
 
   if (total === 0) {

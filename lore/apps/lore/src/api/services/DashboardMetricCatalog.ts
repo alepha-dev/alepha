@@ -6,6 +6,7 @@ import type {
   DashboardScope,
   DashboardScopeKind,
 } from "../schemas/dashboardScopeSchema.ts";
+import { epicProgressFiltersSchema } from "../schemas/epicProgressFiltersSchema.ts";
 import { heldQuestsFiltersSchema } from "../schemas/heldQuestsFiltersSchema.ts";
 import { openBlightsFiltersSchema } from "../schemas/openBlightsFiltersSchema.ts";
 import { uniqueVisitorsFiltersSchema } from "../schemas/uniqueVisitorsFiltersSchema.ts";
@@ -280,6 +281,45 @@ export class DashboardMetricCatalog {
               route: "projectQuests",
               params: { projectSlug: target.projectSlug },
               query: { status: "held" },
+            }
+          : undefined,
+    },
+    {
+      key: "epicProgress",
+      /**
+       * ⚠️ The `epics` group has existed in this catalogue since epic #E4
+       * with nothing in it, and `dashboardScopeSchema` has carried
+       * `kind: "epic"` since then commented "reserved for the deferred
+       * epic-progress tile". This is the entry both were waiting for.
+       */
+      boards: ["project"],
+      group: "epics",
+      labelKey: "dashboard.metric.epicProgress",
+      hintKey: "dashboard.metric.epicProgress.hint",
+      icon: "layers",
+      presentation: "progress",
+      scopeKinds: ["epic"],
+      filters: epicProgressFiltersSchema,
+      /**
+       * The OPTION as well as the capability. `CapabilityRegistry`'s list is
+       * flat and can only say `work`, which is exactly why `needs` exists:
+       * a project that does Work without epics has no epic to point at.
+       */
+      needs: { capability: "work", option: "epics" },
+      /**
+       * ⚠️ `epicNumber`, filled by the resolver from the row the scope
+       * proved. `projectEpic` is `/epics/:epicNumber` and the scope stores
+       * `epicId`; the two are different integers and confusing them lands on
+       * a real page showing the wrong epic.
+       */
+      link: (_scope, target) =>
+        target.projectSlug && target.epicNumber !== undefined
+          ? {
+              route: "projectEpic",
+              params: {
+                projectSlug: target.projectSlug,
+                epicNumber: String(target.epicNumber),
+              },
             }
           : undefined,
     },

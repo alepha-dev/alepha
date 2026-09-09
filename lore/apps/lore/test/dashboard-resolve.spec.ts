@@ -22,6 +22,7 @@ import { LoreApi } from "@/api/index.ts";
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
 import { DashboardMetricRegistry } from "@/api/services/DashboardMetricRegistry.ts";
 import { DashboardScopeService } from "@/api/services/DashboardScopeService.ts";
+import { EpicProgressService } from "@/api/services/EpicProgressService.ts";
 import { ProjectSecurityService } from "@/api/services/ProjectSecurityService.ts";
 
 import {
@@ -427,6 +428,197 @@ describe("dashboard resolve", () => {
       // "unreadable" is reserved for a scope that cannot be proven at all.
       expect(value.ok).toBe(true);
       expect(value.value).toBe(0);
+    });
+  });
+
+  /**
+   * The epic card, and the denominator two surfaces have to agree about.
+   */
+  describe("epicProgress", () => {
+    const resolveEpic = async (
+      project: Project,
+      user: UserAccountToken,
+      epicId: number,
+    ) => {
+      const values = await ctx.alepha
+        .inject(DashboardMetricRegistry)
+        .resolveForProject(
+          [
+            {
+              id: 1,
+              metric: "epicProgress",
+              scope: { kind: "epic", epicId },
+              filters: {},
+              size: 1,
+              position: 0,
+            },
+          ],
+          user,
+          project,
+        );
+      return values[0]!;
+    };
+
+    it("divides by total minus shelved, and says what it divided by", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "active",
+      });
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        acceptedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { epicId: epic.id });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        shelvedAt: now,
+      });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      // ⚠️ 1 of 3, not 1 of 4. The rollup's own `total` counts the shelved
+      // quest; the subtraction happens here, at the card, because four other
+      // surfaces read that number.
+      expect(value.value).toBe(33);
+      expect(value.detail.total).toBe(4);
+      expect(value.detail.shelved).toBe(1);
+      expect(value.detail.denominator).toBe(3);
+    });
+
+    it("renders no number rather than NaN when every quest is shelved", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "active",
+      });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        shelvedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      // The divide-by-zero case. `undefined` renders as the card's no-value
+      // glyph; a `0` would claim none of it is done, which is not what an
+      // entirely-declined epic means.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBeUndefined();
+      expect(value.detail.denominator).toBe(0);
+    });
+
+    it("agrees with the rollup the Epics list reads", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "active",
+      });
+      const now = new Date().toISOString();
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: now,
+      });
+      await createTestQuest(ctx.alepha, project, { epicId: epic.id });
+
+      const value = await resolveEpic(project, user, epic.id);
+      // The same method, not a second count. A card that disagreed with the
+      // Epics list by one is worse than no card.
+      const buckets = await ctx.alepha
+        .inject(EpicProgressService)
+        .computeProgressOf([epic.id]);
+
+      expect(value.detail.completed).toBe(buckets.get(epic.id)?.completed);
+      expect(value.detail.total).toBe(buckets.get(epic.id)?.total);
+    });
+
+    it("keeps a concluded epic's card, and says it is concluded", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        status: "done",
+        completedAt: new Date().toISOString(),
+      });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      // ⚠️ It stays. `done` is terminal, so the number is settled rather than
+      // stale, and repointing is the Edit item the menu already has - never
+      // an auto-repoint and never a self-deletion.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(100);
+      expect(value.detail.status).toBe("done");
+      expect(value.detail.completedAt).toBeTruthy();
+      expect(value.link?.route).toBe("projectEpic");
+    });
+
+    it("links by the per-project number, never by the row id", async ({
+      expect,
+    }) => {
+      const { user, project } = await memberOf(ctx);
+      // A number deliberately unequal to any plausible row id, so a resolver
+      // that shipped the id would land on a different epic and this would go
+      // red instead of silently pointing somewhere real.
+      const epic = await createTestEpic(ctx.alepha, project, { number: 46 });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      expect(value.link?.params).toEqual({
+        projectSlug: project.slug,
+        epicNumber: "46",
+      });
+      expect(value.link?.params?.epicNumber).not.toBe(String(epic.id));
+    });
+
+    it("names the epic on its chip, not the project", async ({ expect }) => {
+      const { user, project } = await memberOf(ctx);
+      const epic = await createTestEpic(ctx.alepha, project, {
+        title: "Lore Project Dashboard",
+      });
+
+      const value = await resolveEpic(project, user, epic.id);
+
+      // A board full of epic cards all chipped with the project's own name
+      // says nothing; the epic's title is the part that differs.
+      expect(value.scopeNames).toEqual(["Lore Project Dashboard"]);
+    });
+
+    it("resolves to nothing when the project turned epics off", async ({
+      expect,
+    }) => {
+      const project = await createTestProject(ctx.alepha, {
+        capabilities: [{ key: "work", options: { epics: false } }],
+      });
+      await createTestMember(ctx.alepha, project, project.createdBy!);
+      const epic = await createTestEpic(ctx.alepha, project);
+      await createTestQuest(ctx.alepha, project, {
+        epicId: epic.id,
+        completedAt: new Date().toISOString(),
+      });
+
+      const value = await resolveEpic(
+        project,
+        token(project.createdBy!),
+        epic.id,
+      );
+
+      // The option went off after the card was added. A capability is hidden
+      // and never deleted, so the quests are still there - counting them
+      // would put a number on the board for a surface the project no longer
+      // has.
+      expect(value.ok).toBe(true);
+      expect(value.value).toBeUndefined();
+      expect(value.detail.hidden).toBe(true);
     });
   });
 

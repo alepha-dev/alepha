@@ -2185,6 +2185,8 @@ export default {
   "dashboard.metric.heldQuests": "On hold",
   "dashboard.metric.heldQuests.hint":
     "open quests parked, waiting on something",
+  "dashboard.metric.epicProgress": "Epic progress",
+  "dashboard.metric.epicProgress.hint": "how far one epic has got",
   "dashboard.metric.openBlights": "Open blights",
   "dashboard.metric.openBlights.hint": "project, or a list of apps",
   "dashboard.metric.untriagedFeedback": "Untriaged feedback",
@@ -2211,6 +2213,12 @@ export default {
   "dashboard.filterValue.yesterday": "Yesterday",
 
   "dashboard.footer.questSplit": "$1 accepted, $2 new",
+  "dashboard.footer.epic.done": "$1 of $2 done, shelved excluded",
+  "dashboard.footer.epic.specified": "$1 specified, none released yet",
+  "dashboard.footer.epic.concluded": "concluded $1",
+  "dashboard.footer.epic.concludedUndated": "concluded",
+  "dashboard.footer.epic.nothing": "nothing to count yet",
+  "dashboard.footer.epic.hidden": "epics are turned off here",
   "dashboard.footer.held": "of $1 open quests",
   "dashboard.footer.held.one": "of 1 open quest",
   "dashboard.footer.held.none": "nothing parked",
