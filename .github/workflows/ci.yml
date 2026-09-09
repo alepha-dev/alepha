@@ -4,12 +4,24 @@ permissions:
   contents: read
 
 on:
+  # Every branch, because that is how the work is actually done here: an agent
+  # works in a worktree on a `claude/**` branch, pushes it, and watches CI.
+  # Until 2026-09-09 this was `main` alone, so a branch push ran NOTHING and
+  # the only way to prove a branch green was to open a PR - which the working
+  # agreement in CLAUDE.md forbids an agent from doing unprompted. A branch
+  # could therefore only be proven by merging it.
+  #
+  # ⚠️ **Widening this made the deploy guards load-bearing.** Three of them
+  # said `github.event_name != 'pull_request'`, which is TRUE for a push to
+  # any branch, so on its own this change would have shipped docs, ui and shop
+  # to production from every agent worktree. They are pinned to main below.
+  # Read that block before adding a fourth deploy job.
   push:
     branches:
-      - main
-  # Without this, the only CI run that ever happens is the one on `main` - the
-  # same event that deploys Lore to production, so a branch could only be
-  # proven green by shipping it. PRs get test/e2e/bay; the deploys opt out.
+      - '**'
+  # Kept, though same-repo branches no longer need it: a pull_request run is
+  # the only way a FORK's code is ever tested, and this repository is public.
+  # The cost is that a PR opened by hand from a local branch runs CI twice.
   pull_request:
     branches:
       - main
@@ -544,11 +556,22 @@ jobs:
     # Doesn't require e2e - only that the codebase is lint/typecheck-clean and
     # the tests pass. Both halves of the old `verify` job, and only those.
     needs: [checks, test]
-    # Deploying is a real side effect, so it must not fire for a proposed
-    # change. Phrased as "not a PR" rather than copying
-    # `deploy-lore-production`'s `push && ref == main`: docs also deploy on the
-    # `workflow_run` (Release) trigger, and that has to keep working.
-    if: github.event_name != 'pull_request'
+    # Deploying is a real side effect, so it must fire for main and for a
+    # Release, and for nothing else.
+    #
+    # ⚠️ This said `github.event_name != 'pull_request'` until 2026-09-09, back
+    # when `push` only ever meant main and the two were the same statement.
+    # They stopped being the same the moment every branch started running CI:
+    # a push to `claude/whatever` is not a pull request, so the old form was a
+    # production deploy from an agent's worktree.
+    #
+    # The `workflow_run` half is not decoration. It is why this cannot simply
+    # copy `deploy-lore-production`'s `push && ref == main`: docs also deploys
+    # on the Release trigger, where `github.ref` is the DEFAULT branch rather
+    # than the ref that was released.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -615,10 +638,12 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-ui-production:
     needs: [checks, test]
-    # Deploying is a real side effect, so it must not fire for a proposed
-    # change. Phrased as "not a PR" for the same reason the docs job is: this
-    # also has to keep working on the `workflow_run` (Release) trigger.
-    if: github.event_name != 'pull_request'
+    # main or a Release, and nothing else - see the docs job above for why
+    # this is not `!= 'pull_request'` and why the `workflow_run` half has to
+    # be spelled out.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -680,7 +705,10 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-shop-production:
     needs: [checks, test]
-    if: github.event_name != 'pull_request'
+    # main or a Release, and nothing else - see the docs job above.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
