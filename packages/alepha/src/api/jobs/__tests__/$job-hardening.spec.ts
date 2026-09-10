@@ -1143,7 +1143,17 @@ describe("$job — delaySeconds on the dispatch interface", () => {
       { label: "local timer delivered the declined delay" },
     );
     expect(Date.now() - started).toBeGreaterThanOrEqual(140);
-    expect((await app.executions.findById(id))?.status).toBeUndefined();
+
+    // `calls` ticks inside the handler, but the row only goes once the
+    // handler has resolved, in a DELETE of its own. A read landing in between
+    // runs on another pooled connection and still sees `running`, so wait for
+    // the end state rather than reading it the moment the counter moves.
+    const status = await waitFor(
+      async () => (await app.executions.findById(id))?.status,
+      (s) => s === undefined,
+      { label: "the delivered run removed its row" },
+    );
+    expect(status).toBeUndefined();
   });
 
   it("a transport that holds the message delivers it, and the claim refuses it early", async ({

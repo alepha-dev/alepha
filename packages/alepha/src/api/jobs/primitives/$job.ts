@@ -336,6 +336,11 @@ export class JobPrimitive<T extends ZType = ZType> extends PipelinePrimitive<
 
   /**
    * Manually fire a cron-mode job, or trigger a queue-mode job with an explicit payload.
+   *
+   * A cron-mode trigger never overlaps a run of the same job already in
+   * progress, scheduled or triggered: in this process, or on another replica
+   * while `lock` is on. It returns without running instead, and resolves
+   * either way, so resolving does not mean the handler ran.
    */
   public async trigger(context?: JobTriggerContext<T>): Promise<void> {
     return this.jobProvider.trigger(this.name, context);

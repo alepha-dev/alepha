@@ -2,6 +2,7 @@ import { z } from "alepha";
 import { $repository, sql } from "alepha/orm";
 
 import { type Release, releases } from "../entities/releases.ts";
+import { compareReleaseTags, parseReleaseTag } from "../releaseOrder.ts";
 
 /**
  * The project's DEFAULT release: where a completed quest that names no
@@ -17,7 +18,16 @@ import { type Release, releases } from "../entities/releases.ts";
  *
  * Zero defaults is a normal, supported state. Creating the first release of a
  * project does NOT make it the default: pointing intake somewhere is an
- * explicit act, and nothing here ever guesses.
+ * explicit act, and nothing ever picks a default for a project that has none.
+ *
+ * ## Publishing hands it on
+ *
+ * The one move nobody asks for is {@link DefaultReleaseService.successor}:
+ * when the default ships, intake moves to the release next in line. That is
+ * not a guess on a project's behalf. It only carries on a choice the owner
+ * already made, that this project has a default at all, and it follows a rule
+ * a reader can check: the lowest open release above the one that shipped
+ * whose patch is zero.
  *
  * ## Why the swap is one statement
  *
@@ -83,6 +93,62 @@ export class DefaultReleaseService {
   async openDefault(projectId: number): Promise<Release | undefined> {
     const release = await this.current(projectId).catch(() => undefined);
     return release && !release.releasedAt ? release : undefined;
+  }
+
+  /**
+   * The release intake moves to when `published`, the default, ships, or
+   * `undefined` when nothing is next in line.
+   *
+   * Next in line is the LOWEST open release above `published` whose patch is
+   * zero. "The next minor, else the next major" needs no second rule: every
+   * minor of a major sorts below the next major, so `0.30.0` is picked over
+   * `1.0.0` for free, and `1.0.0` only once no `0.x.0` is left above.
+   *
+   * What it never picks, each for a reason:
+   *
+   * - **A patch** (`0.29.1`). A hotfix is filed by hand, beside the release it
+   *   patches, and intake catching loose work into it would put unrelated
+   *   quests in a hotfix's changelog.
+   * - **A prerelease** (`1.0.0-rc.1`), for the same reason as a patch: it is a
+   *   side step on the way to its release, not the next line of work.
+   * - **Anything at or below `published`.** An older release somebody left
+   *   open is not "next", and moving intake backwards would be a surprise.
+   * - **A tag that is not a version** (`demo-2`). It has no place in the
+   *   sequence, and a named `published` (`demo-1`) has no "next" at all.
+   *
+   * Ordered by the parsed tag, never by `number`: a release's `number` is
+   * creation order, and planning `1.0.0` before `0.30.0` is ordinary.
+   */
+  async successor(published: Release): Promise<Release | undefined> {
+    if (!published.tag || !parseReleaseTag(published.tag)) return undefined;
+
+    const open = await this.releases.findMany({
+      where: {
+        projectId: { eq: published.projectId },
+        releasedAt: { isNull: true },
+      },
+    });
+
+    return open
+      .filter(
+        (release) =>
+          release.id !== published.id &&
+          this.isMainLine(release.tag) &&
+          compareReleaseTags(release.tag, published.tag) > 0,
+      )
+      .sort((a, b) => compareReleaseTags(a.tag, b.tag) || a.number - b.number)
+      .at(0);
+  }
+
+  /**
+   * Whether a tag names a release on the main line: a version whose patch,
+   * and every segment after it, is zero, with no prerelease suffix. `0.30`
+   * counts, and reads as `0.30.0` the way the Releases table sorts it.
+   */
+  protected isMainLine(tag: string | undefined): boolean {
+    const parts = tag ? parseReleaseTag(tag) : undefined;
+    if (!parts || parts.pre) return false;
+    return parts.core.slice(2).every((segment) => segment === 0);
   }
 
   /**

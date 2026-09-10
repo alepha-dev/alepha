@@ -27,14 +27,20 @@
  * be versions at all - the New Release hint says so - so a tag that is not one
  * gets a defined place rather than a wrong number.
  */
-interface ReleaseTagParts {
+export interface ReleaseTagParts {
   core: number[];
   pre?: string;
 }
 
 const VERSION_TAG = /^[vV]?(\d+(?:\.\d+)*)(?:[-+](.+))?$/;
 
-const parseReleaseTag = (tag: string): ReleaseTagParts | undefined => {
+/**
+ * Exported for `DefaultReleaseService`, which hands the default on to the next
+ * release and has to ask what a tag's patch and prerelease are. One parser, so
+ * "the next release" and the Releases table's order can never disagree about
+ * what a tag means.
+ */
+export const parseReleaseTag = (tag: string): ReleaseTagParts | undefined => {
   const match = VERSION_TAG.exec(tag.trim());
   if (!match) return undefined;
   return {
