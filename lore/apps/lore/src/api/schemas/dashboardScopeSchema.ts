@@ -18,9 +18,18 @@ import { type Infer, z } from "alepha";
  * is enforced by `DashboardScopeService.assertWellFormed`, in one place,
  * with a spec.
  *
- * `epic` and `release` exist for the deferred epic-progress / release-burn
- * tiles. No v1 metric accepts them yet; they are here so the stored shape does
- * not have to change when one does.
+ * `epic` and `release` are LIVE: `epicProgress` and `releaseProgress` accept
+ * them, and both declare `boards: ["project"]`, so a card of either kind is
+ * always inside one project.
+ *
+ * ⚠️ They are also the two kinds whose picker is not a list of things the
+ * reader owns but one row of another table, which is what made them the only
+ * kinds the Add-card panel forgot. Anything added to this union needs a
+ * branch in FOUR places, and three of them are silent when it is missing:
+ * `DashboardScopeService.assertWellFormed` and `narrow` (loud - they throw),
+ * `DashboardCatalogue.initialScope` (falls through to another kind),
+ * `DashboardCatalogue.canSave` (refuses on the wrong grounds), and
+ * `DashboardScopeStep` (renders an empty step).
  */
 export const dashboardScopeSchema = z.object({
   kind: z
@@ -37,11 +46,13 @@ export const dashboardScopeSchema = z.object({
    */
   sigilIds: z.array(z.uuid()).max(50).optional(),
   /**
-   * `kind: "epic"` — reserved for the deferred epic-progress tile.
+   * `kind: "epic"` - one epic, for `epicProgress`. Its row ID, not its
+   * per-project `number`: the card resolves the number for the link.
    */
   epicId: z.integer().optional(),
   /**
-   * `kind: "release"` — reserved for the deferred release-burn tile.
+   * `kind: "release"` - one release, for `releaseProgress`. Its row ID, not
+   * its tag: the card resolves the tag for the link.
    */
   releaseId: z.integer().optional(),
 });
