@@ -332,7 +332,8 @@ func gorillaDial(ctx context.Context, url string, header http.Header) (Conn, err
 	return conn, nil
 }
 
-// Run dials, holds, and redials until ctx ends. It never returns early.
+// Run dials, holds, and redials until ctx ends, and returns as soon as it
+// does: cancelling closes the open socket. It never returns early.
 func (c *Client) Run(ctx context.Context) {
 	c.defaults()
 	outage := false
@@ -396,6 +397,11 @@ func (c *Client) session(ctx context.Context, cfg Config, outage *bool) bool {
 
 	c.setConn(conn)
 	defer c.dropConn(conn)
+	// Cancelling closes the socket. Nothing else wakes the read below, which
+	// otherwise waits for a frame or the keepalive's deadline, 40 s out by
+	// default; closed, it fails, sees ctx done, and the session ends.
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
 	c.Status.Up(c.Now())
 	if *outage {
 		c.Log.Info("lore connection restored", "sink", cfg.Sink)
