@@ -99,16 +99,16 @@ describe("LoreProjectResolver", () => {
 
       await expect(
         resolver.resolveApp(undefined, "/elsewhere"),
-      ).rejects.toThrowError(/--app <name>.*LORE_APP/s);
+      ).rejects.toThrow(/--app <name>.*LORE_APP/s);
     });
 
     it("names them again when package.json has no name", async () => {
       const { resolver, fs } = create();
       await fs.writeFile("/project/package.json", JSON.stringify({}));
 
-      await expect(
-        resolver.resolveApp(undefined, "/project"),
-      ).rejects.toThrowError(/--app <name>.*LORE_APP/s);
+      await expect(resolver.resolveApp(undefined, "/project")).rejects.toThrow(
+        /--app <name>.*LORE_APP/s,
+      );
     });
   });
 
@@ -147,9 +147,7 @@ describe("LoreProjectResolver", () => {
         { app: "docs", env: "preview" },
       ]);
 
-      await expect(
-        resolver.resolveEnv(undefined, 1, "docs"),
-      ).rejects.toThrowError(
+      await expect(resolver.resolveEnv(undefined, 1, "docs")).rejects.toThrow(
         "docs has production, preview. Pass --env <name>.",
       );
     });
@@ -180,7 +178,7 @@ describe("LoreProjectResolver", () => {
     it("names the slug, the flag and the variable when it resolves nothing", async () => {
       const { resolver } = create({}, null);
 
-      await expect(resolver.resolve("ghost")).rejects.toThrowError(
+      await expect(resolver.resolve("ghost")).rejects.toThrow(
         /No Lore project named "ghost".*--project <slug>.*LORE_PROJECT/s,
       );
     });

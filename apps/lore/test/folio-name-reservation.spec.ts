@@ -246,7 +246,7 @@ describe("Folio name reservations", () => {
     await ctx.names.reserve("Notes", "folio", crypto.randomUUID(), scope);
     await expect(
       ctx.names.reserve("notes", "folio", crypto.randomUUID(), scope),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("releases the name when the folio is deleted", async ({ expect }) => {

@@ -65,5 +65,5 @@ export const testExecuteBasicSqlQueries = async (alepha: Alepha) => {
     app.users.query(
       (t) => sql`SELECT ${t.name} FROM ${t} WHERE ${t.name} = ${name}`,
     ),
-  ).rejects.toThrowError(SchemaValidationError);
+  ).rejects.toThrow(SchemaValidationError);
 };

@@ -426,7 +426,7 @@ describe("artifacts", () => {
         push(projectId, owner, {
           file: await packedArtifact({ filler: "// a later commit" }),
         }),
-      ).rejects.toThrowError(/--force/);
+      ).rejects.toThrow(/--force/);
     });
 
     /**
@@ -808,14 +808,14 @@ describe("artifacts", () => {
           { params: { projectId, artifactId: row.id } },
           { user: owner },
         ),
-      ).rejects.toThrowError(/no stored source maps/);
+      ).rejects.toThrow(/no stored source maps/);
 
       await expect(
         ctx.artifactController.getArtifactMaps.fetch(
           { params: { projectId, artifactId: crypto.randomUUID() } },
           { user: owner },
         ),
-      ).rejects.toThrowError(/No such artifact/);
+      ).rejects.toThrow(/No such artifact/);
     });
 
     /**
@@ -1021,7 +1021,7 @@ describe("artifacts", () => {
       const { owner, projectId } = await aProject();
       ctx.registry.healthy({ runtime: "workerd" });
 
-      await expect(pushImage(projectId, owner, {})).rejects.toThrowError(
+      await expect(pushImage(projectId, owner, {})).rejects.toThrow(
         /a Worker does not run in a container/,
       );
       expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
@@ -1059,7 +1059,7 @@ describe("artifacts", () => {
         pushImage(projectId, owner, {
           reference: "ghcr.io/alepha-dev/lore-mirror:0.30.0",
         }),
-      ).rejects.toThrowError(/already names .* write-once - push --force/);
+      ).rejects.toThrow(/already names .* write-once - push --force/);
     });
 
     it("refuses to move a pinned tag without force, and moves it with one", async ({
@@ -1071,7 +1071,7 @@ describe("artifacts", () => {
 
       ctx.registry.healthy({ digest: `sha256:${"9".repeat(64)}` });
 
-      await expect(pushImage(projectId, owner, {})).rejects.toThrowError(
+      await expect(pushImage(projectId, owner, {})).rejects.toThrow(
         /write-once - push --force to move it/,
       );
 
@@ -1114,9 +1114,7 @@ describe("artifacts", () => {
 
       await expect(
         pushImage(projectId, owner, { digest: `sha256:${"f".repeat(64)}` }),
-      ).rejects.toThrowError(
-        /is aaaaaaaaaaaa in the registry, and the push claims/,
-      );
+      ).rejects.toThrow(/is aaaaaaaaaaaa in the registry, and the push claims/);
       expect(await ctx.rows.artifacts.findMany({})).toEqual([]);
     });
 

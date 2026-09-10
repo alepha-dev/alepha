@@ -218,7 +218,7 @@ describe("alepha/api/users - bootstrapFirstUser", () => {
           { email: "stranger@example.com", password: "SecurePassword123!" },
           "closed-bootstrap-second",
         ),
-      ).rejects.toThrowError("Registration is not allowed");
+      ).rejects.toThrow("Registration is not allowed");
     });
 
     it("should still refuse a closed realm that did not ask for the option", async ({
@@ -234,7 +234,7 @@ describe("alepha/api/users - bootstrapFirstUser", () => {
           { email: "owner@example.com", password: "SecurePassword123!" },
           "closed-no-bootstrap",
         ),
-      ).rejects.toThrowError("Registration is not allowed");
+      ).rejects.toThrow("Registration is not allowed");
     });
 
     it("should let the first OAuth account into a CLOSED realm", async ({
@@ -268,7 +268,7 @@ describe("alepha/api/users - bootstrapFirstUser", () => {
           },
           "closed-oauth-bootstrap",
         ),
-      ).rejects.toThrowError("Account doesn't exist");
+      ).rejects.toThrow("Account doesn't exist");
     });
   });
 
@@ -331,7 +331,7 @@ describe("alepha/api/users - bootstrapFirstUser", () => {
         alepha
           .inject(RealmProvider)
           .register("serverless-bootstrap", { bootstrapFirstUser: true }),
-      ).toThrowError(/bootstrapFirstUser/);
+      ).toThrow(/bootstrapFirstUser/);
     });
   });
 });

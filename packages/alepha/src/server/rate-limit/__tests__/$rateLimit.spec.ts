@@ -83,7 +83,7 @@ describe("$rateLimit", () => {
       expect(await svc.fn()).toBe("ok");
 
       // Third fails
-      await expect(svc.fn()).rejects.toThrowError("Too Many Requests");
+      await expect(svc.fn()).rejects.toThrow("Too Many Requests");
     });
 
     await alepha.stop();
@@ -110,7 +110,7 @@ describe("$rateLimit", () => {
     // No request context — uses "global" key
     expect(await svc.fn()).toBe("ok");
     expect(await svc.fn()).toBe("ok");
-    await expect(svc.fn()).rejects.toThrowError("Too Many Requests");
+    await expect(svc.fn()).rejects.toThrow("Too Many Requests");
 
     await alepha.stop();
   });
@@ -144,7 +144,7 @@ describe("$rateLimit", () => {
     expect(await svc.fn("b")).toBe("ok:b");
 
     // Same key = shared bucket, limit exceeded
-    await expect(svc.fn("a")).rejects.toThrowError("Too Many Requests");
+    await expect(svc.fn("a")).rejects.toThrow("Too Many Requests");
 
     await alepha.stop();
   });

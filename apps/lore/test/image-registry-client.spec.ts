@@ -66,7 +66,7 @@ describe("ImageRegistryClient", () => {
     it("refuses a host that is not on the allowlist, by name", ({ expect }) => {
       const { client, registry } = setup();
 
-      expect(() => client.parse("docker.io/library/node:24")).toThrowError(
+      expect(() => client.parse("docker.io/library/node:24")).toThrow(
         /Lore does not read images from "docker\.io"/,
       );
       // The refusal is the whole point: nothing was called.
@@ -80,12 +80,12 @@ describe("ImageRegistryClient", () => {
 
       // A suffix match is defeated by both of these, which is why the
       // allowlist is exact.
-      expect(() => client.parse("evil-ghcr.io/acme/app:1")).toThrowError(
+      expect(() => client.parse("evil-ghcr.io/acme/app:1")).toThrow(
         /does not read images from/,
       );
-      expect(() =>
-        client.parse("ghcr.io.attacker.test/acme/app:1"),
-      ).toThrowError(/does not read images from/);
+      expect(() => client.parse("ghcr.io.attacker.test/acme/app:1")).toThrow(
+        /does not read images from/,
+      );
     });
 
     it("refuses a digest reference by name rather than half-supporting it", ({
@@ -95,24 +95,22 @@ describe("ImageRegistryClient", () => {
 
       expect(() =>
         client.parse(`ghcr.io/alepha-dev/lore@sha256:${"a".repeat(64)}`),
-      ).toThrowError(
-        /a digest reference \(`@sha256:\.\.\.`\) is not supported/,
-      );
+      ).toThrow(/a digest reference \(`@sha256:\.\.\.`\) is not supported/);
     });
 
     it("refuses a port, an IP literal and a scheme", ({ expect }) => {
       const { client } = setup();
 
-      expect(() => client.parse("ghcr.io:5000/acme/app:1")).toThrowError(
+      expect(() => client.parse("ghcr.io:5000/acme/app:1")).toThrow(
         /a port is not allowed/,
       );
-      expect(() => client.parse("127.0.0.1/acme/app:1")).toThrowError(
+      expect(() => client.parse("127.0.0.1/acme/app:1")).toThrow(
         /never by IP address/,
       );
-      expect(() => client.parse("[::1]/acme/app:1")).toThrowError(
+      expect(() => client.parse("[::1]/acme/app:1")).toThrow(
         /never by IP address/,
       );
-      expect(() => client.parse("https://ghcr.io/acme/app:1")).toThrowError(
+      expect(() => client.parse("https://ghcr.io/acme/app:1")).toThrow(
         /with no scheme/,
       );
     });
@@ -120,9 +118,7 @@ describe("ImageRegistryClient", () => {
     it("refuses a reference with no tag", ({ expect }) => {
       const { client } = setup();
 
-      expect(() => client.parse("ghcr.io/alepha-dev/lore")).toThrowError(
-        /no tag/,
-      );
+      expect(() => client.parse("ghcr.io/alepha-dev/lore")).toThrow(/no tag/);
     });
   });
 
@@ -294,7 +290,7 @@ describe("ImageRegistryClient", () => {
         headers: { location: "http://pkg-containers.example.test/blob" },
       });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /follows https only/,
       );
     });
@@ -307,7 +303,7 @@ describe("ImageRegistryClient", () => {
       const { client, registry } = setup();
       registry.healthy().on("/token", { status: 403, body: "" });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /token exchange with ghcr\.io failed \(HTTP 403\).*holds no registry credentials/s,
       );
     });
@@ -316,7 +312,7 @@ describe("ImageRegistryClient", () => {
       const { client, registry } = setup();
       registry.healthy().on("/manifests/0.30.0", { status: 404, body: "" });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /alepha-dev\/lore:0\.30\.0 does not exist in the registry/,
       );
     });
@@ -327,7 +323,7 @@ describe("ImageRegistryClient", () => {
       const { client, registry } = setup();
       registry.healthy({ labels: null });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /declares no `dev\.alepha\.runtime` label on linux\/amd64/,
       );
     });
@@ -338,7 +334,7 @@ describe("ImageRegistryClient", () => {
       const { client, registry } = setup();
       registry.healthy({ digest: `sha512:${"a".repeat(128)}` });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /digested with `sha512`, and Lore records sha256 only/,
       );
     });
@@ -347,7 +343,7 @@ describe("ImageRegistryClient", () => {
       const { client, registry } = setup();
       registry.healthy({ digest: "sha256:not-a-digest" });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /not 64 hex characters of sha256/,
       );
     });
@@ -360,7 +356,7 @@ describe("ImageRegistryClient", () => {
 
       await expect(
         client.read(REFERENCE, { digest: `sha256:${"f".repeat(64)}` }),
-      ).rejects.toThrowError(
+      ).rejects.toThrow(
         "ghcr.io/alepha-dev/lore:0.30.0 is aaaaaaaaaaaa in the registry, and the push claims ffffffffffff. The tag has moved, or the push names a different build.",
       );
       // ⚠️ Refused as soon as the digest is known: the child manifest and the
@@ -389,7 +385,7 @@ describe("ImageRegistryClient", () => {
         throw new Error("getaddrinfo ENOTFOUND");
       };
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /Could not reach the registry: getaddrinfo ENOTFOUND/,
       );
     });
@@ -409,7 +405,7 @@ describe("ImageRegistryClient", () => {
         }),
       });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /index naming 200 manifests, past the 64/,
       );
       // ⚠️ The refusal is what keeps a hundred platforms from becoming a
@@ -430,7 +426,7 @@ describe("ImageRegistryClient", () => {
         body: "{}",
       });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /declares 10485760 bytes, past the 262144/,
       );
     });
@@ -448,7 +444,7 @@ describe("ImageRegistryClient", () => {
         body: "x".repeat(300 * 1024),
       });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /past the 262144 bytes Lore will read/,
       );
     });
@@ -462,7 +458,7 @@ describe("ImageRegistryClient", () => {
         headers: { location: "https://ghcr.io/v2/alepha-dev/lore/blobs/again" },
       });
 
-      await expect(client.read(REFERENCE)).rejects.toThrowError(
+      await expect(client.read(REFERENCE)).rejects.toThrow(
         /redirected the config blob .* more than 3 times|more than 8 registry calls/,
       );
     });

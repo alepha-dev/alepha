@@ -58,6 +58,9 @@ export const oxlintrc = () =>
     // Vitest's \`expect\` takes an optional message as its second argument,
     // which Jest's does not; the rule defaults to Jest's arity.
     "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+    // Jest-era aliases such as \`toThrowError\`, which Vitest 5 deprecates in
+    // favour of \`toThrow\`: the same matcher, and \`oxlint --fix\` rewrites it.
+    "vitest/no-alias-methods": "error",
     // Alepha's test fixture hands \`expect\` to the test body
     // (\`test("…", ({ expect }) => …)\`) rather than being imported, and the rule
     // counts assertions by identifier — so it reports tests full of assertions

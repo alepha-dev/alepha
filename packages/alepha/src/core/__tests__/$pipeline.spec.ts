@@ -137,7 +137,7 @@ describe("$pipeline", () => {
     }
 
     const svc = alepha.inject(TestService);
-    await expect(svc.fn()).rejects.toThrowError("Blocked");
+    await expect(svc.fn()).rejects.toThrow("Blocked");
     expect(calls).toEqual([]);
   });
 
@@ -314,7 +314,7 @@ describe("PipelinePrimitive as base class", () => {
     }
 
     const ctrl = alepha.inject(TestController);
-    await expect(ctrl.secured.invoke()).rejects.toThrowError("Blocked");
+    await expect(ctrl.secured.invoke()).rejects.toThrow("Blocked");
     expect(calls).toEqual([]);
   });
 

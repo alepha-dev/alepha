@@ -126,7 +126,7 @@ describe("alepha/api/invitations - InvitationService", () => {
         { email: "guest@example.com", resourceType: "gizmo", resourceId: "1" },
         owner(),
       ),
-    ).rejects.toThrowError(NotFoundError);
+    ).rejects.toThrow(NotFoundError);
   });
 
   it("lets the resolver refuse an inviter", async ({ expect }) => {
@@ -138,7 +138,7 @@ describe("alepha/api/invitations - InvitationService", () => {
         { email: "guest@example.com", resourceType: "widget", resourceId: "7" },
         owner(),
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("refuses an address the resolver says is already a principal", async ({
@@ -154,7 +154,7 @@ describe("alepha/api/invitations - InvitationService", () => {
         { email: "guest@example.com", resourceType: "widget", resourceId: "7" },
         owner(),
       ),
-    ).rejects.toThrowError("User is already a member of this resource");
+    ).rejects.toThrow("User is already a member of this resource");
   });
 
   it("refuses a second pending invitation for the same address", async ({
@@ -169,7 +169,7 @@ describe("alepha/api/invitations - InvitationService", () => {
     };
 
     await service.create(data, inviter);
-    await expect(service.create(data, inviter)).rejects.toThrowError(
+    await expect(service.create(data, inviter)).rejects.toThrow(
       "A pending invitation already exists",
     );
   });
@@ -183,7 +183,7 @@ describe("alepha/api/invitations - InvitationService", () => {
         { email: "OWNER@example.com", resourceType: "widget", resourceId: "7" },
         inviter,
       ),
-    ).rejects.toThrowError("Cannot invite yourself");
+    ).rejects.toThrow("Cannot invite yourself");
   });
 
   /**
@@ -260,7 +260,7 @@ describe("alepha/api/invitations - InvitationService", () => {
         id: crypto.randomUUID(),
         email: "someone-else@example.com",
       }),
-    ).rejects.toThrowError("This invitation is not addressed to you");
+    ).rejects.toThrow("This invitation is not addressed to you");
   });
 
   it("asks for room again at accept, not only at create", async ({
@@ -278,9 +278,7 @@ describe("alepha/api/invitations - InvitationService", () => {
     // exactly what the second check exists for.
     resource.seats = 0;
 
-    await expect(service.accept(invitation.id, guest)).rejects.toThrowError(
-      "Full",
-    );
+    await expect(service.accept(invitation.id, guest)).rejects.toThrow("Full");
   });
 
   it("expires a pending invitation, and refuses to accept it afterwards", async ({
@@ -300,7 +298,7 @@ describe("alepha/api/invitations - InvitationService", () => {
     // two refusals won the race.
     await dateTime.travel([8, "days"]);
 
-    await expect(service.accept(invitation.id, guest)).rejects.toThrowError(
+    await expect(service.accept(invitation.id, guest)).rejects.toThrow(
       BadRequestError,
     );
     expect((await service.getById(invitation.id)).status).toBe("expired");
@@ -317,10 +315,10 @@ describe("alepha/api/invitations - InvitationService", () => {
     );
     await service.revoke(invitation.id, { id: inviter.id });
 
-    await expect(service.accept(invitation.id, guest)).rejects.toThrowError(
+    await expect(service.accept(invitation.id, guest)).rejects.toThrow(
       "Invitation is not pending",
     );
-    await expect(service.decline(invitation.id, guest)).rejects.toThrowError(
+    await expect(service.decline(invitation.id, guest)).rejects.toThrow(
       "Invitation is not pending",
     );
   });
@@ -434,7 +432,7 @@ describe("alepha/api/invitations - InvitationService", () => {
     // Default purge window is 90 days after resolution.
     await dateTime.travel([91, "days"]);
     await service.purgeResolved();
-    await expect(service.getById(invitation.id)).rejects.toThrowError();
+    await expect(service.getById(invitation.id)).rejects.toThrow();
   });
 
   it("refuses to delete a pending invitation", async ({ expect }) => {
@@ -444,7 +442,7 @@ describe("alepha/api/invitations - InvitationService", () => {
       owner(),
     );
 
-    await expect(service.deleteInvitation(invitation.id)).rejects.toThrowError(
+    await expect(service.deleteInvitation(invitation.id)).rejects.toThrow(
       BadRequestError,
     );
   });

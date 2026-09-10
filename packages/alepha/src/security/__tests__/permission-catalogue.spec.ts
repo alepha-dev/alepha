@@ -155,6 +155,6 @@ describe("permission catalogue", () => {
       });
     }
 
-    expect(() => alepha.inject(App)).toThrowError(AlephaError);
+    expect(() => alepha.inject(App)).toThrow(AlephaError);
   });
 });

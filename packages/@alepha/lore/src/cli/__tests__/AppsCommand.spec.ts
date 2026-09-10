@@ -298,7 +298,7 @@ describe("lore apps build", () => {
           root: "/project",
           argv: "--env xxx --target docker",
         }),
-      ).rejects.toThrowError(
+      ).rejects.toThrow(
         /--env xxx needs `--target cloudflare`, but --target says `docker`/,
       );
     });
@@ -312,7 +312,7 @@ describe("lore apps build", () => {
 
       await expect(
         cli.run(command.build, { root: "/project", argv: "--env zzz" }),
-      ).rejects.toThrowError(/has no estate/);
+      ).rejects.toThrow(/has no estate/);
     });
   });
 });
@@ -588,7 +588,7 @@ describe("lore apps destroy", () => {
         root: "/project",
         argv: "--confirm docs/production",
       }),
-    ).rejects.toThrowError(/Name the copy with --env/);
+    ).rejects.toThrow(/Name the copy with --env/);
   });
 
   /**
@@ -605,7 +605,7 @@ describe("lore apps destroy", () => {
         root: "/project",
         argv: "--env production --confirm docs/staging",
       }),
-    ).rejects.toThrowError(/Pass --confirm "docs\/production"/);
+    ).rejects.toThrow(/Pass --confirm "docs\/production"/);
   });
 
   it("refuses with no confirmation at all", async () => {
@@ -614,7 +614,7 @@ describe("lore apps destroy", () => {
 
     await expect(
       cli.run(command.destroy, { root: "/project", argv: "--env production" }),
-    ).rejects.toThrowError(/Pass --confirm/);
+    ).rejects.toThrow(/Pass --confirm/);
   });
 
   /**

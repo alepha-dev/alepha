@@ -84,12 +84,12 @@ describe("DbCommand", () => {
       const { db } = create();
       const userAlepha = Alepha.create();
 
-      expect(() => db.testRequireDatabase(userAlepha, "push to")).toThrowError(
+      expect(() => db.testRequireDatabase(userAlepha, "push to")).toThrow(
         /No database configured, so there is nothing to push to/,
       );
-      expect(() =>
-        db.testRequireDatabase(userAlepha, "push to"),
-      ).not.toThrowError(/Service not found/);
+      expect(() => db.testRequireDatabase(userAlepha, "push to")).not.toThrow(
+        /Service not found/,
+      );
     });
 
     /**
@@ -132,7 +132,7 @@ describe("DbCommand", () => {
         db.testAssertNoDestructiveMigrations("/app/migrations/sqlite", [
           "0042_drop_it.sql",
         ]),
-      ).rejects.toThrowError(/DROP TABLE/);
+      ).rejects.toThrow(/DROP TABLE/);
     });
 
     it("names the offending file so it can be reviewed", async () => {
@@ -146,7 +146,7 @@ describe("DbCommand", () => {
         db.testAssertNoDestructiveMigrations("/app/migrations/sqlite", [
           "0042_drop_it.sql",
         ]),
-      ).rejects.toThrowError(/0042_drop_it\.sql/);
+      ).rejects.toThrow(/0042_drop_it\.sql/);
     });
 
     it("accepts a migration with no table drops", async () => {
@@ -221,7 +221,7 @@ describe("DbCommand", () => {
         db.testAssertNoDestructiveMigrations("/app/migrations/sqlite", [
           "20260729140502_drop_it",
         ]),
-      ).rejects.toThrowError(/DROP TABLE/);
+      ).rejects.toThrow(/DROP TABLE/);
     });
 
     it("accepts a v1-layout migration folder with no table drops", async () => {
@@ -557,7 +557,7 @@ describe("DbCommand", () => {
 
       await expect(
         db.testArchiveMigrations("/app/migrations/sqlite"),
-      ).rejects.toThrowError(/already exists/);
+      ).rejects.toThrow(/already exists/);
     });
 
     /**
@@ -854,7 +854,7 @@ describe("DbCommand", () => {
 
         await expect(
           cli.run(cmd.testDoctor, { root: "/project", argv: "" }),
-        ).rejects.toThrowError(
+        ).rejects.toThrow(
           /1 column\(s\) hold values of the wrong storage class/,
         );
       });
@@ -896,7 +896,7 @@ describe("DbCommand", () => {
 
       await expect(
         cli.run(cmd.testBaselineMark, { root: "/project", argv: "" }),
-      ).rejects.toThrowError(/alepha platform db baseline mark/);
+      ).rejects.toThrow(/alepha platform db baseline mark/);
     });
 
     /**

@@ -213,7 +213,7 @@ describe("ArtifactUploader", () => {
         archivePath: "/repo/my-app-1.2.3.tar.gz",
         filename: "my-app-1.2.3.tar.gz",
       }),
-    ).rejects.toThrowError(/line break/);
+    ).rejects.toThrow(/line break/);
 
     expect(ctx.sink.received).toBeUndefined();
   });

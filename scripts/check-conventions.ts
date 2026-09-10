@@ -825,6 +825,58 @@ if (flatSpecViolations.length > 0) {
   process.exit(1);
 }
 
+/**
+ * No `toThrowError`, the alias Vitest 5 deprecates in favour of `toThrow`.
+ *
+ * The two are one matcher, so this is about the strike-through in every editor
+ * and about `CLAUDE.md` recommending the dead spelling - not behaviour. Why a
+ * grep here when `.oxlintrc.json` turns on `vitest/no-alias-methods`: that rule
+ * only recognises an `expect` it can trace to an import, and almost every spec
+ * in this repo takes `expect` from the test fixture instead
+ * (`it("…", async ({ expect }) => …)`). On the sweep that removed the alias
+ * its fixer rewrote 174 of 570 call sites and saw none of the other 396, so
+ * the rule alone would let the alias back in one fixture spec at a time.
+ *
+ * Spec files and the shared helpers under `__tests__/`, which are not specs
+ * (`$repository-tests.ts` and its siblings) but hold assertions all the same.
+ */
+const THROW_ERROR_ALIAS = /\.toThrowError\(/;
+
+const assertionFiles = [
+  ...new Set([
+    ...specFiles,
+    ...execFileSync(
+      "git",
+      ["ls-files", "-c", "-o", "--exclude-standard", "*/__tests__/*.ts"],
+      { encoding: "utf8" },
+    )
+      .split("\n")
+      .filter(Boolean),
+  ]),
+];
+
+const aliasViolations: string[] = [];
+
+for (const file of assertionFiles) {
+  const lines = readFileSync(file, "utf8").split("\n");
+  for (const [index, line] of lines.entries()) {
+    if (THROW_ERROR_ALIAS.test(line)) {
+      aliasViolations.push(`  ${file}:${index + 1}\n    → .toThrow(`);
+    }
+  }
+}
+
+if (aliasViolations.length > 0) {
+  console.error(
+    `\n${aliasViolations.length} toThrowError call(s):\n\n` +
+      `${aliasViolations.join("\n")}\n\n` +
+      "`toThrowError` is a deprecated alias of `toThrow`, the same matcher.\n" +
+      "Rename it; `vitest/no-alias-methods` cannot see an `expect` that comes\n" +
+      "from the test fixture, so this check is what keeps it out.\n",
+  );
+  process.exit(1);
+}
+
 /*
  * 6. A workspace holding spec files owns a Vitest config, and the root config
  *    knows about it.

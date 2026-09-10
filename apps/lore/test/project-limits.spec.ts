@@ -148,7 +148,7 @@ describe("ProjectLimits enforcement", () => {
 
     await createQuest(owner, p.id, "One");
     await createQuest(owner, p.id, "Two");
-    await expect(createQuest(owner, p.id, "Three")).rejects.toThrowError(
+    await expect(createQuest(owner, p.id, "Three")).rejects.toThrow(
       /maximum number of quests allowed \(2\)/,
     );
 
@@ -168,7 +168,7 @@ describe("ProjectLimits enforcement", () => {
     await tighten({ maxQuestsPerProject: 1 });
 
     await createQuest(owner, a.id, "In A");
-    await expect(createQuest(owner, a.id, "Also in A")).rejects.toThrowError(
+    await expect(createQuest(owner, a.id, "Also in A")).rejects.toThrow(
       /maximum number of quests/,
     );
     // B is untouched by A's fullness.
@@ -194,7 +194,7 @@ describe("ProjectLimits enforcement", () => {
         { params: { projectId: p.id }, body: { tag: "0.2.0" } },
         { user: owner },
       ),
-    ).rejects.toThrowError(/maximum number of releases allowed \(1\)/);
+    ).rejects.toThrow(/maximum number of releases allowed \(1\)/);
   });
 
   it("refuses an invitation once the project is full", async ({ expect }) => {
@@ -213,7 +213,7 @@ describe("ProjectLimits enforcement", () => {
         },
         { ...owner, email: `${owner.id}@example.com` },
       ),
-    ).rejects.toThrowError(/maximum number of members allowed \(1\)/);
+    ).rejects.toThrow(/maximum number of members allowed \(1\)/);
   });
 
   it("refuses the accept that would overflow, even when the invite predates the cap", async ({
@@ -240,7 +240,7 @@ describe("ProjectLimits enforcement", () => {
 
     await expect(
       ctx.invitationService.accept(invitation.id, guest),
-    ).rejects.toThrowError(/maximum number of members allowed \(1\)/);
+    ).rejects.toThrow(/maximum number of members allowed \(1\)/);
   });
 
   it("still accepts an invitation when there is room", async ({ expect }) => {

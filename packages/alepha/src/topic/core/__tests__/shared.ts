@@ -169,7 +169,7 @@ export const testTopicAsSub = async (
   await a.t.publish({ n: 123 });
 
   await expect.poll(() => expect(count).toBe(123)).toBeTruthy();
-  //await expect(a.t.publish({ n: 123.6 })).rejects.toThrowError(SchemaValidationError);
+  //await expect(a.t.publish({ n: 123.6 })).rejects.toThrow(SchemaValidationError);
 };
 
 export const testTopicRetain = async (

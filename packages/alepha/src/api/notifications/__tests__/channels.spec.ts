@@ -130,7 +130,7 @@ describe("notification channels", () => {
     const alepha = container();
     alepha.inject(UnservedTemplates);
 
-    await expect(alepha.start()).rejects.toThrowError(
+    await expect(alepha.start()).rejects.toThrow(
       /template "beeped" declares channel "pager".*alepha\.with\(AlephaPagerNotifications\)/s,
     );
   });

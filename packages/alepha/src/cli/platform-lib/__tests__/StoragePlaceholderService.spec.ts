@@ -91,7 +91,7 @@ describe("StoragePlaceholderService", () => {
       ]),
     });
 
-    await expect(service.fill({ dbPath: DB, root: ROOT })).rejects.toThrowError(
+    await expect(service.fill({ dbPath: DB, root: ROOT })).rejects.toThrow(
       /Unsafe storage path segment/,
     );
   });

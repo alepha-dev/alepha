@@ -272,9 +272,9 @@ describe("ReleaseController: the default release", () => {
       { user },
     );
 
-    await expect(
-      setDefault(ctx, user, project.id, release.id),
-    ).rejects.toThrowError(/published\. Reopen it first\./);
+    await expect(setDefault(ctx, user, project.id, release.id)).rejects.toThrow(
+      /published\. Reopen it first\./,
+    );
   });
 
   it("refuses a release from another project as a 404", async ({ expect }) => {
@@ -286,9 +286,9 @@ describe("ReleaseController: the default release", () => {
     // Not a 403: the caller is not entitled to learn that an id exists in
     // another project. And never a silent no-op, which is what the
     // statement's own `WHERE project_id` would otherwise make it.
-    await expect(
-      setDefault(ctx, user, mine.id, elsewhere.id),
-    ).rejects.toThrowError(/not found in this project/);
+    await expect(setDefault(ctx, user, mine.id, elsewhere.id)).rejects.toThrow(
+      /not found in this project/,
+    );
   });
 
   it("clears the default when the default release is published and nothing is next", async ({

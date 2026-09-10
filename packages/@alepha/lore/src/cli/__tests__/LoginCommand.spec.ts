@@ -137,7 +137,7 @@ describe("lore login", () => {
     const ctx = await setup();
     ctx.auth.answers = [{ error: "access_denied" }];
 
-    await expect(ctx.runner.run(ctx.command.login, {})).rejects.toThrowError(
+    await expect(ctx.runner.run(ctx.command.login, {})).rejects.toThrow(
       /refused/,
     );
     expect(ctx.auth.polls).toBe(1);
@@ -148,7 +148,7 @@ describe("lore login", () => {
     const ctx = await setup();
     ctx.auth.answers = [{ error: "expired_token" }];
 
-    await expect(ctx.runner.run(ctx.command.login, {})).rejects.toThrowError(
+    await expect(ctx.runner.run(ctx.command.login, {})).rejects.toThrow(
       /expired/,
     );
   });
@@ -161,7 +161,7 @@ describe("lore login", () => {
   it("refuses to run in CI, naming the variable to set instead", async () => {
     const ctx = await setup({ CI: "true" });
 
-    await expect(ctx.runner.run(ctx.command.login, {})).rejects.toThrowError(
+    await expect(ctx.runner.run(ctx.command.login, {})).rejects.toThrow(
       /LORE_API_KEY/,
     );
     // Not even the first request: the refusal comes before the flow starts.

@@ -308,7 +308,7 @@ describe("alepha/api/users - CredentialService", () => {
           code: "000000", // Wrong code
           newPassword: "NewPassword456!",
         }),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("should not allow intent reuse after successful reset", async ({
@@ -614,7 +614,7 @@ describe("alepha/api/users - CredentialService", () => {
           code,
           newPassword: "alllowercase",
         }),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
 
       // The verification code should NOT be consumed - can retry with a valid password
       await credentialService.completePasswordReset({
@@ -750,7 +750,7 @@ describe("alepha/api/users - CredentialService", () => {
           "captcha@example.com",
           "captcha-realm",
         ),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
 
       // The point of the gate: no mail leaves in our name.
       expect(emailProvider.records.length).toBe(0);
@@ -769,7 +769,7 @@ describe("alepha/api/users - CredentialService", () => {
           "captcha-realm",
           "bad-token",
         ),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
 
       expect(captcha.wasVerified("bad-token")).toBe(true);
       expect(emailProvider.records.length).toBe(0);

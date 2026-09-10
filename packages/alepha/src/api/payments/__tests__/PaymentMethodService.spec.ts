@@ -82,7 +82,7 @@ describe("PaymentMethodService", () => {
     const method = await service.addPaymentMethod(userId, orgId, "tok_visa");
     await expect(
       service.removePaymentMethod(method.id, userId2),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("should reject setting default for another user's payment method", async ({
@@ -95,7 +95,7 @@ describe("PaymentMethodService", () => {
     await alepha.start();
 
     const method = await service.addPaymentMethod(userId, orgId, "tok_visa");
-    await expect(service.setDefault(method.id, userId2)).rejects.toThrowError(
+    await expect(service.setDefault(method.id, userId2)).rejects.toThrow(
       PaymentError,
     );
   });

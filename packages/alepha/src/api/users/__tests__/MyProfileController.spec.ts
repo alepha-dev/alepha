@@ -118,7 +118,7 @@ describe("alepha/api/users - MyProfileController", () => {
 
     // A 409 rather than the driver's unique-index error, which phrases itself
     // differently per backend and would surface as a 500.
-    await expect(update(ctx, { username: "prof-theirs" })).rejects.toThrowError(
+    await expect(update(ctx, { username: "prof-theirs" })).rejects.toThrow(
       ConflictError,
     );
   });
@@ -147,9 +147,9 @@ describe("alepha/api/users - MyProfileController", () => {
       .userRepository()
       .create({ username: "prof-occupied" });
 
-    await expect(
-      update(ctx, { username: "prof-occupied" }),
-    ).rejects.toThrowError(ConflictError);
+    await expect(update(ctx, { username: "prof-occupied" })).rejects.toThrow(
+      ConflictError,
+    );
 
     expect((await read(ctx)).username).toBe("prof-intact");
   });

@@ -77,7 +77,7 @@ describe("alepha/react/email render()", () => {
   it("rejects when the component throws, rather than returning half a page", async ({
     expect,
   }) => {
-    await expect(render(Broken)({})).rejects.toThrowError(/template exploded/);
+    await expect(render(Broken)({})).rejects.toThrow(/template exploded/);
   });
 
   it("returns a reusable renderer, not a one-shot", async ({ expect }) => {

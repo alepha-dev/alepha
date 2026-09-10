@@ -246,7 +246,7 @@ describe("PlatformCommand", () => {
           root: "/project",
           argv: "--env production",
         }),
-      ).rejects.toThrowError(/--reset/);
+      ).rejects.toThrow(/--reset/);
 
       expect(
         api.sql.some((it) => it.includes("DELETE FROM d1_migrations")),
@@ -268,7 +268,7 @@ describe("PlatformCommand", () => {
           root: "/project",
           argv: "--env production",
         }),
-      ).rejects.toThrowError(/only supports Cloudflare D1/);
+      ).rejects.toThrow(/only supports Cloudflare D1/);
     });
 
     it("refuses when the environment is backed by Postgres/Hyperdrive, not D1", async ({
@@ -285,7 +285,7 @@ describe("PlatformCommand", () => {
           root: "/project",
           argv: "--env production",
         }),
-      ).rejects.toThrowError(/Postgres\/Hyperdrive/);
+      ).rejects.toThrow(/Postgres\/Hyperdrive/);
     });
   });
 });

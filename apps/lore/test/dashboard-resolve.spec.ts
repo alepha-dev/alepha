@@ -1063,7 +1063,7 @@ describe("dashboard resolve", () => {
           },
           { user },
         ),
-      ).rejects.toThrowError(/does not accept a apps scope/);
+      ).rejects.toThrow(/does not accept a apps scope/);
     });
   });
 
@@ -1280,7 +1280,7 @@ describe("dashboard resolve", () => {
       // distinguishing them would leak the second.
       await expect(
         scopeService().resolve({ kind: "epic", epicId: epic.id }, user),
-      ).rejects.toThrowError(/Epic not found/);
+      ).rejects.toThrow(/Epic not found/);
     });
 
     it("answers 404 for an epic id that exists nowhere", async ({ expect }) => {
@@ -1288,7 +1288,7 @@ describe("dashboard resolve", () => {
 
       await expect(
         scopeService().resolve({ kind: "epic", epicId: 987654 }, user),
-      ).rejects.toThrowError(/Epic not found/);
+      ).rejects.toThrow(/Epic not found/);
     });
 
     it("resolves a release, and refuses one from another project", async ({
@@ -1318,7 +1318,7 @@ describe("dashboard resolve", () => {
 
       await expect(
         scopeService().resolve({ kind: "release", releaseId: theirs.id }, user),
-      ).rejects.toThrowError(/Release not found/);
+      ).rejects.toThrow(/Release not found/);
     });
 
     it("still refuses a malformed scope before it reaches a table", async ({
@@ -1331,13 +1331,13 @@ describe("dashboard resolve", () => {
       // the structural check on the way past.
       await expect(
         scopeService().resolve({ kind: "epic" } as DashboardScope, user),
-      ).rejects.toThrowError(/requires epicId/);
+      ).rejects.toThrow(/requires epicId/);
       await expect(
         scopeService().resolve(
           { kind: "release", releaseId: 1, epicId: 2 } as DashboardScope,
           user,
         ),
-      ).rejects.toThrowError(/must not carry epicId/);
+      ).rejects.toThrow(/must not carry epicId/);
     });
   });
 

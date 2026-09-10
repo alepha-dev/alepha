@@ -187,6 +187,11 @@
     // (`expect(value, "which key failed")`), which Jest's does not. The rule
     // defaults to Jest's arity and reports every use of it.
     "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+    // Jest-era aliases, `toThrowError` above all: Vitest 5 marks it
+    // `@deprecated Use toThrow instead`, and it is the same matcher, so the
+    // fixer's rewrite changes no behaviour. A rule rather than a one-off
+    // find-and-replace, so the alias cannot come back one call site at a time.
+    "vitest/no-alias-methods": "error",
     // Lexicographic `.sort()` on numbers is the bug this catches
     // (`[1, 2, 10]` sorts to `[1, 10, 2]`), and it found five latent ones here,
     // each passing only because every value happened to be a single digit.

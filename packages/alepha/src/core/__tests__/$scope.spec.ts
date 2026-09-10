@@ -67,7 +67,7 @@ describe("$scope", () => {
 
     // Wrap in an existing ALS context to simulate $action behavior
     await alepha.context.run(async () => {
-      await expect(svc.scoped()).rejects.toThrowError(
+      await expect(svc.scoped()).rejects.toThrow(
         "$scope: already inside a scope",
       );
     });
@@ -88,7 +88,7 @@ describe("$scope", () => {
     const svc = alepha.inject(TestService);
 
     await alepha.context.run(async () => {
-      await expect(svc.scoped()).rejects.toThrowError(
+      await expect(svc.scoped()).rejects.toThrow(
         /host primitives.*\$action.*\$job.*\$page.*include \$scope by default/,
       );
     });
@@ -121,7 +121,7 @@ describe("$scope", () => {
     }
 
     const svc = alepha.inject(TestService);
-    await expect(svc.scoped()).rejects.toThrowError("Handler failed");
+    await expect(svc.scoped()).rejects.toThrow("Handler failed");
   });
 
   test("handler arguments are passed through", async ({ expect }) => {
@@ -158,7 +158,7 @@ describe("$scope edge cases", () => {
 
     const svc = alepha.inject(TestService);
     // Outer $scope creates context, inner $scope detects it and throws
-    await expect(svc.scoped()).rejects.toThrowError(
+    await expect(svc.scoped()).rejects.toThrow(
       "$scope: already inside a scope",
     );
   });

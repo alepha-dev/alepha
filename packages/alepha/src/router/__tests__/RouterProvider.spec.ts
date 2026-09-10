@@ -206,8 +206,8 @@ describe("RouterProvider", () => {
 
   it("should throw error for invalid path formats", ({ expect }) => {
     const { match } = playground();
-    expect(() => match("x")).toThrowError();
-    expect(() => match("(*__*)")).toThrowError();
+    expect(() => match("x")).toThrow();
+    expect(() => match("(*__*)")).toThrow();
   });
 
   it("should match only wildcard route", ({ expect }) => {
@@ -223,7 +223,7 @@ describe("RouterProvider", () => {
 
   it("should throw error when adding invalid path", ({ expect }) => {
     const { add } = playground();
-    expect(() => add("*", "wildcard")).toThrowError();
+    expect(() => add("*", "wildcard")).toThrow();
   });
 
   it("should handle routes with params and wildcard", ({ expect }) => {

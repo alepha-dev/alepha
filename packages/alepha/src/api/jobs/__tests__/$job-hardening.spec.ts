@@ -755,9 +755,9 @@ describe("$job — inline", () => {
       const jobs = alepha.inject(JobProvider) as TestJobProvider;
       await alepha.start();
 
-      await expect(
-        app.work.push({ v: 1 }, { inline: true }),
-      ).rejects.toThrowError("provider refused");
+      await expect(app.work.push({ v: 1 }, { inline: true })).rejects.toThrow(
+        "provider refused",
+      );
 
       const rows = await app.executions.findMany({
         where: { jobName: { eq: "App.work" } },
@@ -801,9 +801,9 @@ describe("$job — inline", () => {
     const jobs = alepha.inject(JobProvider) as TestJobProvider;
     await alepha.start();
 
-    await expect(
-      app.work.push({ v: 1 }, { inline: true }),
-    ).rejects.toThrowError("nope");
+    await expect(app.work.push({ v: 1 }, { inline: true })).rejects.toThrow(
+      "nope",
+    );
 
     const rows = await app.executions.findMany({
       where: { jobName: { eq: "RetryingApp.work" } },
@@ -856,7 +856,7 @@ describe("$job — inline", () => {
         handler: async () => {},
       });
     }
-    expect(() => withCron.with(CronApp).inject(CronApp)).toThrowError(
+    expect(() => withCron.with(CronApp).inject(CronApp)).toThrow(
       /no caller to block/,
     );
 
@@ -871,7 +871,7 @@ describe("$job — inline", () => {
         handler: async () => {},
       });
     }
-    expect(() => withRetry.with(RetryApp).inject(RetryApp)).toThrowError(
+    expect(() => withRetry.with(RetryApp).inject(RetryApp)).toThrow(
       /cannot both be the default/,
     );
   });
@@ -894,11 +894,11 @@ describe("$job — inline", () => {
 
     await expect(
       app.work.pushMany([{ payload: { v: 1 } }, { payload: { v: 2 } }]),
-    ).rejects.toThrowError(/pushMany cannot honour/);
+    ).rejects.toThrow(/pushMany cannot honour/);
 
     await expect(
       app.work.push({ v: 1 }, { delay: [1, "hour"] }),
-    ).rejects.toThrowError(/Pick one/);
+    ).rejects.toThrow(/Pick one/);
   });
 });
 

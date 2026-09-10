@@ -292,7 +292,7 @@ describe("$owns requires", () => {
 
     await expect(
       app.createQuest.run({ params: { id: "p1" } }, { user: app.token() }),
-    ).rejects.toThrowError("Your rank (viewer) does not grant quest:create");
+    ).rejects.toThrow("Your rank (viewer) does not grant quest:create");
 
     await expect(
       app.readProject.run({ params: { id: "p1" } }, { user: app.token() }),
@@ -339,7 +339,7 @@ describe("$owns requires", () => {
 
     await expect(
       app.createQuest.run({ params: { id: "p1" } }, { user: app.token() }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
 
     const grants = alepha.inject(ResourceGrantsProvider) as RankGrantsProvider;
     expect(grants.seen).toHaveLength(0);
@@ -356,7 +356,7 @@ describe("$owns requires", () => {
 
     await expect(
       app.createQuest.run({ params: { id: "p1" } }, { user: app.token() }),
-    ).rejects.toThrowError("Permission 'quest:create' required");
+    ).rejects.toThrow("Permission 'quest:create' required");
 
     const grants = alepha.inject(ResourceGrantsProvider) as RankGrantsProvider;
     expect(grants.seen).toHaveLength(0);
@@ -432,7 +432,7 @@ describe("$owns requires", () => {
     // falls back to its lowest rank.
     await expect(
       app.ownerCreateQuest.run({ params: { id: "p2" } }, { user: app.token() }),
-    ).rejects.toThrowError("Your rank (viewer) does not grant quest:create");
+    ).rejects.toThrow("Your rank (viewer) does not grant quest:create");
     expect(app.counts()).toEqual({ projects: 1, members: 1 });
   });
 
@@ -453,6 +453,6 @@ describe("$owns requires", () => {
         repository: () => app.projects as unknown as Repository<any>,
         param: "id",
       } as never),
-    ).toThrowError(AlephaError);
+    ).toThrow(AlephaError);
   });
 });

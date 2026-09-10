@@ -31,7 +31,7 @@ describe("PlatformInspector", () => {
     process.env.CI = "1";
     try {
       const { inspector } = createTestEnv();
-      await expect(inspector.resolveConfig("/project")).rejects.toThrowError(
+      await expect(inspector.resolveConfig("/project")).rejects.toThrow(
         AlephaError,
       );
     } finally {
@@ -46,7 +46,7 @@ describe("PlatformInspector", () => {
       },
     });
 
-    await expect(inspector.resolveConfig("/project")).rejects.toThrowError(
+    await expect(inspector.resolveConfig("/project")).rejects.toThrow(
       AlephaError,
     );
   });
@@ -131,7 +131,7 @@ describe("PlatformInspector", () => {
 
     await expect(
       inspector.resolveEnvironment("/project", "nope"),
-    ).rejects.toThrowError(/Unknown environment "nope"/);
+    ).rejects.toThrow(/Unknown environment "nope"/);
   });
 
   test("resolves project + environments from alepha.config.ts", async ({

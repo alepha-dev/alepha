@@ -128,7 +128,7 @@ describe("alepha/api/users - MyMfaController", () => {
         { body: { code: "000000" } },
         { user: ctx.caller },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
 
     // Still on: a failed disable must not half-disable anything.
     const status = await ctx.controller.getMyMfa({}, { user: ctx.caller });

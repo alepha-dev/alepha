@@ -292,9 +292,7 @@ describe("alepha/api/invitations - the signup token", () => {
     // to an address of their choosing.
     alepha.inject(TestResource).inviterAllowed = false;
 
-    await expect(invite("victim@example.com")).rejects.toThrowError(
-      ForbiddenError,
-    );
+    await expect(invite("victim@example.com")).rejects.toThrow(ForbiddenError);
     expect(minted).toHaveLength(0);
   });
 });

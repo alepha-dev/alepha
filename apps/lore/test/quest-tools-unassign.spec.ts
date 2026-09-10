@@ -123,7 +123,7 @@ describe("Lore MCP: quest_unassign", () => {
 
     await expect(
       call(questTools.quest_shelve, { id: quest.id }),
-    ).rejects.toThrowError(/expected "new"/i);
+    ).rejects.toThrow(/expected "new"/i);
 
     await call(questTools.quest_unassign, { id: quest.id });
     const shelved = await call(questTools.quest_shelve, { id: quest.id });
@@ -143,6 +143,6 @@ describe("Lore MCP: quest_unassign", () => {
 
     await expect(
       call(questTools.quest_unassign, { id: fresh.id }),
-    ).rejects.toThrowError(/expected "accepted"/i);
+    ).rejects.toThrow(/expected "accepted"/i);
   });
 });

@@ -136,9 +136,9 @@ describe("alepha/api/users - MyIdentityController", () => {
     const ctx = await setup("id-second");
     await addPasswordIdentity(ctx);
 
-    await expect(
-      setFirstPassword(ctx, "some-other-secret"),
-    ).rejects.toThrowError(BadRequestError);
+    await expect(setFirstPassword(ctx, "some-other-secret")).rejects.toThrow(
+      BadRequestError,
+    );
   });
 
   it("should leave the existing password working when the set is refused", async ({
@@ -147,9 +147,9 @@ describe("alepha/api/users - MyIdentityController", () => {
     const ctx = await setup("id-intact");
     await addPasswordIdentity(ctx);
 
-    await expect(
-      setFirstPassword(ctx, "some-other-secret"),
-    ).rejects.toThrowError(BadRequestError);
+    await expect(setFirstPassword(ctx, "some-other-secret")).rejects.toThrow(
+      BadRequestError,
+    );
 
     const result = await ctx.sessionService.login(
       "credentials",
@@ -181,7 +181,7 @@ describe("alepha/api/users - MyIdentityController", () => {
     const ctx = await setup("id-last");
     const only = await addPasswordIdentity(ctx);
 
-    await expect(unlink(ctx, only.id)).rejects.toThrowError(BadRequestError);
+    await expect(unlink(ctx, only.id)).rejects.toThrow(BadRequestError);
 
     expect(await list(ctx)).toHaveLength(1);
   });
@@ -204,7 +204,7 @@ describe("alepha/api/users - MyIdentityController", () => {
 
     // Not-found rather than forbidden: a distinct answer would confirm the id
     // exists, turning this into an enumeration oracle.
-    await expect(unlink(ctx, theirs.id)).rejects.toThrowError(NotFoundError);
+    await expect(unlink(ctx, theirs.id)).rejects.toThrow(NotFoundError);
 
     const survivors = await ctx.realmProvider
       .identityRepository()

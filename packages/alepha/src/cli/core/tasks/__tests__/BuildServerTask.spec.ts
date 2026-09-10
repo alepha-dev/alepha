@@ -125,10 +125,8 @@ describe("BuildServerTask DO re-export", () => {
       const S = new Function(
         `return ${factory.slice(0, factory.lastIndexOf(",x=1;"))}`,
       )();
-      expect(() => S("drizzle-kit")).toThrowError(/unavailable on workerd/);
-      expect(() => S.resolve("drizzle-kit")).toThrowError(
-        /unavailable on workerd/,
-      );
+      expect(() => S("drizzle-kit")).toThrow(/unavailable on workerd/);
+      expect(() => S.resolve("drizzle-kit")).toThrow(/unavailable on workerd/);
     });
 
     it("rewrites a lazy inline createRequire(import.meta.url)(pkg) call", ({

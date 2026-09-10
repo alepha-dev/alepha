@@ -108,7 +108,7 @@ describe("the worker-side Cloudflare adapter", () => {
     // them.
     const { adapter } = setup();
 
-    await expect(adapter.authenticate()).rejects.toThrowError(
+    await expect(adapter.authenticate()).rejects.toThrow(
       /has no Cloudflare credential/,
     );
   });
@@ -222,11 +222,11 @@ describe("the worker-side Cloudflare adapter", () => {
     // one that refused: both look like "nothing is deployed".
     const { adapter } = setup();
 
-    await expect(adapter.inspect()).rejects.toThrowError(/does not inspect/);
+    await expect(adapter.inspect()).rejects.toThrow(/does not inspect/);
     // ⚠️ It tears down only what a deploy RECORDED, through `teardownRecorded`.
     // The adapter interface's own `teardown` derives every name from the
     // context, and on a lent estate that is the delete this class refuses.
-    await expect(adapter.teardown()).rejects.toThrowError(
+    await expect(adapter.teardown()).rejects.toThrow(
       /only what a deploy recorded/,
     );
   });
@@ -300,7 +300,7 @@ describe("the worker-side Cloudflare adapter", () => {
     await deployable(fs, "./nope.js");
     recordingDeployer(adapter);
 
-    await expect(adapter.deploy(context(naming), run)).rejects.toThrowError(
+    await expect(adapter.deploy(context(naming), run)).rejects.toThrow(
       /names `nope.js` as its entry/,
     );
   });
@@ -656,7 +656,7 @@ describe("the worker-side Cloudflare adapter", () => {
       await withConsumers(fs, [{ queue: "jobs", max_retries: 3 }]);
       const calls = recordingDeployer(adapter);
 
-      await expect(adapter.deploy(context(naming), run)).rejects.toThrowError(
+      await expect(adapter.deploy(context(naming), run)).rejects.toThrow(
         /consumes the queue `jobs`/,
       );
       expect(calls).toHaveLength(0);

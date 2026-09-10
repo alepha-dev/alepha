@@ -508,7 +508,7 @@ describe("relations", () => {
 
       await expect(
         app.db.campaigns.getOne({ where: { title: { eq: "nope" } } }),
-      ).rejects.toThrowError(/No 'campaigns'/);
+      ).rejects.toThrow(/No 'campaigns'/);
     });
 
     it("findById and getById resolve relations", async () => {
@@ -528,7 +528,7 @@ describe("relations", () => {
     it("getById throws for a missing id", async () => {
       await seed(app);
 
-      await expect(app.db.campaigns.getById(9999)).rejects.toThrowError(
+      await expect(app.db.campaigns.getById(9999)).rejects.toThrow(
         /No 'campaigns' with id/,
       );
     });
@@ -875,7 +875,7 @@ describe("relations", () => {
           // @ts-expect-error no `author` relation exists on campaigns.
           include: { author: true },
         }),
-      ).rejects.toThrowError(/Unknown relation 'author' on 'campaigns'/);
+      ).rejects.toThrow(/Unknown relation 'author' on 'campaigns'/);
     });
 
     it("types a to-many as an array and a to-one as optional", async () => {
@@ -918,7 +918,7 @@ describe("relations", () => {
           // @ts-expect-error `nope` is not a column of campaigns.
           select: ["nope"],
         }),
-      ).rejects.toThrowError(/Column 'nope' not found/);
+      ).rejects.toThrow(/Column 'nope' not found/);
     });
   });
 });

@@ -205,7 +205,7 @@ describe("AreaService", () => {
 
     await expect(
       ctx.service.merge(project.id, [area!.id], area!.id),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("refuses to merge across projects", async ({ expect }) => {
@@ -216,7 +216,7 @@ describe("AreaService", () => {
 
     await expect(
       ctx.service.merge(one.id, [source!.id], target!.id),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("leaves other projects' quests untouched when merging", async ({
@@ -339,7 +339,7 @@ describe("AreaService", () => {
         },
         { user: { id: project.createdBy } },
       ),
-    ).rejects.toThrowError(SchemaValidationError);
+    ).rejects.toThrow(SchemaValidationError);
 
     // Nothing was written — the row this length only reaches through
     // `ensureArea` was never created.
@@ -361,7 +361,7 @@ describe("AreaService", () => {
         { params: { id: quest.id }, body: { area: "x".repeat(49) } },
         { user: { id: project.createdBy } },
       ),
-    ).rejects.toThrowError(SchemaValidationError);
+    ).rejects.toThrow(SchemaValidationError);
 
     // The quest's area is untouched, and no stray row was registered.
     const reloaded = await ctx.repos.quests.getById(quest.id);

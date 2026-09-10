@@ -243,7 +243,7 @@ describe("lore artifacts push", () => {
 
       await expect(
         ctx.cli.run(ctx.command.push, { root: "/repo" }),
-      ).rejects.toThrowError(/409/);
+      ).rejects.toThrow(/409/);
     });
 
     it("still removes the tarball when the upload fails", async () => {
@@ -252,7 +252,7 @@ describe("lore artifacts push", () => {
 
       await expect(
         ctx.cli.run(ctx.command.push, { root: "/repo" }),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
 
       expect(
         await ctx.fs.exists(
@@ -266,7 +266,7 @@ describe("lore artifacts push", () => {
 
       await expect(
         ctx.cli.run(ctx.command.push, { root: "/repo" }),
-      ).rejects.toThrowError(/--app/);
+      ).rejects.toThrow(/--app/);
     });
   });
 });

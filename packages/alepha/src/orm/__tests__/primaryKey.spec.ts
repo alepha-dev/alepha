@@ -115,7 +115,7 @@ describe("primaryKey", () => {
 
     await app.identity.create({});
 
-    await expect(() => app.identity.create({})).rejects.toThrowError(DbError);
+    await expect(() => app.identity.create({})).rejects.toThrow(DbError);
   });
 
   it("should handle big identity primary key without overflow", async () => {

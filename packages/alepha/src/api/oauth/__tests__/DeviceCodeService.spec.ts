@@ -154,7 +154,7 @@ describe("DeviceCodeService", () => {
     // the endpoint an application actually exposes.
     await expect(
       service.decide(record.userCode, "approve", "guesser"),
-    ).rejects.toThrowError("Unknown or expired code");
+    ).rejects.toThrow("Unknown or expired code");
   });
 
   it("counts wrong codes per asker, not globally", async () => {

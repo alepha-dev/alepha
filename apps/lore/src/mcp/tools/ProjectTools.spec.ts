@@ -205,7 +205,7 @@ describe("Lore MCP - projects", () => {
         title: "Kanban V2",
       });
 
-      await expect(resolveName("kanban-v2")).rejects.toThrowError(
+      await expect(resolveName("kanban-v2")).rejects.toThrow(
         'Project "kanban-v2" not found',
       );
       // Not a fluke of an empty tree: both rows really do answer that slug.
@@ -219,7 +219,7 @@ describe("Lore MCP - projects", () => {
 
       // ⚠️ The same string for "no such project" and "not yours". Nothing
       // here may make it say more.
-      await expect(resolveName("nope")).rejects.toThrowError(
+      await expect(resolveName("nope")).rejects.toThrow(
         'Project "nope" not found',
       );
     });

@@ -138,7 +138,7 @@ describe("alepha/api/users - RegistrationService", () => {
           },
           "no-registration-realm",
         ),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     /**
@@ -174,7 +174,7 @@ describe("alepha/api/users - RegistrationService", () => {
         ),
         // The same message a closed realm has always thrown. A refusal that
         // read differently would tell a prober which addresses were invited.
-      ).rejects.toThrowError("Registration is not allowed");
+      ).rejects.toThrow("Registration is not allowed");
 
       expect(asked).toEqual(["stranger@example.com"]);
     });
@@ -208,7 +208,7 @@ describe("alepha/api/users - RegistrationService", () => {
           },
           "closed-inviting",
         ),
-      ).rejects.toThrowError("Registration is not allowed");
+      ).rejects.toThrow("Registration is not allowed");
     });
 
     it("should not consult the seam while the realm is open", async ({
@@ -261,7 +261,7 @@ describe("alepha/api/users - RegistrationService", () => {
           },
           "closed-no-email",
         ),
-      ).rejects.toThrowError("Registration is not allowed");
+      ).rejects.toThrow("Registration is not allowed");
 
       // There is nothing to vouch for, so the app is never asked and cannot
       // answer about an empty address.
@@ -293,7 +293,7 @@ describe("alepha/api/users - RegistrationService", () => {
           },
           "closed-captcha",
         ),
-      ).rejects.toThrowError("Captcha verification is required");
+      ).rejects.toThrow("Captcha verification is required");
     });
 
     it("should hand the seam the token the caller supplied", async ({
@@ -319,7 +319,7 @@ describe("alepha/api/users - RegistrationService", () => {
           },
           "closed-token",
         ),
-      ).rejects.toThrowError("Registration is not allowed");
+      ).rejects.toThrow("Registration is not allowed");
 
       const intent = await registrationService.createRegistrationIntent(
         {
@@ -399,7 +399,7 @@ describe("alepha/api/users - RegistrationService", () => {
           },
           "username-required-realm",
         ),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("should reject when required email is missing", async ({ expect }) => {
@@ -412,7 +412,7 @@ describe("alepha/api/users - RegistrationService", () => {
           password: "SecurePassword123!",
           // email is missing
         }),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("should reject when required phone is missing", async ({ expect }) => {
@@ -434,7 +434,7 @@ describe("alepha/api/users - RegistrationService", () => {
           },
           "phone-required-realm",
         ),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("should reject duplicate username", async ({ expect }) => {
@@ -453,7 +453,7 @@ describe("alepha/api/users - RegistrationService", () => {
           email: "new@example.com",
           password: "SecurePassword123!",
         }),
-      ).rejects.toThrowError(ConflictError);
+      ).rejects.toThrow(ConflictError);
     });
 
     it("should reject duplicate email", async ({ expect }) => {
@@ -472,7 +472,7 @@ describe("alepha/api/users - RegistrationService", () => {
           email: "existing@example.com",
           password: "SecurePassword123!",
         }),
-      ).rejects.toThrowError(ConflictError);
+      ).rejects.toThrow(ConflictError);
     });
 
     it("should reject duplicate phone number", async ({ expect }) => {
@@ -504,7 +504,7 @@ describe("alepha/api/users - RegistrationService", () => {
           },
           "phone-realm",
         ),
-      ).rejects.toThrowError(ConflictError);
+      ).rejects.toThrow(ConflictError);
     });
 
     it("should set correct expiration time (10 minutes)", async ({
@@ -653,7 +653,7 @@ describe("alepha/api/users - RegistrationService", () => {
           intentId: intent.intentId,
           // emailCode not provided
         }),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("should reject invalid email verification code", async ({ expect }) => {
@@ -681,7 +681,7 @@ describe("alepha/api/users - RegistrationService", () => {
           intentId: intent.intentId,
           emailCode: "000000", // Wrong code
         }),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("should not allow intent reuse after successful registration", async ({
@@ -740,7 +740,7 @@ describe("alepha/api/users - RegistrationService", () => {
         registrationService.completeRegistration({
           intentId: intent.intentId,
         }),
-      ).rejects.toThrowError(ConflictError);
+      ).rejects.toThrow(ConflictError);
     });
 
     it("should create credentials identity with hashed password", async ({
@@ -912,7 +912,7 @@ describe("alepha/api/users - RegistrationService", () => {
           },
           "strict-policy-realm",
         ),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("should accept registration when password meets realm policy", async ({
@@ -1020,7 +1020,7 @@ describe("alepha/api/users - RegistrationService", () => {
             email: "ratelimit-overflow@example.com",
             password: "SecurePassword123!",
           }),
-        ).rejects.toThrowError(BadRequestError);
+        ).rejects.toThrow(BadRequestError);
       });
     });
 
@@ -1057,7 +1057,7 @@ describe("alepha/api/users - RegistrationService", () => {
             },
             "closed-ratelimited",
           ),
-        ).rejects.toThrowError("Too many registration attempts");
+        ).rejects.toThrow("Too many registration attempts");
       });
     });
   });

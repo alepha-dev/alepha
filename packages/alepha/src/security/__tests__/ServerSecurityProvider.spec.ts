@@ -26,8 +26,8 @@ describe("$secure middleware", () => {
     const app = alepha.inject(TestApp);
     await alepha.start();
 
-    await expect(app.ok.run({})).rejects.toThrowError(UnauthorizedError);
-    await expect(app.ok.run({}, { user: undefined })).rejects.toThrowError(
+    await expect(app.ok.run({})).rejects.toThrow(UnauthorizedError);
+    await expect(app.ok.run({}, { user: undefined })).rejects.toThrow(
       UnauthorizedError,
     );
 
@@ -46,7 +46,7 @@ describe("$secure middleware", () => {
     ).toBe("OK");
 
     // but you can also force empty user
-    await expect(app.ok.fetch({}, { user: undefined })).rejects.toThrowError(
+    await expect(app.ok.fetch({}, { user: undefined })).rejects.toThrow(
       HttpError,
     );
 
@@ -114,10 +114,8 @@ describe("$secure middleware", () => {
     ).toBe("USER");
 
     // as user, you cannot access admin action (lacks admin:manage)
-    await expect(app.admin.run({}, { user })).rejects.toThrowError(
-      ForbiddenError,
-    );
-    await expect(app.admin.fetch({}, { user })).rejects.toThrowError(HttpError);
+    await expect(app.admin.run({}, { user })).rejects.toThrow(ForbiddenError);
+    await expect(app.admin.fetch({}, { user })).rejects.toThrow(HttpError);
 
     // as admin, you can access admin action (wildcard)
     expect(await app.admin.run({}, { user: admin })).toBe("ADMIN");
@@ -198,7 +196,7 @@ describe("$secure middleware", () => {
     await alepha.start();
 
     // Should fail without user
-    await expect(app.secured.run({})).rejects.toThrowError(UnauthorizedError);
+    await expect(app.secured.run({})).rejects.toThrow(UnauthorizedError);
 
     // Should succeed with user
     const user = { id: randomUUID(), roles: ["user"] };
@@ -237,7 +235,7 @@ describe("$secure middleware", () => {
     expect(await app.action.run({}, { user: manager })).toBe("DELETED");
 
     // viewer cannot delete
-    await expect(app.action.run({}, { user: viewer })).rejects.toThrowError(
+    await expect(app.action.run({}, { user: viewer })).rejects.toThrow(
       ForbiddenError,
     );
   });

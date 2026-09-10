@@ -341,7 +341,7 @@ describe("alepha init", () => {
 
       await expect(
         cli.run(cmd.init, { argv: "--pm=invalid", root: "/project" }),
-      ).rejects.toThrowError(/Invalid flag/);
+      ).rejects.toThrow(/Invalid flag/);
     });
 
     it("should show enum values in help for --pm flag", async () => {
@@ -365,7 +365,7 @@ describe("alepha init", () => {
 
         await expect(
           cli.run(cmd.init, { argv: flag, root: "/project" }),
-        ).rejects.toThrowError(/Unknown flag/);
+        ).rejects.toThrow(/Unknown flag/);
       }
     });
 
@@ -621,7 +621,7 @@ describe("alepha init", () => {
 
       await expect(
         cli.run(cmd.init, { argv: "subdir", root: "/project" }),
-      ).rejects.toThrowError(/Target directory is not empty/);
+      ).rejects.toThrow(/Target directory is not empty/);
     });
 
     it("should allow a named directory holding only package.json", async () => {

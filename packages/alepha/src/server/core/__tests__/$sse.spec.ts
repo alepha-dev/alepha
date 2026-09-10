@@ -175,7 +175,7 @@ describe("$sse", () => {
       for await (const event of app.failing.run()) {
         events.push(event);
       }
-    }).rejects.toThrowError("handler failed");
+    }).rejects.toThrow("handler failed");
 
     expect(events).toStrictEqual([{ value: "before-error" }]);
   });
@@ -254,7 +254,7 @@ describe("$sse", () => {
     const app = alepha.inject(Api);
     await alepha.start();
 
-    expect(() => app.disabled.run()).toThrowError(
+    expect(() => app.disabled.run()).toThrow(
       "SSE endpoint 'disabled' is disabled.",
     );
   });

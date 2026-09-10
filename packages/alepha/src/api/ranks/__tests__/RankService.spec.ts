@@ -278,7 +278,7 @@ describe("alepha/api/ranks", () => {
 
     await expect(
       ctx.app.createQuest.run({ params: { id: "p1" } }, { user: token("u1") }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("lets a stored definition widen what a rank grants", async ({
@@ -376,7 +376,7 @@ describe("alepha/api/ranks", () => {
         },
         { id: "root", realm: "default", ownership: false },
       ),
-    ).rejects.toThrowError("not a permission this application declares");
+    ).rejects.toThrow("not a permission this application declares");
   });
 
   it("refuses admin:* and the owner-only ceiling", async ({ expect }) => {
@@ -394,7 +394,7 @@ describe("alepha/api/ranks", () => {
         { key: "c", name: "C", permissions: ["project:read", "admin:users"] },
         root,
       ),
-    ).rejects.toThrowError("cannot be granted by a rank");
+    ).rejects.toThrow("cannot be granted by a rank");
 
     await expect(
       ctx.ranks.save(
@@ -407,7 +407,7 @@ describe("alepha/api/ranks", () => {
         },
         root,
       ),
-    ).rejects.toThrowError("belongs to the owner");
+    ).rejects.toThrow("belongs to the owner");
   });
 
   it("refuses a definition that withholds a floor permission", async ({
@@ -421,7 +421,7 @@ describe("alepha/api/ranks", () => {
         { key: "c", name: "C", permissions: ["quest:create"] },
         { id: "root", realm: "default", ownership: false },
       ),
-    ).rejects.toThrowError('Every rank holds "project:read"');
+    ).rejects.toThrow('Every rank holds "project:read"');
   });
 
   it("refuses a writer granting more than they hold", async ({ expect }) => {
@@ -447,7 +447,7 @@ describe("alepha/api/ranks", () => {
         },
         token("u1"),
       ),
-    ).rejects.toThrowError("cannot grant a permission you do not hold");
+    ).rejects.toThrow("cannot grant a permission you do not hold");
   });
 
   it("refuses editing or deleting a declared built-in", async ({ expect }) => {
@@ -465,11 +465,11 @@ describe("alepha/api/ranks", () => {
         { key: "member", name: "Renamed", permissions: ["project:read"] },
         root,
       ),
-    ).rejects.toThrowError("built-in rank and cannot be edited");
+    ).rejects.toThrow("built-in rank and cannot be edited");
 
     await expect(
       ctx.ranks.remove("project", "p1", "member", root),
-    ).rejects.toThrowError("built-in rank cannot be deleted");
+    ).rejects.toThrow("built-in rank cannot be deleted");
   });
 
   it("accepts a rewrite of a configurable built-in, and reads it back", async ({
@@ -528,7 +528,7 @@ describe("alepha/api/ranks", () => {
     // "removable once touched".
     await expect(
       ctx.ranks.remove("project", "p1", "guest", root),
-    ).rejects.toThrowError("built-in rank cannot be deleted");
+    ).rejects.toThrow("built-in rank cannot be deleted");
   });
 
   it("refuses deleting a rank somebody still holds", async ({ expect }) => {
@@ -552,9 +552,9 @@ describe("alepha/api/ranks", () => {
       rank: "c",
     });
 
-    await expect(
-      ctx.ranks.remove("project", "p1", "c", root),
-    ).rejects.toThrowError("still hold");
+    await expect(ctx.ranks.remove("project", "p1", "c", root)).rejects.toThrow(
+      "still hold",
+    );
 
     // Reassign, then it goes.
     await ctx.app.members.updateById("m1", { rank: "member" });
@@ -663,6 +663,6 @@ describe("alepha/api/ranks", () => {
         { params: { type: "project", scopeId: "p1", key: "contributor" } },
         { user: root },
       ),
-    ).rejects.toThrowError("still hold");
+    ).rejects.toThrow("still hold");
   });
 });

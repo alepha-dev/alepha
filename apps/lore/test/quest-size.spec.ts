@@ -174,6 +174,6 @@ describe("quest size", () => {
         },
         { user },
       ),
-    ).rejects.toThrowError(/size/i);
+    ).rejects.toThrow(/size/i);
   });
 });

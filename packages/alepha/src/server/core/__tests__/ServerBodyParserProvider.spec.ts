@@ -166,7 +166,7 @@ describe("ServerBodyParserProvider", () => {
     // "brotli" is not a valid encoding name — only "br" is
     await expect(
       parser.parseJson(makeStream(), "brotli" as string),
-    ).rejects.toThrowError("Unsupported Content-Encoding: brotli");
+    ).rejects.toThrow("Unsupported Content-Encoding: brotli");
   });
 
   it("should collect all decompressed chunks for large payloads", async ({
@@ -213,7 +213,7 @@ describe("ServerBodyParserProvider", () => {
       },
     });
 
-    await expect(parser.parseText(stream, "gzip")).rejects.toThrowError(
+    await expect(parser.parseText(stream, "gzip")).rejects.toThrow(
       "Content-Encoding gzip not allowed",
     );
   });
@@ -334,7 +334,7 @@ describe("ServerBodyParserProvider", () => {
       },
     });
 
-    await expect(parser.parseText(stream)).rejects.toThrowError(
+    await expect(parser.parseText(stream)).rejects.toThrow(
       "Request body size limit exceeded",
     );
 

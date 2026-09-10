@@ -96,7 +96,7 @@ describe("$secure", () => {
         headers: {},
       } as any);
 
-      await expect(svc.fn()).rejects.toThrowError(UnauthorizedError);
+      await expect(svc.fn()).rejects.toThrow(UnauthorizedError);
     });
   });
 
@@ -118,7 +118,7 @@ describe("$secure", () => {
     const svc = alepha.inject(TestService);
 
     // No context.run → no request and no atom → unauthorized
-    await expect(svc.fn()).rejects.toThrowError(UnauthorizedError);
+    await expect(svc.fn()).rejects.toThrow(UnauthorizedError);
   });
 
   test("sets request.user on success", async ({ expect }) => {
@@ -232,7 +232,7 @@ describe("$secure permissions", () => {
         headers: { authorization: "Bearer token" },
       } as any);
 
-      await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+      await expect(svc.fn()).rejects.toThrow(ForbiddenError);
     });
   });
 });
@@ -289,7 +289,7 @@ describe("$secure roles", () => {
       } as any);
 
       // fakeUser has "admin" role, not "superadmin"
-      await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+      await expect(svc.fn()).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -370,7 +370,7 @@ describe("$secure guard", () => {
         headers: { authorization: "Bearer token" },
       } as any);
 
-      await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+      await expect(svc.fn()).rejects.toThrow(ForbiddenError);
     });
   });
 });
@@ -481,7 +481,7 @@ describe("$secure atom resolution", () => {
     // Set user with "viewer" role via atom → should be denied
     await alepha.context.run(async () => {
       alepha.store.set(currentUserAtom, { ...fakeUser, roles: ["viewer"] });
-      await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+      await expect(svc.fn()).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -513,7 +513,7 @@ describe("$secure atom resolution", () => {
       alepha.store.set(currentUserAtom, fakeUser);
       alepha.set("alepha.http.request", { params: { id: "denied" } } as any);
 
-      await expect(svc.fn()).rejects.toThrowError(ForbiddenError);
+      await expect(svc.fn()).rejects.toThrow(ForbiddenError);
     });
 
     expect(seen[seen.length - 1]).toEqual({ id: "denied" });

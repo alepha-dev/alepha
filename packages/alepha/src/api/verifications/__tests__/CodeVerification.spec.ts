@@ -104,7 +104,7 @@ describe("Code Verification", () => {
         params: { type: "code" },
         body: { target, token: "000000" },
       }),
-    ).rejects.toThrowError("Invalid verification code");
+    ).rejects.toThrow("Invalid verification code");
 
     // The real code still short-circuits as already-verified.
     expect(
@@ -161,7 +161,7 @@ describe("Code Verification", () => {
           token: "999999",
         },
       }),
-    ).rejects.toThrowError("Invalid verification code");
+    ).rejects.toThrow("Invalid verification code");
   });
 
   it("should handle max attempts", async ({ expect }) => {
@@ -193,7 +193,7 @@ describe("Code Verification", () => {
           token: "999999",
         },
       }),
-    ).rejects.toThrowError("Maximum number of attempts reached");
+    ).rejects.toThrow("Maximum number of attempts reached");
   });
 
   it("should handle cooldown", async ({ expect }) => {
@@ -204,7 +204,7 @@ describe("Code Verification", () => {
 
     await expect(() =>
       service.createVerification({ type: "code", target }),
-    ).rejects.toThrowError("Verification is on cooldown for ");
+    ).rejects.toThrow("Verification is on cooldown for ");
 
     await dateTimeProvider.travel(
       parameters.verificationCooldown + 1,
@@ -249,7 +249,7 @@ describe("Code Verification", () => {
 
     await expect(() =>
       service.createVerification({ type: "code", target }),
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       `Maximum number of verification requests per day reached (${parameters.limitPerDay})`,
     );
   });
@@ -275,7 +275,7 @@ describe("Code Verification", () => {
           token: code,
         },
       }),
-    ).rejects.toThrowError("Verification code has expired");
+    ).rejects.toThrow("Verification code has expired");
   });
 
   it("should generate different codes for each request", async ({ expect }) => {

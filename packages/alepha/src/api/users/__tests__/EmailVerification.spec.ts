@@ -189,7 +189,7 @@ describe("alepha/api/users - Email Verification", () => {
           token: "550e8400-e29b-41d4-a716-446655440000",
         },
       }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("should reject expired verification token", async ({ expect }) => {
@@ -222,7 +222,7 @@ describe("alepha/api/users - Email Verification", () => {
           token,
         },
       }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("should not allow token reuse after successful verification", async ({
@@ -261,7 +261,7 @@ describe("alepha/api/users - Email Verification", () => {
           token,
         },
       }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("should check email verification status", async ({ expect }) => {

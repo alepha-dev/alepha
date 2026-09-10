@@ -135,7 +135,7 @@ describe("AppSecurityProvider", () => {
         email: "after@example.com",
         password: "SecurePassword123!",
       }),
-    ).rejects.toThrowError("Registration is not allowed");
+    ).rejects.toThrow("Registration is not allowed");
 
     await alepha.stop();
   });

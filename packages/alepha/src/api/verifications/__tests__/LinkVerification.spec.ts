@@ -96,7 +96,7 @@ describe("Link Verification", () => {
           token: "550e8400-e29b-41d4-a716-446655440000",
         },
       }),
-    ).rejects.toThrowError("Invalid verification code");
+    ).rejects.toThrow("Invalid verification code");
   });
 
   it("should handle max attempts", async ({ expect }) => {
@@ -128,7 +128,7 @@ describe("Link Verification", () => {
           token: "550e8400-e29b-41d4-a716-446655440000",
         },
       }),
-    ).rejects.toThrowError("Maximum number of attempts reached");
+    ).rejects.toThrow("Maximum number of attempts reached");
   });
 
   it("should handle cooldown", async ({ expect }) => {
@@ -139,7 +139,7 @@ describe("Link Verification", () => {
 
     await expect(() =>
       service.createVerification({ type: "link", target }),
-    ).rejects.toThrowError("Verification is on cooldown for ");
+    ).rejects.toThrow("Verification is on cooldown for ");
 
     await dateTimeProvider.travel(
       parameters.verificationCooldown + 1,
@@ -184,7 +184,7 @@ describe("Link Verification", () => {
 
     await expect(() =>
       service.createVerification({ type: "link", target }),
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       `Maximum number of verification requests per day reached (${parameters.limitPerDay})`,
     );
   });
@@ -210,7 +210,7 @@ describe("Link Verification", () => {
           token,
         },
       }),
-    ).rejects.toThrowError("Verification code has expired");
+    ).rejects.toThrow("Verification code has expired");
   });
 
   it("should return token in response", async ({ expect }) => {

@@ -382,7 +382,7 @@ describe("Lore MCP: quest attachments", () => {
         id: quest.id,
         attachmentId: fileId,
       }),
-    ).rejects.toThrowError(/not found on this quest/i);
+    ).rejects.toThrow(/not found on this quest/i);
   });
 });
 

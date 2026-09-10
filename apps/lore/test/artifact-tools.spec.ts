@@ -241,7 +241,7 @@ describe("Lore MCP — artifacts", () => {
           { project: ctx.project.id },
           ctx.stranger,
         ),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
     });
   });
 
@@ -294,7 +294,7 @@ describe("Lore MCP — artifacts", () => {
           tag: "1.2.3",
           runtime: "workerd",
         }),
-      ).rejects.toThrowError(/node/);
+      ).rejects.toThrow(/node/);
     });
 
     /**
@@ -314,7 +314,7 @@ describe("Lore MCP — artifacts", () => {
           tag: "1.2.3",
           runtime: "workerd",
         }),
-      ).rejects.toThrowError(/It has: node archive, node image\./);
+      ).rejects.toThrow(/It has: node archive, node image\./);
     });
 
     it("narrows to one variant when a format is named beside the runtime", async () => {
@@ -370,7 +370,7 @@ describe("Lore MCP — artifacts", () => {
           app: "my-app",
           tag: "9.9.9",
         }),
-      ).rejects.toThrowError(/9\.9\.9/);
+      ).rejects.toThrow(/9\.9\.9/);
     });
 
     /**
@@ -387,7 +387,7 @@ describe("Lore MCP — artifacts", () => {
           app: "my-app",
           tag: "rc1",
         }),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
     });
   });
 

@@ -324,9 +324,9 @@ describe("alepha/api/users - API Keys Integration", () => {
     });
 
     // Try to revoke user1's key as user2
-    await expect(
-      apiKeyService.revoke(apiKey.id, user2.id),
-    ).rejects.toThrowError(ForbiddenError);
+    await expect(apiKeyService.revoke(apiKey.id, user2.id)).rejects.toThrow(
+      ForbiddenError,
+    );
   });
 
   it("should create API key with description", async ({ expect }) => {

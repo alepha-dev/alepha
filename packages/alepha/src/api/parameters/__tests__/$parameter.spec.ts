@@ -1403,7 +1403,7 @@ describe("rollback error path", () => {
 
     await provider.save("rollback.err", { v: 1 }, "h");
 
-    await expect(provider.rollback("rollback.err", 99)).rejects.toThrowError(
+    await expect(provider.rollback("rollback.err", 99)).rejects.toThrow(
       /Parameter version not found: rollback\.err@99/,
     );
   });
@@ -1415,9 +1415,9 @@ describe("rollback error path", () => {
 
     const provider = alepha.inject(ParameterProvider);
 
-    await expect(
-      provider.rollback("nonexistent.param", 1),
-    ).rejects.toThrowError(/Parameter version not found/);
+    await expect(provider.rollback("nonexistent.param", 1)).rejects.toThrow(
+      /Parameter version not found/,
+    );
   });
 });
 

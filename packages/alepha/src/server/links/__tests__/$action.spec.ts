@@ -212,13 +212,13 @@ describe("$action", () => {
   const testActionErrors = async (
     app: CrudApp | HttpVirtualClient<CrudApp>,
   ) => {
-    await expect(app.findById.run({ params: { id: 2 } })).rejects.toThrowError(
+    await expect(app.findById.run({ params: { id: 2 } })).rejects.toThrow(
       "User not found",
     );
 
     // as local function, we go the real error
     // as remove function, we go the http error wrapper
-    await expect(app.internalError.run({})).rejects.toThrowError("Oops");
+    await expect(app.internalError.run({})).rejects.toThrow("Oops");
   };
 
   it("should handle errors properly (app)", async () => {

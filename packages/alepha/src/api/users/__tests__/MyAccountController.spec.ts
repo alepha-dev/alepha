@@ -111,7 +111,7 @@ describe("alepha/api/users - MyAccountController", () => {
 
     await expect(
       remove(ctx, { currentPassword: "not-mine", confirm: ctx.user.email }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
 
     expect(await stillExists(ctx)).toBe(true);
   });
@@ -121,7 +121,7 @@ describe("alepha/api/users - MyAccountController", () => {
   }) => {
     const ctx = await setup();
 
-    await expect(remove(ctx, { confirm: ctx.user.email })).rejects.toThrowError(
+    await expect(remove(ctx, { confirm: ctx.user.email })).rejects.toThrow(
       BadRequestError,
     );
 
@@ -136,7 +136,7 @@ describe("alepha/api/users - MyAccountController", () => {
 
     await expect(
       remove(ctx, { currentPassword: PASSWORD, confirm: "yes" }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
 
     expect(await stillExists(ctx)).toBe(true);
   });
@@ -160,7 +160,7 @@ describe("alepha/api/users - MyAccountController", () => {
 
     await expect(
       remove(ctx, { currentPassword: PASSWORD, confirm: ctx.user.email }),
-    ).rejects.toThrowError(ConflictError);
+    ).rejects.toThrow(ConflictError);
 
     // The assertion that matters: refusing must actually refuse, not merely
     // report an error after the row is gone.
@@ -179,7 +179,7 @@ describe("alepha/api/users - MyAccountController", () => {
 
     await expect(
       remove(ctx, { currentPassword: PASSWORD, confirm: ctx.user.email }),
-    ).rejects.toThrowError("You still own 3 projects");
+    ).rejects.toThrow("You still own 3 projects");
   });
 
   it("should run a passing handler and then delete", async ({ expect }) => {
@@ -203,7 +203,7 @@ describe("alepha/api/users - MyAccountController", () => {
 
     await expect(
       remove(ctx, { currentPassword: "not-mine", confirm: ctx.user.email }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
 
     expect(ctx.alepha.inject(CleanupHook).ran).toEqual([]);
   });

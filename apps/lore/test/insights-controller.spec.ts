@@ -2716,7 +2716,7 @@ describe("InsightsController", () => {
           },
           { user: owner },
         ),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
     });
 
     it("refuses a sigil id from another project", async ({ expect }) => {
@@ -2740,7 +2740,7 @@ describe("InsightsController", () => {
           },
           { user: owner },
         ),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
     });
   });
   /*

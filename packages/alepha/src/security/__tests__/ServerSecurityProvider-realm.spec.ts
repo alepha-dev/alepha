@@ -146,12 +146,12 @@ describe("$secure issuer protection", () => {
     };
 
     // User from realmB should NOT access actionA via .run()
-    await expect(app.actionA.run({}, { user: userB })).rejects.toThrowError(
+    await expect(app.actionA.run({}, { user: userB })).rejects.toThrow(
       ForbiddenError,
     );
 
     // User from realmB should NOT access actionA via .fetch()
-    await expect(app.actionA.fetch({}, { user: userB })).rejects.toThrowError(
+    await expect(app.actionA.fetch({}, { user: userB })).rejects.toThrow(
       "User must belong to issuer 'realmA' to access this route",
     );
 
@@ -208,7 +208,7 @@ describe("$secure issuer protection", () => {
     // User without realm attribute should be denied via .run()
     await expect(
       app.actionA.run({}, { user: userWithoutRealm }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
 
     // Note: .fetch() in test mode auto-assigns the first realm during token creation,
     // so a user without a realm will succeed if the first realm matches the required realm.
@@ -311,24 +311,24 @@ describe("$secure issuer protection", () => {
     // Regular user from realmA cannot access adminAction (no admin:* permission)
     await expect(
       app.adminAction.run({}, { user: regularUserRealmA }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
 
     // Admin from realmB should NOT access any action via .run() (wrong realm)
     await expect(
       app.adminAction.run({}, { user: adminUserRealmB }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
     await expect(
       app.readAction.run({}, { user: adminUserRealmB }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
 
     await expect(
       app.adminAction.fetch({}, { user: adminUserRealmB }),
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       "User must belong to issuer 'realmA' to access this route",
     );
     await expect(
       app.readAction.fetch({}, { user: adminUserRealmB }),
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       "User must belong to issuer 'realmA' to access this route",
     );
   });

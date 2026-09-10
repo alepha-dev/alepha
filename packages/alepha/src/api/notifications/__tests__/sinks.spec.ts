@@ -240,12 +240,12 @@ describe("sink channels", () => {
     await expect(
       // @ts-expect-error a mixed template still requires a contact
       templates.both.push({ variables: { tag: "v6" }, inline: true }),
-    ).rejects.toThrowError(/has no contact, which channel "email" needs/);
+    ).rejects.toThrow(/has no contact, which channel "email" needs/);
 
     await expect(
       // @ts-expect-error an addressable-only template requires a contact
       templates.plain.push({ variables: { tag: "v7" }, inline: true }),
-    ).rejects.toThrowError(/has no contact, which channel "email" needs/);
+    ).rejects.toThrow(/has no contact, which channel "email" needs/);
 
     await alepha.stop();
   });

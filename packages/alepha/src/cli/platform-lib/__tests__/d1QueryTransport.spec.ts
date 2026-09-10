@@ -146,7 +146,7 @@ describe("the D1 query transport", () => {
     }) as typeof globalThis.fetch;
 
     try {
-      await expect(api.d1Import("db-uuid-1", "SELECT 1;")).rejects.toThrowError(
+      await expect(api.d1Import("db-uuid-1", "SELECT 1;")).rejects.toThrow(
         /did not upload intact/,
       );
     } finally {
@@ -249,7 +249,7 @@ describe("the D1 query transport", () => {
       { uuid: "u2", name: "my-app-production" },
     ]);
     try {
-      await expect(api.resolveD1Id("my-app-preview")).rejects.toThrowError(
+      await expect(api.resolveD1Id("my-app-preview")).rejects.toThrow(
         /No D1 database named 'my-app-preview'.*my-app-production, my-app-staging/s,
       );
       await expect(api.resolveD1Id("my-app-production")).resolves.toBe("u2");

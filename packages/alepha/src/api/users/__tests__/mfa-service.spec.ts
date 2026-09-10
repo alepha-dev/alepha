@@ -111,7 +111,7 @@ describe("alepha/api/users - MfaService", () => {
 
     await expect(
       ctx.mfa.activateTotp(ctx.user.id, "000000", "default"),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
     expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([]);
   });
 
@@ -275,7 +275,7 @@ describe("alepha/api/users - MfaService", () => {
 
     await expect(
       ctx.mfa.beginTotpEnrollment(ctx.user.id, "default"),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 
   it("should refuse to activate an enrollment started before totp was disabled", async ({
@@ -301,7 +301,7 @@ describe("alepha/api/users - MfaService", () => {
 
     await expect(
       ctx.mfa.activateTotp(ctx.user.id, code, "default"),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
     expect(await ctx.mfa.methodsFor(ctx.user.id, "default")).toEqual([]);
   });
 

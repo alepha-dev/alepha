@@ -253,6 +253,6 @@ describe("a quest's questline", () => {
         { params: { projectId: c.projectId, shortId: quest.shortId } },
         { user: outsider },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 });

@@ -103,7 +103,7 @@ describe("alepha/api/users - MyPasswordController", () => {
 
     await expect(
       change(ctx, "not-my-password", "whatever-else"),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("should leave the old password working when the change is refused", async ({
@@ -128,7 +128,7 @@ describe("alepha/api/users - MyPasswordController", () => {
     // tells someone their account is now safe when it is not.
     const ctx = await setup("pw-same");
 
-    await expect(change(ctx, PASSWORD, PASSWORD)).rejects.toThrowError(
+    await expect(change(ctx, PASSWORD, PASSWORD)).rejects.toThrow(
       BadRequestError,
     );
   });
@@ -176,7 +176,7 @@ describe("alepha/api/users - MyPasswordController", () => {
     });
     await identities.deleteById(existing!.id);
 
-    await expect(change(ctx, PASSWORD, "anything-else")).rejects.toThrowError(
+    await expect(change(ctx, PASSWORD, "anything-else")).rejects.toThrow(
       BadRequestError,
     );
   });

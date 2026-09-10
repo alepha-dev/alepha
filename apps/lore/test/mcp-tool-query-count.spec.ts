@@ -163,7 +163,7 @@ describe("MCP tool query count", () => {
         { project: ctx.project.id },
         stranger.id,
       ),
-    ).rejects.toThrowError(NotFoundError);
+    ).rejects.toThrow(NotFoundError);
 
     await ctx.alepha.stop();
   });

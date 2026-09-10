@@ -119,7 +119,7 @@ describe("Lore's rank resource", () => {
         "owner",
         root,
       ),
-    ).rejects.toThrowError("transferred, not assigned");
+    ).rejects.toThrow("transferred, not assigned");
   });
 
   it("refuses the ceiling and requires the floor", async ({ expect }) => {
@@ -134,7 +134,7 @@ describe("Lore's rank resource", () => {
           { key: "c", name: "C", permissions: ["project:read", ceiling] },
           root,
         ),
-      ).rejects.toThrowError("belongs to the owner");
+      ).rejects.toThrow("belongs to the owner");
     }
 
     await expect(
@@ -144,7 +144,7 @@ describe("Lore's rank resource", () => {
         { key: "c", name: "C", permissions: ["quest:read"] },
         root,
       ),
-    ).rejects.toThrowError('Every rank holds "project:read"');
+    ).rejects.toThrow('Every rank holds "project:read"');
   });
 
   it("computes a preset from the capabilities the project actually has", ({
@@ -267,7 +267,7 @@ describe("Lore's rank resource", () => {
         { key: "owner", name: "Boss", permissions: ["project:read"] },
         user,
       ),
-    ).rejects.toThrowError("built-in rank and cannot be edited");
+    ).rejects.toThrow("built-in rank and cannot be edited");
   });
 
   it("answers the editor's presets from the project's own capabilities", async ({
@@ -364,7 +364,7 @@ describe("Lore's rank resource", () => {
         { params: { id: created.id }, body: { userId: owner.id } },
         { user: { id: other.id, roles: ["user"] } },
       ),
-    ).rejects.toThrowError("Only the project owner");
+    ).rejects.toThrow("Only the project owner");
   });
 
   it("counts the project quota on owner rows, so a transfer moves the slot", async ({
@@ -426,7 +426,7 @@ describe("Lore's rank resource", () => {
     // it exists now.
     await expect(
       ctx.projects.leaveProject({ params: { id: created.id } }, { user }),
-    ).rejects.toThrowError("Transfer ownership first");
+    ).rejects.toThrow("Transfer ownership first");
 
     await ctx.projects.transferOwnership(
       { params: { id: created.id }, body: { userId: taker.id } },
@@ -457,7 +457,7 @@ describe("Lore's rank resource", () => {
     // demoted themselves out of `rank:manage` is locked with no way back.
     await expect(
       ctx.ranks.assign("project", String(created.id), owner.id, "viewer", user),
-    ).rejects.toThrowError("cannot change your own rank");
+    ).rejects.toThrow("cannot change your own rank");
   });
 
   it("lands an invitee on the rank the invitation named", async ({
@@ -556,7 +556,7 @@ describe("Lore's rank resource", () => {
         id: member.id,
         roles: ["user"],
       }),
-    ).rejects.toThrowError("does not have");
+    ).rejects.toThrow("does not have");
 
     // And when the rank really is the reason, the refusal names the RANK, the
     // PERMISSION and the FIX. Three layers can refuse a call and the fixes are
@@ -568,7 +568,7 @@ describe("Lore's rank resource", () => {
         id: member.id,
         roles: ["user"],
       }),
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       "Your rank (Contributor) does not grant member:manage. Ask the project owner.",
     );
   });

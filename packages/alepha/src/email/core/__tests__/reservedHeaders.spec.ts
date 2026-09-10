@@ -50,7 +50,7 @@ describe("$email refuses reserved headers", () => {
 
     await expect(
       mailer.channel.send({ ...base, headers: { From: "evil@example.org" } }),
-    ).rejects.toThrowError(/From/);
+    ).rejects.toThrow(/From/);
   });
 
   it("refuses a reserved header whatever its casing", async ({ expect }) => {
@@ -58,7 +58,7 @@ describe("$email refuses reserved headers", () => {
 
     await expect(
       mailer.channel.send({ ...base, headers: { bCc: "evil@example.org" } }),
-    ).rejects.toThrowError(/bCc/);
+    ).rejects.toThrow(/bCc/);
   });
 
   it("refuses Reply-To, which has its own option", async ({ expect }) => {
@@ -69,7 +69,7 @@ describe("$email refuses reserved headers", () => {
         ...base,
         headers: { "Reply-To": "evil@example.org" },
       }),
-    ).rejects.toThrowError(/Reply-To/);
+    ).rejects.toThrow(/Reply-To/);
   });
 
   it("sends nothing when a header is refused", async ({ expect }) => {
@@ -112,7 +112,7 @@ describe("$email refuses reserved headers", () => {
         ...base,
         headers: { "X-Custom": "a\r\nBcc: attacker@example.com" },
       }),
-    ).rejects.toThrowError(/line break/);
+    ).rejects.toThrow(/line break/);
   });
 
   it("refuses a value carrying a bare LF", async ({ expect }) => {
@@ -125,7 +125,7 @@ describe("$email refuses reserved headers", () => {
         ...base,
         headers: { "X-Custom": "a\nBcc: attacker@example.com" },
       }),
-    ).rejects.toThrowError(/line break/);
+    ).rejects.toThrow(/line break/);
   });
 
   it("refuses a name carrying a colon", async ({ expect }) => {
@@ -136,7 +136,7 @@ describe("$email refuses reserved headers", () => {
         ...base,
         headers: { "X-A: x": "y" },
       }),
-    ).rejects.toThrowError(/not a valid header name/);
+    ).rejects.toThrow(/not a valid header name/);
   });
 
   it("refuses a name carrying CRLF", async ({ expect }) => {
@@ -149,7 +149,7 @@ describe("$email refuses reserved headers", () => {
         ...base,
         headers: { "X-A: x\r\nBcc": "y" },
       }),
-    ).rejects.toThrowError(/not a valid header name/);
+    ).rejects.toThrow(/not a valid header name/);
   });
 
   it("still accepts an ordinary List-Unsubscribe", async ({ expect }) => {

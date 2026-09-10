@@ -108,7 +108,7 @@ describe("alepha/react/auth - second factor", () => {
       ctx.auth.loginMfa(error.data.challenge, "000000", {
         hostname: ctx.hostname,
       }),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
 
     expect(ctx.alepha.store.get(currentUserAtom)).toBeUndefined();
   });

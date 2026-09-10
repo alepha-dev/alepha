@@ -264,7 +264,7 @@ describe("NodeShellProvider", () => {
       // silently, which is the worst of the three options.
       await expect(
         shell.run("node -e 'process.exit(0)'", { stdin: "x" }),
-      ).rejects.toThrowError(/argv/i);
+      ).rejects.toThrow(/argv/i);
     });
   });
 });

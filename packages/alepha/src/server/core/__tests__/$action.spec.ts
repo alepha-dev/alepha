@@ -83,9 +83,7 @@ describe("$action", () => {
     expect(await app.a1.fetch({}).then((it) => it.data)).toBe("ok:a1");
     // A 404 is an error to the client, not a text body to hand back as data.
     await expect(app.a2.fetch({})).rejects.toMatchObject({ status: 404 });
-    await expect(app.a2.run({})).rejects.toThrowError(
-      "Action 'a2' is disabled.",
-    );
+    await expect(app.a2.run({})).rejects.toThrow("Action 'a2' is disabled.");
   });
 
   test("should return nothing", async ({ expect }) => {

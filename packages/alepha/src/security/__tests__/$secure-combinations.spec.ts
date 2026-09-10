@@ -314,7 +314,7 @@ describe("$secure combinations", () => {
 
       await expect(
         app.issuerAndRole.run({}, { user: users.viewer }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("should deny when role matches but issuer does not", async () => {
@@ -328,7 +328,7 @@ describe("$secure combinations", () => {
       };
       await expect(
         app.issuerAndRole.run({}, { user: externalEditor }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -348,7 +348,7 @@ describe("$secure combinations", () => {
 
       await expect(
         app.issuerAndPermission.run({}, { user: users.viewer }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("should deny when permission would match but issuer does not", async () => {
@@ -362,7 +362,7 @@ describe("$secure combinations", () => {
       };
       await expect(
         app.issuerAndPermission.run({}, { user: externalEditor }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -382,7 +382,7 @@ describe("$secure combinations", () => {
 
       await expect(
         app.issuerAndGuard.run({}, { user: users.editorWrongEmail }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("should deny when guard would pass but issuer does not", async () => {
@@ -396,7 +396,7 @@ describe("$secure combinations", () => {
       };
       await expect(
         app.issuerAndGuard.run({}, { user: externalAllowed }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -426,7 +426,7 @@ describe("$secure combinations", () => {
       // Let's just verify viewer fails on roleAndPermission (requires editor role)
       await expect(
         app.roleAndPermission.run({}, { user: users.viewer }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("should deny when user has no roles", async () => {
@@ -435,7 +435,7 @@ describe("$secure combinations", () => {
 
       await expect(
         app.roleAndPermission.run({}, { user: users.noRoles }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -455,7 +455,7 @@ describe("$secure combinations", () => {
 
       await expect(
         app.roleAndGuard.run({}, { user: users.editorWrongEmail }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("should deny when guard would pass but role does not", async () => {
@@ -466,7 +466,7 @@ describe("$secure combinations", () => {
       const viewerAllowed = { ...users.viewer, email: "allowed@test.com" };
       await expect(
         app.roleAndGuard.run({}, { user: viewerAllowed }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -487,7 +487,7 @@ describe("$secure combinations", () => {
       // viewer has posts:read but wrong email
       await expect(
         app.permissionAndGuard.run({}, { user: users.viewer }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("should deny when guard would pass but permission does not", async () => {
@@ -498,7 +498,7 @@ describe("$secure combinations", () => {
       const noPermsAllowed = { ...users.noRoles, email: "allowed@test.com" };
       await expect(
         app.permissionAndGuard.run({}, { user: noPermsAllowed }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 });
@@ -529,7 +529,7 @@ describe("$secure three-option combinations", () => {
       };
       await expect(
         app.issuerRolePermission.run({}, { user: externalEditor }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("should deny when role fails", async () => {
@@ -538,7 +538,7 @@ describe("$secure three-option combinations", () => {
 
       await expect(
         app.issuerRolePermission.run({}, { user: users.viewer }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("should deny when permission fails", async () => {
@@ -548,7 +548,7 @@ describe("$secure three-option combinations", () => {
       // moderator role doesn't have posts:create
       await expect(
         app.issuerRolePermission.run({}, { user: users.moderator }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -568,7 +568,7 @@ describe("$secure three-option combinations", () => {
 
       await expect(
         app.issuerRoleGuard.run({}, { user: users.editorWrongEmail }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -590,7 +590,7 @@ describe("$secure three-option combinations", () => {
       const viewerAllowed = { ...users.viewer, email: "allowed@test.com" };
       await expect(
         app.issuerPermissionGuard.run({}, { user: viewerAllowed }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -610,7 +610,7 @@ describe("$secure three-option combinations", () => {
 
       await expect(
         app.rolePermissionGuard.run({}, { user: users.editorWrongEmail }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     it("should deny when only role fails", async () => {
@@ -621,7 +621,7 @@ describe("$secure three-option combinations", () => {
       const adminAllowed = { ...users.admin, email: "allowed@test.com" };
       await expect(
         app.rolePermissionGuard.run({}, { user: adminAllowed }),
-      ).rejects.toThrowError(ForbiddenError);
+      ).rejects.toThrow(ForbiddenError);
     });
   });
 });
@@ -649,7 +649,7 @@ describe("$secure all options combined", () => {
     };
     await expect(
       app.allOptions.run({}, { user: externalEditor }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("should deny when only role fails", async () => {
@@ -659,7 +659,7 @@ describe("$secure all options combined", () => {
     const viewerAllowed = { ...users.viewer, email: "allowed@test.com" };
     await expect(
       app.allOptions.run({}, { user: viewerAllowed }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("should deny when only permission fails", async () => {
@@ -672,9 +672,9 @@ describe("$secure all options combined", () => {
       roles: ["moderator"],
       email: "allowed@test.com",
     };
-    await expect(
-      app.allOptions.run({}, { user: modAllowed }),
-    ).rejects.toThrowError(ForbiddenError);
+    await expect(app.allOptions.run({}, { user: modAllowed })).rejects.toThrow(
+      ForbiddenError,
+    );
   });
 
   it("should deny when only guard fails", async () => {
@@ -683,16 +683,14 @@ describe("$secure all options combined", () => {
 
     await expect(
       app.allOptions.run({}, { user: users.editorWrongEmail }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("should deny unauthenticated user", async () => {
     const { alepha, app } = setup();
     await alepha.start();
 
-    await expect(app.allOptions.run({})).rejects.toThrowError(
-      UnauthorizedError,
-    );
+    await expect(app.allOptions.run({})).rejects.toThrow(UnauthorizedError);
   });
 });
 
@@ -718,7 +716,7 @@ describe("$secure multiple permissions (AND)", () => {
     // viewer has posts:read but NOT posts:delete
     await expect(
       app.multiplePermissions.run({}, { user: users.viewer }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("should deny when user has none of the required permissions", async () => {
@@ -727,7 +725,7 @@ describe("$secure multiple permissions (AND)", () => {
 
     await expect(
       app.multiplePermissions.run({}, { user: users.noRoles }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("should allow admin with wildcard permission", async () => {
@@ -775,7 +773,7 @@ describe("$secure multiple issuers (OR)", () => {
     };
     await expect(
       app.multipleIssuers.run({}, { user: unknownRealmUser }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 });
 
@@ -817,7 +815,7 @@ describe("$secure multiple roles (OR)", () => {
 
     await expect(
       app.multipleRoles.run({}, { user: users.viewer }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 });
 
@@ -839,7 +837,7 @@ describe("$secure check order", () => {
     };
     await expect(
       app.issuerAndRole.run({}, { user: wrongBoth }),
-    ).rejects.toThrowError(/issuer/i);
+    ).rejects.toThrow(/issuer/i);
   });
 
   it("should check role before permission", async () => {
@@ -849,7 +847,7 @@ describe("$secure check order", () => {
     // User with wrong role and wrong permission — error should be about role
     await expect(
       app.roleAndPermission.run({}, { user: users.viewer }),
-    ).rejects.toThrowError(/role.*required/i);
+    ).rejects.toThrow(/role.*required/i);
   });
 
   it("should check permission before guard", async () => {
@@ -860,7 +858,7 @@ describe("$secure check order", () => {
     const noPermsAllowed = { ...users.noRoles, email: "allowed@test.com" };
     await expect(
       app.permissionAndGuard.run({}, { user: noPermsAllowed }),
-    ).rejects.toThrowError(/permission.*required/i);
+    ).rejects.toThrow(/permission.*required/i);
   });
 
   it("should reach guard only after all other checks pass", async () => {
@@ -870,7 +868,7 @@ describe("$secure check order", () => {
     // Editor with wrong email — issuer/role/permission all pass, only guard fails
     await expect(
       app.allOptions.run({}, { user: users.editorWrongEmail }),
-    ).rejects.toThrowError(/access denied/i);
+    ).rejects.toThrow(/access denied/i);
   });
 });
 
@@ -885,7 +883,7 @@ describe("$secure edge cases", () => {
 
     await expect(
       app.requireViewer.run({}, { user: users.noRoles }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("should deny user with undefined roles against role check", async () => {
@@ -899,7 +897,7 @@ describe("$secure edge cases", () => {
     };
     await expect(
       app.requireViewer.run({}, { user: noRolesUndefined }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("should deny user with no realm against issuer check", async () => {
@@ -908,7 +906,7 @@ describe("$secure edge cases", () => {
 
     await expect(
       app.requireMainIssuer.run({}, { user: users.noRealm }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("should deny user with empty roles array against permission check", async () => {
@@ -917,7 +915,7 @@ describe("$secure edge cases", () => {
 
     await expect(
       app.requireRead.run({}, { user: users.noRoles }),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("should allow auth-only action for user with no roles", async () => {

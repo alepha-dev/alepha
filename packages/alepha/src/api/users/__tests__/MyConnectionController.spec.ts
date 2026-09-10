@@ -190,7 +190,7 @@ describe("alepha/api/users - MyConnectionController", () => {
     const browser = await ctx.addSession();
     await ctx.addSession("cli-tool");
 
-    await expect(revoke(ctx, browser.id, browser.id)).rejects.toThrowError(
+    await expect(revoke(ctx, browser.id, browser.id)).rejects.toThrow(
       NotFoundError,
     );
 
@@ -217,7 +217,7 @@ describe("alepha/api/users - MyConnectionController", () => {
     });
 
     // Not-found rather than forbidden: a distinct answer would confirm the id.
-    await expect(revoke(ctx, mine.id, theirs.id)).rejects.toThrowError(
+    await expect(revoke(ctx, mine.id, theirs.id)).rejects.toThrow(
       NotFoundError,
     );
 

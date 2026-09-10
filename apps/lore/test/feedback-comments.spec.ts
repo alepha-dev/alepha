@@ -129,7 +129,7 @@ describe("Lore feedback comments", () => {
           query: {},
         }),
       ),
-    ).rejects.toThrowError(/not found/i);
+    ).rejects.toThrow(/not found/i);
 
     await expect(
       asUser(STRANGER, () =>
@@ -138,7 +138,7 @@ describe("Lore feedback comments", () => {
           body: { body: "let me in" },
         }),
       ),
-    ).rejects.toThrowError(/not found/i);
+    ).rejects.toThrow(/not found/i);
   });
 
   it("refuses a reporter on someone else's item", async () => {
@@ -153,7 +153,7 @@ describe("Lore feedback comments", () => {
           body: { body: "nosy" },
         }),
       ),
-    ).rejects.toThrowError(/not found/i);
+    ).rejects.toThrow(/not found/i);
   });
 
   it("lets only the author edit, and the owner delete anyone's", async () => {
@@ -174,7 +174,7 @@ describe("Lore feedback comments", () => {
           body: { body: "rewritten by the owner" },
         }),
       ),
-    ).rejects.toThrowError(/only the author/i);
+    ).rejects.toThrow(/only the author/i);
 
     const edited = await asUser(REPORTER, () =>
       commentApi.updateFeedbackComment({
@@ -206,7 +206,7 @@ describe("Lore feedback comments", () => {
       asUser(REPORTER, () =>
         commentApi.deleteFeedbackComment({ params: { id: question.id } }),
       ),
-    ).rejects.toThrowError(/owner/i);
+    ).rejects.toThrow(/owner/i);
   });
 });
 

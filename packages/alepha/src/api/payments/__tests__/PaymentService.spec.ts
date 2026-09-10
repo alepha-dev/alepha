@@ -105,21 +105,21 @@ describe("PaymentService", () => {
     const { payments } = await setup();
 
     const intent = await payments.createIntent(1500, "eur");
-    await expect(payments.capture(intent.id)).rejects.toThrowError();
+    await expect(payments.capture(intent.id)).rejects.toThrow();
   });
 
   it("should reject refund from wrong status", async ({ expect }) => {
     const { payments } = await setup();
 
     const intent = await payments.createIntent(1500, "eur");
-    await expect(payments.refund(intent.id, 500)).rejects.toThrowError();
+    await expect(payments.refund(intent.id, 500)).rejects.toThrow();
   });
 
   it("should reject void from wrong status", async ({ expect }) => {
     const { payments } = await setup();
 
     const intent = await payments.createIntent(1500, "eur");
-    await expect(payments.void(intent.id)).rejects.toThrowError();
+    await expect(payments.void(intent.id)).rejects.toThrow();
   });
 
   it("should reject cancel from wrong status", async ({ expect }) => {
@@ -127,7 +127,7 @@ describe("PaymentService", () => {
 
     const intent = await payments.createIntent(1500, "eur");
     await payments.createSession(intent.id, "https://example.com");
-    await expect(payments.cancel(intent.id)).rejects.toThrowError();
+    await expect(payments.cancel(intent.id)).rejects.toThrow();
   });
 
   it("should reject capture amount exceeding authorized amount", async ({
@@ -139,7 +139,7 @@ describe("PaymentService", () => {
     await payments.createSession(intent.id, "https://example.com", true);
     await payments.handleWebhookEvent(intent.id, "authorized");
 
-    await expect(payments.capture(intent.id, 5000)).rejects.toThrowError(
+    await expect(payments.capture(intent.id, 5000)).rejects.toThrow(
       PaymentError,
     );
   });
@@ -151,7 +151,7 @@ describe("PaymentService", () => {
     await payments.createSession(intent.id, "https://example.com");
     await payments.handleWebhookEvent(intent.id, "captured");
 
-    await expect(payments.refund(intent.id, 5000)).rejects.toThrowError(
+    await expect(payments.refund(intent.id, 5000)).rejects.toThrow(
       PaymentError,
     );
   });
@@ -189,7 +189,7 @@ describe("PaymentService", () => {
 
     await payments.refund(intent.id, 1000);
 
-    await expect(payments.refund(intent.id, 1000)).rejects.toThrowError(
+    await expect(payments.refund(intent.id, 1000)).rejects.toThrow(
       PaymentError,
     );
   });
@@ -386,7 +386,7 @@ describe("PaymentService", () => {
 
     await expect(
       payments.createSession(intent.id, "https://example.com", false, userB),
-    ).rejects.toThrowError(PaymentError);
+    ).rejects.toThrow(PaymentError);
   });
 
   it("should set userId on intent during checkout if not already set", async ({

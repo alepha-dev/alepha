@@ -462,8 +462,8 @@ export const testMultiModeFailsClosedOnRead = async (alepha: Alepha) => {
 
   app.store.set(tenancyAtom, { mode: "multi" });
 
-  await expect(repository.findMany()).rejects.toThrowError(AlephaError);
-  await expect(repository.count()).rejects.toThrowError(AlephaError);
+  await expect(repository.findMany()).rejects.toThrow(AlephaError);
+  await expect(repository.count()).rejects.toThrow(AlephaError);
 };
 
 /**
@@ -475,7 +475,7 @@ export const testMultiModeFailsClosedOnInsert = async (alepha: Alepha) => {
 
   app.store.set(tenancyAtom, { mode: "multi" });
 
-  await expect(repository.create({ name: "orphan" })).rejects.toThrowError(
+  await expect(repository.create({ name: "orphan" })).rejects.toThrow(
     AlephaError,
   );
 };

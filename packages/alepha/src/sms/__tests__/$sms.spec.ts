@@ -157,7 +157,7 @@ describe("$sms", () => {
         to: "+1234567890",
         message: "Test",
       }),
-    ).rejects.toThrowError("SMS sending aborted by hook");
+    ).rejects.toThrow("SMS sending aborted by hook");
   });
 
   test("should use property key as default name", async ({ expect }) => {

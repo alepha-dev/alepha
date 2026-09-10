@@ -86,6 +86,6 @@ describe("PackCommand", () => {
 
     await expect(
       cli.run(pack.pack, { argv: "--name ../../etc/cron.d/x", root: "/app" }),
-    ).rejects.toThrowError(/Invalid --name/);
+    ).rejects.toThrow(/Invalid --name/);
   });
 });

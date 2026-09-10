@@ -333,7 +333,7 @@ describe("quality runs", () => {
           { params: { projectId }, body: aRun() },
           { user: stranger },
         ),
-      ).rejects.toThrowError(/Not a member of this project/);
+      ).rejects.toThrow(/Not a member of this project/);
 
       expect(
         await ctx.rows.runs.findMany({

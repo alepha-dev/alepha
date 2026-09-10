@@ -118,7 +118,7 @@ describe("RegistrationService — username: 'email' mode", () => {
         },
         "email-mode-3",
       ),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("blocklist applies even though the client never sees the field", async () => {
@@ -162,7 +162,7 @@ describe("RegistrationService — blocklist applies in 'required' mode too", () 
         },
         "manual-mode",
       ),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("blocklist match is case-insensitive in manual mode", async () => {
@@ -180,7 +180,7 @@ describe("RegistrationService — blocklist applies in 'required' mode too", () 
         },
         "manual-case",
       ),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("default (empty) blocklist does not reject special names", async () => {

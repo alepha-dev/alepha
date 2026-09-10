@@ -254,7 +254,7 @@ The argument is the **app name, not a port**, because it used to be the port —
 - **Service Substitution**: Use `Alepha.with()` for mocking dependencies (preferred over traditional mocking)
 - **Standard Structure**: Follow Arrange-Act-Assert pattern with descriptive test names
 - **`describe` + `it`, never a bare `test()` at the top level**: a case outside a `describe` has no subject in the reporter and no handle for `vitest run -t`. `check:conventions` refuses a `test(` or `it(` at column zero in any `*.spec.ts(x)`; inside a block both spellings are the same function and are left alone. `e2e/` is exempt, since Playwright's API is `test` and has no `it`.
-- **Error Testing**: Use `expect().toThrow()` for sync errors, `expect().rejects.toThrowError()` for async
+- **Error Testing**: Use `expect().toThrow()` for sync errors, `expect().rejects.toThrow()` for async. Never `toThrowError`: Vitest 5 deprecates the alias, and `check:conventions` refuses it (`vitest/no-alias-methods` is on too, but cannot see an `expect` taken from the test fixture)
 - **Shared Functions**: Create reusable test functions for testing multiple implementations
 
 #### Important: Avoid vi.mock

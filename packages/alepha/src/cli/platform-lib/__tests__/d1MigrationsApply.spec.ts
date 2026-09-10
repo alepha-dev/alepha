@@ -275,9 +275,7 @@ describe("d1MigrationsApply", () => {
   }) => {
     const { call } = capture(["0001_first.sql", "README.md"]);
 
-    await expect(call()).rejects.toThrowError(
-      /none are recognizable as migrations/,
-    );
+    await expect(call()).rejects.toThrow(/none are recognizable as migrations/);
   });
 
   /**
@@ -365,7 +363,7 @@ describe("d1MigrationsApply", () => {
       // inside it (corrupt/partial), and nothing else recognisable.
       const { call } = capture(["20260729013337_baseline/snapshot.json"]);
 
-      await expect(call()).rejects.toThrowError(
+      await expect(call()).rejects.toThrow(
         /none are recognizable as migrations/,
       );
     });
@@ -387,7 +385,7 @@ describe("d1MigrationsApply", () => {
         "20260801000000_addcol/snapshot.json",
       ]);
 
-      await expect(call()).rejects.toThrowError(
+      await expect(call()).rejects.toThrow(
         /none are recognizable as migrations/,
       );
     });
@@ -441,7 +439,7 @@ describe("d1MigrationsApply", () => {
         ".mystery/leftover",
       ]);
 
-      await expect(call()).rejects.toThrowError(
+      await expect(call()).rejects.toThrow(
         /none are recognizable as migrations/,
       );
     });
@@ -491,7 +489,7 @@ describe("d1MigrationsBaseline", () => {
   }) => {
     const { call } = capture(["0000_baseline.sql"], ["0001_old.sql"]);
 
-    await expect(call()).rejects.toThrowError(/--reset/);
+    await expect(call()).rejects.toThrow(/--reset/);
   });
 
   it("replaces an existing history when reset is given", async ({ expect }) => {
@@ -514,7 +512,7 @@ describe("d1MigrationsBaseline", () => {
   }) => {
     const { call } = capture(["0000_baseline.sql", "0001_extra.sql"], []);
 
-    await expect(call()).rejects.toThrowError(/exactly one/);
+    await expect(call()).rejects.toThrow(/exactly one/);
   });
 
   /**
@@ -582,7 +580,7 @@ describe("d1MigrationsBaseline", () => {
     }) => {
       const { call } = capture(["README.md"], []);
 
-      await expect(call()).rejects.toThrowError(
+      await expect(call()).rejects.toThrow(
         /none are recognizable as migrations/,
       );
     });

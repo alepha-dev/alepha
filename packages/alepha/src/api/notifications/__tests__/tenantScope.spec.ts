@@ -87,7 +87,7 @@ describe("admin notification list — tenant scope", () => {
 
     // The regression this closes: without a tenant, the org filter used to be
     // dropped and this returned both tenants' rows.
-    await expect(controller.listPage({})).rejects.toThrowError(AlephaError);
+    await expect(controller.listPage({})).rejects.toThrow(AlephaError);
   });
 
   it("multi-tenant: refuses the per-row check with no resolved tenant", async () => {

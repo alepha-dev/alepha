@@ -82,10 +82,10 @@ describe("platform auth", () => {
 
     // The base-class default. Doing nothing quietly would be worse: the user
     // would believe they are logged in.
-    await expect(adapter.login(context(), run)).rejects.toThrowError(
+    await expect(adapter.login(context(), run)).rejects.toThrow(
       /has no interactive login/,
     );
-    await expect(adapter.logout(context(), run)).rejects.toThrowError(
+    await expect(adapter.logout(context(), run)).rejects.toThrow(
       /has no interactive logout/,
     );
   });
@@ -96,7 +96,7 @@ describe("platform auth", () => {
 
     // Unlike Cloudflare there is no global destination to fall back on: a Bay
     // is a machine someone owns, reached over SSH.
-    await expect(adapter.login(context(), run)).rejects.toThrowError(
+    await expect(adapter.login(context(), run)).rejects.toThrow(
       /No Bay host for environment "production"/,
     );
   });

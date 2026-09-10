@@ -711,7 +711,7 @@ describe("EpicController", () => {
         { params: { id: epic.id }, body: { questId: foreignQuest.id } },
         { user },
       ),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   /**
@@ -885,7 +885,7 @@ describe("EpicController", () => {
         { params: { id: epic.id }, body: { folioId: foreignFolio.id } },
         { user },
       ),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("refuses to mutate an epic for a non-member", async ({ expect }) => {
@@ -898,7 +898,7 @@ describe("EpicController", () => {
         { params: { id: epic.id }, body: { title: "Hijacked" } },
         { user: stranger },
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   /**
@@ -1004,7 +1004,7 @@ describe("EpicController", () => {
         { params: { projectId: project.id } },
         { user: strangerToken() },
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 
   it("refuses to read a project's epics for a non-member", async ({
@@ -1018,6 +1018,6 @@ describe("EpicController", () => {
         { params: { projectId: project.id } },
         { user: stranger },
       ),
-    ).rejects.toThrowError(ForbiddenError);
+    ).rejects.toThrow(ForbiddenError);
   });
 });

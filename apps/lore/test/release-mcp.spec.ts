@@ -275,7 +275,7 @@ describe("MCP release tools", () => {
           title: "Nope",
         }),
       ),
-    ).rejects.toThrowError(/published/i);
+    ).rejects.toThrow(/published/i);
 
     await expect(
       call(user, () =>
@@ -285,7 +285,7 @@ describe("MCP release tools", () => {
           epic_number: epic.data.number,
         }),
       ),
-    ).rejects.toThrowError(/published/i);
+    ).rejects.toThrow(/published/i);
   });
 
   it("publishes and reopens, and the changelog says which it is", async ({
@@ -372,7 +372,7 @@ describe("MCP release tools", () => {
       call(user, () =>
         ctx.tools.release_get.execute({ project: project.id, tag: "9.9.9" }),
       ),
-    ).rejects.toThrowError(/not found/i);
+    ).rejects.toThrow(/not found/i);
   });
 
   it("sets, moves and clears the default release, by tag", async ({
@@ -466,7 +466,7 @@ describe("MCP release tools", () => {
           tag: "0.28.0",
         }),
       ),
-    ).rejects.toThrowError(/published\. Reopen it first\./);
+    ).rejects.toThrow(/published\. Reopen it first\./);
   });
 
   it("names the default in project_context, and in quest_complete's result", async ({
@@ -574,6 +574,6 @@ describe("MCP release tools", () => {
           tag: "0.28.0",
         }),
       ),
-    ).rejects.toThrowError(/epic_number|quest_shortId/);
+    ).rejects.toThrow(/epic_number|quest_shortId/);
   });
 });

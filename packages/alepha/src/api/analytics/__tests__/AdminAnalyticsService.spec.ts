@@ -78,7 +78,7 @@ describe("AdminAnalyticsService", () => {
         since: "2026-01-01",
         select: { count: "sum" },
       }),
-    ).rejects.toThrowError(NotFoundError);
+    ).rejects.toThrow(NotFoundError);
   });
 
   it("refuses a filter on an undeclared dimension", async () => {
@@ -89,7 +89,7 @@ describe("AdminAnalyticsService", () => {
         where: { hacker: "x" },
         select: { count: "sum" },
       }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("refuses groupBy outside declared dimensions + hour/day", async () => {
@@ -100,7 +100,7 @@ describe("AdminAnalyticsService", () => {
         groupBy: ["count"],
         select: { count: "sum" },
       }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("allows groupBy on the hour and day pseudo-dimensions", async () => {
@@ -120,7 +120,7 @@ describe("AdminAnalyticsService", () => {
         since: "2026-01-01",
         select: { app: "sum" },
       }),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("runs a valid query through the bound provider", async () => {
@@ -197,7 +197,7 @@ describe("AdminAnalyticsService", () => {
           },
           { pin: { app: "lore" } },
         ),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("refuses groupBy on a pinned dimension", async () => {
@@ -212,7 +212,7 @@ describe("AdminAnalyticsService", () => {
           },
           { pin: { app: "lore" } },
         ),
-      ).rejects.toThrowError(BadRequestError);
+      ).rejects.toThrow(BadRequestError);
     });
 
     it("refuses a query on a dataset the pin cannot narrow", async () => {
@@ -223,7 +223,7 @@ describe("AdminAnalyticsService", () => {
           { since: "2026-01-01", select: { count: "sum" } },
           { pin: { app: "lore" } },
         ),
-      ).rejects.toThrowError(NotFoundError);
+      ).rejects.toThrow(NotFoundError);
     });
   });
 });

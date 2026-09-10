@@ -119,10 +119,10 @@ describe("the Cloudflare deploy client", () => {
       // would deploy a user's artifact into the operator's account.
       expect(
         () => new CloudflareDeployClient({ apiToken: "", accountId: "acct" }),
-      ).toThrowError(/operator's own account/);
+      ).toThrow(/operator's own account/);
       expect(
         () => new CloudflareDeployClient({ apiToken: "t", accountId: "" }),
-      ).toThrowError(/estate's account id/);
+      ).toThrow(/estate's account id/);
     });
 
     it("sends the estate's account on every call", async ({ expect }) => {
@@ -383,7 +383,7 @@ describe("the Cloudflare deploy client", () => {
 
         await expect(
           client.uploadAssets("my-app-staging", { manifest, read }),
-        ).rejects.toThrowError(/single-asset uploads/);
+        ).rejects.toThrow(/single-asset uploads/);
       });
 
       it("says an expired session kept what it already took", async ({
@@ -401,7 +401,7 @@ describe("the Cloudflare deploy client", () => {
 
         await expect(
           client.uploadAssets("my-app-staging", { manifest, read }),
-        ).rejects.toThrowError(/keeps what was already uploaded/);
+        ).rejects.toThrow(/keeps what was already uploaded/);
       });
 
       it("uploads normally when the token says nothing it understands", async ({
@@ -500,7 +500,7 @@ describe("the Cloudflare deploy client", () => {
 
       await expect(
         client.uploadAssets("my-app-staging", { manifest, read }),
-      ).rejects.toThrowError(/not in the manifest we sent/);
+      ).rejects.toThrow(/not in the manifest we sent/);
     });
   });
 

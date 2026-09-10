@@ -85,7 +85,7 @@ describe("alepha/api/users - AdminIdentityController", () => {
         },
         { user: adminUser },
       ),
-    ).rejects.toThrowError(DbEntityNotFoundError);
+    ).rejects.toThrow(DbEntityNotFoundError);
   });
 
   it("should delete an identity", async ({ expect }) => {
@@ -121,7 +121,7 @@ describe("alepha/api/users - AdminIdentityController", () => {
         },
         { user: adminUser },
       ),
-    ).rejects.toThrowError(DbEntityNotFoundError);
+    ).rejects.toThrow(DbEntityNotFoundError);
   });
 
   it("should find identities with pagination", async ({ expect }) => {

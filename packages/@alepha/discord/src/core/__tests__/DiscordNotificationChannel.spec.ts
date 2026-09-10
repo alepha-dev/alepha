@@ -248,7 +248,7 @@ describe("DiscordNotificationChannel", () => {
         { type: "discord", template: "dc-shipped", variables: { tag: "v4" } },
         { executionId: "dc-exec-4" },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
 
     const [receipt] = await deliveries.list({});
     expect(receipt.status).toBe("failed");
@@ -262,7 +262,7 @@ describe("DiscordNotificationChannel boot checks", () => {
   it("refuses an empty destinations map", async ({ expect }) => {
     const { alepha } = await boot({ destinations: {}, templates: false });
 
-    await expect(alepha.start()).rejects.toThrowError(
+    await expect(alepha.start()).rejects.toThrow(
       /no destination is configured/,
     );
   });
@@ -273,7 +273,7 @@ describe("DiscordNotificationChannel boot checks", () => {
       templates: false,
     });
 
-    await expect(alepha.start()).rejects.toThrowError(
+    await expect(alepha.start()).rejects.toThrow(
       /"alerts" does not look like a Discord webhook url/,
     );
   });
@@ -284,9 +284,7 @@ describe("DiscordNotificationChannel boot checks", () => {
       templates: false,
     });
 
-    await expect(alepha.start()).rejects.toThrowError(
-      /"alerts" has no webhook url/,
-    );
+    await expect(alepha.start()).rejects.toThrow(/"alerts" has no webhook url/);
   });
 
   /**
@@ -303,7 +301,7 @@ describe("DiscordNotificationChannel boot checks", () => {
       templates: false,
     });
 
-    await expect(alepha.start()).rejects.toThrowError(/all declare/);
+    await expect(alepha.start()).rejects.toThrow(/all declare/);
   });
 
   /**
@@ -317,7 +315,7 @@ describe("DiscordNotificationChannel boot checks", () => {
       destinations: { alerts: { webhook: ALERTS, default: true } },
     });
 
-    await expect(alepha.start()).rejects.toThrowError(
+    await expect(alepha.start()).rejects.toThrow(
       /posts to discord destination "releases", which is not configured/,
     );
   });
@@ -332,7 +330,7 @@ describe("DiscordNotificationChannel boot checks", () => {
       },
     });
 
-    await expect(alepha.start()).rejects.toThrowError(
+    await expect(alepha.start()).rejects.toThrow(
       /names no discord destination and none is flagged/,
     );
   });

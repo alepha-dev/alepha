@@ -104,7 +104,7 @@ describe("$owns", () => {
         user: stranger,
       } as any);
 
-      await expect(service.read()).rejects.toThrowError(ForbiddenError);
+      await expect(service.read()).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -145,7 +145,7 @@ describe("$owns", () => {
         user: stranger,
       } as any);
 
-      await expect(service.read()).rejects.toThrowError(ForbiddenError);
+      await expect(service.read()).rejects.toThrow(ForbiddenError);
     });
   });
 

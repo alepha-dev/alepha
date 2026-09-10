@@ -198,7 +198,7 @@ describe("ReleaseController: publishing is a one-way freeze", () => {
           { params: { projectId: project.id }, body: { tag } },
           { user },
         ),
-      ).rejects.toThrowError();
+      ).rejects.toThrow();
     }
   });
 
@@ -352,7 +352,7 @@ describe("ReleaseController: publishing is a one-way freeze", () => {
         { params: { id: release.data.id }, body: { title: "Rewritten" } },
         { user },
       ),
-    ).rejects.toThrowError(/published/i);
+    ).rejects.toThrow(/published/i);
   });
 
   it("refuses publishing twice", async ({ expect }) => {
@@ -373,7 +373,7 @@ describe("ReleaseController: publishing is a one-way freeze", () => {
         { params: { id: release.data.id }, body: {} },
         { user },
       ),
-    ).rejects.toThrowError(/published/i);
+    ).rejects.toThrow(/published/i);
   });
 
   it("reopens by clearing releasedAt, the changelog and the counts", async ({
@@ -431,7 +431,7 @@ describe("ReleaseController: publishing is a one-way freeze", () => {
         { params: { id: release.data.id } },
         { user },
       ),
-    ).rejects.toThrowError(/already open/i);
+    ).rejects.toThrow(/already open/i);
   });
 
   it("refuses two releases sharing a tag in one project", async ({
@@ -450,6 +450,6 @@ describe("ReleaseController: publishing is a one-way freeze", () => {
         { params: { projectId: project.id }, body: { tag: "0.28.0" } },
         { user },
       ),
-    ).rejects.toThrowError();
+    ).rejects.toThrow();
   });
 });

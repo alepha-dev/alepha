@@ -69,7 +69,7 @@ describe("BayAdapter — the host it deploys to", () => {
 
     await expect(
       adapter.authenticate(context({ envConfig: { adapter: "bay" } }), run),
-    ).rejects.toThrowError(/No Bay host for environment "production"/);
+    ).rejects.toThrow(/No Bay host for environment "production"/);
   });
 
   it("names both fixes, so neither has to be guessed", async () => {
@@ -77,7 +77,7 @@ describe("BayAdapter — the host it deploys to", () => {
 
     await expect(
       adapter.authenticate(context({ envConfig: { adapter: "bay" } }), run),
-    ).rejects.toThrowError(/alepha\.config\.ts[\s\S]*BAY_HOST/);
+    ).rejects.toThrow(/alepha\.config\.ts[\s\S]*BAY_HOST/);
   });
 
   it("takes $BAY_HOST over the config, so CI needs no edit", async () => {
@@ -125,7 +125,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
 
     await expect(
       adapter.teardown(context({ project: "demo; rm -rf /" }), run),
-    ).rejects.toThrowError(AlephaError);
+    ).rejects.toThrow(AlephaError);
     expect(shell.calls).toHaveLength(0);
   });
 
@@ -134,7 +134,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
 
     await expect(
       adapter.teardown(context({ env: "prod$(whoami)" }), run),
-    ).rejects.toThrowError(AlephaError);
+    ).rejects.toThrow(AlephaError);
     expect(shell.calls).toHaveLength(0);
   });
 
@@ -152,7 +152,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
         }),
         run,
       ),
-    ).rejects.toThrowError(AlephaError);
+    ).rejects.toThrow(AlephaError);
     expect(shell.calls).toHaveLength(0);
   });
 
@@ -172,7 +172,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
         }),
         run,
       ),
-    ).rejects.toThrowError(AlephaError);
+    ).rejects.toThrow(AlephaError);
     expect(shell.calls).toHaveLength(0);
   });
 
@@ -193,7 +193,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
         }),
         run,
       ),
-    ).rejects.toThrowError(AlephaError);
+    ).rejects.toThrow(AlephaError);
     expect(shell.calls).toHaveLength(0);
   });
 
@@ -211,7 +211,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
         }),
         run,
       ),
-    ).rejects.toThrowError(AlephaError);
+    ).rejects.toThrow(AlephaError);
     expect(shell.calls).toHaveLength(0);
   });
 
@@ -220,7 +220,7 @@ describe("BayAdapter — what it refuses to put on a command line", () => {
 
     await expect(
       adapter.teardown(context({ project: "demo; rm -rf /" }), run),
-    ).rejects.toThrowError(/demo; rm -rf \//);
+    ).rejects.toThrow(/demo; rm -rf \//);
   });
 });
 
@@ -252,7 +252,7 @@ describe("BayAdapter — the deploy it composes", () => {
     const { adapter, fs } = await setup();
     await fs.rm("/project/demo-latest.tar.gz");
 
-    await expect(adapter.deploy(context(), run)).rejects.toThrowError(
+    await expect(adapter.deploy(context(), run)).rejects.toThrow(
       /alepha pack. produced no/,
     );
   });
@@ -453,9 +453,9 @@ describe("BayAdapter — what it says when ssh fails", () => {
   };
 
   it("names the key when the host refused it", async () => {
-    await expect(
-      failWith("Permission denied (publickey)."),
-    ).rejects.toThrowError(/authorized_keys/);
+    await expect(failWith("Permission denied (publickey).")).rejects.toThrow(
+      /authorized_keys/,
+    );
   });
 
   it("says to set `socket`, not to fix group membership, when Bay never found any socket at all", async () => {
@@ -466,18 +466,18 @@ describe("BayAdapter — what it says when ssh fails", () => {
     // own, different advice.
     await expect(
       failWith("no control socket found — these commands run on the Bay host"),
-    ).rejects.toThrowError(/never found its own control socket/);
+    ).rejects.toThrow(/never found its own control socket/);
   });
 
   it("names the PATH when bay is not installed for that user", async () => {
-    await expect(failWith("bash: bay: command not found")).rejects.toThrowError(
+    await expect(failWith("bash: bay: command not found")).rejects.toThrow(
       /PATH/,
     );
   });
 
   it("also recognizes dash's 'not found' phrasing for a missing PATH entry", async () => {
     // dash's login shell says "bay: not found", never "command not found".
-    await expect(failWith("bay: not found")).rejects.toThrowError(/PATH/);
+    await expect(failWith("bay: not found")).rejects.toThrow(/PATH/);
   });
 
   it("names the control group when the socket denies that specific user", async () => {
@@ -492,7 +492,7 @@ describe("BayAdapter — what it says when ssh fails", () => {
         "control api unreachable (is `bay serve` running?): " +
           "dial unix /var/lib/bay/control.sock: connect: permission denied",
       ),
-    ).rejects.toThrowError(/usermod -aG bay-control/);
+    ).rejects.toThrow(/usermod -aG bay-control/);
   });
 
   it("names an old bay's stdin limitation, not a PATH problem", async () => {
@@ -502,7 +502,7 @@ describe("BayAdapter — what it says when ssh fails", () => {
     // upgrade-bay branch were checked after the generic PATH one.
     await expect(
       failWith("error: open -: no such file or directory"),
-    ).rejects.toThrowError(/too old to read the deploy artifact from stdin/);
+    ).rejects.toThrow(/too old to read the deploy artifact from stdin/);
   });
 
   it("names a bad `socket` value, not a PATH problem", async () => {
@@ -514,7 +514,7 @@ describe("BayAdapter — what it says when ssh fails", () => {
         "control api unreachable (is `bay serve` running?): " +
           "dial unix /var/lib/bay/wrong.sock: connect: no such file or directory",
       ),
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       /nothing is listening at the configured control socket path/,
     );
   });
@@ -629,7 +629,7 @@ describe("BayAdapter — inspect", () => {
       },
     });
 
-    await expect(adapter.inspect(context(), run)).rejects.toThrowError(
+    await expect(adapter.inspect(context(), run)).rejects.toThrow(
       /authorized_keys/,
     );
   });
@@ -638,9 +638,9 @@ describe("BayAdapter — inspect", () => {
     // A non-JSON answer means something other than `bay list` responded — a
     // login banner, a stray shell error. The same reasoning `deployedUrl`
     // already applies to `bay deploy`.
-    await expect(
-      listing("-bash: bay: command not found")(),
-    ).rejects.toThrowError(/bay list.*something other than JSON/);
+    await expect(listing("-bash: bay: command not found")()).rejects.toThrow(
+      /bay list.*something other than JSON/,
+    );
   });
 });
 
@@ -683,7 +683,7 @@ describe("BayAdapter — teardown", () => {
 
     await expect(
       adapter.teardown(context({ project: "app404" }), run),
-    ).rejects.toThrowError(/ssh to deploy@bay\.example\.com failed/);
+    ).rejects.toThrow(/ssh to deploy@bay\.example\.com failed/);
   });
 });
 
@@ -718,7 +718,7 @@ describe("BayAdapter — login and logout", () => {
       },
     });
 
-    await expect(adapter.login(context(), run)).rejects.toThrowError(
+    await expect(adapter.login(context(), run)).rejects.toThrow(
       /usermod -aG bay-control/,
     );
     expect(
@@ -734,7 +734,7 @@ describe("BayAdapter — login and logout", () => {
       },
     });
 
-    await expect(adapter.login(context(), run)).rejects.toThrowError(
+    await expect(adapter.login(context(), run)).rejects.toThrow(
       /usermod -aG bay-control/,
     );
   });
@@ -759,7 +759,7 @@ describe("BayAdapter — login and logout", () => {
   it("refuses to logout, and names where the key actually lives", async () => {
     const { adapter } = await setup();
 
-    await expect(adapter.logout(context(), run)).rejects.toThrowError(
+    await expect(adapter.logout(context(), run)).rejects.toThrow(
       /authorized_keys/,
     );
   });
@@ -1064,7 +1064,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
     */
     const { adapter, shell } = await failingDeploy("boom");
 
-    await expect(adapter.deploy(context(), run)).rejects.toThrowError();
+    await expect(adapter.deploy(context(), run)).rejects.toThrow();
 
     expect(
       shell.wasCalled(
@@ -1090,7 +1090,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
       return await inner(command, options);
     }) as typeof shell.run;
 
-    await expect(adapter.deploy(context(), run)).rejects.toThrowError(
+    await expect(adapter.deploy(context(), run)).rejects.toThrow(
       /the real failure/,
     );
   });
@@ -1192,7 +1192,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
       'PRIVATE_KEY="line one\\nline two"',
     );
 
-    await expect(adapter.deploy(context(), run)).rejects.toThrowError(
+    await expect(adapter.deploy(context(), run)).rejects.toThrow(
       /PRIVATE_KEY contains a newline/,
     );
     expect(shell.getCallsMatching(/cat >/)).toHaveLength(0);
@@ -1214,7 +1214,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
       'unknown flag "--secrets-file" (run `bay --help`)',
     );
 
-    await expect(adapter.deploy(context(), run)).rejects.toThrowError(
+    await expect(adapter.deploy(context(), run)).rejects.toThrow(
       /does not know `--secrets-file`[\s\S]*Upgrade `bay` on the host/,
     );
     expect(shell.calls.length).toBeGreaterThan(0);
@@ -1228,7 +1228,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
       'unknown flag "--secrets-file" (run `bay --help`)',
     );
 
-    await expect(adapter.deploy(context(), run)).rejects.toThrowError(
+    await expect(adapter.deploy(context(), run)).rejects.toThrow(
       /Nothing was deployed/,
     );
   });
@@ -1401,7 +1401,7 @@ describe("BayAdapter — the secrets that ride the deploy", () => {
 
     await expect(
       adapter.deploy(context({ project: "demo; rm -rf /" }), run),
-    ).rejects.toThrowError(AlephaError);
+    ).rejects.toThrow(AlephaError);
     expect(shell.calls).toHaveLength(0);
   });
 });
@@ -1518,7 +1518,7 @@ describe("BayAdapter — inspect reports the secrets that are set", () => {
       },
     });
 
-    await expect(adapter.inspect(context(), run)).rejects.toThrowError(
+    await expect(adapter.inspect(context(), run)).rejects.toThrow(
       /has no `env` command[\s\S]*Upgrade `bay` on the host/,
     );
   });

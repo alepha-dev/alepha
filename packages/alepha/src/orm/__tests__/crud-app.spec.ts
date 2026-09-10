@@ -316,7 +316,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
             age: 25,
           },
         }),
-      ).rejects.toThrowError("already exists");
+      ).rejects.toThrow("already exists");
     });
 
     test("should reject invalid email format", async ({ expect }) => {
@@ -429,7 +429,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
         app.getUser.fetch({
           params: { id: nonExistentId },
         }),
-      ).rejects.toThrowError("not found");
+      ).rejects.toThrow("not found");
     });
 
     test("should reject invalid UUID format", async ({ expect }) => {
@@ -669,7 +669,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
           params: { id: created.id },
           body: { email: "existing@example.com" },
         }),
-      ).rejects.toThrowError("already exists");
+      ).rejects.toThrow("already exists");
     });
 
     test("should allow updating to same email", async ({ expect }) => {
@@ -698,7 +698,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
           params: { id: nonExistentId },
           body: { name: "New Name" },
         }),
-      ).rejects.toThrowError("not found");
+      ).rejects.toThrow("not found");
     });
 
     test("should reject invalid email format", async ({ expect }) => {
@@ -766,7 +766,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
         app.getUser.fetch({
           params: { id: created.id },
         }),
-      ).rejects.toThrowError("not found");
+      ).rejects.toThrow("not found");
     });
 
     test("should return 404 for non-existent user", async ({ expect }) => {
@@ -776,7 +776,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
         app.deleteUser.fetch({
           params: { id: nonExistentId },
         }),
-      ).rejects.toThrowError("not found");
+      ).rejects.toThrow("not found");
     });
 
     test("should not allow deleting same user twice", async ({ expect }) => {
@@ -796,7 +796,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
         app.deleteUser.fetch({
           params: { id: created.id },
         }),
-      ).rejects.toThrowError("not found");
+      ).rejects.toThrow("not found");
     });
   });
 
@@ -1238,7 +1238,7 @@ describe("CRUD Application - Complete Integration Tests", () => {
       // Verify deletion
       await expect(
         app.getUser.fetch({ params: { id: created.id } }),
-      ).rejects.toThrowError("not found");
+      ).rejects.toThrow("not found");
     });
 
     test("should maintain data consistency across operations", async ({

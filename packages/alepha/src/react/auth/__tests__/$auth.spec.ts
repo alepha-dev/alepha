@@ -205,7 +205,7 @@ describe("$auth", () => {
 
     await alepha.inject(DateTimeProvider).travel(40, "days");
 
-    await expect(refresh(alepha, tokens)).rejects.toThrowError(
+    await expect(refresh(alepha, tokens)).rejects.toThrow(
       "Failed to refresh access token using the refresh token (issuer)",
     );
   });

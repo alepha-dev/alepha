@@ -140,7 +140,7 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
         },
         asAdmin,
       ),
-    ).rejects.toThrowError(BadRequestError);
+    ).rejects.toThrow(BadRequestError);
   });
 
   it("should get a user by ID", async ({ expect }) => {
@@ -178,7 +178,7 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
         { params: { id: "550e8400-e29b-41d4-a716-446655440000" } },
         asAdmin,
       ),
-    ).rejects.toThrowError(DbEntityNotFoundError);
+    ).rejects.toThrow(DbEntityNotFoundError);
   });
 
   it("should update a user", async ({ expect }) => {
@@ -304,7 +304,7 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
     // Verify user is deleted
     await expect(
       controller.getUser({ params: { id: created.id } }, asAdmin),
-    ).rejects.toThrowError(DbEntityNotFoundError);
+    ).rejects.toThrow(DbEntityNotFoundError);
   });
 
   it("should run user:delete:before for an admin deletion", async ({
@@ -336,7 +336,7 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
 
     await expect(
       controller.deleteUser({ params: { id: created.id } }, asAdmin),
-    ).rejects.toThrowError("You still own 3 projects");
+    ).rejects.toThrow("You still own 3 projects");
 
     // Refusing has to actually refuse, not report an error after the row is
     // already gone.
@@ -357,7 +357,7 @@ describe("alepha/api/users - AdminUserController CRUD", () => {
 
     await expect(
       controller.deleteUsers({ body: { ids: [created.id] } }, asAdmin),
-    ).rejects.toThrowError("You still own 3 projects");
+    ).rejects.toThrow("You still own 3 projects");
 
     const still = await controller.getUser(
       { params: { id: created.id } },

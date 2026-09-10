@@ -114,7 +114,7 @@ describe("files:beforeUpload", () => {
 
     // A rejected upload must never reach a subscriber — otherwise every
     // transform pays to decode what the storage was always going to refuse.
-    await expect(app.images.upload(file("nope"))).rejects.toThrowError();
+    await expect(app.images.upload(file("nope"))).rejects.toThrow();
     expect(rewriter.seen).toEqual([]);
   });
 });

@@ -200,7 +200,7 @@ describe("a deployment", () => {
           instanceId: instance.id,
           tag: "latest",
         }),
-      ).rejects.toThrowError(/has no estate/);
+      ).rejects.toThrow(/has no estate/);
 
       expect(await alepha.inject(TestRows).deployments.findMany({})).toEqual(
         [],
@@ -220,7 +220,7 @@ describe("a deployment", () => {
           instanceId: instance.id,
           tag: "0.28.0",
         }),
-      ).rejects.toThrowError(/has no estate|no artifact tagged/);
+      ).rejects.toThrow(/has no estate|no artifact tagged/);
     });
 
     it("refuses a copy from another project", async ({ expect }) => {
@@ -235,7 +235,7 @@ describe("a deployment", () => {
           instanceId: first.instance.id,
           tag: "latest",
         }),
-      ).rejects.toThrowError(/No such deployed copy/);
+      ).rejects.toThrow(/No such deployed copy/);
     });
 
     /**
@@ -362,7 +362,7 @@ describe("a deployment", () => {
             instanceId: instance.id,
             tag: "0.30.0",
           }),
-        ).rejects.toThrowError(
+        ).rejects.toThrow(
           /exists only as a container image \(ghcr\.io\/acme\/my-app:0\.30\.0\)/,
         );
 
@@ -414,7 +414,7 @@ describe("a deployment", () => {
             instanceId: w.instance.id,
             tag: "0.30.0",
           }),
-        ).rejects.toThrowError(
+        ).rejects.toThrow(
           "my-app@0.30.0 has no `workerd` build. Run `lore apps build --tag 0.30.0 --env <env>`, then `lore artifacts push`.",
         );
       });
@@ -653,7 +653,7 @@ describe("a deployment", () => {
           tag: "1.2.3",
           sigil: true,
         }),
-      ).rejects.toThrowError(/only a hash is kept/);
+      ).rejects.toThrow(/only a hash is kept/);
     });
   });
 
@@ -1114,7 +1114,7 @@ describe("the runtime gate", () => {
         runtime: "node",
         available: ["node", "workerd"],
       }),
-    ).toThrowError(
+    ).toThrow(
       "Artifact panda@1.2.3 is a `node` build; estate 'zug' (cloudflare) runs `workerd`.",
     );
   });
@@ -1133,7 +1133,7 @@ describe("the runtime gate", () => {
         runtime: "node",
         available: ["node"],
       }),
-    ).toThrowError(
+    ).toThrow(
       "panda@1.2.3 has no `workerd` build. Run `lore apps build --tag 1.2.3 --env <env>`, then `lore artifacts push`.",
     );
   });
@@ -1154,7 +1154,7 @@ describe("the runtime gate", () => {
         runtime: "workerd",
         available: ["workerd"],
       }),
-    ).toThrowError(/has no `node` build/);
+    ).toThrow(/has no `node` build/);
   });
 
   it("names the image, and never says the tag does not exist", ({ expect }) => {
@@ -1171,7 +1171,7 @@ describe("the runtime gate", () => {
         tag: "0.30.0",
         images: ["ghcr.io/acme/panda:0.30.0"],
       }),
-    ).toThrowError(
+    ).toThrow(
       "panda@0.30.0 exists only as a container image (ghcr.io/acme/panda:0.30.0), and Lore cannot deploy an image: estate 'vps' (bay) runs `node` from a packed build. Push one with `lore artifacts push`.",
     );
   });
@@ -1188,7 +1188,7 @@ describe("the runtime gate", () => {
         tag: "0.30.0",
         images: [undefined],
       }),
-    ).toThrowError(
+    ).toThrow(
       "panda@0.30.0 exists only as a container image, and Lore cannot deploy an image: estate 'zug' (cloudflare) runs `workerd` from a packed build. Push one with `lore artifacts push`.",
     );
   });
@@ -1297,7 +1297,7 @@ describe("the deploy limits", () => {
       },
     });
 
-    await expect(service.run(row)).rejects.toThrowError(/was abandoned/);
+    await expect(service.run(row)).rejects.toThrow(/was abandoned/);
 
     const after = await rows.deployments.findById(row.id);
     expect(after?.status).toBe("failed");
@@ -1365,7 +1365,7 @@ describe("the deploy gate", () => {
 
     await rows.grants.deleteById(grant.id);
 
-    await expect(gate.assert(withLending as never)).rejects.toThrowError(
+    await expect(gate.assert(withLending as never)).rejects.toThrow(
       /no longer lent to this project/,
     );
   });
@@ -1395,7 +1395,7 @@ describe("the deploy gate", () => {
       alepha
         .inject(DeployGate)
         .assert((await rows.instances.findById(instance.id)) as never),
-    ).rejects.toThrowError(/'stats-only' does not accept deploys/);
+    ).rejects.toThrow(/'stats-only' does not accept deploys/);
   });
 
   it("does not refuse a Bay estate for having no Cloudflare credential", async ({
@@ -1452,7 +1452,7 @@ describe("the deploy gate", () => {
       alepha
         .inject(DeployGate)
         .assert((await rows.instances.findById(instance.id)) as never),
-    ).rejects.toThrowError(/usable Cloudflare credential/);
+    ).rejects.toThrow(/usable Cloudflare credential/);
   });
 });
 
@@ -1611,9 +1611,9 @@ describe("rolling back", () => {
       expect(plan.path).toBe("version");
       expect(plan.migrationsSince).toBe(1);
 
-      await expect(
-        service.rollback(project.id, deployment.id),
-      ).rejects.toThrowError(/migration\(s\) have been applied/);
+      await expect(service.rollback(project.id, deployment.id)).rejects.toThrow(
+        /migration\(s\) have been applied/,
+      );
     } finally {
       CloudflareDeployClient.prototype.listVersions = original;
     }
@@ -1627,7 +1627,7 @@ describe("rolling back", () => {
 
     await expect(
       alepha.inject(RollbackService).plan(project.id, deployment.id),
-    ).rejects.toThrowError(/nothing to roll back to/);
+    ).rejects.toThrow(/nothing to roll back to/);
   });
 });
 

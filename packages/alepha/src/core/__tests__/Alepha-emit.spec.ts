@@ -11,7 +11,7 @@ describe("alepha.events.emit", () => {
 
     await alepha.start();
 
-    await expect(() => alepha.events.emit("echo", {})).rejects.toThrowError(
+    await expect(() => alepha.events.emit("echo", {})).rejects.toThrow(
       "Error in echo",
     );
 

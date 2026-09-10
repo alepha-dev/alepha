@@ -52,9 +52,7 @@ describe("$cors", () => {
 
     const svc = alepha.inject(TestService);
 
-    await expect(svc.fn()).rejects.toThrowError(
-      "$cors requires a request context",
-    );
+    await expect(svc.fn()).rejects.toThrow("$cors requires a request context");
   });
 
   test("does not set origin header when origin is disallowed", async ({

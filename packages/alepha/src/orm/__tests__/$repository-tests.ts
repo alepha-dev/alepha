@@ -225,7 +225,7 @@ export const testBasicCrud = async (alepha: Alepha) => {
   // Test: getOne throws when not found
   await expect(
     app.users.getOne({ where: { name: { eq: "NonExistent" } } }),
-  ).rejects.toThrowError(DbEntityNotFoundError);
+  ).rejects.toThrow(DbEntityNotFoundError);
 
   // Test: findById (returns undefined when not found)
   const userById = await app.users.findById(aliceId);
@@ -238,7 +238,7 @@ export const testBasicCrud = async (alepha: Alepha) => {
   expect(notFoundById).toBeUndefined();
 
   // Test: getById throws when not found
-  await expect(app.users.getById(999999)).rejects.toThrowError(
+  await expect(app.users.getById(999999)).rejects.toThrow(
     DbEntityNotFoundError,
   );
 
@@ -276,7 +276,7 @@ export const testBasicCrud = async (alepha: Alepha) => {
   // Test: updateOne throws when not found
   await expect(
     app.users.updateOne({ id: { eq: 999999 } }, { name: "Should Fail" }),
-  ).rejects.toThrowError(DbEntityNotFoundError);
+  ).rejects.toThrow(DbEntityNotFoundError);
 
   // Test: updateById
   const updatedByIdAlice = await app.users.updateById(aliceId, {
@@ -339,7 +339,7 @@ export const testBasicCrud = async (alepha: Alepha) => {
   expect(deletedByIdResult[0]).toBe(eve.id);
 
   // Test: deleteById throws when not found
-  await expect(app.users.deleteById(999999)).rejects.toThrowError(
+  await expect(app.users.deleteById(999999)).rejects.toThrow(
     DbEntityNotFoundError,
   );
 

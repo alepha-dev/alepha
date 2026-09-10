@@ -191,7 +191,7 @@ describe("alepha/api/users - AdminSessionController", () => {
         },
         { user: adminUser },
       ),
-    ).rejects.toThrowError(DbEntityNotFoundError);
+    ).rejects.toThrow(DbEntityNotFoundError);
   });
 
   it("should delete a session", async ({ expect }) => {
@@ -228,7 +228,7 @@ describe("alepha/api/users - AdminSessionController", () => {
         },
         { user: adminUser },
       ),
-    ).rejects.toThrowError(DbEntityNotFoundError);
+    ).rejects.toThrow(DbEntityNotFoundError);
   });
 
   it("should find sessions with pagination", async ({ expect }) => {

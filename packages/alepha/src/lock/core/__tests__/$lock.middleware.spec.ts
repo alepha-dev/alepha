@@ -85,7 +85,7 @@ describe("$lock middleware", () => {
       60000,
     );
 
-    await expect(svc.fn()).rejects.toThrowError(LockAcquireError);
+    await expect(svc.fn()).rejects.toThrow(LockAcquireError);
 
     await alepha.stop();
   });

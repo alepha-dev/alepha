@@ -147,7 +147,7 @@ describe("$email", () => {
         subject: "Test",
         body: "Test",
       }),
-    ).rejects.toThrowError("Email sending aborted by hook");
+    ).rejects.toThrow("Email sending aborted by hook");
   });
 
   test("should use property key as default name", async ({ expect }) => {

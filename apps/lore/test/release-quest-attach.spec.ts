@@ -198,7 +198,7 @@ describe("Attaching a quest to a release", () => {
 
     await expect(
       aQuest(ctx, user, project.id, "Too late", release.data.id),
-    ).rejects.toThrowError(/published/i);
+    ).rejects.toThrow(/published/i);
   });
 
   it("refuses attaching and detaching on a published release", async ({
@@ -224,14 +224,14 @@ describe("Attaching a quest to a release", () => {
         { params: { id: outside.id }, body: { releaseId: shipped.data.id } },
         { user },
       ),
-    ).rejects.toThrowError(/published/i);
+    ).rejects.toThrow(/published/i);
 
     await expect(
       ctx.questController.updateQuestById.fetch(
         { params: { id: inside.id }, body: { releaseId: null } },
         { user },
       ),
-    ).rejects.toThrowError(/published/i);
+    ).rejects.toThrow(/published/i);
   });
 
   it("still allows editing a quest that shipped, release untouched", async ({
@@ -273,7 +273,7 @@ describe("Attaching a quest to a release", () => {
         { params: { id: quest.id }, body: { releaseId: foreign.data.id } },
         { user },
       ),
-    ).rejects.toThrowError(/not found/i);
+    ).rejects.toThrow(/not found/i);
   });
 
   it("filters the quest list by release", async ({ expect }) => {
