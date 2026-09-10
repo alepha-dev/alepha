@@ -58,6 +58,7 @@ import { realmSettingsAtom } from "./atoms/realmSettingsAtom.ts";
 import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
 import { userFoliosAtom } from "./atoms/userFoliosAtom.ts";
 import { userProjectsAtom } from "./atoms/userProjectsAtom.ts";
+import { isOAuthReturnTarget } from "./components/auth/oauthReturnTarget.ts";
 import { FEEDBACK_PAGE_SIZE } from "./components/project/feedback/feedbackPageSize.ts";
 import ErrorPage from "./components/shared/ErrorPage.tsx";
 import {
@@ -264,19 +265,30 @@ export class AppRouter {
     name: "login",
     head: { title: "Sign in › Alepha Lore" },
     lazy: () => import("./components/auth/AuthLoginPage.tsx"),
+    /**
+     * ⚠️ Declared for the bridge below, which read `query.redirect_uri` for
+     * months without it and so never once fired: a loader's `query` holds
+     * only what this schema declares (see the note on `register`). Every
+     * sign-in on the way to a consent screen landed on the home page.
+     * `test/oauth-login-bridge.spec.ts` renders the page through the router
+     * so the decode in between is part of what it checks.
+     */
+    schema: {
+      query: z.object({
+        redirect_uri: z.text({ maxLength: 2048 }).optional(),
+        redirect: z.text({ maxLength: 2048 }).optional(),
+      }),
+    },
     loader: async ({ query }) => {
-      // OAuth bridge. The Alepha OAuth `authorize` endpoint redirects
-      // unauthenticated users here with `?redirect_uri=`, but `AuthLogin`
-      // reads `?redirect` and SPA-pushes to it after sign-in — and an SPA push
-      // cannot reach the server-rendered `/oauth/authorize` route.
-      // Translate the param and aim `?redirect` at the `/oauth/continue` bridge
-      // page, which hard-navigates back into `authorize` once authenticated.
+      // OAuth bridge. The Alepha OAuth `authorize` endpoint and its device
+      // approval page redirect unauthenticated users here with
+      // `?redirect_uri=`, but `AuthLogin` reads `?redirect` and SPA-pushes to
+      // it after sign-in — and an SPA push cannot reach a server-rendered
+      // route. Translate the param and aim `?redirect` at the
+      // `/oauth/continue` bridge page, which hard-navigates back once
+      // authenticated.
       const redirectUri = query.redirect_uri;
-      if (
-        typeof redirectUri === "string" &&
-        redirectUri.startsWith("/oauth/authorize") &&
-        !query.redirect
-      ) {
+      if (isOAuthReturnTarget(redirectUri) && !query.redirect) {
         const bridge = `/oauth/continue?to=${encodeURIComponent(redirectUri)}`;
         throw new Redirection(
           `/auth/login?redirect=${encodeURIComponent(bridge)}`,

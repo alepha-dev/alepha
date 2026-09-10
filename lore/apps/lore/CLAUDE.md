@@ -316,9 +316,19 @@ lines away, in a file the author is also editing. It cost an hour on the
 invitation link (`?invitation=`), where the loader has to resolve the token
 before the page can decide what it even is.
 
-`login`'s `query.redirect_uri` read (the OAuth bridge) is the same shape and
-declares no schema. Left alone here rather than fixed in passing, but it is
-worth knowing about before trusting that branch.
+`login`'s `query.redirect_uri` read (the OAuth bridge) was the same shape and
+the proof of the rule: it declared no schema, so it never fired once, and
+every sign-in on the way to a consent screen landed on the home page. Fixed
+with #Q2217, when the device approval page needed the same bridge.
+`test/oauth-login-bridge.spec.ts` renders the page through the router rather
+than calling the loader, because calling it directly skips the decode that
+lost the value.
+
+⚠️ **The other half of that bridge, `/oauth/continue`, reads its `to` from
+`useRouter().query`, never `window.location`.** A push renders the new page
+before it writes history, so an effect on arrival still sees the PREVIOUS
+URL in the address bar. Any page that acts on its own query in a mount
+effect has the same trap.
 
 ### ⚠️ Deleting or renaming a `$page` is not typecheck-protected
 
@@ -1442,6 +1452,7 @@ Reaching the same end state from a session reused per worker took 2665ms against
 - `home.spec.ts`, `admin-user-detail.spec.ts` (its only test has been `test.skip` since 2026-05-28), `areas.spec.ts`, `dashboard.spec.ts`, `epics.spec.ts`, `releases.spec.ts` (many open at once, attach an epic and a loose quest, publish freezes the counts, `0.9.0` sorts before `0.10.0`), `quests-status-seed.spec.ts`, `admin-analytics.spec.ts`
 - `security-public-project.spec.ts` — regression guard: non-member account hits 403 on every project endpoint after the public-project purge (renamed from `security-public-campaign.spec.ts`)
 - `security-file-access.spec.ts` — regression guard: `/api/files/:id` IDOR fix via `LoreFileAccessProvider` (only owners/members can download an attachment)
+- `device-login.spec.ts` - `lore login` from the human's side: a signed-out visitor opens the device link, signs in, lands back on `/oauth/device` through the login bridge and `/oauth/continue`, approves, and the device's token answers `/api/users/me` as that account; then a signed-in visitor types a code by hand and denies it. The device half goes through Playwright's isolated `request` fixture, the way the CLI talks to Lore
 - `project-slug.spec.ts` — the URL identity: the wizard lands on a slug derived from the title, renaming shows the confirmation and moves the URL (cancel reverts the field), the old slug 404s, `/p/:id` 404s, and a taken name is refused with a visible message. ⚠️ The Name field does **not** auto-commit — the form has a real Save button in the settings card's last row, disabled until something is dirty. A spec that only types saves nothing
 
 Shared setup (register/verify, project-create wizard, API helpers) lives in `e2e/_helpers.ts`. Re-use those rather than copy-pasting auth setup into each new spec.
