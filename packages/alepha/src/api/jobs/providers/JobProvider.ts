@@ -539,11 +539,25 @@ export class JobProvider {
     }
   }
 
+  /**
+   * Release the run lock, but only while it is still ours.
+   *
+   * A run can outlive its lock: the lock expires after `cronLockTtlMs()`, and
+   * a handler that ignores its abort signal, or a cron with no `timeout`
+   * running past the 5-minute default, carries on regardless. By the time it
+   * finishes, another replica may have taken the lock, and an unconditional
+   * delete would free it for a third to take while the second is still
+   * running. `delIfOwner` compares the holder id `acquireCronLock` wrote
+   * before the comma, which is per process, so it tells replicas apart.
+   */
   protected async releaseCronLock(
     registration: JobRuntimeRegistration,
   ): Promise<void> {
     try {
-      await this.lockProvider.del(this.cronLockKey(registration.name));
+      await this.lockProvider.delIfOwner(
+        this.cronLockKey(registration.name),
+        this.lockHolderId,
+      );
     } catch (e) {
       this.log.debug(
         `Cron lock release failed for '${registration.name}' (will expire by TTL)`,
