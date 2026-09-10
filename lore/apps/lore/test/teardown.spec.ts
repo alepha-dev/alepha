@@ -35,6 +35,25 @@ class TestRows {
   public readonly grants = $repository(estateProjects);
 }
 
+/**
+ * A teardown whose Cloudflare answers every delete.
+ *
+ * ⚠️ Every other case here runs against an invented account, so every delete
+ * FAILS, which is the only way they can pin what was attempted. What a record
+ * says after a teardown that WORKED needs the opposite. Only the client is
+ * swapped: the adapter still comes out of the real per-call container, and
+ * the gate, `teardownRecorded` and the strike are the code under test.
+ */
+class AnsweringTeardown extends TeardownService {
+  protected adapter() {
+    const adapter = super.adapter();
+    Object.assign(adapter as unknown as Record<string, unknown>, {
+      provisioner: () => ({ deleteWorker: async () => {} }),
+    });
+    return adapter;
+  }
+}
+
 const setup = async () => {
   const alepha = Alepha.create({
     env: {
@@ -52,6 +71,9 @@ const setup = async () => {
   alepha.with(AlephaFake);
   alepha.with(LoreApi);
   alepha.with(TestRows);
+  // Registered here rather than injected on demand: the container locks at
+  // `start()`.
+  alepha.with(AnsweringTeardown);
   await alepha.start();
   return alepha;
 };
@@ -510,6 +532,48 @@ describe("tearing a copy's resources down", () => {
       // The database is kept. The namespace is not mentioned, because losing
       // it costs nothing a redeploy does not restore.
       expect(result.kept).toEqual(["d1:d"]);
+    });
+
+    /**
+     * ⚠️ The namespace has no delete of its own: the forced Worker delete takes
+     * it. A teardown that never said so struck the Worker and left
+     * `{"durableObjects":true}` on the row, and `holdsResources` refused to
+     * delete a copy that held nothing, with `forget` the only way out.
+     */
+    it("leaves the copy deletable once its Worker is gone", async ({
+      expect,
+    }) => {
+      const w = await world({ worker: "w", durableObjects: true });
+
+      const result = await alepha
+        .inject(AnsweringTeardown)
+        .destroy(await loaded(w));
+      expect(result.failed).toEqual([]);
+
+      await alepha.inject(AppController).deleteApp.fetch(
+        {
+          params: { projectId: w.project.id, app: "my-app", env: "production" },
+          body: {},
+        },
+        { user: w.user },
+      );
+
+      expect(await w.rows.instances.findById(w.instance.id)).toBeUndefined();
+    });
+
+    it("frees a copy an earlier destroy left holding only the flag", async ({
+      expect,
+    }) => {
+      // What every destroy of a websocket app wrote before the namespace was
+      // reported. Nothing is left to delete, so the account being invented
+      // does not matter: destroying again has to clear it.
+      const w = await world({ durableObjects: true });
+
+      await alepha.inject(TeardownService).destroy(await loaded(w));
+
+      expect(
+        alepha.inject(TeardownService).holdsResources(await loaded(w)),
+      ).toBe(false);
     });
   });
 
