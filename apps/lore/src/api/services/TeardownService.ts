@@ -28,6 +28,16 @@ export interface RecordedResources {
    * for why that is not the name-guessing the rest of this service refuses.
    */
   dlq?: string;
+  /**
+   * Set when the Worker runs a Durable Object namespace (a websocket app).
+   *
+   * A flag on the Worker, not a resource of its own: the namespace has no
+   * delete, and the forced Worker delete takes it. The adapter reports it
+   * gone whenever the Worker is not left standing, and it is struck then,
+   * never on its own. `WorkerCloudflareAdapter`'s
+   * `provisionedResources.durableObjects` says the same from the writing side.
+   */
+  durableObjects?: boolean;
 }
 
 /**

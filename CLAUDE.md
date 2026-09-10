@@ -111,7 +111,7 @@ Alepha uses a hybrid monorepo structure:
 
 The only public Alepha application — a project management app at `lore.alepha.dev`. Lore lives in this monorepo specifically to **dogfood the framework**: framework improvements and bug fixes that surface while building Lore are part of the same commit/PR, not a downstream issue. When working on `apps/lore`, treat `packages/alepha` and `packages/@alepha/ui` as fair game — edit them in place, run `yarn v` from the root, ship both sides in one commit.
 
-CI auto-deploys Lore to Cloudflare on every push to `main` via the `deploy-lore-production` job in `.github/workflows/ci.yml`. There is no human gate. Lore migrations (`apps/lore/migrations/sqlite/`) target Cloudflare D1, which has a known cascade-on-DROP-TABLE quirk — see `apps/lore/CLAUDE.md` ("Migration safety on D1") before pushing anything that touches `migrations/sqlite/`.
+CI auto-deploys Lore to Cloudflare from `main` via the `deploy-lore-production` job in `.github/workflows/deploy-latest.yml` (workflow **Deploy latest**), a `workflow_run` that fires once **Verify** (`.github/workflows/verify.yml`) succeeds on a push to `main`. A Verify cancelled by a newer push leaves that commit's deploy skipped, and the next green push ships it. There is no human gate. Lore migrations (`apps/lore/migrations/sqlite/`) target Cloudflare D1, which has a known cascade-on-DROP-TABLE quirk — see `apps/lore/CLAUDE.md` ("Migration safety on D1") before pushing anything that touches `migrations/sqlite/`.
 
 ### Lore MCP — framework planning memory
 
