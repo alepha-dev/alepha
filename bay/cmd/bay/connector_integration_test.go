@@ -247,8 +247,23 @@ type wired struct {
 }
 
 // wire enrols the fixture's Bay against the stub and starts the real client
-// with the real executor, on millisecond timers.
+// with the real executor. The backoff is in milliseconds, so a redial is
+// immediate; the keepalive stays at the production 30 s and 10 s, which no
+// test here outlives.
 func wire(t *testing.T, f *deployFixture, lore *stubLore) *wired {
+	t.Helper()
+	return wireWithKeepalive(t, f, lore, 0, 0)
+}
+
+// wireWithKeepalive is wire with the client's keepalive armed, for the test
+// that is about it. Zero keeps the production value.
+//
+// ⚠️ Every other test goes through wire. A keepalive is a wall-clock deadline
+// on the session, answered by a stub in the same process: a runner that pauses
+// the process for longer than the window drops the session under a test about
+// something else. 40 ms and 40 ms, once every test's here, is the setting that
+// failed the connector package's own fixture on a loaded CI runner.
+func wireWithKeepalive(t *testing.T, f *deployFixture, lore *stubLore, pingInterval, pongWait time.Duration) *wired {
 	t.Helper()
 	if err := connector.NewStore(f.root).Set(connector.Config{Sink: lore.srv.URL, Secret: testSecret}); err != nil {
 		t.Fatal(err)
@@ -263,7 +278,7 @@ func wire(t *testing.T, f *deployFixture, lore *stubLore) *wired {
 		Log:          f.server.log,
 		Reload:       f.server.connectorReload,
 		Handler:      newActions(f.server),
-		PingInterval: 40 * time.Millisecond, PongWait: 40 * time.Millisecond,
+		PingInterval: pingInterval, PongWait: pongWait,
 		MinBackoff: 5 * time.Millisecond, MaxBackoff: 20 * time.Millisecond,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -449,7 +464,9 @@ func TestIntegrationDropMidSessionReconnectsAndLeavesTheAppAlone(t *testing.T) {
 func TestIntegrationMissingPongIsADrop(t *testing.T) {
 	f := deployedApp(t)
 	lore := newStubLore(t)
-	wire(t, f, lore)
+	// Pings quick enough to count, and a pong window no runner pause
+	// plausibly outlasts, so the drop below is the missing pong's.
+	wireWithKeepalive(t, f, lore, 40*time.Millisecond, time.Second)
 	first := lore.session(t)
 	eventuallyTrue(t, "pings to arrive", func() bool { return first.pings.Load() >= 1 })
 
