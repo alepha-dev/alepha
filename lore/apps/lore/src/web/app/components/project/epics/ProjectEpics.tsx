@@ -297,10 +297,10 @@ const ProjectEpics = () => {
   // can leave the selection with nothing to do, which is why both are
   // pushed conditionally rather than rendered disabled.
   //
-  // ⚠️ No bulk Begin. The row menu keeps it because beginning is a per-epic
-  // decision with a per-epic confirmation, and epic #31 is about to make the
-  // status transitions themselves refuse things a selection cannot reason
-  // about.
+  // ⚠️ No bulk Mark as ready. The row menu keeps it because deciding that a
+  // spec is done is a per-epic decision with a per-epic confirmation, and a
+  // selection mixing planned, ready and started epics would have to refuse
+  // most of what it held.
   //
   // Every entry refreshes and then clears, in that order: a selection that
   // survives a delete points at rows that no longer exist. `ctx.refresh()`

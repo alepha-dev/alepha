@@ -1469,7 +1469,9 @@ test.describe("Epics — the lifecycle on the epic page", () => {
       expect((await accept(quest.id)).status).toBe(200);
 
       await page.reload();
-      await expect(page.getByText("In progress").first()).toBeVisible({
+      await expect(
+        page.getByText("In progress", { exact: true }).first(),
+      ).toBeVisible({
         timeout: 15_000,
       });
       // No status move is offered once it has started, and nothing enters
@@ -1502,7 +1504,9 @@ test.describe("Epics — the lifecycle on the epic page", () => {
       }, quest.id);
 
       await page.reload();
-      await expect(page.getByText("Completed").first()).toBeVisible({
+      await expect(
+        page.getByText("Completed", { exact: true }).first(),
+      ).toBeVisible({
         timeout: 15_000,
       });
       await expect(
@@ -1514,7 +1518,9 @@ test.describe("Epics — the lifecycle on the epic page", () => {
       expect((await accept(next.id)).status).toBe(200);
 
       await page.goto(`/${slug}/epics/${second.number}`);
-      await expect(page.getByText("In progress").first()).toBeVisible({
+      await expect(
+        page.getByText("In progress", { exact: true }).first(),
+      ).toBeVisible({
         timeout: 15_000,
       });
       await expect(
