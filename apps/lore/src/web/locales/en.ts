@@ -2209,6 +2209,10 @@ export default {
   "dashboard.scope.pick": "Scope",
   "dashboard.scope.noApps": "No app in your projects reports this yet.",
   "dashboard.scope.noProjects": "No project of yours does this yet.",
+  "dashboard.scope.noEpics": "This project has no epic yet.",
+  "dashboard.scope.noReleases": "This project has no release yet.",
+  "dashboard.scope.releaseOpen": "Open",
+  "dashboard.scope.releasePublished": "Published",
 
   "dashboard.group.quests": "Quests",
   "dashboard.group.epics": "Epics & releases",
@@ -2247,6 +2251,10 @@ export default {
   "dashboard.filterField.statuses": "Status",
   "dashboard.filterField.status": "Status",
   "dashboard.filterField.period": "Period",
+  // The Add-card panel builds this heading from the metric's own Zod schema,
+  // so a filter field with no key here renders as the raw key, uppercased.
+  // `tagCompletion`'s shipped that way.
+  "dashboard.filterField.tag": "Tag",
   "dashboard.filterValue.new": "New",
   "dashboard.filterValue.accepted": "Accepted",
   "dashboard.filterValue.open": "Open",
