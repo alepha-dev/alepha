@@ -870,9 +870,14 @@ describe("a deployment", () => {
 
       await alepha.inject(DeployJobs).sweepAbandoned.trigger();
 
-      expect(
-        (await alepha.inject(TestRows).deployments.findById(id))?.status,
-      ).toBe("failed");
+      const after = await alepha.inject(TestRows).deployments.findById(id);
+      expect(after?.status).toBe("failed");
+      // ⚠️ Not "stopped reporting": it never started, and the runner writes
+      // its start before it contacts Cloudflare, so the operator can retry
+      // without checking a Worker that was never touched.
+      expect(after?.error).toMatch(/never started/);
+      expect(after?.error).toMatch(/Nothing reached Cloudflare/);
+      expect(after?.error).not.toMatch(/stopped reporting/);
     });
 
     it("does not touch a run that already reached a terminal state", async ({
@@ -1203,24 +1208,29 @@ describe("the deploy limits", () => {
     await alepha.stop();
   });
 
-  it("refuses a deploy past the cap rather than interleaving it", async ({
+  it("turns a deploy past the cap away rather than interleaving it", async ({
     expect,
   }) => {
-    // ⚠️ Refused, not queued silently and not run anyway. A deploy holds an
-    // unpacked artifact and its modules in memory against a 128 MB ceiling
-    // shared with everything else, so a third concurrent run is an OOM that
-    // takes the other two with it. The job's retry is what turns the refusal
-    // into a queue.
+    // ⚠️ Turned away, not run anyway. A deploy holds an unpacked artifact and
+    // its modules in memory against a 128 MB ceiling shared with everything
+    // else, so a third concurrent run is an OOM that takes the other two with
+    // it. It is ANSWERED rather than thrown, before any side effect, and the
+    // job reschedules on the answer: `deploy-concurrency.spec.ts` drives that
+    // half end to end.
     const service = alepha.inject(DeployService);
     let release: (() => void) | undefined;
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
+    let gated = 0;
 
     Object.assign(service as unknown as Record<string, unknown>, {
       limits: { concurrency: async () => 1, timeoutMs: async () => 60_000 },
       gate: {
-        assert: async () => ({ slug: "e", accountId: "a", credential: "c" }),
+        assert: async () => {
+          gated++;
+          return { slug: "e", accountId: "a", credential: "c" };
+        },
         assertRuntime: () => {},
       },
       instances: { findById: async () => ({ id: "i", app: "a", env: "e" }) },
@@ -1241,15 +1251,15 @@ describe("the deploy limits", () => {
     // Let the first take the slot before the second asks for it.
     await new Promise((resolve) => setTimeout(resolve, 5));
 
-    await expect(service.run({ id: "d-2" } as never)).rejects.toThrowError(
-      /already running 1 deploys/,
-    );
+    await expect(service.run({ id: "d-2" } as never)).resolves.toBe("busy");
+    // Nothing was touched for the one turned away: not even the gate.
+    expect(gated).toBe(1);
 
     release?.();
-    await first;
+    await expect(first).resolves.toBe("done");
 
-    // ...and the slot is given back, so a later run is not refused forever.
-    await expect(service.run({ id: "d-3" } as never)).resolves.toBeUndefined();
+    // ...and the slot is given back, so a later run is not turned away forever.
+    await expect(service.run({ id: "d-3" } as never)).resolves.toBe("done");
   });
 
   it("marks a run that overran, so the row cannot stay running forever", async ({
