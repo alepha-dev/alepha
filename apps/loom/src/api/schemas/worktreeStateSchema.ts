@@ -7,6 +7,7 @@ import { devServerSchema } from "./devServerSchema.ts";
 import { divergenceSchema } from "./divergenceSchema.ts";
 import { gitStatusSchema } from "./gitStatusSchema.ts";
 import { questRefSchema } from "./questRefSchema.ts";
+import { verifyRunSchema } from "./verifyRunSchema.ts";
 
 /**
  * Everything Loom knows about one worktree, the main checkout included.
@@ -57,6 +58,10 @@ export const worktreeStateSchema = z.object({
   installed: z.boolean(),
   quests: z.array(questRefSchema),
   ci: ciRunSchema.optional(),
+  /**
+   * A local `yarn v` started from this worktree, running or queued.
+   */
+  verify: verifyRunSchema.optional(),
   claude: claudeSessionSchema,
   devServers: z.array(devServerSchema),
 });

@@ -86,7 +86,7 @@ export const OverviewView = (props: OverviewViewProps) => {
 
       {state && (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1220px] table-fixed border-separate border-spacing-0 text-[12.5px]">
+          <table className="w-full min-w-[1280px] table-fixed border-separate border-spacing-0 text-[12.5px]">
             {/*
              * Fixed widths for everything that has a natural size, and the
              * rest for the last commit, which truncates: a long subject must
@@ -97,10 +97,11 @@ export const OverviewView = (props: OverviewViewProps) => {
               <col className="w-[200px]" />
               <col className="w-[96px]" />
               <col className="w-[124px]" />
-              <col className="w-[112px]" />
-              <col className="w-[190px]" />
-              <col className="w-[76px]" />
-              <col className="w-[112px]" />
+              <col className="w-[118px]" />
+              <col className="w-[104px]" />
+              <col className="w-[180px]" />
+              <col className="w-[70px]" />
+              <col className="w-[100px]" />
               <col />
             </colgroup>
             <thead className="bg-background sticky top-0 z-10">
@@ -116,6 +117,9 @@ export const OverviewView = (props: OverviewViewProps) => {
                 </th>
                 <th className="border-border border-b px-3 font-medium uppercase">
                   CI
+                </th>
+                <th className="border-border border-b px-3 font-mono font-normal">
+                  yarn v
                 </th>
                 <th className="border-border border-b px-3 font-medium uppercase">
                   Lore

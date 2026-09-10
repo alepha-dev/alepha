@@ -7,12 +7,14 @@ import type { ClaudeSession } from "../schemas/claudeSessionSchema.ts";
 import type { DevServer } from "../schemas/devServerSchema.ts";
 import type { Project } from "../schemas/projectSchema.ts";
 import type { ProjectState } from "../schemas/projectStateSchema.ts";
+import type { VerifyRun } from "../schemas/verifyRunSchema.ts";
 import type { WorktreeState } from "../schemas/worktreeStateSchema.ts";
 import { CiService } from "./CiService.ts";
 import { type ClaudeProcess, ClaudeService } from "./ClaudeService.ts";
 import { DevServerService } from "./DevServerService.ts";
 import { GitService, type WorktreeEntry } from "./GitService.ts";
 import { LoreService } from "./LoreService.ts";
+import { VerifyService } from "./VerifyService.ts";
 
 /**
  * What the per-project sources answered, handed to each worktree.
@@ -24,6 +26,7 @@ interface ProjectSources {
   alive: Set<number>;
   servers: DevServer[];
   claude: ClaudeProcess[];
+  verify: Array<{ cwd: string; run: VerifyRun }>;
   paths: string[];
 }
 
@@ -44,6 +47,7 @@ export class ProjectStateService {
   protected readonly lore = $inject(LoreService);
   protected readonly claude = $inject(ClaudeService);
   protected readonly devServers = $inject(DevServerService);
+  protected readonly verify = $inject(VerifyService);
   protected readonly fs = $inject(FileSystemProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -127,14 +131,16 @@ export class ProjectStateService {
       .map((entry) => entry.branch)
       .filter((branch): branch is string => !!branch);
 
-    const [base, github, stashes, alive, servers, claude] = await Promise.all([
-      this.git.defaultBranch(project.path),
-      this.git.github(project.path),
-      this.git.stashes(project.path),
-      this.claude.alive(lockPids),
-      this.devServers.listening(),
-      this.claude.processes(),
-    ]);
+    const [base, github, stashes, alive, servers, claude, verify] =
+      await Promise.all([
+        this.git.defaultBranch(project.path),
+        this.git.github(project.path),
+        this.git.stashes(project.path),
+        this.claude.alive(lockPids),
+        this.devServers.listening(),
+        this.claude.processes(),
+        this.verify.runs(),
+      ]);
     const ci =
       github && (await this.ci.available())
         ? await this.ci.latest(github, branches)
@@ -147,6 +153,7 @@ export class ProjectStateService {
       alive,
       servers,
       claude,
+      verify,
       paths: entries.map((entry) => entry.path),
     };
 
@@ -213,6 +220,11 @@ export class ProjectStateService {
       installed: false,
       quests: [],
       ci: entry.branch ? sources.ci?.get(entry.branch) : undefined,
+      // Holder first within each queue, so a worktree that both holds and
+      // queues (it cannot, but a stale ticket could) shows the holder.
+      verify: sources.verify.find(
+        (it) => this.owner(it.cwd, sources.paths) === entry.path,
+      )?.run,
       claude: {
         activity: this.activity(
           lockAlive || pids.length > 0,

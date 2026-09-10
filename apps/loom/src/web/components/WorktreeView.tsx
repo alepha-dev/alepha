@@ -19,6 +19,7 @@ import { ClaudeIndicator } from "./ClaudeIndicator.tsx";
 import { DetailGroup } from "./DetailGroup.tsx";
 import { DetailRow } from "./DetailRow.tsx";
 import { QuestChips } from "./QuestChips.tsx";
+import { VerifyIndicator } from "./VerifyIndicator.tsx";
 import { Weave } from "./Weave.tsx";
 import { WorktreeViewSessions } from "./WorktreeViewSessions.tsx";
 
@@ -184,6 +185,15 @@ export const WorktreeView = (props: WorktreeViewProps) => {
               </span>
             </DetailRow>
           )}
+          <DetailRow label="yarn v">
+            {worktree.verify ? (
+              <VerifyIndicator verify={worktree.verify} />
+            ) : (
+              <span className="text-muted-foreground">
+                Not running from here.
+              </span>
+            )}
+          </DetailRow>
         </DetailGroup>
 
         <DetailGroup title="Lore" icon={ScrollText}>

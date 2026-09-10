@@ -3,6 +3,7 @@ import {
   Asterisk,
   CircleCheck,
   CircleX,
+  FlaskConical,
   GitBranch,
   LoaderCircle,
   RefreshCw,
@@ -31,6 +32,10 @@ export const StatusBar = (props: StatusBarProps) => {
   const main = state?.worktrees.find((it) => it.isMain);
   const working =
     state?.worktrees.filter((it) => it.claude.activity === "working").length ??
+    0;
+  const verifying = state?.worktrees.find((it) => it.verify?.holding);
+  const queued =
+    state?.worktrees.filter((it) => it.verify && !it.verify.holding).length ??
     0;
   const ci = main?.ci;
   const ciLabel =
@@ -73,6 +78,18 @@ export const StatusBar = (props: StatusBarProps) => {
         <span className="flex items-center gap-1">
           <Asterisk className="size-3.5" />
           Claude working in {working}
+        </span>
+      )}
+
+      {verifying && (
+        <span
+          className="flex items-center gap-1"
+          title="The machine's one yarn v slot, and who holds it"
+        >
+          <FlaskConical className="size-3.5" />
+          yarn v · {verifying.name} · {verifying.verify?.step ?? "starting"}{" "}
+          {verifying.verify?.progress ?? 0}%
+          {queued > 0 && <span className="opacity-75"> · {queued} queued</span>}
         </span>
       )}
 

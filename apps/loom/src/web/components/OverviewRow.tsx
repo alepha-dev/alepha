@@ -6,6 +6,7 @@ import { ChangesBadge } from "./ChangesBadge.tsx";
 import { CiIndicator } from "./CiIndicator.tsx";
 import { ClaudeIndicator } from "./ClaudeIndicator.tsx";
 import { QuestChips } from "./QuestChips.tsx";
+import { VerifyIndicator } from "./VerifyIndicator.tsx";
 import { Weave } from "./Weave.tsx";
 
 export interface OverviewRowProps {
@@ -56,6 +57,9 @@ export const OverviewRow = (props: OverviewRowProps) => {
       </td>
       <td className={cell}>
         <CiIndicator ci={worktree.ci} />
+      </td>
+      <td className={cell}>
+        <VerifyIndicator verify={worktree.verify} />
       </td>
       <td className={cell}>
         <QuestChips quests={worktree.quests} max={2} />
