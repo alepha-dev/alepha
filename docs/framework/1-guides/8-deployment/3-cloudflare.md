@@ -209,6 +209,8 @@ If your project has a React frontend, the built client assets are placed in `dis
 
 At runtime, `CloudflareQueueProvider` replaces the default queue provider and `WorkerdWorkerProvider` handles message consumption via push-based `queue` events (no polling). Messages are sent in batches of up to 100 per `sendBatch` call, so a `pushMany()` of 500 jobs costs 5 subrequests rather than 500.
 
+A job is delivered the moment it lands. The consumer is declared with `max_batch_size: 1`: left to Cloudflare's defaults it would hold messages until 10 had arrived or 5 seconds had passed, and a job is one message, so every `push()` would sit out that window before its handler started. It also gives each job its own invocation, with its own CPU and wall-clock budget. Where a batch does hold several messages - the email-events consumer keeps the default batching - the Worker's `queue` handler runs them concurrently, and each one acks or retries on its own.
+
 A `$job` handler that throws is caught and recorded by `JobProvider`, so it acks and retries through the outbox sweep. Only infrastructure failures - an undecodable message, an unreachable backend - propagate to `msg.retry()` and eventually land in the dead-letter queue.
 
 ⚠️ **The dead-letter queue catches less than its name suggests, and nothing

@@ -1,4 +1,4 @@
-import { Alepha } from "alepha";
+import { Alepha, AlephaError } from "alepha";
 import { FileSystemProvider, MemoryFileSystemProvider } from "alepha/system";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -234,6 +234,7 @@ describe("BuildCloudflareTask", () => {
           queue: "my-queue",
           dead_letter_queue: "my-queue-dlq",
           max_retries: 3,
+          max_batch_size: 1,
         },
       ]);
     });
@@ -250,7 +251,24 @@ describe("BuildCloudflareTask", () => {
         queue: "my-queue",
         dead_letter_queue: "shared-dlq",
         max_retries: 5,
+        max_batch_size: 1,
       });
+    });
+
+    /**
+     * Cloudflare holds a consumer's messages until 10 have arrived or 5
+     * seconds have passed. A job is one message, so every `$job.push()` sat
+     * out the whole window before its handler started: a Lore deploy waited
+     * 8-10s to begin where it had waited ~1.5s in direct mode. A batch of one
+     * is full the moment it lands.
+     */
+    it("delivers a job the moment it lands, not after a 5-second batch window", () => {
+      process.env.CLOUDFLARE_QUEUE_NAME = "my-queue";
+
+      const wrangler: Record<string, any> = {};
+      createTask().testEnhanceQueue(ambient(), wrangler);
+
+      expect(wrangler.queues.consumers[0].max_batch_size).toBe(1);
     });
 
     it("ignores a non-numeric retry ceiling rather than emitting NaN", () => {
@@ -578,6 +596,95 @@ describe("BuildCloudflareTask", () => {
         expect(source.indexOf("cache.match(request)")).toBeLessThan(
           source.indexOf("await __alepha.start()"),
         );
+      });
+    });
+
+    describe("queue handler", () => {
+      interface FakeMessage {
+        body: string;
+        ack: () => void;
+        retry: () => void;
+      }
+
+      /**
+       * Lifts the generated `queue` handler out of the emitted worker and
+       * runs it against stand-ins for the three things it closes over, so
+       * these assert how a batch is PROCESSED rather than how the loop is
+       * spelled.
+       */
+      const runBatch = async (
+        messages: FakeMessage[],
+        emit: (name: string, body: string) => Promise<void>,
+      ) => {
+        const { task, fs } = createTaskWithFs();
+        await task.testWriteWorkerEntryPoint("/root", "dist");
+        const source = await fs.readTextFile(ENTRY);
+        const start = source.indexOf("queue: async");
+        const end = source.lastIndexOf("};");
+        const handler = source
+          .slice(start + "queue:".length, end)
+          .trim()
+          .replace(/,$/, "");
+        // The point of the test: compile the `queue` handler out of the worker
+        // entry point this task generates, and run it against a real batch.
+        // oxlint-disable-next-line typescript/no-implied-eval
+        const queue = new Function(
+          "__alepha",
+          "bindEnv",
+          "withExecutionContext",
+          `return ${handler};`,
+        )(
+          { start: async () => {}, log: { error: () => {} }, events: { emit } },
+          () => {},
+          (_ctx: unknown, fn: () => Promise<void>) => fn(),
+        ) as (batch: { messages: FakeMessage[] }) => Promise<void>;
+        await queue({ messages });
+      };
+
+      const message = (body: string, outcomes: string[]): FakeMessage => ({
+        body,
+        ack: () => outcomes.push(`ack ${body}`),
+        retry: () => outcomes.push(`retry ${body}`),
+      });
+
+      /**
+       * One awaited message after another meant the second job of a batch
+       * waited for the whole of the first. On Lore that was a ui deploy
+       * queued behind a 30-second docs deploy - up to 43s - while the deploy
+       * concurrency limit of 2 never came into play.
+       */
+      it("runs every message of a batch at once, so one job never waits on another", async () => {
+        const log: string[] = [];
+
+        await runBatch(
+          [message("a", []), message("b", [])],
+          async (_, body) => {
+            log.push(`start ${body}`);
+            await Promise.resolve();
+            log.push(`end ${body}`);
+          },
+        );
+
+        expect(log).toEqual(["start a", "start b", "end a", "end b"]);
+      });
+
+      it("retries a message that throws and still acks the rest of the batch", async () => {
+        const outcomes: string[] = [];
+
+        await runBatch(
+          [
+            message("a", outcomes),
+            message("b", outcomes),
+            message("c", outcomes),
+          ],
+          async (_, body) => {
+            if (body === "b") {
+              throw new AlephaError("poison");
+            }
+          },
+        );
+
+        expect(outcomes.sort()).toEqual(["ack a", "ack c", "retry b"]);
       });
     });
 

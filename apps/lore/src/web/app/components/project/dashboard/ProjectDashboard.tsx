@@ -10,7 +10,9 @@ import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceS
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
 import { DashboardMetricCatalog } from "@/api/services/DashboardMetricCatalog.ts";
 
+import { currentEpicsAtom } from "../../../atoms/currentEpicsAtom.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { projectDashboardAtom } from "../../../atoms/projectDashboardAtom.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import DashboardCatalogue from "../../dashboard/DashboardCatalogue.tsx";
@@ -70,6 +72,13 @@ const ProjectDashboard = () => {
 
   const [project] = useStore(currentProjectAtom);
   const [board] = useStore(projectDashboardAtom);
+  // ⚠️ Read, never fetched. The `project` route loader already issues both
+  // (`getEpicRefs` and `getReleases`, inside the one `Promise.all` the
+  // browser coalesces into a single `/api/_batch`), so the epic and release
+  // pickers cost this page no request at all. Fetching them here would add a
+  // round trip for a list already in the store.
+  const [epics] = useStore(currentEpicsAtom);
+  const [releases] = useStore(currentReleasesAtom);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardCardResource | undefined>();
   const [apps, setApps] = useState<DashboardScopeApp[]>([]);
@@ -337,6 +346,8 @@ const ProjectDashboard = () => {
         cards={cards}
         projects={project ? [project] : []}
         apps={apps}
+        epics={epics ?? []}
+        releases={releases ?? []}
         projectTags={tags}
         editing={editing}
         onClose={() => setCatalogueOpen(false)}

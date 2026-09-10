@@ -74,13 +74,34 @@ export interface CloudflareDeployPlan {
    */
   workersDev?: boolean;
 
+  /**
+   * The queues this Worker consumes, by id, each with the API's own consumer
+   * settings. A dead-letter queue is named, not id'd: that is what the API
+   * takes.
+   */
   queueConsumers?: Array<{
     queueId: string;
-    settings?: Record<string, unknown>;
+    settings?: CloudflareQueueConsumerSettings;
     deadLetterQueue?: string;
   }>;
 
   assets?: CloudflareDeployAssets;
+}
+
+/**
+ * A Worker consumer's settings, in the API's vocabulary rather than
+ * wrangler's.
+ *
+ * ⚠️ The two differ, and not only in spelling: wrangler's `max_batch_size` is
+ * `batch_size` here, and its `max_batch_timeout` is in SECONDS where
+ * `max_wait_time_ms` is in milliseconds.
+ */
+export interface CloudflareQueueConsumerSettings {
+  batch_size?: number;
+  max_retries?: number;
+  max_wait_time_ms?: number;
+  max_concurrency?: number;
+  retry_delay?: number;
 }
 
 export interface CloudflareDeployAssets {
@@ -776,16 +797,71 @@ export class CloudflareDeployClient {
     }
   }
 
+  /**
+   * Bind this Worker as the consumer of each queue, or rebind it.
+   *
+   * ## ⚠️ Idempotent, because a deploy is replayed
+   *
+   * A deploy is a `$job`, and a retried or rescheduled execution runs every
+   * step again (`DeployJobs`). This was the one step that was a bare create,
+   * and a create cannot be run twice: the replay would fail on the consumer
+   * the first run bound, after the script was already live. So this is
+   * wrangler's own rule, taken as it is: find this script's consumer on the
+   * queue, PUT it if it is there, POST only if it is not.
+   *
+   * ⚠️ **Updated, never skipped.** A skip would freeze the consumer at what
+   * the first deploy declared, so a setting added later - `max_batch_size`,
+   * say - would never reach a consumer that already existed.
+   *
+   * ⚠️ **Matched by script, never "the queue's consumer".** The update names
+   * the script it binds, so re-pointing another Worker's consumer here would
+   * take that Worker's messages away from it without a word.
+   */
   public async putQueueConsumers(plan: CloudflareDeployPlan): Promise<void> {
     for (const consumer of plan.queueConsumers ?? []) {
-      await this.client.queues.consumers.create(consumer.queueId, {
-        account_id: this.accountId,
+      const body = {
         type: "worker",
         script_name: plan.scriptName,
         dead_letter_queue: consumer.deadLetterQueue,
-        settings: consumer.settings as never,
+        settings: consumer.settings,
+      };
+      const existing = await this.consumerOf(consumer.queueId, plan.scriptName);
+      if (existing) {
+        await this.client.queues.consumers.update(existing, {
+          account_id: this.accountId,
+          queue_id: consumer.queueId,
+          ...body,
+        });
+        continue;
+      }
+      await this.client.queues.consumers.create(consumer.queueId, {
+        account_id: this.accountId,
+        ...body,
       });
     }
+  }
+
+  /**
+   * The id of the consumer this script already holds on a queue, if any.
+   *
+   * ⚠️ **Three spellings of one field.** The API reference and the SDK name
+   * the Worker `script_name`, wrangler matches `script` or `service`, and
+   * this repo's own `CloudflareApi` reads `service`. Missing whichever one
+   * the API happens to answer would send a create, which is the refusal this
+   * exists to avoid, so all three are accepted.
+   */
+  protected async consumerOf(
+    queueId: string,
+    scriptName: string,
+  ): Promise<string | undefined> {
+    const answer = await this.client.queues.consumers.list(queueId, {
+      account_id: this.accountId,
+    });
+    return (answer.result ?? []).find(
+      (it) =>
+        !!it.consumer_id &&
+        [it.script_name, it.script, it.service].includes(scriptName),
+    )?.consumer_id;
   }
 
   /**
@@ -1019,6 +1095,29 @@ export interface CloudflareDeployApi {
       create: (
         queueId: string,
         params: Record<string, unknown>,
+      ) => Promise<unknown>;
+      /**
+       * ⚠️ `result` IS the array here, unlike `versions.list`: this endpoint
+       * paginates as `SinglePage`, whose `result` is the list itself.
+       */
+      list: (
+        queueId: string,
+        params: { account_id: string },
+      ) => Promise<{
+        result?: Array<{
+          consumer_id?: string;
+          type?: string;
+          script_name?: string;
+          script?: string;
+          service?: string;
+        }>;
+      }>;
+      update: (
+        consumerId: string,
+        params: { account_id: string; queue_id: string } & Record<
+          string,
+          unknown
+        >,
       ) => Promise<unknown>;
     };
   };

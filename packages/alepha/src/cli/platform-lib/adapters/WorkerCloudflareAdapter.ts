@@ -16,6 +16,8 @@ import {
 import {
   type CloudflareDeployAssets,
   CloudflareDeployClient,
+  type CloudflareDeployPlan,
+  type CloudflareQueueConsumerSettings,
 } from "../services/CloudflareDeployClient.ts";
 import { CloudflareProvisionClient } from "../services/CloudflareProvisionClient.ts";
 import { D1MigrationsService } from "../services/D1MigrationsService.ts";
@@ -419,6 +421,10 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
           );
         }
 
+        // Resolved BEFORE the upload, so a consumer naming a queue the account
+        // does not have refuses the deploy while nothing has changed yet.
+        const queueConsumers = await this.queueConsumers(config);
+
         const answer = await this.deployer().deploy({
           scriptName: worker,
           mainModule,
@@ -449,6 +455,7 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
               }
             : undefined,
           workersDev: config.workers_dev,
+          queueConsumers,
         });
         this.deployedVersionId = answer?.versionId;
         subdomainError = answer?.subdomainError;
@@ -761,6 +768,67 @@ export class WorkerCloudflareAdapter extends PlatformAdapter {
   }
 
   /**
+   * The generated config's queue consumers, by queue id and in the API's
+   * vocabulary.
+   *
+   * ⚠️ **Without this, nothing consumes the job queue.** `provision` creates
+   * it, `bindings()` gives the Worker a producer, and the consumer
+   * `BuildCloudflareTask.enhanceQueue` writes stayed in the file: an app with
+   * `AlephaApiJobsQueue` would push every `$job` into a queue no Worker reads,
+   * behind a green deploy.
+   *
+   * ⚠️ **Resolved, never created.** A consumer the account has no queue for is
+   * refused by name rather than provisioned here: `provision` makes the queues
+   * Lore records for teardown, and a queue made at deploy time is one no
+   * teardown knows about, on an estate that was only lent. This is also
+   * wrangler's rule, which refuses a consumer of a queue that does not exist.
+   *
+   * ⚠️ **wrangler's units are not the API's.** `max_batch_timeout` is seconds
+   * and `max_wait_time_ms` is milliseconds, the same conversion wrangler makes
+   * on its own way to this endpoint.
+   *
+   * `undefined` for an app that consumes nothing, and then Cloudflare is not
+   * asked about queues at all.
+   */
+  protected async queueConsumers(
+    config: WranglerConfig,
+  ): Promise<CloudflareDeployPlan["queueConsumers"]> {
+    const consumers = config.queues?.consumers ?? [];
+    if (consumers.length === 0) {
+      return undefined;
+    }
+
+    const queues = await this.provisioner().listQueues();
+    return consumers.map((consumer) => {
+      const queue = queues.find((it) => it.queue_name === consumer.queue);
+      if (!queue) {
+        throw new AlephaError(
+          `The deploy config consumes the queue \`${consumer.queue}\`, which this account does not have. Provisioning creates the job queue an app with AlephaApiJobsQueue produces to; any other queue a consumer names has to exist before the deploy.`,
+        );
+      }
+      const settings: CloudflareQueueConsumerSettings = {
+        batch_size: consumer.max_batch_size,
+        max_retries: consumer.max_retries,
+        max_wait_time_ms:
+          consumer.max_batch_timeout === undefined
+            ? undefined
+            : consumer.max_batch_timeout * 1000,
+        max_concurrency: consumer.max_concurrency,
+        retry_delay: consumer.retry_delay,
+      };
+      return {
+        queueId: queue.queue_id,
+        deadLetterQueue: consumer.dead_letter_queue,
+        // Absent keys rather than `undefined` ones, so the body the API gets
+        // states only what the config declared.
+        settings: Object.fromEntries(
+          Object.entries(settings).filter(([, value]) => value !== undefined),
+        ),
+      };
+    });
+  }
+
+  /**
    * ⚠️ Refused rather than implemented. `inspect` and `teardown` answer `plan`,
    * `status` and `down`, which are `alepha platform`'s commands and run on a
    * laptop with the full adapter. A Worker deploy has no surface for them, and
@@ -925,7 +993,25 @@ interface WranglerConfig {
   d1_databases?: Array<{ binding: string; database_id: string }>;
   r2_buckets?: Array<{ binding: string; bucket_name: string }>;
   kv_namespaces?: Array<{ binding: string; id: string }>;
-  queues?: { producers?: Array<{ binding: string; queue: string }> };
+  queues?: {
+    producers?: Array<{ binding: string; queue: string }>;
+    /**
+     * wrangler's consumer keys, which are not the API's. See
+     * {@link WorkerCloudflareAdapter.queueConsumers}.
+     */
+    consumers?: Array<{
+      queue: string;
+      dead_letter_queue?: string;
+      max_retries?: number;
+      max_batch_size?: number;
+      /**
+       * Seconds.
+       */
+      max_batch_timeout?: number;
+      max_concurrency?: number;
+      retry_delay?: number;
+    }>;
+  };
   analytics_engine_datasets?: Array<{ binding: string; dataset: string }>;
   migrations?: Array<Record<string, unknown>>;
   observability?: Record<string, unknown>;

@@ -15,6 +15,8 @@ import { useMemo, useState } from "react";
 
 import type { DashboardCardResource } from "@/api/schemas/dashboardCardResourceSchema.ts";
 import type { DashboardScope } from "@/api/schemas/dashboardScopeSchema.ts";
+import type { EpicRefResource } from "@/api/schemas/epicRefResourceSchema.ts";
+import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 import {
   type DashboardBoard,
   DashboardMetricCatalog,
@@ -57,6 +59,17 @@ export interface DashboardCatalogueProps {
   cards: DashboardCardResource[];
   projects: DashboardScopeProject[];
   apps: DashboardScopeApp[];
+  /**
+   * The open project's epics and releases, for the two metrics scoped to one
+   * row of another table.
+   *
+   * ⚠️ Optional, and absent on the home board rather than empty by accident:
+   * `epicProgress` and `releaseProgress` both declare `boards: ["project"]`,
+   * so home never offers a metric that would read either. A project board
+   * passes both from atoms its route has already loaded.
+   */
+  epics?: EpicRefResource[];
+  releases?: ReleaseResource[];
   /**
    * When set, the panel opens straight on the scope step for this card and
    * saves back to it instead of adding a new one. The card menu's "Change
@@ -169,6 +182,18 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
     if (kinds.includes("projects")) {
       return { kind: "projects", projectIds: [] };
     }
+    // ⚠️ Every kind gets a branch, and the fallback is `apps` because it is
+    // the last one left rather than because it is a safe default. It used to
+    // be the fallback for the whole tail of the union: an `epic` metric
+    // started life as an empty `apps` scope, which the scope step had no
+    // picker for and `canSave` then refused on the wrong grounds. The two
+    // cards were unaddable for as long as they shipped.
+    if (kinds.includes("epic")) {
+      return { kind: "epic" };
+    }
+    if (kinds.includes("release")) {
+      return { kind: "release" };
+    }
     return { kind: "apps", sigilIds: [] };
   };
 
@@ -187,10 +212,21 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
     props.onAdd({ metric: picked.key, scope, filters });
   };
 
+  /**
+   * One clause per kind that carries a payload, so a scope the reader has
+   * not finished cannot be saved.
+   *
+   * ⚠️ `epic` and `release` are checked HERE and not left to the server. The
+   * server does refuse them - `assertWellFormed` requires exactly the payload
+   * the kind calls for - but as a 400 after the drawer has closed, which is
+   * the shape with no way back for the reader.
+   */
   const canSave =
     !!picked &&
     (scope.kind !== "apps" || (scope.sigilIds ?? []).length > 0) &&
-    (scope.kind !== "projects" || (scope.projectIds ?? []).length > 0);
+    (scope.kind !== "projects" || (scope.projectIds ?? []).length > 0) &&
+    (scope.kind !== "epic" || scope.epicId !== undefined) &&
+    (scope.kind !== "release" || scope.releaseId !== undefined);
 
   return (
     <Drawer
@@ -294,6 +330,8 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
                     board={props.board}
                     projects={props.projects}
                     apps={props.apps}
+                    epics={props.epics ?? []}
+                    releases={props.releases ?? []}
                     scope={scope}
                     onChange={setScope}
                   />
