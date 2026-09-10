@@ -1,6 +1,6 @@
 import { lazy, Suspense, useSyncExternalStore } from "react";
 
-import type { MarkdownEditorInnerProps } from "./MarkdownEditorInner.tsx";
+import type { MarkdownEditorInnerProps } from "./MarkdownEditorInner.client.tsx";
 
 export type MarkdownEditorProps = MarkdownEditorInnerProps;
 
@@ -17,7 +17,7 @@ export type MarkdownEditorProps = MarkdownEditorInnerProps;
  * Markdown stays the single source of truth (folios are stored, encrypted
  * and MCP-served as markdown strings) — this is only a view over it.
  */
-const loadInner = () => import("./MarkdownEditorInner.tsx");
+const loadInner = () => import("./MarkdownEditorInner.client.tsx");
 
 const Inner = lazy(loadInner);
 
