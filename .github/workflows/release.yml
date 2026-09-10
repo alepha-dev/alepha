@@ -170,8 +170,22 @@ jobs:
       - name: Prepare
         run: yarn copy
 
+      # The root `build` script, spelled out so it can drop `loom`. Loom is a
+      # private local tool on its way out of this repository, never published
+      # and never shipped from here, and its build is `bun build --compile`.
+      # This job installs no Bun (every Verify job does, through
+      # `.github/actions/setup`), so the first release after Loom landed died
+      # in this step on `bun: not found`, with Verify green throughout.
+      #
+      # ⚠️ `--exclude alepha-monorepo` is load-bearing, for the reason spelled
+      # out on the e2e step in `verify.yml`. `yarn build` never builds the root
+      # because foreach skips the workspace whose script is the one running,
+      # which is keyed on `npm_lifecycle_event`. Called from a shell there is
+      # no such script, so `-A` would run the root's `build`, and that is the
+      # full foreach again: every workspace built twice at once, Loom among
+      # them, and this step red for the same reason as before.
       - name: Build
-        run: yarn build
+        run: yarn workspaces foreach -Apt --exclude alepha-monorepo --exclude loom run build
 
       # Files that ship inside the npm tarball but are not tracked in the
       # package directory. They are listed in `files` and materialised here,
