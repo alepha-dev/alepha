@@ -6,8 +6,8 @@ A project is not one fixed shape. It is a container that composes four
 **capabilities**, and you pick them when you create it:
 
 - **Work** - **quests** (the roadmap and the in-flight work), **areas**, and
-  optionally **epics** (bounded initiatives that hold quests and run one way
-  from planned to done, see [Epics](/lore/docs/guides-epics)), **releases**
+  optionally **epics** (bounded initiatives that hold quests and run from
+  planned to completed, see [Epics](/lore/docs/guides-epics)), **releases**
   (the named goals epics and quests ship in) and a Kanban **board**.
 - **Knowledge** - **folios**: project memory, wiki-linked, optionally
   end-to-end encrypted, filed in a tree.
