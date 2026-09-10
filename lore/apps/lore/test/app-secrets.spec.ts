@@ -382,6 +382,135 @@ describe("a deployed copy's environment", () => {
     });
   });
 
+  describe("the name a first deploy gives a copy", () => {
+    /**
+     * Points the copy at a Cloudflare estate and pushes a build whose bytes
+     * are gone, so a run opens the secret set and then fails at the fetch:
+     * as far as these cases need it to go.
+     */
+    const deployable = async (w: Awaited<ReturnType<typeof world>>) => {
+      const rows = alepha.inject(TestRows);
+      const estate = await rows.estates.create({
+        ownerUserId: w.user.id,
+        slug: `cf-${crypto.randomUUID().slice(0, 6)}`,
+        type: "cloudflare",
+        deployAllowed: true,
+        accountId: "acct-1",
+        credential: alepha
+          .inject(CredentialSealService)
+          .seal("cf-token", CredentialSealService.ESTATE_PURPOSE),
+        credentialKeyVersion: CredentialSealService.KEY_VERSION,
+      } as never);
+      await rows.grants.create({
+        estateId: estate.id,
+        projectId: w.project.id,
+      } as never);
+      await rows.instances.updateById(w.instance.id, { estateId: estate.id });
+      await rows.artifacts.create({
+        projectId: w.project.id,
+        app: "my-app",
+        tag: "latest",
+        runtime: "workerd",
+        sha256: "a".repeat(64),
+        size: 10,
+        fileId: crypto.randomUUID(),
+      } as never);
+    };
+
+    const deploy = async (w: Awaited<ReturnType<typeof world>>) => {
+      const deploys = alepha.inject(DeployService);
+      const queued = await deploys.queue({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        tag: "latest",
+      });
+      await deploys.run(queued).catch(() => undefined);
+    };
+
+    const opened = async (w: Awaited<ReturnType<typeof world>>) =>
+      await alepha.inject(AppSecretService).open(w.instance.id);
+
+    it("names it after its Worker, on its first deploy", async ({ expect }) => {
+      const w = await world();
+      await deployable(w);
+
+      await deploy(w);
+
+      expect((await opened(w)).APP_NAME).toBe(
+        `${w.project.slug}-my-app-b14-preview`,
+      );
+    });
+
+    it("leaves an operator's own value alone", async ({ expect }) => {
+      const w = await world();
+      await deployable(w);
+      await set(w, "APP_NAME", "CLUB");
+
+      await deploy(w);
+
+      expect((await opened(w)).APP_NAME).toBe("CLUB");
+    });
+
+    it("is written once, however many first attempts it takes", async ({
+      expect,
+    }) => {
+      const w = await world();
+      await deployable(w);
+
+      await deploy(w);
+      await deploy(w);
+
+      const rows = await alepha.inject(TestRows).secrets.findMany({
+        where: { instanceId: { eq: w.instance.id }, key: { eq: "APP_NAME" } },
+      });
+      expect(rows.length).toBe(1);
+    });
+
+    /**
+     * ⚠️ The guard the whole default turns on. `APP_NAME` is the fallback key
+     * prefix of the copy's bucket, so naming a copy that already stored files
+     * at the root would make every one of them 404, and nothing would say so.
+     * `APP_SECRET` is asserted beside it to prove the step ran: without it,
+     * a run refused before the secret set was opened would pass this too.
+     */
+    it("gives none to a copy that was deployed before", async ({ expect }) => {
+      const w = await world();
+      await deployable(w);
+      await alepha.inject(TestRows).deployments.create({
+        projectId: w.project.id,
+        instanceId: w.instance.id,
+        app: "my-app",
+        tag: "latest",
+        sha256: "b".repeat(64),
+        status: "succeeded",
+      } as never);
+
+      await deploy(w);
+
+      const set = await opened(w);
+      expect(set.APP_SECRET).toBeDefined();
+      expect(set.APP_NAME).toBeUndefined();
+    });
+
+    it("gives none to a copy whose Worker is on record", async ({
+      expect,
+    }) => {
+      const w = await world();
+      await deployable(w);
+      await alepha.inject(TestRows).instances.updateById(w.instance.id, {
+        resources: JSON.stringify({
+          worker: `${w.project.slug}-my-app-b14-preview`,
+        }),
+      });
+
+      await deploy(w);
+
+      const set = await opened(w);
+      expect(set.APP_SECRET).toBeDefined();
+      expect(set.APP_NAME).toBeUndefined();
+    });
+  });
+
   describe("the sigil a copy is given at creation", () => {
     /**
      * ⚠️ The whole reason this is one operation. `sigils` keeps a `tokenHash`

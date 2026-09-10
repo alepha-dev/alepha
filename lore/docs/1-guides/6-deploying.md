@@ -99,7 +99,7 @@ Two families of name are refused, and the refusal says so:
   fresh deploy at somebody else's database.
 - Framework knobs the platform sets itself, like `LOG_LEVEL`.
 
-### Two you do not have to set
+### Three you do not have to set
 
 A deploy fills these in when the copy has no value of its own, and an explicit
 value always wins:
@@ -115,6 +115,15 @@ value always wins:
 - **`PUBLIC_URL`** is derived from the copy's address, so absolute links in
   emails, OAuth callbacks and the sitemap resolve. Set it yourself for a copy
   answering on some other host, such as one behind a proxy.
+- **`APP_NAME`** is set to the copy's Worker name, `<project>-<app>-<env>`, on
+  its **first** deploy, and stored like `APP_SECRET`. It names the copy in its
+  own logs, and the framework also uses it to prefix the session cookie and,
+  when `S3_KEY_PREFIX` is unset, the keys of the copy's bucket. A name the app
+  declares in code wins too. ⚠️ A copy that was already deployed is never given
+  one, because a prefix appearing under its bucket would hide every file
+  already in it. Setting it by hand on such a copy moves where the app looks for
+  its files and signs every user out once. Deleting it is how a copy opts out:
+  it is not given back.
 
 ## 5. Push a build
 

@@ -950,7 +950,11 @@ describe("a deployment", () => {
             runtime: "workerd",
           }),
         },
-        secrets: { ensureGenerated: async () => {}, open: async () => ({}) },
+        secrets: {
+          ensureGenerated: async () => {},
+          ensureDefault: async () => {},
+          open: async () => ({}),
+        },
         runner: {
           run: async () => ({
             urls: ["https://example.test"],
@@ -1238,7 +1242,11 @@ describe("the deploy limits", () => {
       seal: { open: () => "token" },
       // Stubbed like every other collaborator here: this test is about the
       // cap, and the copy it invents has an id no query would accept.
-      secrets: { ensureGenerated: async () => {}, open: async () => ({}) },
+      secrets: {
+        ensureGenerated: async () => {},
+        ensureDefault: async () => {},
+        open: async () => ({}),
+      },
       runner: {
         run: async () => {
           await held;

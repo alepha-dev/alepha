@@ -102,7 +102,26 @@ export class AppSecretService {
    * derived names derived.
    */
   public async ensureGenerated(instanceId: string): Promise<void> {
-    const key = AppSecretService.GENERATED_KEY;
+    await this.ensureDefault(
+      instanceId,
+      AppSecretService.GENERATED_KEY,
+      this.crypto.randomText(AppSecretService.GENERATED_LENGTH),
+    );
+  }
+
+  /**
+   * Store `value` under `key` for a copy that has none, and leave one that has
+   * alone.
+   *
+   * A default, never an override: an operator's own value always wins, and
+   * the row is written once and read on every deploy after, so a value that is
+   * durable state never moves under the copy using it.
+   */
+  public async ensureDefault(
+    instanceId: string,
+    key: string,
+    value: string,
+  ): Promise<void> {
     if (await this.find(instanceId, key)) {
       return;
     }
@@ -113,7 +132,7 @@ export class AppSecretService {
         key,
         // No `updatedBy`: nobody set it, and naming a person as the author of
         // a value they never chose is worse than an empty column.
-        value: this.crypto.randomText(AppSecretService.GENERATED_LENGTH),
+        value,
       });
     } catch (error) {
       // ⚠️ Two overlapping deploys of one copy both find nothing and both
