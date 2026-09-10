@@ -19,7 +19,7 @@ export const WelcomeView = (props: WelcomeViewProps) => {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-12 px-10 py-16">
       <header className="flex items-center gap-5">
-        <img src="/loom.svg" alt="" width={56} height={56} />
+        <img src="/logo.svg" alt="" width={64} height={52} />
         <div>
           <h1 className="text-[32px] leading-tight font-light tracking-tight">
             Loom

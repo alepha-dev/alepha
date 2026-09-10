@@ -19,11 +19,11 @@ export const ActivityBar = () => {
       className="bg-frame border-sidebar-border flex w-12 shrink-0 flex-col items-center border-r"
     >
       <img
-        src="/loom.svg"
+        src="/logo.svg"
         alt="Loom"
-        width={22}
-        height={22}
-        className="my-3 opacity-90"
+        width={26}
+        height={21}
+        className="my-3.5"
       />
       <Tooltip>
         <TooltipTrigger

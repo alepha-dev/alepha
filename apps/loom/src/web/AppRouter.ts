@@ -25,7 +25,7 @@ export class AppRouter {
    */
   head = $head({
     htmlAttributes: { class: "dark" },
-    link: [{ rel: "icon", href: "/loom.svg", type: "image/svg+xml" }],
+    link: [{ rel: "icon", href: "/logo.svg", type: "image/svg+xml" }],
   });
 
   home = $page({

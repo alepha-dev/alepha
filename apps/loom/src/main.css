@@ -4,7 +4,9 @@
  * Loom is dark only, the way an IDE is: the html element always carries
  * `dark` (see `AppRouter`), and this block is the whole palette.
  *
- * Two colours come from the logo and mean one thing each everywhere:
+ * Two accent colours, named after a loom's threads, mean one thing each
+ * everywhere (the Alepha leaf in the activity bar is the mark, not the
+ * palette):
  * - warp, the violet: Loom itself. The status bar, selection, focus, and a
  *   branch's own commits in the weave.
  * - weft, the orange: something is running right now. A live Claude session,
