@@ -79,7 +79,13 @@ describe("the Cloudflare deploy client", () => {
           }) as never,
         },
       },
-      queues: { consumers: { create: record("consumers.create") as never } },
+      queues: {
+        consumers: {
+          create: record("consumers.create") as never,
+          list: record("consumers.list", { result: [] }) as never,
+          update: record("consumers.update") as never,
+        },
+      },
     };
 
     const client = new CloudflareDeployClient({
@@ -710,6 +716,319 @@ describe("the Cloudflare deploy client", () => {
       expect(of("consumers.create")[0].args[1]).toMatchObject({
         type: "worker",
         script_name: "my-app-staging",
+      });
+    });
+
+    /**
+     * ⚠️ **Every deploy step has to survive running twice**, because a deploy
+     * is a `$job` and a retried or rescheduled execution replays it
+     * (`DeployJobs`). The consumer was the one step that is a bare CREATE:
+     * the script, the crons and the domain are PUTs and the assets dedup by
+     * hash. So the replay of any deploy that binds a consumer would find the
+     * one the first run bound, be refused for it, and report a failure for a
+     * Worker that was already live.
+     */
+    describe("a redeploy", () => {
+      /**
+       * Cloudflare's consumers resource, with state. A second create for the
+       * same Worker is refused, which is the failure a replayed deploy hit.
+       *
+       * The store is canonical and the list PRESENTS the script under a
+       * configurable field, because the sources disagree on its name: the
+       * API reference and the SDK say `script_name`, wrangler reads `script`,
+       * and this repo's own `CloudflareApi` reads `service`.
+       */
+      const queueApi = (
+        seeded: Array<{
+          id: string;
+          script: string;
+          settings?: Record<string, unknown>;
+          deadLetterQueue?: string;
+        }> = [],
+        scriptField: "script_name" | "script" | "service" = "script_name",
+      ) => {
+        const rows = seeded.map((it) => ({ queueId: "q1", ...it }));
+        let created = 0;
+        const api = {
+          queues: {
+            consumers: {
+              list: async (queueId: string) => ({
+                result: rows
+                  .filter((it) => it.queueId === queueId)
+                  .map((it) => ({
+                    consumer_id: it.id,
+                    type: "worker",
+                    [scriptField]: it.script,
+                    settings: it.settings,
+                    dead_letter_queue: it.deadLetterQueue ?? "",
+                  })),
+              }),
+              create: async (
+                queueId: string,
+                params: {
+                  script_name: string;
+                  settings?: Record<string, unknown>;
+                  dead_letter_queue?: string;
+                },
+              ) => {
+                if (
+                  rows.some(
+                    (it) =>
+                      it.queueId === queueId &&
+                      it.script === params.script_name,
+                  )
+                ) {
+                  throw new Error(
+                    `queue ${queueId} already has a consumer for ${params.script_name}`,
+                  );
+                }
+                rows.push({
+                  queueId,
+                  id: `c${++created}`,
+                  script: params.script_name,
+                  settings: params.settings,
+                  deadLetterQueue: params.dead_letter_queue,
+                });
+                return {};
+              },
+              update: async (
+                consumerId: string,
+                params: {
+                  queue_id: string;
+                  script_name: string;
+                  settings?: Record<string, unknown>;
+                  dead_letter_queue?: string;
+                },
+              ) => {
+                const row = rows.find(
+                  (it) =>
+                    it.id === consumerId && it.queueId === params.queue_id,
+                );
+                if (!row) {
+                  throw new Error(`no consumer ${consumerId}`);
+                }
+                Object.assign(row, {
+                  script: params.script_name,
+                  settings: params.settings,
+                  deadLetterQueue: params.dead_letter_queue,
+                });
+                return {};
+              },
+            },
+          },
+        };
+        const client = new CloudflareDeployClient({
+          apiToken: "estate-token",
+          accountId: "estate-account",
+          client: api as unknown as CloudflareDeployApi,
+        });
+        return { client, rows };
+      };
+
+      it("does not fail on the consumer a previous deploy bound", async ({
+        expect,
+      }) => {
+        const { client, rows } = queueApi();
+        const consumers = plan({
+          queueConsumers: [
+            {
+              queueId: "q1",
+              settings: { batch_size: 1, max_retries: 3 },
+              deadLetterQueue: "jobs-dlq",
+            },
+          ],
+        }) as never;
+
+        await client.putQueueConsumers(consumers);
+        await client.putQueueConsumers(consumers);
+
+        expect(rows.map((it) => it.script)).toEqual(["my-app-staging"]);
+      });
+
+      /**
+       * Update rather than skip, because a skip would freeze a consumer at
+       * whatever the FIRST deploy declared. `max_batch_size: 1` is the case
+       * in point: added after Lore's job queue was already bound, it reaches
+       * the live consumer only if a redeploy writes it.
+       */
+      it("gives the consumer it finds this deploy's settings", async ({
+        expect,
+      }) => {
+        const { client, rows } = queueApi([
+          {
+            id: "c-old",
+            script: "my-app-staging",
+            settings: { batch_size: 10, max_wait_time_ms: 5000 },
+          },
+        ]);
+
+        await client.putQueueConsumers(
+          plan({
+            queueConsumers: [
+              {
+                queueId: "q1",
+                settings: { batch_size: 1, max_retries: 3 },
+                deadLetterQueue: "jobs-dlq",
+              },
+            ],
+          }) as never,
+        );
+
+        expect(rows).toEqual([
+          {
+            queueId: "q1",
+            id: "c-old",
+            script: "my-app-staging",
+            settings: { batch_size: 1, max_retries: 3 },
+            deadLetterQueue: "jobs-dlq",
+          },
+        ]);
+      });
+
+      it.for(["script_name", "script", "service"] as const)(
+        "recognises its consumer when the API names the script `%s`",
+        async (scriptField, { expect }) => {
+          const { client, rows } = queueApi(
+            [{ id: "c-old", script: "my-app-staging" }],
+            scriptField,
+          );
+
+          await client.putQueueConsumers(
+            plan({
+              queueConsumers: [{ queueId: "q1", settings: { batch_size: 1 } }],
+            }) as never,
+          );
+
+          expect(rows.map((it) => it.id)).toEqual(["c-old"]);
+          expect(rows[0]?.settings).toEqual({ batch_size: 1 });
+        },
+      );
+
+      /**
+       * Matched by script, never "the queue's consumer". An update names the
+       * script it binds, so re-pointing another Worker's consumer at this one
+       * would silently take that Worker's messages away from it.
+       */
+      it("never takes over a consumer another Worker holds", async ({
+        expect,
+      }) => {
+        const { client, rows } = queueApi([
+          {
+            id: "c-other",
+            script: "other-worker",
+            settings: { batch_size: 5 },
+          },
+        ]);
+
+        await client.putQueueConsumers(
+          plan({
+            queueConsumers: [{ queueId: "q1", settings: { batch_size: 1 } }],
+          }) as never,
+        );
+
+        expect(rows.find((it) => it.id === "c-other")).toMatchObject({
+          script: "other-worker",
+          settings: { batch_size: 5 },
+        });
+        expect(rows.map((it) => it.script).sort()).toEqual([
+          "my-app-staging",
+          "other-worker",
+        ]);
+      });
+
+      /**
+       * ⚠️ Every fake above is shaped by `CloudflareDeployApi`, which is
+       * written by hand, so none of them can disagree with it. This one
+       * drives the REAL SDK over a captured `fetch`: the list has to answer a
+       * page whose `result` is the array, and the update has to carry the
+       * queue in its path rather than its body. `versions.list` is the
+       * precedent for a hand-typed shape that compiled, passed its fake, and
+       * was wrong.
+       */
+      it("binds through the SDK's own consumer endpoints", async ({
+        expect,
+      }) => {
+        const sent: Array<{ call: string; body?: unknown }> = [];
+        const original = globalThis.fetch;
+        globalThis.fetch = (async (
+          input: RequestInfo | URL,
+          init: RequestInit = {},
+        ) => {
+          const method = init.method ?? "GET";
+          const href =
+            typeof input === "string"
+              ? input
+              : input instanceof URL
+                ? input.href
+                : input.url;
+          const url = href.replace("https://cf.test/client/v4", "");
+          sent.push({
+            call: `${method} ${url}`,
+            body:
+              typeof init.body === "string" ? JSON.parse(init.body) : undefined,
+          });
+          // `q-bound` already holds this Worker's consumer; `q-new` holds none.
+          const result =
+            method !== "GET"
+              ? {}
+              : url.includes("/q-bound/")
+                ? [
+                    {
+                      consumer_id: "c1",
+                      type: "worker",
+                      script_name: "my-app-staging",
+                    },
+                  ]
+                : [];
+          return new Response(
+            JSON.stringify({ success: true, errors: [], messages: [], result }),
+            { headers: { "content-type": "application/json" } },
+          );
+        }) as typeof globalThis.fetch;
+
+        try {
+          const client = new CloudflareDeployClient({
+            apiToken: "estate-token",
+            accountId: "estate-account",
+            baseURL: "https://cf.test/client/v4",
+          });
+          await client.putQueueConsumers(
+            plan({
+              queueConsumers: [
+                {
+                  queueId: "q-bound",
+                  settings: { batch_size: 1 },
+                  deadLetterQueue: "jobs-dlq",
+                },
+                { queueId: "q-new", settings: { max_retries: 3 } },
+              ],
+            }) as never,
+          );
+        } finally {
+          globalThis.fetch = original;
+        }
+
+        expect(sent).toEqual([
+          { call: "GET /accounts/estate-account/queues/q-bound/consumers" },
+          {
+            call: "PUT /accounts/estate-account/queues/q-bound/consumers/c1",
+            body: {
+              type: "worker",
+              script_name: "my-app-staging",
+              dead_letter_queue: "jobs-dlq",
+              settings: { batch_size: 1 },
+            },
+          },
+          { call: "GET /accounts/estate-account/queues/q-new/consumers" },
+          {
+            call: "POST /accounts/estate-account/queues/q-new/consumers",
+            body: {
+              type: "worker",
+              script_name: "my-app-staging",
+              settings: { max_retries: 3 },
+            },
+          },
+        ]);
       });
     });
   });
