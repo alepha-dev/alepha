@@ -6,13 +6,11 @@ import { AlephaCliUtils } from "../services/AlephaCliUtils.ts";
 import { BuildTask, type BuildTaskContext } from "./BuildTask.ts";
 
 /**
- * Resolved compile options after merging config + flag defaults.
+ * What the compile Dockerfile needs: the binary's name and the base image.
  */
 interface ResolvedCompile {
   name: string;
-  target: string;
   base: string;
-  minify: boolean;
 }
 
 /**
@@ -22,15 +20,15 @@ interface ResolvedCompile {
  *
  * 1. Standard (default) - copies the bundled JS + `package.json` and runs
  *    `bun install` (or `npm install`) inside the container.
- * 2. Compile - runs `bun build --compile` to produce a single static binary
- *    and packages it inside a minimal distroless image. No `node_modules`
- *    are ever installed; all dependencies must be bundled by Vite. Requires
- *    `runtime: "bun"`.
+ * 2. Compile - packages the single binary `BuildCompileTask` produces inside
+ *    a minimal distroless image. No `node_modules` are ever installed. This
+ *    task only writes that Dockerfile: the binary does not exist yet when it
+ *    runs, so in this mode `--image` is built by `BuildCompileTask`, after.
  *
  * Creates:
  * - Dockerfile (compile or standard variant)
  * - Copies migrations directory if it exists
- * - Builds Docker image when `--image` flag is provided
+ * - Builds Docker image when `--image` flag is provided (standard mode)
  */
 export class BuildDockerTask extends BuildTask {
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -51,27 +49,6 @@ export class BuildDockerTask extends BuildTask {
       (runtime === "bun" ? "oven/bun:alpine" : "node:24-alpine");
     const dockerCommand =
       ctx.options.docker?.command ?? (runtime === "bun" ? "bun" : "node");
-
-    if (compile) {
-      await ctx.run({
-        name: "assert no externals (compile mode)",
-        handler: async () => {
-          await this.assertNoExternals(ctx.root, distDir);
-        },
-      });
-
-      await ctx.run(this.buildCompileCommand(compile), {
-        alias: `bun build --compile (${compile.target})`,
-        root: this.fs.join(ctx.root, distDir),
-      });
-
-      await ctx.run({
-        name: "cleanup pre-compile artifacts",
-        handler: async () => {
-          await this.cleanupPreCompileArtifacts(ctx.root, distDir);
-        },
-      });
-    }
 
     await ctx.run({
       name: "generate deploy config (docker)",
@@ -95,15 +72,17 @@ export class BuildDockerTask extends BuildTask {
       },
     });
 
-    if (ctx.flags?.image) {
+    // In compile mode the image needs the binary, which BuildCompileTask
+    // produces later in the pipeline and then builds the image itself.
+    if (ctx.flags?.image && !compile) {
       await this.buildDockerImage(ctx, distDir);
     }
   }
 
   /**
-   * `build.compile` with the Docker defaults filled in: a linux-musl target
-   * and a distroless base image unless `docker.from` names another.
-   * Returns null when compile mode is disabled.
+   * The binary's name from `build.compile`, and the base image: distroless
+   * unless `docker.from` names another. Returns null when compile mode is
+   * disabled.
    *
    * The flag and the config were already merged and validated by the build
    * command (runtime, target, binary name); this only reads the result.
@@ -123,9 +102,7 @@ export class BuildDockerTask extends BuildTask {
 
     return {
       name: config.name ?? "app",
-      target: config.target ?? this.defaultBunTarget(),
       base: ctx.options.docker?.from ?? "gcr.io/distroless/static-debian12",
-      minify: config.minify ?? true,
     };
   }
 
@@ -215,90 +192,6 @@ export class BuildDockerTask extends BuildTask {
     }
     const paths = volumes.map((it) => JSON.stringify(it)).join(" ");
     return `RUN mkdir -p ${paths} && chown ${this.chownSpec(user as string)} ${paths}\n`;
-  }
-
-  /**
-   * Resolve the default Bun target triple for the current host arch.
-   * Always targets linux-musl (the container OS), regardless of build host.
-   */
-  protected defaultBunTarget(): string {
-    switch (process.arch) {
-      case "x64":
-        return "bun-linux-x64-musl";
-      case "arm64":
-        return "bun-linux-arm64-musl";
-      default:
-        throw new AlephaError(
-          `No bun linux-musl target available for host arch '${process.arch}'. ` +
-            "Set `build.compile.target` explicitly.",
-        );
-    }
-  }
-
-  /**
-   * Build the `bun build --compile` invocation. Runs from `<root>/<dist>` so
-   * the entry path stays relative and the output lands next to the migrations.
-   */
-  protected buildCompileCommand(compile: ResolvedCompile): string {
-    const parts = [
-      "bun build",
-      "--compile",
-      `--target=${compile.target}`,
-      compile.minify ? "--minify" : "",
-      `--outfile=${compile.name}`,
-      "index.js",
-    ].filter(Boolean);
-    return parts.join(" ");
-  }
-
-  /**
-   * Compile mode requires fully-bundled output. If Vite left anything in
-   * `dist/package.json`'s `dependencies`, fail loudly so the user can
-   * either bundle the dep or disable compile.
-   */
-  protected async assertNoExternals(
-    root: string,
-    distDir: string,
-  ): Promise<void> {
-    const pkgPath = this.fs.join(root, distDir, "package.json");
-    if (!(await this.fs.exists(pkgPath))) {
-      return;
-    }
-    let pkg: { dependencies?: Record<string, string> };
-    try {
-      pkg = JSON.parse((await this.fs.readFile(pkgPath)).toString());
-    } catch {
-      return;
-    }
-    const deps = pkg.dependencies ?? {};
-    const names = Object.keys(deps);
-    if (names.length > 0) {
-      throw new AlephaError(
-        `Cannot use compile mode: the following dependencies were not bundled by Vite: ${names.join(", ")}. ` +
-          "All dependencies must be bundleable to produce a single-binary build.",
-      );
-    }
-  }
-
-  /**
-   * Remove artifacts that are no longer needed once the binary exists.
-   * The binary embeds the JS bundle and runtime; the standalone files
-   * would just bloat the image.
-   */
-  protected async cleanupPreCompileArtifacts(
-    root: string,
-    distDir: string,
-  ): Promise<void> {
-    const targets = [
-      this.fs.join(root, distDir, "server"),
-      this.fs.join(root, distDir, "index.js"),
-      this.fs.join(root, distDir, "package.json"),
-    ];
-    for (const target of targets) {
-      if (await this.fs.exists(target)) {
-        await this.fs.rm(target, { recursive: true });
-      }
-    }
   }
 
   protected async copyMigrations(
@@ -538,7 +431,11 @@ ${userLine}CMD ["${command}", "index.js"]
     return `'${value.replaceAll("'", `'\\''`)}'`;
   }
 
-  protected async buildDockerImage(
+  /**
+   * `docker build` the image `--image` asks for. Public because in compile
+   * mode `BuildCompileTask` calls it once the binary exists.
+   */
+  public async buildDockerImage(
     ctx: BuildTaskContext,
     distDir: string,
   ): Promise<void> {

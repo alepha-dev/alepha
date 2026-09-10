@@ -18,6 +18,7 @@ import { ProjectScaffolder } from "../services/ProjectScaffolder.ts";
 import { BuildAssetsTask } from "../tasks/BuildAssetsTask.ts";
 import { BuildClientTask } from "../tasks/BuildClientTask.ts";
 import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
+import { BuildCompileTask } from "../tasks/BuildCompileTask.ts";
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
 import { BuildDockerTask } from "../tasks/BuildDockerTask.ts";
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
@@ -42,7 +43,8 @@ export class BuildCommand {
   /**
    * Build pipeline: tasks run sequentially in this order.
    * Each task self-guards (checks target, hasClient, etc.).
-   * Order matters — compress must be last.
+   * Order matters: compress runs after everything that writes public files,
+   * and compile runs last because it embeds what compress produced.
    */
   protected readonly pipeline = [
     $inject(BuildClientTask),
@@ -57,6 +59,7 @@ export class BuildCommand {
     $inject(BuildDockerTask),
     $inject(BuildStaticTask),
     $inject(BuildCompressTask),
+    $inject(BuildCompileTask),
   ];
 
   /**
