@@ -53,7 +53,7 @@ describe("the Lore CLI command surface", () => {
    * is: see {@link AppsCommand.deployCommand} for why `build` and `destroy`
    * stay where they are.
    */
-  it("puts the eight Lore verbs at the top level", () => {
+  it("puts the nine Lore verbs at the top level", () => {
     const names = setup()
       .testGetTopLevelCommands()
       .map((command) => command.name)
@@ -68,6 +68,7 @@ describe("the Lore CLI command surface", () => {
       "logout",
       "quality",
       "releases",
+      "secrets",
     ]);
   });
 
@@ -114,6 +115,7 @@ describe("the Lore CLI command surface", () => {
       attachments: ["push"],
       quality: ["push"],
       releases: ["publish"],
+      secrets: ["set", "list", "unset"],
     });
   });
 
