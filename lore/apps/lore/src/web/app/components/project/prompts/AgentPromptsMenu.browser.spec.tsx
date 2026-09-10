@@ -44,7 +44,7 @@ describe("AgentPromptsMenu", () => {
   });
 
   const mount = async (
-    items: Array<{ kind: "epicReview" | "epicActivate" }>,
+    items: Array<{ kind: "epicReview" | "epicActivate" | "questWork" }>,
     project: unknown = projectFixture(),
   ) => {
     alepha = Alepha.create().with(AlephaReactRouter).with(AlephaReactI18n);
@@ -87,8 +87,38 @@ describe("AgentPromptsMenu", () => {
       if (found.length === 0) throw new Error("not open yet");
       return found;
     });
-    expect(items.map((it) => it.textContent).join(" ")).toContain("Review");
-    expect(items.map((it) => it.textContent).join(" ")).toContain("Activate");
+    expect(items.map((it) => it.textContent)).toEqual([
+      "Review Epic",
+      "Work on it",
+    ]);
+  });
+
+  it("names the epic's hand-over the way a quest and a feedback item name theirs", async () => {
+    /*
+     * Feedback #P2182: the epic entries read "Review" and "Activate" while
+     * the same act on a quest and on a feedback item reads "Work on it".
+     * One verb, so one label and one glyph on all three surfaces. Only the
+     * label and the glyph move: `epicActivate` is persisted in
+     * `project_prompts.kind`, so the kind keeps its name.
+     */
+    await mount([{ kind: "epicActivate" }, { kind: "questWork" }]);
+
+    fireEvent.click(screen.getByRole("button", { name: /agent prompts/i }));
+    const items = await waitFor(() => {
+      const found = [...document.querySelectorAll('[role="menuitem"]')];
+      if (found.length === 0) throw new Error("not open yet");
+      return found;
+    });
+
+    const [epic, quest] = items;
+    expect(epic!.textContent).toBe(quest!.textContent);
+    expect(epic!.textContent).toBe("Work on it");
+    expect(epic!.querySelector("svg")?.getAttribute("class")).toBe(
+      quest!.querySelector("svg")?.getAttribute("class"),
+    );
+    expect(epic!.querySelector("svg")?.getAttribute("class")).toContain(
+      "lucide-wrench",
+    );
   });
 
   it("names each entry by its label alone", async () => {
@@ -128,7 +158,7 @@ describe("AgentPromptsMenu", () => {
       return found;
     });
     // The label and nothing under it.
-    expect(item.textContent).toBe("Review");
+    expect(item.textContent).toBe("Review Epic");
     expect(item.textContent).not.toContain("challenge the plan");
     // The default one-line row: nothing top-aligns the glyph for a second
     // line that is not there.
@@ -166,11 +196,13 @@ describe("AgentPromptsMenu", () => {
       if (found.length === 0) throw new Error("not open yet");
       return found;
     });
-    fireEvent.click(items.find((it) => it.textContent?.includes("Activate"))!);
+    fireEvent.click(
+      items.find((it) => it.textContent?.includes("Work on it"))!,
+    );
 
     await waitFor(() => expect(written).toHaveLength(1));
-    // Activate's own text, not Review's. Two entries reading the same kind
-    // is the failure a single-entry spec would miss.
+    // `epicActivate`'s own text, not the review's. Two entries reading the
+    // same kind is the failure a single-entry spec would miss.
     expect(written[0]).toContain("to completion, quest by quest");
     expect(written[0]).not.toContain("Review the plan of epic");
     expect(written[0]).toContain("#E41");

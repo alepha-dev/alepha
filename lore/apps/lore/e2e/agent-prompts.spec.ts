@@ -170,7 +170,7 @@ test.describe("agent prompts", () => {
 
       await page.getByRole("button", { name: "Open row actions" }).click();
       await page.getByRole("menuitem", { name: /agent prompts/i }).click();
-      await page.getByRole("menuitem", { name: /^review$/i }).click();
+      await page.getByRole("menuitem", { name: /^review epic$/i }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
       // The STORED template, rendered. Without the Settings section's
@@ -205,19 +205,19 @@ test.describe("agent prompts", () => {
         .click();
       await page.getByRole("button", { name: "Open row actions" }).click();
       await page.getByRole("menuitem", { name: /agent prompts/i }).click();
-      await page.getByRole("menuitem", { name: /^review$/i }).click();
+      await page.getByRole("menuitem", { name: /^review epic$/i }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
       expect(copied).toBe(`Edited review of #E${epic.number}.`);
     });
 
-    await test.step("Activate is offered beside Review while the epic is planned", async () => {
+    await test.step("Work on it is offered beside Review Epic while the epic is planned", async () => {
       await page.getByRole("button", { name: "Open row actions" }).click();
       await page.getByRole("menuitem", { name: /agent prompts/i }).click();
-      await page.getByRole("menuitem", { name: /^activate$/i }).click();
+      await page.getByRole("menuitem", { name: /^work on it$/i }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
-      // Activate's own default, not Review's.
+      // epicActivate's own default, not the review's.
       expect(copied).toContain("to completion, quest by quest");
       expect(copied).toContain(`#E${epic.number}`);
     });
@@ -243,7 +243,7 @@ test.describe("agent prompts", () => {
       await page.goto(`/${projectSlug}/epics`);
       await page.getByRole("button", { name: "Open row actions" }).click();
       await page.getByRole("menuitem", { name: /agent prompts/i }).click();
-      await page.getByRole("menuitem", { name: /^review$/i }).click();
+      await page.getByRole("menuitem", { name: /^review epic$/i }).click();
 
       const copied = await page.evaluate(() => navigator.clipboard.readText());
       expect(copied).toContain("Review the plan of epic");
