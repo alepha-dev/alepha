@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import { Alepha, z } from "alepha";
+import { $hook, Alepha, z } from "alepha";
 
 import { $action, $route, AlephaServer, ServerProvider } from "../index.ts";
 
@@ -145,5 +145,97 @@ describe("BunHttpServerProvider", () => {
 
     expect(response.status).toBe(200);
     expect(data).toEqual({ id: "42" });
+  });
+
+  /**
+   * The Bun half of `ServerProvider-binaryBody.spec.ts`: Bun writes through
+   * `handleWebRequest`, not `handleNodeRequest`, so the Node round-trips say
+   * nothing about it. A non-Buffer binary body used to go out as `{}` (an
+   * `ArrayBuffer`) or as a JSON object of indices (a `Uint8Array`).
+   */
+  describe("binary bodies", () => {
+    class BinaryApp {
+      arrayBuffer = $route({
+        path: "/array-buffer",
+        handler: ({ reply }) => {
+          reply.body = new TextEncoder().encode("hello").buffer;
+        },
+      });
+
+      uint8Array = $route({
+        path: "/uint8-array",
+        handler: ({ reply }) => {
+          reply.body = new TextEncoder().encode("hello");
+        },
+      });
+
+      subarray = $route({
+        path: "/subarray",
+        handler: ({ reply }) => {
+          reply.body = new TextEncoder().encode("[hello]").subarray(1, 6);
+        },
+      });
+
+      dataView = $route({
+        path: "/data-view",
+        handler: ({ reply }) => {
+          reply.body = new DataView(
+            new TextEncoder().encode("[hello]").buffer,
+            1,
+            5,
+          );
+        },
+      });
+
+      hookSubarray = $route({
+        path: "/hook-subarray",
+        handler: () => "replaced by the hook",
+      });
+
+      /**
+       * Sets the body after `serializeResponse` ran, so it reaches the
+       * provider as it is. See the Node spec for why the type changes too.
+       */
+      onSend = $hook({
+        on: "server:onSend",
+        handler: ({ request }) => {
+          if (request.url.pathname === "/hook-subarray") {
+            request.reply.headers["content-type"] = "application/octet-stream";
+            request.reply.body = new TextEncoder()
+              .encode("[hello]")
+              .subarray(1, 6);
+          }
+        },
+      });
+    }
+
+    for (const path of ["/array-buffer", "/uint8-array"]) {
+      it(`should send the bytes of ${path}, as application/octet-stream`, async () => {
+        alepha = Alepha.create({ env: { NODE_ENV: "test" } });
+        await alepha.with(BinaryApp).start();
+
+        const server = alepha.inject(ServerProvider);
+        const response = await fetch(`${server.hostname}${path}`);
+
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe("hello");
+        expect(response.headers.get("content-type")).toBe(
+          "application/octet-stream",
+        );
+      });
+    }
+
+    for (const path of ["/subarray", "/data-view", "/hook-subarray"]) {
+      it(`should send only the viewed bytes of ${path}`, async () => {
+        alepha = Alepha.create({ env: { NODE_ENV: "test" } });
+        await alepha.with(BinaryApp).start();
+
+        const server = alepha.inject(ServerProvider);
+        const response = await fetch(`${server.hostname}${path}`);
+
+        expect(response.status).toBe(200);
+        expect(await response.text()).toBe("hello");
+      });
+    }
   });
 });
