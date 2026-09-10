@@ -199,6 +199,12 @@ should be the one that is used.
 you approve it in a browser, and the token is cached under
 `~/.alepha/credentials.json`.
 
+The URL is `/oauth/device` on the Lore instance, a page `alepha/api/oauth`
+serves itself. Sign in if it asks, check that the code it shows matches the
+one in your terminal, and choose Allow. Choose Deny for a code you did not
+start yourself: the token belongs to whoever approves it, so approving
+somebody else's code hands them your account.
+
 Tokens are kept **per hostname**, so a self-hosted instance named by `LORE_URL`
 gets its own entry - a token minted by one is worthless to the other, and
 sending it would hand a credential to a host that was never meant to see it.

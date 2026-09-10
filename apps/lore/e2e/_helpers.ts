@@ -312,6 +312,25 @@ export const signIn = async (
   timeout = 15_000,
 ): Promise<boolean> => {
   await page.goto("/auth/login");
+  await submitSignInForm(page, email, password);
+  try {
+    await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Fill and submit the sign-in form already on screen, and leave the waiting
+ * to the caller: where a sign-in lands is the thing a redirect-carrying spec
+ * is asserting, so it cannot be baked in here the way `signIn` bakes in "/".
+ */
+export const submitSignInForm = async (
+  page: Page,
+  email: string,
+  password: string,
+): Promise<void> => {
   await page.waitForLoadState("domcontentloaded");
 
   const identifier = page
@@ -340,12 +359,6 @@ export const signIn = async (
     .getByRole("button", { name: /sign in/i })
     .first()
     .click();
-  try {
-    await page.waitForURL(/^http:\/\/[^/]+\/$/, { timeout });
-    return true;
-  } catch {
-    return false;
-  }
 };
 
 /**
