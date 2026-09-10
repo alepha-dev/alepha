@@ -1,7 +1,7 @@
-import { $inject, AlephaError } from "alepha";
+import { $inject, Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository, type Page } from "alepha/orm";
+import { $repository, DatabaseProvider, type Page, sql } from "alepha/orm";
 
 import {
   type StockMovementEntity,
@@ -29,15 +29,31 @@ import { InsufficientStockError } from "../errors/CommerceError.ts";
  *
  * ### How the same race is closed here
  *
- * Checking before writing cannot close it: on Postgres at READ COMMITTED two
- * transactions read the same sum before either commits, and there is no
- * counter row to lock - on-hand is a SUM over an append-only ledger.
+ * Checking before writing cannot close it on its own: on Postgres at READ
+ * COMMITTED two transactions read the same sum before either commits, and
+ * there is no counter row to lock - on-hand is a SUM over an append-only
+ * ledger.
  *
- * So the write comes first and the check second. Every racer inserts its claim,
- * then reads the claims back in one deterministic order - `(createdAt, id)`,
- * which every racer computes identically - and keeps its own only if it fits.
- * Exactly as many claims survive as there is stock for, whoever ran first, and
- * it needs no row lock, so it behaves the same on SQLite and D1.
+ * So every claim ({@link reserve}, {@link recordSale}) goes through
+ * {@link claim}, which lets one claim per product decide at a time. How
+ * depends on the database:
+ *
+ * - **Postgres** takes a transaction-scoped advisory lock on the product, then
+ *   checks and writes. The lock is released at COMMIT, so the next claim's
+ *   check sees this one's row, including when the claim runs inside a caller's
+ *   transaction, the way `OrderService.create` runs it.
+ * - **SQLite, D1 and PGlite** have a single writer and no such lock (D1 and
+ *   PGlite have no interactive transaction to hold one in). There the claim is
+ *   written first and checked second: every racer reads the claims back in the
+ *   order they were written and keeps its own only if it fits.
+ *
+ * Postgres used to take the second path too, and oversold under load. It read
+ * the claims back ordered by `(createdAt, id)`, and `createdAt` is `now()`:
+ * the moment the inserting transaction STARTED, not the moment its row became
+ * visible. A racer stamped later could read the claims back before an earlier
+ * one had committed, count too little and keep its own, and the earlier one
+ * kept its own too. No key assigned before COMMIT can agree with visibility,
+ * which is why Postgres locks instead of ordering.
  */
 export class StockService {
   /**
@@ -45,7 +61,16 @@ export class StockService {
    */
   public static readonly RESERVATION_TTL_MINUTES = 30;
 
+  /**
+   * First key of the per-product advisory lock on Postgres; the second is the
+   * product id. Its own key space, so no other advisory lock in the database
+   * can collide with a product's.
+   */
+  public static readonly LOCK_NAMESPACE = "alepha:commerce:stock";
+
   protected readonly log = $logger();
+  protected readonly alepha = $inject(Alepha);
+  protected readonly db = $inject(DatabaseProvider);
   protected readonly movements = $repository(stockMovements);
   protected readonly reservations = $repository(stockReservations);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -135,45 +160,113 @@ export class StockService {
     quantity: number,
     options: { orderId: string; ttlMinutes?: number },
   ): Promise<StockReservationEntity> {
-    // A fast pre-check only: it rejects the obviously impossible without
-    // writing anything, but two racers can both pass it. The claim below is
-    // what actually decides.
-    const available = await this.available(productId);
-    if (available < quantity) {
-      throw new InsufficientStockError(productId, quantity, available);
-    }
+    return this.claim(productId, async (locked) => {
+      // Under the lock this check is the decision. Without it, it only
+      // rejects the obviously impossible before anything is written: two
+      // racers can both pass it, and the replay below decides.
+      const available = await this.available(productId);
+      if (available < quantity) {
+        throw new InsufficientStockError(productId, quantity, available);
+      }
 
-    const ttl = options.ttlMinutes ?? StockService.RESERVATION_TTL_MINUTES;
-    const hold = await this.reservations.create({
-      productId,
-      quantity,
-      orderId: options.orderId,
-      status: "held",
-      expiresAt: new Date(
-        this.dateTime.nowMillis() + ttl * 60_000,
-      ).toISOString(),
-    });
-
-    if (!(await this.holdFits(productId, hold.id))) {
-      await this.reservations.updateById(hold.id, { status: "released" });
-      throw new InsufficientStockError(
+      const ttl = options.ttlMinutes ?? StockService.RESERVATION_TTL_MINUTES;
+      const hold = await this.reservations.create({
         productId,
         quantity,
-        Math.max(0, await this.available(productId)),
-      );
-    }
+        orderId: options.orderId,
+        status: "held",
+        expiresAt: new Date(
+          this.dateTime.nowMillis() + ttl * 60_000,
+        ).toISOString(),
+      });
 
-    return hold;
+      if (!locked && !(await this.holdFits(productId, hold.id))) {
+        await this.reservations.updateById(hold.id, { status: "released" });
+        throw new InsufficientStockError(
+          productId,
+          quantity,
+          Math.max(0, await this.available(productId)),
+        );
+      }
+
+      return hold;
+    });
   }
 
   /**
-   * Whether a hold just written is one the stock can actually back.
+   * Run one claim on a product's stock so that no other claim on the same
+   * product decides at the same time, and tell it whether its own check is
+   * the decision.
    *
-   * Every live hold is read back in one order every racer computes the same
-   * way, and the quantities are summed up to and including this one. The hold
-   * survives if that running total still fits within on-hand - so N racers for
-   * M units leave exactly as many holds standing as M allows, and the ones
-   * that lose are the ones that arrived last.
+   * On Postgres the claim runs in a transaction - the caller's, when there is
+   * one - holding `pg_advisory_xact_lock` on the product. Its check then sees
+   * every claim that committed before it, and no other claim on the product
+   * can check until this one commits: `locked` is true and the check decides.
+   * The lock outlives the claim until the transaction's COMMIT, never less,
+   * which is exactly what makes the next claim's read include this one's row.
+   *
+   * Two conditions come with the lock:
+   *
+   * - READ COMMITTED (the default) or SERIALIZABLE. REPEATABLE READ keeps the
+   *   snapshot taken before the wait, so the check misses every claim that
+   *   committed meanwhile and oversells; it is refused rather than trusted.
+   *   SERIALIZABLE is safe but turns every contended claim into a
+   *   serialization failure for the caller to retry.
+   * - Locks taken in one order when a transaction claims several products,
+   *   or two of them can each hold the lock the other waits for. That is why
+   *   `OrderService` walks an order's lines by product id.
+   *
+   * Everywhere else `locked` is false and the claim must replay: see
+   * {@link holdFits} and {@link movementFits}.
+   */
+  protected async claim<R>(
+    productId: string,
+    decide: (locked: boolean) => Promise<R>,
+  ): Promise<R> {
+    if (this.db.dialect !== "postgresql" || !this.db.supportsTransactions) {
+      return decide(false);
+    }
+
+    return this.db.transactional(async () => {
+      const tx = this.alepha.get("alepha.orm.tx");
+      if (!tx) {
+        throw new AlephaError(
+          `No transaction to hold the stock lock on product ${productId} in.`,
+        );
+      }
+
+      const [row] = await tx.execute(sql`
+        SELECT
+          pg_advisory_xact_lock(
+            hashtext(${StockService.LOCK_NAMESPACE}),
+            hashtext(${productId})
+          ),
+          current_setting('transaction_isolation') AS isolation`);
+      if (row?.isolation === "repeatable read") {
+        throw new AlephaError(
+          `Stock for product ${productId} cannot be claimed under REPEATABLE READ: the transaction would check a snapshot older than the claims it waited for. Use READ COMMITTED or SERIALIZABLE.`,
+        );
+      }
+
+      return decide(true);
+    });
+  }
+
+  /**
+   * Whether a hold just written is one the stock can actually back, on a
+   * database where {@link claim} holds no lock.
+   *
+   * Every live hold is read back in the order it was written, and the
+   * quantities are summed up to and including this one. The hold survives if
+   * that running total still fits within on-hand - so N racers for M units
+   * leave exactly as many holds standing as M allows, and the ones that lose
+   * are the ones that arrived last.
+   *
+   * `(createdAt, id)` is the order of writing only because these databases
+   * have one writer: `createdAt` is stamped by the database as it inserts, one
+   * row after another, and a tie falls back to the UUIDv7 id, which increases
+   * in the order this process generated it. On Postgres neither holds, which
+   * is why {@link claim} locks there instead.
    *
    * A hold that is no longer in the list at all (expired or released between
    * the write and this read) loses too: it is no longer holding anything.
@@ -252,40 +345,47 @@ export class StockService {
     quantity: number,
     context: { orderId?: string } = {},
   ): Promise<void> {
-    // Fast pre-check, same as `reserve`: it rejects the obviously impossible
-    // without writing, but two racers can both pass it.
-    const onHand = await this.onHand(productId);
-    if (onHand < quantity) {
-      throw new InsufficientStockError(productId, quantity, onHand);
-    }
+    await this.claim(productId, async (locked) => {
+      // The decision under the lock, a fast pre-check without it: same as
+      // `reserve`.
+      const onHand = await this.onHand(productId);
+      if (onHand < quantity) {
+        throw new InsufficientStockError(productId, quantity, onHand);
+      }
 
-    const movement = await this.movements.create({
-      productId,
-      delta: -quantity,
-      reason: "sale",
-      orderId: context.orderId,
-    });
-
-    if (!(await this.movementFits(productId, movement.id))) {
-      await this.movements.deleteById(movement.id);
-      throw new InsufficientStockError(
+      const movement = await this.movements.create({
         productId,
-        quantity,
-        Math.max(0, await this.onHand(productId)),
-      );
-    }
+        delta: -quantity,
+        reason: "sale",
+        orderId: context.orderId,
+      });
 
-    if (context.orderId) {
-      await this.consumeHold(context.orderId, productId, quantity);
-    }
+      if (!locked && !(await this.movementFits(productId, movement.id))) {
+        await this.movements.deleteById(movement.id);
+        throw new InsufficientStockError(
+          productId,
+          quantity,
+          Math.max(0, await this.onHand(productId)),
+        );
+      }
+
+      // Inside the claim, so on Postgres the sale and the hold it uses up
+      // commit together: no reader sees the units both sold and still held.
+      if (context.orderId) {
+        await this.consumeHold(context.orderId, productId, quantity);
+      }
+    });
   }
 
   /**
-   * Whether a sale just written is one the ledger can actually back.
+   * Whether a sale just written is one the ledger can actually back, on a
+   * database where {@link claim} holds no lock.
    *
-   * The whole ledger is replayed in one order every racer computes the same
-   * way, and the balance is summed up to and including this movement. The sale
-   * survives if the running balance never went negative at its own row.
+   * The whole ledger is replayed in the order it was written - see
+   * {@link holdFits} for why `(createdAt, id)` is that order there and not on
+   * Postgres - and the balance is summed up to and including this movement.
+   * The sale survives if the running balance never went negative at its own
+   * row.
    *
    * A PREFIX, not a snapshot, and that distinction is the whole correctness
    * argument: rows written after this one cannot change the sum before it, and
