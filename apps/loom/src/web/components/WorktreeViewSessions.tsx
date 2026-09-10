@@ -8,15 +8,21 @@ import { WorktreeViewSessionsLink } from "./WorktreeViewSessionsLink.tsx";
 export interface WorktreeViewSessionsProps {
   worktree: WorktreeState;
   /**
+   * The project's main checkout: the folder every session opens in, since
+   * it is the one the desktop app trusts.
+   */
+  root: string;
+  /**
    * The ref the worktree's divergence is measured against.
    */
   base: string;
 }
 
 /**
- * Buttons that open a new Claude Code session in the desktop app, in this
- * worktree: an empty one, one that investigates a failed CI run, and one
- * that cleans the worktree up. Each is a plain link to `claude://code/new`,
+ * Buttons that open a new Claude Code session in the desktop app about this
+ * worktree: a plain one, one that investigates a failed CI run, and one that
+ * cleans the worktree up. Each opens the project's main checkout and names
+ * the worktree in its prompt. Each is a plain link to `claude://code/new`,
  * so the browser asks before opening the app and Loom runs nothing itself.
  * The prompt is typed, not sent: the session starts when the user says so.
  */
@@ -28,14 +34,14 @@ export const WorktreeViewSessions = (props: WorktreeViewSessionsProps) => {
   return (
     <div className="flex items-center gap-2">
       <WorktreeViewSessionsLink
-        href={links.newSession(worktree.path)}
+        href={links.newSession(props.root, links.where(worktree) || undefined)}
         label="New session"
-        hint="A new Claude Code session in this worktree"
+        hint="A new Claude Code session, pointed at this worktree"
         icon={<Asterisk className="size-3.5" />}
       />
       {investigate && (
         <WorktreeViewSessionsLink
-          href={links.newSession(worktree.path, investigate)}
+          href={links.newSession(props.root, investigate)}
           label="Investigate CI"
           hint="A session asked to find why the latest run failed"
           icon={<SearchCode className="size-3.5" />}
@@ -44,7 +50,7 @@ export const WorktreeViewSessions = (props: WorktreeViewSessionsProps) => {
       {!worktree.isMain && (
         <WorktreeViewSessionsLink
           href={links.newSession(
-            worktree.path,
+            props.root,
             links.cleanUp(worktree, props.base),
           )}
           label="Clean up"

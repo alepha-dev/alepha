@@ -48,6 +48,17 @@ describe("ClaudeLinks", () => {
     );
   });
 
+  it("points a session at the worktree, and says nothing for main", ({
+    expect,
+  }) => {
+    const links = new ClaudeLinks();
+
+    expect(links.where(worktree())).toContain(
+      "worktree loom at /repo/.claude/worktrees/loom (branch worktree-loom)",
+    );
+    expect(links.where(worktree({ isMain: true }))).toBe("");
+  });
+
   it("offers a CI investigation only for a failed run", ({ expect }) => {
     const links = new ClaudeLinks();
     const ci = {
@@ -65,6 +76,8 @@ describe("ClaudeLinks", () => {
     const prompt = links.investigateCi(worktree({ ci }));
 
     expect(prompt).toContain("branch worktree-loom");
+    // The session opens in the main checkout; the prompt names the worktree.
+    expect(prompt).toContain("worktree loom at /repo/.claude/worktrees/loom");
     expect(prompt).toContain("8 of 17 jobs failed");
     expect(prompt).toContain("https://github.com/o/r/actions/runs/1");
     expect(prompt).toContain("not this worktree's HEAD");

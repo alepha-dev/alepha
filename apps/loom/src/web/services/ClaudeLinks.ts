@@ -10,6 +10,12 @@ import type { WorktreeState } from "../../api/schemas/worktreeStateSchema.ts";
  * documented; it was read from the app's bundle on 2026-09-11 (`prompt` is
  * accepted as an alias of `q`, and `folder` may repeat). Sessions stay in
  * the desktop app; Loom only starts them, and its server runs nothing.
+ *
+ * ⚠️ **The folder is always the project's main checkout, never the
+ * worktree.** The desktop app trusts the repository folder the user opened,
+ * not a directory created under `.claude/worktrees/` an hour ago, so the
+ * session opens in the trusted root and the prompt names the worktree to
+ * work in.
  */
 export class ClaudeLinks {
   /**
@@ -18,12 +24,27 @@ export class ClaudeLinks {
    */
   protected readonly maxPrompt = 4000;
 
-  public newSession(folder: string, prompt?: string): string {
-    const params = new URLSearchParams({ folder });
+  /**
+   * A new session in `root`, the project's main checkout, with `prompt`
+   * typed in.
+   */
+  public newSession(root: string, prompt?: string): string {
+    const params = new URLSearchParams({ folder: root });
     if (prompt) {
       params.set("q", prompt.slice(0, this.maxPrompt));
     }
     return `claude://code/new?${params.toString()}`;
+  }
+
+  /**
+   * The line that points a session opened in the main checkout at a
+   * worktree. Empty for the main checkout itself.
+   */
+  public where(worktree: WorktreeState): string {
+    if (worktree.isMain) {
+      return "";
+    }
+    return `This is about the worktree ${worktree.name} at ${worktree.path} (branch ${worktree.branch ?? "detached"}): run every command there, not in this checkout.`;
   }
 
   /**
@@ -44,9 +65,12 @@ export class ClaudeLinks {
         : `commit ${ci.headSha.slice(0, 10)}, not this worktree's HEAD (${worktree.head.slice(0, 10)})`;
     return [
       `Investigate why CI failed on branch ${worktree.branch ?? worktree.name}.`,
+      this.where(worktree),
       `Loom sees: ${ci.name} failed.${jobs} Run: ${ci.url} (${commit}).`,
       "Read the failing jobs' logs with gh, find the cause, and tell me whether it comes from this branch's changes or is a flake before fixing anything.",
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
   }
 
   /**
@@ -95,7 +119,7 @@ export class ClaudeLinks {
     }
 
     return [
-      `Clean up the worktree ${worktree.name} (branch ${worktree.branch ?? "detached"}, ${worktree.path}).`,
+      `Clean up the worktree ${worktree.name} (branch ${worktree.branch ?? "detached"}, ${worktree.path}). Run git there with -C or from that directory; this session opened in the main checkout.`,
       `Loom sees: ${facts.join("; ")}.`,
       `Check whether all of this branch's work is on ${base}. If it is, remove the worktree and delete the branch locally and on the remote, following CLAUDE.md's finishing steps. If anything is not on ${base}, list it and stop without removing anything.`,
     ].join("\n");

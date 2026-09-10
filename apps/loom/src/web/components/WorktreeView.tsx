@@ -78,6 +78,7 @@ export const WorktreeView = (props: WorktreeViewProps) => {
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <WorktreeViewSessions
             worktree={worktree}
+            root={props.state?.project.path ?? worktree.path}
             base={props.state?.base ?? "origin/main"}
           />
           <span className="bg-border mx-1 h-5 w-px" />
