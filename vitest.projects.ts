@@ -28,6 +28,10 @@ const repoRoot = dirname(fileURLToPath(import.meta.url));
  * `extends: true`. Inheritance would resolve against the root config from the
  * root and against the workspace config standalone, which is two different
  * answers for the same project.
+ *
+ * ⚠️ So every entry says `extends: false`, and has to. Vitest 5 flipped the
+ * default: an inline project now inherits its declaring config unless told
+ * otherwise, which is exactly the two-answers problem above arriving silently.
  */
 export const workspaceProjects = (
   configUrl: string,
@@ -38,6 +42,7 @@ export const workspaceProjects = (
 
   const projects: TestProjectInlineConfiguration[] = [
     {
+      extends: false,
       resolve: { alias },
       test: {
         ...sharedTestOptions(),
@@ -56,6 +61,7 @@ export const workspaceProjects = (
 
   if (options.jsdom) {
     projects.push({
+      extends: false,
       resolve: {
         alias,
         // A browser build is what a jsdom spec is testing, so the conditions

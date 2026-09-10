@@ -50,7 +50,8 @@
   "devDependencies": {
     "alepha": "0.28.0",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
   },
   "peerDependencies": {
     "alepha": "^0.28.0"

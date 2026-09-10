@@ -15,20 +15,20 @@
   "dependencies": {
     "@alepha/lore": "workspace:*",
     "@alepha/ui": "workspace:^",
-    "@fontsource/ibm-plex-mono": "^5.2.5",
-    "@fontsource/space-grotesk": "^5.2.5",
-    "@fontsource/spectral": "^5.2.5",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
+    "@fontsource/spectral": "^5.3.0",
     "alepha": "workspace:^",
-    "lucide-react": "^1.38.0",
+    "lucide-react": "^1.43.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.18",
     "tailwindcss": "^4.3.3",
     "vite": "^8.2.2",
-    "wrangler": "^4.127.1"
+    "wrangler": "^4.130.0"
   }
 }

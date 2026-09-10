@@ -1,4 +1,4 @@
-import { blake3 } from "@noble/hashes/blake3";
+import { blake3 } from "@noble/hashes/blake3.js";
 
 /**
  * One entry of the manifest Cloudflare answers an upload session for.
