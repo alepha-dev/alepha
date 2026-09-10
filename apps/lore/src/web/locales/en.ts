@@ -2005,18 +2005,6 @@ export default {
   "agentPrompts.workOnIt": "Work on it",
   "agentPrompts.triageInbox": "Triage the inbox",
   "agentPrompts.triageBlights": "Triage the blights",
-  "agentPrompts.review.description":
-    "Asks an agent to read the epic and its quests, and to challenge the plan before any of it is built.",
-  "agentPrompts.activate.description":
-    "Asks an agent to begin the epic and work its quests to completion, one at a time.",
-  "agentPrompts.questWork.description":
-    "Hands the quest, its objectives and everything it links to, to a coding agent.",
-  "agentPrompts.feedbackWork.description":
-    "Hands the report to a coding agent, ending in a quest linked back to it.",
-  "agentPrompts.feedbackLoop.description":
-    "Walks the whole pending inbox, accepting or rejecting each report and leaving a linked quest behind for every accepted one.",
-  "agentPrompts.blightTriage.description":
-    "Walks the open crash reports, files a quest for the real defects and resolves the noise.",
   "agentPrompts.copied":
     "Prompt for $1 copied. Paste it into Claude Code or Codex.",
   // A surface-scoped prompt has no reference to name, so it says nothing
