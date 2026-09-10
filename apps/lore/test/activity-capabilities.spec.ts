@@ -7,6 +7,7 @@ import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { describe, it } from "vitest";
 
+import { EpicController } from "@/api/controllers/EpicController.ts";
 import { FolioController } from "@/api/controllers/FolioController.ts";
 import { ProjectCapabilityController } from "@/api/controllers/ProjectCapabilityController.ts";
 import { ProjectController } from "@/api/controllers/ProjectController.ts";
@@ -44,6 +45,7 @@ const setup = async () => {
   const projectApi = alepha.inject(ProjectController);
   const questApi = alepha.inject(QuestController);
   const folioApi = alepha.inject(FolioController);
+  const epicApi = alepha.inject(EpicController);
   const capabilityApi = alepha.inject(ProjectCapabilityController);
   const users = alepha.inject(UserService);
   await alepha.start();
@@ -59,7 +61,15 @@ const setup = async () => {
       return fn();
     });
 
-  return { alepha, projectApi, questApi, folioApi, capabilityApi, asUser };
+  return {
+    alepha,
+    projectApi,
+    questApi,
+    folioApi,
+    epicApi,
+    capabilityApi,
+    asUser,
+  };
 };
 
 type Ctx = Awaited<ReturnType<typeof setup>>;
@@ -77,13 +87,21 @@ const setCapability = (
   projectId: number,
   key: CapabilityKey,
   enabled: boolean,
+  options?: Record<string, boolean>,
 ) =>
   ctx.asUser(() =>
     ctx.capabilityApi.setCapability({
       params: { projectId, key },
-      body: { enabled },
+      body: { enabled, ...(options ? { options } : {}) },
     } as never),
   );
+
+const offeredKinds = async (ctx: Ctx, projectId: number) =>
+  (
+    await ctx.asUser(() =>
+      ctx.projectApi.getProjectActivityFilters({ params: { id: projectId } }),
+    )
+  ).types;
 
 describe("the activity feed and capabilities", () => {
   it("stops showing a capability's events once it is turned off", async ({
@@ -214,6 +232,81 @@ describe("the activity feed and capabilities", () => {
     // `member` and `project` are Core: owned by nobody, always offered.
     expect(filters.types).toContain("member");
     expect(filters.types).toContain("project");
+
+    await ctx.alepha.stop();
+  });
+
+  /**
+   * Feedback #P2177: a Work project with the `epics` and `releases` options
+   * off still offered Epic and Release, two kinds the sidebar hides. A kind
+   * whose surface hangs off an option is offered only while that option is
+   * on - and, like a capability, turning it off hides and never deletes.
+   */
+  it("drops Epic and Release while their Work options are off, and brings them back", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const project = await ctx.asUser(() =>
+      ctx.projectApi.createProject({
+        body: {
+          title: "Everyday",
+          capabilities: [
+            { key: "work", options: { epics: false, releases: false } },
+          ],
+        },
+      }),
+    );
+
+    const off = await offeredKinds(ctx, project.id);
+    expect(off).toContain("quest");
+    expect(off).not.toContain("epic");
+    expect(off).not.toContain("release");
+
+    await setCapability(ctx, project.id, "work", true, {
+      epics: true,
+      releases: true,
+    });
+
+    const on = await offeredKinds(ctx, project.id);
+    expect(on).toContain("epic");
+    expect(on).toContain("release");
+
+    await ctx.alepha.stop();
+  });
+
+  it("narrows the rows by the same rule, so the table never shows a kind the filter does not offer", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const project = await ctx.asUser(() =>
+      ctx.projectApi.createProject({
+        body: {
+          title: "Planned",
+          capabilities: [{ key: "work", options: { epics: true } }],
+        },
+      }),
+    );
+    await ctx.asUser(() =>
+      ctx.epicApi.createEpic({
+        params: { projectId: project.id },
+        body: { title: "An epic" },
+      } as never),
+    );
+
+    const before = await activity(ctx, project.id);
+    expect(before.content.some((row) => row.type === "epic")).toBe(true);
+
+    await setCapability(ctx, project.id, "work", true, { epics: false });
+
+    const hidden = await activity(ctx, project.id);
+    expect(hidden.content.some((row) => row.type === "epic")).toBe(false);
+    // Asking for the kind by name answers nothing rather than everything.
+    expect((await activity(ctx, project.id, "epic")).content).toEqual([]);
+
+    // Hidden, never deleted: the row comes back with the option.
+    await setCapability(ctx, project.id, "work", true, { epics: true });
+    const back = await activity(ctx, project.id);
+    expect(back.content.some((row) => row.type === "epic")).toBe(true);
 
     await ctx.alepha.stop();
   });

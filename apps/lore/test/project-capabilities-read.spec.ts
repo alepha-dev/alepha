@@ -203,6 +203,42 @@ describe("CapabilityRegistry", () => {
       expect(new Set(all).size, `${field} has a duplicate`).toBe(all.length);
     }
   });
+
+  it("hangs an activity kind only off a kind and an option its capability declares", ({
+    expect,
+  }) => {
+    // A typo here fails silently: an option name nothing declares is never
+    // `true`, so the kind would vanish from every project's feed and filter.
+    for (const capability of ctx.registry.all()) {
+      const options = capability.options.map((option) => option.key);
+      for (const [kind, option] of Object.entries(
+        capability.activityKindOptions ?? {},
+      )) {
+        expect(
+          capability.activityKinds,
+          `${capability.key}: ${kind}`,
+        ).toContain(kind);
+        expect(options, `${capability.key}: ${kind}`).toContain(option);
+      }
+    }
+  });
+
+  it("offers Epic and Release only while their Work options are on", ({
+    expect,
+  }) => {
+    const on = { work: { epics: true, releases: true } };
+    const off = { work: { epics: false, releases: false } };
+
+    expect(ctx.registry.isActivityKindEnabled("epic", on)).toBe(true);
+    expect(ctx.registry.isActivityKindEnabled("release", on)).toBe(true);
+    expect(ctx.registry.isActivityKindEnabled("epic", off)).toBe(false);
+    expect(ctx.registry.isActivityKindEnabled("release", off)).toBe(false);
+    // Quests are Work's baseline, and Core kinds need nothing at all.
+    expect(ctx.registry.isActivityKindEnabled("quest", off)).toBe(true);
+    expect(ctx.registry.isActivityKindEnabled("project", {})).toBe(true);
+    // No option can bring back a kind whose capability is off.
+    expect(ctx.registry.isActivityKindEnabled("epic", {})).toBe(false);
+  });
 });
 
 describe("ProjectSecurityService.capabilitiesOf", () => {

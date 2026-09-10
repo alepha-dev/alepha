@@ -743,13 +743,12 @@ export class ProjectController {
     },
     handler: async ({ params }) => {
       const enabled = await this.projectSecurity.capabilitiesOf(params.id);
+      // The same predicate the rows are narrowed with in `enabledActivityKinds`,
+      // options included, so the dropdown never offers a kind the table hides.
       const pairs = this.audits
         .projectLayerActions()
         .filter((pair) =>
-          this.capabilityRegistry.isOwnerEnabled(
-            this.capabilityRegistry.ownerOfActivityKind(pair.type),
-            Object.keys(enabled) as CapabilityKey[],
-          ),
+          this.capabilityRegistry.isActivityKindEnabled(pair.type, enabled),
         );
       return {
         types: [...new Set(pairs.map((pair) => pair.type))].sort(),
@@ -828,24 +827,22 @@ export class ProjectController {
   }
 
   /**
-   * Which of `declared` this project's capabilities allow.
+   * Which of `declared` this project's capabilities, and their options, allow.
    *
    * Core kinds are owned by nobody and always pass, which today is `member`
    * and `project` - a project with no capabilities at all still has members
-   * and still gets renamed.
+   * and still gets renamed. A kind whose surface hangs off an option (Epic,
+   * Release) also needs that option on: see
+   * `CapabilityRegistry.isActivityKindEnabled`, which the filter dropdown
+   * reads too.
    */
   protected async enabledActivityKinds(
     projectId: number,
     declared: string[],
   ): Promise<string[]> {
-    const enabled = Object.keys(
-      await this.projectSecurity.capabilitiesOf(projectId),
-    ) as CapabilityKey[];
+    const enabled = await this.projectSecurity.capabilitiesOf(projectId);
     return declared.filter((type) =>
-      this.capabilityRegistry.isOwnerEnabled(
-        this.capabilityRegistry.ownerOfActivityKind(type),
-        enabled,
-      ),
+      this.capabilityRegistry.isActivityKindEnabled(type, enabled),
     );
   }
 
