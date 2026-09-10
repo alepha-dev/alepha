@@ -78,9 +78,12 @@ __metadata:
     vite: "npm:^8.2.2"
     vitest: "npm:^5.0.0"
   peerDependencies:
+    lore: "*"
     react: "*"
     react-dom: "*"
   peerDependenciesMeta:
+    lore:
+      optional: true
     react:
       optional: true
     react-dom:
