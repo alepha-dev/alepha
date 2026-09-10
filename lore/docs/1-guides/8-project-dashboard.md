@@ -72,7 +72,7 @@ neither is wrong. The card says what it divided by, under the number.
 
 ### A card can point at something that is finished
 
-An epic that has concluded, or a release that has been published, keeps its
+An epic that has completed, or a release that has been published, keeps its
 card. Both are done by definition, so the number is settled rather than stale,
 and the card says which. To point it somewhere else, use **Change scope** in
 the card's menu.

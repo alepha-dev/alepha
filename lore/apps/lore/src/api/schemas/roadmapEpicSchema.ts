@@ -10,7 +10,7 @@ import { epicResourceSchema } from "./epicResourceSchema.ts";
  * default is exclusion: a field added to the epic entity does NOT appear here,
  * which is the property that matters when the audience may be the internet.
  *
- * `id`, `projectId`, `releaseId`, `createdAt`, `activatedAt` and
+ * `id`, `projectId`, `releaseId`, `createdAt`, `startedAt` and
  * `description` are all deliberately absent. `number` is what a reader refers
  * to an epic by, and it is per-project rather than global, so it identifies
  * nothing outside the project whose roadmap this is.

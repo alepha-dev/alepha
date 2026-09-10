@@ -102,9 +102,10 @@ test.describe("agent prompts", () => {
       });
 
       await page.getByRole("button", { name: "Open row actions" }).click();
-      // Begin is there, so the menu opened and the absence below is real.
+      // Mark as ready is there, so the menu opened and the absence below is
+      // real.
       await expect(
-        page.getByRole("menuitem", { name: /begin/i }),
+        page.getByRole("menuitem", { name: /mark as ready/i }),
       ).toBeVisible();
       await expect(
         page.getByRole("menuitem", { name: /agent prompts/i }),
@@ -211,7 +212,32 @@ test.describe("agent prompts", () => {
       expect(copied).toBe(`Edited review of #E${epic.number}.`);
     });
 
-    await test.step("Work on it is offered beside Review Epic while the epic is planned", async () => {
+    await test.step("Work on it waits for the epic to be ready, then sits beside Review Epic", async () => {
+      // A planned epic's quests refuse to be accepted, and whether its spec
+      // is done is the owner's call (#Q2223), so the hand-over is not on
+      // offer yet: Review Epic alone.
+      await page.getByRole("button", { name: "Open row actions" }).click();
+      await page.getByRole("menuitem", { name: /agent prompts/i }).click();
+      await expect(
+        page.getByRole("menuitem", { name: /^review epic$/i }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("menuitem", { name: /^work on it$/i }),
+      ).toHaveCount(0);
+      await page.keyboard.press("Escape");
+
+      await page.evaluate(async (epicId) => {
+        const r = await fetch(`/api/setEpicStatus/${epicId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ status: "ready" }),
+        });
+        if (!r.ok)
+          throw new Error(`setEpicStatus ${r.status} ${await r.text()}`);
+      }, epic.id);
+      await page.reload();
+
       await page.getByRole("button", { name: "Open row actions" }).click();
       await page.getByRole("menuitem", { name: /agent prompts/i }).click();
       await page.getByRole("menuitem", { name: /^work on it$/i }).click();

@@ -1981,8 +1981,9 @@ export default {
   // Epics
   "project.menu.epics": "Epics",
   "epic.status.planned": "Planned",
-  "epic.status.active": "Active",
-  "epic.status.done": "Done",
+  "epic.status.ready": "Ready",
+  "epic.status.inProgress": "In progress",
+  "epic.status.completed": "Completed",
   "epic.list.empty": "No epics yet.",
   "epic.list.column.title": "Epic",
   "epic.list.column.updated": "Updated",
@@ -1992,7 +1993,7 @@ export default {
   "epic.filter.statusCount": "$1 status",
   "epic.progress.none": "No quests yet",
   "epic.progress.specified": "$1 specified, none released",
-  "epic.progress.concluded": "Concluded $1",
+  "epic.progress.completedOn": "Completed $1",
   "epic.progress.done": "$1 done",
   "epic.progress.inProgress": "$1 in progress",
   "epic.progress.open": "$1 open",
@@ -2035,10 +2036,10 @@ export default {
   "agentPrompts.settings.wasReset": "Prompt reset to its default.",
   "agentPrompts.settings.epicReview.title": "Epic: Review",
   "agentPrompts.settings.epicReview.description":
-    "Offered on an epic that is still planned. Asks an agent to sharpen the plan before anyone works it.",
+    "Offered on an epic nobody has started, planned or ready. Asks an agent to sharpen the plan before anyone works it.",
   "agentPrompts.settings.epicActivate.title": "Epic: Work on it",
   "agentPrompts.settings.epicActivate.description":
-    "Offered on a planned or active epic. Hands the whole epic over, quest by quest.",
+    "Offered on a ready or in-progress epic. Hands the whole epic over, quest by quest.",
   "agentPrompts.settings.questWork.title": "Quest: Work on it",
   "agentPrompts.settings.questWork.description":
     "Offered on a quest that is not finished. One quest, one branch, one commit.",
@@ -2069,22 +2070,20 @@ export default {
   "epic.create.title.label": "Title",
   "epic.create.description.label": "Description",
   "epic.create.submit": "Create Epic",
-  "epic.begin.title": "Begin this epic?",
-  "epic.begin.confirm":
-    "Beginning $1 releases its quests into the backlog, where the rest of the project can see and pick them up.",
-  "epic.conclude.title": "Conclude this epic?",
-  "epic.conclude.confirm":
-    "Concluding $1 is final. It cannot be reopened or returned to planning. Anything left to do goes in a new epic that depends on this one.",
-  "epic.begin.blocked": "Blocked by Epic $1",
-  "epic.status.actions.begin": "Begin the Epic",
-  "epic.status.actions.conclude": "Conclude the Epic",
+  "epic.ready.title": "Mark this epic as ready?",
+  "epic.ready.confirm":
+    "Marking $1 as ready puts its quests in the backlog, where the rest of the project can pick them up. The first one accepted starts the epic and freezes its list of quests.",
+  "epic.start.blocked": "Blocked by Epic $1",
+  "epic.status.actions.markReady": "Mark as ready",
+  "epic.status.actions.backToPlanning": "Back to planning",
   "epic.aside.predecessor": "Depends on",
   "epic.aside.predecessor.after": "After Epic $1",
   "epic.aside.predecessor.blocked": "Blocked by Epic $1",
-  // The quest page's Accept, withheld while the quest's epic is not active.
-  "quest.view.accept.epicPlanned": "Epic $1 has not begun. Begin it first.",
-  "quest.view.accept.epicDone":
-    "Epic $1 is concluded. File this in a new epic.",
+  // The quest page's Accept, withheld while the quest's epic is planned or
+  // completed.
+  "quest.view.accept.epicPlanned": "Epic $1 is not ready for development yet.",
+  "quest.view.accept.epicCompleted":
+    "Epic $1 is completed. File this in a new epic.",
   "epic.tab.overview": "Overview",
   "epic.tab.quests": "Quests",
   "epic.tab.flow": "Flow",
@@ -2250,8 +2249,8 @@ export default {
   "dashboard.footer.questSplit": "$1 accepted, $2 new",
   "dashboard.footer.epic.done": "$1 of $2 done, shelved excluded",
   "dashboard.footer.epic.specified": "$1 specified, none released yet",
-  "dashboard.footer.epic.concluded": "concluded $1",
-  "dashboard.footer.epic.concludedUndated": "concluded",
+  "dashboard.footer.epic.completed": "completed $1",
+  "dashboard.footer.epic.completedUndated": "completed",
   "dashboard.footer.epic.nothing": "nothing to count yet",
   "dashboard.footer.epic.hidden": "epics are turned off here",
   "dashboard.footer.release.done": "$1 of $2 done, shelved excluded",

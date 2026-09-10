@@ -162,7 +162,7 @@ const QuestView = (props: QuestViewProps) => {
           tr(
             withheldReason === "epicPlanned"
               ? "quest.view.accept.epicPlanned"
-              : "quest.view.accept.epicDone",
+              : "quest.view.accept.epicCompleted",
             { args: [String(questEpic.number)] },
           ),
         )

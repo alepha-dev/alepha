@@ -39,9 +39,12 @@ describe("epicActivatePromptDefault", () => {
     expect(prompt).toContain("Never on main");
   });
 
-  it("begins a planned epic and states the frozen-plan rule", () => {
-    expect(prompt).toContain("epic_set_status");
-    expect(prompt).toContain('"active"');
+  it("stops on a planned epic and states the frozen-plan rule", () => {
+    // Whether a spec is done is the owner's call (#Q2223). The prompt used
+    // to tell the agent to Begin the epic itself, which is why the click
+    // never carried a decision.
+    expect(prompt).toContain("If it is still `planned`, stop and say so");
+    expect(prompt).toContain("Your first `quest_accept` starts the epic");
     expect(prompt).toContain("its quest set is frozen");
     // What a discovery becomes once the set is frozen: an objective or a
     // comment, never a new quest.
@@ -63,12 +66,19 @@ describe("epicActivatePromptDefault", () => {
     );
   });
 
-  it("closes with a green CI run, a merge, a conclude and an outcome folio", () => {
+  it("closes with a green CI run, a merge and an outcome folio", () => {
     expect(prompt).toContain("wait for CI this time");
     expect(prompt).toContain("merge the branch into main and push");
-    expect(prompt).toContain('epic_set_status` "done"');
     expect(prompt).toContain("folio_create");
     expect(prompt).toContain("`epic_number` 41");
+  });
+
+  it("sets no epic status anywhere", () => {
+    // Both automatic moves happen on the quest requests; a status call here
+    // is either refused (`in_progress` and `completed` are not settable) or
+    // an agent deciding a spec is done.
+    expect(prompt).not.toContain("epic_set_status");
+    expect(prompt).toContain("There is no status to set");
   });
 
   /**

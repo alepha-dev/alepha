@@ -10,13 +10,17 @@ import {
 import { EpicWorkflowService } from "./EpicWorkflowService.ts";
 
 /**
- * Every assertion in every phase, against real rows.
+ * Every rule in every status, against real rows.
  *
  * The service is the single place the workflow's refusals are written, so
  * this is the single place their WORDING is pinned: the controllers that
  * call it are tested for the fact of a refusal, and this spec for what the
  * refusal says. An agent reads these strings and acts on them, which makes
  * the wording part of the contract rather than a detail of it.
+ *
+ * The two automatic transitions (#Q2223) are pinned here too, directly. That
+ * the quest handlers call them, and in which order, is
+ * `test/quest-epic-workflow.spec.ts`'s job.
  *
  * `TestEntityRepositories` is composed rather than extended, for the reason
  * `EpicVisibilityService.spec.ts` gives: the `createTest*` helpers inject
@@ -40,6 +44,8 @@ const setup = async () => {
   return { alepha, app, project };
 };
 
+const STAMP = "2026-09-04T00:00:00.000Z";
+
 describe("EpicWorkflowService", () => {
   describe("assertQuestWorkable", () => {
     it("allows a quest with no epic, which is most of them", async ({
@@ -53,19 +59,27 @@ describe("EpicWorkflowService", () => {
       ).resolves.toBeUndefined();
     });
 
-    it("allows a quest whose epic is active", async ({ expect }) => {
-      const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
-      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
-
-      await expect(
-        app.workflow.assertQuestWorkable(quest, "complete"),
-      ).resolves.toBeUndefined();
-    });
-
-    it("refuses a planned epic's quest and says to begin the epic", async ({
+    it("allows a quest whose epic is ready or in progress", async ({
       expect,
     }) => {
+      const { alepha, app, project } = await setup();
+      for (const status of ["ready", "in_progress"] as const) {
+        const epic = await createTestEpic(alepha, project, { status });
+        const quest = await createTestQuest(alepha, project, {
+          epicId: epic.id,
+        });
+
+        await expect(
+          app.workflow.assertQuestWorkable(quest, "accept"),
+        ).resolves.toBeUndefined();
+      }
+    });
+
+    it("refuses a planned epic's quest without telling the agent to flip it", async ({
+      expect,
+    }) => {
+      // Whether a spec is done is the owner's call. The refusal used to say
+      // "Begin it first", and an agent read that as an instruction.
       const { alepha, app, project } = await setup();
       const epic = await createTestEpic(alepha, project, {
         status: "planned",
@@ -75,21 +89,23 @@ describe("EpicWorkflowService", () => {
       await expect(
         app.workflow.assertQuestWorkable(quest, "accept"),
       ).rejects.toThrow(
-        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is planned. Begin it first.`,
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${epic.number} is planned, and not ready for development yet.`,
       );
     });
 
-    it("refuses a concluded epic's quest and names the successor-epic route", async ({
+    it("refuses a completed epic's quest and names the successor-epic route", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "done" });
+      const epic = await createTestEpic(alepha, project, {
+        status: "completed",
+      });
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
       await expect(
         app.workflow.assertQuestWorkable(quest, "complete"),
       ).rejects.toThrow(
-        `Cannot complete quest #Q${quest.shortId}: Epic #E${epic.number} is concluded. File this in a new epic.`,
+        `Cannot complete quest #Q${quest.shortId}: Epic #E${epic.number} is completed. File this in a new epic.`,
       );
     });
 
@@ -97,12 +113,11 @@ describe("EpicWorkflowService", () => {
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "done" });
+      const epic = await createTestEpic(alepha, project, {
+        status: "completed",
+      });
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
-      // ⚠️ `reopen` was the sixth until epic #E48 deleted quest reopen. The
-      // verb is gone from `EpicWorkflowVerb`, so listing it here is a type
-      // error rather than a silently dead case.
       for (const verb of [
         "accept",
         "assign",
@@ -116,27 +131,113 @@ describe("EpicWorkflowService", () => {
       }
     });
 
-    it("lets a planned epic's quest be unshelved, since that edits an open plan", async ({
+    it("lets a planned or ready epic's quest be unshelved or unheld, since that edits an open plan", async ({
       expect,
     }) => {
-      // Shelve is allowed while planning, so unshelve has to be too, or a
-      // quest set aside during planning could not come back until Begin.
+      // Shelve and hold are allowed while the plan is open, so their
+      // reversals have to be too.
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, {
-        status: "planned",
+      for (const status of ["planned", "ready"] as const) {
+        const epic = await createTestEpic(alepha, project, { status });
+        const quest = await createTestQuest(alepha, project, {
+          epicId: epic.id,
+          shelvedAt: STAMP,
+        });
+
+        await expect(
+          app.workflow.assertQuestWorkable(quest, "unshelve"),
+        ).resolves.toBeUndefined();
+        await expect(
+          app.workflow.assertQuestWorkable(quest, "unhold"),
+        ).resolves.toBeUndefined();
+      }
+    });
+
+    /**
+     * ⚠️ The predecessor gates the START, not `ready` (#Q2223). A whole chain
+     * can be marked ready together; each epic opens when the one before it
+     * completes. Accepting is what starts a ready epic, so that is what the
+     * gate refuses.
+     */
+    it("refuses to start a ready epic while its predecessor is not completed, naming both", async ({
+      expect,
+    }) => {
+      const { alepha, app, project } = await setup();
+      const first = await createTestEpic(alepha, project, {
+        status: "in_progress",
+      });
+      const second = await createTestEpic(alepha, project, {
+        status: "ready",
+        dependsOn: first.id,
       });
       const quest = await createTestQuest(alepha, project, {
-        epicId: epic.id,
-        shelvedAt: "2026-09-04T00:00:00.000Z",
+        epicId: second.id,
       });
 
       await expect(
+        app.workflow.assertQuestWorkable(quest, "accept"),
+      ).rejects.toThrow(
+        `Cannot accept quest #Q${quest.shortId}: Epic #E${second.number} depends on Epic #E${first.number}, which is not completed.`,
+      );
+      await expect(
+        app.workflow.assertQuestWorkable(quest, "assign"),
+      ).rejects.toThrow(`Cannot assign quest #Q${quest.shortId}:`);
+      // A plan edit starts nothing, so the predecessor has no say in it.
+      await expect(
         app.workflow.assertQuestWorkable(quest, "unshelve"),
       ).resolves.toBeUndefined();
-      // The other four still refuse in `planned`.
+    });
+
+    it("starts a ready epic once its predecessor is completed, or gone", async ({
+      expect,
+    }) => {
+      const { alepha, app, project } = await setup();
+      const completed = await createTestEpic(alepha, project, {
+        status: "completed",
+      });
+      const afterCompleted = await createTestEpic(alepha, project, {
+        status: "ready",
+        dependsOn: completed.id,
+      });
+      const deleted = await createTestEpic(alepha, project, {
+        status: "planned",
+      });
+      const afterDeleted = await createTestEpic(alepha, project, {
+        status: "ready",
+        dependsOn: deleted.id,
+      });
+      await app.repos.epics.deleteById(deleted.id);
+
+      for (const epic of [afterCompleted, afterDeleted]) {
+        const quest = await createTestQuest(alepha, project, {
+          epicId: epic.id,
+        });
+        await expect(
+          app.workflow.assertQuestWorkable(quest, "accept"),
+        ).resolves.toBeUndefined();
+      }
+    });
+
+    it("never gates an in-progress epic on its predecessor", async ({
+      expect,
+    }) => {
+      // Evaluated at the start and only there: a predecessor recorded after
+      // the epic started is an ordering statement, not a constraint.
+      const { alepha, app, project } = await setup();
+      const first = await createTestEpic(alepha, project, {
+        status: "planned",
+      });
+      const second = await createTestEpic(alepha, project, {
+        status: "in_progress",
+        dependsOn: first.id,
+      });
+      const quest = await createTestQuest(alepha, project, {
+        epicId: second.id,
+      });
+
       await expect(
         app.workflow.assertQuestWorkable(quest, "accept"),
-      ).rejects.toThrow(/is planned. Begin it first/);
+      ).resolves.toBeUndefined();
     });
 
     it("allows a quest whose epic row is gone rather than refusing", async ({
@@ -147,7 +248,9 @@ describe("EpicWorkflowService", () => {
       // `deletedAt`, so the row reads as missing. A missing epic is a loose
       // quest, never a refusal.
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "done" });
+      const epic = await createTestEpic(alepha, project, {
+        status: "completed",
+      });
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
       await app.repos.epics.deleteById(epic.id);
 
@@ -158,92 +261,95 @@ describe("EpicWorkflowService", () => {
   });
 
   describe("assertPlanEditable", () => {
-    it("allows every edit while the epic is planned", async ({ expect }) => {
+    it("allows every edit while the epic is planned or ready", async ({
+      expect,
+    }) => {
+      const { alepha, app, project } = await setup();
+      for (const status of ["planned", "ready"] as const) {
+        const epic = await createTestEpic(alepha, project, { status });
+        const quest = await createTestQuest(alepha, project, {
+          epicId: epic.id,
+        });
+
+        expect(() =>
+          app.workflow.assertPlanEditable(epic, { kind: "add" }),
+        ).not.toThrow();
+        expect(() =>
+          app.workflow.assertPlanEditable(epic, { kind: "remove", quest }),
+        ).not.toThrow();
+        expect(() =>
+          app.workflow.assertPlanEditable(epic, { kind: "delete", quest }),
+        ).not.toThrow();
+      }
+    });
+
+    it("refuses adding to an in-progress epic and names both escape routes", async ({
+      expect,
+    }) => {
       const { alepha, app, project } = await setup();
       const epic = await createTestEpic(alepha, project, {
-        status: "planned",
+        status: "in_progress",
+      });
+
+      expect(() =>
+        app.workflow.assertPlanEditable(epic, { kind: "add" }),
+      ).toThrow(
+        `Cannot add a quest: Epic #E${epic.number} is in progress. Its plan is frozen. File this in a new epic, or add an objective to a quest already in it.`,
+      );
+    });
+
+    it("refuses adding to a completed epic", async ({ expect }) => {
+      const { alepha, app, project } = await setup();
+      const epic = await createTestEpic(alepha, project, {
+        status: "completed",
+      });
+
+      expect(() =>
+        app.workflow.assertPlanEditable(epic, { kind: "add" }),
+      ).toThrow(
+        `Cannot add a quest: Epic #E${epic.number} is completed. File this in a new epic.`,
+      );
+    });
+
+    it("refuses removing from or deleting inside an in-progress epic, naming shelve", async ({
+      expect,
+    }) => {
+      const { alepha, app, project } = await setup();
+      const epic = await createTestEpic(alepha, project, {
+        status: "in_progress",
       });
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
       expect(() =>
-        app.workflow.assertPlanEditable(epic, { kind: "add" }),
-      ).not.toThrow();
-      expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "remove", quest }),
-      ).not.toThrow();
+      ).toThrow(
+        `Cannot remove quest #Q${quest.shortId}: Epic #E${epic.number} is in progress. Its plan is frozen. Shelve it instead.`,
+      );
       expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "delete", quest }),
-      ).not.toThrow();
-    });
-
-    it("refuses adding to an active epic and names both escape routes", async ({
-      expect,
-    }) => {
-      const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
-
-      expect(() =>
-        app.workflow.assertPlanEditable(epic, { kind: "add" }),
       ).toThrow(
-        `Cannot add a quest: Epic #E${epic.number} is active. Its plan is frozen. File this in a new epic, or add an objective to a quest already in it.`,
+        `Cannot delete quest #Q${quest.shortId}: Epic #E${epic.number} is in progress. Its plan is frozen. Shelve it instead.`,
       );
     });
 
-    it("refuses adding to a concluded epic", async ({ expect }) => {
-      const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "done" });
-
-      expect(() =>
-        app.workflow.assertPlanEditable(epic, { kind: "add" }),
-      ).toThrow(
-        `Cannot add a quest: Epic #E${epic.number} is concluded. File this in a new epic.`,
-      );
-    });
-
-    it("refuses removing from an active epic and names shelve", async ({
+    it("refuses removing from or deleting inside a completed epic", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
+      const epic = await createTestEpic(alepha, project, {
+        status: "completed",
+      });
       const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
       expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "remove", quest }),
       ).toThrow(
-        `Cannot remove quest #Q${quest.shortId}: Epic #E${epic.number} is active. Its plan is frozen. Shelve it instead.`,
-      );
-    });
-
-    it("refuses deleting inside an active epic and names shelve", async ({
-      expect,
-    }) => {
-      const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
-      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
-
-      expect(() =>
-        app.workflow.assertPlanEditable(epic, { kind: "delete", quest }),
-      ).toThrow(
-        `Cannot delete quest #Q${quest.shortId}: Epic #E${epic.number} is active. Its plan is frozen. Shelve it instead.`,
-      );
-    });
-
-    it("refuses removing from or deleting inside a concluded epic", async ({
-      expect,
-    }) => {
-      const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "done" });
-      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
-
-      expect(() =>
-        app.workflow.assertPlanEditable(epic, { kind: "remove", quest }),
-      ).toThrow(
-        `Cannot remove quest #Q${quest.shortId}: Epic #E${epic.number} is concluded.`,
+        `Cannot remove quest #Q${quest.shortId}: Epic #E${epic.number} is completed.`,
       );
       expect(() =>
         app.workflow.assertPlanEditable(epic, { kind: "delete", quest }),
       ).toThrow(
-        `Cannot delete quest #Q${quest.shortId}: Epic #E${epic.number} is concluded.`,
+        `Cannot delete quest #Q${quest.shortId}: Epic #E${epic.number} is completed.`,
       );
     });
 
@@ -256,213 +362,228 @@ describe("EpicWorkflowService", () => {
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
+      const epic = await createTestEpic(alepha, project, {
+        status: "in_progress",
+      });
       const completed = await createTestQuest(alepha, project, {
         epicId: epic.id,
-        completedAt: "2026-09-04T00:00:00.000Z",
+        completedAt: STAMP,
       });
       const shelved = await createTestQuest(alepha, project, {
         epicId: epic.id,
-        shelvedAt: "2026-09-04T00:00:00.000Z",
+        shelvedAt: STAMP,
       });
 
-      expect(() =>
-        app.workflow.assertPlanEditable(epic, {
-          kind: "remove",
-          quest: completed,
-        }),
-      ).toThrow(/is active. Its plan is frozen/);
-      expect(() =>
-        app.workflow.assertPlanEditable(epic, {
-          kind: "remove",
-          quest: shelved,
-        }),
-      ).toThrow(/is active. Its plan is frozen/);
+      for (const quest of [completed, shelved]) {
+        expect(() =>
+          app.workflow.assertPlanEditable(epic, { kind: "remove", quest }),
+        ).toThrow(/is in progress. Its plan is frozen/);
+      }
     });
   });
 
   describe("assertQuestDeletable", () => {
-    it("allows a loose quest and a planned epic's quest", async ({
-      expect,
-    }) => {
-      const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, {
-        status: "planned",
-      });
-      const loose = await createTestQuest(alepha, project);
-      const parked = await createTestQuest(alepha, project, {
-        epicId: epic.id,
-      });
-
-      await expect(
-        app.workflow.assertQuestDeletable(loose),
-      ).resolves.toBeUndefined();
-      await expect(
-        app.workflow.assertQuestDeletable(parked),
-      ).resolves.toBeUndefined();
-    });
-
-    it("refuses inside an active epic, through the same message", async ({
-      expect,
-    }) => {
-      const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
-      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
-
-      await expect(app.workflow.assertQuestDeletable(quest)).rejects.toThrow(
-        `Cannot delete quest #Q${quest.shortId}: Epic #E${epic.number} is active. Its plan is frozen. Shelve it instead.`,
-      );
-    });
-  });
-
-  describe("assertCanBegin", () => {
-    it("allows an epic with no predecessor", async ({ expect }) => {
-      const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project);
-
-      await expect(app.workflow.assertCanBegin(epic)).resolves.toBeUndefined();
-    });
-
-    it("allows an epic whose predecessor is done", async ({ expect }) => {
-      const { alepha, app, project } = await setup();
-      const first = await createTestEpic(alepha, project, { status: "done" });
-      const second = await createTestEpic(alepha, project, {
-        dependsOn: first.id,
-      });
-
-      await expect(
-        app.workflow.assertCanBegin(second),
-      ).resolves.toBeUndefined();
-    });
-
-    /**
-     * ⚠️ The opposite of what `EpicDependencyService.spec.ts` asserted until
-     * epic #31: `epics.dependsOn` was advisory by a decision recorded on the
-     * column on 2026-09-01, and the advisory channel measured zero (epic #27
-     * was worked to 9 of 9 while planned, by an agent told the status on
-     * every call). The column comment holds both decisions.
-     */
-    it("refuses while the predecessor is planned or active, naming both epics", async ({
+    it("allows a loose quest and a planned or ready epic's quest", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
       const planned = await createTestEpic(alepha, project, {
         status: "planned",
       });
-      const active = await createTestEpic(alepha, project, {
-        status: "active",
-      });
-      const afterPlanned = await createTestEpic(alepha, project, {
-        dependsOn: planned.id,
-      });
-      const afterActive = await createTestEpic(alepha, project, {
-        dependsOn: active.id,
-      });
+      const ready = await createTestEpic(alepha, project, { status: "ready" });
 
-      await expect(app.workflow.assertCanBegin(afterPlanned)).rejects.toThrow(
-        `Cannot begin Epic #E${afterPlanned.number}: it depends on Epic #E${planned.number}, which is not concluded.`,
-      );
-      await expect(app.workflow.assertCanBegin(afterActive)).rejects.toThrow(
-        `Cannot begin Epic #E${afterActive.number}: it depends on Epic #E${active.number}, which is not concluded.`,
-      );
+      for (const quest of [
+        await createTestQuest(alepha, project),
+        await createTestQuest(alepha, project, { epicId: planned.id }),
+        await createTestQuest(alepha, project, { epicId: ready.id }),
+      ]) {
+        await expect(
+          app.workflow.assertQuestDeletable(quest),
+        ).resolves.toBeUndefined();
+      }
     });
 
-    it("allows an epic whose predecessor row is gone", async ({ expect }) => {
+    it("refuses inside an in-progress epic, through the same message", async ({
+      expect,
+    }) => {
       const { alepha, app, project } = await setup();
-      const first = await createTestEpic(alepha, project, {
-        status: "planned",
+      const epic = await createTestEpic(alepha, project, {
+        status: "in_progress",
       });
-      const second = await createTestEpic(alepha, project, {
-        dependsOn: first.id,
-      });
-      await app.repos.epics.deleteById(first.id);
+      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
 
-      await expect(
-        app.workflow.assertCanBegin(second),
-      ).resolves.toBeUndefined();
+      await expect(app.workflow.assertQuestDeletable(quest)).rejects.toThrow(
+        `Cannot delete quest #Q${quest.shortId}: Epic #E${epic.number} is in progress. Its plan is frozen. Shelve it instead.`,
+      );
     });
   });
 
-  describe("assertCanConclude", () => {
-    it("allows an empty epic", async ({ expect }) => {
+  describe("assertManualEdge", () => {
+    it("allows planned to ready and back, and nothing else", async ({
+      expect,
+    }) => {
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
+      const planned = await createTestEpic(alepha, project, {
+        status: "planned",
+      });
+      const ready = await createTestEpic(alepha, project, { status: "ready" });
+      const started = await createTestEpic(alepha, project, {
+        status: "in_progress",
+      });
+      const completed = await createTestEpic(alepha, project, {
+        status: "completed",
+      });
 
+      expect(() =>
+        app.workflow.assertManualEdge(planned, "ready"),
+      ).not.toThrow();
+      expect(() =>
+        app.workflow.assertManualEdge(ready, "planned"),
+      ).not.toThrow();
+      expect(() => app.workflow.assertManualEdge(started, "ready")).toThrow(
+        `Cannot move Epic #E${started.number} from in_progress to ready. Work has started and its plan is frozen. Shelve what will not be done, or create a new epic.`,
+      );
+      expect(() => app.workflow.assertManualEdge(completed, "planned")).toThrow(
+        `Cannot move Epic #E${completed.number} from completed to planned. It is completed. Create a new epic that depends on it.`,
+      );
+    });
+  });
+
+  describe("startIfReady", () => {
+    it("moves a ready epic to in_progress and stamps startedAt", async ({
+      expect,
+    }) => {
+      const { alepha, app, project } = await setup();
+      const epic = await createTestEpic(alepha, project, { status: "ready" });
+      const quest = await createTestQuest(alepha, project, { epicId: epic.id });
+
+      // No default release in this project, so nothing is carried down.
       await expect(
-        app.workflow.assertCanConclude(epic),
+        app.workflow.startIfReady(quest, undefined),
       ).resolves.toBeUndefined();
+
+      const after = await app.repos.epics.getById(epic.id);
+      expect(after.status).toBe("in_progress");
+      expect(after.startedAt).toBeDefined();
     });
 
-    it("allows an epic whose quests are all completed or shelved", async ({
+    it("writes nothing for a loose quest or an epic in any other status", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
-      await createTestQuest(alepha, project, {
-        epicId: epic.id,
-        acceptedAt: "2026-09-04T00:00:00.000Z",
-        completedAt: "2026-09-04T00:00:00.000Z",
-      });
-      await createTestQuest(alepha, project, {
-        epicId: epic.id,
-        shelvedAt: "2026-09-04T00:00:00.000Z",
-      });
+      await app.workflow.startIfReady(
+        await createTestQuest(alepha, project),
+        undefined,
+      );
 
-      await expect(
-        app.workflow.assertCanConclude(epic),
-      ).resolves.toBeUndefined();
+      for (const status of ["planned", "in_progress", "completed"] as const) {
+        const epic = await createTestEpic(alepha, project, {
+          status,
+          startedAt: status === "planned" ? undefined : STAMP,
+        });
+        const quest = await createTestQuest(alepha, project, {
+          epicId: epic.id,
+        });
+        const before = await app.repos.epics.getById(epic.id);
+
+        await app.workflow.startIfReady(quest, undefined);
+
+        const after = await app.repos.epics.getById(epic.id);
+        expect(after.status).toBe(status);
+        expect(after.updatedAt).toEqual(before.updatedAt);
+      }
     });
+  });
 
-    it("refuses with the count of open quests, singular and plural", async ({
+  describe("completeIfResolved", () => {
+    it("completes an in-progress epic whose quests are all completed or shelved", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const one = await createTestEpic(alepha, project, { status: "active" });
-      await createTestQuest(alepha, project, { epicId: one.id });
-      const three = await createTestEpic(alepha, project, {
-        status: "active",
+      const epic = await createTestEpic(alepha, project, {
+        status: "in_progress",
+        startedAt: STAMP,
       });
-      await createTestQuest(alepha, project, { epicId: three.id });
-      await createTestQuest(alepha, project, { epicId: three.id });
-      await createTestQuest(alepha, project, { epicId: three.id });
-      // Resolved ones do not count.
+      const last = await createTestQuest(alepha, project, {
+        epicId: epic.id,
+        acceptedAt: STAMP,
+        completedAt: STAMP,
+      });
       await createTestQuest(alepha, project, {
-        epicId: three.id,
-        shelvedAt: "2026-09-04T00:00:00.000Z",
+        epicId: epic.id,
+        shelvedAt: STAMP,
       });
 
-      await expect(app.workflow.assertCanConclude(one)).rejects.toThrow(
-        `Cannot conclude Epic #E${one.number}: 1 quest is still open. Complete or shelve each one.`,
-      );
-      await expect(app.workflow.assertCanConclude(three)).rejects.toThrow(
-        `Cannot conclude Epic #E${three.number}: 3 quests are still open. Complete or shelve each one.`,
-      );
+      await app.workflow.completeIfResolved(last, undefined);
+
+      const after = await app.repos.epics.getById(epic.id);
+      expect(after.status).toBe("completed");
+      expect(after.completedAt).toBeDefined();
+      // The start date is history, and completing never touches it.
+      expect(after.startedAt).toBe(STAMP);
     });
 
-    it("counts an accepted quest as open, and names the unassign route", async ({
+    it("leaves it in progress while any quest is open, an accepted one included", async ({
       expect,
     }) => {
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
+      const epic = await createTestEpic(alepha, project, {
+        status: "in_progress",
+      });
+      const resolved = await createTestQuest(alepha, project, {
+        epicId: epic.id,
+        completedAt: STAMP,
+      });
+      // "Open" is "neither completed nor shelved", not "not accepted".
       await createTestQuest(alepha, project, {
         epicId: epic.id,
-        acceptedAt: "2026-09-04T00:00:00.000Z",
+        acceptedAt: STAMP,
       });
 
-      await expect(app.workflow.assertCanConclude(epic)).rejects.toThrow(
-        `Cannot conclude Epic #E${epic.number}: 1 quest is still open. Complete or shelve each one. An accepted quest is unassigned first, then shelved.`,
+      await app.workflow.completeIfResolved(resolved, undefined);
+
+      expect((await app.repos.epics.getById(epic.id)).status).toBe(
+        "in_progress",
       );
+    });
+
+    it("never completes a ready epic, even with every quest shelved", async ({
+      expect,
+    }) => {
+      // Nothing in it was ever worked, and its plan is still open for a
+      // quest that will be.
+      const { alepha, app, project } = await setup();
+      const epic = await createTestEpic(alepha, project, { status: "ready" });
+      const shelved = await createTestQuest(alepha, project, {
+        epicId: epic.id,
+        shelvedAt: STAMP,
+      });
+
+      await app.workflow.completeIfResolved(shelved, undefined);
+
+      expect((await app.repos.epics.getById(epic.id)).status).toBe("ready");
     });
 
     it("ignores another epic's quests", async ({ expect }) => {
       const { alepha, app, project } = await setup();
-      const epic = await createTestEpic(alepha, project, { status: "active" });
-      const other = await createTestEpic(alepha, project, { status: "active" });
+      const epic = await createTestEpic(alepha, project, {
+        status: "in_progress",
+      });
+      const other = await createTestEpic(alepha, project, {
+        status: "in_progress",
+      });
+      const last = await createTestQuest(alepha, project, {
+        epicId: epic.id,
+        completedAt: STAMP,
+      });
       await createTestQuest(alepha, project, { epicId: other.id });
 
-      await expect(
-        app.workflow.assertCanConclude(epic),
-      ).resolves.toBeUndefined();
+      await app.workflow.completeIfResolved(last, undefined);
+
+      expect((await app.repos.epics.getById(epic.id)).status).toBe("completed");
+      expect((await app.repos.epics.getById(other.id)).status).toBe(
+        "in_progress",
+      );
     });
   });
 });

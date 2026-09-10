@@ -1970,8 +1970,9 @@ export default {
   // Epics
   "project.menu.epics": "Épopées",
   "epic.status.planned": "Planifiée",
-  "epic.status.active": "Active",
-  "epic.status.done": "Terminée",
+  "epic.status.ready": "Prête",
+  "epic.status.inProgress": "En cours",
+  "epic.status.completed": "Terminée",
   "epic.list.empty": "Aucune épopée pour le moment.",
   "epic.list.column.title": "Épopée",
   "epic.list.column.updated": "Mise à jour",
@@ -1981,7 +1982,7 @@ export default {
   "epic.filter.statusCount": "$1 statuts",
   "epic.progress.none": "Aucune quête pour le moment",
   "epic.progress.specified": "$1 spécifiées, aucune publiée",
-  "epic.progress.concluded": "Conclue le $1",
+  "epic.progress.completedOn": "Terminée le $1",
   "epic.progress.done": "$1 terminées",
   "epic.progress.inProgress": "$1 en cours",
   "epic.progress.open": "$1 ouvertes",
@@ -2022,10 +2023,10 @@ export default {
   "agentPrompts.settings.wasReset": "Invite rétablie par défaut.",
   "agentPrompts.settings.epicReview.title": "Épopée : relire",
   "agentPrompts.settings.epicReview.description":
-    "Proposée sur une épopée encore planifiée. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
+    "Proposée sur une épopée que personne n’a commencée, planifiée ou prête. Demande à un agent d’affiner le plan avant qu’il soit mis en œuvre.",
   "agentPrompts.settings.epicActivate.title": "Épopée : s’en charger",
   "agentPrompts.settings.epicActivate.description":
-    "Proposée sur une épopée planifiée ou active. Confie l’épopée entière, quête par quête.",
+    "Proposée sur une épopée prête ou en cours. Confie l’épopée entière, quête par quête.",
   "agentPrompts.settings.questWork.title": "Quête : s’en charger",
   "agentPrompts.settings.questWork.description":
     "Proposée sur une quête non terminée. Une quête, une branche, un commit.",
@@ -2056,23 +2057,21 @@ export default {
   "epic.create.title.label": "Titre",
   "epic.create.description.label": "Description",
   "epic.create.submit": "Créer une épopée",
-  "epic.begin.title": "Démarrer cette épopée ?",
-  "epic.begin.confirm":
-    "Démarrer $1 libère ses quêtes dans le backlog, où le reste du projet peut les voir et les prendre.",
-  "epic.conclude.title": "Conclure cette épopée ?",
-  "epic.conclude.confirm":
-    "Conclure $1 est définitif. Elle ne pourra ni être rouverte ni revenir en planification. Ce qui reste à faire ira dans une nouvelle épopée qui dépend de celle-ci.",
-  "epic.begin.blocked": "Bloquée par l'épopée $1",
-  "epic.status.actions.begin": "Commencer l'épopée",
-  "epic.status.actions.conclude": "Conclure l'épopée",
+  "epic.ready.title": "Marquer cette épopée comme prête ?",
+  "epic.ready.confirm":
+    "Marquer $1 comme prête place ses quêtes dans le backlog, où le reste du projet peut les prendre. La première quête acceptée démarre l'épopée et fige sa liste de quêtes.",
+  "epic.start.blocked": "Bloquée par l'épopée $1",
+  "epic.status.actions.markReady": "Marquer comme prête",
+  "epic.status.actions.backToPlanning": "Revenir à la planification",
   "epic.aside.predecessor": "Dépend de",
   "epic.aside.predecessor.after": "Après l'épopée $1",
   "epic.aside.predecessor.blocked": "Bloquée par l'épopée $1",
-  // Le bouton Accepter de la page de quête, retenu tant que l'épopée n'est pas active.
+  // The quest page's Accept, withheld while the quest's epic is planned or
+  // completed.
   "quest.view.accept.epicPlanned":
-    "L'épopée $1 n'a pas commencé. Démarrez-la d'abord.",
-  "quest.view.accept.epicDone":
-    "L'épopée $1 est conclue. Créez une nouvelle épopée pour cette quête.",
+    "L'épopée $1 n'est pas encore prête pour le développement.",
+  "quest.view.accept.epicCompleted":
+    "L'épopée $1 est terminée. Créez une nouvelle épopée pour cette quête.",
   "epic.tab.overview": "Aperçu",
   "epic.tab.quests": "Quêtes",
   "epic.tab.flow": "Flux",
@@ -2238,8 +2237,8 @@ export default {
   "dashboard.footer.questSplit": "$1 acceptees, $2 nouvelles",
   "dashboard.footer.epic.done": "$1 sur $2 terminees, hors abandonnees",
   "dashboard.footer.epic.specified": "$1 specifiees, aucune publiee",
-  "dashboard.footer.epic.concluded": "conclu le $1",
-  "dashboard.footer.epic.concludedUndated": "conclu",
+  "dashboard.footer.epic.completed": "terminée le $1",
+  "dashboard.footer.epic.completedUndated": "terminée",
   "dashboard.footer.epic.nothing": "rien a compter pour l'instant",
   "dashboard.footer.epic.hidden": "les epics sont desactives ici",
   "dashboard.footer.release.done": "$1 sur $2 terminees, hors abandonnees",

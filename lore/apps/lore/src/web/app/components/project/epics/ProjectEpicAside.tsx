@@ -78,9 +78,10 @@ const ProjectEpicAside = (props: ProjectEpicAsideProps) => {
     },
     // The predecessor, which this page never showed before epic #31 made
     // the field a gate (`EpicCreateSheet` has no field for it; only MCP and
-    // the API write it). "Blocked by" while it is not done and Begin would
-    // be refused, "After" once it is; the roadmap keeps "After" throughout,
-    // because it draws order and cannot see the predecessor's status.
+    // the API write it). "Blocked by" while it is not completed and this
+    // epic's first accept would be refused, "After" once it is; the roadmap
+    // keeps "After" throughout, because it draws order and cannot see the
+    // predecessor's status.
     ...(props.epic.dependsOnNumber !== undefined
       ? [
           {

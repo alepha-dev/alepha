@@ -21,6 +21,10 @@ import type { ReleaseResource } from "@/api/schemas/releaseResourceSchema.ts";
 
 import { currentReleasesAtom } from "../../atoms/currentReleasesAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
+import {
+  type EpicStatus,
+  STATUS_LABEL_KEYS,
+} from "../project/epics/epicStatus.ts";
 import { formatReference } from "../shared/element/typedReference.ts";
 import type { BrokenWikiLinkReason } from "./folioWikiLinkResolver.ts";
 import {
@@ -429,7 +433,11 @@ interface EpicPreview {
    * The epic's per-project `number`, which is how it is addressed.
    */
   number: number;
-  status: string;
+  /**
+   * Rendered through `STATUS_LABEL_KEYS`, never printed raw: `in_progress`
+   * is a stored value, not something to show a reader.
+   */
+  status: EpicStatus;
   /**
    * `completed / total` quests, the same rollup the Epics list shows.
    */
@@ -723,7 +731,7 @@ const HoverCardPopover = (props: HoverCardPopoverProps) => {
             <span className="text-sm font-semibold">{data.title}</span>
           </div>
           <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
-            <span>{data.status}</span>
+            <span>{tr(STATUS_LABEL_KEYS[data.status])}</span>
             <span>
               · {data.progress.completed}/{data.progress.total}
             </span>

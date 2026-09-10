@@ -27,6 +27,14 @@ const UNOWNED_TOOLS = ["project_context", "project_info"];
 const PARAMETER_NAMES = ["epic_number"];
 
 /**
+ * Backticked snake_case identifiers that are enum VALUES a template quotes,
+ * rather than tool names. `in_progress` is an epic status (#Q2223), quoted
+ * verbatim because it is the string `epic_get` answers and an agent compares
+ * against it; paraphrased, the check would be the agent's to translate.
+ */
+const ENUM_VALUES = ["in_progress"];
+
+/**
  * Every backticked snake_case identifier in the four defaults, which is how
  * a template names a tool.
  *
@@ -60,6 +68,7 @@ describe("the default prompts", () => {
       ...capabilityRegistry.all().flatMap((it) => it.mcpTools),
       ...UNOWNED_TOOLS,
       ...PARAMETER_NAMES,
+      ...ENUM_VALUES,
     ]);
 
     // The check is only worth anything if the union is the real one.

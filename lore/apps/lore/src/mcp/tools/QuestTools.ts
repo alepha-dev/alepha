@@ -304,7 +304,7 @@ export class QuestTools {
   quest_list = $tool({
     description:
       'List quests for the project. Can filter by status (new, accepted, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). Shelved quests — deliberately set aside as out of scope — are hidden unless you pass `status: "shelved"`. ' +
-      "Quests filed under a `planned` epic are hidden too by default, exactly as they are in Lore's own backlog: pass `includePlanned: true` to see them, or `epic:` (an epic's global id) to read one epic's quests whatever its status. Without either, this list is the set of quests that can be accepted: loose ones, and those of active epics. " +
+      "Quests filed under a `planned` epic are hidden too by default, exactly as they are in Lore's own backlog: pass `includePlanned: true` to see them, or `epic:` (an epic's global id) to read one epic's quests whatever its status. Without either, this list is the set of quests that can be accepted: loose ones, and those of ready and in-progress epics. " +
       "Rows carry `updatedAt`, `commentCount` and `lastCommentAt`, and the default order is newest-updated first: keep the timestamp of your last call, and any row whose `lastCommentAt` is later than it means someone spoke since. Read that quest with `quest_get` before writing back to it, or you will answer a conversation you have not seen. " +
       'Descriptions and objectives are NOT inlined by default; pass `detail: "full"` only when you mean to read them all, and `quest_get` when you want one quest in depth.',
     title: "List quests",
@@ -498,10 +498,10 @@ export class QuestTools {
       // refused, the quest stays created and the reason lands in
       // `acceptNote` instead of failing the whole tool call. The common
       // refusal is the epic phase gate (epic #31): filing into a `planned`
-      // epic with `accept: true` creates the quest and answers "Begin it
-      // first". The questline gate (`dependsOn` on an incomplete
+      // epic with `accept: true` creates the quest and answers that the
+      // epic is not ready. The questline gate (`dependsOn` on an incomplete
       // predecessor) is the other one. Both messages are the server's own
-      // words, which name the fix; nothing here rewrites them.
+      // words; nothing here rewrites them.
       let acceptedAt: string | undefined;
       let acceptNote: string | undefined;
       if (params.accept) {
@@ -535,7 +535,7 @@ export class QuestTools {
    */
   quest_accept = $tool({
     description:
-      "Accept a quest to start working on it. This assigns the quest to you. A quest filed under an epic can be accepted only while that epic is 'active': under a planned epic the answer is 'Begin it first' (epic_set_status), and under a concluded one 'File this in a new epic'. A loose quest, which is most of them, is unaffected.",
+      "Accept a quest to start working on it. This assigns the quest to you. A quest filed under an epic can be accepted only while that epic is 'ready' or 'in_progress'. Accepting the first quest of a 'ready' epic STARTS the epic: it moves to 'in_progress' and its quest set freezes, so anything discovered from then on is an objective on a quest already in it, or a new epic. It is refused while the epic's predecessor (dependsOn_number) is not completed. Under a 'planned' epic the answer is that it is not ready for development: that is the owner's call, so report it rather than marking the epic ready yourself. Under a 'completed' epic the answer is 'File this in a new epic'. A loose quest, which is most of them, is unaffected.",
     title: "Accept quest",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -562,7 +562,7 @@ export class QuestTools {
    */
   quest_shelve = $tool({
     description:
-      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from project progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'new' status can be shelved; call `quest_unassign` first on an accepted one. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now.",
+      "Shelve a quest: set it aside as out of scope for now without deleting it. Shelved quests disappear from the default `quest_list` and from project progress/stats, but keep their description, objectives and history — call `quest_unshelve` to bring one back. Only quests still in the 'new' status can be shelved; call `quest_unassign` first on an accepted one. Use this instead of `quest_delete` when the idea is worth keeping but nobody intends to work it now. Shelving the last open quest of an in-progress epic completes the epic.",
     title: "Shelve quest",
     annotations: {
       readOnlyHint: false,
@@ -593,7 +593,7 @@ export class QuestTools {
    */
   quest_unshelve = $tool({
     description:
-      "Bring a shelved quest back into the backlog as 'new'. Use `quest_list` with `status: \"shelved\"` to see what is currently on the shelf. Refused inside a concluded epic, where nothing reopens; allowed while the epic is planned (that edits an open plan) or active.",
+      "Bring a shelved quest back into the backlog as 'new'. Use `quest_list` with `status: \"shelved\"` to see what is currently on the shelf. Refused inside a completed epic, where nothing reopens; allowed while the epic is planned or ready (that edits an open plan) or in progress.",
     title: "Unshelve quest",
     annotations: {
       readOnlyHint: false,
@@ -662,7 +662,7 @@ export class QuestTools {
     description:
       "Lift a quest's hold. No reason and no conditions: whatever it was waiting for either arrived or stopped mattering. " +
       'The quest goes back to whatever it was before the hold — `accepted` and still assigned to the same person if somebody had it, `new` otherwise — so read `status` in the result rather than assuming. Use `quest_list` with `status: "held"` to see what is currently blocked. ' +
-      "Refused inside a concluded epic, where nothing reopens; allowed while the epic is planned (that edits an open plan) or active.",
+      "Refused inside a completed epic, where nothing reopens; allowed while the epic is planned or ready (that edits an open plan) or in progress.",
     title: "Unhold quest",
     annotations: {
       readOnlyHint: false,
@@ -729,7 +729,7 @@ export class QuestTools {
    */
   quest_complete = $tool({
     description:
-      "Mark a quest as complete. Every objective must be either ticked or waived, and a quest filed under an epic completes only while that epic is 'active' (the same rule as quest_accept). Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `project_context` so future agents working on this project can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session. " +
+      "Mark a quest as complete. Every objective must be either ticked or waived, and a quest filed under an epic completes only while that epic is 'ready' or 'in_progress' (the same rule as quest_accept). Completing (or shelving) the last open quest of an in-progress epic completes the epic. Pass `message` with a short summary of what was actually done — the summary is persisted on the quest, shown in the UI, and returned by `quest_get` / `project_context` so future agents working on this project can read it. Leaving it blank is allowed but wastes a free way to hand context to the next session. " +
       "An objective you did not do is waived with a reason, never ticked: pass it in `waive` and it stays unticked with the reason shown on the quest. Ticking it instead would be indistinguishable from work that actually happened. " +
       "If you know what shipped, pass `commits` too; `quest_commit_add` records any sha that turns up after the merge. " +
       "⚠️ A quest that names no release, and inherits none from its epic, lands in the project's DEFAULT release if it has one (see release_set_default). When that happens the result carries `release`; otherwise the quest completes attached to nothing, as before.",
@@ -1054,7 +1054,7 @@ export class QuestTools {
    */
   quest_update = $tool({
     description:
-      "Update a quest's properties. Non-completed quests accept any field. A COMPLETED quest freezes its BODY - title, description, objectives - as an audit record of what was closed, and accepts everything that is not the body: `completionMessage`, `release_tag`, `feedback_shortId`, `area`, `tags` and `epic_number`. Which feedback the work turned out to resolve, and how it should be classified for reporting, are usually only settled afterwards, so freezing them made the history less accurate rather than more. `epic_number` has one more gate, the epic's own: a quest enters or leaves an epic only while that epic is 'planned', whatever the quest's status. A completed quest cannot be re-filed into an active or concluded epic after the fact; that was allowed until epic #31 and was deliberately closed with the plan freeze. Filing a quest into an epic also puts it in that epic's release, unless the quest already names one of its own - a quest may deliberately ship later than its epic. Refused on a completed quest: `priority`, `size`, `estimateMinutes`, `dueAt` and `dependsOn_shortId`, which record what was planned at the time. Omitted fields stay unchanged. " +
+      "Update a quest's properties. Non-completed quests accept any field. A COMPLETED quest freezes its BODY - title, description, objectives - as an audit record of what was closed, and accepts everything that is not the body: `completionMessage`, `release_tag`, `feedback_shortId`, `area`, `tags` and `epic_number`. Which feedback the work turned out to resolve, and how it should be classified for reporting, are usually only settled afterwards, so freezing them made the history less accurate rather than more. `epic_number` has one more gate, the epic's own: a quest enters or leaves an epic only while that epic is 'planned' or 'ready', whatever the quest's status. A completed quest cannot be re-filed into an in-progress or completed epic after the fact; that was allowed until epic #31 and was deliberately closed with the plan freeze. Filing a quest into an epic also puts it in that epic's release, unless the quest already names one of its own - a quest may deliberately ship later than its epic. Refused on a completed quest: `priority`, `size`, `estimateMinutes`, `dueAt` and `dependsOn_shortId`, which record what was planned at the time. Omitted fields stay unchanged. " +
       "Passing `objectives` REPLACES the entire array, so fetch the quest first and pass back the full list, each surviving item carrying the `id` it already had. That path is for rewording, reordering, adding or removing objectives; to tick or untick one, call `quest_objective_set` instead of resending everything. " +
       "Nothing here stops you overwriting an edit someone made while you were working: pass `expectedUpdatedAt` from your last `quest_get` and a 409 will tell you to re-read instead.",
     title: "Update quest",
@@ -1222,7 +1222,7 @@ export class QuestTools {
    */
   quest_delete = $tool({
     description:
-      "Permanently delete a quest. Use this to clean up mistakenly-created quests. Only the quest creator or project owner can delete. Cannot be undone. Refused inside an 'active' or 'done' epic, whose quest set is frozen: a quest that will not be done there is shelved (quest_shelve), which keeps the record that it was specified and declined.",
+      "Permanently delete a quest. Use this to clean up mistakenly-created quests. Only the quest creator or project owner can delete. Cannot be undone. Refused inside an 'in_progress' or 'completed' epic, whose quest set is frozen: a quest that will not be done there is shelved (quest_shelve), which keeps the record that it was specified and declined.",
     title: "Delete quest",
     annotations: {
       destructiveHint: true,
