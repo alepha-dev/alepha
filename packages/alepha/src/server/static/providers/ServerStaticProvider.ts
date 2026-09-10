@@ -228,6 +228,56 @@ export class ServerStaticProvider {
     };
   }
 
+  /**
+   * SPIKE (throwaway, branch worktree-loom-bun-compile): serve the files a
+   * `bun build --compile` binary carries inside itself. `files` maps each URL
+   * path to the path Bun gave its embedded copy (`/$bunfs/root/...`), which
+   * only `Bun.file()` can read. A precompressed `.br` sibling is honoured the
+   * way the disk handler honours it.
+   */
+  public createEmbeddedStaticServer(
+    files: Record<string, string>,
+    options: ServePrimitiveOptions,
+  ): void {
+    const bun = (globalThis as any).Bun;
+    for (const [urlPath, embeddedPath] of Object.entries(files)) {
+      if (urlPath.endsWith(".br") || urlPath.endsWith(".gz")) {
+        continue;
+      }
+      const filename = basename(urlPath);
+      const contentType = this.fileDetector.getContentType(filename);
+      const cacheControl = this.getCacheControl(filename, options);
+      const brPath = files[`${urlPath}.br`];
+      this.log.trace(`Mount ${urlPath} -> ${embeddedPath} (embedded)`);
+      this.routerProvider.createRoute({
+        silent: options.silent,
+        path: encodeURI(urlPath),
+        handler: async (request) => {
+          const { headers, reply } = request;
+          let path = embeddedPath;
+          if (brPath) {
+            reply.headers.vary = reply.headers.vary
+              ? `${reply.headers.vary}, accept-encoding`
+              : "accept-encoding";
+            if (headers["accept-encoding"]?.includes("br")) {
+              reply.headers["content-encoding"] = "br";
+              path = brPath;
+            }
+          }
+          reply.headers["content-type"] = contentType;
+          if (cacheControl) {
+            reply.headers["cache-control"] =
+              `public, max-age=${cacheControl.maxAge}`;
+            if (cacheControl.immutable) {
+              reply.headers["cache-control"] += ", immutable";
+            }
+          }
+          reply.body = bun.file(path).stream();
+        },
+      });
+    }
+  }
+
   protected getCacheFileTypes(): string[] {
     return [
       ".js",
